@@ -127,6 +127,23 @@
   --banner-green-border: rgba(74, 222, 128, 0.2);
   --banner-orange-bg: rgba(251, 146, 60, 0.08);
   --banner-orange-border: rgba(251, 146, 60, 0.2);
+  /* SOLID fills for StatusBanner (2026-09-15): no border stroke, so the fill
+     alone has to hold the edge — an 8% tint with nothing around it disappears
+     into a glass card. Opaque, tuned per theme. */
+  --banner-green-solid: #173a26;
+  --banner-orange-solid: #3d2a14;
+  --banner-red-solid: #3f1d1d;
+
+  /* ── Top toast (components/primitives/TopToast.tsx) ──
+     The INVERSE of the theme, so a message reads as sitting above the page:
+     near-white here on the dark theme, near-black on the light one. The tone
+     lives only in the icon. */
+  --toast-bg: #f4f4f5;
+  --toast-fg: #111113;
+  --toast-muted: #52525b;
+  --toast-success: #15803d;
+  --toast-warn: #b45309;
+  --toast-danger: #dc2626;
 
   /* ── Pills ──
      All four pairs live here AND in the light block. The waitlist and admin
@@ -312,6 +329,16 @@
   --banner-orange-border: rgba(251, 146, 60, 0.42);
   --banner-red-bg: rgba(239, 68, 68, 0.08);
   --banner-red-border: rgba(220, 38, 38, 0.40);
+  --banner-green-solid: #e3f5ea;
+  --banner-orange-solid: #fcefdc;
+  --banner-red-solid: #fde8e8;
+
+  --toast-bg: #1c1c1e;
+  --toast-fg: #ffffff;
+  --toast-muted: #a1a1aa;
+  --toast-success: #4ade80;
+  --toast-warn: #fbbf24;
+  --toast-danger: #f87171;
 
   --pill-paid-bg: rgba(22, 163, 74, 0.1);
   --pill-paid-text: #16a34a;
@@ -2883,24 +2910,30 @@ textarea {
 .status-banner-green,
 .status-banner-orange,
 .status-banner-red {
-  border: 1px solid;
+  /* Solid fill, no border stroke (2026-09-15). Every banner slides in when it
+     appears — a state change is worth seeing happen. `.status-celebrate`
+     keeps its own bigger entrance and the icon pop for the rare good moment. */
+  border: none;
   border-radius: 12px;
   padding: var(--space-4) var(--space-5);
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  animation: statusBannerIn 280ms var(--ease-glass) both;
 }
-.status-banner-green {
-  background: var(--banner-green-bg);
-  border-color: var(--banner-green-border);
+.status-banner-green { background: var(--banner-green-solid); }
+.status-banner-orange { background: var(--banner-orange-solid); }
+.status-banner-red { background: var(--banner-red-solid); }
+
+@keyframes statusBannerIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.status-banner-orange {
-  background: var(--banner-orange-bg);
-  border-color: var(--banner-orange-border);
-}
-.status-banner-red {
-  background: var(--banner-red-bg);
-  border-color: var(--banner-red-border);
+
+@media (prefers-reduced-motion: reduce) {
+  .status-banner-green,
+  .status-banner-orange,
+  .status-banner-red { animation: none; }
 }
 
 /* ── Shared text patterns ── */
@@ -4489,6 +4522,103 @@ html:root[data-theme="light"] {
    button, and red as a failure that already happened. */
 .toast-warning { border-left: 3px solid var(--sev-warn); }
 .toast-blocking { border-left: 3px solid var(--color-red); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TOP TOAST  —  components/primitives/TopToast.tsx
+   ══════════════════════════════════════════════════════════════════════════
+   A moment ("You're signed in", "You're offline") dropping in from the top.
+   Solid inverse surface, no border stroke, tone in the icon only.
+
+   The wrapper is fixed and click-through; only the card takes the pointer.
+   z-index 65: above `.bottom-sheet` (60), unlike the bottom `.toast-stack`
+   (55) — this one sits at the top edge where a sheet never is, and a sign-in
+   notice that landed behind an open sheet would be a notice nobody saw.
+
+   The card stays mounted while closed (so the exit has something to slide),
+   hidden by `visibility` after the slide rather than by unmounting. */
+.top-toast {
+  position: fixed;
+  top: calc(var(--banner-offset, 0px) + env(safe-area-inset-top, 0px) + var(--space-3));
+  left: 0;
+  right: 0;
+  z-index: 65;
+  max-width: 32rem;
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+  pointer-events: none;
+}
+
+.top-toast-card {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--toast-bg);
+  color: var(--toast-fg);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.28);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(calc(-100% - var(--space-7)));
+  transition:
+    transform 220ms var(--ease-out-quart),
+    opacity 180ms ease,
+    visibility 0s linear 220ms;
+}
+
+.top-toast[data-open='true'] .top-toast-card {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  /* A small overshoot on the way in so it lands rather than stops. */
+  transition:
+    transform 420ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    opacity 200ms ease,
+    visibility 0s;
+}
+
+.top-toast-icon { font-size: var(--icon-lg); flex-shrink: 0; }
+.top-toast-success .top-toast-icon { color: var(--toast-success); }
+.top-toast-warn .top-toast-icon { color: var(--toast-warn); }
+.top-toast-danger .top-toast-icon { color: var(--toast-danger); }
+
+.top-toast-text { flex: 1; min-width: 0; }
+.top-toast-title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+}
+.top-toast-body {
+  margin: var(--space-05) 0 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  color: var(--toast-muted);
+}
+
+.top-toast-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--toast-fg);
+  color: var(--toast-bg);
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-toast-card,
+  .top-toast[data-open='true'] .top-toast-card {
+    transform: none;
+    transition: opacity 150ms ease, visibility 0s linear 150ms;
+  }
+  .top-toast[data-open='true'] .top-toast-card { transition: opacity 150ms ease, visibility 0s; }
+}
 
 .toast-dismiss {
   flex: none;

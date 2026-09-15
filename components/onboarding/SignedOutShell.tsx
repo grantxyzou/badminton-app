@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import EmptyState from '@/components/primitives/EmptyState';
 import BpmWordmark from '@/components/BpmWordmark';
 import TopBar from '@/components/primitives/TopBar';
-import StatusBanner from '@/components/primitives/StatusBanner';
+import TopToast from '@/components/primitives/TopToast';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import NativeBridge from '@/components/NativeBridge';
@@ -198,17 +198,20 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
       <ThemeToggle />
       <LanguageToggle />
       <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top min-h-screen">
-        {banner && (
-          <div className="mb-3">
-            <StatusBanner
-              tone={banner.tone}
-              icon={banner.icon}
-              title={tAuth(banner.titleKey)}
-              body={tAuth(banner.bodyKey)}
-              celebrate={banner.celebrate}
-            />
-          </div>
-        )}
+        <TopToast
+          content={
+            notice && banner
+              ? {
+                  id: `notice:${JSON.stringify(notice)}`,
+                  tone: banner.tone,
+                  icon: banner.icon,
+                  title: tAuth(banner.titleKey),
+                  body: tAuth(banner.bodyKey),
+                }
+              : null
+          }
+          onClose={() => setNotice(null)}
+        />
 
         {nativeReturn ? (
           <div className="glass-card p-5" style={{ marginTop: 'var(--space-8)' }}>

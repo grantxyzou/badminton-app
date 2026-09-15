@@ -21,7 +21,7 @@ import NativeBridge from '@/components/NativeBridge';
 import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
-import StatusBanner from '@/components/primitives/StatusBanner';
+import TopToast from '@/components/primitives/TopToast';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import PullToRefresh from '@/components/PullToRefresh';
 import type { DevOverrides } from '@/components/DevPanel';
@@ -659,31 +659,37 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
         <ThemeToggle />
         <LanguageToggle />
         <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
-          {!online && (
-            <div className="mb-3">
-              <StatusBanner
-                tone="warn"
-                icon="warning"
-                title="You're offline"
-                body="Showing your last-known view. Some data may be stale until you reconnect."
-              />
-            </div>
-          )}
+          {/* Moments float at the top (TopToast): offline for as long as it is
+              true, with no ✕ because reconnecting is what clears it, and the
+              sign-in notices on their own timer. Offline wins while both
+              apply — it explains why whatever the notice promised may not
+              load. */}
+          <TopToast
+            content={
+              !online
+                ? {
+                    id: 'offline',
+                    tone: 'warn',
+                    icon: 'warning',
+                    title: "You're offline",
+                    body: 'Showing your last-known view. Some data may be stale until you reconnect.',
+                  }
+                : authNotice
+                  ? {
+                      id: `notice:${JSON.stringify(authNotice)}`,
+                      tone: noticeBanner(authNotice).tone,
+                      icon: noticeBanner(authNotice).icon,
+                      title: tAuth(noticeBanner(authNotice).titleKey),
+                      body: tAuth(noticeBanner(authNotice).bodyKey),
+                    }
+                  : null
+            }
+            onClose={online && authNotice ? () => setAuthNotice(null) : undefined}
+          />
           {/* No "sign in to see your stats" banner (removed 2026-09-14). Each
               Stats card a device may not fill now locks itself with its own
               Sign in button (components/stats/LockedCard.tsx), and Profile
               shows the sign-in screen when this device holds no session. */}
-          {authNotice && (
-            <div className="mb-3">
-              <StatusBanner
-                tone={noticeBanner(authNotice).tone}
-                icon={noticeBanner(authNotice).icon}
-                title={tAuth(noticeBanner(authNotice).titleKey)}
-                body={tAuth(noticeBanner(authNotice).bodyKey)}
-                celebrate={noticeBanner(authNotice).celebrate}
-              />
-            </div>
-          )}
           {nativeReturn ? (
             /* This page is inside the native app's browser sheet. iOS will not
                hand back by itself; the custom scheme opens the app, which

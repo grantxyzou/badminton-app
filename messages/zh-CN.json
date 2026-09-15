@@ -346,7 +346,7 @@
       "methodPin": "PIN 码",
       "methodPassword": "邮箱和密码",
       "methodEmailShort": "邮箱",
-      "methodPinOnly": "目前 PIN 码是你唯一的登录方式。",
+      "methodPinOnly": "目前唯一的登录方式",
       "disconnect": "断开连接",
       "disconnectConfirm": "确定断开？",
       "disconnectCancel": "先留着",

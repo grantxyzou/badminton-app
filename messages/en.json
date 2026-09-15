@@ -346,7 +346,7 @@
       "methodPin": "PIN",
       "methodPassword": "Email and password",
       "methodEmailShort": "Email",
-      "methodPinOnly": "A PIN is your only way in right now.",
+      "methodPinOnly": "Your only way in right now",
       "disconnect": "Disconnect",
       "disconnectConfirm": "Disconnect?",
       "disconnectCancel": "Keep it",
