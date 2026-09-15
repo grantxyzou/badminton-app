@@ -69,10 +69,7 @@
         "noStringsYet": "Grant 还没列出有哪些线，直接告诉他你想要什么吧。",
         "unusualPair": "这个组合不常见 — 横线一般是 {suggested} 磅。",
         "openBadge": "开放中",
-        "restring": {
-          "last": "{weeks, plural, =0 {本周刚穿过线} other {上次穿线是 # 周前}}",
-          "due": "{weeks, plural, other {上次穿线是 # 周前 — 该重新穿线了？}}"
-        },
+        "restringDue": "上次穿线是 {weeks} 周前 — 该重新穿线了？",
         "requestCta": "提交申请",
         "needName": "先在上面填你的名字，Grant 才知道是谁的拍。",
         "stage": {
@@ -718,6 +715,7 @@
         "inPlay": "在用",
         "spare": "备用",
         "swapIn": "换上",
+        "getStrung": "送去穿线",
         "arriveHint": "整张卡只有两行。填好后，俱乐部统计就能用上——我们也能按你的球拍而不是水平来建议穿线磅数。",
         "othersPlay": "另有 {count} 人在用",
         "pairSuggestion": "这支球拍我们建议搭配 {string}，{lb} 磅",

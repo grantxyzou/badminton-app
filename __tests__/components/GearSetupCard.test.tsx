@@ -62,7 +62,7 @@ function fakePicks(stringPick: UseGearPicks['view']['string'] = { status: 'parke
 
 const noClub: UseClubGear = { entries: [], status: 'ready', retry: vi.fn() };
 
-function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubGear; onOpenLine?: (c: string) => void; onAddTension?: (i: GearItem) => void; onShare?: () => void } = {}) {
+function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubGear; onOpenLine?: (c: string) => void; onAddTension?: (i: GearItem) => void; onShare?: () => void; onRequestStringing?: () => void } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <GearSetupCard
@@ -74,6 +74,7 @@ function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubG
         onOpenFit={vi.fn()}
         onShare={opts.onShare}
         onAddTension={opts.onAddTension}
+        onRequestStringing={opts.onRequestStringing}
       />
     </NextIntlClientProvider>,
   );
@@ -201,5 +202,20 @@ describe('GearSetupCard — Share appears with the complete card', () => {
     renderCard(fakeGear(doc([AF79, BG65], 'r1')), { onShare });
     fireEvent.click(screen.getByRole('button', { name: /Share/ }));
     expect(onShare).toHaveBeenCalled();
+  });
+});
+
+describe('the stringing door', () => {
+  it('is drawn only when the register hands it a way in', () => {
+    // The register passes it only for a shop KNOWN to be open.
+    renderCard(fakeGear(doc([AF79, BG65], 'r1')));
+    expect(screen.queryByRole('button', { name: /Get these strung/ })).toBeNull();
+  });
+
+  it('opens the request sheet when tapped', () => {
+    const onRequestStringing = vi.fn();
+    renderCard(fakeGear(doc([AF79, BG65], 'r1')), { onRequestStringing });
+    fireEvent.click(screen.getByRole('button', { name: /Get these strung/ }));
+    expect(onRequestStringing).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,7 +8,7 @@ import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { useStringingShop } from '@/lib/useStringingShop';
-import { lastStrungAt, restringState } from '@/lib/restring';
+import { restringDueWeeks } from '@/lib/restring';
 import RequestStringingSheet from './RequestStringingSheet';
 import { useGear } from '@/components/stats/useGear';
 import { useActiveName } from '@/lib/useActiveName';
@@ -185,16 +185,14 @@ export default function StringingCard({ hasIdentity }: Props) {
    */
   const collapsible = active !== null;
 
-  /* THE RESTRING REMINDER. Only with no racket in — a racket on the bench is
-     already the answer — and only when there is a date from somewhere: the
-     shop's finished jobs or the member's own restring log. No date renders
-     nothing; "you're due" on a guess is the lying-empty-state rule in reverse.
+  /* THE RESTRING REMINDER. Only for someone the shop has strung for, only once
+     it has been two months (`RESTRING_AFTER_WEEKS`), and only with no racket
+     in — a racket on the bench is already the answer. No date renders nothing;
+     "you're due" on a guess is the lying-empty-state rule in reverse.
      `jobs !== null` waits for the read, so the line cannot flash in and then
      vanish when an active job arrives. */
-  const restring =
-    jobs !== null && active === null
-      ? restringState(lastStrungAt(shopStrungAt, gear.gear?.stringLog), new Date())
-      : null;
+  const restringWeeks =
+    jobs !== null && active === null ? restringDueWeeks(shopStrungAt, new Date()) : null;
   const expanded = !collapsible || (openOverride ?? false);
 
   const header = (
@@ -361,13 +359,11 @@ export default function StringingCard({ hasIdentity }: Props) {
             week's actual decision — from inside the group below it. Demoted to
             a link with an arrow, it still reads as the way in without
             competing for the one primary slot on the screen. */}
-        {/* Muted, never red and never accent: the CTA right below stays the
-            card's one way in, and "due" changes the words, not the colour. */}
-        {restring && (
-          <p className="fs-sm" style={{ margin: '0', color: restring.due ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-            {restring.due
-              ? t('restring.due', { weeks: restring.weeks })
-              : t('restring.last', { weeks: restring.weeks })}
+        {/* Secondary ink, never red and never accent: the CTA right below
+            stays the card's one way in. */}
+        {restringWeeks !== null && (
+          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>
+            {t('restringDue', { weeks: restringWeeks })}
           </p>
         )}
 

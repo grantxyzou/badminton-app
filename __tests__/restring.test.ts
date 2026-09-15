@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lastStrungFromJobs, lastStrungAt, weeksSince, restringState } from '../lib/restring';
+import { lastStrungFromJobs, weeksSince, restringDueWeeks, RESTRING_AFTER_WEEKS } from '../lib/restring';
 
 describe('lastStrungFromJobs', () => {
   it('takes the latest ready or picked_up step across jobs', () => {
@@ -22,32 +22,6 @@ describe('lastStrungFromJobs', () => {
   });
 });
 
-describe('lastStrungAt', () => {
-  const entry = (at: string, stringItemId = 's1') => ({ at, catalogId: null, stringItemId });
-
-  it('does not treat putting a string in the bag as a restring', () => {
-    // Logging a six-month-old bed today must not read "last strung this week".
-    expect(lastStrungAt(null, [entry('2026-09-14T00:00:00Z')])).toBeNull();
-    expect(lastStrungAt(null, [entry('2026-09-01T00:00:00Z', 's1'), entry('2026-09-02T00:00:00Z', 's2')])).toBeNull();
-  });
-
-  it('counts a later tension change on a string already in the bag', () => {
-    const log = [entry('2026-06-01T00:00:00Z'), entry('2026-08-01T00:00:00Z')];
-    expect(lastStrungAt(null, log)).toBe('2026-08-01T00:00:00Z');
-  });
-
-  it('prefers whichever is later, the shop or the member’s own restrings', () => {
-    const log = [entry('2026-06-01T00:00:00Z'), entry('2026-08-01T00:00:00Z')];
-    expect(lastStrungAt('2026-07-01T00:00:00Z', log)).toBe('2026-08-01T00:00:00Z');
-    expect(lastStrungAt('2026-09-01T00:00:00Z', log)).toBe('2026-09-01T00:00:00Z');
-  });
-
-  it('is null with neither, and skips unparseable dates', () => {
-    expect(lastStrungAt(null, undefined)).toBeNull();
-    expect(lastStrungAt(null, [entry('2026-06-01T00:00:00Z'), entry('Sunday')])).toBeNull();
-  });
-});
-
 describe('weeksSince', () => {
   const now = new Date('2026-09-14T12:00:00Z');
   it('counts whole weeks and never goes negative', () => {
@@ -57,8 +31,22 @@ describe('weeksSince', () => {
   });
 });
 
-describe('restringState', () => {
-  it('is null with no date — unknown is never "due"', () => {
-    expect(restringState(null, new Date())).toBeNull();
+describe('restringDueWeeks', () => {
+  const now = new Date('2026-09-14T12:00:00Z');
+  const weeksBefore = (n: number) => new Date(now.getTime() - n * 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  it('is two months', () => {
+    expect(RESTRING_AFTER_WEEKS).toBe(8);
+  });
+
+  it('says nothing the week before, and speaks on the day', () => {
+    expect(restringDueWeeks(weeksBefore(RESTRING_AFTER_WEEKS), now)).toBe(8);
+    expect(restringDueWeeks(new Date(Date.parse(weeksBefore(8)) + 1000).toISOString(), now)).toBeNull();
+    expect(restringDueWeeks(weeksBefore(20), now)).toBe(20);
+  });
+
+  it('is null with no date or an unreadable one — never due on a guess', () => {
+    expect(restringDueWeeks(null, now)).toBeNull();
+    expect(restringDueWeeks('Sunday', now)).toBeNull();
   });
 });

@@ -69,10 +69,7 @@
         "noStringsYet": "Grant hasn't listed what he stocks yet, so tell him what you'd like.",
         "unusualPair": "Unusual pair — most rackets go {suggested} on the crosses.",
         "openBadge": "Open",
-        "restring": {
-          "last": "{weeks, plural, =0 {Last strung this week} one {Last strung # week ago} other {Last strung # weeks ago}}",
-          "due": "{weeks, plural, one {Strung # week ago — time for a restring?} other {Strung # weeks ago — time for a restring?}}"
-        },
+        "restringDue": "Strung {weeks} weeks ago — time for a restring?",
         "requestCta": "Submit a request",
         "needName": "Add your name above first, so Grant knows whose racket it is.",
         "stage": {
@@ -718,6 +715,7 @@
         "inPlay": "In play",
         "spare": "Spare",
         "swapIn": "Swap in",
+        "getStrung": "Get these strung",
         "arriveHint": "Two lines is the whole card. Fill them and the club tally starts working — and we can size your tension to the frame instead of your level.",
         "othersPlay": "{count} others play it",
         "pairSuggestion": "For this frame we'd pair {string} at {lb} lb",

@@ -21,9 +21,8 @@ recorded in CLAUDE.md in a player's words: "how do I give kudos to other people?
 
 ## Kill criterion
 
-If six weeks after ship the requests from members who had a `lastStrungAt` date
-are no higher than in the six weeks before, the reminder is noise; remove the line
-and keep the door.
+If six weeks after ship the members who were shown the reminder request no more
+often than before, the reminder is noise; remove the line and keep the door.
 
 ## Non-goals
 
@@ -31,20 +30,22 @@ and keep the door.
   2026-10-15 `reach` read in `docs/plans/skill-leads-stats.md`; moving it now
   restarts that measurement.
 - Anything that counts sessions missed (Stage 8) or shows money on Sign-Ups (Home only).
-- Guessing a "last strung" date for someone with neither a shop job nor a logged
-  restring. No date renders nothing.
+- Reminding anyone who has not used the shop. No shop job, no line.
 
 ## Decisions
 
-- **"Last strung" is the later of two sources:** a shop job's `ready`/`picked_up`
-  step (archived jobs included; archiving does not un-string a racket) and the
-  member's own `stringLog`.
-- **A string ADDED to the bag is not a restring.** The gear route logs on add as
-  well as on a tension change, and an add is the day someone told the app about
-  their strings, not the day they went on. The first log entry per string item is
-  dropped (`restringEntries`).
+- **Shop customers only, after two months** (Grant, 2026-09-14: "Just timing
+  reminder after like 2 months for now. Only show up for people who got
+  stringing with me"). `RESTRING_AFTER_WEEKS = 8`. Before that, nothing renders —
+  no quiet "last strung N weeks ago" line.
+- **The date is a shop job's `ready`/`picked_up` step, archived jobs included**;
+  archiving does not un-string a racket. The member's own `stringLog` was built
+  in and then taken out on that answer: it records strings done elsewhere, and a
+  string ADDED to the bag logs the day it was typed, not the day it went on.
 - **`lastStrungAt` rides on the existing player jobs read** rather than a new
   route: one more field, a date only, so the price wall is untouched.
+- **The Set-up card's "Get these strung" link is for everyone** once the shop is
+  known to be open. It is a door, not a reminder.
 - **The kudos hint dismisses for an ISO week**, the same unit kudos dedupe on.
 
 ## Shape
