@@ -34,7 +34,7 @@ export default function AvatarSheet({ open, onClose, name, current, onSaved }: P
   const t = useTranslations('profile.avatar');
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
-      <BottomSheetHeader>
+      <BottomSheetHeader onClose={onClose}>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('title')}</span>
       </BottomSheetHeader>
       <BottomSheetBody>
