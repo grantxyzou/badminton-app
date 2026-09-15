@@ -48,8 +48,10 @@ export default function KudosRosterHint() {
         type="button"
         onClick={dismiss}
         aria-label={t('kudosHintDismiss')}
-        className="cc-btn cc-btn-ghost"
-        style={{ padding: 'var(--space-1)', color: 'var(--text-muted)', flexShrink: 0 }}
+        // A bare glyph, not a bordered button: a tip this quiet should not
+        // carry a control heavier than its own sentence.
+        className="flex items-center justify-center"
+        style={{ padding: 'var(--space-1)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0 }}
       >
         <span className="material-icons icon-sm" aria-hidden="true">close</span>
       </button>
