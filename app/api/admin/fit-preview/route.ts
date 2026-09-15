@@ -125,7 +125,10 @@ export async function GET(req: NextRequest) {
           items,
           activeCatalogId: active?.catalogId ?? undefined,
           playFormat: gear?.playFormat, budgetMaxCad: gear?.budgetMaxCad,
-          fitGoal: gear?.fitGoal, fitSwing: gear?.fitSwing, fitArmComfort: gear?.fitArmComfort, fitGrip: gear?.fitGrip,
+          // No arm answer, ever: it is visible only to the member (Grant,
+          // 2026-09-14), and "anonymised" is not enough while the operator key
+          // above maps each case back to a memberId. The golden set carries none.
+          fitGoal: gear?.fitGoal, fitSwing: gear?.fitSwing, fitGrip: gear?.fitGrip,
         },
         ratings,
         acceptable: [],

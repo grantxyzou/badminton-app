@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { AdminView } from './types';
 import AdvanceSessionForm from './AdvanceSessionForm';
+import CatalogGapsPage from './CatalogGapsPage';
 import ReleasesView from './ReleasesView';
 import CommandCenter from './CommandCenter/CommandCenter';
 import BirdsPage from './CommandCenter/BirdsPage';
@@ -61,6 +62,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   }
   if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
   if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
+  if (view === 'catalog-gaps') return <div className="animate-slideInRight"><CatalogGapsPage onBack={goBack} /></div>;
   // Flag-gated at the route level too — every price on this screen is exact,
   // which is precisely what the player API strips.
   if (view === 'stringing' && isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {

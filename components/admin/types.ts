@@ -13,7 +13,8 @@ export type AdminView =
   | 'etransfer'
   | 'skip-dates'
   | 'past-sessions'
-  | 'stringing';
+  | 'stringing'
+  | 'catalog-gaps';
 
 export interface AdminNavProps {
   onBack: () => void;
