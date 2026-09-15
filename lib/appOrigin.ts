@@ -75,3 +75,37 @@ export function outboundOriginOrNull(): string | null {
 export function requireRedirectOrigin(): string {
   return requireOutboundOrigin();
 }
+
+/**
+ * THE ORIGINS THIS APP IS SERVED FROM, for a `postMessage` target.
+ *
+ * Not the same question as the ones above. A sign-in pop-up posts its return
+ * code to the window that opened it, and that window may be on either of two
+ * hosts: APP_ORIGIN, or the App Service's own `*.azurewebsites.net` name
+ * (`WEBSITE_HOSTNAME`, set by Azure), which a home-screen app installed from
+ * that address keeps using. A message aimed at the wrong origin is dropped
+ * without a sound, so the opener SAYS where it is and this decides whether to
+ * believe it. Anything not ours is refused: the target is what stops a page
+ * that opened our pop-up from receiving the code.
+ */
+export function ownOriginOrNull(candidate: string | null | undefined): string | null {
+  if (typeof candidate !== 'string' || !candidate) return null;
+  let origin: string;
+  try {
+    const url = new URL(candidate);
+    origin = url.origin;
+    // An origin, not a URL that merely starts with one.
+    if (origin !== candidate) return null;
+  } catch {
+    return null;
+  }
+  const allowed = new Set<string>();
+  const app = outboundOriginOrNull();
+  if (app) allowed.add(app);
+  const host = process.env.WEBSITE_HOSTNAME?.trim().toLowerCase();
+  if (host && /^[a-z0-9.-]+$/.test(host)) allowed.add(`https://${host}`);
+  if (allowed.has(origin)) return origin;
+  // Local dev runs on whatever port it was given.
+  if (isLocalEnv() && /^http:\/\/localhost:\d+$/.test(origin)) return origin;
+  return null;
+}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { mintHandoff, stageHandoff } from '@/lib/handoffClient';
+import { mintHandoff, stageHandoff, openSignInPopup } from '@/lib/handoffClient';
+import { isIOS, isStandalone } from '@/lib/standalone';
 import { markExternalExcursion } from '@/lib/excursion';
 import { isNative, hasNativePlugin } from '@/lib/native';
 import { useTranslations } from 'next-intl';
@@ -145,6 +146,14 @@ export default function ProviderButtons({
     };
   }, []);
   const handoffRef = handoff?.ref ?? null;
+  /* A FRESH PAIR AFTER EVERY TAP. A ref's stash is first-write-wins while it
+     lives (lib/authHandoff.ts), so a second tap on the same ref parks nothing
+     new and its callback fails `state_mismatch` against the first attempt's
+     state for ten minutes. A full-page trip remounted this component and got
+     away with it; a pop-up and the native sheet leave it mounted. */
+  const remint = () => {
+    void mintHandoff().then((pair) => setHandoff(pair));
+  };
 
   useEffect(() => {
     // The server already answered. Note this checks for the PROP being absent,
@@ -249,6 +258,7 @@ export default function ProviderButtons({
                 // simply expires and a stale excursion marker only restores
                 // the last tab for three minutes — both harmless.
                 stageHandoff(handoff.id);
+                remint();
                 markExternalExcursion();
                 onLeave?.();
                 void openInSystemBrowser(`${window.location.origin}${startHref}&native=1`).catch(
@@ -275,13 +285,23 @@ export default function ProviderButtons({
             /* iOS evicts the PWA while a system browser is in front, so the
                return looks like a cold start and lands on Home. Same hand-off
                marker ReceiptSheet uses — see lib/excursion.ts. */
-            onClick={() => {
+            onClick={(event) => {
               /* Commit the id HERE, not at mint time. This component remounts
                  when the person returns from the excursion, and writing on
                  mount would overwrite the handoff they came back to collect. */
               if (handoff) stageHandoff(handoff.id);
+              remint();
               markExternalExcursion();
               onLeave?.();
+              /* THE INSTALLED iOS WEB APP signs in through a POP-UP. A full-page
+                 trip leaves the app for Safari with no way back but a typed
+                 code; a pop-up can post its code straight home (see
+                 `openSignInPopup`). Decided at the tap, not at render: both
+                 reads are browser-only. Blocked → the ordinary link proceeds,
+                 and ends in the typed code. */
+              if (!handoff || !online || !isIOS() || !isStandalone()) return;
+              const popupHref = `${startHref}&popup=1&po=${encodeURIComponent(window.location.origin)}`;
+              if (openSignInPopup(popupHref)) event.preventDefault();
             }}
             aria-disabled={!online}
             className={className}

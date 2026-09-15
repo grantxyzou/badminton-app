@@ -73,6 +73,9 @@ const locOf = (res: Response) => new URL(res.headers.get('location') ?? 'https:/
 const errorOf = (res: Response) => locOf(res).searchParams.get('authError');
 /** New account → "pick a name" proves state was recovered, code exchanged, claims decoded. */
 const reachedResolution = (res: Response) => locOf(res).searchParams.get('authFlow') === 'name';
+/** The app finishes it: the browser lands on the hand-off page, with the code in the fragment. */
+const handedToApp = (res: Response) => locOf(res).pathname === '/bpm/auth/done';
+const fragmentOf = (res: Response) => new URLSearchParams(locOf(res).hash.replace(/^#/, ''));
 
 beforeEach(() => {
   resetMockStore();
@@ -107,6 +110,28 @@ describe('apple start — parks the handoff like google', () => {
     expect((await readHandoff(ref))!.native).toBe(true);
   });
 
+  it('records a pop-up and its opener origin, believing only an origin of ours', async () => {
+    process.env.WEBSITE_HOSTNAME = 'vnext-example.azurewebsites.net';
+    try {
+      const ours = handoffRef(createHandoffId());
+      await start({ hr: ours, popup: '1', po: 'https://vnext-example.azurewebsites.net' });
+      expect(await readHandoff(ours)).toMatchObject({ popup: true, openerOrigin: 'https://vnext-example.azurewebsites.net' });
+
+      const theirs = handoffRef(createHandoffId());
+      await start({ hr: theirs, popup: '1', po: 'https://evil.example' });
+      const doc = await readHandoff(theirs);
+      expect(doc?.popup).toBe(true);
+      // No origin to post to: that pop-up can only show its typed code.
+      expect(doc?.openerOrigin).toBeUndefined();
+
+      const notAnOrigin = handoffRef(createHandoffId());
+      await start({ hr: notAnOrigin, popup: '1', po: 'https://bpm.grantzou.com/evil' });
+      expect((await readHandoff(notAnOrigin))?.openerOrigin).toBeUndefined();
+    } finally {
+      delete process.env.WEBSITE_HOSTNAME;
+    }
+  });
+
   it('ignores a malformed ref and parks nothing', async () => {
     const res = await start({ hr: 'not-a-ref' });
     const outbound = new URL(res.headers.get('location')!).searchParams.get('state')!;
@@ -123,7 +148,9 @@ describe('apple callback — the jar split', () => {
     // No cookie at all — the Safari jar / the native browser sheet.
     const res = await callback({ code: 'abc', state: `${state}~${ref}` });
     expect(errorOf(res)).toBeNull();
-    expect(reachedResolution(res)).toBe(true);
+    // A new identity, parked for the app to name.
+    expect(handedToApp(res)).toBe(true);
+    expect((await readHandoff(ref))?.pending?.sub).toBe('apple-sub-1');
   });
 
   it('adds native=1 to the landing when the stash says the shell started it', async () => {
@@ -132,8 +159,10 @@ describe('apple callback — the jar split', () => {
     await beginHandoff(ref, { state, codeVerifier: '', native: true });
 
     const res = await callback({ code: 'abc', state: `${state}~${ref}` });
-    expect(reachedResolution(res)).toBe(true);
     expect(locOf(res).searchParams.get('native')).toBe('1');
+    // Cookie-less, so the APP names it — the sheet gets no name step to fill in.
+    expect(reachedResolution(res)).toBe(false);
+    expect(locOf(res).hash).toMatch(/^#hc=[0-9a-f]{64}$/);
   });
 
   it('a cookie-less NATIVE landing says only "back to the app" — never the Home Screen copy', async () => {
@@ -215,7 +244,9 @@ describe('apple callback — the jar split', () => {
       state: `${state}~${ref}`,
       user: JSON.stringify({ name: { firstName: 'Viktor', lastName: 'A' } }),
     });
-    expect(reachedResolution(res)).toBe(true);
+    expect(handedToApp(res)).toBe(true);
+    // Apple sends it once, ever — it has to survive the trip to the app.
+    expect((await readHandoff(ref))?.pending?.suggestedName).toContain('Viktor');
   });
 });
 
@@ -277,8 +308,10 @@ describe('apple callback — the handoff cannot be turned against the person who
     const res = await callback({ code: 'abc', state: `${state}~${ref}` });
 
     expect(sessionCookie(res)).toBeUndefined();
-    expect(locOf(res).searchParams.get('handedOff')).toBe('1');
-    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: m.id });
+    expect(handedToApp(res)).toBe(true);
+    const typedCode = fragmentOf(res).get('tc');
+    expect(await claimHandoff(id)).toEqual({ status: 'code_required', wrong: false });
+    expect(await claimHandoff(id, Date.now(), { typedCode })).toEqual({ status: 'ready', memberId: m.id });
   });
 
   it('F3: a cookie-less callback never links the provider to a session this browser holds', async () => {
@@ -315,6 +348,6 @@ describe('apple callback — the handoff cannot be turned against the person who
     expect(code).toBeTruthy();
 
     expect(await claimHandoff(id)).toEqual({ status: 'pending' });
-    expect(await claimHandoff(id, Date.now(), code!)).toEqual({ status: 'ready', memberId: m.id });
+    expect(await claimHandoff(id, Date.now(), { returnCode: code! })).toEqual({ status: 'ready', memberId: m.id });
   });
 });

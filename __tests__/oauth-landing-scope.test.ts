@@ -80,6 +80,38 @@ describe('provider redirects land inside the manifest scope', () => {
     expect('/bpm/'.startsWith(scope)).toBe(true);
   });
 
+  /**
+   * The hand-off page is built by hand in `handoffLanding`, not by `landing()`,
+   * so it needs its own pin. It is where an installed iOS web app's pop-up and
+   * Safari trip both end.
+   */
+  it('the hand-off landing (/bpm/auth/done) stays in scope too', async () => {
+    const scope = await scopeUnderProdBasePath();
+    const { resetMockStore, seedMember } = await import('./helpers');
+    const { createHandoffId, handoffRef, beginHandoff } = await import('../lib/authHandoff');
+    const { reserveIdentity } = await import('../lib/authIdentity');
+    const { finishOAuthCallback } = await import('../lib/oauthCallback');
+    const { NextRequest } = await import('next/server');
+    resetMockStore();
+    const m = seedMember('Lin');
+    await reserveIdentity('google', 'scope-sub', m.id);
+    const ref = handoffRef(createHandoffId());
+    await beginHandoff(ref, { state: 's'.repeat(64), codeVerifier: 'v', popup: true, openerOrigin: ORIGIN });
+
+    const res = await finishOAuthCallback(new NextRequest(`${ORIGIN}/bpm/api/auth/google/callback`), ORIGIN, {
+      provider: 'google',
+      sub: 'scope-sub',
+      email: null,
+      emailVerified: false,
+      suggestedName: null,
+      handoff: ref,
+      viaParkedState: false,
+    });
+    const url = landingUrlFrom(res);
+    expect(url.pathname).toBe('/bpm/auth/done');
+    expect(url.pathname.startsWith(scope)).toBe(true);
+  });
+
   it('uses 303, so an Apple form_post callback does not re-POST the landing page', () => {
     expect(oauthFailure(ORIGIN, 'cancelled').status).toBe(303);
   });

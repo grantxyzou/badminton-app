@@ -40,6 +40,94 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const platform = vi.hoisted(() => ({ ios: false, standalone: false }));
+vi.mock('@/lib/standalone', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/standalone')>();
+  return { ...actual, isIOS: () => platform.ios, isStandalone: () => platform.standalone };
+});
+
+/**
+ * THE DECISION POINT FOR POP-UP SIGN-IN (lib/handoffClient.ts). Only the
+ * installed iOS web app has the cookie-jar split a pop-up solves; everywhere
+ * else the ordinary link is right. And a blocked pop-up must leave the link
+ * alone, so the full-page trip — ending in a typed code — still happens.
+ */
+describe('ProviderButtons — pop-up sign-in on the installed iOS web app', () => {
+  afterEach(() => {
+    platform.ios = false;
+    platform.standalone = false;
+    // A tap stages the hand-off id; later tests assert nothing is stored.
+    localStorage.clear();
+  });
+
+  async function tapGoogle() {
+    mockMethods({ available: ['google'], linked: [] });
+    renderButtons();
+    const google = await screen.findByText('Continue with Google');
+    const link = google.closest('a')!;
+    // Wait for the hand-off ref: no ref, no pop-up.
+    await waitFor(() => expect(link.getAttribute('href')).toContain('hr='));
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    link.dispatchEvent(click);
+    return click;
+  }
+
+  it('opens a pop-up carrying popup=1 and this page\'s origin, and holds the link back', async () => {
+    platform.ios = true;
+    platform.standalone = true;
+    const open = vi.spyOn(window, 'open').mockReturnValue({ postMessage: vi.fn() } as unknown as Window);
+    const click = await tapGoogle();
+
+    expect(open).toHaveBeenCalledTimes(1);
+    const url = new URL(String(open.mock.calls[0][0]), 'http://localhost:3000');
+    expect(url.searchParams.get('popup')).toBe('1');
+    expect(url.searchParams.get('po')).toBe(window.location.origin);
+    expect(url.searchParams.get('hr')).toMatch(/^[0-9a-f]{64}$/);
+    expect(click.defaultPrevented).toBe(true);
+  });
+
+  /* A ref's stash is first-write-wins, so a retry on the same ref would fail
+     state_mismatch against the first attempt for ten minutes. */
+  it('a second tap starts a NEW hand-off, not the first one again', async () => {
+    platform.ios = true;
+    platform.standalone = true;
+    const open = vi.spyOn(window, 'open').mockReturnValue({ postMessage: vi.fn() } as unknown as Window);
+    await tapGoogle();
+    const link = screen.getByText('Continue with Google').closest('a')!;
+    const first = new URL(String(open.mock.calls[0][0]), 'http://localhost:3000').searchParams.get('hr');
+    await waitFor(() => expect(link.getAttribute('href')).not.toContain(`hr=${first}`));
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    const second = new URL(String(open.mock.calls[1][0]), 'http://localhost:3000').searchParams.get('hr');
+    expect(second).toMatch(/^[0-9a-f]{64}$/);
+    expect(second).not.toBe(first);
+  });
+
+  it('lets the link navigate when the pop-up is blocked', async () => {
+    platform.ios = true;
+    platform.standalone = true;
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    const click = await tapGoogle();
+    expect(click.defaultPrevented).toBe(false);
+  });
+
+  it('never opens a pop-up in a browser tab', async () => {
+    platform.ios = true;
+    platform.standalone = false;
+    const open = vi.spyOn(window, 'open');
+    const click = await tapGoogle();
+    expect(open).not.toHaveBeenCalled();
+    expect(click.defaultPrevented).toBe(false);
+  });
+
+  it('never opens a pop-up on an installed app that is not iOS', async () => {
+    platform.ios = false;
+    platform.standalone = true;
+    const open = vi.spyOn(window, 'open');
+    await tapGoogle();
+    expect(open).not.toHaveBeenCalled();
+  });
+});
+
 describe('ProviderButtons', () => {
   it('renders a button per configured provider, linking to that provider start route', async () => {
     mockMethods({ available: ['google', 'apple'], linked: [] });

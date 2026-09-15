@@ -1,8 +1,8 @@
-# Sign-in hand-off: the two takeovers still open
+# Sign-in hand-off: the two takeovers
 
 **Track:** Store launch — Sign in with Apple is required once the native app offers Google, and it rides the same hand-off, so it would open a second door into both gaps below.
-**Status:** intent
-**Review on:** 2026-10-01 — are both gaps closed, and if not, is Sign in with Apple still held back until they are?
+**Status:** in-flight — both gaps closed in code (PR pending), device test outstanding
+**Review on:** 2026-10-01 — has the pop-up been confirmed on more than one iPhone, and did anyone get stuck on the typed code?
 
 ## Problem
 
@@ -122,7 +122,39 @@ This failed if either:
   buttons. Shipped as #425.
 - **2026-09-14 — `claim-name` refusal reverted before merge** (Grant). It closed
   Gap 1 but locked PIN-only iOS home-screen members out of adding Google.
-- **Pending — Grant:** Gap 2 option (a) or (b).
+- **2026-09-14 — spike: a pop-up can report back** (#428, Grant's iPhone, iOS
+  18.7, installed home-screen app). `window.open` + `window.opener.postMessage`
+  worked both same-site and through Google's real consent screen. That opened a
+  third option neither (a) nor (b) had: sign in through a pop-up, so the
+  sign-in comes home by itself and nobody types anything on the normal path.
+- **2026-09-14 — build it** (Grant). Both gaps closed together:
+  - **Gap 2:** every completed stash needs a code to claim. The pop-up posts a
+    64-hex code to the app; the native shell already had one; the full-page
+    Safari trip, or a pop-up that cannot report back, shows **6 digits** the
+    person types into the app. That is option (a) as the fallback, not the
+    main road. Capped at 5 attempts, counted under an etag before comparing, so
+    parallel guesses cannot share one count; a fresh stash needs a fresh victim
+    completion, so guessing does not scale.
+  - **Gap 1:** a new Google/Apple identity on a hand-off is named **in the
+    app**. The completing browser gets no pending-signup cookie; the facts wait
+    on the stash, and the claim (preimage + code) sets the cookie in the app's
+    own jar, where the name step and `claim-name`'s PIN run as usual. PIN-only
+    members still add Google — they just type the PIN in the app.
+  - The pop-up posts only to an origin of ours, recorded at `/start`, because
+    Grant's home-screen app runs on the Azure host, not `bpm.grantzou.com`.
+- **Legacy paths kept for one cookie lifetime, then delete:** the `handedOff`
+  notice and `PendingSignup.parked`. Nothing mints either any more; a
+  pending-signup cookie minted before this change (30-minute TTL) can still
+  reach `complete-signup`'s `parked` branch, which refuses to sign in and
+  sends the browser to `?handedOff=1`. Safe to remove from 2026-09-16.
+- **The typed-code rate limit is per HAND-OFF, not per IP** (advisor, before
+  merge). The club signs in from one gym's wifi; a per-IP cap would have
+  locked the venue out after ten typed sign-ins, and shown it as a cold
+  start. The stash's own 5-attempt cap is what bounds guessing.
+- **Left on purpose:** the device-code phishing every such flow has — someone
+  talking a member into reading out their code. The code page says nobody from
+  the club will ask for it. Cancelling in a pop-up lands on the app's own error
+  notice inside the pop-up rather than closing it.
 
 ## Shape
 
@@ -131,7 +163,11 @@ This failed if either:
 | Hand-off store, return code, the full security argument | `lib/authHandoff.ts` |
 | The three rules (`viaParkedState`) | `lib/oauthCallback.ts` |
 | Callbacks that set `viaParkedState` | `app/api/auth/google/callback/route.ts`, `app/api/auth/apple/callback/route.ts` |
-| Gap 1 | `app/api/auth/claim-name/route.ts` |
+| Why `claim-name` is safe now | `app/api/auth/claim-name/route.ts` |
+| Pop-up opener, landing parser, claim | `lib/handoffClient.ts`, `components/auth/ProviderButtons.tsx` |
+| Pop-up landing / typed code shown | `app/auth/done/page.tsx`, `components/auth/HandoffDone.tsx` |
+| Typed code entered | `components/auth/HandoffCodeSheet.tsx`, `lib/useHandoffCollect.ts` |
+| Own-origin allowlist | `lib/appOrigin.ts` |
 | `parked` on the pending-signup cookie | `lib/pendingSignup.ts` |
 | Claim (preimage + return code) | `app/api/auth/handoff/claim/route.ts` |
 | Client: staging, return code, landing link | `lib/handoffClient.ts`, `components/NativeBridge.tsx` |

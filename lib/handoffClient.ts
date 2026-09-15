@@ -133,8 +133,107 @@ export function readReturnCodeFromHash(hash: string): string | null {
   return match ? match[1] : null;
 }
 
+// ── The pop-up (installed iOS web app) ──────────────────────────────────────
+
+/** `postMessage` types between the sign-in pop-up and the app that opened it. */
+export const HANDOFF_MESSAGE = 'bpm-handoff';
+export const HANDOFF_ACK = 'bpm-handoff-ack';
+
+/** The window `openSignInPopup` opened. Its messages are the only ones heard. */
+let popup: Window | null = null;
+let listening = false;
+
+/**
+ * Open a Google/Apple sign-in in a POP-UP, from the installed iOS web app.
+ *
+ * Why: a full-page trip leaves the home-screen app for Safari, and iOS gives
+ * Safari no way back in, so the only thing that can carry the sign-in home is
+ * a person typing a code. A pop-up keeps `window.opener`, so its landing
+ * (`/bpm/auth/done`) can post the return code straight back — measured on an
+ * iPhone before this was built (spike #428).
+ *
+ * MUST run synchronously inside the tap, or the pop-up is blocked. `false`
+ * means it was blocked; the caller falls back to the full-page trip, which
+ * ends in a typed code. A window that opened is NOT proof it will report back
+ * either — the claim asks for the typed code whenever no message arrived.
+ */
+export function openSignInPopup(url: string): boolean {
+  let opened: Window | null = null;
+  try {
+    // NOT `noopener`: the opener is the whole channel.
+    opened = window.open(url, 'bpm-signin');
+  } catch {
+    opened = null;
+  }
+  if (!opened) return false;
+  popup = opened;
+  if (!listening) {
+    window.addEventListener('message', onPopupMessage);
+    listening = true;
+  }
+  return true;
+}
+
+/**
+ * The pop-up's report. Believed only from the WINDOW WE OPENED — its origin
+ * is ours but may not be this page's (the Azure host vs APP_ORIGIN), so the
+ * source is the check that means something. Exported for tests.
+ */
+export function onPopupMessage(event: Pick<MessageEvent, 'source' | 'origin' | 'data'>): void {
+  if (!popup || event.source !== popup) return;
+  const data = event.data as { type?: unknown; returnCode?: unknown } | null;
+  if (!data || data.type !== HANDOFF_MESSAGE || typeof data.returnCode !== 'string') return;
+  if (!HEX64.test(data.returnCode)) return;
+  rememberReturnCode(data.returnCode);
+  try {
+    (event.source as Window).postMessage({ type: HANDOFF_ACK }, event.origin);
+  } catch {
+    /* the pop-up shows its typed code instead; the claim below still works */
+  }
+  popup = null;
+  // The same nudge the native shell uses: collect now, not on the next focus.
+  window.dispatchEvent(new Event('bpm:resume'));
+}
+
+/** What `/bpm/auth/done` finds in its fragment. */
+export interface HandoffLanding {
+  returnCode: string | null;
+  /** Where to post `returnCode`; always an http(s) origin, never a URL. */
+  openerOrigin: string | null;
+  typedCode: string | null;
+}
+
+/** PURE. The page strips the fragment itself, in one `replaceState`. */
+export function readHandoffLanding(hash: string): HandoffLanding {
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  const hc = params.get('hc');
+  const ho = params.get('ho');
+  const tc = params.get('tc');
+  let openerOrigin: string | null = null;
+  if (ho) {
+    try {
+      const url = new URL(ho);
+      if ((url.protocol === 'https:' || url.protocol === 'http:') && url.origin === ho) openerOrigin = ho;
+    } catch {
+      /* not an origin */
+    }
+  }
+  return {
+    returnCode: hc && HEX64.test(hc) ? hc : null,
+    openerOrigin,
+    typedCode: tc && /^[0-9]{6}$/.test(tc) ? tc : null,
+  };
+}
+
 export type ClaimOutcome =
   | { status: 'ready'; name: string }
+  /** A new Google/Apple identity; the app's pending-signup cookie is now set. */
+  | { status: 'needs_name' }
+  | { status: 'code_required'; wrong: boolean }
+  /** That Google/Apple account already belongs to someone else here. */
+  | { status: 'already_linked' }
+  /** Too many tries on this sign-in for now — not a cold start, and worth saying so. */
+  | { status: 'rate_limited' }
   | { status: 'pending' }
   | { status: 'none' };
 
@@ -145,7 +244,7 @@ export type ClaimOutcome =
  * Anything else is terminal and clears the id, so a dead handoff cannot make
  * the app poll forever.
  */
-export async function claimPendingHandoff(): Promise<ClaimOutcome> {
+export async function claimPendingHandoff(typedCode?: string): Promise<ClaimOutcome> {
   const handoffId = pendingHandoffId();
   if (!handoffId) return { status: 'none' };
   const returnCode = pendingReturnCode();
@@ -153,19 +252,33 @@ export async function claimPendingHandoff(): Promise<ClaimOutcome> {
     const res = await fetch(`${BASE}/api/auth/handoff/claim`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ handoffId, ...(returnCode ? { returnCode } : {}) }),
+      body: JSON.stringify({
+        handoffId,
+        ...(returnCode ? { returnCode } : {}),
+        ...(typedCode ? { typedCode } : {}),
+      }),
       cache: 'no-store',
     });
+    if (res.status === 429) return { status: 'rate_limited' };
     if (!res.ok) {
       // A 4xx/5xx is not proof the handoff is dead (it could be a rate limit or
       // a cold start), so KEEP the id and let the next attempt decide.
       return { status: 'pending' };
     }
-    const data = (await res.json()) as { status?: string; name?: string };
+    const data = (await res.json()) as { status?: string; name?: string; wrong?: boolean };
     if (data.status === 'ready' && typeof data.name === 'string') {
       clearHandoff();
       return { status: 'ready', name: data.name };
     }
+    if (data.status === 'needs_name') {
+      clearHandoff();
+      return { status: 'needs_name' };
+    }
+    if (data.status === 'already_linked') {
+      clearHandoff();
+      return { status: 'already_linked' };
+    }
+    if (data.status === 'code_required') return { status: 'code_required', wrong: data.wrong === true };
     if (data.status === 'pending') return { status: 'pending' };
     clearHandoff();
     return { status: 'none' };

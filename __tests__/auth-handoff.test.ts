@@ -1,4 +1,34 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+/* A seam for the concurrency test: runs once, just before the next CONDITIONAL
+   write to the hand-off store — i.e. between a claim's read and its count. */
+const seam = vi.hoisted(() => ({ beforeCount: null as null | (() => Promise<void>) }));
+vi.mock('@/lib/cosmos', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/cosmos')>();
+  return {
+    ...actual,
+    getContainer: (name: string) => {
+      const container = actual.getContainer(name);
+      if (name !== 'authhandoff') return container;
+      const upsert = container.items.upsert.bind(container.items);
+      return {
+        ...container,
+        item: container.item.bind(container),
+        items: {
+          ...container.items,
+          upsert: async (item: never, options?: { accessCondition?: unknown }) => {
+            if (options?.accessCondition && seam.beforeCount) {
+              const run = seam.beforeCount;
+              seam.beforeCount = null;
+              await run();
+            }
+            return upsert(item, options as never);
+          },
+        },
+      } as unknown as typeof container;
+    },
+  };
+});
 import {
   createHandoffId,
   handoffRef,
@@ -9,7 +39,10 @@ import {
   claimHandoff,
   handoffStateMatches,
   HANDOFF_TTL_MS,
+  TYPED_CODE_MAX_ATTEMPTS,
+  type CompletedHandoff,
 } from '@/lib/authHandoff';
+import { getContainer } from '@/lib/cosmos';
 
 /**
  * The iOS-PWA sign-in bridge.
@@ -23,6 +56,9 @@ import {
 
 const S = 'state-'.repeat(4);
 const V = 'verifier-'.repeat(4);
+
+/** The code a web completion showed, as the app would send it after it was typed. */
+const typed = (done: CompletedHandoff | null) => ({ typedCode: done!.typedCode });
 
 describe('handoff ids and refs', () => {
   it('a ref is a sha256 of the id, and the id is not recoverable from it', () => {
@@ -88,9 +124,10 @@ describe('the full bridge — start in one context, finish in another', () => {
     expect(parked?.codeVerifier).toBe(V);
     expect(handoffStateMatches(parked!.state, S)).toBe(true);
 
-    expect(await completeHandoff(ref, 'member-1')).toEqual({ returnCode: null });
+    const done = await completeHandoff(ref, 'member-1');
+    expect(done).toEqual({ returnCode: null, typedCode: expect.stringMatching(/^[0-9]{6}$/), openerOrigin: null });
 
-    const claim = await claimHandoff(id);
+    const claim = await claimHandoff(id, Date.now(), typed(done));
     expect(claim).toEqual({ status: 'ready', memberId: 'member-1' });
   });
 
@@ -99,28 +136,28 @@ describe('the full bridge — start in one context, finish in another', () => {
 
     expect(await claimHandoff(id)).toEqual({ status: 'pending' });
     // Still claimable afterwards — a poll must not destroy the thing it polls.
-    await completeHandoff(ref, 'member-1');
-    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'member-1' });
+    const done = await completeHandoff(ref, 'member-1');
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'ready', memberId: 'member-1' });
   });
 
   it('is SINGLE USE — a replayed claim finds nothing', async () => {
     await beginHandoff(ref, { state: S, codeVerifier: V });
-    await completeHandoff(ref, 'member-1');
+    const done = await completeHandoff(ref, 'member-1');
 
-    expect((await claimHandoff(id)).status).toBe('ready');
-    expect(await claimHandoff(id)).toEqual({ status: 'none' });
+    expect((await claimHandoff(id, Date.now(), typed(done))).status).toBe('ready');
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'none' });
   });
 
   it('cannot be claimed with the REF — only the preimage works', async () => {
     await beginHandoff(ref, { state: S, codeVerifier: V });
-    await completeHandoff(ref, 'member-1');
+    const done = await completeHandoff(ref, 'member-1');
 
-    // This is the whole security argument: the value that travels through
-    // Google and the URL is useless as a credential.
-    expect(await claimHandoff(ref)).toEqual({ status: 'none' });
+    // The value that travels through Google and the URL is useless as a
+    // credential...
+    expect(await claimHandoff(ref, Date.now(), typed(done))).toEqual({ status: 'none' });
     // ...and the real id still works afterwards, so the failed attempt did not
     // consume it.
-    expect((await claimHandoff(id)).status).toBe('ready');
+    expect((await claimHandoff(id, Date.now(), typed(done))).status).toBe('ready');
   });
 
   it('expires, and an expired stash claims as nothing', async () => {
@@ -172,9 +209,9 @@ describe('the full bridge — start in one context, finish in another', () => {
 
     // Victim's own flow, untouched by the above.
     await beginHandoff(ref, { state: S, codeVerifier: V });
-    await completeHandoff(ref, 'victim-member');
+    const done = await completeHandoff(ref, 'victim-member');
 
-    const victimClaim = await claimHandoff(id);
+    const victimClaim = await claimHandoff(id, Date.now(), typed(done));
     expect(victimClaim).toEqual({ status: 'ready', memberId: 'victim-member' });
   });
 });
@@ -200,8 +237,8 @@ describe('handoff through the name step', () => {
     expect(await claimHandoff(id)).toEqual({ status: 'pending' });
 
     // The name step creates the member and completes it.
-    expect(await completeHandoff(ref, 'brand-new-member')).toEqual({ returnCode: null });
-    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'brand-new-member' });
+    const done = await completeHandoff(ref, 'brand-new-member');
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'ready', memberId: 'brand-new-member' });
   });
 
   it('the stash outlives the name step rather than expiring on the callback', async () => {
@@ -212,8 +249,8 @@ describe('handoff through the name step', () => {
 
     // Picking a name takes a moment; still claimable a few minutes later.
     const later = t0 + 5 * 60 * 1000;
-    expect(await completeHandoff(ref, 'm', later)).toEqual({ returnCode: null });
-    expect(await claimHandoff(id, later)).toEqual({ status: 'ready', memberId: 'm' });
+    const done = await completeHandoff(ref, 'm', later);
+    expect(await claimHandoff(id, later, typed(done))).toEqual({ status: 'ready', memberId: 'm' });
   });
 });
 
@@ -231,8 +268,8 @@ describe('the stash carries the GROUP across the cookie-jar split', () => {
     const ref = handoffRef(id);
     expect(await beginHandoff(ref, { state: S, codeVerifier: V, groupId: 'club-x' })).toBe(true);
     expect((await readHandoff(ref))?.groupId).toBe('club-x');
-    await completeHandoff(ref, 'member-lin');
-    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'member-lin', groupId: 'club-x' });
+    const done = await completeHandoff(ref, 'member-lin');
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'ready', memberId: 'member-lin', groupId: 'club-x' });
   });
 
   it('is additive — a stash minted before the claim existed carries none', async () => {
@@ -240,10 +277,10 @@ describe('the stash carries the GROUP across the cookie-jar split', () => {
     const ref = handoffRef(id);
     await beginHandoff(ref, { state: S, codeVerifier: V });
     expect((await readHandoff(ref))?.groupId).toBeUndefined();
-    await completeHandoff(ref, 'member-lin');
+    const done = await completeHandoff(ref, 'member-lin');
     // No `groupId` key at all, so the claim route falls back to BPM the way
     // every pre-claim device already resolves.
-    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'member-lin' });
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'ready', memberId: 'member-lin' });
   });
 });
 
@@ -276,20 +313,132 @@ describe('the native return code', () => {
     const done = await completeHandoff(ref, 'member-1');
     expect(await claimHandoff(id)).toEqual({ status: 'pending' });
     // The app's first poll routinely beats the deep link; the code still works.
-    expect(await claimHandoff(id, Date.now(), done!.returnCode)).toEqual({ status: 'ready', memberId: 'member-1' });
+    expect(await claimHandoff(id, Date.now(), { returnCode: done!.returnCode })).toEqual({ status: 'ready', memberId: 'member-1' });
   });
 
   it('a WRONG code is terminal — the stash is gone', async () => {
     const done = await completeHandoff(ref, 'member-1');
-    expect(await claimHandoff(id, Date.now(), 'f'.repeat(64))).toEqual({ status: 'none' });
-    expect(await claimHandoff(id, Date.now(), done!.returnCode)).toEqual({ status: 'none' });
+    expect(await claimHandoff(id, Date.now(), { returnCode: 'f'.repeat(64) })).toEqual({ status: 'none' });
+    expect(await claimHandoff(id, Date.now(), { returnCode: done!.returnCode })).toEqual({ status: 'none' });
   });
 
-  it('a PWA stash still needs no code', async () => {
-    const pwaId = createHandoffId();
-    const pwaRef = handoffRef(pwaId);
-    await beginHandoff(pwaRef, { state: S, codeVerifier: V });
-    expect(await completeHandoff(pwaRef, 'member-2')).toEqual({ returnCode: null });
-    expect(await claimHandoff(pwaId)).toEqual({ status: 'ready', memberId: 'member-2' });
+  it('never mints a typed code — the shell always has its channel home', async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    expect(done?.typedCode).toBeNull();
+    expect((await readHandoff(ref))?.typedCodeHash).toBeUndefined();
+  });
+});
+
+/**
+ * GUARANTEE 3 for the WEB — the security scan's open Gap 2. An attacker runs
+ * `/start?hr=` and sends a victim the provider's link; the victim's browser
+ * completes the stash. What the attacker lacks is the code that browser shows.
+ */
+describe('the typed code', () => {
+  let id: string;
+  let ref: string;
+
+  beforeEach(async () => {
+    id = createHandoffId();
+    ref = handoffRef(id);
+    await beginHandoff(ref, { state: S, codeVerifier: V });
+  });
+
+  it('the preimage alone asks for the code, and does not burn the stash', async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    expect(await claimHandoff(id)).toEqual({ status: 'code_required', wrong: false });
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'ready', memberId: 'member-1' });
+  });
+
+  it('stores only a salted hash of it', async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    const doc = await readHandoff(ref);
+    expect(doc?.typedCodeHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(doc)).not.toContain(`"${done!.typedCode}"`);
+  });
+
+  it('a wrong code says so and leaves the stash for another try', async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    const wrong = done!.typedCode === '000000' ? '111111' : '000000';
+    expect(await claimHandoff(id, Date.now(), { typedCode: wrong })).toEqual({ status: 'code_required', wrong: true });
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'ready', memberId: 'member-1' });
+  });
+
+  it(`burns the stash on the ${TYPED_CODE_MAX_ATTEMPTS}th wrong code, so the right one no longer works`, async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    const wrong = done!.typedCode === '000000' ? '111111' : '000000';
+    for (let i = 1; i < TYPED_CODE_MAX_ATTEMPTS; i++) {
+      expect((await claimHandoff(id, Date.now(), { typedCode: wrong })).status).toBe('code_required');
+    }
+    expect(await claimHandoff(id, Date.now(), { typedCode: wrong })).toEqual({ status: 'none' });
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'none' });
+  });
+
+  /**
+   * THE COUNT HAS TO HOLD UNDER CONCURRENCY. A read-compare-write counter lets
+   * every parallel guess read the same count; each attempt is counted under
+   * the etag BEFORE it is compared, so a lost race compares nothing.
+   */
+  it('a guess that loses the race to count is not compared at all', async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    // Another guess lands between this claim's read and its count.
+    seam.beforeCount = async () => {
+      const current = (await getContainer('authhandoff').item(ref, ref).read()).resource as Record<string, unknown>;
+      const { _etag: _e, ...rest } = current;
+      await getContainer('authhandoff').items.upsert({ ...rest, typedAttempts: 1 });
+    };
+    // The RIGHT code, and it still is not accepted on a lost race.
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'code_required', wrong: false });
+    expect((await readHandoff(ref))?.typedAttempts).toBe(1);
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'ready', memberId: 'member-1' });
+  });
+
+  it('a pop-up stash gets BOTH codes, and either one claims', async () => {
+    const popupId = createHandoffId();
+    const popupRef = handoffRef(popupId);
+    await beginHandoff(popupRef, { state: S, codeVerifier: V, popup: true, openerOrigin: 'https://bpm.grantzou.com' });
+    const done = await completeHandoff(popupRef, 'member-3');
+    expect(done?.returnCode).toMatch(/^[0-9a-f]{64}$/);
+    expect(done?.typedCode).toMatch(/^[0-9]{6}$/);
+    expect(done?.openerOrigin).toBe('https://bpm.grantzou.com');
+    expect(await claimHandoff(popupId, Date.now(), { returnCode: done!.returnCode })).toEqual({ status: 'ready', memberId: 'member-3' });
+  });
+
+  it('a pop-up flag on a NATIVE stash is ignored', async () => {
+    const nId = createHandoffId();
+    const nRef = handoffRef(nId);
+    await beginHandoff(nRef, { state: S, codeVerifier: V, native: true, popup: true, openerOrigin: 'https://bpm.grantzou.com' });
+    const doc = await readHandoff(nRef);
+    expect(doc?.popup).toBeUndefined();
+    expect(doc?.openerOrigin).toBeUndefined();
+  });
+
+  it('completion restarts the clock, so there is time to type', async () => {
+    const t0 = 1_000_000;
+    const lateId = createHandoffId();
+    const lateRef = handoffRef(lateId);
+    await beginHandoff(lateRef, { state: S, codeVerifier: V }, t0);
+    const completedAt = t0 + HANDOFF_TTL_MS - 1000;
+    const done = await completeHandoff(lateRef, 'member-4', completedAt);
+    const typedAt = t0 + HANDOFF_TTL_MS + 60_000;
+    expect(await claimHandoff(lateId, typedAt, typed(done))).toEqual({ status: 'ready', memberId: 'member-4' });
+  });
+});
+
+/**
+ * GUARANTEE 4 — a new provider identity is named in the APP. The stash holds
+ * the verified facts; only a claim with the code gets them.
+ */
+describe('a new identity parked for the app to name', () => {
+  const facts = { provider: 'google' as const, sub: 'g-sub-1', email: 'new@example.com', emailVerified: true, suggestedName: null };
+
+  it('claims as needs_name with the facts, once, and only with the code', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    await beginHandoff(ref, { state: S, codeVerifier: V, groupId: 'club-x' });
+    const done = await completeHandoff(ref, { pending: facts });
+    expect(await claimHandoff(id)).toEqual({ status: 'code_required', wrong: false });
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'needs_name', pending: facts, groupId: 'club-x' });
+    expect(await claimHandoff(id, Date.now(), typed(done))).toEqual({ status: 'none' });
   });
 });

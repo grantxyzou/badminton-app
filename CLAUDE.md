@@ -196,22 +196,23 @@ and decisions in `docs/plans/native-shell.md`). Built 2026-09-03 on
   same handoff Google had** the same day — `apple/start` never parked `?hr=`,
   so an installed-PWA Apple sign-in came back signed out.
   **The handoff ref proves who STARTED a sign-in, never who finished it**
-  (security scan F3/F4/F13, fixed 2026-09-14): whoever calls `/start` picks
-  it. So a stash is completed only when the callback needed it (state cookie
-  absent) or the stash is `native`; a callback validated on the PARKED state is
-  non-authenticating (no `member_session`, never a link — the landing says
-  `handedOff=1`, and the pending-signup cookie carries `parked` so
-  `complete-signup` sets no session); and a
-  native park mints a RETURN CODE the claim requires,
-  carried in the landing's `#hc=` fragment and home via
-  `bpm://auth/return?c=`. **Still open, Grant's call:** the installed iOS PWA
-  path has no channel for a code, so a provider authorization URL sent to a
-  victim who finishes it there still parks their session under the sender's
-  ref. **Also open:** `claim-name` still links on a `parked` flow — refusing it
-  locked every PIN-only iOS-PWA member out of adding Google, since that is
-  their first-Google path; the fix is to take the PIN in the app instead.
-  `lib/authHandoff.ts`'s docblock carries the full argument; both open gaps,
-  plain-language, with the options, are in `docs/plans/oauth-handoff-gaps.md`.
+  (security scan F3/F4/F13): whoever calls `/start` picks it. So a stash is
+  completed only when the callback needed it (state cookie absent) or the stash
+  is `native` or `popup`; when the APP finishes (parked state, or a pop-up) the
+  completing browser gets no `member_session`, never links, and never names a
+  new account — the identity is parked on the stash and the claim sets the
+  pending-signup cookie in the app's jar. **Every completed stash needs a code
+  to claim**: a 64-hex return code where a machine carries it home
+  (`bpm://auth/return?c=`, or the pop-up's `postMessage`), a 6-digit typed code
+  where only a person can (5 attempts, counted under an etag before comparing).
+  **The installed iOS web app signs in through a POP-UP** (`openSignInPopup` in
+  `lib/handoffClient.ts`, `/start?popup=1&po=<origin>`): its landing
+  `/bpm/auth/done` posts the return code to the opener's origin — checked
+  against `APP_ORIGIN` and Azure's `WEBSITE_HOSTNAME`, because home-screen
+  installs exist on both hosts — and shows the typed code when nothing
+  acknowledges; `HandoffCodeSheet` takes it in both shells. Codes ride in URL
+  FRAGMENTS, never the query. `lib/authHandoff.ts`'s docblock carries the full
+  argument; `docs/plans/oauth-handoff-gaps.md` the history and decisions.
 - **Push is one server transport for both platforms**: `@capacitor-firebase/messaging`
   hands back an FCM token on iOS and Android (Firebase relays to APNs), and
   `lib/fcm.ts` sends via FCM HTTP v1 with zero dependencies. `PushSubscriptionDoc`

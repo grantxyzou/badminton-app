@@ -16,6 +16,7 @@ import EmailSignInForm from '@/components/auth/EmailSignInForm';
 import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
 import ForgotPasswordSheet from '@/components/auth/ForgotPasswordSheet';
 import ChooseNameSheet from '@/components/auth/ChooseNameSheet';
+import HandoffCodeSheet from '@/components/auth/HandoffCodeSheet';
 import ResetPasswordSheet from '@/components/auth/ResetPasswordSheet';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
@@ -87,7 +88,7 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
   }, []);
 
   // The installed-PWA Google return: a sign-in parked in Safari's cookie jar.
-  useHandoffCollect((name) => setIdentity({ name, sessionId: '' }));
+  const handoffCollect = useHandoffCollect((name) => setIdentity({ name, sessionId: '' }));
 
   // ── What a sign-in landing brought back in the URL ───────────────────────
   //
@@ -251,6 +252,7 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
           window.location.assign(nativeReturnHref(code));
         }}
       />
+      <HandoffCodeSheet {...handoffCollect} />
       <ResetPasswordSheet
         key={resetRequest ? 'reset-open' : 'reset-closed'}
         open={!!resetRequest}

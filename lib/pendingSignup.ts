@@ -54,11 +54,11 @@ export interface PendingSignup {
    */
   handoff?: string | null;
   /**
-   * The callback was validated on the PARKED state, not this browser's cookie
-   * (lib/oauthCallback.ts, `viaParkedState`). Nothing proves this browser
-   * started the flow, so `complete-signup` must not sign it in (security scan
-   * F3). `claim-name` does NOT yet refuse it — see the known gap there.
-   * Additive: absent means an ordinary cookie-path flow.
+   * The callback was validated on the PARKED state, not this browser's cookie.
+   * NO LONGER MINTED: such a callback now parks the identity on the hand-off
+   * stash and the app names it (lib/authHandoff.ts, guarantee 4). Still read by
+   * `complete-signup`, which refuses to sign in a cookie minted before that
+   * change — they live thirty minutes. Additive, and safe to delete after.
    */
   parked?: boolean;
 }
