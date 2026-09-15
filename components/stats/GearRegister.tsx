@@ -19,7 +19,7 @@ import YourKitCard from './YourKitCard';
 import StringTensionCard from './StringTensionCard';
 import ClubGearCard from './ClubGearCard';
 import { useGear } from './useGear';
-import { useGearPicks } from './useGearPicks';
+import { REC_REFETCH_DEBOUNCE_MS, useGearPicks } from './useGearPicks';
 import { useClubGear } from './useClubGear';
 import { isFlagOn } from '@/lib/flags';
 import type { CatalogItem, GearItem } from '@/lib/types';
@@ -155,6 +155,9 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   // checks the frame the server says it paired with.
   const activeId = gear.active?.id ?? null;
   const prevActiveRef = useRef<string | null | undefined>(undefined);
+  // Held in a ref, not the effect's cleanup: an unrelated dependency changing
+  // mid-wait must not cancel a re-ask the next run would then skip.
+  const swapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { refresh } = picks;
   useEffect(() => {
     if (!gear.loaded || gear.loadError) return;
@@ -164,9 +167,17 @@ function SetupRegister({ activeName }: GearRegisterProps) {
     // Both: the pairing is made against the racket in play, and "where you'd
     // go next" is relative to it (and excludes it). Nothing else about the bag
     // re-asks — a string added or a spare added changes neither answer.
-    refresh('string');
-    refresh('racket');
+    // A burst of swaps is ONE re-ask: each was two /api/recommend calls
+    // against its per-IP minute limit, and the throttled answer renders as
+    // "Couldn't load this pick" — five swaps in a minute broke the card.
+    if (swapTimerRef.current) clearTimeout(swapTimerRef.current);
+    swapTimerRef.current = setTimeout(() => {
+      swapTimerRef.current = null;
+      refresh('string');
+      refresh('racket');
+    }, REC_REFETCH_DEBOUNCE_MS);
   }, [gear.loaded, gear.loadError, activeId, refresh]);
+  useEffect(() => () => { if (swapTimerRef.current) clearTimeout(swapTimerRef.current); }, []);
   // One sheet at a time: a line's own sheet, or the add sheet. `key` is bumped
   // per opening so each visit starts clean — both sheets keep state that
   // describes one visit (a saved row, a half-chosen tension, a pending

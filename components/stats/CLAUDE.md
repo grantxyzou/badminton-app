@@ -457,6 +457,10 @@ racket and never excluded what they owned).
   - **`writeGearDoc` rebuilds the doc from an explicit field list.** A field
     left off it survives the PATCH that wrote it and is dropped by the next
     POST or DELETE. Pinned by "fit answers survive a bag write".
+  - **`/api/recommend` is 30/min per IP since 2026-09-15** (the notes below
+    were written at 10). Swapping a racket in re-asks both picks, and five
+    swaps inside a minute rendered "Couldn't load this pick"; `GearRegister`
+    also collapses a burst of swaps into one re-ask (`REC_REFETCH_DEBOUNCE_MS`).
   - **The rail's refetch has THREE keys, two of them GATED, and is never
     keyed on the bag.** Format/budget reach both engines and always re-ask at
     once. The fit answers and the string budget are in the key only while

@@ -8,7 +8,7 @@ import { _resetCalibrationCache } from '@/lib/levelStore';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { resetMockStore, getStore, seedMember, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
 
-// Unique IP per request — recommend is rate-limited 10/min; convention per helpers.ts.
+// Unique IP per request — recommend is rate-limited 30/min; convention per helpers.ts.
 function get(url: string): NextRequest {
   return new NextRequest(new URL(url, 'http://localhost/bpm'), {
     headers: { 'x-client-ip': `rec-${Math.random()}` },
@@ -85,6 +85,17 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
     _resetCalibrationCache();
     const on = await (await GET(get('/api/recommend?name=Climber'))).json();
     expect(on.item.id).not.toBe('beg');
+  });
+
+  it('allows 30 calls a minute from one IP, then throttles', async () => {
+    const fixed = () => new NextRequest(new URL('/api/recommend?name=Anon', 'http://localhost/bpm'), {
+      headers: { 'x-client-ip': `rec-burst-${process.pid}` },
+    });
+    for (let i = 0; i < 30; i++) {
+      const body = await (await GET(fixed())).json();
+      expect(body.unavailable ?? body.needsCheckIn ?? body.item ?? body.error).toBeDefined();
+    }
+    expect(await (await GET(fixed())).json()).toEqual({ item: null, reason: null });
   });
 
   it('404s when the flag is off', async () => {

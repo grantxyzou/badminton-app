@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — swapping rackets no longer breaks "Where you'd go next" (2026-09-15)
+
+- **Swapping a racket in a few times in a row** showed "Couldn't load this pick": every swap re-asked both picks, and the recommendation limit (10 a minute per IP) ran out on the fifth. A burst of swaps is now one re-ask, and the limit is 30 a minute — one gym's wifi is one IP for everyone on it.
+
 ### Equipment — tension past 30 lb (2026-09-15)
 
 - **A saved tension can be retyped.** Clearing the field in the string's sheet used to snap the saved figure straight back, so a string saved at 32 lb could not be changed by typing.
