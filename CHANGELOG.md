@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — Your fit and racket pages are on (2026-09-14)
+
+- **`NEXT_PUBLIC_FLAG_GEAR_PAGES` and `NEXT_PUBLIC_FLAG_FIT_VERDICT` are on** in production and PR CI. "Your fit" opens the fit page with a verdict on your racket, and "About this racket" opens the racket's own page.
+- Rollback is this commit's revert: the fit sheet and the fixed verdict wording are still on main.
+
 ### Equipment — a page for every racket (2026-09-14, dark)
 
 - **About this racket** (behind `NEXT_PUBLIC_FLAG_GEAR_PAGES`): the frame in 3D, its specs, a typical price range in dollars, and four rows — your fit verdict (or how it would suit you), the club's tension band with your line on it, your restring log, and the rackets closest to it.
