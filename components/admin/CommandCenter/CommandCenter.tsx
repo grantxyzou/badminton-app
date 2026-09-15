@@ -181,6 +181,8 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
             { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
             { icon: 'restore', label: 'Past sessions', onClick: () => setView('past-sessions') },
             { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
+            // Rackets members typed in by name: the models the catalog is missing.
+            { icon: 'sports_tennis', label: 'Missing from the catalog', onClick: () => setView('catalog-gaps') },
             // The stringing bench. It was first added to a btn-ghost row in the
             // pre-Command-Center AdminDashboard layout, which nobody could see
             // (see AdminBenchEntry.test.tsx). That layout is gone now.

@@ -78,6 +78,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/access-requests': admin(),
   'admin/anomalies': admin('isAdminAuthedWithMember'),
   'admin/fit-preview': admin(),
+  'admin/catalog-gaps': admin(),
   'admin/ledger': admin(),
   'admin/migrate-groups': admin('isAdminAuthedWithMember'),
   'admin/owed-audit': admin(),
