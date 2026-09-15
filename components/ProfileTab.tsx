@@ -34,6 +34,9 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import GroupsPage from './profile/GroupsPage';
 import StatusBanner from './primitives/StatusBanner';
 import CardSkeleton from './primitives/CardSkeleton';
+import MemberAvatar from './primitives/MemberAvatar';
+import AvatarSheet from './profile/AvatarSheet';
+import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -116,7 +119,8 @@ export default function ProfileTab({
      device that only remembers a name, and must show neither. */
   const [authKnown, setAuthKnown] = useState(false);
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
-  const [isSignedUp, setIsSignedUp] = useState<boolean>(false);
+  const [avatar, setAvatar] = useState<MemberAvatarValue | null>(null);
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
@@ -228,9 +232,10 @@ export default function ProfileTab({
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();
       })
-      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean }) => {
+      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown }) => {
         if (cancelled) return;
         setPinIsSet(data.hasPin === true);
+        setAvatar(normalizeAvatar(data.avatar));
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
         // `authed` gates first-PIN set in RecoveryPinSheet; unknown stays null.
         setPinAuthed(typeof data.authed === 'boolean' ? data.authed : null);
@@ -249,24 +254,6 @@ export default function ProfileTab({
         setAuthKnown(true);
       });
 
-    // Signed-up status — independent chain; its failure must NOT touch pinIsSet.
-    fetch(`${BASE}/api/players`, { cache: 'no-store' })
-      .then(async (r) => {
-        if (!r.ok) return null;
-        return r.json() as Promise<Array<{ name?: string; removed?: boolean; waitlisted?: boolean }>>;
-      })
-      .then((players) => {
-        if (cancelled || !Array.isArray(players)) return;
-        const here = players.find(
-          (p) => !p.removed && !p.waitlisted && typeof p.name === 'string' && p.name.toLowerCase() === identity.name.toLowerCase(),
-        );
-        setIsSignedUp(!!here);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        // Signed-up status stays unknown; never touch pinIsSet from here.
-        console.warn('signed-up fetch failed:', err);
-      });
     return () => {
       cancelled = true;
     };
@@ -671,8 +658,17 @@ export default function ProfileTab({
       <ProfileIdentityCard
         name={identity.name}
         memberCreatedAt={memberCreatedAt}
-        isSignedUp={isSignedUp}
         isAdmin={isAdmin}
+        avatar={avatar}
+        onChangeAvatar={() => setAvatarSheetOpen(true)}
+        changeLabel={t('avatar.change')}
+      />
+      <AvatarSheet
+        open={avatarSheetOpen}
+        onClose={() => setAvatarSheetOpen(false)}
+        name={identity.name}
+        current={avatar}
+        onSaved={setAvatar}
       />
 
 
@@ -998,7 +994,7 @@ function SettingsList({ rows }: { rows: SettingsRow[] }) {
   );
 }
 
-/* ── Identity card (avatar + name + member-since + In/Admin pills) ── */
+/* ── Identity card (avatar + name + member-since + Admin pill) ── */
 
 function fmtMemberSince(iso: string | null): string | null {
   if (!iso) return null;
@@ -1012,11 +1008,13 @@ function fmtMemberSince(iso: string | null): string | null {
 interface ProfileIdentityCardProps {
   name: string;
   memberCreatedAt: string | null;
-  isSignedUp: boolean;
   isAdmin: boolean;
+  avatar: MemberAvatarValue | null;
+  onChangeAvatar: () => void;
+  changeLabel: string;
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: ProfileIdentityCardProps) {
+function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
   const memberSince = fmtMemberSince(memberCreatedAt);
 
   return (
@@ -1039,26 +1037,14 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
           and red for log out. Other surfaces keep the coloured avatar: there
           it distinguishes one player from another, which is the job it was
           built for. Here there is only ever one person. */}
-      <span
-        aria-hidden="true"
-        style={{
-          width: 46,
-          height: 46,
-          borderRadius: '50%',
-          background: 'rgba(var(--glass-tint), 0.10)',
-          color: 'var(--text-primary)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'var(--font-display, "Space Grotesk")',
-          fontWeight: 600,
-          fontSize: 'var(--fs-stat)',
-          flexShrink: 0,
-          border: '1px solid rgba(var(--glass-tint), 0.10)',
-        }}
+      <button
+        type="button"
+        onClick={onChangeAvatar}
+        aria-label={changeLabel}
+        className="member-avatar-button"
       >
-        {name.slice(0, 1).toUpperCase()}
-      </span>
+        <MemberAvatar name={name} avatar={avatar} size={46} tone="neutral" />
+      </button>
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is a
             fact about you, not the page's headline — and it no longer has to
@@ -1086,11 +1072,6 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
       {/* Side by side, not stacked: two badges in a column read as a status
           column with a hierarchy between them. They are peers. */}
       <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', flexShrink: 0 }}>
-        {isSignedUp && (
-          <span className="pill-paid" style={{ whiteSpace: 'nowrap' }}>
-            In
-          </span>
-        )}
         {isAdmin && (
           <span
             style={{

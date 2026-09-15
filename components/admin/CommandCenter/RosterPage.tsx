@@ -7,7 +7,8 @@ import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import { fmtShortDate } from '@/lib/fmt';
-import { avatarColors } from '@/lib/avatar';
+import MemberAvatar from '@/components/primitives/MemberAvatar';
+import { normalizeAvatar } from '@/lib/memberAvatar';
 import type { Member, Alias } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -27,31 +28,6 @@ interface RowData {
 }
 
 type FilterKey = 'all' | 'recent' | 'regulars' | 'casual' | 'dormant';
-
-function Avatar({ name, size = 32 }: { name: string; size?: number }) {
-  const c = avatarColors(name);
-  return (
-    <span
-      style={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: c.bg,
-        color: c.fg,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'var(--font-display, "Space Grotesk")',
-        fontWeight: 600,
-        fontSize: size * 0.42,
-        flexShrink: 0,
-        border: '1px solid rgba(var(--glass-tint), 0.1)',
-      }}
-    >
-      {name.slice(0, 1).toUpperCase()}
-    </span>
-  );
-}
 
 function Sparkline({ presence }: { presence: Array<1 | null> }) {
   return (
@@ -540,7 +516,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 }}
                 aria-label={`Edit ${r.member.name}`}
               >
-                <Avatar name={r.member.name} />
+                <MemberAvatar name={r.member.name} avatar={normalizeAvatar(r.member.avatar)} />
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 'var(--space-05)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                     <span

@@ -2466,6 +2466,50 @@ html:root .ink-button {
    bumps to weight 600 so the active signal isn't carried by color alone
    (sunlight + colorblind cases). */
 
+/* ── Member avatar (components/primitives/MemberAvatar.tsx) ──
+   A circle holding the member's initial, or the HEAD of a racket's catalog
+   image. Those images are 240×624 with the head in the top ~40%; the crop
+   sizes the image so the whole head fits the circle, head centred. Size, and the per-name colours, come from the component. */
+.member-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  font-family: var(--font-display, "Space Grotesk");
+  font-weight: 600;
+  border: 1px solid rgba(var(--glass-tint), 0.1);
+}
+.member-avatar--neutral {
+  background: rgba(var(--glass-tint), 0.1);
+  color: var(--text-primary);
+}
+/* The Profile avatar is the way into the picture sheet. */
+.member-avatar-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.member-avatar-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.member-avatar__racket {
+  position: absolute;
+  /* Head is ~240px tall in a 624px image: at 90% width it fills ~90% of the
+     circle's height, centred, with a hint of the throat below. */
+  width: 90%;
+  max-width: none;
+  left: 5%;
+  top: 4%;
+  pointer-events: none;
+}
+
 /* ── Bottom nav · Labeled Rail (spec May 2026) ──
    Full-width, edge-attached, theme-independent dark surface. The LIVE
    app's bottom nav. The legacy .nav-glass pill family it replaced was

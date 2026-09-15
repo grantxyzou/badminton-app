@@ -131,7 +131,7 @@ describe('GET /api/members', () => {
     seedMembership('other', 'stranger', { name: 'Stranger' });
     seedMember('Stranger');
     const anon = await membersGet(makeGetRequest('http://x/api/members'));
-    expect(await anon.json()).toEqual([{ name: 'Lin', active: true }, { name: 'Test Admin', active: true }]);
+    expect(await anon.json()).toEqual([{ name: 'Lin', active: true, avatar: null }, { name: 'Test Admin', active: true, avatar: null }]);
     const admin = await membersGet(makeGetRequest('http://x/api/members', true));
     const text = await admin.text();
     expect(text).toContain('"id"');

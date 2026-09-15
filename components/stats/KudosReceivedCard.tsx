@@ -8,6 +8,7 @@ import { KUDOS_TAGS, TAG_ICON, type KudosCount, type KudosNote } from '@/lib/kud
 import { SKILLS } from '@/lib/assessment';
 import CardHeader from '@/components/primitives/CardHeader';
 import LockedCard, { useSignInLink } from './LockedCard';
+import MemberAvatar from '@/components/primitives/MemberAvatar';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -150,7 +151,8 @@ export default function KudosReceivedCard() {
                 }}
               >
                 <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>{n.note}</p>
-                <p className="fs-sm m-0" style={{ color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
+                <p className="fs-sm m-0" style={{ color: 'var(--text-muted)', marginTop: 'var(--space-1)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <MemberAvatar name={n.raterName} size={18} />
                   {n.raterName}
                   {' · '}
                   {t(`kudos.tag.${n.tag}`)}

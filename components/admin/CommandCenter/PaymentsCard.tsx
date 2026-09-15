@@ -14,6 +14,7 @@ import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import ReceiptSheet from './ReceiptSheet';
 import type { Session, ETransferRecipient } from '@/lib/types';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import MemberAvatar from '@/components/primitives/MemberAvatar';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -614,6 +615,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           {lists.active.map((player) => (
             <li key={player.id} className="flex items-center justify-between gap-3 py-2">
               <span className="fs-md flex items-center gap-2 flex-1 min-w-0">
+                <MemberAvatar name={player.name} size={24} />
                 {onOpenPlayer && player.memberId ? (
                   <button
                     type="button"

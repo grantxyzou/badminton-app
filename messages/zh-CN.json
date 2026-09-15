@@ -249,6 +249,17 @@
     "profile": "档案"
   },
   "profile": {
+    "avatar": {
+      "title": "你的头像",
+      "myRacket": "我的球拍",
+      "shuffle": "随机换一个",
+      "initial": "我的首字母",
+      "noRacket": "在 数据 → 装备 里添加你的球拍，就能用它做头像。",
+      "save": "保存",
+      "signIn": "请重新登录后再更换头像。",
+      "failed": "没能保存，请再试一次。",
+      "change": "更换头像"
+    },
     "auth": {
       "retry": "重试",
       "pendingExpiredTitle": "我们重新开始吧",

@@ -14,6 +14,7 @@ import PageHeader from '@/components/primitives/PageHeader';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
+import MemberAvatar from '@/components/primitives/MemberAvatar';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -210,6 +211,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                   <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
                     {i + 1}
                   </span>
+                  <MemberAvatar name={player.name} size={28} />
                   <span className="flex-1 fs-md text-gray-200 font-medium">
                     {player.name}
                     {isMe && (
@@ -276,6 +278,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                     <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
                       {activePlayers.length + i + 1}
                     </span>
+                    <MemberAvatar name={player.name} size={28} />
                     <span className="flex-1 fs-md text-gray-400 font-medium">
                       {player.name}
                       {isMe && (
