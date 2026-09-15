@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — Your fit, and a verdict on your racket (2026-09-14, dark)
+
+- **Your fit is a page now** (behind `NEXT_PUBLIC_FLAG_GEAR_PAGES`): level, what you mostly play, swing speed drawn as where you meet the shuttle, grip size drawn to scale, and anything sore. Every tap saves.
+- **The verdict** says whether your racket suits you, is fighting you slightly, or is fighting you, with the reasons and a string tension range. The judgement and every number are decided in code; with `NEXT_PUBLIC_FLAG_FIT_VERDICT` on, Claude only puts them into words, and a reply with any number in it is thrown away for the app's own wording.
+- **Nothing stronger than the answers support**: under five answers, or a racket nobody has described, it says it can't call it yet.
+- **Privacy**: the policy now says fit answers shape a verdict, and what the AI receives to word it (never your name).
+
 ### Equipment — the racket in 3D (2026-09-14)
 
 - Every racket picture is now rendered from one 3D model, painted in each model's colours.

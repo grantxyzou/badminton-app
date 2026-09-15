@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
 import OverviewStrip from './OverviewStrip';
+import { StatsTakeoverContext } from './statsTakeover';
 import type { UseCheckIn } from './useCheckIn';
 
 /**
@@ -50,6 +51,9 @@ export default function StatsV2Shell({
 }: StatsV2ShellProps) {
   const t = useTranslations('stats');
   const [view, setView] = useState<StatsView>('you');
+  // A page inside a register (statsTakeover.ts) hides the chrome, not the
+  // register: the register owns the page's data and must stay mounted.
+  const [takeover, setTakeover] = useState(false);
 
   const slots: Record<StatsView, ReactNode> = {
     you: youSlot,
@@ -59,21 +63,26 @@ export default function StatsV2Shell({
   };
 
   return (
+    <StatsTakeoverContext.Provider value={setTakeover}>
     <div className="space-y-5 w-full">
       {/* PageHeader must stay a direct child of the tall scroll root or its
           `position: sticky` un-sticks. Subhead is pinned tight to the title
           with an inline marginTop that beats the space-y-5 gap. */}
-      <PageHeader>{t('heading')}</PageHeader>
-      <p className="fs-md text-gray-400 px-2" style={{ marginTop: 'var(--space-1)' }}>
+      {!takeover && <PageHeader>{t('heading')}</PageHeader>}
+      <p className="fs-md text-gray-400 px-2" style={{ marginTop: 'var(--space-1)' }} hidden={takeover}>
         {t('subheadV2')}
       </p>
 
-      <OverviewStrip activeName={activeName} checkIn={checkIn} />
+      {/* Hidden, not unmounted: coming back from a page must not re-read the strip. */}
+      <div hidden={takeover}>
+        <OverviewStrip activeName={activeName} checkIn={checkIn} />
+      </div>
 
       {/* Full width, unlike v1's `maxWidth: 360`. NOTE: `.segment-control` is
           shared with AdminTab (globals.css still calls it "Admin segment
           control"), so the width change is a per-use override here and must
           never become an edit to the shared class. */}
+      {!takeover && (
       <div className="segment-control flex w-full">
         {VIEWS.map((id) => (
           <button
@@ -89,6 +98,7 @@ export default function StatsV2Shell({
           </button>
         ))}
       </div>
+      )}
 
       {/* Keyed by view so a register switch swaps content cleanly. Entrance
           motion is HomeShell's whole-tab fade — no per-card stagger, so Stats
@@ -97,5 +107,6 @@ export default function StatsV2Shell({
         {slots[view]}
       </div>
     </div>
+    </StatsTakeoverContext.Provider>
   );
 }

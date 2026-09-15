@@ -163,8 +163,8 @@ each owns different hooks and a hook cannot be conditional.
   line, group headers ("Yonex · 4 match") and rows all read the same filtered
   list. The suggestion is never filtered.
 - **`TensionField`** is tension as a field: a numeric input with steppers
-  bounded by the frame's rated range (`ratedRange`, a ceiling-only frame uses
-  the app floor), a warning that still saves, and the club hint from
+  bounded by the frame's rated range (`ratedRange` in `lib/tension.ts`, a
+  missing bound is the app scale's own), a warning that still saves, and the club hint from
   `useClubTension`. Its classes are `tension-field-*` — `.setup-tension` is the
   CARD's figure, and reusing that name restyled it.
 - **`SetupLineSheet`**: one filled line's management. Remove asks once. No Retire.
@@ -213,6 +213,33 @@ each owns different hooks and a hook cannot be conditional.
   - `RACKET_LOOKS` in `lib/racketLook.ts` stays the one paint table (frame,
     accent, grip, optional `pattern` / `shape`). It is presentation, so it stays
     off `CatalogItem`; an unknown id uses `DEFAULT_LOOK`.
+
+- **Your fit is a PAGE** (`NEXT_PUBLIC_FLAG_GEAR_PAGES`, Turn 3 `3a`): `FitProfilePage`,
+  rendered IN PLACE by `SetupRegister` (it owns the data), with the shell's
+  chrome hidden through `components/stats/statsTakeover.ts` — hidden, not unmounted, or the
+  register holding the page's state would go with it. Flag off, the same doors
+  open `GearFitSheet`. Answers autosave through `gear.setPrefs`, QUEUED one
+  after another (the PATCH is read-modify-write, so racing taps would each keep
+  only their own field), shown optimistically and reverted with a retry on a
+  refusal. New answers on `PlayerGear`: `fitLevelOverride`, `fitPlayStyle`
+  (doubles/singles also write `playFormat`), `fitSoreness` (stripped for
+  non-owners like `fitArmComfort`; `effectiveArmComfort` in `lib/fitProfile.ts`
+  is how the engines read it), `fitOvergrips`, and `G3`.
+  - **The verdict's judgement is `lib/fitVerdict.ts`, and only there**: state,
+    reasons, range, all deterministic. It borrows the engines' opinions rather
+    than holding its own — `GOAL_DELTA`'s balance axis, `pairTension` when frame,
+    string and check-in are known (else `recommendTension`), one `ratedRange`.
+  - **`GET /api/equipment/fit-verdict` is OWNER ONLY** — no admin-on-behalf,
+    because the facts carry soreness; an admin cookie counts only as that admin.
+    With `NEXT_PUBLIC_FLAG_FIT_VERDICT` on, Claude words the decided facts
+    (`lib/fitVerdictCopy.ts`): strict JSON, length caps, and NO DIGITS except
+    inside the racket's own name. Off-contract means `copy: null` and the page's
+    own strings, never a repair. Cached per member per frame in `insights`,
+    keyed on facts + locale + `FIT_COPY_VERSION` (bump it when the prompt
+    changes). `insufficient` never calls the model.
+  - The page keeps the previous verdict while re-asking (`useFitVerdict`), and
+    re-asks the racket pick once answers have been still for 2.5 s — the
+    register holds fit refetches while the page is open.
 
 ### Racket FIT engine (`NEXT_PUBLIC_FLAG_RACKET_FIT`, Phase 2, 2026-09-09)
 
@@ -392,10 +419,10 @@ racket and never excluded what they owned).
     (since 2026-09-14 — it was public by name, so a device that merely
     remembered a name showed that person's bag; a refused read renders
     `YourKitCard`'s locked state via `useGear().forbidden`), and the route
-    still strips this field for anyone but the owner or a FRESHLY re-checked
-    admin — with the FRESH
-    role re-check on that cold path, so a demoted admin's live cookie does not
-    read it for 30 days (same shape as the pinHash strip-canary, tested by
+    still strips this field (and `fitSoreness`) for anyone but the OWNER —
+    admins included, since 2026-09-14: the policy says only the member sees
+    it. An admin cookie counts as the owner only when it re-checks FRESH as
+    that same member (same shape as the pinHash strip-canary, tested by
     VALUE not by key — the mock keeps an explicit `undefined`, production JSON
     drops it); it is disclosed in
     `legal.privacy` in both locales (pinned by the `'arm or shoulder'` needle

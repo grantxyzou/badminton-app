@@ -67,6 +67,9 @@ const EXEMPT: Record<string, string> = {
   'app/api/equipment/share-card/route.ts GET':
     'The share card is a summary of the gear doc, and gates the same way as the gear GET: on ' +
     'memberId EQUALITY (`caller?.memberId !== memberId`) or admin, never on the name.',
+  'app/api/equipment/fit-verdict/route.ts GET':
+    'Owner only, on memberId EQUALITY (`caller.memberId !== memberId`) with NO admin branch: the ' +
+    'verdict is built from the soreness answer the gear GET strips from everyone but its owner.',
   'app/api/admin/owed-audit/route.ts GET':
     'Admin-only (`isAdminAuthed` at the top). The name selects which member to audit; it is not ' +
     'the thing being trusted.',

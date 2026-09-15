@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnline } from '@/lib/useOnline';
 import { rackets as racketsOf, activeRacket } from '@/lib/activeRacket';
-import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, RacketFeel, ItemLook } from '@/lib/types';
+import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, FitPlayStyle, FitSoreness, FitLevelOption, RacketFeel, ItemLook } from '@/lib/types';
 
 /**
  * Every preference `PATCH /api/equipment/gear` accepts. `null` clears a field
@@ -16,6 +16,10 @@ export interface GearPrefs {
   fitSwing?: FitSwing | null;
   fitArmComfort?: FitArmComfort | null;
   fitGrip?: FitGrip | null;
+  fitPlayStyle?: FitPlayStyle | null;
+  fitSoreness?: FitSoreness | null;
+  fitLevelOverride?: FitLevelOption | null;
+  fitOvergrips?: 0 | 2 | null;
   stringBudgetMaxCad?: number | null;
 }
 

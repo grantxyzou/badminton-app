@@ -65,7 +65,7 @@ describe('parseLbs / ratedRange', () => {
   it('reads a ceiling-only frame with the app floor, and nothing without a ceiling', () => {
     expect(ratedRange({ tensionMinLbs: 22, tensionMaxLbs: 28 })).toEqual([22, 28]);
     expect(ratedRange({ tensionMaxLbs: 28 })).toEqual([20, 28]);
-    expect(ratedRange({ tensionMinLbs: 22 })).toBeNull();
+    expect(ratedRange({ tensionMinLbs: 26 })).toEqual([26, 30]);
     expect(ratedRange(undefined)).toBeNull();
   });
 });

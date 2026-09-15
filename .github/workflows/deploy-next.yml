@@ -65,6 +65,10 @@ jobs:
           # The Equipment redesign (the Set-up card). On since 2026-09-14; revert
           # to 'false' to bring back the old register. See lib/flags.ts.
           NEXT_PUBLIC_FLAG_GEAR_SETUP: 'true'
+          # Equipment Turn 3 pages and the AI fit verdict. Dark until Grant has
+          # checked them; see lib/flags.ts.
+          NEXT_PUBLIC_FLAG_GEAR_PAGES: 'false'
+          NEXT_PUBLIC_FLAG_FIT_VERDICT: 'false'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.
           #

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import GearPickRail from './GearPickRail';
 import GearFitSheet from './GearFitSheet';
+import FitProfilePage from './FitProfilePage';
 import GearSetupCard from './GearSetupCard';
 import SetupAddSheet from './SetupAddSheet';
 import SetupLineSheet from './SetupLineSheet';
@@ -119,7 +120,15 @@ function LegacyRegister({ activeName }: GearRegisterProps) {
 function SetupRegister({ activeName }: GearRegisterProps) {
   const gear = useGear(activeName);
   const [openFit, setOpenFit] = useState(false);
-  const picks = useGearPicks(activeName, gear, { holdFitRefetch: openFit });
+  // A page in the register (NEXT_PUBLIC_FLAG_GEAR_PAGES): rendered in place of
+  // the cards, with the shell's chrome hidden (statsTakeover.ts). The fit page
+  // replaces the fit SHEET as the one door to the questions.
+  const [page, setPage] = useState<'fit' | null>(null);
+  const pagesOn = isFlagOn('NEXT_PUBLIC_FLAG_GEAR_PAGES');
+  const openFitDoor = () => (pagesOn ? setPage('fit') : setOpenFit(true));
+  // Held while the questions are open, sheet or page: answered at a human
+  // pace, every tap would otherwise re-ask /api/recommend against its limit.
+  const picks = useGearPicks(activeName, gear, { holdFitRefetch: openFit || page === 'fit' });
   const club = useClubGear();
 
   // The picks are made against the racket IN PLAY, so when that changes (a
@@ -166,6 +175,10 @@ function SetupRegister({ activeName }: GearRegisterProps) {
     else openAdd(category, true);
   };
 
+  if (page === 'fit') {
+    return <FitProfilePage activeName={activeName} gear={gear} picks={picks} onBack={() => setPage(null)} />;
+  }
+
   return (
     <>
       <GearSetupCard
@@ -175,7 +188,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         club={club}
         onOpenLine={openLine}
         onShare={() => setShareOpen(true)}
-        onOpenFit={() => setOpenFit(true)}
+        onOpenFit={openFitDoor}
         onAddTension={() => openLine('string')}
       />
       <NextRacketCard
@@ -188,7 +201,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
           // append-only series stays continuous.
           void recordEngagement('rec_card_tap');
         }}
-        onOpenFit={() => setOpenFit(true)}
+        onOpenFit={openFitDoor}
       />
       <StringTensionCard
         activeName={activeName}
@@ -209,7 +222,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         owned={picks.isOwned('racket', picks.view.racket.pick?.item ?? null)}
         gear={gear}
         // Swap, never stack — the same rule as the rail's sheet.
-        onOpenFit={() => { setPickOpen(false); setOpenFit(true); }}
+        onOpenFit={() => { setPickOpen(false); openFitDoor(); }}
       />
       {shareOpen && (
         <SetupShareSheet

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PATCH, GET, POST, PUT } from '../app/api/equipment/gear/route';
-import { resetMockStore, seedMember, seedAdminMember, setupAdminPin, makeRequest, makeAdminRequest, memberCookieValue } from './helpers';
+import { resetMockStore, seedMember, seedAdminMember, setupAdminPin, makeRequest, makeAdminRequest, memberCookieValue, getTestAdminName } from './helpers';
 
 const BASE = 'http://localhost:3000/api/equipment/gear';
 
@@ -117,7 +117,7 @@ describe('fit questionnaire fields', () => {
     expect(gear.fitGrip).toBe('G4');
   });
 
-  it('the comfort answer reaches only the owner and an admin — everyone else is refused the whole doc', async () => {
+  it('the comfort answer reaches only the owner — another member is refused the doc, an admin gets it without the answer', async () => {
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitGoal: 'happy', fitArmComfort: 'often_sore' }, cookie));
 
     // The GET was public by name and stripped only this field. It is now
@@ -127,19 +127,20 @@ describe('fit questionnaire fields', () => {
 
     expect((await read(cookie)).fitArmComfort).toBe('often_sore');
 
+    // The privacy policy: visible only to the member. An admin browsing
+    // someone's bag sees the bag, never the arm answer, and no marker that one exists.
     const admin = (await (await GET(makeAdminRequest('GET', `${BASE}?name=Lin`))).json()).gear;
-    expect(admin.fitArmComfort).toBe('often_sore');
+    expect(admin.fitGoal).toBe('happy');
+    expect(admin).not.toHaveProperty('fitArmComfort');
     expect(admin).not.toHaveProperty('fitArmComfortRedacted');
   });
 
-  it('a DEMOTED admin no longer reads the comfort answer, cookie or no cookie', async () => {
-    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: 'often_sore' }, cookie));
-    const admin = (await (await GET(makeAdminRequest('GET', `${BASE}?name=Lin`))).json()).gear;
-    expect(admin.fitArmComfort).toBe('often_sore');
-    seedAdminMember({ role: 'member' });
-    const demoted = (await (await GET(makeAdminRequest('GET', `${BASE}?name=Lin`))).json()).gear;
-    expect(demoted).not.toHaveProperty('fitArmComfort');
-    expect(demoted).not.toHaveProperty('fitArmComfortRedacted');
+  it('an admin reading their OWN bag through the admin cookie still sees their answer', async () => {
+    const adminName = getTestAdminName();
+    await PATCH(makeAdminRequest('PATCH', BASE, { name: adminName, fitArmComfort: 'often_sore', fitSoreness: 'elbow' }));
+    const own = (await (await GET(makeAdminRequest('GET', `${BASE}?name=${encodeURIComponent(adminName)}`))).json()).gear;
+    expect(own.fitArmComfort).toBe('often_sore');
+    expect(own.fitSoreness).toBe('elbow');
   });
 
   it('fitUpdatedAt moves only when an answer actually changes — not on a re-send, not on the string budget', async () => {

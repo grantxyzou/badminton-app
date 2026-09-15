@@ -5,7 +5,7 @@ import { verifyMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMe
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type PlayerGear, type GearItem, type EquipmentCategory, type RacketFeel } from '@/lib/types';
+import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, FIT_PLAY_STYLES, FIT_SORENESS, FIT_LEVEL_OPTIONS, type PlayerGear, type GearItem, type EquipmentCategory, type RacketFeel } from '@/lib/types';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
 import { parseFeel, hasFeel } from '@/lib/racketFeel';
@@ -44,6 +44,7 @@ const PREF_WRITES_PER_HOUR = 60;
  *  `fitUpdatedAt` by it. */
 const FIT_ENUMS = {
   fitGoal: FIT_GOALS, fitSwing: FIT_SWINGS, fitArmComfort: FIT_ARM_COMFORTS, fitGrip: FIT_GRIPS,
+  fitPlayStyle: FIT_PLAY_STYLES, fitSoreness: FIT_SORENESS, fitLevelOverride: FIT_LEVEL_OPTIONS,
 } as const;
 const HOUR_MS = 60 * 60 * 1000;
 const VALID_CATEGORIES = new Set<EquipmentCategory>(['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip']);
@@ -109,6 +110,10 @@ async function writeGearDoc(memberId: string, prior: StoredGear | undefined, nex
     fitSwing: 'fitSwing' in next ? next.fitSwing : prior?.fitSwing,
     fitArmComfort: 'fitArmComfort' in next ? next.fitArmComfort : prior?.fitArmComfort,
     fitGrip: 'fitGrip' in next ? next.fitGrip : prior?.fitGrip,
+    fitPlayStyle: 'fitPlayStyle' in next ? next.fitPlayStyle : prior?.fitPlayStyle,
+    fitSoreness: 'fitSoreness' in next ? next.fitSoreness : prior?.fitSoreness,
+    fitLevelOverride: 'fitLevelOverride' in next ? next.fitLevelOverride : prior?.fitLevelOverride,
+    fitOvergrips: 'fitOvergrips' in next ? next.fitOvergrips : prior?.fitOvergrips,
     stringBudgetMaxCad: 'stringBudgetMaxCad' in next ? next.stringBudgetMaxCad : prior?.stringBudgetMaxCad,
     fitUpdatedAt: 'fitUpdatedAt' in next ? next.fitUpdatedAt : prior?.fitUpdatedAt,
     stringLog: 'stringLog' in next ? next.stringLog : prior?.stringLog,
@@ -240,10 +245,11 @@ export async function GET(req: NextRequest) {
     const { resource } = await container.item(`gear-${memberId}`, memberId).read();
     const gear = (resource as PlayerGear | undefined) ?? null;
     // Past the gate above only the owner or an admin reads this doc. The
-    // arm-or-shoulder answer is health-adjacent and the privacy policy says
-    // only the member sees it, so it is still stripped for anyone who is not
-    // the owner or a FRESHLY re-checked admin — the sync gate above trusts an
-    // admin cookie that a demotion has not yet expired.
+    // arm-or-shoulder answer is health-adjacent and the privacy policy says it
+    // is visible ONLY to the member (Grant, 2026-09-14): no admin reads another
+    // member's answer — an admin browsing a bag has no screen that shows it,
+    // and co-organisers made "the organiser" mean more than one person. An
+    // admin reading their OWN bag through the admin cookie is still the owner.
     //
     // Tested by VALUE, not by key: `writeGearDoc` writes every field
     // explicitly, so a doc with no answer carries `fitArmComfort: undefined`
@@ -251,15 +257,16 @@ export async function GET(req: NextRequest) {
     // would take this branch for every route-written doc in dev and none in
     // prod. The sync admin check is the read-only convention (CLAUDE.md,
     // Auth); the fresh role re-check is for mutations.
-    if (gear && gear.fitArmComfort !== undefined) {
+    if (gear && (gear.fitArmComfort !== undefined || gear.fitSoreness !== undefined)) {
       const caller = verifyMemberAuth(req);
-      const isOwner = caller?.memberId === memberId;
-      // The FRESH role re-check, unlike other read-only routes: this branch
-      // runs only when a non-owner reads a doc that carries a health-adjacent
-      // answer (a cold path), and a demoted admin's cookie is live for up to
-      // 30 days. One Cosmos read on almost no requests is the right trade.
-      if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
-        const { fitArmComfort: _strip, ...safe } = gear;
+      // Owner by the member cookie, or by an admin cookie that re-checks
+      // FRESH as this same member (the admin login mints no member session).
+      // One Cosmos read, only on this cold path.
+      const self = caller ? null : await isAdminAuthedWithMember(req);
+      const isOwner = caller?.memberId === memberId || (!!self?.authed && self.memberId === memberId);
+      if (!isOwner) {
+        // `fitSoreness` is the fit profile's arm question: the same promise.
+        const { fitArmComfort: _strip, fitSoreness: _stripSore, ...safe } = gear;
         // The marker says "an answer exists that you cannot see", and it goes
         // to exactly one reader: the OWNER on a lapsed member_session (30-day
         // TTL; localStorage identity never expires — a state CLAUDE.md names
@@ -268,8 +275,7 @@ export async function GET(req: NextRequest) {
         // owner is a cookie whose SIGNATURE still verifies for this member and
         // whose expiry has passed. Anyone else — anonymous, another member —
         // gets no marker: that a named person has stored a health-adjacent
-        // answer is itself the thing the policy says only they and the
-        // organiser may know.
+        // answer is itself the thing the policy says only they may know.
         const lapsedOwner = peekMemberSession(req)?.memberId === memberId;
         return NextResponse.json({ gear: lapsedOwner ? { ...safe, fitArmComfortRedacted: true } : safe });
       }
@@ -455,6 +461,12 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'invalid_fit' }, { status: 400 });
       }
       (next as Record<string, unknown>)[key] = v ?? undefined;
+      touchedFit = true;
+    }
+    if ('fitOvergrips' in body) {
+      const v = body.fitOvergrips;
+      if (v !== null && v !== 0 && v !== 2) return NextResponse.json({ error: 'invalid_fit' }, { status: 400 });
+      next.fitOvergrips = v ?? undefined;
       touchedFit = true;
     }
     if ('stringBudgetMaxCad' in body) {

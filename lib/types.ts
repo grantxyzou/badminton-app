@@ -493,11 +493,22 @@ export interface StringLogEntry {
 export type FitGoal = 'happy' | 'more_power' | 'more_control' | 'faster' | 'less_fatigue';
 export type FitSwing = 'slow' | 'medium' | 'fast';
 export type FitArmComfort = 'fine' | 'sometimes_sore' | 'often_sore';
-export type FitGrip = 'G4' | 'G5' | 'G6';
+export type FitGrip = 'G3' | 'G4' | 'G5' | 'G6';
+/** "Mostly you play" (fit profile, Turn 3). Doubles / singles also set
+ *  `playFormat`; mixed and "whatever's free" leave the engines on `both`. */
+export type FitPlayStyle = 'doubles' | 'singles' | 'mixed' | 'any';
+/** "Anything sore?" — HEALTH-ADJACENT, same handling as `fitArmComfort`. */
+export type FitSoreness = 'elbow' | 'shoulder' | 'wrist' | 'none';
+/** The fit profile's level scale. Pre-filled from the check-in level; stored
+ *  only when the member moves it. */
+export type FitLevelOption = '2.0' | '2.5' | '2.8' | '3.2' | '3.5+';
 export const FIT_GOALS: readonly FitGoal[] = ['happy', 'more_power', 'more_control', 'faster', 'less_fatigue'];
 export const FIT_SWINGS: readonly FitSwing[] = ['slow', 'medium', 'fast'];
 export const FIT_ARM_COMFORTS: readonly FitArmComfort[] = ['fine', 'sometimes_sore', 'often_sore'];
-export const FIT_GRIPS: readonly FitGrip[] = ['G4', 'G5', 'G6'];
+export const FIT_GRIPS: readonly FitGrip[] = ['G3', 'G4', 'G5', 'G6'];
+export const FIT_PLAY_STYLES: readonly FitPlayStyle[] = ['doubles', 'singles', 'mixed', 'any'];
+export const FIT_SORENESS: readonly FitSoreness[] = ['elbow', 'shoulder', 'wrist', 'none'];
+export const FIT_LEVEL_OPTIONS: readonly FitLevelOption[] = ['2.0', '2.5', '2.8', '3.2', '3.5+'];
 
 export interface PlayerGear {
   /** Doc id — `gear-<memberId>` for easy lookup. */
@@ -526,6 +537,13 @@ export interface PlayerGear {
    *  owner or an admin, and purged with the doc (`lib/memberPurge.ts`). */
   fitArmComfort?: FitArmComfort;
   fitGrip?: FitGrip;
+  /** Fit profile (Turn 3). Every one optional, and additive. */
+  fitPlayStyle?: FitPlayStyle;
+  /** HEALTH-ADJACENT: stripped from the gear GET like `fitArmComfort`. */
+  fitSoreness?: FitSoreness;
+  fitLevelOverride?: FitLevelOption;
+  /** Overgrips on the handle: 0 or 2. */
+  fitOvergrips?: number;
   /** Upper bound for a STRING in CAD. Advisory in the pairing engine's value
    *  scorer, never a hard filter — same rule as `budgetMaxCad`. */
   stringBudgetMaxCad?: number;

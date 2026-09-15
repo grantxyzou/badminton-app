@@ -3,6 +3,7 @@ import { buildProfile } from './racketProfile';
 import { activeRacket, rackets } from './activeRacket';
 import { fitLevel, isScorable, canon, type FitInput } from './racketFit';
 import { feelAnchor } from './racketFeel';
+import { effectiveArmComfort } from './fitProfile';
 import type { CatalogItem, PlayerGear } from './types';
 import type { Rating } from './assessment';
 
@@ -38,8 +39,12 @@ export function buildFitInput(
     ownedLabels: new Set(owned.map((i) => canon(i.label)).filter(Boolean)),
     goal: gear?.fitGoal,
     swing: gear?.fitSwing,
-    armComfort: gear?.fitArmComfort,
-    grip: gear?.fitGrip,
+    // The fit profile's soreness answer, when given, is the comfort answer.
+    armComfort: effectiveArmComfort(gear),
+    // No catalog racket is sold in G3 — the thickest the catalog lists is G4 —
+    // so a G3 hand is scored as G4 (thickened with an overgrip), rather than
+    // missing on every frame and sinking every pick by the same penalty.
+    grip: gear?.fitGrip === 'G3' ? 'G4' : gear?.fitGrip,
     format: gear?.playFormat ?? 'both',
     budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,
     level,

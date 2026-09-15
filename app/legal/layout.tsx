@@ -27,7 +27,9 @@ export default async function LegalLayout({ children }: { children: React.ReactN
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          padding: 'var(--space-4) var(--space-5)',
+          // The installed app draws under the status bar (viewportFit: cover),
+          // so the back link clears the safe area or it sits beneath the clock.
+          padding: 'calc(var(--space-4) + env(safe-area-inset-top, 0px)) var(--space-5) var(--space-4)',
           background: 'var(--page-bg)',
           borderBottom: '1px solid var(--divider)',
           display: 'flex',

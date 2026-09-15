@@ -207,7 +207,7 @@ export function axesOf(item: CatalogItem): Axes | null {
   const weight = typeof lo === 'number' && typeof hi === 'number' ? (lo + hi) / 2 : null;
   const gripRaw = typeof a.gripSize === 'string' ? a.gripSize : null;
   const grip = gripRaw
-    ? new Set(gripRaw.split('/').map((g) => g.trim().toUpperCase()).filter((g): g is FitGrip => g === 'G4' || g === 'G5' || g === 'G6'))
+    ? new Set(gripRaw.split('/').map((g) => g.trim().toUpperCase()).filter((g): g is FitGrip => g === 'G3' || g === 'G4' || g === 'G5' || g === 'G6'))
     : null;
   return {
     balance, flex, weight, tier,
