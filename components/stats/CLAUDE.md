@@ -245,8 +245,9 @@ each owns different hooks and a hook cannot be conditional.
   pops, and opening Your fit returns to one already underneath rather than
   stacking a second. Its rules are `lib/frameDetail.ts`, pure: `specCells`
   (a cell the row cannot fill is absent; `rated` carries only the bounds the
-  maker printed — never `ratedRange`'s scale fill), `cadRange` (USD × 1.38,
-  captioned as typical, never live), `closeToFrame` (the fit engine's own
+  maker printed — never `ratedRange`'s scale fill), `cadRange` (now in `lib/catalogPrice.ts`, the one price source: USD × 1.38,
+  captioned as typical, never live; `priceCadPoint` is the single figure lists
+  show, and every row's `msrp` is held to it by `__tests__/catalog-price.test.ts`), `closeToFrame` (the fit engine's own
   distance to this frame's axes, so "close" means what the pick means) and
   `frameHistory` (restrings keyed by model, last four tensions). Rows expand
   one at a time through CSS grid rows (reduced-motion covered), closed rows

@@ -21,6 +21,7 @@ import { blankStringPairing, racketRowSpec, racketSpecLine, setupLines, stringSp
 import { hasFeel } from '@/lib/racketFeel';
 import { recordEngagement } from '@/lib/engagement';
 import type { CatalogItem, GearItem, RacketFeel } from '@/lib/types';
+import { priceCadPoint } from '@/lib/catalogPrice';
 
 export interface SetupAddSheetProps {
   open: boolean;
@@ -478,7 +479,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
                       {[
                         suggestion.item.brand,
                         category === 'string' ? stringSpecLine(suggestion.item, (k) => t(k)) : racketSpecLine(suggestion.item),
-                        typeof suggestion.item.msrp === 'number' ? `~$${suggestion.item.msrp}` : null,
+                        priceCadPoint(suggestion.item) !== null ? `~$${priceCadPoint(suggestion.item)}` : null,
                       ].filter(Boolean).join(' · ')}
                     </span>
                   </span>

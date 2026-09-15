@@ -155,7 +155,7 @@
     "gripSize": "G4/G5",
     "notes": "Elite control/placement racket",
     "priceMinUSD": 285.0,
-    "priceMaxUSD": 285.0,
+    "priceMaxUSD": 320.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
     "partitionKey": "Yonex"
@@ -361,8 +361,8 @@
     "tensionMaxLbs": 30,
     "gripSize": "G5",
     "notes": "Reference speed/defense/counter-attack racket",
-    "priceMinUSD": 180.0,
-    "priceMaxUSD": 220.0,
+    "priceMinUSD": 175.0,
+    "priceMaxUSD": 230.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
     "partitionKey": "Victor"

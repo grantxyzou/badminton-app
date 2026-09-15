@@ -54,12 +54,14 @@ describe('equipment catalog data', () => {
     }
   });
 
-  // The 4 overlaps keep their curated CAD msrp + retailer links rather than
-  // being overwritten by the import.
-  it('preserves the curated data on rackets that existed before the import', () => {
+  // The 4 overlaps keep their retailer links rather than being overwritten by
+  // the import. Their curated CAD msrp did NOT survive: on 2026-09-14 every
+  // price moved to one source (lib/catalogPrice.ts), because the hand-set
+  // figures had drifted from the sourced ranges shown on the racket page.
+  it('preserves the curated retailer links on rackets that existed before the import', () => {
     const astrox = items.find((i) => i.id === 'racket-yonex-astrox-88d-pro');
-    expect(astrox?.msrp).toBe(309);
     expect(astrox?.sources?.[0]?.retailer).toBe('Yumo');
+    expect(astrox?.msrp).toBe(Math.round(Number(astrox?.attributes?.priceMinUSD) * 1.38));
   });
 
   /* ── Vocabulary ─────────────────────────────────────────────────────────

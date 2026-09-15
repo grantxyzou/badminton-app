@@ -1,6 +1,7 @@
 import type { CatalogItem } from './types';
 import type { PlayerProfile } from './racketProfile';
 import { overall, skillLevel } from './racketRecommend';
+import { USD_TO_CAD } from './catalogPrice';
 
 /**
  * Pairs a string to a RACKET, not to a player.
@@ -476,7 +477,9 @@ function scoreValue(racket: CatalogItem, s: CatalogItem): ScoreResult {
   const price = (num(s, 'priceSetUsdMin', 12) + num(s, 'priceSetUsdMax', 12)) / 2;
   const span = Math.max(hi - lo, 1);
   const score = Math.max(0.0, 1.0 - Math.abs(price - ideal) / span);
-  const shown = price.toFixed(0);
+  // The bands are USD (as sourced); the words a member reads are CAD, the
+  // currency of every other price in the app.
+  const shown = Math.round(price * USD_TO_CAD).toFixed(0);
 
   if (price < lo * 0.85 && tier === 'Premium') {
     return {

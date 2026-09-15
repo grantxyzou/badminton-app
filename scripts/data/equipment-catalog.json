@@ -12,7 +12,7 @@
       "category": "racket",
       "brand": "Yonex",
       "model": "Astrox 88D Pro",
-      "msrp": 309,
+      "msrp": 400,
       "skillRange": [
         4,
         6
@@ -50,7 +50,7 @@
       "category": "racket",
       "brand": "Yonex",
       "model": "Astrox 88S Pro (2nd Gen)",
-      "msrp": 309,
+      "msrp": 400,
       "skillRange": [
         4,
         6
@@ -85,7 +85,7 @@
       "category": "racket",
       "brand": "Yonex",
       "model": "Astrox 99 Pro (2nd Gen)",
-      "msrp": 329,
+      "msrp": 400,
       "skillRange": [
         4,
         6
@@ -152,7 +152,7 @@
       "category": "racket",
       "brand": "Yonex",
       "model": "Arcsaber 11 Pro",
-      "msrp": 309,
+      "msrp": 393,
       "skillRange": [
         4,
         6
@@ -171,7 +171,7 @@
         "tensionMaxLbs": 28,
         "gripSize": "G4/G5",
         "priceMinUSD": 285,
-        "priceMaxUSD": 285,
+        "priceMaxUSD": 320,
         "lastVerified": "2026-09-14",
         "notes": "Elite control/placement racket"
       },
@@ -251,7 +251,7 @@
       "category": "racket",
       "brand": "Victor",
       "model": "Auraspeed 90K",
-      "msrp": 259,
+      "msrp": 241,
       "skillRange": [
         4,
         6
@@ -268,8 +268,8 @@
         "frameMaterial": "HRM Graphite + Nano Aerogel + PBO Fiber",
         "tensionMaxLbs": 30,
         "gripSize": "G5",
-        "priceMinUSD": 180,
-        "priceMaxUSD": 220,
+        "priceMinUSD": 175,
+        "priceMaxUSD": 230,
         "lastVerified": "2026-09-14",
         "notes": "Reference speed/defense/counter-attack racket"
       },
@@ -349,7 +349,7 @@
       "category": "racket",
       "brand": "Li-Ning",
       "model": "Aeronaut 9000",
-      "msrp": 249,
+      "msrp": 345,
       "skillRange": [
         4,
         6
@@ -418,7 +418,7 @@
       "category": "racket",
       "brand": "Li-Ning",
       "model": "BladeX 700",
-      "msrp": 239,
+      "msrp": 290,
       "skillRange": [
         4,
         6
@@ -453,7 +453,7 @@
       "category": "racket",
       "brand": "Li-Ning",
       "model": "3D Calibar 900",
-      "msrp": 209,
+      "msrp": 345,
       "skillRange": [
         4,
         6
@@ -487,7 +487,7 @@
       "category": "racket",
       "brand": "Yonex",
       "model": "Nanoflare 001 Ability",
-      "msrp": 79,
+      "msrp": 69,
       "skillRange": [
         1,
         3
@@ -506,8 +506,8 @@
         "gripSize": "G4/G5",
         "tensionMinLbs": 20,
         "tensionMaxLbs": 27,
-        "priceMinUSD": 55,
-        "priceMaxUSD": 55
+        "priceMinUSD": 50,
+        "priceMaxUSD": 65
       },
       "sources": [
         {

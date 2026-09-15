@@ -2,6 +2,7 @@ import { activeRacket } from './activeRacket';
 import { isOffered } from './catalogOffer';
 import { axesOf, buildTarget, compareFit, isScorable, scoreFit, type FitInput } from './racketFit';
 import { MAX_LB, MIN_LB } from './tension';
+import { cadRange } from './catalogPrice';
 import type { CatalogItem, GearItem, PlayerGear, StringLogEntry } from './types';
 
 /**
@@ -14,9 +15,8 @@ import type { CatalogItem, GearItem, PlayerGear, StringLogEntry } from './types'
  * logs against — those cells and rows are simply absent.
  */
 
-/** USD → CAD for a TYPICAL range. A rough constant, captioned as such on the
- *  page; it is not a live rate and must never read as one. */
-export const USD_TO_CAD = 1.38;
+// The one price source, re-exported where the frame page has always imported it.
+export { USD_TO_CAD, cadRange } from './catalogPrice';
 
 export type SpecKey = 'weight' | 'balance' | 'shaft' | 'rated' | 'grip' | 'price';
 
@@ -40,15 +40,6 @@ const num = (row: CatalogItem, key: string): number | null => {
 
 /** "4U/5U" reads as "4U · 5U" in a cell. */
 const slashes = (s: string) => s.split('/').map((p) => p.trim()).filter(Boolean).join(' · ');
-
-/** A typical retail range in CAD, rounded to $5, or null without both bounds. */
-export function cadRange(row: CatalogItem): [number, number] | null {
-  const lo = num(row, 'priceMinUSD');
-  const hi = num(row, 'priceMaxUSD');
-  if (lo === null || hi === null || hi < lo) return null;
-  const five = (usd: number) => Math.round((usd * USD_TO_CAD) / 5) * 5;
-  return [five(lo), five(hi)];
-}
 
 /** The spec grid, in the design's order, with any cell the row cannot fill left out. */
 export function specCells(row: CatalogItem): SpecCell[] {

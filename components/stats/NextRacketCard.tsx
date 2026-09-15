@@ -7,6 +7,7 @@ import { racketSrc } from '@/lib/racketLook';
 import type { UseGear } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
 import { setupLines } from '@/lib/gearSetup';
+import { priceCadPoint } from '@/lib/catalogPrice';
 
 export interface NextRacketCardProps {
   gear: UseGear;
@@ -77,7 +78,7 @@ export default function NextRacketCard({ gear, picks, onOpen, onOpenFit }: NextR
   // The engine's own headline, which is already relative to the racket in
   // play; the price follows it, as in the design.
   const headline = (pick.reasons[0] ?? '').replace(/\.\s*$/, '');
-  const sub = [headline || null, typeof pick.item.msrp === 'number' ? `~$${pick.item.msrp}` : null].filter(Boolean).join(' · ');
+  const sub = [headline || null, priceCadPoint(pick.item) !== null ? `~$${priceCadPoint(pick.item)}` : null].filter(Boolean).join(' · ');
 
   return (
     <div className="glass-card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
