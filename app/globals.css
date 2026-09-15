@@ -5289,3 +5289,7 @@ button.setup-next-row { cursor: pointer; }
 }
 .frame-last-four .fit-mono { color: var(--text-primary); }
 .frame-log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-secondary); }
+
+/* The pick's thumbs: square 44px ghost buttons, the glyph at icon-lg. */
+.pick-rate-btn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.pick-rate-btn .material-icons { font-size: var(--icon-lg); }

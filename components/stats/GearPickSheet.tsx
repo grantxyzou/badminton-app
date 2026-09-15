@@ -486,7 +486,8 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
 
           {/* The feedback loop's "was it right" — only on an engine pick
               (`engineVersion` is set), said once per open. Two ghost buttons,
-              not a star row: a friend asking "any good?" wants a yes or a no. */}
+              not a star row: a yes or a no. Thumbs (Grant, 2026-09-14), with the
+              words as each button's accessible name. */}
           {pick?.engineVersion && !shownAlt && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
               <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
@@ -496,13 +497,14 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                 <button
                   key={r}
                   type="button"
-                  className="cc-btn cc-btn-ghost"
+                  className="cc-btn cc-btn-ghost pick-rate-btn"
+                  aria-label={t(r === 'up' ? 'pickSheetRateUp' : 'pickSheetRateDown')}
                   onClick={() => {
                     setRated(r);
                     void recordEngagement('pick_rated', { catalogId: item!.id, rating: r, ...beaconMeta });
                   }}
                 >
-                  {t(r === 'up' ? 'pickSheetRateUp' : 'pickSheetRateDown')}
+                  <span className="material-icons" aria-hidden="true">{r === 'up' ? 'thumb_up' : 'thumb_down'}</span>
                 </button>
               ))}
             </div>

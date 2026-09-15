@@ -472,12 +472,12 @@ describe('GearPickSheet — alternatives and the feedback loop', () => {
   it('a yes/no rating fires pick_rated once and then says thanks', async () => {
     mockAll(gearDoc());
     renderFit();
-    fireEvent.click(await screen.findByRole('button', { name: 'Not for me' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Not helpful' }));
     await waitFor(() => expect(beacons.filter((b) => b.kind === 'pick_rated')).toEqual([
       { kind: 'pick_rated', catalogId: 'r1', rating: 'down', engineVersion: 'fit-1', category: 'racket' },
     ]));
     expect(await screen.findByText('Thanks — noted.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Helpful' })).toBeNull();
   });
 
   it('"I\'ve tried it" exists only for a row the member owns, fires pick_tried once', async () => {
@@ -508,13 +508,13 @@ describe('GearPickSheet — alternatives and the feedback loop', () => {
       );
     }
     render(<NextIntlClientProvider locale="en" messages={enMessages}><Live /></NextIntlClientProvider>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Not for me' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Not helpful' }));
     expect(await screen.findByText('Thanks — noted.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Yonex Nanoflare 800 Pro' }));
     await screen.findByText('Back to our pick');
     fireEvent.click(screen.getByRole('button', { name: 'swap pick' }));
     // Racket B: rateable again, and shown as the top pick, not as alternatives[1].
-    expect(await screen.findByRole('button', { name: 'Not for me' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Not helpful' })).toBeTruthy();
     expect(screen.getByText('Racket B')).toBeTruthy();
     expect(screen.queryByText('Back to our pick')).toBeNull();
   });
