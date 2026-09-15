@@ -162,3 +162,20 @@ describe('computeFitFacts', () => {
     expect(f.frame?.name).toBe('Old Carlton');
   });
 });
+
+describe('a G3 grip', () => {
+  // Not compared through recommendFit: the top picks clamp at 100, so a
+  // six-point grip penalty is invisible there and a comparison passes either way.
+  it('is scored as G4 — the catalog sells nothing thicker — not as a miss on every frame', async () => {
+    const { buildFitInput } = await import('../lib/racketFitInput');
+    const { axesOf, buildTarget, scoreFit } = await import('../lib/racketFit');
+    const row = { id: 'r', category: 'racket', brand: 'X', model: 'Y', attributes: { balance: 'Even', flex: 'Medium', tier: 'Mid-range', gripSize: 'G4/G5', weightMinG: 80, weightMaxG: 84 } } as unknown as CatalogItem;
+    const base = { id: 'g', memberId: 'm', updatedAt: '', items: [], fitGoal: 'more_control', fitSwing: 'medium' } as unknown as PlayerGear;
+    const input = buildFitInput({ ...base, fitGrip: 'G3' } as PlayerGear, [], [row]);
+    expect(input.grip).toBe('G4');
+    const target = buildTarget(input, null);
+    const asG3 = scoreFit(row, axesOf(row)!, target, { ...input, grip: 'G3' }, null);
+    const mapped = scoreFit(row, axesOf(row)!, target, input, null);
+    expect(asG3.score).toBeLessThan(mapped.score);
+  });
+});

@@ -41,7 +41,10 @@ export function buildFitInput(
     swing: gear?.fitSwing,
     // The fit profile's soreness answer, when given, is the comfort answer.
     armComfort: effectiveArmComfort(gear),
-    grip: gear?.fitGrip,
+    // No catalog racket is sold in G3 — the thickest the catalog lists is G4 —
+    // so a G3 hand is scored as G4 (thickened with an overgrip), rather than
+    // missing on every frame and sinking every pick by the same penalty.
+    grip: gear?.fitGrip === 'G3' ? 'G4' : gear?.fitGrip,
     format: gear?.playFormat ?? 'both',
     budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,
     level,
