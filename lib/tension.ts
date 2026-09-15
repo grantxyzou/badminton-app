@@ -87,9 +87,21 @@ export function ratedRange(attributes: Record<string, unknown> | undefined): [nu
   return window[0] <= window[1] ? window : null;
 }
 
-/** Where a tension sits on the app's fixed 20–30 lb scale, 0–1, clamped. The
- *  one ruler every tension chart is drawn on, so a band on one screen measures
- *  the same as on another. */
-export function scalePosition(lbs: number): number {
-  return Math.max(0, Math.min(1, (lbs - MIN_LB) / (MAX_LB - MIN_LB)));
+/** Where a tension sits on a scale, 0–1, clamped. The scale is the app's
+ *  20–30 lb unless a chart has widened it to hold a figure past either end. */
+export function scalePosition(lbs: number, lo: number = MIN_LB, hi: number = MAX_LB): number {
+  return Math.max(0, Math.min(1, (lbs - lo) / (hi - lo)));
+}
+
+/**
+ * The scale a tension ruler draws: the app's 20–30 lb, widened to hold every
+ * figure on it (the member's, the rated window, the club's band) and rounded
+ * out to even pounds so the middle tick is a whole number. Members do string
+ * past 30, and a fixed scale pinned their line to the end while they typed.
+ */
+export function rulerScale(figures: Array<number | null | undefined>): [number, number] {
+  const nums = figures.filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+  const lo = Math.min(MIN_LB, ...nums);
+  const hi = Math.max(MAX_LB, ...nums);
+  return [Math.floor(lo / 2) * 2, Math.ceil(hi / 2) * 2];
 }

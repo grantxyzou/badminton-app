@@ -48,7 +48,10 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
   const catalog = useCatalog(category);
   const [specsOpen, setSpecsOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [tension, setTension] = useState<number | null>(null);
+  /** The tension typed on this visit: undefined = untouched (the saved one
+   *  shows), null = cleared while retyping (the field shows empty, not the
+   *  saved figure snapping back under the member's thumb). */
+  const [tension, setTension] = useState<number | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   /** Feel answers edited on this visit; null = untouched, so the stored ones show. */
   const [feel, setFeel] = useState<RacketFeel | null>(null);
@@ -132,15 +135,16 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                       <button
                         type="button"
                         className="setup-link"
-                        disabled={tension === null || tension === item.tensionLbs || gear.busy || !gear.online}
-                        onClick={() => { if (tension !== null) void run(() => gear.setTension(item, tension), () => setTension(null)); }}
+                        disabled={tension == null || tension === item.tensionLbs || gear.busy || !gear.online}
+                        onClick={() => { if (tension != null) void run(() => gear.setTension(item, tension), () => setTension(undefined)); }}
                       >
                         {t('saveTension')}
                       </button>
                     </span>
                     <TensionField
                       label={t('tension')}
-                      value={tension ?? item.tensionLbs ?? null}
+                      value={tension === undefined ? item.tensionLbs ?? null : tension}
+                      suggested={tension === null ? item.tensionLbs ?? null : null}
                       onChange={setTension}
                       rated={ratedRange(frameRow?.attributes)}
                       club={clubTension.band}

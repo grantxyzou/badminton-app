@@ -678,7 +678,7 @@
         "tensionClubHint": "俱乐部给这支球拍穿的磅数是 {low}–{high} 磅。",
         "tensionClubNone": "用这支拍并记录磅数的俱乐部成员还不够多。",
         "tensionClubError": "暂时连不上俱乐部数据。",
-        "tensionRulerLabel": "磅数范围 20 到 30 磅：你的磅数、俱乐部区间和球拍建议范围",
+        "tensionRulerLabel": "磅数范围 {low} 到 {high} 磅：你的磅数、俱乐部区间和球拍建议范围",
         "tensionOutOfRange": "超出了这支球拍的额定范围（{low} 到 {high} 磅）。",
         "lbUnit": "磅",
         "addTyped": "添加“{label}”",
