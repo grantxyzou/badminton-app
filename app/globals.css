@@ -2614,7 +2614,12 @@ html:root .ink-button {
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
+  /* A row on a list flashes its surface (the press ladder) — the same answer
+     .settings-row gives the Join/Create rows beneath these. */
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--duration-press) var(--ease-glass);
 }
+.group-row:active:not(:disabled) { background: var(--press-bg); }
 /* Where you already are is not a disabled control: full strength, no pointer. */
 .group-row[aria-current="true"] {
   cursor: default;
