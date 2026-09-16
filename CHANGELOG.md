@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Tapping a notification opens the right screen, without restarting the app (2026-09-16)
+
+- **In the app from the store**, tapping a notification used to reload the whole app — splash screen and all — even when it was already open. It now switches straight to the screen the notification is about, and refreshes it.
+- **In the home-screen web app**, tapping a notification only brought the app forward and left you wherever you were. It now takes you to that screen too.
+
 ### Pull to refresh feels like a phone's (2026-09-16)
 
 - **About a third of the pull.** It used to take ~283px of finger travel to refresh — three times iOS Mail. Now ~100px, and the pull stiffens as it goes instead of moving in a straight line.

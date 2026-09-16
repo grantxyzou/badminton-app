@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { isNative } from '@/lib/native';
 import { closeTopSheet } from '@/lib/sheetStack';
 import { rememberReturnCode } from '@/lib/handoffClient';
+import { routeInApp } from '@/lib/inAppNavigate';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const HOST = 'bpm.grantzou.com';
@@ -30,7 +31,8 @@ type Removable = { remove: () => Promise<void> | void };
  *    visibilitychange nor focus on this document.
  *  - The Android back button (policy below).
  *  - Status bar style following `data-theme`.
- *  - A push notification tap → navigate, only to our own path.
+ *  - A push notification tap → our own path only; a place inside the app
+ *    is switched to in place (`lib/inAppNavigate.ts`), never reloaded.
  */
 export default function NativeBridge({ activeTab, onGoHome }: Props) {
   // Refs, so the listeners registered once can read the latest values.
@@ -204,7 +206,11 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
         handles.push(
           await FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
             const url = (event.notification.data as { url?: unknown } | undefined)?.url;
-            if (typeof url === 'string' && url.startsWith(`${BASE}/`)) window.location.assign(url);
+            if (typeof url !== 'string' || !url.startsWith(`${BASE}/`)) return;
+            // A place inside the app switches tab in place; only another route
+            // (there is none today) loads as a page. `assign` for everything
+            // replayed the whole launch inside an app that was already open.
+            if (!routeInApp(url)) window.location.assign(url);
           }),
         );
       } catch {

@@ -93,9 +93,14 @@ self.addEventListener('notificationclick', (event) => {
     self.clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Prefer focusing an already-open BPM window over spawning a second one.
+        // Prefer focusing an already-open BPM window over spawning a second one
+        // — and TELL it where the notification goes. Focusing alone left an
+        // open app on whatever tab it was on, so "sign-ups are open" landed
+        // nowhere. The page switches tab in place (lib/inAppNavigate.ts), which
+        // is why this is a message and not `client.navigate()`: that reloads.
         for (const client of clientList) {
           if (client.url.includes(BASE) && 'focus' in client) {
+            client.postMessage({ type: 'bpm:navigate', url: target });
             return client.focus();
           }
         }
