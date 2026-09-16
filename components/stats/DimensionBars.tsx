@@ -28,16 +28,14 @@ import type { Dimension } from '@/lib/assessment';
 const ORDER: Dimension[] = ['technical', 'physical', 'mental'];
 
 /**
- * Fill gradients, one per dimension. Every colour is a token: `components/stats`
- * lints bare hex at ERROR level, and more importantly a literal would be the
- * resolved DARK value and would not follow the light theme.
+ * Fills, one per dimension — theme tokens (`--dim-fill-*` in app/globals.css).
+ * A literal here would be one value for both themes; light mode wants flatter,
+ * quieter fills than dark.
  */
 const FILL: Record<Dimension, string> = {
-  technical:
-    'linear-gradient(90deg, var(--sev-low-text), color-mix(in srgb, var(--sev-low-text) 60%, black))',
-  physical: 'linear-gradient(90deg, var(--accent), var(--accent-dark))',
-  mental:
-    'linear-gradient(90deg, var(--accent-amber), color-mix(in srgb, var(--sev-warn) 70%, black))',
+  technical: 'var(--dim-fill-technical)',
+  physical: 'var(--dim-fill-physical)',
+  mental: 'var(--dim-fill-mental)',
 };
 
 /** Theme-aware tick colour — a dark tick in light mode, a light one in dark. */

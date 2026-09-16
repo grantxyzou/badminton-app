@@ -60,6 +60,10 @@ const BOTH_THEME_TOKENS = [
   // A press drawn with the dark value in light mode (or vice versa) is either
   // invisible or a grey smear; it was invisible for the first day it shipped.
   '--press-bg',
+  // Stats tiles and bars: one string for both themes read as saturated slabs on
+  // the cream page. Each needs its own light value or light mode goes back.
+  '--stat-bg-accent', '--stat-bg-blue', '--stat-bg-amber', '--stat-bg-neutral',
+  '--dim-fill-technical', '--dim-fill-physical', '--dim-fill-mental',
 ];
 
 // Utility/surface classes the primitives + cards rely on.
