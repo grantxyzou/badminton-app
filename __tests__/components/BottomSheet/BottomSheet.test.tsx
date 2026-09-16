@@ -136,7 +136,7 @@ describe('BottomSheet — baked-in defaults (issue #87)', () => {
         <BottomSheetHeader>title</BottomSheetHeader>
       </BottomSheet>,
     );
-    const header = document.body.querySelector('[role="dialog"] > div')!;
+    const header = document.body.querySelector('[role="dialog"] > div:not(.bottom-sheet-grab)')!;
     expect(header.className).toContain('px-5');
     expect(header.className).toContain('pt-4');
     expect(header.className).toContain('pb-3');
@@ -149,7 +149,7 @@ describe('BottomSheet — baked-in defaults (issue #87)', () => {
         <BottomSheetBody>content</BottomSheetBody>
       </BottomSheet>,
     );
-    const body = document.body.querySelector('[role="dialog"] > div')!;
+    const body = document.body.querySelector('[role="dialog"] > div:not(.bottom-sheet-grab)')!;
     expect(body.className).toContain('p-5');
     expect(body.className).toContain('pb-8');
     // The scroll contract must survive alongside the padding.
@@ -163,7 +163,7 @@ describe('BottomSheet — baked-in defaults (issue #87)', () => {
         <BottomSheetHeader bare className="terminal-titlebar">title</BottomSheetHeader>
       </BottomSheet>,
     );
-    const header = document.body.querySelector('[role="dialog"] > div')!;
+    const header = document.body.querySelector('[role="dialog"] > div:not(.bottom-sheet-grab)')!;
     expect(header.className).toBe('terminal-titlebar');
     expect(header.className).not.toContain('px-5');
   });
@@ -174,7 +174,7 @@ describe('BottomSheet — baked-in defaults (issue #87)', () => {
         <BottomSheetBody bare>content</BottomSheetBody>
       </BottomSheet>,
     );
-    const body = document.body.querySelector('[role="dialog"] > div')!;
+    const body = document.body.querySelector('[role="dialog"] > div:not(.bottom-sheet-grab)')!;
     expect(body.className).toContain('overflow-y-auto');
     expect(body.className).not.toContain('p-5');
   });
@@ -193,5 +193,99 @@ describe('BottomSheet — baked-in defaults (issue #87)', () => {
     expect(dialog.className).toContain('terminal-sheet');
     expect(dialog.className).not.toMatch(/max-w-|mx-auto/);
     expect(dialog.style.maxHeight).toBe('');
+  });
+});
+
+describe('BottomSheet — drag to dismiss', () => {
+  afterEach(cleanup);
+
+  /** jsdom has no pointer-capture and no layout; supply both. */
+  function openSheet(onClose = vi.fn()) {
+    render(
+      <BottomSheet open onClose={onClose} ariaLabel="Test sheet">
+        <BottomSheetHeader>title</BottomSheetHeader>
+        <BottomSheetBody>content</BottomSheetBody>
+      </BottomSheet>,
+    );
+    const sheet = document.body.querySelector('[role="dialog"]') as HTMLElement;
+    sheet.setPointerCapture = vi.fn();
+    sheet.releasePointerCapture = vi.fn();
+    // 600px tall: a quarter of it (150) clears the 88px floor, so the fraction
+    // is what these cases are actually testing.
+    vi.spyOn(sheet, 'getBoundingClientRect').mockReturnValue({ height: 600 } as DOMRect);
+    return { sheet, onClose, grab: sheet.querySelector('.bottom-sheet-grab') as HTMLElement };
+  }
+
+  /** One gesture: down on `from`, a move per [y, ms] step, then up. The clock
+   *  is driven rather than waited on — velocity is what separates a flick from
+   *  a slow drag, and a synthetic event's own timeStamp cannot be set. */
+  function drag(sheet: HTMLElement, from: HTMLElement, steps: Array<[number, number]>) {
+    const clock = vi.spyOn(performance, 'now');
+    clock.mockReturnValue(0);
+    fireEvent.pointerDown(from, { pointerId: 1, clientY: 0 });
+    let last: [number, number] = [0, 0];
+    for (const [y, t] of steps) {
+      clock.mockReturnValue(t);
+      fireEvent.pointerMove(sheet, { pointerId: 1, clientY: y });
+      last = [y, t];
+    }
+    fireEvent.pointerUp(sheet, { pointerId: 1, clientY: last[0] });
+    clock.mockRestore();
+  }
+
+  it('a slow drag past a quarter of the sheet dismisses it', () => {
+    const { sheet, grab, onClose } = openSheet();
+    drag(sheet, grab, [[60, 100], [120, 200], [200, 400]]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('a short drag springs back and dismisses nothing', () => {
+    const { sheet, grab, onClose } = openSheet();
+    drag(sheet, grab, [[20, 100], [40, 300], [50, 600]]);
+    expect(onClose).not.toHaveBeenCalled();
+    // Back under CSS control, not pinned where the finger left it.
+    expect(sheet.style.transform).toBe('');
+    expect(sheet.dataset.dragging).toBeUndefined();
+  });
+
+  it('a flick dismisses even though it never travelled far', () => {
+    const { sheet, grab, onClose } = openSheet();
+    // 60px in 50ms = 1.2px/ms, well past FLICK_VELOCITY, and nowhere near 150px.
+    drag(sheet, grab, [[10, 10], [70, 60]]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('follows the finger while dragging, and upward drags resist', () => {
+    const { sheet, grab } = openSheet();
+    fireEvent.pointerDown(grab, { pointerId: 1, clientY: 0, timeStamp: 0 });
+    fireEvent.pointerMove(sheet, { pointerId: 1, clientY: 100, timeStamp: 100 });
+    expect(sheet.style.transform).toBe('translateY(100px)');
+    expect(sheet.dataset.dragging).toBe('true');
+    fireEvent.pointerMove(sheet, { pointerId: 1, clientY: -100, timeStamp: 200 });
+    // Rubber-banded, not followed: a sheet does not go up.
+    expect(sheet.style.transform).toBe('translateY(-18px)');
+  });
+
+  it('the body is not a grab surface — it is the scroller', () => {
+    const { sheet, onClose } = openSheet();
+    const body = sheet.querySelector('.overflow-y-auto') as HTMLElement;
+    drag(sheet, body, [[200, 100], [400, 300]]);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(sheet.style.transform).toBe('');
+  });
+
+  it('a sheet that must be ANSWERED has no grabber and cannot be dragged', () => {
+    const onClose = vi.fn();
+    render(
+      <BottomSheet open onClose={onClose} ariaLabel="Consent" closeOnEscape={false}>
+        <BottomSheetHeader>title</BottomSheetHeader>
+      </BottomSheet>,
+    );
+    const sheet = document.body.querySelector('[role="dialog"]') as HTMLElement;
+    sheet.setPointerCapture = vi.fn();
+    vi.spyOn(sheet, 'getBoundingClientRect').mockReturnValue({ height: 600 } as DOMRect);
+    expect(sheet.querySelector('.bottom-sheet-grab')).toBeNull();
+    drag(sheet, sheet.querySelector('[data-sheet-grab]') as HTMLElement, [[300, 100], [500, 300]]);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

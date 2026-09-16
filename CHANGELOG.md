@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Sheets can be dragged down to close (2026-09-16)
+
+- **Every sheet has a grabber and closes the way a phone's own sheets do**: drag it down from the grabber or its title. Past about a quarter of the way, or with a quick flick, it closes; a short drag springs back. The ✕ is still there. A sheet that has to be answered (the club-comparison question) can't be dragged away.
+
 ### Fewer repeat requests on Stats (2026-09-15)
 
 - **Three things were being asked for twice on the same screen** — the club bands, your kudos and your games, each read by two cards that load together. They now share one request. Pulling to refresh still refetches everything.
