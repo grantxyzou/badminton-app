@@ -62,7 +62,11 @@ interface Props {
    * because a client-supplied intent would be trivially forgeable.
    */
   mode?: 'signin' | 'link';
-  /** Providers already linked to this member; rendered as connected, not tappable. */
+  /**
+   * Providers already linked to this member, which get NO button. The caller
+   * that passes this (SignInMethodsCard) lists them itself, with Disconnect;
+   * drawing a "connected" box here as well put every provider on screen twice.
+   */
   linked?: Provider[];
   /**
    * Availability already resolved by the SERVER, which skips the probe below.
@@ -182,47 +186,21 @@ export default function ProviderButtons({
   /* APPLE FIRST (Grant, 2026-09-15). Decided here rather than trusted from
      whichever source answered (the server prop, the probe), so every sign-in
      surface lists them the same way. */
-  const available = (given ?? probed)?.slice().sort((a, b) => PROVIDER_ORDER.indexOf(a) - PROVIDER_ORDER.indexOf(b));
+  const available = (given ?? probed)?.filter((p) => !linked.includes(p)).sort((a, b) => PROVIDER_ORDER.indexOf(a) - PROVIDER_ORDER.indexOf(b));
   if (!available || available.length === 0) return null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
       {available.map((p) => {
-        const isLinked = linked.includes(p);
-        const label = isLinked
-          ? t(p === 'google' ? 'googleConnected' : 'appleConnected')
-          : t(
-              mode === 'link'
-                ? p === 'google'
-                  ? 'connectGoogle'
-                  : 'connectApple'
-                : p === 'google'
-                  ? 'continueGoogle'
-                  : 'continueApple',
-            );
-
-        if (isLinked) {
-          return (
-            <div
-              key={p}
-              className="cc-mini-card"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                padding: 'var(--space-4)',
-                borderRadius: 'var(--radius-lg)',
-                color: 'var(--text-secondary)',
-                fontSize: 'var(--fs-md)',
-              }}
-            >
-              <span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>
-                check_circle
-              </span>
-              {label}
-            </div>
-          );
-        }
+        const label = t(
+          mode === 'link'
+            ? p === 'google'
+              ? 'connectGoogle'
+              : 'connectApple'
+            : p === 'google'
+              ? 'continueGoogle'
+              : 'continueApple',
+        );
 
         // Each provider's button is that provider's, down to the surface
         // colours — `.btn-google` and `.btn-apple` in globals.css. They are two

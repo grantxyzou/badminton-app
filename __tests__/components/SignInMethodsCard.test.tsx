@@ -89,6 +89,25 @@ describe('SignInMethodsCard', () => {
     expect(screen.queryByText('Not now')).toBeNull();
   });
 
+  it('lists each provider ONCE — two Google accounts are one row with a count', async () => {
+    // What a member with two linked Google accounts and Apple actually saw:
+    // "Google connected" twice with a Disconnect each, then a second
+    // "Google connected" and "Apple connected" drawn by ProviderButtons.
+    mockApi({
+      available: ['google', 'apple'],
+      linked: ['google', 'google', 'apple'],
+      hasPin: true,
+      hasPassword: false,
+      nudge: false,
+    });
+    renderCard({ embedded: true });
+    await screen.findByText('2 accounts');
+    expect(screen.getAllByText('Google connected')).toHaveLength(1);
+    expect(screen.getAllByText('Apple connected')).toHaveLength(1);
+    expect(screen.getAllByText('Disconnect')).toHaveLength(2);
+    expect(screen.queryByText('Connect Google')).toBeNull();
+  });
+
   it('asks for confirmation before disconnecting', async () => {
     mockApi({ available: [], linked: ['google'], hasPin: true, nudge: false });
     renderCard();

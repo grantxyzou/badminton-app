@@ -356,6 +356,7 @@
       "methodPassword": "邮箱和密码",
       "methodEmailShort": "邮箱",
       "methodPinOnly": "目前唯一的登录方式",
+      "linkedAccounts": "{count} 个账号",
       "disconnect": "解除绑定",
       "disconnectConfirm": "确定解除绑定？",
       "disconnectCancel": "先留着",
