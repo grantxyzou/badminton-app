@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Smoother scrolling (2026-09-15)
+
+- **The condensing header no longer animates while you scroll.** It was animating its blur, its padding and its title size — the three things a phone has to redo on every frame — at exactly the moment scrolling needs them. The header still condenses; it just arrives.
+
 ### Better to touch (2026-09-15)
 
 - **Typing no longer zooms the page on iPhone.** Any field under 16px makes iOS zoom in on focus and never zoom back; fields are 16px on a touch screen now, and unchanged with a mouse.
