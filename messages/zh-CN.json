@@ -371,7 +371,7 @@
       "claimNoPin": "没有 PIN 码？向管理员索取验证码",
       "claimUsePin": "改用我的 PIN 码",
       "claimWrong": "不匹配。请检查数字后重试。",
-      "claimRateLimited": "åæ­ä¸å°æ¶åè¯å§ — æèåç®¡çåè¦ä¸ä¸ªéªè¯ç ï¼ä¸ç¨ç­ã",
+      "claimRateLimited": "先歇一小时再试吧 — 或者向管理员要一个验证码，不用等。",
       "claimAlreadyLinked": "该账号已连接到这里的其他人。",
       "claimDifferentName": "换一个名字",
           "continueGoogle": "使用 Google 继续",
