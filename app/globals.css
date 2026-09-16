@@ -3595,7 +3595,11 @@ html:root[data-tab="admin"] .bottom-sheet {
   color: inherit;
 }
 button.sheet-row { cursor: pointer; }
-button.sheet-row:hover { background: var(--glass-soft-bg); }
+/* Gated: on a touch screen :hover latches after the tap and the row stays lit
+   until you tap something else. The press state below is what a finger gets. */
+@media (hover: hover) {
+  button.sheet-row:hover { background: var(--glass-soft-bg); }
+}
 /* An owned row is not tappable — it already answers its own question. The
    tint is the same one the roster uses to mark "this is you". */
 .sheet-row--owned { background: var(--highlight-green); }
@@ -4170,8 +4174,8 @@ html:root[data-theme="light"] {
   white-space: nowrap;
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
-.cc-session-chip:hover {
-  background: rgba(255, 255, 255, 0.07);
+@media (hover: hover) {
+  .cc-session-chip:hover { background: rgba(255, 255, 255, 0.07); }
 }
 .cc-session-chip[aria-selected="true"] {
   background: var(--inner-card-green-bg, rgba(74, 222, 128, 0.13));
@@ -4523,7 +4527,9 @@ html:root[data-theme="light"] {
   cursor: pointer;
   text-align: left;
 }
-.bpm-row-link:hover { color: #86efac; }
+@media (hover: hover) {
+  .bpm-row-link:hover { color: #86efac; }
+}
 .bpm-row-link:disabled { opacity: 0.5; pointer-events: none; }
 .bpm-row-link:focus-visible {
   outline: 2px solid var(--accent);
@@ -5187,8 +5193,11 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
 .look-row { display: flex; flex-direction: column; gap: var(--space-2); }
 .look-label { font-size: var(--fs-sm); color: var(--text-secondary); }
 .look-swatches { display: flex; flex-wrap: wrap; gap: var(--space-3); }
-/* 32px dots inside a 44px hit area: the margin is the touch target, the dot the choice. */
+/* A 32px dot with a 44px hit area. The margin does NOT do that — a margin sits
+   outside the border box and takes no pointer events, which is what the old
+   comment here claimed. `::after` below is the real target. */
 .look-swatch {
+  position: relative;
   width: 32px;
   height: 32px;
   margin: var(--space-2);
@@ -5651,3 +5660,69 @@ button.setup-next-row { cursor: pointer; }
 .club-gear-row--link { padding: 0; border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform 100ms var(--ease-out-quart); }
 .club-gear-row--link:active { transform: scale(0.98); }
 .club-gear-chevron { font-size: var(--icon-sm); color: var(--text-muted); vertical-align: middle; margin-left: var(--space-1); }
+
+/* ── Touch feel (mobile review, 2026-09-15) ─────────────────────────────────
+   What a finger gets. Three groups:
+
+   1. A PRESS STATE on the controls that had none. Four families answered a tap
+      with nothing but WebKit's grey flash — a third press language next to the
+      `scale(0.97)` the buttons already speak. Compact controls scale, rows
+      flash their own surface, and rows with no surface dim. Every one of them
+      also turns the grey flash off, so there is one language.
+   2. TOUCH TARGETS, under `pointer: coarse` only, so a mouse-driven admin
+      screen keeps its density. `min-height` alone: padding is untouched, so
+      nothing moves on a control that already cleared 44px.
+   3. FIELDS AT 16px on touch. Under 16px, iOS zooms the page on focus and does
+      not zoom back — the app's 14px fields did it on every form. 14px stays the
+      design everywhere a pointer is fine. */
+button.sheet-row,
+.cc-mini-card,
+.cc-session-chip,
+button.setup-line,
+.setup-line-hit,
+.bpm-row-link,
+.rail-tab {
+  -webkit-tap-highlight-color: transparent;
+}
+button.sheet-row:active,
+.cc-session-chip:active { background: var(--glass-soft-bg); }
+button.setup-line,
+.setup-line-hit,
+.bpm-row-link { transition: opacity 100ms var(--ease-glass); }
+button.setup-line:active,
+.setup-line-hit:active,
+.bpm-row-link:active { opacity: 0.6; }
+.rail-tab { transition: transform 100ms var(--ease-glass); }
+.rail-tab:active { transform: scale(0.94); }
+/* The dot stays 32px; this is the part a thumb actually has to hit. */
+.look-swatch::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-2));
+}
+
+@media (pointer: coarse) {
+  .cc-btn,
+  .btn-primary,
+  .btn-ghost,
+  .sheet-row,
+  button.setup-line,
+  .setup-line-hit,
+  .filter-chip,
+  .cc-session-chip { min-height: 44px; }
+
+  input,
+  select,
+  textarea { font-size: 16px; }
+  /* Its own figure is the point of the control. */
+  .tension-field-box input,
+  .tension-field-box input:focus { font-size: var(--fs-stat-lg); }
+}
+
+/* A chip rail scrolls on its own: an overscroll at either end should not hand
+   the gesture to the page, and the chips settle on a chip. */
+.filter-chips {
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+.filter-chip { scroll-snap-align: start; }

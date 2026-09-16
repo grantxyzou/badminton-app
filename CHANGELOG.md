@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Better to touch (2026-09-15)
+
+- **Typing no longer zooms the page on iPhone.** Any field under 16px makes iOS zoom in on focus and never zoom back; fields are 16px on a touch screen now, and unchanged with a mouse.
+- **Everything you tap answers.** Set-up lines, list rows, the mini cards and the bottom-nav tabs gave no response to a tap except the browser's own grey flash. They now press like the buttons do, and the grey flash is off.
+- **Bigger targets on touch**: buttons, list rows, filter chips and the colour swatches all clear 44px — on touch screens only, so the admin screens keep their density on a laptop.
+- A sheet's scroll stays in the sheet, and the filter chips settle on a chip.
+
 ### Faster to open (2026-09-15)
 
 - **Opening the app no longer downloads the screens you haven't opened.** Sign-Ups, Stats and Profile now load when you first go to them; Home (and the announcement, which is the first thing you read) is unchanged. A canary keeps them from creeping back into the first load.
