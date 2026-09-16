@@ -208,7 +208,7 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
             {/* Only when the answer actually moved the range: a line explaining
                 a change that did not happen would be a small lie. */}
             {value('fitSoreness') && value('fitSoreness') !== 'none' && verdict.data?.facts.sorenessMovedRange && (
-              <p className="fit-consequence">{t('soreConsequence')}</p>
+              <p className="fit-consequence motion-fade">{t('soreConsequence')}</p>
             )}
           </section>
 
@@ -278,8 +278,10 @@ export function VerdictCard({ data, error, forbidden, onRetry, known, hasRacket,
             marker). */}
         {copy && <AIBadge label={tStats('insightChip.aiGenerated')}>{tStats('summaryGreeting.ai')}</AIBadge>}
       </div>
-      <h2 className="fit-headline">{copy?.headline ?? t(`headline_${facts.state}`, { frame })}</h2>
-      <p className="fit-body">{copy?.body ?? (needsFeel ? t('body_needsFeel') : t(`body_${facts.state}`))}</p>
+      {/* The verdict re-reads after each answer. Keyed on what it SAYS, so a
+          changed verdict crossfades and an unchanged one stays still. */}
+      <h2 key={`h:${copy?.headline ?? facts.state}`} className="fit-headline motion-fade">{copy?.headline ?? t(`headline_${facts.state}`, { frame })}</h2>
+      <p key={`b:${copy?.body ?? facts.state}`} className="fit-body motion-fade">{copy?.body ?? (needsFeel ? t('body_needsFeel') : t(`body_${facts.state}`))}</p>
 
       {judged && facts.reasons.length > 0 && (
         <ul className="fit-reasons">

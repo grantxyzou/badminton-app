@@ -426,7 +426,10 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
       {header}
 
       <BottomSheetBody>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        {/* Keyed on the item shown: tapping an alternative replaces name,
+            price and reasons at once, and a crossfade says the subject changed
+            rather than that the same card redrew. */}
+        <div key={item?.id ?? 'none'} className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {prefSummary}
           {controlsVisible && controls}
 

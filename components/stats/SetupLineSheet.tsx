@@ -192,7 +192,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                         </div>
                         {onCrosses && <ActionRow icon="swap_horiz" label={t('changeCrosses')} onClick={onCrosses} disabled={!gear.online} />}
                         {confirmCrosses ? (
-                          <div className="setup-action" role="group" aria-label={t('removeCrossesConfirm', { label: crosses.label })}>
+                          <div className="setup-action motion-fade" role="group" aria-label={t('removeCrossesConfirm', { label: crosses.label })}>
                             <span className="setup-action-label" style={{ color: 'var(--text-primary)' }}>{t('removeCrossesConfirm', { label: crosses.label })}</span>
                             <button type="button" className="setup-link" style={{ color: 'var(--sev-crit-text)' }} disabled={gear.busy || !gear.online}
                               onClick={() => { void run(() => gear.setCrosses(item.id, null), () => { setConfirmCrosses(false); setCrossesTension(undefined); }); }}>
@@ -215,7 +215,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
               )}
 
               {confirmRemove ? (
-                <div className="setup-action" role="group" aria-label={t('removeConfirm', { label: item.label })}>
+                <div className="setup-action motion-fade" role="group" aria-label={t('removeConfirm', { label: item.label })}>
                   <span className="setup-action-label" style={{ color: 'var(--text-primary)' }}>{t('removeConfirm', { label: item.label })}</span>
                   <button type="button" className="setup-link" style={{ color: 'var(--sev-crit-text)' }} disabled={gear.busy || !gear.online}
                     onClick={() => { void run(() => gear.remove(item.id), onClose); }}>

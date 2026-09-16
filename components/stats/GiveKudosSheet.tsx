@@ -124,7 +124,7 @@ export default function GiveKudosSheet({
           /* The confirmation IS the sheet. Dismissing on success would render
              the acknowledgement for one frame to nobody — the same rule the
              gear sheets landed on. */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', alignItems: 'center', padding: 'var(--space-5) 0' }}>
+          <div className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', alignItems: 'center', padding: 'var(--space-5) 0' }}>
             <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-xl)', color: 'var(--accent)' }}>
               check_circle
             </span>

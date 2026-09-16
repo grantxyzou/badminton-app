@@ -347,7 +347,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
 
   function savedPanel(catalogId: string | null, title: string) {
     return (
-      <div className="setup-saved" key={catalogId ?? `typed:${title}`}>
+      <div className="setup-saved motion-fade" key={catalogId ?? `typed:${title}`}>
         <div className="setup-saved-head">
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--accent)' }}>check_circle</span>
           {category === 'racket' && <RacketThumb catalogId={catalogId} saved />}

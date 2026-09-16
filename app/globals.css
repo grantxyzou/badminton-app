@@ -5323,7 +5323,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   border: 1px solid var(--inner-card-border);
   overflow: hidden;
 }
-.tension-ruler-rated { position: absolute; top: 0; bottom: 0; background: var(--inner-card-border); }
+.tension-ruler-rated { position: absolute; top: 0; bottom: 0; background: var(--inner-card-border); transition: left var(--duration-sheet) var(--ease-sheet), width var(--duration-sheet) var(--ease-sheet); }
 .tension-ruler-club {
   position: absolute;
   top: 3px;

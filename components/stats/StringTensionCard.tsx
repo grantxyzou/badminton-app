@@ -193,6 +193,10 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
 
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 'var(--space-2)' }}>
         <span
+          // Keyed on the value: Doubles ↔ Singles changes the number, and the
+          // tick says it changed rather than that it was always this.
+          key={advice.lb}
+          className="animate-count-tick"
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--fs-stat-xl)',
@@ -227,6 +231,8 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
             borderRadius: '50%',
             background: 'var(--text-primary)',
             boxShadow: 'var(--glass-shadow)',
+            // The same travel as the ruler's own markers.
+            transition: 'left var(--duration-sheet) var(--ease-sheet)',
           }}
         />
       </div>

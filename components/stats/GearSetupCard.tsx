@@ -181,7 +181,7 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
                       <span className="setup-line-value">{name}</span>
                       {typeof lbs === 'number' && (
                         <span className="setup-tension">
-                          <span className="setup-tension-value">{lbs}</span>
+                          <span key={lbs} className="setup-tension-value animate-count-tick">{lbs}</span>
                           <span className="setup-tension-unit">{t('lb')}</span>
                         </span>
                       )}
@@ -224,7 +224,9 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
                 </span>
                 {string && typeof string.tensionLbs === 'number' ? (
                   <span className="setup-tension">
-                    <span className="setup-tension-value">{string.tensionLbs}</span>
+                    {/* Keyed: a just-saved tension ticks in, instead of the
+                        number silently being different when the sheet closes. */}
+                    <span key={string.tensionLbs} className="setup-tension-value animate-count-tick">{string.tensionLbs}</span>
                     <span className="setup-tension-unit">{t('lb')}</span>
                   </span>
                 ) : !string ? (
