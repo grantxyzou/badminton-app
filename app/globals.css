@@ -1578,12 +1578,10 @@ html:root[data-theme="light"] {
   --sev-low-label: var(--sev-low-text);
 }
 
-html:root .player-highlight-green {
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-html:root .player-highlight-amber {
-  box-shadow: inset 2px 0 0 var(--accent-amber);
-}
+/* No accent stripe on the player highlight. The spec
+   (docs/design-system/ui_kits/bpm-app/signups.jsx) marks your own row with the
+   fill alone; a 2px inset bar down a 12px-radius row read as a clipped border,
+   and it spent accent on a row the tint already identifies. */
 
 /* The aurora is the thing being replaced. Hide it — do NOT delete the rules
    above: __tests__/design-canary.test.ts asserts .aurora-blob-1 still appears
