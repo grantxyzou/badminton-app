@@ -11,7 +11,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 
 import { GET } from '../app/api/equipment/fit-verdict/route';
 import { __resetCatalogSeedForTests } from '../lib/catalogSeed';
-import { parseCopy } from '../lib/fitVerdictCopy';
+import { checkCopy, parseCopy } from '../lib/fitVerdictCopy';
 import type { FitFacts } from '../lib/fitVerdict';
 
 const BASE = 'http://localhost:3000/api/equipment/fit-verdict';
@@ -139,13 +139,45 @@ describe('GET /api/equipment/fit-verdict', () => {
     expect(body.facts.state).not.toBe('insufficient');
   });
 
-  it('a model failure still answers with the facts', async () => {
+  it('a rejected reply is cached for a day, logged by rule, then asked again', async () => {
     const lin = seedMember('Lin');
     seedGear(lin.id);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockCreate.mockResolvedValue(reply({ headline: 'x'.repeat(71), body: 'y', reasons: [] }));
+
+    const first = await (await GET(asMember('Lin', 'Lin'))).json();
+    expect(first.copy).toBeNull();
+    expect(first.cached).toBe(false);
+    const logged = warn.mock.calls.find((c) => c[0] === 'fit-verdict copy off contract; using templated copy');
+    expect(logged?.[1]).toMatchObject({ rule: 'headline:too_long', length: 71, limit: 70 });
+
+    // The same facts inside the day: the fallback, and no second call.
+    const second = await (await GET(asMember('Lin', 'Lin'))).json();
+    expect(second.copy).toBeNull();
+    expect(second.cached).toBe(true);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+
+    // A day on, the same facts ask again.
+    const docs = getStore()['insights'] as { rejected?: string; generatedAt: string }[];
+    const doc = docs.find((d) => d.rejected === 'headline:too_long');
+    expect(doc).toBeTruthy();
+    doc!.generatedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    await GET(asMember('Lin', 'Lin'));
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+
+  it('a model failure still answers with the facts, and is not cached', async () => {
+    const lin = seedMember('Lin');
+    seedGear(lin.id);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockCreate.mockRejectedValue(new Error('overloaded'));
     const res = await GET(asMember('Lin', 'Lin'));
     expect(res.status).toBe(200);
     expect((await res.json()).copy).toBeNull();
+    await GET(asMember('Lin', 'Lin'));
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    error.mockRestore();
   });
 
   it('judges a frame the member does not own, with no current tension', async () => {
@@ -186,5 +218,17 @@ describe('parseCopy', () => {
     expect(parseCopy(JSON.stringify({ ...GOOD, reasons: ['a'] }), facts)).toBeNull();
     expect(parseCopy(JSON.stringify({ ...GOOD, headline: 'x'.repeat(71) }), facts)).toBeNull();
     expect(parseCopy('Sure! Here is your verdict.', facts)).toBeNull();
+  });
+
+  it('names the first rule a reply broke, and never carries its text', () => {
+    const named = { ...facts, frame: { name: 'Air Force 79', balance: 'Even', flex: 'Medium', weightClass: '4U' } } as FitFacts;
+    const rule = (obj: unknown, f: FitFacts = facts) => checkCopy(typeof obj === 'string' ? obj : JSON.stringify(obj), f).rejection;
+    expect(rule('Sure! Here is your verdict.')).toEqual({ rule: 'not_json' });
+    expect(rule({ ...GOOD, headline: '' })).toEqual({ rule: 'headline:missing' });
+    expect(rule({ ...GOOD, body: 'z'.repeat(221) })).toEqual({ rule: 'body:too_long', length: 221, limit: 220 });
+    expect(rule({ ...GOOD, headline: 'Your Air Force 79 wants 24 lb' }, named)).toEqual({ rule: 'headline:digit' });
+    expect(rule({ ...GOOD, reasons: ['a'] })).toEqual({ rule: 'reason_count' });
+    expect(rule({ ...GOOD, reasons: ['a', 'String it at 24'] })).toEqual({ rule: 'reason_2:digit' });
+    expect(checkCopy(JSON.stringify(GOOD), facts)).toEqual({ copy: GOOD });
   });
 });
