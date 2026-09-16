@@ -139,7 +139,31 @@ describe('GET /api/equipment/fit-verdict', () => {
     expect(body.facts.state).not.toBe('insufficient');
   });
 
-  it('a rejected reply is cached for a day, logged by rule, then asked again', async () => {
+  it('a lone miss asks once more and keeps the words that pass', async () => {
+    const lin = seedMember('Lin');
+    seedGear(lin.id);
+    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'false';
+    const facts = (await (await GET(asMember('Lin', 'Lin'))).json()).facts as FitFacts;
+    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'true';
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockCreate
+      .mockResolvedValueOnce(reply({ headline: 'x'.repeat(71), body: 'y', reasons: [] }))
+      .mockResolvedValueOnce(goodReplyFor(facts));
+
+    const body = await (await GET(asMember('Lin', 'Lin'))).json();
+    expect(body.copy?.headline).toBe('This racket is on your side');
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    const retry = warn.mock.calls.find((c) => c[0] === 'fit-verdict copy off contract; asking once more');
+    expect(retry?.[1]).toMatchObject({ rule: 'headline:too_long', length: 71, limit: 70, attempt: 1 });
+    expect(warn.mock.calls.some((c) => c[0] === 'fit-verdict copy off contract; using templated copy')).toBe(false);
+
+    // The words that passed are what is cached.
+    expect((await (await GET(asMember('Lin', 'Lin'))).json()).cached).toBe(true);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+
+  it('two misses fall back, cached for an hour, then ask again', async () => {
     const lin = seedMember('Lin');
     seedGear(lin.id);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -148,22 +172,26 @@ describe('GET /api/equipment/fit-verdict', () => {
     const first = await (await GET(asMember('Lin', 'Lin'))).json();
     expect(first.copy).toBeNull();
     expect(first.cached).toBe(false);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
     const logged = warn.mock.calls.find((c) => c[0] === 'fit-verdict copy off contract; using templated copy');
-    expect(logged?.[1]).toMatchObject({ rule: 'headline:too_long', length: 71, limit: 70 });
+    expect(logged?.[1]).toMatchObject({ rule: 'headline:too_long', attempt: 2 });
 
-    // The same facts inside the day: the fallback, and no second call.
+    // The same facts inside the hour: the fallback, and no call.
     const second = await (await GET(asMember('Lin', 'Lin'))).json();
     expect(second.copy).toBeNull();
     expect(second.cached).toBe(true);
-    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
 
-    // A day on, the same facts ask again.
+    // Just inside the hour still holds; past it, the same facts ask again.
     const docs = getStore()['insights'] as { rejected?: string; generatedAt: string }[];
     const doc = docs.find((d) => d.rejected === 'headline:too_long');
     expect(doc).toBeTruthy();
-    doc!.generatedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    doc!.generatedAt = new Date(Date.now() - 59 * 60 * 1000).toISOString();
     await GET(asMember('Lin', 'Lin'));
     expect(mockCreate).toHaveBeenCalledTimes(2);
+    doc!.generatedAt = new Date(Date.now() - 61 * 60 * 1000).toISOString();
+    await GET(asMember('Lin', 'Lin'));
+    expect(mockCreate).toHaveBeenCalledTimes(4);
     warn.mockRestore();
   });
 
@@ -175,6 +203,7 @@ describe('GET /api/equipment/fit-verdict', () => {
     const res = await GET(asMember('Lin', 'Lin'));
     expect(res.status).toBe(200);
     expect((await res.json()).copy).toBeNull();
+    // Not retried within the view either: one call per view, and none cached.
     await GET(asMember('Lin', 'Lin'));
     expect(mockCreate).toHaveBeenCalledTimes(2);
     error.mockRestore();
