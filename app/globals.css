@@ -3105,11 +3105,19 @@ textarea {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* The celebrate entrance must outrank the banners' own: `.status-celebrate`
+   is declared earlier in this file at the same specificity, so the plain
+   `statusBannerIn` above silently replaced it on every celebrating banner and
+   only the icon pop survived. */
+:is(.status-banner-green, .status-banner-orange, .status-banner-red).status-celebrate {
+  animation: signupBannerIn var(--duration-normal) var(--ease-glass) both;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .status-banner-green,
   .status-banner-orange,
-  .status-banner-red { animation: none; }
+  .status-banner-red,
+  :is(.status-banner-green, .status-banner-orange, .status-banner-red).status-celebrate { animation: none; }
 }
 
 /* ── Shared text patterns ── */
