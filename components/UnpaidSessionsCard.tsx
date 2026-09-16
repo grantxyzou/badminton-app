@@ -328,7 +328,9 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
 
   return (
     <div
-      className={`glass-card ${isHome ? "p-4" : "p-5"}`}
+      // Fades in: Home renders nothing until the balance lands, so the card
+      // arrives into a page that is already on screen.
+      className={`glass-card motion-fade ${isHome ? "p-4" : "p-5"}`}
       // Collapsible: the gap lives INSIDE the collapse (as its top padding),
       // so a closing body does not leave a gap behind that snaps on unmount.
       style={{ display: 'flex', flexDirection: 'column', gap: collapsible ? undefined : 'var(--space-4)' }}

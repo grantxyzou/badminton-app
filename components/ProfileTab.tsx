@@ -478,21 +478,24 @@ export default function ProfileTab({
               {orDivider}
             </>
           )}
-          {emailMode ? (
-            <EmailSignInForm
-              onSuccess={handleSignInSuccess}
-              // Withheld when the row below owns it, or the card renders the
-              // same escape hatch twice.
-              onForgotPassword={providersLead ? undefined : () => setForgotPasswordOpen(true)}
-            />
-          ) : (
-            <SignInForm
-              sessionId={sessionId}
-              initialName={identity?.name}
-              onSuccess={handleSignInSuccess}
-              onForgotPin={providersLead ? undefined : () => setEnterCodeOpen(true)}
-            />
-          )}
+          {/* Keyed: PIN ↔ email crossfades. */}
+          <div key={emailMode ? 'email' : 'pin'} className="motion-fade">
+            {emailMode ? (
+              <EmailSignInForm
+                onSuccess={handleSignInSuccess}
+                // Withheld when the row below owns it, or the card renders the
+                // same escape hatch twice.
+                onForgotPassword={providersLead ? undefined : () => setForgotPasswordOpen(true)}
+              />
+            ) : (
+              <SignInForm
+                sessionId={sessionId}
+                initialName={identity?.name}
+                onSuccess={handleSignInSuccess}
+                onForgotPin={providersLead ? undefined : () => setEnterCodeOpen(true)}
+              />
+            )}
+          </div>
           {/* A control's weight is relative to what it competes with, so
               "Create an account" is a link ONLY when providers lead.
 

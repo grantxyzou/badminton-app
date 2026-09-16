@@ -229,7 +229,7 @@ export default function JoinGroupPage({
 
       <div style={{ display: 'grid', gap: 'var(--space-5)', padding: '0 var(--space-5) var(--space-9)' }}>
         {step === 'auth' ? (
-          <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+          <div key="auth" className="motion-fade" style={{ display: 'grid', gap: 'var(--space-5)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>
               {t('auth.body', { name: found?.name ?? '' })}
             </p>

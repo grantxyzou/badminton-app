@@ -98,7 +98,7 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
      treatment, and here it spent Home's accent on a label. */
   if (loadError) {
     return (
-      <section className="glass-card p-5 space-y-3" aria-label="Rackets to string">
+      <section className="glass-card p-5 space-y-3 motion-fade" aria-label="Rackets to string">
         <CardHeader compact icon="sports_tennis" title={t('stringerTitle')} />
         <ErrorState
           message={t('stringerError')}
@@ -116,7 +116,7 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
   if (!jobs || jobs.length === 0) return null;
 
   return (
-    <section className="glass-card p-5 space-y-3" aria-label="Rackets to string">
+    <section className="glass-card p-5 space-y-3 motion-fade" aria-label="Rackets to string">
       <CardHeader
         compact
         icon="sports_tennis"

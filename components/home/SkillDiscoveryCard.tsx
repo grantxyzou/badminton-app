@@ -56,7 +56,8 @@ export default function SkillDiscoveryCard({
   };
 
   return (
-    <div className="glass-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+    // Fades in: it arrives after its own fetch, below a roster already read.
+    <div className="glass-card p-4 motion-fade" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
       <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-lg)', color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
         trending_up
       </span>

@@ -363,11 +363,15 @@ function LogInView({
             </>
           )}
 
-          {providersOn && mode === 'email' ? (
-            <EmailSignInForm onSuccess={signedIn} />
-          ) : (
-            <SignInForm sessionId="" onSuccess={signedIn} probeName={false} />
-          )}
+          {/* Keyed wrapper: PIN ↔ email crossfades rather than swapping the
+              form (and the card's height) in one frame. */}
+          <div key={providersOn && mode === 'email' ? 'email' : 'pin'} className="motion-fade">
+            {providersOn && mode === 'email' ? (
+              <EmailSignInForm onSuccess={signedIn} />
+            ) : (
+              <SignInForm sessionId="" onSuccess={signedIn} probeName={false} />
+            )}
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', whiteSpace: 'nowrap' }}>
             <button

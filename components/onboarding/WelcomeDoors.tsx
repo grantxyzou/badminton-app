@@ -38,7 +38,9 @@ export default function WelcomeDoors({ onCreate, onJoin, onExisting }: Props) {
   const t = useTranslations('onboarding');
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-7)', paddingBlock: 'var(--space-8) var(--space-9)' }}>
+    // Fades in, like the Create and Join pages it leads to — coming Back from
+    // either used to cut straight to the doors.
+    <div className="motion-fade" style={{ display: 'grid', gap: 'var(--space-7)', paddingBlock: 'var(--space-8) var(--space-9)' }}>
       <header style={{ display: 'grid', gap: 'var(--space-3)' }}>
         <h1 className="bpm-h1" style={{ margin: 0 }}>
           {t('welcome')}
