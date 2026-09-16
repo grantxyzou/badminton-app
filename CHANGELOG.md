@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Faster to open (2026-09-15)
+
+- **Opening the app no longer downloads the screens you haven't opened.** Sign-Ups, Stats and Profile now load when you first go to them; Home (and the announcement, which is the first thing you read) is unchanged. A canary keeps them from creeping back into the first load.
+- **Racket pictures no longer shift the list** as they arrive: every one carries its size up front.
+
 ### Equipment — hybrid strings: mains and crosses (2026-09-15)
 
 - **A racket can be strung with two strings.** From the string's sheet, "Use a different string for the crosses" picks the crosses string; the Set-up card then shows Mains and Crosses on the Strings line, each with its own tension, and the sheet sets each one. "One string throughout" takes the crosses off.

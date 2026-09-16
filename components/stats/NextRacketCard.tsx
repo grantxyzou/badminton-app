@@ -85,7 +85,7 @@ export default function NextRacketCard({ gear, picks, onOpen, onOpenFit }: NextR
       <p className="setup-eyebrow">{t('nextTitle')}</p>
       <button type="button" className="setup-next-row" onClick={onOpen} aria-label={`${pick.item.brand} ${pick.item.model} — ${t('nextOpen')}`}>
         {/* eslint-disable-next-line @next/next/no-img-element -- the model's drawing as an SVG data URL; see lib/racketLook.ts. */}
-        <img src={racketSrc(pick.item.id)} alt="" className="setup-next-img" />
+        <img src={racketSrc(pick.item.id)} alt="" className="setup-next-img" width={240} height={624} loading="lazy" decoding="async" />
         <span className="setup-next-body">
           <span className="fs-lg" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pick.item.model}</span>
           {sub && <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{sub}</span>}
