@@ -27,6 +27,8 @@ import { OFFER_PIN_KEY } from '@/lib/offerPin';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
+import WhoElseIsIn from './home/WhoElseIsIn';
+import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
@@ -135,10 +137,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // tap "Already a player? Sign in →" to authenticate via RecoverySheet.
   const [releases, setReleases] = useState<Release[]>([]);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
-  // True only for the render right after a successful sign-up, so the success
-  // banner pops once on the *act* of signing up — not on every Home revisit
-  // (it resets to false when the tab remounts). Delight on a rare moment.
-  const [justSignedUp, setJustSignedUp] = useState(false);
+  // How the confirmation arrives, set only by the act of signing up, never on a
+  // Home revisit (it resets when the tab remounts). 'morph': the button becomes
+  // the confirmation through a View Transition. 'pop': the banner's own
+  // entrance, where the browser has no transitions or motion is reduced. Never
+  // both, which would move the same thing twice.
+  const [signupEntrance, setSignupEntrance] = useState<'none' | 'pop' | 'morph'>('none');
   // Forgot-PIN handoff from the inline sign-in form opens this code-entry sheet.
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
@@ -396,6 +400,34 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   const openReleaseSheet = useCallback(() => setReleaseSheetOpen(true), []);
 
+  /**
+   * The server has confirmed the sign-up; show it.
+   *
+   * The POST answers with the new roster row, so the card can flip to "you're
+   * in" from that alone instead of waiting on a refetch of five endpoints. The
+   * refetch still runs and replaces the row with the server's list; once a week
+   * has loaded it no longer shows the skeleton (`weekLoadedRef`).
+   * Nothing here is optimistic: this runs only after a 201.
+   *
+   * `deleteToken` goes to the identity record and is kept out of `players`,
+   * the same rule every roster response follows.
+   */
+  function applySignup(trimmed: string, created: Record<string, unknown>, sessionId: string, waitlist: boolean) {
+    setIdentity({ name: trimmed, token: typeof created.deleteToken === 'string' ? created.deleteToken : '', sessionId });
+    const { deleteToken: _dt, ...row } = created;
+    const joined = typeof row.id === 'string' && typeof row.name === 'string' ? (row as unknown as Player) : null;
+    const morph = !waitlist && joined !== null && joined.waitlisted !== true && canViewTransition();
+    const commit = () => {
+      setCurrentUser(trimmed);
+      setHasIdentity(true);
+      if (joined) setPlayers((prev) => [...prev.filter((p) => p.id !== joined.id), joined]);
+      if (!waitlist) setSignupEntrance(morph ? 'morph' : 'pop');
+    };
+    if (morph) withViewTransition(commit, 'vt-signup');
+    else commit();
+    void loadData();
+  }
+
   // Unified sign-up + waitlist submit. `waitlist` adds `waitlist: true` to the
   // POST body and tunes the failure copy — otherwise the auth flow (anon /
   // sign-in PIN / create PIN) is identical, so a PIN-protected member can join
@@ -454,15 +486,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         const signupData = await signupRes.json();
         if (!signupRes.ok) {
           setError(signupData.error ?? (waitlist ? t('signup.waitlistFailure') : t('signup.genericFailure')));
-          if (signupRes.status === 409) loadData();
+          if (signupRes.status === 409) void loadData();
           return;
         }
         if (!session?.id) { setError(t('signup.networkError')); return; }
-        setIdentity({ name: trimmed, token: signupData.deleteToken ?? '', sessionId: session.id });
-        setCurrentUser(trimmed);
-        setHasIdentity(true);
-        if (!waitlist) setJustSignedUp(true);
-        await loadData();
+        applySignup(trimmed, signupData, session.id, waitlist);
       } else {
         // 'anon' and 'create' both go through POST /api/players. The only
         // difference is whether `pin` is included. The server validates
@@ -495,15 +523,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           } else {
             setError(data.error ?? (waitlist ? t('signup.waitlistFailure') : t('signup.genericFailure')));
           }
-          if (res.status === 409) loadData();
+          if (res.status === 409) void loadData();
           return;
         }
         if (!session?.id) { setError(t('signup.networkError')); return; }
-        setIdentity({ name: trimmed, token: data.deleteToken ?? '', sessionId: session.id });
-        setCurrentUser(trimmed);
-        setHasIdentity(true);
-        if (!waitlist) setJustSignedUp(true);
-        await loadData();
+        applySignup(trimmed, data, session.id, waitlist);
       }
     } catch {
       setError(t('signup.networkError'));
@@ -569,6 +593,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       </div>
     );
   }
+
+  const sessionWhen = session
+    ? `${format.dateTime(new Date(session.datetime), DAY_LONG)}, ${format.dateTime(new Date(session.datetime), TIME_SHORT)}`
+    : undefined;
+  const sessionWhenWhere = sessionWhen && session?.locationName
+    ? tStates('signedUpWhenWhere', { when: sessionWhen, place: session.locationName })
+    : sessionWhen;
 
   const mapsUrl = session?.locationAddress
     ? `https://maps.google.com/?q=${encodeURIComponent(session.locationAddress)}`
@@ -719,7 +750,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
       {/* Sign-Up Card — the submit button / payment action / "I paid" button
           sit in the thumb zone for one-handed use. */}
-      <div className="glass-card p-5">
+      <div className="glass-card p-5 vt-signup-card">
         {isSessionFinished ? (
           /* ── State: Session finished ── */
           <div className="space-y-4">
@@ -762,27 +793,34 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 screen with no way past it once members only is on. The
                 confirmation itself says so, in amber, rather than a green
                 "see you soon" with the catch in a separate card below. */}
-            {/* Keyed: both banners sit in the same slot, so without a key React
-                reuses the node and the swap from amber to green happens with
-                no entrance at all. */}
-            {needsSignInSetup ? (
-              <StatusBanner
-                key="signed-up-setup"
-                tone="warn"
-                icon="key"
-                title={t('signInSetup.signedUpTitle', { name: currentUser ?? '' })}
-                body={signInSetupBody(t('signInSetup.signedUpBody'))}
-              />
-            ) : (
-              <StatusBanner
-                key="signed-up"
-                tone="success"
-                icon="check_circle"
-                title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
-                body={tStates('signedUpBody')}
-                celebrate={justSignedUp}
-              />
-            )}
+            {/* Shares `vt-signup-confirm` with the submit button, so under a
+                View Transition the button becomes this banner in place. The
+                banners are keyed: both sit in the same slot, so without a key
+                React reuses the node and the swap from amber to green happens
+                with no entrance at all. */}
+            <div className="vt-signup-confirm" data-entrance={signupEntrance}>
+              {needsSignInSetup ? (
+                <StatusBanner
+                  key="signed-up-setup"
+                  tone="warn"
+                  icon="key"
+                  title={t('signInSetup.signedUpTitle', { name: currentUser ?? '' })}
+                  body={signInSetupBody(t('signInSetup.signedUpBody'))}
+                />
+              ) : (
+                <StatusBanner
+                  key="signed-up"
+                  tone="success"
+                  icon="check_circle"
+                  title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
+                  /* The plan itself, not "see you soon": the line people
+                     paste into the group chat is when and where. */
+                  body={sessionWhenWhere}
+                  celebrate={signupEntrance === 'pop'}
+                />
+              )}
+            </div>
+            <WhoElseIsIn names={activePlayers.map((p) => p.name)} me={currentUser} />
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -886,6 +924,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 </span>
               </p>
             </div>
+            <WhoElseIsIn names={activePlayers.map((p) => p.name)} me={currentUser} />
             <form onSubmit={handleSignUp} className="space-y-3">
               {memberName ? (
                 <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
@@ -920,7 +959,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                    secondary weight. This is the app's most prominent CTA and
                    takes the filled gradient, which is also what makes the one
                    green thing on the screen unmistakable. */
-                className="btn-primary w-full flex items-center justify-center gap-2"
+                className="btn-primary w-full flex items-center justify-center gap-2 vt-signup-confirm"
               >
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
                 {isSubmitting ? t('signup.submitting') : t('signup.button')}
@@ -958,7 +997,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       </section>
       )}
 
-      <section className="bpm-home-group" aria-label={t('groups.account')}>
+      <section className="bpm-home-group vt-home-account" aria-label={t('groups.account')}>
       {/* MEMBERS ONLY: signed in, but nothing to sign in WITH next time — the
           state an admin-approved access request leaves. One tap to a PIN. */}
       {needsCredential && (

@@ -121,6 +121,9 @@
     },
     "signup": {
       "spotsLeftSuffix": "个空位",
+      "othersInOne": "{a} 已报名",
+      "othersInTwo": "{a} 和 {b} 已报名",
+      "othersInMany": "{a}、{b} 和另外 {count} 人已报名",
       "heading": "报名",
       "button": "立即报名",
       "waitlist": "加入候补",
@@ -173,9 +176,9 @@
       "openingSoonTitle": "报名即将开放",
       "openingSoonBody": "稍后再来查看。",
       "closedTitle": "报名已截止",
-      "signedUpTitle": "{name}，报名成功！",
-      "signedUpTitleGeneric": "报名成功！",
-      "signedUpBody": "球场见！",
+      "signedUpTitle": "{name}，你已报名",
+      "signedUpTitleGeneric": "你已报名",
+      "signedUpWhenWhere": "{when}，{place}",
       "waitlistLabel": "候补",
       "waitlistTitle": "你在候补名单中",
       "waitlistPositionLabel": "候补第 {position} 位，共 {total} 位"
