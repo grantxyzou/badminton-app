@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, act } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
 import { useInsight } from '../../lib/useInsight';
 import { setIdentity, clearIdentity } from '../../lib/identity';
 
@@ -19,6 +20,12 @@ import { setIdentity, clearIdentity } from '../../lib/identity';
 
 function jsonResponse(body: unknown) {
   return Promise.resolve({ ok: true, status: 200, json: async () => body } as Response);
+}
+
+/** `useInsight` reads the locale (its memo is per language), so it needs the
+ *  provider every translated surface already sits under. */
+function Intl({ locale = 'en', children }: { locale?: string; children: React.ReactNode }) {
+  return <NextIntlClientProvider locale={locale} messages={{}}>{children}</NextIntlClientProvider>;
 }
 
 function Probe({ label }: { label: string }) {
@@ -54,11 +61,11 @@ describe('useInsight — identity reactivity vs the shared memo', () => {
     setIdentity({ name: 'Lin', token: 'tok', sessionId: 'session-2026-08-20' });
 
     render(
-      <>
+      <Intl>
         <Probe label="a" />
         <Probe label="b" />
         <Probe label="c" />
-      </>,
+      </Intl>,
     );
 
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('hi Lin'));
@@ -72,7 +79,7 @@ describe('useInsight — identity reactivity vs the shared memo', () => {
 
   it('refetches for the new member when the identity changes', async () => {
     setIdentity({ name: 'Lin', token: 'tok', sessionId: 'session-2026-08-20' });
-    render(<Probe label="a" />);
+    render(<Intl><Probe label="a" /></Intl>);
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('hi Lin'));
 
     await act(async () => {
@@ -83,5 +90,26 @@ describe('useInsight — identity reactivity vs the shared memo', () => {
     // would be served Lin's cached insight.
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('hi Viktor'));
     expect(calls.some((u) => u.includes('name=Viktor'))).toBe(true);
+  });
+
+  it('refetches when the language changes, and not otherwise', async () => {
+    // The toggle only refreshes the server render; this module outlives it, so
+    // a name-only memo kept the English greeting on screen after switching to
+    // Chinese until a full reload.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        calls.push(String(input));
+        return jsonResponse({ account: true, greeting: `greeting #${calls.length}`, trend: null });
+      }) as unknown as typeof fetch,
+    );
+    setIdentity({ name: 'Kento', token: 'tok', sessionId: 'session-2026-08-20' });
+    const view = render(<Intl locale="en"><Probe label="a" /></Intl>);
+    await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('greeting #1'));
+
+    view.rerender(<Intl locale="en"><Probe label="a" /></Intl>);
+    view.rerender(<Intl locale="zh-CN"><Probe label="a" /></Intl>);
+    await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('greeting #2'));
+    expect(calls).toHaveLength(2);
   });
 });
