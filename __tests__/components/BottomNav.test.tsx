@@ -24,10 +24,12 @@ afterEach(cleanup);
    what stopped the two branches drifting while there were two. */
 function sharedContract() {
 
-  it('renders four tabs: Home, Sign-Ups, Stats, Profile (English)', () => {
+  it('renders four tabs: Home, Stringing, Stats, Profile (English)', () => {
     renderWithLocale('en');
     expect(screen.getByRole('button', { name: 'Home' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sign-Ups' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Stringing' })).toBeTruthy();
+    // Sign-Ups left the nav on 2026-09-16: Home's card is the sign-up list.
+    expect(screen.queryByRole('button', { name: 'Sign-Ups' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Stats' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Profile' })).toBeTruthy();
     expect(screen.getAllByRole('button').length).toBe(4);
@@ -36,7 +38,7 @@ function sharedContract() {
   it('renders four tabs in zh-CN', () => {
     renderWithLocale('zh-CN');
     expect(screen.getByRole('button', { name: '首页' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '报名' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '穿线' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '数据' })).toBeTruthy();
     // 我的, not 档案 (2026-09-15): every Chinese app names this tab 我的, and
     // the rest of the copy points at it by that name ("去「我的」登录").
@@ -74,7 +76,7 @@ describe('BottomNav — Labeled Rail', () => {
   it('active tab gets rail-tab-active; others only rail-tab', () => {
     renderWithLocale('en');
     const home = screen.getByRole('button', { name: 'Home' });
-    const players = screen.getByRole('button', { name: 'Sign-Ups' });
+    const players = screen.getByRole('button', { name: 'Stringing' });
     expect(home.classList.contains('rail-tab')).toBe(true);
     expect(home.classList.contains('rail-tab-active')).toBe(true);
     expect(players.classList.contains('rail-tab')).toBe(true);
@@ -87,10 +89,10 @@ describe('BottomNav — Labeled Rail', () => {
       .getByRole('button', { name: 'Home' })
       .querySelector('.rail-icon-wrap .material-icons.rail-icon');
     const playersIcon = screen
-      .getByRole('button', { name: 'Sign-Ups' })
+      .getByRole('button', { name: 'Stringing' })
       .querySelector('.rail-icon-wrap .material-icons.rail-icon');
     expect(homeIcon?.textContent).toContain('home');
-    expect(playersIcon?.textContent).toContain('group');
+    expect(playersIcon?.textContent).toContain('grid_4x4');
     expect(homeIcon?.className).toBe(playersIcon?.className);
   });
 });

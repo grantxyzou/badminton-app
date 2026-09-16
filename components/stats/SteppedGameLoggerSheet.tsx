@@ -97,7 +97,7 @@ export default function SteppedGameLoggerSheet({
         // the partner/opponent pickers had no names in them. That is the whole
         // explanation for the Slice-0 readout's `games.loggers: 0` over six
         // weeks — not disinterest, an unusable picker. Every other consumer of
-        // this endpoint (ProfileTab, PlayersTab, NextSessionCard) already
+        // this endpoint (ProfileTab, HomeTab's roster, NextSessionCard) already
         // treats it as an array; this was the one that didn't.
         const names = ((Array.isArray(d) ? d : []) as Player[])
           .filter((p) => p?.name && !p.waitlisted && !p.removed)

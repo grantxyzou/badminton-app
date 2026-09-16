@@ -450,7 +450,7 @@
    `data-theme` both live on <html>, so this outranks the base light block;
    sheets portal into <body> and inherit it, matching their tab's field.
    Home is the base values (and the un-attributed first paint). */
-html[data-theme="light"][data-tab="players"] { --text-secondary: #5e4a2e; --text-muted: #76603f; }
+html[data-theme="light"][data-tab="stringing"] { --text-secondary: #5e4a2e; --text-muted: #76603f; }
 html[data-theme="light"][data-tab="skills"]  { --text-secondary: #334d70; --text-muted: #4c6386; }
 html[data-theme="light"][data-tab="profile"] { --text-secondary: #4a3f73; --text-muted: #62588a; }
 html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text-muted: #825a42; }
@@ -1486,7 +1486,7 @@ html[data-swiping="release"] [data-page-shell] {
    `background-size: contain` on the SVG. The court never stretches — it's
    scaled to fit the viewport while keeping real-world proportions, then
    letterboxed left/right or top/bottom as the viewport dictates. */
-html[data-tab="players"] .court-bg::before {
+html[data-tab="stringing"] .court-bg::before {
   content: '';
   position: absolute;
   left: 50%;
@@ -1503,8 +1503,8 @@ html[data-tab="players"] .court-bg::before {
   background-repeat: no-repeat;
 }
 
-[data-theme="light"] html[data-tab="players"] .court-bg::before,
-html[data-tab="players"][data-theme="light"] .court-bg::before {
+[data-theme="light"] html[data-tab="stringing"] .court-bg::before,
+html[data-tab="stringing"][data-theme="light"] .court-bg::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%2316a34a' stroke-width='0.5' opacity='0.20' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%2316a34a' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.32' vector-effect='non-scaling-stroke'/></svg>");
 }
 
@@ -1690,7 +1690,7 @@ html:root .court-bg {
 }
 
 /* Sign-Ups — field under the doubles-court etching. ::before untouched. */
-html:root[data-tab="players"] .court-bg {
+html:root[data-tab="stringing"] .court-bg {
   background: var(--field-signups), var(--field-base);
 }
 
@@ -2079,7 +2079,7 @@ html:root .bottom-sheet textarea {
    The motif belongs to its tab, so it takes its tab's hue. Alpha is unchanged
    (0.14 lines / 0.22 net; 0.14 dots), so this is a hue swap and not a change in
    how present the motif is. */
-html:root[data-tab="players"] .court-bg::before {
+html:root[data-tab="stringing"] .court-bg::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%23fbbf24' stroke-width='0.5' opacity='0.14' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%23fbbf24' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.22' vector-effect='non-scaling-stroke'/></svg>");
 }
 html:root[data-tab="skills"] .court-bg::before {
@@ -3069,28 +3069,61 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   font-size: var(--fs-2xs);
   font-variant-numeric: tabular-nums;
 }
-/* The opened list: everyone in, one name per row. */
-.who-else-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
+/* The opened roster (WhoElseIsIn): numbered in sign-up order, the viewer's own
+   row filled (`.player-highlight-*`, fill only), the waitlist as a second
+   numbered section. It replaced the Sign-Ups tab's list, so it keeps that
+   list's shape at a tighter row: 40px, the kudos button's 44px target overlaps
+   the row's padding instead of setting its height. */
+.roster { display: flex; flex-direction: column; gap: var(--space-1); }
+.roster-list {
+  display: flex;
+  flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.who-else-list > li {
+.roster-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-width: 0;
+  min-height: 40px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-lg);
   font-size: var(--fs-md);
   color: var(--text-primary);
 }
-.who-else-list > li > span {
+.roster-row__pos {
+  width: var(--space-6);
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.roster-row__name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.roster-row__kudos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) calc(var(--space-2) * -1) 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-press) var(--ease-glass), color var(--duration-fast) ease;
+}
+.roster-row__kudos:active { transform: scale(0.94); }
+.roster-waitlist-label { margin: var(--space-3) 0 var(--space-1) var(--space-3); }
 .status-celebrate .icon-status {
   animation: signupIconPop 420ms var(--ease-glass) both;
 }
@@ -3741,7 +3774,7 @@ html[data-hydrated="true"] .splash {
 html:root .bottom-sheet {
   background: var(--field-home), var(--field-base);
 }
-html:root[data-tab="players"] .bottom-sheet {
+html:root[data-tab="stringing"] .bottom-sheet {
   background: var(--field-signups), var(--field-base);
 }
 html:root[data-tab="skills"] .bottom-sheet {

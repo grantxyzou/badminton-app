@@ -144,7 +144,8 @@
       "nameAriaLabel": "Your name",
       "joining": "Joining…",
       "submitting": "Signing up…",
-      "viewList": "View Sign Up List",
+      "cantMakeIt": "Can't make it? Cancel my spot",
+      "leaveWaitlist": "Leave the waitlist",
       "spotsRemaining": "{remaining} of {total} spots left",
       "spotsFull": "Signed-up: {count} · Full",
       "allSpotsTaken": "All {total} spots are taken.",
@@ -246,7 +247,7 @@
   },
   "nav": {
     "home": "Home",
-    "signups": "Sign-Ups",
+    "stringing": "Stringing",
     "skills": "Stats",
     "admin": "Admin",
     "profile": "Profile"

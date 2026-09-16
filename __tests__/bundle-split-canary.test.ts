@@ -14,7 +14,7 @@ import { join } from 'path';
  * HomeTab is deliberately NOT in this list: it renders the server-rendered
  * announcement, which is the LCP element and has to be in the first HTML.
  */
-const LAZY = ['PlayersTab', 'SkillsTab', 'ProfileTab', 'AdminTab'] as const;
+const LAZY = ['StringingTab', 'SkillsTab', 'ProfileTab', 'AdminTab'] as const;
 
 describe('HomeShell keeps the unopened tabs out of the first payload', () => {
   const source = readFileSync(join(process.cwd(), 'components', 'HomeShell.tsx'), 'utf8');

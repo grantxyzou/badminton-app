@@ -145,7 +145,8 @@ export function buildStringingPayload(notice: PlayerNotice): PushPayload | null 
   return {
     title,
     body,
-    url: `${BASE}/`,
+    // The racket's progress lives on the Stringing tab, not Home (2026-09-16).
+    url: `${BASE}/?tab=stringing`,
     /* Job FIRST, stage last. `safeTag` caps at 32 chars, and if a long job
        number ever forced a truncation this way collapses the two stages of ONE
        racket — where stage-first would collapse two DIFFERENT rackets at the
@@ -188,7 +189,7 @@ export function buildPendingEditPayload(job: {
   return {
     title: 'A change to confirm',
     body: `Something changed on ${racket}. Open ${APP_SHORT_NAME} to have a look.`,
-    url: `${BASE}/`,
+    url: `${BASE}/?tab=stringing`,
     // Job first, same reasoning as the stage payload above.
     tag: safeTag(`str-${job.jobNo}-edit`),
   };

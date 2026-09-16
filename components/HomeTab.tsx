@@ -11,11 +11,13 @@ import { APP_NAME } from '@/lib/brand';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
 import { defaultMaxPlayers } from '@/lib/defaults';
 import type { DevOverrides } from '@/components/DevPanel';
+import type { Tab } from '@/components/HomeShell';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
-import StringingCard from '@/components/stringing/StringingCard';
-import StringerJobsCard from './stringing/StringerJobsCard';
+import SkillDiscoveryCard from './home/SkillDiscoveryCard';
+import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
@@ -41,7 +43,7 @@ const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 interface HomeTabProps {
-  onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void;
+  onTabChange?: (tab: Tab) => void;
   /**
    * Whether this person runs the club. Used only to decide whose job it is to
    * fix an empty week: the organiser gets the action, a player gets told one is
@@ -131,7 +133,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [sessionMissing, setSessionMissing] = useState(false);
   const reportFetchFailure = useReportFetchFailure();
   const [memberNames, setMemberNames] = useState<string[]>([]);
-  const [hasIdentity, setHasIdentity] = useState(!!memberName);
   // Sign up = session signup only (auth taxonomy split). PIN is no longer
   // collected here — it's an opt-in identity primitive, set via Profile →
   // Create account / Set PIN. Returning players who already have a PIN can
@@ -144,6 +145,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // entrance, where the browser has no transitions or motion is reduced. Never
   // both, which would move the same thing twice.
   const [signupEntrance, setSignupEntrance] = useState<'none' | 'pop' | 'morph'>('none');
+  /* Cancelling a spot and giving kudos lived on the Sign-Ups tab until it left
+     the nav (2026-09-16). The card is the sign-up list now, so both live here.
+     ONE confirmation sheet for both lists: coming off a waitlist is not the same
+     event as giving up a confirmed spot, and `isWaitlisted` picks the wording. */
+  const tPlayers = useTranslations('players');
+  const tClose = useTranslations('recovery');
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelError, setCancelError] = useState('');
+  const [kudosFor, setKudosFor] = useState<string | null>(null);
   // Forgot-PIN handoff from the inline sign-in form opens this code-entry sheet.
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
@@ -220,11 +230,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           if (decision.action === 'preserve') {
             setIdentity(decision.identity);
             setCurrentUser(decision.identity.name);
-            setHasIdentity(true);
           } else if (decision.action === 'clear') {
             clearIdentity();
             setCurrentUser(null);
-            setHasIdentity(false);
           }
         }
       }
@@ -258,7 +266,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       return;
     }
     const id = getIdentity();
-    setHasIdentity(id !== null);
     if (id) {
       setCurrentUser(id.name);
       // Seed the sign-up name from the logged-in identity so a returning member
@@ -420,7 +427,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     const morph = !waitlist && joined !== null && joined.waitlisted !== true && canViewTransition();
     const commit = () => {
       setCurrentUser(trimmed);
-      setHasIdentity(true);
       if (joined) setPlayers((prev) => [...prev.filter((p) => p.id !== joined.id), joined]);
       if (!waitlist) setSignupEntrance(morph ? 'morph' : 'pop');
     };
@@ -430,6 +436,39 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     if (morph) withViewTransition(commit, 'vt-signup');
     else commit();
     void loadData();
+  }
+
+  /**
+   * Give up your spot, or leave the waitlist. Moved from the Sign-Ups tab.
+   *
+   * Cancelling is NOT signing out (CLAUDE.md, auth taxonomy): the identity
+   * stays so a re-sign-up is one tap. Its `deleteToken` is cleared because the
+   * server consumed it. The row leaves the roster at once; the refetch
+   * confirms. A failure keeps the sheet open and says so.
+   */
+  async function handleCancel() {
+    if (!currentUser || !online) return;
+    const id = getIdentity();
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: currentUser, deleteToken: id?.token }),
+      });
+      if (!res.ok) {
+        setCancelError(tPlayers('cancelFailure'));
+        return;
+      }
+      if (id) setIdentity({ ...id, token: '' });
+      const me = currentUser.toLowerCase();
+      setPlayers((prev) => prev.filter((p) => p.name.toLowerCase() !== me));
+      setSignupEntrance('none');
+      setCancelError('');
+      setConfirmingCancel(false);
+      void loadData();
+    } catch {
+      setCancelError(tPlayers('cancelFailure'));
+    }
   }
 
   // Unified sign-up + waitlist submit. `waitlist` adds `waitlist: true` to the
@@ -587,7 +626,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   if (loading) {
     // Render the REAL header (its slot is static text, no data) and skeleton
-    // only the data cards below it — same pattern as PlayersTab — so the page
+    // only the data cards below it — the pattern the retired Sign-Ups tab used — so the page
     // keeps its exact shape and fills in top-to-bottom instead of flashing a
     // generic block then snapping the layout in.
     return (
@@ -824,9 +863,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 />
               )}
             </div>
-            <WhoElseIsIn names={activePlayers.map((p) => p.name)} me={currentUser} />
-            <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
-              {t('signup.viewList')}
+            <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} onKudos={setKudosFor} />
+            <button
+              type="button"
+              className="link-quiet"
+              style={{ display: 'flex', marginInline: 'auto' }}
+              onClick={() => { setCancelError(''); setConfirmingCancel(true); }}
+              disabled={!online}
+            >
+              {t('signup.cantMakeIt')}
             </button>
           </div>
         ) : isWaitlisted ? (
@@ -848,8 +893,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               body={`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
             />
             {signInSetupBanner}
-            <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
-              {t('signup.viewList')}
+            <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} />
+            <button
+              type="button"
+              className="link-quiet"
+              style={{ display: 'flex', marginInline: 'auto' }}
+              onClick={() => { setCancelError(''); setConfirmingCancel(true); }}
+              disabled={!online}
+            >
+              {t('signup.leaveWaitlist')}
             </button>
           </div>
         ) : isFull && !isDeadlinePast ? (
@@ -860,6 +912,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
+            <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} />
             {signInSetupBanner}
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
               {memberName ? (
@@ -928,7 +981,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 </span>
               </p>
             </div>
-            <WhoElseIsIn names={activePlayers.map((p) => p.name)} me={currentUser} />
+            <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} />
             <form onSubmit={handleSignUp} className="space-y-3">
               {memberName ? (
                 <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
@@ -998,6 +1051,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         )}
       </div>
 
+      {/* Skill-rating discovery hook, moved with the sign-up list from the
+          Sign-Ups tab: the moment a player has just confirmed they're playing
+          is when "is my game improving?" lands. Self-retiring: flag-on,
+          identified, unrated and undismissed only. */}
+      <SkillDiscoveryCard
+        name={currentUser}
+        signedUp={isSignedUp}
+        onOpen={() => onTabChange?.('skills')}
+      />
+
       </section>
       )}
 
@@ -1033,18 +1096,42 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           and most weeks it says $0. */}
       {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" onSignIn={() => onTabChange?.('profile')} />}
 
-      {/* Stringing service. Still "Coming soon" by default — the card only goes
-          live once an admin has opened the shop, and an UNKNOWN answer keeps
-          the modest version too. See StringingCard for why unknown is not
-          treated as closed-but-shown. */}
-      <StringingCard hasIdentity={hasIdentity} />
-      {/* Only renders for someone with work assigned — which is nobody, for
-          everyone who is not a stringer. Sits under the player's own card
-          because doing the stringing is the rarer role, and the person's own
-          racket is still the thing they came to check. */}
-      <StringerJobsCard hasIdentity={hasIdentity} />
+      {/* Stringing moved to its own tab (components/StringingTab.tsx) when
+          it took the nav slot Sign-Ups held. */}
       </section>
 
+
+      <BottomSheet
+        open={confirmingCancel}
+        onClose={() => setConfirmingCancel(false)}
+        ariaLabel={isWaitlisted ? tPlayers('leaveSheetTitle') : tPlayers('cancelConfirm')}
+      >
+        <BottomSheetHeader onClose={() => setConfirmingCancel(false)} closeLabel={tClose('close')}>
+          <h2 className="bpm-h3 m-0">
+            {isWaitlisted ? tPlayers('leaveSheetTitle') : tPlayers('cancelConfirm')}
+          </h2>
+        </BottomSheetHeader>
+        <BottomSheetBody>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <p className="fs-base m-0" style={{ color: 'var(--text-secondary)' }}>
+              {isWaitlisted ? tPlayers('leaveSheetBody') : tPlayers('cancelSheetBody')}
+            </p>
+            {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {/* The destructive action leads and is named for what it does. */}
+              <button type="button" onClick={handleCancel} disabled={!online} className="cc-btn cc-btn-danger cc-btn-lg">
+                {isWaitlisted ? tPlayers('leaveSheetConfirm') : tPlayers('cancelSheetConfirm')}
+              </button>
+              <button type="button" onClick={() => setConfirmingCancel(false)} className="cc-btn cc-btn-ghost cc-btn-lg">
+                {tPlayers('sheetKeep')}
+              </button>
+            </div>
+          </div>
+        </BottomSheetBody>
+      </BottomSheet>
+      {/* Opened on a specific person from the roster, so the sheet skips its
+          picker. Same sheet as Stats: one flow, two entry points. */}
+      <GiveKudosSheet open={kudosFor !== null} onClose={() => setKudosFor(null)} recipient={kudosFor} />
 
       <AskAccessSheet
         open={askAccessOpen}
@@ -1053,7 +1140,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         initialName={name}
         onSignedIn={({ name: signedIn, hasPin }) => {
           setAskAccessOpen(false);
-          setHasIdentity(true);
           setCurrentUser(signedIn);
           if (!hasPin) {
             setRecoveredName(signedIn);
@@ -1068,7 +1154,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           setEnterCodeOpen(false);
           const fresh = getIdentity();
           if (fresh) {
-            setHasIdentity(true);
             setCurrentUser(fresh.name);
           }
         }}
@@ -1080,7 +1165,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
            ProfileTab has always passed this; Home never did. */
         onRecovered={(name) => {
           setEnterCodeOpen(false);
-          setHasIdentity(true);
           setCurrentUser(name);
           setRecoveredName(name);
           setSetPinOpen(true);

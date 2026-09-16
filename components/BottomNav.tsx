@@ -19,7 +19,7 @@ type NavItem = { id: Tab; label: string; icon: string };
  * weight) because colour alone is not a signal. Styling lives in `.rail-*` /
  * `--rail-*` in globals.css.
  *
- * The four `Tab` ids are `home · players · skills · profile` — `skills`
+ * The four `Tab` ids are `home · stringing · skills · profile` — `skills`
  * renders "Stats" via the `nav.skills` key, kept for backcompat. Slot count is
  * always 4: admin is reached via Profile → "Admin tools →" or `?tab=admin`,
  * never from here.
@@ -33,7 +33,7 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
   const t = useTranslations('nav');
   const visibleTabs: NavItem[] = [
     { id: 'home',    label: t('home'),    icon: 'home' },
-    { id: 'players', label: t('signups'), icon: 'group' },
+    { id: 'stringing', label: t('stringing'), icon: 'grid_4x4' },
     { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
     { id: 'profile', label: t('profile'), icon: 'person' },
   ];
