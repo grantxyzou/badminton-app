@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Fewer repeat requests on Stats (2026-09-15)
+
+- **Three things were being asked for twice on the same screen** — the club bands, your kudos and your games, each read by two cards that load together. They now share one request. Pulling to refresh still refetches everything.
+
 ### The app stops waiting on Google to draw the first screen (2026-09-15)
 
 - **The icon font is ours now** — 11.7 KB served from the app, instead of a stylesheet on Google's CDN that the browser had to fetch (twice) before it could paint anything. Nothing about the icons changes.

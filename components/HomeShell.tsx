@@ -31,6 +31,7 @@ import { consumeRecentExcursion } from '@/lib/excursion';
 import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
 import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
+import { resetSharedReads } from '@/lib/sharedRead';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
 const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
@@ -628,7 +629,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
 
   // Pull-to-refresh: remount the active tab (refetches everything) and hold the
   // spinner briefly so the gesture gets visible feedback even on a fast network.
+  // A refresh is a REFRESH: drop the in-flight/just-settled reads first, or a
+  // card that re-mounts inside the dedupe window would be handed the answer
+  // the member just pulled to replace.
   const handlePullRefresh = useCallback(async () => {
+    resetSharedReads();
     setRefreshNonce((n) => n + 1);
     await new Promise((r) => setTimeout(r, 600));
   }, []);

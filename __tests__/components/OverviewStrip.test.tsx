@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import OverviewStrip from '../../components/stats/OverviewStrip';
 import enMessages from '../../messages/en.json';
 import type { UseCheckIn } from '../../components/stats/useCheckIn';
+import { resetSharedReads } from '../../lib/sharedRead';
 
 function jsonResponse(body: unknown, ok = true) {
   return Promise.resolve({ ok, status: ok ? 200 : 500, json: async () => body } as Response);
@@ -80,6 +81,9 @@ function renderStrip(name: string | null = 'Lin', checkIn?: UseCheckIn) {
 describe('OverviewStrip', () => {
   beforeEach(() => {
     localStorage.clear();
+    // The shared-read dedupe is module state: one test's answer must not be
+    // handed to the next (lib/sharedRead.ts).
+    resetSharedReads();
   });
   afterEach(() => {
     cleanup();

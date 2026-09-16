@@ -9,8 +9,8 @@ import { SKILLS, topStrengths, workOnNext, type Rating } from '@/lib/assessment'
 import type { Band } from '@/lib/clubBands';
 import type { UseCheckIn } from './useCheckIn';
 import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
+import { sharedRead } from '@/lib/sharedRead';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
  * "Where you sit" — the member's sharpest and weakest rated skills, each shown
@@ -85,10 +85,8 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
     if (!activeName) return;
     const n = encodeURIComponent(activeName);
     let live = true;
-    const get = (url: string) =>
-      fetch(`${BASE}${url}`, { cache: 'no-store' }).then((r) =>
-        r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
-      );
+    // Bands are shared with `SkillTrendCard` — same URL, same screen.
+    const get = (url: string) => sharedRead(url);
 
     get(`/api/stats/club/bands?name=${n}`)
       .then((b) => {

@@ -9,8 +9,8 @@ import { SKILLS } from '@/lib/assessment';
 import CardHeader from '@/components/primitives/CardHeader';
 import LockedCard, { useSignInLink } from './LockedCard';
 import MemberAvatar from '@/components/primitives/MemberAvatar';
+import { sharedRead } from '@/lib/sharedRead';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 type LoadState =
   | { kind: 'idle' }
@@ -33,13 +33,14 @@ export default function KudosReceivedCard() {
 
   const load = useCallback(() => {
     if (!activeName) return;
-    fetch(`${BASE}/api/kudos?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then(async (r) => {
-        if (r.status === 403) return { _needsAuth: true } as const;
-        if (!r.ok) throw new Error(String(r.status));
-        return r.json();
+    // Shared with `OverviewStrip`'s kudos tile — same URL, same screen.
+    sharedRead<{ kudos?: unknown; notes?: unknown }>(`/api/kudos?name=${encodeURIComponent(activeName)}`)
+      .catch((e: Error) => {
+        // A 403 is this device not owning the name, not a failure.
+        if (e?.message === '403') return { _needsAuth: true } as const;
+        throw e;
       })
-      .then((d) => {
+      .then((d: { _needsAuth?: boolean; kudos?: unknown; notes?: unknown }) => {
         if (d?._needsAuth) setState({ kind: 'needsAuth' });
         else if (Array.isArray(d?.kudos))
           setState({

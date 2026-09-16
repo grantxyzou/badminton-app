@@ -17,8 +17,8 @@ import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
 import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
+import { sharedRead } from '@/lib/sharedRead';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** Response shape of GET /api/stats/club/bands. */
 interface ClubBands {
@@ -99,8 +99,8 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   useEffect(() => {
     if (!activeName) return;
     let live = true;
-    fetch(`${BASE}/api/stats/club/bands?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    // Shared with `WhereYouSitCard`, which reads the same bands on this screen.
+    sharedRead(`/api/stats/club/bands?name=${encodeURIComponent(activeName)}`)
       .then((d) => live && setBands(d as ClubBands))
       .catch(() => live && setBands(null));
     return () => { live = false; };
