@@ -326,7 +326,7 @@
   --btn-ghost-border: rgba(0, 0, 0, 0.1);
   --btn-ghost-text: rgba(0, 0, 0, 0.7);
   --btn-ghost-hover: linear-gradient(160deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%);
-  --nav-active-color: #16a34a;
+  --nav-active-color: var(--accent);
   --nav-inactive-color: rgba(0, 0, 0, 0.4);
 
   /* Labeled Rail — light variant. Mirrors the app's established
@@ -335,7 +335,12 @@
      --rail-indicator-radius inherit from :root (unchanged across themes). */
   --rail-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.95) 100%);
   --rail-indicator-bg: linear-gradient(160deg, rgba(22, 163, 74, 0.16) 0%, rgba(22, 163, 74, 0.07) 100%);
-  --rail-active: #16a34a;
+  /* Green-800, not the old green-600: #16a34a is 3.3:1 on the rail, and after
+     the light ink pass darkened --rail-inactive the SELECTED tab was the least
+     legible one on the bar (caught by review on #480). The selected tab must
+     out-contrast the tab-tinted inactive ink (≤5.9:1), so the accent (5.0:1)
+     is not enough here; this is 7.1:1. */
+  --rail-active: var(--accent-dark);
   --rail-inactive: var(--text-muted);
   --rail-border: rgba(0, 0, 0, 0.08);
 
@@ -381,7 +386,7 @@
   --toast-danger: #f87171;
 
   --pill-paid-bg: rgba(22, 163, 74, 0.1);
-  --pill-paid-text: #16a34a;
+  --pill-paid-text: var(--accent-dark);   /* 6.4:1 on its own tint; #16a34a was 3.0 */
   --pill-unpaid-bg: rgba(0, 0, 0, 0.08);
   --pill-unpaid-text: rgba(0, 0, 0, 0.72);   /* bumped to hit AA on cream bg */
   --pill-waitlist-bg: rgba(234, 88, 12, 0.14);
