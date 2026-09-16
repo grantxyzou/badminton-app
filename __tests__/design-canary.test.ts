@@ -57,6 +57,9 @@ const BOTH_THEME_TOKENS = [
   '--tone-orange-bg', '--tone-orange-border',
   '--tone-red-bg', '--tone-red-border', '--tone-red-strong',
   '--tone-violet-bg', '--tone-violet-border',
+  // A press drawn with the dark value in light mode (or vice versa) is either
+  // invisible or a grey smear; it was invisible for the first day it shipped.
+  '--press-bg',
 ];
 
 // Utility/surface classes the primitives + cards rely on.

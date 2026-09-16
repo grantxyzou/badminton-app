@@ -198,6 +198,10 @@
      --inner-card-* so existing call sites keep working unchanged. */
   --glass-soft-bg: var(--inner-card-bg);
   --glass-soft-border: var(--inner-card-border);
+  /* The press flash on a row. Its own token, not --glass-soft-bg: that is a
+     resting SURFACE tint (3% dark, 2% light) and, borrowed for a press, it
+     answered a tap with a change nobody could see — in light mode not at all. */
+  --press-bg: rgba(255, 255, 255, 0.08);
 
   /* ── List headers ── */
   --list-green-bg: rgba(74, 222, 128, 0.06);
@@ -364,6 +368,7 @@
 
   --inner-card-bg: rgba(0, 0, 0, 0.02);
   --inner-card-border: rgba(0, 0, 0, 0.05);
+  --press-bg: rgba(0, 0, 0, 0.06);
   --inner-card-green-bg: rgba(22, 163, 74, 0.04);
   --inner-card-green-border: rgba(22, 163, 74, 0.12);
 
@@ -2978,7 +2983,7 @@ textarea {
       changes the picture without saying which way it went.
    4. PRESS   the ladder, applied per class (no utility, because every
       pressable already owns a class): cards and tiles scale 0.97–0.98, icon
-      buttons 0.94, text links dim to 0.6, list rows flash `--glass-soft-bg`.
+      buttons 0.94, text links dim to 0.6, list rows flash `--press-bg`.
       Always `--duration-press`.
    5. FILL    `.motion-fill` — a bar or meter settling to its value, by
       `transform: scaleX` at `--duration-slow`. It is the one slow recipe,
@@ -5877,7 +5882,7 @@ button.setup-line,
   -webkit-tap-highlight-color: transparent;
 }
 button.sheet-row:active,
-.cc-session-chip:active { background: var(--glass-soft-bg); }
+.cc-session-chip:active { background: var(--press-bg); }
 button.setup-line,
 .setup-line-hit,
 .bpm-row-link { transition: opacity 100ms var(--ease-glass); }
@@ -5952,7 +5957,7 @@ button.pill-unpaid:active { transform: scale(0.97); }
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--duration-press) var(--ease-glass);
 }
-.settings-row:active { background: var(--glass-soft-bg); }
+.settings-row:active { background: var(--press-bg); }
 button.sheet-row { transition: background-color var(--duration-press) var(--ease-glass), opacity var(--duration-fast) var(--ease-glass); }
 
 .link-quiet,
