@@ -124,7 +124,24 @@ export interface FcmMessage {
 export type FcmOutcome =
   | { ok: true }
   /** `gone` is the ONLY signal that deletes a subscription. */
-  | { ok: false; gone: boolean; status: number; code?: string };
+  | { ok: false; gone: boolean; status: number; code?: string; message?: string };
+
+/**
+ * FCM's own words for a refusal, made safe to log.
+ *
+ * `code` alone could not diagnose anything: iOS sends were answered with
+ * `400 INVALID_ARGUMENT` for days, and that one code covers a malformed payload,
+ * an APNs environment mismatch and a dead token alike — the MESSAGE is the only
+ * part that says which. It is logged, so the device token is cut out of it
+ * first (a token is a send credential, the same rule the web endpoint follows),
+ * and it is capped so a verbose body cannot flood the log.
+ */
+const MAX_LOGGED_MESSAGE = 300;
+export function loggableFcmMessage(message: string | undefined, token: string): string | undefined {
+  if (!message) return undefined;
+  const redacted = token ? message.split(token).join('[token]') : message;
+  return redacted.slice(0, MAX_LOGGED_MESSAGE);
+}
 
 /**
  * FCM's "this token is dead" answers, mirrored from the web arm's 404/410.
@@ -188,7 +205,13 @@ export async function sendFcm(msg: FcmMessage): Promise<FcmOutcome> {
     } catch {
       /* non-JSON error body — status alone decides */
     }
-    return { ok: false, gone: isGone(res.status, code, message), status: res.status, code };
+    return {
+      ok: false,
+      gone: isGone(res.status, code, message),
+      status: res.status,
+      code,
+      message: loggableFcmMessage(message, msg.token),
+    };
   } catch (err) {
     // Network, token exchange, anything thrown: transient by definition.
     console.error('[fcm] send failed:', err);

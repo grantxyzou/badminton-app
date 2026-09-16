@@ -148,6 +148,32 @@ describe('send', () => {
     expect(await sendFcm(msg)).toMatchObject({ ok: false, gone: true });
   });
 
+  it("carries FCM's message on a refusal, so a log says WHICH argument was invalid", async () => {
+    // Days of iOS sends logged only `400 INVALID_ARGUMENT`, which covers a bad
+    // payload, an APNs environment mismatch and a dead token alike.
+    const { sendFcm } = await load();
+    sendResponse = () =>
+      json(400, { error: { status: 'INVALID_ARGUMENT', message: 'Request contains an invalid argument.', details: [{ errorCode: 'INVALID_ARGUMENT' }] } });
+    expect(await sendFcm(msg)).toMatchObject({
+      ok: false,
+      gone: false,
+      status: 400,
+      code: 'INVALID_ARGUMENT',
+      message: 'Request contains an invalid argument.',
+    });
+  });
+
+  it('never carries the device token in that message, and caps its length', async () => {
+    const { sendFcm } = await load();
+    sendResponse = () =>
+      json(400, { error: { status: 'INVALID_ARGUMENT', message: `Bad token ${msg.token} ${'x'.repeat(1000)}` } });
+    const out = await sendFcm(msg);
+    const message = out.ok ? '' : (out.message ?? '');
+    expect(message).not.toContain(msg.token);
+    expect(message).toContain('[token]');
+    expect(message.length).toBeLessThanOrEqual(300);
+  });
+
   it('a 503 / UNAVAILABLE is NOT gone — the subscription must survive an outage', async () => {
     const { sendFcm } = await load();
     sendResponse = () => json(503, { error: { status: 'UNAVAILABLE', message: 'try later' } });
