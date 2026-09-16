@@ -121,6 +121,9 @@
     },
     "signup": {
       "spotsLeftSuffix": "spots left",
+      "othersInOne": "{a} is in",
+      "othersInTwo": "{a} and {b} are in",
+      "othersInMany": "{a}, {b} and {count, plural, one {# other} other {# others}} are in",
       "heading": "Sign up",
       "button": "I'm in this week",
       "waitlist": "Join Waitlist",
@@ -173,9 +176,9 @@
       "openingSoonTitle": "Sign-ups opening soon",
       "openingSoonBody": "Check back soon.",
       "closedTitle": "Sign-ups closed",
-      "signedUpTitle": "{name}, thank you for signing up!",
-      "signedUpTitleGeneric": "Thanks for signing up!",
-      "signedUpBody": "See you soon!",
+      "signedUpTitle": "{name}, you're in",
+      "signedUpTitleGeneric": "You're in",
+      "signedUpWhenWhere": "{when} at {place}",
       "waitlistLabel": "Waitlist",
       "waitlistTitle": "You're on the waitlist",
       "waitlistPositionLabel": "Position #{position} of {total}"

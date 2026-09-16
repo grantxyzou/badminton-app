@@ -135,7 +135,7 @@ describe('the pre-flip sign-in warning', () => {
     renderHome(null);
     expect(await screen.findByText("Kento, you're in this week", {}, { timeout: 2000 })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Ask to be let in' })).toBeDefined();
-    expect(screen.queryByText('Kento, thank you for signing up!')).toBeNull();
+    expect(screen.queryByText("Kento, you're in")).toBeNull();
     // One warning, in the sign-up card — not a second copy down in the account group.
     expect(screen.queryByText('Set up a way to sign in')).toBeNull();
   });

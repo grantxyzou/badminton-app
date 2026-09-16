@@ -2882,6 +2882,66 @@ textarea {
 .status-celebrate {
   animation: signupBannerIn var(--duration-normal) var(--ease-glass) both;
 }
+
+/* The sign-up button becomes the confirmation (HomeTab). lib/viewTransition.ts
+   runs the transition only when the browser has the API and motion is not
+   reduced, and puts `vt-signup` on <html> for its duration only; the names hang
+   off that class so they exist for the one moment that animates.
+   - signup-confirm: the button and the banner that replaces it.
+   - signup-card: the card changes height, so it resizes instead of crossfading.
+   - home-account: the group below moves up by that difference. Left in the
+     page-wide crossfade it drew twice, once at each position.
+   Weekly path, so no overshoot: ease-out-quart, no bounce. */
+html.vt-signup .vt-signup-confirm { view-transition-name: signup-confirm; }
+html.vt-signup .vt-signup-card { view-transition-name: signup-card; }
+html.vt-signup .vt-home-account { view-transition-name: home-account; }
+/* The morph IS the banner's entrance. Its own slide-in would run inside the
+   live "new" snapshot and arrive late and faint. Keyed on a persistent
+   attribute, not the <html> class, because dropping that class when the
+   transition ends would restart the animation it had suppressed. */
+.vt-signup-confirm[data-entrance="morph"] :is(.status-banner-green, .status-banner-orange, .status-banner-red) {
+  animation: none;
+}
+::view-transition-group(signup-confirm),
+::view-transition-group(signup-card),
+::view-transition-group(home-account) {
+  animation-duration: var(--duration-normal);
+  animation-timing-function: var(--ease-out-quart);
+}
+::view-transition-old(signup-confirm),
+::view-transition-new(signup-confirm),
+::view-transition-old(signup-card),
+::view-transition-new(signup-card) {
+  animation-duration: var(--duration-normal);
+  height: 100%;
+}
+/* Everything else on the page is unchanged; keep its crossfade short. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-fast);
+}
+
+/* "Viktor, Akane and 4 others are in" under the sign-up count. */
+.who-else-in {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  color: var(--text-secondary);
+}
+.avatar-stack {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+/* Overlap, with a ring in the page colour so each face reads as its own. */
+.avatar-stack > .member-avatar {
+  box-shadow: 0 0 0 2px var(--page-bg);
+}
+.avatar-stack > .member-avatar + .member-avatar {
+  margin-left: calc(var(--space-2) * -1);
+}
 .status-celebrate .icon-status {
   animation: signupIconPop 420ms var(--ease-glass) both;
 }
