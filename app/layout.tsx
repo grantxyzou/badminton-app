@@ -51,6 +51,19 @@ const ibmPlexSans = localFont({
   preload: false,
   weight: '400 700',
 });
+/* Material Symbols, self-hosted for the reason every other face here is: a
+   <link> to fonts.googleapis.com in <head> BLOCKS first paint, and it was the
+   only one left. `display: 'block'` because these glyphs are LIGATURES — a
+   fallback font paints the glyph's NAME ("expand_less") as a word, so blank
+   for a moment is the better failure. Rebuild with
+   `node scripts/fetch-icon-font.mjs` after editing `lib/iconNames.ts`. */
+const materialSymbols = localFont({
+  src: './fonts/MaterialSymbolsRounded-Subset.woff2',
+  display: 'block',
+  variable: '--ff-material-symbols',
+  preload: false,
+  weight: '400',
+});
 const jetbrainsMono = localFont({
   src: './fonts/JetBrainsMono-Subset.woff2',
   display: 'swap',
@@ -153,7 +166,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
        globals.css explains why above the field-card padding rule. */
     <html
       lang={locale}
-      className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable}`}
+      className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} ${materialSymbols.variable}`}
     >
       <head>
         {/* iOS standalone launch (no Safari chrome). Next emits the modern
@@ -161,17 +174,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             still reads the apple-prefixed name — declare it explicitly so the
             home-screen app opens fullscreen on every iOS version. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Material Symbols Rounded — subsetted to the ~35 glyphs actually used.
-            Replaces the old full Material Icons webfont (~100 KB → ~15–20 KB).
-            Deliberate <link> (icon font, not body text) — next/font doesn't fit
-            the dynamic icon_names subset, so opt this one out of the rule. */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,grid_4x4,add_shopping_cart,add_to_home_screen,admin_panel_settings,archive,arrow_back,arrow_forward,article_person,auto_fix_high,bar_chart,bolt,calendar_today,campaign,celebration,check,check_circle,chevron_left,chevron_right,close,dark_mode,delete,delete_forever,delete_outline,delete_sweep,download,edit,emoji_events,error,error_outline,event,expand_less,expand_more,fact_check,fitness_center,flag,format_list_bulleted,format_list_numbered,group,group_add,groups,help_outline,home,hourglass_empty,hourglass_top,how_to_reg,image,install_mobile,inventory_2,ios_share,key,light_mode,link,local_fire_department,location_on,lock,lock_clock,logout,more_horiz,more_vert,notifications,open_in_new,paid,payments,person,person_add,person_remove,radio_button_unchecked,receipt_long,remove,request_quote,restore,schedule,school,science,search,send,share,shield,sports_tennis,star,star_border,subdirectory_arrow_left,swap_horiz,thumb_down,thumb_up,translate,trending_up,tune,unarchive,verified,visibility,volunteer_activism,warning,watch_later&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body>
         {/* HydrationMark sets html[data-hydrated="true"] on mount so the splash

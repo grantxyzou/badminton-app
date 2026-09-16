@@ -2644,7 +2644,10 @@ html:root .ink-button {
    same (element text = glyph name). Variation axes keep the strokes
    balanced (weight 400, no fill, optical size 24). */
 .material-icons {
-  font-family: 'Material Symbols Rounded', 'Material Icons';
+  /* Self-hosted subset (app/fonts, built by scripts/fetch-icon-font.mjs). The
+     literal names stay as the fallback chain for a browser that somehow has
+     the face installed. */
+  font-family: var(--ff-material-symbols), 'Material Symbols Rounded', 'Material Icons';
   font-weight: normal;
   font-style: normal;
   letter-spacing: normal;

@@ -74,11 +74,12 @@ describe('noticeBanner', () => {
     expect(noticeBanner({ kind: 'verified' }).celebrate).toBe(false);
   });
 
-  it('uses only glyphs present in the layout icon subset', () => {
+  it('uses only glyphs present in the icon subset', () => {
     // A glyph outside the subset renders as raw text like `LOCK_RESET` rather
-    // than failing loudly.
-    const layout = readFileSync('app/layout.tsx', 'utf8');
-    const subset = (layout.match(/icon_names=([^"&]*)/)?.[1] ?? '').split(',');
+    // than failing loudly. The list lives in lib/iconNames.ts, and the font is
+    // built from it (scripts/fetch-icon-font.mjs).
+    const source = readFileSync('lib/iconNames.ts', 'utf8');
+    const subset = [...source.matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]);
     expect(subset.length).toBeGreaterThan(10);
     for (const notice of ALL_KINDS) {
       expect(subset, `${noticeBanner(notice).icon} not in subset`).toContain(
