@@ -64,6 +64,7 @@ export default function MigrateCodeSheet({ open, onClose }: Props) {
           type="button"
           onClick={onClose}
           aria-label={t('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
@@ -71,7 +72,7 @@ export default function MigrateCodeSheet({ open, onClose }: Props) {
       </BottomSheetHeader>
       <BottomSheetBody>
         {success ? (
-          <p className="fs-lg" style={{ textAlign: 'center', color: 'var(--text-primary)' }}>
+          <p className="fs-lg motion-fade" style={{ textAlign: 'center', color: 'var(--text-primary)' }}>
             {t('welcome', { name: success })}
           </p>
         ) : (

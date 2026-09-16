@@ -109,6 +109,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
           type="button"
           onClick={onClose}
           aria-label={tRecovery('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>

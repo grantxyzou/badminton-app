@@ -200,8 +200,10 @@ export default function SteppedGameLoggerSheet({
 
       <BottomSheetBody bare>
         <div style={{ padding: '0 var(--space-6) var(--space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          {/* Each step is keyed and crossfades; the column repeats the
+              parent's gap so the step's own children keep their rhythm. */}
           {(step === 'partner' || step === 'opponents') && (
-            <>
+            <div key={step} className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
               <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
                 {step === 'partner' ? t('whoWith') : t('whoAgainst', { partner: partner ?? '' })}
               </p>
@@ -216,6 +218,7 @@ export default function SteppedGameLoggerSheet({
                       key={name}
                       type="button"
                       aria-pressed={picked}
+                      className="flow-step"
                       onClick={() => {
                         if (step === 'partner') {
                           // Tapping a name advances immediately — there is no
@@ -296,11 +299,11 @@ export default function SteppedGameLoggerSheet({
                   nextDisabled={opponents.length === 0}
                 />
               )}
-            </>
+            </div>
           )}
 
           {step === 'score' && (
-            <>
+            <div key="score" className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
               <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
                 {t('versus', { partner: partner ?? '', opponents: opponents.join(' & ') })}
               </p>
@@ -330,11 +333,11 @@ export default function SteppedGameLoggerSheet({
                 onNext={submit}
                 nextDisabled={busy || !online}
               />
-            </>
+            </div>
           )}
 
           {step === 'done' && (
-            <>
+            <div key="done" className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
               <div
                 style={{
                   display: 'flex',
@@ -399,7 +402,7 @@ export default function SteppedGameLoggerSheet({
                 nextLabel={t('done')}
                 onNext={onClose}
               />
-            </>
+            </div>
           )}
         </div>
       </BottomSheetBody>

@@ -150,7 +150,7 @@ export default function CoverSheet({
       </BottomSheetHeader>
       <BottomSheetBody bare className="p-4 pb-8" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {error && (
-          <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
+          <p role="alert" className="field-error" style={{ margin: '0' }}>
             {error}
           </p>
         )}

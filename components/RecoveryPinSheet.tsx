@@ -114,6 +114,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
           type="button"
           onClick={onClose}
           aria-label={tRecovery('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
@@ -121,7 +122,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
       </BottomSheetHeader>
       <BottomSheetBody>
         {firstSetBlocked ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          <div className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
             <p role="alert" style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: '0', lineHeight: 1.5 }}>
               {t('pinNeedsSignIn')}
             </p>
@@ -164,17 +165,17 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             />
           </div>
           {pinError === 'too_common' && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
               {t('pinTooCommon')}
             </p>
           )}
           {pinError === 'invalid' && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
               {t('pinInvalid')}
             </p>
           )}
           {pinError === 'wrong_current' && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
               {t('pinWrongCurrent')}
             </p>
           )}
@@ -184,7 +185,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             </p>
           )}
           {pinError === 'failed' && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
               {t('pinUpdateFailed')}
             </p>
           )}
@@ -193,8 +194,11 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
               {t('pinNeedsSignIn')}
             </p>
           )}
-          {newPin && confirmPin && newPin !== confirmPin && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
+          {/* Only once the confirmation is complete. Judged on every digit it
+              said "don't match" after the first keystroke and moved the Save
+              button with each one after. */}
+          {confirmPin.length === 4 && newPin !== confirmPin && (
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
               {tPin('mismatch')}
             </p>
           )}

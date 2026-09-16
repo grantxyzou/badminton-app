@@ -170,12 +170,17 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
           type="button"
           onClick={onClose}
           aria-label={t('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody className="p-5 pb-8">{body()}</BottomSheetBody>
+      <BottomSheetBody className="p-5 pb-8">
+        {/* Keyed on the state, so "Checking…" → on/off/blocked crossfades
+            instead of swapping copy under the reader. */}
+        <div key={state.status} className="motion-fade">{body()}</div>
+      </BottomSheetBody>
     </BottomSheet>
   );
 }

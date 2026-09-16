@@ -967,8 +967,13 @@ h1, h2, h3, h4 {
   font-size: var(--fs-sm);
   line-height: var(--lh-snug);
   color: var(--sev-crit-text);
-  /* Recipe 1 (Appear). Every mount replays it, which is the point: a retry
-     that fails again should read as a second failure, not as nothing. */
+}
+/* Recipe 1 (Appear) on every inline alert — the sanctioned class and the
+   hand-styled `<p role="alert">` lines that predate it alike. Every mount
+   replays it, which is the point: a retry that fails again should read as a
+   second failure, not as nothing. */
+.field-error,
+p[role='alert'] {
   animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
 }
 
@@ -3035,7 +3040,8 @@ textarea {
   /* The wildcard above zeroes every animation. A fade is not movement, so it
      is given back — `!important` on a class outranks the `*` rule. */
   .motion-fade,
-  .field-error {
+  .field-error,
+  p[role='alert'] {
     animation: motionFade var(--duration-fast) ease-out backwards !important;
   }
   .motion-collapse { transition-property: opacity, visibility !important; }

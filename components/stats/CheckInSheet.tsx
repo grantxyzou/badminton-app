@@ -250,8 +250,10 @@ export default function CheckInSheet({
 
         <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(var(--space-8), env(safe-area-inset-bottom))' }}>
           {/* Intro + reconciliation mirror */}
+          {/* Each screen is keyed and fades in (opacity only: fourteen of
+              them in a row cannot afford to move). */}
           {step === -1 && (
-            <div className="space-y-4">
+            <div key="intro" className="space-y-4 motion-fade">
               {mirrorStatus === 'error' ? (
                 <ErrorState
                   message={t('assess.error')}
@@ -281,7 +283,7 @@ export default function CheckInSheet({
 
           {/* One skill per screen */}
           {skill && (
-            <div className="space-y-3">
+            <div key={skill.key} className="space-y-3 motion-fade">
               <div>
                 {/* The dimension lives up beside the step counter — printing
                     it here too would show it twice on one screen. */}
@@ -367,7 +369,7 @@ export default function CheckInSheet({
 
           {/* Review + save */}
           {step === total && (
-            <div className="space-y-4">
+            <div key="review" className="space-y-4 motion-fade">
               <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: '0', lineHeight: 1.4 }}>{t('assess.reviewCount', { rated: ratedCount, total })}</p>
 
               {changes.length > 0 ? (
@@ -444,7 +446,7 @@ export default function CheckInSheet({
           {/* v2 only — the result. The sheet stays open so the fourteen
               screens end in something, instead of in the sheet vanishing. */}
           {step === SAVED && (
-            <div className="space-y-4">
+            <div key="saved" className="space-y-4 status-celebrate">
               <div
                 style={{
                   position: 'relative',

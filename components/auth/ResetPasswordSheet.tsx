@@ -99,7 +99,7 @@ export default function ResetPasswordSheet({
       <BottomSheetHeader onClose={onClose} closeLabel={tClose('close')}>{t('resetTitle')}</BottomSheetHeader>
       <BottomSheetBody>
         {expired ? (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div className="motion-fade" style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('resetExpired')}
             </p>

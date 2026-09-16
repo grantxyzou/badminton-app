@@ -255,7 +255,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               </div>
 
               {actionError && (
-                <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
+                <p role="alert" className="field-error" style={{ margin: '0' }}>
                   {actionError}
                 </p>
               )}

@@ -145,14 +145,14 @@ export default function AskAccessSheet({
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('askTitle')}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('askTitle')}</span>
-        <button type="button" onClick={onClose} aria-label={t('close')} style={{ minWidth: 44, minHeight: 44 }}>
+        <button type="button" onClick={onClose} aria-label={t('close')} className="sheet-close-btn">
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {phase === 'approved' ? (
-            <p className="fs-md" style={{ margin: 0 }}>{t('askApproved', { name: name.trim() })}</p>
+            <p className="fs-md motion-fade" style={{ margin: 0 }}>{t('askApproved', { name: name.trim() })}</p>
           ) : (
             <>
               <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>
@@ -169,7 +169,12 @@ export default function AskAccessSheet({
                 /* Deliberately not a spinner alone. "Keep this open" is the
                    instruction that makes the wait work — the secret lives in
                    this component, so a closed sheet cannot be resumed. */
-                <p className="fs-md" role="status" style={{ margin: 0 }}>{t('askWaiting')}</p>
+                <p className="fs-md motion-fade" role="status" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                  {/* The wait can last minutes; a turning ring is what says
+                      the sheet is still listening rather than stuck. */}
+                  <span className="ring-spinner" aria-hidden="true" style={{ flex: 'none' }} />
+                  <span>{t('askWaiting')}</span>
+                </p>
               ) : (
                 <>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
