@@ -9,6 +9,7 @@ import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '../BottomSheet'
 import { useOnline } from '@/lib/useOnline';
 import type { UseCheckIn } from './useCheckIn';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
+import { useSkillText, type SkillText } from '@/lib/useSkillText';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -37,6 +38,8 @@ interface DrillPick {
   minutes: number;
   setting: 'solo' | 'pair' | 'group';
   reason: string;
+  /** Absent from a server that predates it; the reason then stays English. */
+  rating?: number;
 }
 
 const SETTING_ICON: Record<DrillPick['setting'], string> = {
@@ -65,6 +68,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
   const t = useTranslations('stats.learn');
   const signInLink = useSignInLink();
   const tStats = useTranslations('stats');
+  const skillText = useSkillText();
   const online = useOnline();
 
   const [drills, setDrills] = useState<DrillPick[]>([]);
@@ -240,7 +244,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
               className="bpm-h2"
               style={{ margin: 'var(--space-4) 0 0', color: 'white' }}
             >
-              {focusTitle(t, focus)}
+              {focusTitle(t, focus, skillText)}
             </p>
             <p
               style={{
@@ -321,7 +325,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
                         fontWeight: 700,
                       }}
                     >
-                      {d.skillLabel}
+                      {skillText.label(d.skillKey)}
                     </span>
                     <span
                       style={{
@@ -333,7 +337,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
                         lineHeight: 'var(--lh-tight, 1.3)',
                       }}
                     >
-                      {d.title}
+                      {skillText.drillTitle(d)}
                     </span>
                     <span
                       style={{
@@ -344,7 +348,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
                         color: 'var(--text-secondary)',
                       }}
                     >
-                      {t('minutes', { min: d.minutes })} · {d.setting}
+                      {t('minutes', { min: d.minutes })} · {skillText.setting(d.setting)}
                     </span>
                   </span>
                   <span
@@ -388,7 +392,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
               {t('doneTitle')}
             </p>
             <p style={{ margin: 'var(--space-2) 0 0', fontSize: 'var(--fs-base)', lineHeight: 1.45, color: 'var(--text-secondary)' }}>
-              {t('doneBody', { skill: focus.skillLabel })}
+              {t('doneBody', { skill: skillText.label(focus.skillKey) })}
             </p>
           </div>
         </div>
@@ -409,18 +413,18 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
 }
 
 /** Per-skill headline, falling back to a generic line for an unmapped key. */
-function focusTitle(t: ReturnType<typeof useTranslations<'stats.learn'>>, drill: DrillPick): string {
+function focusTitle(t: ReturnType<typeof useTranslations<'stats.learn'>>, drill: DrillPick, skillText: SkillText): string {
   const key = `focusTitle.${drill.skillKey}` as const;
   // t.has keeps an unmapped skill from throwing MISSING_MESSAGE — the drill
   // library and this copy map can drift, and a missing headline must not take
   // the register down.
   if (typeof t.has === 'function' && !t.has(key)) {
-    return t('focusFallback', { label: drill.skillLabel.toLowerCase() });
+    return t('focusFallback', { label: skillText.label(drill.skillKey).toLowerCase() });
   }
   try {
     return t(key);
   } catch {
-    return t('focusFallback', { label: drill.skillLabel.toLowerCase() });
+    return t('focusFallback', { label: skillText.label(drill.skillKey).toLowerCase() });
   }
 }
 
@@ -438,11 +442,12 @@ function DrillSheet({
   onClose: () => void;
 }) {
   const t = useTranslations('stats.learn');
+  const skillText = useSkillText();
   return (
-    <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill?.title ?? ''}>
+    <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill ? skillText.drillTitle(drill) : ''}>
       <BottomSheetHeader>
         <h2 className="bpm-h3" style={{ margin: '0' }}>
-          {drill?.title}
+          {drill && skillText.drillTitle(drill)}
         </h2>
         <button type="button" onClick={onClose} aria-label={t('close')} className="cc-btn cc-btn-ghost" style={{ minWidth: 44, minHeight: 44 }}>
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>close</span>
@@ -464,17 +469,17 @@ function DrillSheet({
                   border: '1px solid var(--inner-card-border)',
                 }}
               >
-                {drill.skillLabel}
+                {skillText.label(drill.skillKey)}
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat)', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {t('minutes', { min: drill.minutes })}
               </span>
               <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {drill.setting}
+                {skillText.setting(drill.setting)}
               </span>
             </div>
-            <p style={{ margin: '0', fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>{drill.description}</p>
-            <p style={{ margin: '0', fontSize: 'var(--fs-sm)', fontStyle: 'italic', color: 'var(--text-muted)' }}>{drill.reason}</p>
+            <p style={{ margin: '0', fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>{skillText.drillDescription(drill)}</p>
+            <p style={{ margin: '0', fontSize: 'var(--fs-sm)', fontStyle: 'italic', color: 'var(--text-muted)' }}>{skillText.drillReason(drill)}</p>
             <button
               type="button"
               className="cc-btn cc-btn-primary cc-btn-lg"

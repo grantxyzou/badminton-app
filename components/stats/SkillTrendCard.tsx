@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSkillText } from '@/lib/useSkillText';
 import { useActiveName } from '@/lib/useActiveName';
 import DimensionBars from './DimensionBars';
 import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Phase } from '@/lib/assessment';
@@ -70,6 +71,7 @@ function Delta({ value }: { value: number }) {
 
 export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   const t = useTranslations('stats');
+  const skillText = useSkillText();
   const signInLink = useSignInLink();
   // Shared owner of the identity → preview-name chain. Subscribing (rather
   // than resolving once at mount) is what keeps this card from rendering the
@@ -118,7 +120,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   if (checkIn?.status === 'forbidden') {
     return (
       <LockedCard icon="trending_up" title={t('assess.heroTitle')} message={t.rich('assess.locked', { link: signInLink })}>
-        {SKILLS.slice(0, 4).map((s) => <PreviewMeter key={s.key} label={s.label} />)}
+        {SKILLS.slice(0, 4).map((s) => <PreviewMeter key={s.key} label={skillText.label(s.key)} />)}
       </LockedCard>
     );
   }
@@ -286,6 +288,7 @@ function Legend({
   nowMap: Map<string, number>;
   accent?: boolean;
 }) {
+  const skillText = useSkillText();
   return (
     <div className="space-y-1">
       <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: '0' }}>{title}</p>
@@ -295,7 +298,7 @@ function Legend({
         const v = nowMap.get(r.skillKey) ?? r.value;
         return (
           <div key={r.skillKey} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{skill.label}</span>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{skillText.label(skill.key)}</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-muted)' }}>{v}</span>
           </div>
         );
@@ -313,6 +316,7 @@ function SkillList({
   thenMap: Map<string, number>;
   onPick: (key: string) => void;
 }) {
+  const skillText = useSkillText();
   return (
     <div className="space-y-2">
       <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: '0' }}>{title}</p>
@@ -325,8 +329,8 @@ function SkillList({
           <ListRow
             key={r.skillKey}
             onClick={() => onPick(r.skillKey)}
-            ariaLabel={skill.label}
-            title={<span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.2 }}>{skill.label}</span>}
+            ariaLabel={skillText.label(skill.key)}
+            title={<span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.2 }}>{skillText.label(skill.key)}</span>}
             trailing={
               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--space-1)', whiteSpace: 'nowrap' }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-primary)' }}>{nowV}</span>
@@ -341,10 +345,11 @@ function SkillList({
 }
 
 function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; value: number; onClose: () => void }) {
+  const skillText = useSkillText();
   const skill = SKILL_BY_KEY.get(skillKey);
   if (!skill) return null;
   return (
-    <BottomSheet open onClose={onClose} ariaLabel={skill.label}>
+    <BottomSheet open onClose={onClose} ariaLabel={skillText.label(skill.key)}>
       <div
         style={{
           background: 'var(--glass-bg)',
@@ -357,7 +362,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
         }}
       >
         <BottomSheetHeader>
-          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{skill.label}</h2>
+          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{skillText.label(skill.key)}</h2>
           <button
             onClick={onClose}
             className="flex items-center justify-center rounded-full"
@@ -368,7 +373,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
         </BottomSheetHeader>
         <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(var(--space-8), env(safe-area-inset-bottom))' }}>
           <div className="space-y-2">
-            {skill.anchors.map((anchor, i) => {
+            {skillText.anchors(skill.key).map((anchor, i) => {
               const level = i + 1;
               const isActive = level === value;
               return (

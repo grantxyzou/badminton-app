@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSkillText } from '@/lib/useSkillText';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
@@ -36,6 +37,7 @@ export default function CheckInSheet({
   previous?: Map<string, number>;
 }) {
   const t = useTranslations('stats');
+  const skillText = useSkillText();
   const online = useOnline();
   const total = SKILLS.length;
   // step: -1 = mirror/intro, 0..total-1 = a skill, total = review/save,
@@ -185,7 +187,7 @@ export default function CheckInSheet({
     const before = previous?.get(s.key);
     return {
       key: s.key,
-      label: s.label,
+      label: skillText.label(s.key),
       value,
       delta: typeof before === 'number' && before !== value ? value - before : null,
     };
@@ -283,9 +285,9 @@ export default function CheckInSheet({
               <div>
                 {/* The dimension lives up beside the step counter — printing
                     it here too would show it twice on one screen. */}
-                <h3 className="bpm-h3 m-0" style={{ marginTop: 'var(--space-05)' }}>{skill.label}</h3>
+                <h3 className="bpm-h3 m-0" style={{ marginTop: 'var(--space-05)' }}>{skillText.label(skill.key)}</h3>
               </div>
-              {skill.anchors.map((anchor, i) => {
+              {skillText.anchors(skill.key).map((anchor, i) => {
                 const level = i + 1;
                 const isActive = ratings[skill.key] === level;
                 return (
