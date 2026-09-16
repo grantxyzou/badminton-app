@@ -319,7 +319,7 @@ export default function ProfileTab({
 
   if (identity && !authKnown && !isAdmin) {
     return (
-      <div className="animate-fadeIn flex flex-col gap-4">
+      <div key="profile-loading" className="motion-fade flex flex-col gap-4">
         <PageHeader>{tNav('profile')}</PageHeader>
         <CardSkeleton height={220} />
       </div>
@@ -422,7 +422,7 @@ export default function ProfileTab({
       </button>
     ) : null;
     return (
-      <div className="animate-fadeIn flex flex-col gap-4">
+      <div key="profile-anon" className="motion-fade flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
         {identity ? (
           <StatusBanner
@@ -652,7 +652,10 @@ export default function ProfileTab({
 
   // Player (and possibly admin) state
   return (
-    <div className="animate-fadeIn flex flex-col gap-4">
+    // Keyed per branch: the loading, signed-out and signed-in roots sit in the
+    // same position, so without a key React reuses the node and the fade
+    // never replays — the skeleton was simply swapped for the page in a frame.
+    <div key="profile-member" className="motion-fade flex flex-col gap-4">
       <PageHeader>{tNav('profile')}</PageHeader>
 
       <ProfileIdentityCard
@@ -944,13 +947,15 @@ function SettingsList({ rows }: { rows: SettingsRow[] }) {
             <button
               type="button"
               onClick={row.onClick}
+              // `.settings-row` owns the background so :active can flash it;
+              // an inline background would outrank the press state.
+              className="settings-row"
               style={{
                 width: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 'var(--space-4)',
                 padding: 'var(--space-4) var(--space-5)',
-                background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
                 color: 'var(--text-primary)',
@@ -971,6 +976,10 @@ function SettingsList({ rows }: { rows: SettingsRow[] }) {
               <span style={{ flex: 1 }}>{row.label}</span>
               {row.meta && (
                 <span
+                  // Meta arrives after its own fetch ("PIN · Google"); keyed so
+                  // it fades in rather than popping beside a settled label.
+                  key={row.meta}
+                  className="motion-fade"
                   style={{
                     fontSize: 'var(--fs-base)',
                     color: row.accent ? 'var(--accent)' : 'var(--text-secondary)',

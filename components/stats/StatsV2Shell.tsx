@@ -100,10 +100,11 @@ export default function StatsV2Shell({
       </div>
       )}
 
-      {/* Keyed by view so a register switch swaps content cleanly. Entrance
-          motion is HomeShell's whole-tab fade — no per-card stagger, so Stats
-          matches Home / Profile / Sign-Ups. */}
-      <div key={view} className="space-y-5">
+      {/* Keyed by view so a register switch remounts its content, and the
+          remount crossfades (opacity only — the register moves nowhere, it is
+          replaced). HomeShell's tab fade only runs when the TAB mounts, so
+          without this a switch was a hard cut. No per-card stagger. */}
+      <div key={view} className="space-y-5 motion-fade">
         {slots[view]}
       </div>
     </div>

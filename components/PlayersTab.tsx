@@ -202,11 +202,12 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center px-3 py-2 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-green' : ''}`}
-                  /* Stagger entrance ~40ms/row, capped so a long list doesn't
-                     crawl in. Stable key → only first mount + genuinely new
-                     rows animate; poll refreshes don't replay it. */
-                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                  className={`flex items-center px-3 py-2 gap-3 rounded-xl motion-fade${isMe ? ' player-highlight-green' : ''}`}
+                  /* Opacity only, staggered 30ms/row and capped at 150ms in
+                     total: this list is seen on every Sign-Ups visit, and a
+                     row-by-row crawl is choreography the second time. Stable
+                     key → only first mount + genuinely new rows animate. */
+                  style={{ animationDelay: `${Math.min(i, 5) * 30}ms` }}
                 >
                   <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
                     {i + 1}
@@ -278,8 +279,8 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                 return (
                   <div
                     key={player.id}
-                    className={`flex items-center px-3 py-2 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-amber' : ''}`}
-                    style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                    className={`flex items-center px-3 py-2 gap-3 rounded-xl motion-fade${isMe ? ' player-highlight-amber' : ''}`}
+                    style={{ animationDelay: `${Math.min(i, 5) * 30}ms` }}
                   >
                     <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
                       {activePlayers.length + i + 1}

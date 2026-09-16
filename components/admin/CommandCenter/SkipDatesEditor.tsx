@@ -119,7 +119,7 @@ export default function SkipDatesEditor() {
   }
 
   return (
-    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Skip dates">
+    <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Skip dates">
       <CardHeader
         icon="calendar_today"
         title="Skip dates"

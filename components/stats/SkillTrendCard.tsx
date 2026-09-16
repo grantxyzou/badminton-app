@@ -185,7 +185,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   return (
     // The read + level live in the Level card; here a single card holds the
     // always-on radar with strengths / work-on as legends on the right.
-    <div className="animate-fadeIn space-y-3">
+    <div className="motion-fade space-y-3">
       <div className="glass-card p-5 space-y-3">
       {/* Dimension tiles — Technical / Physical / Mental averages, in-card above the radar. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>

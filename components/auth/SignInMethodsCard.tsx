@@ -124,7 +124,7 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
 
   return (
     <div
-      className={embedded ? '' : 'glass-card p-5 animate-fadeIn'}
+      className={embedded ? '' : 'glass-card p-5 motion-fade'}
       style={{ display: 'grid', gap: 'var(--space-4)' }}
     >
       {!embedded && (

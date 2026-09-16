@@ -73,7 +73,7 @@ export default function SummaryGreeting() {
 
   return (
     <div
-      className="glass-card animate-fadeIn"
+      className="glass-card motion-fade"
       /* `flex-start`, not `center`: the greeting runs to two or three lines
          depending on what the model says, and a centred badge drifts down
          beside line 2 of a three-line one, reading as though it floats rather

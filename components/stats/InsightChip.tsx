@@ -31,7 +31,7 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
   const icon = ICON_BY_KIND[kind] ?? 'auto_fix_high';
   return (
     <div
-      className="animate-fadeIn"
+      className="motion-fade"
       style={{
         display: 'flex',
         gap: 'var(--space-4)',

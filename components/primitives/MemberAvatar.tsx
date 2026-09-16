@@ -57,10 +57,34 @@ export default function MemberAvatar({ name, avatar: given, size = 32, tone = 'n
     >
       {racketId ? (
         // eslint-disable-next-line @next/next/no-img-element -- a same-origin static crop; next/image would add a loader round-trip per roster row
-        <img className="member-avatar__racket" src={racketSrc(racketId)} alt="" loading="lazy" decoding="async" />
+        <img
+          // Keyed so a changed racket (AvatarSheet's shuffle) fades in anew.
+          key={racketId}
+          className="member-avatar__racket"
+          src={racketSrc(racketId)}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          data-loaded="false"
+          // An image already in the cache can finish before React attaches
+          // onLoad, so the ref checks `complete` at commit — before paint — or
+          // a cached avatar would sit invisible forever. A failed load is
+          // shown too: the broken state is the honest one.
+          ref={markIfLoaded}
+          onLoad={markLoaded}
+          onError={markLoaded}
+        />
       ) : (
         name.slice(0, 1).toUpperCase()
       )}
     </span>
   );
+}
+
+function markLoaded(e: { currentTarget: HTMLImageElement }) {
+  e.currentTarget.dataset.loaded = 'true';
+}
+
+function markIfLoaded(el: HTMLImageElement | null) {
+  if (el?.complete) el.dataset.loaded = 'true';
 }

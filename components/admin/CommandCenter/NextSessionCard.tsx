@@ -273,7 +273,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const staleBill = rosterChanged || costChanged;
 
   return (
-    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Next session">
+    <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Next session">
       <header className="flex items-center justify-between gap-3">
         <div>
           <h3 className="bpm-h3">{fmtDate(session.datetime)}</h3>

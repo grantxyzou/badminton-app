@@ -128,7 +128,7 @@ export default function ETransferRecipientEditor() {
   }
 
   return (
-    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="E-transfer recipient">
+    <section className="glass-card p-4 space-y-3 motion-fade" aria-label="E-transfer recipient">
       <CardHeader
         icon="payments"
         title="E-transfer recipient"

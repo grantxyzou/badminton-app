@@ -487,7 +487,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
   }
 
   return (
-    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Payments">
+    <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Payments">
       <CardHeader icon="payments" title="Payments" />
       {/* Session selector — horizontal chips replace the old prev/next
           chevrons AND the standalone RecentSessionsStrip card (merged here).

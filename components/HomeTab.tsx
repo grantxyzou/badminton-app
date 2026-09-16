@@ -566,7 +566,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           group is this week's session — where, when, and are you in. The
           second is your account — what you owe and what you have with the
           stringer. Five evenly-spaced cards read as five unrelated errands. */}
-      <div className="bpm-home-stack animate-fadeIn">
+      <div className="bpm-home-stack motion-fade">
       {/* One-time nudge to install to the home screen (mobile browser only). */}
       <InstallBanner />
 
