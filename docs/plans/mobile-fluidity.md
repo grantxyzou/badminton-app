@@ -27,7 +27,8 @@ few items that were inference are marked.
 | #462 | The club bands, kudos and games are read once per screen instead of twice (`lib/sharedRead.ts`). |
 | #465 | Sheets drag down to dismiss, with a grabber. The grabber and the header are the grab surfaces; the body is not, because it is the scroller. |
 | #468 | A sheet lifts above the on-screen keyboard (`components/BottomSheet/useKeyboardInset.ts`, `visualViewport`), and Android resizes the layout itself (`interactiveWidget: 'resizes-content'`). Search fields show a Search key. |
-| this PR | Pull-to-refresh: a damped curve arming at ~100px of finger (was ~283px), the page no longer rubber-bands underneath (`overscroll-behavior-y: none`), listeners stay passive, no render per frame, a swell + Android tick on arming, and a sheet check asked of `lib/sheetStack` instead of sniffed from body styles. |
+| #471 | Pull-to-refresh: a damped curve arming at ~100px of finger (was ~283px), the page no longer rubber-bands underneath (`overscroll-behavior-y: none`), listeners stay passive, no render per frame, a swell + Android tick on arming, and a sheet check asked of `lib/sheetStack` instead of sniffed from body styles. |
+| this PR | A tapped notification switches tab IN PLACE (`lib/inAppNavigate.ts`) instead of `window.location.assign`, which replayed the whole launch inside an open native app; the web service worker now tells the window it focuses where to go, where before a tap went nowhere. |
 
 Each carries a canary, because none of this is visible to a rendering test:
 jsdom computes every length as `0px`, and a static import or a re-added
@@ -59,9 +60,9 @@ transition passes every existing test.
    client (`app/layout.tsx:195`), including on `/legal/*`. Scope the namespaces,
    and cache the per-locale `deepMerge` (`i18n/request.ts:129`) — `force-dynamic`
    means it re-walks the tree on every request.
-3. **Deep links replay the cold start.** `components/NativeBridge.tsx:132,140,207`
-   use `window.location.assign`, so tapping a push notification tears down the
-   document and re-runs the whole launch, splash included, *inside* the app.
+3. **The migrate link still loads as a page.** `bpm://migrate` and the
+   universal link go to `/migrate`, a separate route that claims an identity, so
+   a page load is correct there. Rare, and deliberately left.
 5. **Keyboard hints across the forms.** Sheets now lift above the keyboard and
    search fields say Search, but `enterKeyHint` is still absent from the
    sign-in and admin forms, and `inputMode` covers ~23% of inputs.
@@ -104,9 +105,10 @@ Ranked. These do NOT ship with a web deploy.
 
 ## Ranked, if you want the next one picked for you
 
-**Deep links (3)** — tapping a notification inside the app replays the whole
-launch, splash included. After that, the remaining items are measurement
-(a bundle analyzer, then memoisation) rather than feel.
+Everything left on the web side is **measurement before change**: add a bundle
+analyzer, then decide where memoisation pays. The biggest remaining wins for
+feel are now on the **native rebuild list** below — the launch background
+colour first.
 
 ## Non-goals
 

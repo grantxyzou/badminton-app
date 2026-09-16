@@ -32,6 +32,7 @@ import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/li
 import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
 import { resetSharedReads } from '@/lib/sharedRead';
+import { useInAppNavigation } from '@/lib/inAppNavigate';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
 const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
@@ -637,6 +638,19 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     setRefreshNonce((n) => n + 1);
     await new Promise((r) => setTimeout(r, 600));
   }, []);
+
+  // A link to a place inside the app — a tapped notification, native or web —
+  // arrives here instead of reloading the page (lib/inAppNavigate.ts). It
+  // switches tab AND refetches, because a notification is news: "sign-ups are
+  // open" is only worth landing on if the card shows that it is. The admin tab
+  // is not special-cased: a non-admin asking for it meets the same bounce a
+  // `?tab=admin` landing does.
+  useInAppNavigation(useCallback(({ tab }: { tab: string | null }) => {
+    const next: Tab = tab === 'players' || tab === 'skills' || tab === 'admin' || tab === 'profile' ? tab : 'home';
+    resetSharedReads();
+    setActiveTab(next);
+    setRefreshNonce((n) => n + 1);
+  }, []));
 
   /**
    * The doors replace the tabs only when all three hold: the feature is on, we
