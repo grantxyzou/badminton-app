@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import type { Player, Session } from '@/lib/types';
 import { getIdentity, setIdentity } from '@/lib/identity';
@@ -31,6 +31,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const loadedRef = useRef(false);
   const [cancelError, setCancelError] = useState('');
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   /* The SECOND door to kudos. The Stats card is the first; this one exists
@@ -41,7 +42,10 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
   const reportFetchFailure = useReportFetchFailure();
 
   const loadPlayers = useCallback(async () => {
-    setLoading(true);
+    // Skeleton on the FIRST load only. Cancelling a spot used to flash the
+    // roster back to a skeleton and re-stagger every row in, instead of the
+    // one row leaving. A refetch keeps the roster while it runs.
+    if (!loadedRef.current) setLoading(true);
     setLoadError(false);
     try {
       const [pRes, sRes] = await Promise.all([
@@ -51,9 +55,15 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
       // A failed load must NOT silently render as an empty roster — track the
       // error so the UI can say "couldn't load" instead (CLAUDE.md).
       if (!pRes.ok || !sRes.ok) setLoadError(true);
+      // A roster that failed to refresh must not keep standing as if current:
+      // drop it, so the full "couldn't load" state renders instead.
       if (pRes.ok) setPlayers(await pRes.json());
+      else setPlayers([]);
+      loadedRef.current = pRes.ok;
       if (sRes.ok) setSession(await sRes.json());
     } catch {
+      loadedRef.current = false;
+      setPlayers([]);
       setLoadError(true);
       reportFetchFailure();
     } finally {

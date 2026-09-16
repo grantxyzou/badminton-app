@@ -2998,7 +2998,15 @@ textarea {
     opacity var(--duration-sheet) var(--ease-sheet);
 }
 .motion-collapse[data-open='true'] { grid-template-rows: 1fr; opacity: 1; }
-.motion-collapse > * { min-height: 0; overflow: hidden; }
+/* The clip is widened by one rung on the sides and bottom (and the content
+   pulled back in by the same) so an input's 3px focus ring inside it is not
+   sliced off. Net layout change: zero. */
+.motion-collapse > * {
+  min-height: 0;
+  overflow: hidden;
+  margin: 0 calc(-1 * var(--space-1)) calc(-1 * var(--space-1));
+  padding: 0 var(--space-1) var(--space-1);
+}
 /* A closed collapse is still in the DOM; keep its controls out of the tab
    order and away from a stray tap. */
 .motion-collapse:not([data-open='true']) {

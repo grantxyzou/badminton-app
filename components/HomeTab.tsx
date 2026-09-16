@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -30,6 +30,7 @@ import NameAutocompleteInput from './home/NameAutocompleteInput';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
+import Collapse from './primitives/Collapse';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -114,8 +115,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // choosing a PIN actually succeeds.
     : memberProbe?.exists ? (memberProbe.authed ? 'create' : 'anon')
     : 'anon';
+  const [pinMode, setPinMode] = useState<'sign-in' | 'create'>('sign-in');
+  if (authMode !== 'anon' && authMode !== pinMode) setPinMode(authMode);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const weekLoadedRef = useRef(false);
   /* The week could not be read — distinct from a club that has no week yet
      (`sessionMissing`, a 404). Before this, every failure was a console.error
      and Home rendered "—" tiles and "12 of 12 spots left" for a session that
@@ -155,7 +159,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const maxPlayers = defaultMaxPlayers();
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    // The skeleton is for the FIRST load only. A refetch after a sign-up used
+    // to drop all of Home back to a skeleton and replay its entrance — the
+    // one confirmation this screen exists to give, hidden behind a blink.
+    // Once a week has loaded, the content stays while it refreshes; a refetch
+    // that fails still sets weekLoadError below, which replaces the week with
+    // the error, so stale data never stands in for a failure.
+    if (!weekLoadedRef.current) setLoading(true);
     setWeekLoadError(false);
     setSessionMissing(false);
     try {
@@ -170,6 +180,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       // in), so it failing is the week failing too.
       if (sRes.status === 404) setSessionMissing(true);
       else if (!sRes.ok || !pRes.ok) setWeekLoadError(true);
+      weekLoadedRef.current = sRes.ok && pRes.ok;
       if (sRes.ok) {
         const s: Session = await sRes.json();
         setSession(s);
@@ -224,6 +235,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (rRes && rRes.ok) setReleases(await rRes.json());
     } catch (e) {
       console.error('Load error:', e);
+      weekLoadedRef.current = false;
       setWeekLoadError(true);
       reportFetchFailure();
     } finally {
@@ -510,6 +522,41 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     await performSignup(true);
   }
 
+  // The PIN fields arrive when the debounced name probe resolves — under a
+  // thumb that is already heading for the button. They open instead of
+  // appearing, so the button travels rather than jumps. `pinMode` holds the
+  // last non-anon mode so a CLOSING reveal keeps showing what it showed.
+  const pinReveal = (
+    <Collapse open={authMode !== 'anon'} spaceAbove="var(--space-3)">
+      {pinMode === 'sign-in' ? (
+        <PinInput
+          value={pin}
+          onChange={(v) => { setPin(v); setError(''); }}
+          digits={4}
+          label={t('signup.pinLabel')}
+          ariaInvalid={!!error}
+        />
+      ) : (
+        <div className="space-y-3">
+          <PinInput
+            value={pin}
+            onChange={(v) => { setPin(v); setError(''); }}
+            digits={4}
+            label={t('signup.pinCreateLabel')}
+            ariaInvalid={!!error}
+          />
+          <PinInput
+            value={confirmPin}
+            onChange={(v) => { setConfirmPin(v); setError(''); }}
+            digits={4}
+            label={t('signup.pinConfirmLabel')}
+            ariaInvalid={!!error}
+          />
+        </div>
+      )}
+    </Collapse>
+  );
+
   if (loading) {
     // Render the REAL header (its slot is static text, no data) and skeleton
     // only the data cards below it — same pattern as PlayersTab — so the page
@@ -715,8 +762,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 screen with no way past it once members only is on. The
                 confirmation itself says so, in amber, rather than a green
                 "see you soon" with the catch in a separate card below. */}
+            {/* Keyed: both banners sit in the same slot, so without a key React
+                reuses the node and the swap from amber to green happens with
+                no entrance at all. */}
             {needsSignInSetup ? (
               <StatusBanner
+                key="signed-up-setup"
                 tone="warn"
                 icon="key"
                 title={t('signInSetup.signedUpTitle', { name: currentUser ?? '' })}
@@ -724,6 +775,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               />
             ) : (
               <StatusBanner
+                key="signed-up"
                 tone="success"
                 icon="check_circle"
                 title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
@@ -742,7 +794,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p className="bpm-h2">{t('signup.heading')}</p>
               <div className="text-right">
                 <p className="fs-sm text-gray-400">{tStates('waitlistLabel')}</p>
-                <p className="text-2xl font-bold text-amber-400 leading-none mt-0.5">
+                <p key={waitlistPosition} className="text-2xl font-bold text-amber-400 leading-none mt-0.5 animate-count-tick">
                   #{waitlistPosition}
                 </p>
               </div>
@@ -786,33 +838,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               {/* PIN inputs — same adaptive reveal as the open-signup form, so a
                   PIN-protected member can authenticate while joining the waitlist
                   (the server enforces the PIN on waitlist sign-ups too). */}
-              {authMode === 'sign-in' && (
-                <PinInput
-                  value={pin}
-                  onChange={(v) => { setPin(v); setError(''); }}
-                  digits={4}
-                  label={t('signup.pinLabel')}
-                  ariaInvalid={!!error}
-                />
-              )}
-              {authMode === 'create' && (
-                <>
-                  <PinInput
-                    value={pin}
-                    onChange={(v) => { setPin(v); setError(''); }}
-                    digits={4}
-                    label={t('signup.pinCreateLabel')}
-                    ariaInvalid={!!error}
-                  />
-                  <PinInput
-                    value={confirmPin}
-                    onChange={(v) => { setConfirmPin(v); setError(''); }}
-                    digits={4}
-                    label={t('signup.pinConfirmLabel')}
-                    ariaInvalid={!!error}
-                  />
-                </>
-              )}
+              {pinReveal}
               {error && <p id="signup-error" role="alert" className="field-error">{error}</p>}
               <button
                 type="submit"
@@ -829,7 +855,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 <button
                   type="button"
                   onClick={() => setEnterCodeOpen(true)}
-                  className="fs-sm underline mx-auto"
+                  className="fs-sm underline mx-auto motion-fade"
                   style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 'var(--space-3) var(--space-4)', minHeight: 44 }}
                 >
                   {t('signup.forgotPin')}
@@ -880,33 +906,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   sign-in: single PIN field.
                   create:  PIN + Confirm PIN.
                   anon:    nothing (default, just name + button). */}
-              {authMode === 'sign-in' && (
-                <PinInput
-                  value={pin}
-                  onChange={(v) => { setPin(v); setError(''); }}
-                  digits={4}
-                  label={t('signup.pinLabel')}
-                  ariaInvalid={!!error}
-                />
-              )}
-              {authMode === 'create' && (
-                <>
-                  <PinInput
-                    value={pin}
-                    onChange={(v) => { setPin(v); setError(''); }}
-                    digits={4}
-                    label={t('signup.pinCreateLabel')}
-                    ariaInvalid={!!error}
-                  />
-                  <PinInput
-                    value={confirmPin}
-                    onChange={(v) => { setConfirmPin(v); setError(''); }}
-                    digits={4}
-                    label={t('signup.pinConfirmLabel')}
-                    ariaInvalid={!!error}
-                  />
-                </>
-              )}
+              {pinReveal}
               {error && <p id="signup-error" role="alert" className="field-error">{error}</p>}
               <button
                 type="submit"
@@ -929,7 +929,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 <button
                   type="button"
                   onClick={() => setEnterCodeOpen(true)}
-                  className="fs-sm underline mx-auto"
+                  className="fs-sm underline mx-auto motion-fade"
                   style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 'var(--space-3) var(--space-4)', minHeight: 44 }}
                 >
                   {t('signup.forgotPin')}
@@ -941,7 +941,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                    real error had nothing louder to reach for. Amber inside the
                    last 24 hours still escalates; the rest is a footnote. */
                 <p
-                  className="text-center fs-sm"
+                  className="text-center fs-sm motion-fade"
                   style={{ color: isDeadlineApproaching ? 'var(--sev-warn)' : 'var(--text-muted)' }}
                 >
                   {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}
