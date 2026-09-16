@@ -3036,6 +3036,11 @@ textarea {
   transition: transform var(--duration-slow) var(--ease-out-quart);
 }
 
+/* A page refreshing in place: the old content stays, dimmed, while the new
+   loads. Opacity only, so it survives reduced motion. */
+.motion-busy { transition: opacity var(--duration-fast) var(--ease-glass); }
+.motion-busy[aria-busy='true'] { opacity: 0.6; }
+
 @media (prefers-reduced-motion: reduce) {
   /* The wildcard above zeroes every animation. A fade is not movement, so it
      is given back — `!important` on a class outranks the `*` rule. */

@@ -381,7 +381,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
 
   if (loading) {
     return (
-      <div className="animate-slideInRight space-y-3">
+      <div className="motion-fade space-y-3">
         <AdminBackHeader onBack={onBack} title="Roster" />
         <AdminPageSkeleton />
       </div>
@@ -397,7 +397,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
   ];
 
   return (
-    <div className="animate-slideInRight" style={{ position: 'relative', minHeight: '60vh' }}>
+    <div className="motion-fade" style={{ position: 'relative', minHeight: '60vh' }}>
       <AdminBackHeader onBack={onBack} title="Roster" />
 
       {/* Search */}

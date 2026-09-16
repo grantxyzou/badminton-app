@@ -35,8 +35,19 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   // Session the Ledger drilled into; PaymentsCard preselects its chip.
   const [paymentsSessionId, setPaymentsSessionId] = useState<string | null>(null);
 
+  // Which way the last move went. A push slides the page in from the right;
+  // going BACK used to have no motion at all (the Command Center just cut in).
+  // A pop fades rather than sliding from the left: the Command Center renders
+  // fixed-position toasts, and a transform on their ancestor would drag them.
+  const [popped, setPopped] = useState(false);
+  const push = useCallback((next: AdminView) => {
+    setPopped(false);
+    setView(next);
+  }, []);
+
   const goBack = useCallback(() => {
     setRefreshKey(k => k + 1);
+    setPopped(true);
     setView('dashboard');
   }, []);
 
@@ -44,6 +55,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   // dashboard) — preserving the drill-in trail.
   const goBackToLedger = useCallback(() => {
     setRefreshKey(k => k + 1);
+    setPopped(true);
     setView('ledger');
   }, []);
 
@@ -70,12 +82,12 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   }
   if (view === 'ledger') {
     return (
-      <div className="animate-slideInRight">
+      <div className={popped ? 'motion-fade' : 'animate-slideInRight'}>
         <LedgerPage
           onBack={goBack}
           onOpenSession={(sessionId) => {
             setPaymentsSessionId(sessionId);
-            setView('payments');
+            push('payments');
           }}
         />
       </div>
@@ -118,5 +130,9 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     return <PastSessionsPage onBack={goBack} />;
   }
 
-  return <CommandCenter refreshKey={refreshKey} setView={setView} onExit={onExit} />;
+  return (
+    <div className={popped ? 'motion-fade' : undefined}>
+      <CommandCenter refreshKey={refreshKey} setView={push} onExit={onExit} />
+    </div>
+  );
 }

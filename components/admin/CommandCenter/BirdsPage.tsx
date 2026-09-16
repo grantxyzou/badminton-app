@@ -1,7 +1,7 @@
 'use client';
 
 import { todayIso } from '@/lib/stringingDue';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -135,6 +135,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   // Distinct from "loaded but empty": a failed fetch must not render the
   // same UI as a real zero-state (the forbidden lying-empty pattern).
   const [loadError, setLoadError] = useState(false);
+  const loadedRef = useRef(false);
 
   // Purchase sheet state — used for both Add and Edit. editingId === null
   // means Add mode; non-null means Edit mode for that purchase.
@@ -166,7 +167,11 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [reconcileError, setReconcileError] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // Skeleton on the first load only: a save or cover used to blink this
+    // whole surface back to a skeleton (and resize the page) before showing
+    // the change it made. A refetch that fails still sets loadError, which
+    // replaces the stale content with the error card.
+    if (!loadedRef.current) setLoading(true);
     setLoadError(false);
     try {
       const birdsRes = await fetch(`${BASE}/api/birds`, { cache: 'no-store' });
@@ -174,6 +179,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       // back to a zero object here rendered the forbidden lying-empty state
       // (confident "0 tubes" on a broken backend).
       if (!birdsRes.ok) {
+        loadedRef.current = false;
         setLoadError(true);
         return;
       }
@@ -197,11 +203,13 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       setBurnPerSession(birds.burnPerSession ?? 0);
       setRecentSessionCount(birds.recentSessionsLast60d ?? 0);
       setRecentUsedTotal(birds.recentUsedLast60d ?? 0);
+      loadedRef.current = true;
     } catch {
       // Offline / network failure: fetch() rejects before returning a
       // Response, so the res.ok guards above never run. Flag it explicitly
       // rather than letting the rejection float (it was surfacing as the
       // Next dev overlay) or zeroing the stats (lying-empty).
+      loadedRef.current = false;
       setLoadError(true);
     } finally {
       setLoading(false);
@@ -404,7 +412,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
   if (loading) {
     return (
-      <div className="animate-slideInRight space-y-3">
+      <div className="motion-fade space-y-3">
         <AdminBackHeader onBack={onBack} title="Birds" />
         <AdminPageSkeleton />
       </div>
@@ -413,7 +421,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
   if (loadError) {
     return (
-      <div className="animate-slideInRight space-y-3">
+      <div className="motion-fade space-y-3">
         <AdminBackHeader onBack={onBack} title="Birds" />
         <div style={{ padding: 'var(--space-9) var(--space-7)' }}>
           <ErrorState
@@ -430,7 +438,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   }
 
   return (
-    <div className="animate-slideInRight space-y-3">
+    <div className="motion-fade space-y-3">
       <AdminBackHeader onBack={onBack} title="Birds" />
 
       {/* Runway hero */}
@@ -862,7 +870,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 confirm()). A referenced purchase comes back 409 with guidance
                 ("move its tubes first"), surfaced via formError above. */}
             {confirmingDelete ? (
-              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+              // Fades in: a confirm that appears in one frame reads as a mis-tap.
+              <div className="motion-fade" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span className="fs-sm" style={{ color: 'var(--text-secondary)', flex: 1, minWidth: 160 }}>
                   Delete this purchase? This cannot be undone.
                 </span>

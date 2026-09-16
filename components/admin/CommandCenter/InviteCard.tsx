@@ -85,7 +85,7 @@ export default function InviteCard({ enabled = true, groupName }: Props) {
             {failed && <p className="field-error">{t('regenerateFailed')}</p>}
 
             {confirming ? (
-              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+              <div className="motion-fade" style={{ display: 'grid', gap: 'var(--space-3)' }}>
                 <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-primary)', fontWeight: 600 }}>
                   {t('regenerateConfirm')}
                 </p>

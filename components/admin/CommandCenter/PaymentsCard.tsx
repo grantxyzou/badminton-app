@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
@@ -69,6 +69,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const loadedRef = useRef(false);
   // Separate from loadError (which load() owns for the session fetch) so a
   // players-fetch failure can't be clobbered by load()'s reset — the two run
   // in independent effects.
@@ -111,7 +112,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
   const viewedSession = sessions.find((s) => s.id === viewedSessionId);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // Skeleton on the first load only: a save or cover used to blink this
+    // whole surface back to a skeleton (and resize the page) before showing
+    // the change it made. A refetch that fails still sets loadError, which
+    // replaces the stale content with the error card.
+    if (!loadedRef.current) setLoading(true);
     setLoadError(false);
     try {
       const [sessionRes, sessionsRes] = await Promise.all([
@@ -121,6 +126,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       // If either critical fetch failed, mark load error so we don't render
       // confident "0 of 0 paid" / empty list as if it were truth.
       if (!sessionRes.ok || !sessionsRes.ok) {
+        loadedRef.current = false;
         setLoadError(true);
         setSessions([]);
         setActiveSessionId(null);
@@ -142,8 +148,10 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           ? initialSessionId
           : null;
       setViewedSessionId((prev) => prev ?? wanted ?? current?.id ?? sorted[0]?.id ?? null);
+      loadedRef.current = true;
     } catch (err) {
       console.warn('PaymentsCard load failed:', err);
+      loadedRef.current = false;
       setLoadError(true);
       setSessions([]);
       setActiveSessionId(null);
@@ -568,7 +576,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           there is something to summarise. */}
       {!loadError && !playersError && viewedSession && total > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-          <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
+          <p key={`${viewedSession.id}:${paidPercent}`} className="fs-sm animate-count-tick" style={{ color: 'var(--text-muted)', margin: '0' }}>
             {[
               fmtSessionLabel(viewedSession.datetime),
               `${total} player${total === 1 ? '' : 's'}`,
@@ -665,10 +673,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     disabled={togglingId === player.id}
                     className={`fs-sm font-medium px-3 py-1.5 rounded-full transition-colors inline-flex items-center gap-1 ${player.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
                     aria-pressed={player.paid === true}
+                    aria-busy={togglingId === player.id || undefined}
                   >
-                    {togglingId === player.id ? (
-                      '…'
-                    ) : player.paid ? (
+                    {/* The optimistic label stays while the request runs; the
+                        disabled dim says it is in flight. Swapping the text to
+                        "…" read Pending → … → Paid, a flicker on the most
+                        frequent tap in admin. */}
+                    {player.paid ? (
                       <>
                         <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">
                           check_circle
