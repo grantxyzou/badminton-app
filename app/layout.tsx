@@ -150,6 +150,10 @@ export const viewport: Viewport = {
   // WKWebView reports 0 and the native shell's status bar overlaps the top
   // bar. Correct for the installed PWA too (black-translucent status bar).
   viewportFit: 'cover',
+  // Android Chrome: shrink the layout viewport when the keyboard opens, so a
+  // fixed sheet sits above it on its own. iOS ignores this, which is why
+  // BottomSheet's `useKeyboardInset` measures the gap itself.
+  interactiveWidget: 'resizes-content',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -25,6 +25,8 @@ few items that were inference are marked.
 | #459 | The condensing header no longer animates `backdrop-filter`, `padding` or `font-size` — three per-frame costs paid *while scrolling*. |
 | #461 | The Material Symbols subset is self-hosted (`lib/iconNames.ts` → `scripts/fetch-icon-font.mjs` → 11.7 KB in `app/fonts/`), so nothing third-party blocks first paint. Verified on production: the face is served from our origin and the page references neither Google host. |
 | #462 | The club bands, kudos and games are read once per screen instead of twice (`lib/sharedRead.ts`). |
+| #465 | Sheets drag down to dismiss, with a grabber. The grabber and the header are the grab surfaces; the body is not, because it is the scroller. |
+| this PR | A sheet lifts above the on-screen keyboard (`components/BottomSheet/useKeyboardInset.ts`, `visualViewport`), and Android resizes the layout itself (`interactiveWidget: 'resizes-content'`). Search fields show a Search key. |
 
 Each carries a canary, because none of this is visible to a rendering test:
 jsdom computes every length as `0px`, and a static import or a re-added
@@ -63,13 +65,10 @@ transition passes every existing test.
    `RESISTANCE` 0.45 + a 28px dead zone) against ~60–90px for iOS Mail, and its
    `touchmove` is passive, so the page rubber-bands at 1:1 under an indicator
    moving at 0.45:1.
-5. **Nothing lifts a focused input above the keyboard** (no `visualViewport`
-   listener anywhere), and a sheet's pinned footer holds the primary action.
-   `enterKeyHint` is unused app-wide; `inputMode` covers ~23% of inputs.
-6. **Drag-to-dismiss on sheets.** `BottomSheet` has no pointer handlers and
-   backdrop-tap is deliberately off, so ✕ is the only touch dismissal. Every
-   system sheet since iOS 13 drags.
-7. **No React.memo anywhere** (165 component files) while `HomeShell` holds ~20
+5. **Keyboard hints across the forms.** Sheets now lift above the keyboard and
+   search fields say Search, but `enterKeyHint` is still absent from the
+   sign-in and admin forms, and `inputMode` covers ~23% of inputs.
+6. **No React.memo anywhere** (165 component files) while `HomeShell` holds ~20
    pieces of state, each re-rendering a 1000-line tab with fresh inline
    closures. Add a bundle analyzer first — nothing measures the client bundle
    today.
@@ -108,10 +107,10 @@ Ranked. These do NOT ship with a web deploy.
 
 ## Ranked, if you want the next one picked for you
 
-**Drag-to-dismiss (6)** — the most conspicuous non-native thing left, and the
-one a person notices every time they close a sheet. Then **the keyboard (5)**,
-which today can hide the primary button of the sheet you are typing into. Both
-are their own PR; neither needs a native rebuild.
+**Pull-to-refresh (4)** — it needs roughly three times the finger travel of iOS
+Mail, and the page rubber-bands under the indicator at a different speed.
+Then **deep links (3)**, which replay the whole launch when you tap a
+notification inside the app.
 
 ## Non-goals
 

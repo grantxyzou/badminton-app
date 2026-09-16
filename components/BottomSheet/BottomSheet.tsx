@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from './useBodyScrollLock';
 import { useFocusTrap } from './useFocusTrap';
+import { useKeyboardInset } from './useKeyboardInset';
 import { registerOpenSheet } from '@/lib/sheetStack';
 import { useHydrated } from '@/lib/useClientValue';
 
@@ -132,6 +133,8 @@ export default function BottomSheet({
   // Body lock + focus trap active only while visible.
   useBodyScrollLock(visible && mounted);
   useFocusTrap(visible && mounted, sheetRef, triggerRef);
+  // Lift the sheet above the on-screen keyboard (see the hook for why iOS needs it).
+  useKeyboardInset(visible && mounted, sheetRef);
 
   // Escape key dismiss while visible (unless the sheet must be answered).
   useEffect(() => {

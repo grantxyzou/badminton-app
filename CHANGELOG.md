@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The keyboard no longer covers the button you need (2026-09-16)
+
+- **A sheet you're typing into moves up above the keyboard.** On iPhone the keyboard covered the bottom of the sheet — including the button that saves what you just typed. The sheet now lifts by the keyboard's height and shrinks to fit what's still visible, and the field you tapped scrolls into view.
+- Search fields show a **Search** key instead of a plain return.
+
 ### Sheets can be dragged down to close (2026-09-16)
 
 - **Every sheet has a grabber and closes the way a phone's own sheets do**: drag it down from the grabber or its title. Past about a quarter of the way, or with a quick flick, it closes; a short drag springs back. The ✕ is still there. A sheet that has to be answered (the club-comparison question) can't be dragged away.
