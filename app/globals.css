@@ -510,6 +510,13 @@ body {
      the viewport scale cap in layout.tsx to make the iOS web app feel native.
      `manipulation` still permits scroll + panning, just not the zoom gestures. */
   touch-action: manipulation;
+  /* The app draws its own pull-to-refresh (components/PullToRefresh.tsx). With
+     the root's native overscroll on, a pull moved TWO surfaces at two speeds —
+     the page rubber-banding 1:1 under an indicator moving slower — and in an
+     Android Chrome tab the browser's own refresh fired on top, reloading the
+     whole document. `none` leaves the indicator the only thing that moves.
+     The Capacitor shell has no bounce anyway (Capacitor sets it off). */
+  overscroll-behavior-y: none;
 }
 
 /* iOS 26 HOME-SCREEN APP: THE SCREEN IS REPORTED SHORT BY THE STATUS BAR.
@@ -5778,3 +5785,53 @@ button.setup-line:active,
   scroll-snap-type: x proximity;
 }
 .filter-chip { scroll-snap-align: start; }
+
+/* ── Pull to refresh (components/PullToRefresh.tsx) ─────────────────────────
+   The disc starts hidden just above the top safe area and is carried down by an
+   inline transform the component writes per touchmove. `data-settle` is the
+   one switch between following the finger (no transition — a transition would
+   lag the drag by its own duration) and settling (release, refresh start, and
+   refresh end all animate on the sheet's own curve). */
+.ptr {
+  position: fixed;
+  /* Starts just out of sight: the disc (36px) plus a little. Measured on a
+     phone-sized screen — from --space-9 it was still half off the top edge at
+     the moment it armed, which is exactly when it has to be seen. */
+  top: calc(env(safe-area-inset-top, 0px) - 40px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0;
+  will-change: transform;
+}
+.ptr[data-settle="true"] {
+  transition:
+    transform 260ms var(--ease-sheet),
+    opacity 200ms var(--ease-sheet);
+}
+.ptr-disc {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  /* Solid, not glass: `--glass-bg` is ~3% white in dark mode, and a disc that
+     floats over the page has nothing of its own underneath it to frost. */
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 160ms var(--ease-spring);
+  --ring-size: 18px;
+}
+/* Crossing the trigger is a moment: the disc swells a little, so letting go now
+   is visibly different from letting go a moment ago. */
+.ptr[data-armed="true"] .ptr-disc { transform: scale(1.12); }
+@media (prefers-reduced-motion: reduce) {
+  .ptr[data-settle="true"],
+  .ptr-disc { transition: none; }
+  .ptr[data-armed="true"] .ptr-disc { transform: none; }
+}
