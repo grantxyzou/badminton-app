@@ -42,6 +42,7 @@ This failed if, after it ships, a screenshot pass at a phone viewport shows any 
 | Toast exit animation (`AnomalyFeed`) | Needs a leaving state held across an unmount. |
 | Gear sub-page pop (`GearRegister` page stack) | Back unmounts the page in one frame and re-enters a previous page from the right; needs the same popped flag `AdminDashboard` now has, plus scroll restore. |
 | Sheets mounted conditionally, which snap shut instead of sliding | `GearRegister` (share, look, frame view, line, add), `CheckInSheet` (`if (!open) return null`), `SkillTrendCard`'s anchor sheet, `PaymentsCard`'s `CoverSheet` / `ResetAccessSheet`. Each needs to stay mounted with a nullable subject; the line→add swap also needs the second sheet held until the first has closed. |
+| Stats register switch still lands on skeletons | The switch now crossfades, but each register's cards re-fetch on every switch (`sharedRead` reuses a read for 2 seconds), so the fade often lands into skeletons. The fix is per-card last-data-while-refetching, not motion. |
 | Racket 3D canvas crossfade | The fallback image unmounts the instant the canvas is ready; fading the canvas in without holding the image would flash blank. |
 
 ## Shape
@@ -63,3 +64,17 @@ This failed if, after it ships, a screenshot pass at a phone viewport shows any 
 - **Open/Turn:** balance card, stringing racket row and pricing, job status flow and proposed change, removed players, announcement composer, All skills, full specs, frame rows, filter chips, Home's PIN fields.
 - **Values:** skill bars and median, tension marker and rated span, tension numbers, waitlist position, signed-up count, % paid, sign-ups toggle label; paid pill no longer flickers through "…".
 - **In place:** Home, Sign-Ups, Next session, Payments, Birds and Ledger refetch without a skeleton; admin sub-pages enter once and fade back on Back.
+
+## Audit findings not taken
+
+The four audits (Home/shell, Stats, Admin, Profile + sheets + primitives) ranked about 140 findings. Beyond the Deferred table, these were read and deliberately left, so the next pass does not rediscover them as new:
+
+- **`baddicon-pop` on every PIN digit** — an audit flagged its overshoot on the weekly path. PRODUCT.md #2 names it the one sanctioned `--ease-spring` site; changing that is a product decision, not a motion fix.
+- **Staggered row entrance on Sign-Ups** — kept, capped at 150ms total and opacity only, rather than removed: it is a real list, and "genuinely new rows animate" is the one case a stagger is earned.
+- **Theme toggle crossfade (View Transitions)** — rare, and a whole-page transition is choreography.
+- **Name autocomplete and DatePicker popover exits, DatePicker month-grid crossfade** — low frequency (the autocomplete is flag-off only).
+- **Game logger: a visible selection beat before the partner step advances** — needs a timer between tap and step change; tests drive the step synchronously.
+- **Row-level flashes after admin list moves** (promote, restore, archive, pin, pricing reorder) — FLIP was a non-goal; the refetch-in-place work removed the worst of it (the whole-card blink).
+- **`AccessRequestsCard` collapsing its last row before the card goes**, **`KudosReceivedCard` fading in** (its `Frame` is defined inside render, so any class animation would replay on every render; hoist `Frame` first), **`StringTensionCard` / `SummaryGreeting` reserving height while loading**, **Racket avatar sheet chips with no selected style** (a missing state, not missing motion).
+- **Copy / share "Copied" swaps in admin receipts and setup** — the invite share got the crossfade; the rest were judged fine as text swaps.
+- **Stepper values ticking in the stringing request sheet** — rapid taps would restart the tick on every press.

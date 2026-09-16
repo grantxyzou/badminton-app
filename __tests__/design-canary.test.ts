@@ -384,6 +384,18 @@ describe('design-system canary: motion', () => {
     },
   );
 
+  /* <Collapse> unmounts after a timer, not a transitionend, and the timer is a
+     number in TypeScript. Change the token without it and the body unmounts
+     mid-close — the exact frame of pop the primitive exists to remove. */
+  it('keeps Collapse CLOSE_MS equal to --duration-sheet', () => {
+    const src = readFileSync(join(process.cwd(), 'components', 'primitives', 'Collapse.tsx'), 'utf8');
+    const ms = src.match(/const CLOSE_MS = (\d+);/);
+    const token = css.match(/--duration-sheet:\s*(\d+)ms;/);
+    expect(ms).not.toBeNull();
+    expect(token).not.toBeNull();
+    expect(ms![1]).toBe(token![1]);
+  });
+
   it.each(['.motion-fade', '.motion-collapse', '.motion-chevron', '.motion-fill', 'components/primitives/Collapse.tsx'])(
     'ships recipe %s',
     (recipe) => {
