@@ -279,14 +279,17 @@
 [data-theme="light"] {
   --page-bg: #FAF8F5;
   --text-primary: #1a2332;
-  /* SOLID ink, tinted toward --text-primary, not black at an alpha. An alpha
-     grey composites over whatever is behind it — a translucent card over a
-     coloured field — so its contrast drifted by tab: muted measured 3.6:1 at
-     the Home field's peak and read as faint in a bright room. Solid values
-     hold their ratio on any ground: secondary 8.5:1 and muted 6.0:1 on the
-     page, still ≥4.5:1 on a card over the strongest field. */
-  --text-secondary: #3f4a5a;
-  --text-muted: #56606e;
+  /* SOLID ink, not black at an alpha: an alpha grey composites over whatever
+     is behind it, so its contrast drifted by tab (muted measured 3.6:1 at the
+     Home field's peak and read as faint in a bright room).
+     And the ink takes its TAB's colour (Grant: "the texts should map to the
+     colour"): a neutral grey beside a green, amber or blue field reads as
+     washed out, where a deep shade of the field's own hue reads as part of
+     it. These are Home's (green); the per-tab values sit just after this
+     block. Every pair holds ≥7.4:1 / ≥5.5:1 on the page and ≥4.6:1 at its
+     field's peak. --text-primary stays the brand ink. */
+  --text-secondary: #2f5a3f;
+  --text-muted: #4d6b57;
   /* Green-700, not 600. #16a34a was 3.1:1 as text on the page and 2.1:1 on
      the field — the accent carried links, labels and deltas it could not
      be read in. The deeper green also reads calmer beside the tab fields. */
@@ -333,7 +336,7 @@
   --rail-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.95) 100%);
   --rail-indicator-bg: linear-gradient(160deg, rgba(22, 163, 74, 0.16) 0%, rgba(22, 163, 74, 0.07) 100%);
   --rail-active: #16a34a;
-  --rail-inactive: #56606e;
+  --rail-inactive: var(--text-muted);
   --rail-border: rgba(0, 0, 0, 0.08);
 
   --input-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.55) 100%);
@@ -437,14 +440,24 @@
   --pin-color: #dc2626;
 }
 
+/* Per-tab ink (light). Each tab's secondary/muted text is a deep shade of its
+   field's hue — see the note on --text-secondary above. `data-tab` and
+   `data-theme` both live on <html>, so this outranks the base light block;
+   sheets portal into <body> and inherit it, matching their tab's field.
+   Home is the base values (and the un-attributed first paint). */
+html[data-theme="light"][data-tab="players"] { --text-secondary: #5e4a2e; --text-muted: #76603f; }
+html[data-theme="light"][data-tab="skills"]  { --text-secondary: #334d70; --text-muted: #4c6386; }
+html[data-theme="light"][data-tab="profile"] { --text-secondary: #4a3f73; --text-muted: #62588a; }
+html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text-muted: #825a42; }
+
 /* ══════════════════════════════════════════════════════════
    Light mode Tailwind class overrides
    ══════════════════════════════════════════════════════════ */
 [data-theme="light"] .text-white { color: var(--text-primary); }
 [data-theme="light"] .text-gray-200 { color: #374151; }
-[data-theme="light"] .text-gray-300 { color: #4b5563; }
-[data-theme="light"] .text-gray-400 { color: #56606e; }
-[data-theme="light"] .text-gray-500 { color: #6b7280; }
+[data-theme="light"] .text-gray-300 { color: var(--text-secondary); }
+[data-theme="light"] .text-gray-400 { color: var(--text-muted); }
+[data-theme="light"] .text-gray-500 { color: var(--text-muted); }
 [data-theme="light"] .text-gray-600 { color: #6b7280; }
 [data-theme="light"] .text-green-400 { color: var(--accent); }
 [data-theme="light"] .text-green-300 { color: #15803d; }
