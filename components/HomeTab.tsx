@@ -29,6 +29,7 @@ import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
+import { tapSuccess } from '@/lib/haptics';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
@@ -423,6 +424,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (joined) setPlayers((prev) => [...prev.filter((p) => p.id !== joined.id), joined]);
       if (!waitlist) setSignupEntrance(morph ? 'morph' : 'pop');
     };
+    // Felt at the same instant it is seen. Native shell only; a no-op anywhere
+    // it cannot be felt, including a shell built before the plugin was added.
+    if (!waitlist) tapSuccess();
     if (morph) withViewTransition(commit, 'vt-signup');
     else commit();
     void loadData();
