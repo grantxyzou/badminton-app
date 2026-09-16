@@ -23,6 +23,8 @@ few items that were inference are marked.
 | #457 | Sign-Ups, Stats and Profile load on demand — opening Home used to parse all four tabs, and the two lazy ones are the expensive half (ProfileTab, and SkillsTab pulling the whole gear tree). Racket images carry their size, so lists stop reflowing. |
 | #458 | 16px fields on touch (under 16px iOS zooms on focus and never zooms back — every form did it), a press state on the four tappable families that had none, 44px targets on touch, sheet overscroll contained. |
 | #459 | The condensing header no longer animates `backdrop-filter`, `padding` or `font-size` — three per-frame costs paid *while scrolling*. |
+| #461 | The Material Symbols subset is self-hosted (`lib/iconNames.ts` → `scripts/fetch-icon-font.mjs` → 11.7 KB in `app/fonts/`), so nothing third-party blocks first paint. Verified on production: the face is served from our origin and the page references neither Google host. |
+| #462 | The club bands, kudos and games are read once per screen instead of twice (`lib/sharedRead.ts`). |
 
 Each carries a canary, because none of this is visible to a rendering test:
 jsdom computes every length as `0px`, and a static import or a re-added
@@ -43,35 +45,31 @@ transition passes every existing test.
 
 ## Still open, web side (ships with a normal deploy)
 
-1. **Duplicate reads across tabs.** A Home → Sign-Ups → Stats → Profile pass
-   fetches `/api/session` 4×, `/api/members/me` 3×, `/api/stats/club/bands` 2×
-   *on one screen*, `/api/games?all=true` 2×, `/api/kudos` 2×, `/api/releases`
-   2×. Every tab switch also unmounts the old tab, so nothing is kept. One small
-   shared cache (the pattern already exists at `components/stats/useCatalog.ts:14`)
-   is the biggest remaining perceived-speed win after first paint.
-2. **The Material Symbols stylesheet is the only render-blocking third-party
-   request on first paint** (`app/layout.tsx:171`), two hops (googleapis →
-   gstatic), and it contradicts the policy written at `:18` — the three body
-   fonts are already self-hosted for exactly this reason. The glyph list is
-   fixed; subset it once and serve it locally.
-3. **~96 KB of i18n JSON is serialized into every response** and re-parsed on the
+1. **Duplicate reads ACROSS TABS** — the same-screen ones are done (#462).
+   A Home → Sign-Ups → Stats → Profile pass still fetches `/api/session` 4×,
+   `/api/members/me` 3× and `/api/releases` 2×, and every tab switch unmounts
+   the old tab, so nothing is kept. These are seconds apart, so only a real TTL
+   cache helps — and that trades a round trip for showing a stale roster after
+   somebody signs up. **A decision, not a task**: `lib/sharedRead.ts` is
+   deliberately a dedupe with no TTL for exactly that reason.
+2. **~96 KB of i18n JSON is serialized into every response** and re-parsed on the
    client (`app/layout.tsx:195`), including on `/legal/*`. Scope the namespaces,
    and cache the per-locale `deepMerge` (`i18n/request.ts:129`) — `force-dynamic`
    means it re-walks the tree on every request.
-4. **Deep links replay the cold start.** `components/NativeBridge.tsx:132,140,207`
+3. **Deep links replay the cold start.** `components/NativeBridge.tsx:132,140,207`
    use `window.location.assign`, so tapping a push notification tears down the
    document and re-runs the whole launch, splash included, *inside* the app.
-5. **Pull-to-refresh needs ~283px of finger travel** (`THRESHOLD` 115 ÷
+4. **Pull-to-refresh needs ~283px of finger travel** (`THRESHOLD` 115 ÷
    `RESISTANCE` 0.45 + a 28px dead zone) against ~60–90px for iOS Mail, and its
    `touchmove` is passive, so the page rubber-bands at 1:1 under an indicator
    moving at 0.45:1.
-6. **Nothing lifts a focused input above the keyboard** (no `visualViewport`
+5. **Nothing lifts a focused input above the keyboard** (no `visualViewport`
    listener anywhere), and a sheet's pinned footer holds the primary action.
    `enterKeyHint` is unused app-wide; `inputMode` covers ~23% of inputs.
-7. **Drag-to-dismiss on sheets.** `BottomSheet` has no pointer handlers and
+6. **Drag-to-dismiss on sheets.** `BottomSheet` has no pointer handlers and
    backdrop-tap is deliberately off, so ✕ is the only touch dismissal. Every
    system sheet since iOS 13 drags.
-8. **No React.memo anywhere** (165 component files) while `HomeShell` holds ~20
+7. **No React.memo anywhere** (165 component files) while `HomeShell` holds ~20
    pieces of state, each re-rendering a 1000-line tab with fresh inline
    closures. Add a bundle analyzer first — nothing measures the client bundle
    today.
@@ -107,6 +105,13 @@ Ranked. These do NOT ship with a web deploy.
 8. **State at background time.** A WKWebView jetsam kill is not an "excursion"
    (`lib/excursion.ts`), so an evicted user gets a full cold start and lands on
    Home having lost their place.
+
+## Ranked, if you want the next one picked for you
+
+**Drag-to-dismiss (6)** — the most conspicuous non-native thing left, and the
+one a person notices every time they close a sheet. Then **the keyboard (5)**,
+which today can hide the primary button of the sheet you are typing into. Both
+are their own PR; neither needs a native rebuild.
 
 ## Non-goals
 
