@@ -13,7 +13,7 @@ import { activeRacket } from '@/lib/activeRacket';
 import { buildProfile } from '@/lib/racketProfile';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import { computeFitFacts, type FitFacts } from '@/lib/fitVerdict';
-import { buildCopyPrompt, copyKey, parseCopy, type CopyLocale, type FitVerdictCopy } from '@/lib/fitVerdictCopy';
+import { buildCopyPrompt, checkCopy, copyKey, type CopyLocale, type FitVerdictCopy } from '@/lib/fitVerdictCopy';
 import { INSIGHT_MODEL } from '@/lib/aiModels';
 import type { Rating } from '@/lib/assessment';
 import type { CatalogItem, PlayerGear } from '@/lib/types';
@@ -40,12 +40,21 @@ import type { CatalogItem, PlayerGear } from '@/lib/types';
  * key, a failure, or a reply off the contract: `copy: null`, and the page words
  * the same facts from its own strings. Nothing to judge (`insufficient`) never
  * calls the model at all.
+ *
+ * A reply off the contract is CACHED TOO, as a rejection, for
+ * `REJECTION_RETRY_MS`. Without that, the words were cached only on success, so
+ * the facts most likely to break the contract re-asked the model on every view
+ * and threw every answer away. Changed facts still make a new key and ask at
+ * once. A THROWN call (overloaded, timeout) is not cached: that is the service,
+ * not these facts. The log names the rule that broke and never the reply.
  */
 
 export const dynamic = 'force-dynamic';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MAX_OUTPUT_TOKENS = 400;
+/** How long a rejected reply stands before the same facts ask again. */
+const REJECTION_RETRY_MS = 24 * 60 * 60 * 1000;
 
 let insightsReady: Promise<void> | null = null;
 function ensureInsights(): Promise<void> {
@@ -63,7 +72,10 @@ interface VerdictCopyDoc {
   memberId: string;
   kind: 'fitverdict';
   key: string;
-  copy: FitVerdictCopy;
+  /** Null when the reply was off the contract: a cached rejection. */
+  copy: FitVerdictCopy | null;
+  /** The rule a rejected reply broke (`CopyRejection.rule`). */
+  rejected?: string;
   generatedAt: string;
 }
 
@@ -153,14 +165,19 @@ export async function GET(req: NextRequest) {
     try {
       await ensureInsights();
       const cached = await scope.read<VerdictCopyDoc>('insights', id, memberId);
-      if (cached && cached.key === key && cached.copy) {
-        return NextResponse.json({ facts, checkInLevel, copy: cached.copy, cached: true });
+      if (cached && cached.key === key) {
+        if (cached.copy) return NextResponse.json({ facts, checkInLevel, copy: cached.copy, cached: true });
+        const age = Date.now() - Date.parse(cached.generatedAt);
+        if (cached.rejected && age >= 0 && age < REJECTION_RETRY_MS) {
+          return NextResponse.json({ facts, checkInLevel, copy: null, cached: true });
+        }
       }
     } catch (err) {
       console.warn('fit-verdict cache read failed (non-fatal):', err);
     }
 
     let copy: FitVerdictCopy | null = null;
+    let rejected: string | undefined;
     try {
       const message = await anthropic.messages.create({
         model: INSIGHT_MODEL,
@@ -168,18 +185,27 @@ export async function GET(req: NextRequest) {
         messages: [{ role: 'user', content: buildCopyPrompt(facts, locale) }],
       });
       const text = message.content[0]?.type === 'text' ? message.content[0].text : '';
-      copy = parseCopy(text, facts);
-      if (!copy) {
-        // The reply itself only outside production: it is written from arm-history facts.
-        console.warn('fit-verdict copy off contract; using templated copy', process.env.NODE_ENV === 'production' ? undefined : { reply: text.slice(0, 600) });
+      const check = checkCopy(text, facts);
+      copy = check.copy;
+      if (check.rejection) {
+        rejected = check.rejection.rule;
+        // The rule always; the reply itself only outside production, because it
+        // is written from arm-history facts. Constant message, values in the payload.
+        console.warn('fit-verdict copy off contract; using templated copy', {
+          ...check.rejection,
+          state: facts.state,
+          reasons: facts.reasons.length,
+          locale,
+          ...(process.env.NODE_ENV === 'production' ? {} : { reply: text.slice(0, 600) }),
+        });
       }
     } catch (err) {
       console.error('fit-verdict generation failed:', err);
       return NextResponse.json({ facts, checkInLevel, copy: null });
     }
 
-    if (copy) {
-      const doc: VerdictCopyDoc = { id, memberId, kind: 'fitverdict', key, copy, generatedAt: new Date().toISOString() };
+    if (copy || rejected) {
+      const doc: VerdictCopyDoc = { id, memberId, kind: 'fitverdict', key, copy, ...(rejected ? { rejected } : {}), generatedAt: new Date().toISOString() };
       try {
         await scope.upsert('insights', doc);
       } catch (err) {

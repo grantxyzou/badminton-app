@@ -83,34 +83,55 @@ Reply with JSON only, no code fence:
 
 const DIGIT = /[0-9０-９]/;
 
-function line(v: unknown, max: number, frameName: string): string | null {
-  if (typeof v !== 'string') return null;
+/** Which rule a reply broke. A CODE, never the reply's text: the reply is
+ *  written from arm-history facts, and this is what production logs. */
+export interface CopyRejection {
+  /** `not_json`, `reason_count`, or `<field>:missing|too_long|digit` where
+   *  field is `headline`, `body` or `reason_<n>` (1-based). */
+  rule: string;
+  /** Characters in the offending line, for a `too_long`. */
+  length?: number;
+  limit?: number;
+}
+
+export type CopyCheck = { copy: FitVerdictCopy; rejection?: undefined } | { copy: null; rejection: CopyRejection };
+
+function line(field: string, v: unknown, max: number, frameName: string): string | CopyRejection {
+  if (typeof v !== 'string' || !v.trim()) return { rule: `${field}:missing` };
   const s = v.trim();
+  if (s.length > max) return { rule: `${field}:too_long`, length: s.length, limit: max };
   const withoutName = frameName ? s.split(frameName).join('') : s;
-  if (!s || s.length > max || DIGIT.test(withoutName)) return null;
+  if (DIGIT.test(withoutName)) return { rule: `${field}:digit` };
   return s;
 }
 
-/** The model's reply held to the contract, or null. Never repaired: a reply
- *  that breaks one rule is not trusted on the others. */
-export function parseCopy(text: string, facts: FitFacts): FitVerdictCopy | null {
+/** The model's reply held to the contract, or the FIRST rule it broke. Never
+ *  repaired: a reply that breaks one rule is not trusted on the others. */
+export function checkCopy(text: string, facts: FitFacts): CopyCheck {
+  const reject = (rejection: CopyRejection): CopyCheck => ({ copy: null, rejection });
   let raw: unknown;
   try {
     raw = JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
   } catch {
-    return null;
+    return reject({ rule: 'not_json' });
   }
-  if (!raw || typeof raw !== 'object') return null;
+  if (!raw || typeof raw !== 'object') return reject({ rule: 'not_json' });
   const o = raw as Record<string, unknown>;
   const name = facts.frame?.name ?? '';
-  const headline = line(o.headline, COPY_LIMITS.headline, name);
-  const body = line(o.body, COPY_LIMITS.body, name);
-  if (!headline || !body || !Array.isArray(o.reasons) || o.reasons.length !== facts.reasons.length) return null;
+  const headline = line('headline', o.headline, COPY_LIMITS.headline, name);
+  if (typeof headline !== 'string') return reject(headline);
+  const body = line('body', o.body, COPY_LIMITS.body, name);
+  if (typeof body !== 'string') return reject(body);
+  if (!Array.isArray(o.reasons) || o.reasons.length !== facts.reasons.length) return reject({ rule: 'reason_count' });
   const reasons: string[] = [];
-  for (const r of o.reasons) {
-    const s = line(r, COPY_LIMITS.reason, name);
-    if (!s) return null;
+  for (const [i, r] of o.reasons.entries()) {
+    const s = line(`reason_${i + 1}`, r, COPY_LIMITS.reason, name);
+    if (typeof s !== 'string') return reject(s);
     reasons.push(s);
   }
-  return { headline, body, reasons };
+  return { copy: { headline, body, reasons } };
+}
+
+export function parseCopy(text: string, facts: FitFacts): FitVerdictCopy | null {
+  return checkCopy(text, facts).copy;
 }
