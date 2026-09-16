@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -361,5 +361,73 @@ describe('fonts: the build must not depend on a third party', () => {
       expect(existsSync(join(process.cwd(), 'app', 'fonts', file))).toBe(true);
       expect(layout).toContain(`./fonts/${file}`);
     }
+  });
+});
+
+/**
+ * The motion system (docs/plans/motion-pass.md). Five recipes and a duration
+ * ladder in globals.css; each assertion below is a way it was found broken, or
+ * would silently break, with nothing else able to see it — jsdom runs no
+ * animation and computes no transition.
+ */
+describe('design-system canary: motion', () => {
+  const tokensPage = readFileSync(join(process.cwd(), 'app', 'design', 'tokens', 'page.tsx'), 'utf8');
+
+  it.each(['--duration-press', '--duration-fast', '--duration-sheet', '--duration-normal', '--duration-slow'])(
+    'defines %s, and /design/tokens documents its real value',
+    (token) => {
+      const m = css.match(new RegExp(`${token}:\\s*([^;]+);`));
+      expect(m).not.toBeNull();
+      // The page documented a --duration-sheet that did not exist for months.
+      expect(tokensPage).toContain(`name: '${token}',`);
+      expect(tokensPage).toMatch(new RegExp(`name: '${token}',\\s*value: '${m![1].trim()}'`));
+    },
+  );
+
+  it.each(['.motion-fade', '.motion-collapse', '.motion-chevron', '.motion-fill', 'components/primitives/Collapse.tsx'])(
+    'ships recipe %s',
+    (recipe) => {
+      if (recipe.endsWith('.tsx')) expect(existsSync(join(process.cwd(), recipe))).toBe(true);
+      else expect(css).toContain(`${recipe} {`);
+    },
+  );
+
+  /* A fade is comprehension, not movement: the global reduced-motion rule
+     zeroes every animation, so the recipe must be given back explicitly or an
+     error arriving becomes invisible exactly for the people who asked for less
+     motion. */
+  it('keeps the Appear fade (and inline alerts) under prefers-reduced-motion', () => {
+    const blocks = css.split('@media (prefers-reduced-motion: reduce)').slice(1);
+    const giveBack = blocks.find((b) => b.slice(0, b.indexOf('}')).includes('.motion-fade'));
+    expect(giveBack).toBeDefined();
+    const rule = giveBack!.slice(0, giveBack!.indexOf('}'));
+    for (const sel of ['.motion-fade', '.field-error', "p[role='alert']"]) expect(rule).toContain(sel);
+    expect(rule).toContain('!important');
+  });
+
+  /* `.rail-tab` was declared twice; the later rule listed only `transform` and
+     replaced the colour transition, so the nav label snapped while its pill
+     slid. One rule may declare the transition, and it must carry both. */
+  it('gives .rail-tab one transition that carries colour and transform', () => {
+    const decls = [...css.matchAll(/(^|\n)\.rail-tab \{([^}]*)\}/g)].map((m) => m[2]).filter((b) => /\btransition\s*:/.test(b.replace(/\/\*[\s\S]*?\*\//g, '')));
+    expect(decls).toHaveLength(1);
+    expect(decls[0]).toContain('color');
+    expect(decls[0]).toContain('transform');
+  });
+
+  /* "One glyph that turns, not two that swap." A disclosure that swaps
+     expand_more for expand_less changes the picture without saying which way
+     it went. PricingCard's arrows are reorder controls, not a disclosure. */
+  it('no disclosure swaps expand_more / expand_less glyphs', () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((f) => {
+        const p = join(dir, f);
+        return statSync(p).isDirectory() ? walk(p) : p.endsWith('.tsx') ? [p] : [];
+      });
+    const ALLOW = ['PricingCard.tsx'];
+    const offenders = walk(join(process.cwd(), 'components'))
+      .filter((p) => !ALLOW.some((a) => p.endsWith(a)))
+      .filter((p) => /\?\s*'expand_(less|more)'\s*:\s*'expand_(less|more)'/.test(readFileSync(p, 'utf8')));
+    expect(offenders).toEqual([]);
   });
 });

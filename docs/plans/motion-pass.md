@@ -2,7 +2,7 @@
 
 **Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); requested directly by the owner on 2026-09-16
 **Status:** in-flight
-**Review on:** 2026-10-15 — did the deferred items (sheet height, keyboard lift, admin refetch-in-place) get their own PRs, or has this list gone stale?
+**Review on:** 2026-10-15 — did the deferred items (sheet height, keyboard lift, conditionally-mounted sheets) get their own PRs, or has this list gone stale?
 
 ## Problem
 
@@ -36,17 +36,30 @@ This failed if, after it ships, a screenshot pass at a phone viewport shows any 
 
 | Item | Why deferred |
 |---|---|
-| Sheet content height animates on step change (ResizeObserver in `BottomSheetBody`) | ~31 consumers, a `transitionend`-filtered close contract, drag-dismiss and keyboard inset all meet in that element; animates a layout property. |
+| Sheet content height animates on step change (ResizeObserver in `BottomSheetBody`) | ~31 consumers, a `transitionend`-filtered close contract, drag-dismiss and keyboard inset all meet in that element; animates a layout property. Steps crossfade today; the sheet's top edge still jumps. |
 | Keyboard lift via `translate` instead of snapping `bottom` | iOS `visualViewport` timing varies by version; only provable on a phone. |
-| Admin Command Center refetch-in-place (finalize, cover, Roster/Birds save, Ledger focus refetch) | Each is a data-flow change across `CommandCenter`'s `composedRefresh` fan-out; needs its own error-state review. |
+| Roster refetch in place | `RosterPage.load` has no `loadError` — a failed read already renders empty lists — so keeping stale content would compound a lying-empty state. Fix the error state first. |
 | Toast exit animation (`AnomalyFeed`) | Needs a leaving state held across an unmount. |
-| Sub-page pop direction (`slideInLeft` on back) | Needs a direction ref in `AdminDashboard` and `GearRegister`'s page stack. |
-| Sheets mounted conditionally (`{x && <Sheet open/>}`) snapping shut | Per-call-site refactors to keep them mounted; list in the audit table below. |
+| Gear sub-page pop (`GearRegister` page stack) | Back unmounts the page in one frame and re-enters a previous page from the right; needs the same popped flag `AdminDashboard` now has, plus scroll restore. |
+| Sheets mounted conditionally, which snap shut instead of sliding | `GearRegister` (share, look, frame view, line, add), `CheckInSheet` (`if (!open) return null`), `SkillTrendCard`'s anchor sheet, `PaymentsCard`'s `CoverSheet` / `ResetAccessSheet`. Each needs to stay mounted with a nullable subject; the line→add swap also needs the second sheet held until the first has closed. |
+| Racket 3D canvas crossfade | The fallback image unmounts the instant the canvas is ready; fading the canvas in without holding the image would flash blank. |
 
 ## Shape
 
 | Piece | File |
 |---|---|
-| Duration ladder + recipes | `app/globals.css` (Motion tokens; "Motion system: the recipes") |
+| Duration ladder + recipes | `app/globals.css` (Motion tokens; "Motion system: the recipes"; the press ladder beside "Touch feel") |
+| Open recipe | `components/primitives/Collapse.tsx` |
 | Token docs | `app/design/tokens/page.tsx` |
-| Contract | `__tests__/design-canary.test.ts` |
+| Contract | `__tests__/design-canary.test.ts` → "design-system canary: motion" |
+
+## What landed
+
+- **System:** duration ladder, five recipes, `<Collapse>`, `.motion-busy` (a page refreshing in place dims while it loads).
+- **Bug:** `.rail-tab`'s colour transition was overridden by a later rule — the nav label snapped while its pill slid.
+- **Press:** `.cc-mini-card`, Settings rows, `ActionRow`, `.link-quiet`, Gear chips and actions, `.stat-card`, pills, `.onboarding-door`, `.cc-dcard`, sheet close buttons, stringing flow steps, game-logger names.
+- **Appear:** every inline alert; late-arriving cards (balance, skill discovery, stringer bench); sheet outcomes (success/expired/blocked) across the account and stringing sheets; confirms (delete, regenerate, remove); racket avatars once decoded.
+- **Crossfade:** tab switch; Stats registers; check-in and game-logger steps; PushSheet states; PIN ↔ email sign-in; Create/Join club steps; pick-sheet alternatives; fit verdict; Profile's loading/signed-out/signed-in branches (keyed, so the fade replays).
+- **Open/Turn:** balance card, stringing racket row and pricing, job status flow and proposed change, removed players, announcement composer, All skills, full specs, frame rows, filter chips, Home's PIN fields.
+- **Values:** skill bars and median, tension marker and rated span, tension numbers, waitlist position, signed-up count, % paid, sign-ups toggle label; paid pill no longer flickers through "…".
+- **In place:** Home, Sign-Ups, Next session, Payments, Birds and Ledger refetch without a skeleton; admin sub-pages enter once and fade back on Back.

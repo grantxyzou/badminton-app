@@ -2590,7 +2590,7 @@ html:root .ink-button {
   cursor: pointer;
   font-family: var(--font-sans); /* IBM Plex — body/UI font per design system (spec said display, but small UI labels use --font-sans here) */
   color: var(--rail-inactive);
-  transition: color 150ms ease;
+  /* Its transitions are ONE list, with the press, in the touch-feel block below. */
 }
 
 .rail-icon-wrap {

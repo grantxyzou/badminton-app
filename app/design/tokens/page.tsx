@@ -15,14 +15,29 @@ const COLOR_SWATCHES: Array<{ name: string; value: string; note?: string }> = [
 ];
 /* eslint-enable no-restricted-syntax */
 
+// Kept honest by __tests__/design-canary.test.ts, which reads each value out
+// of app/globals.css. This table had documented a `--duration-sheet` that did
+// not exist and called `--ease-spring` the entrance curve — PRODUCT.md bans it
+// from the weekly path.
 const MOTION: Array<{ name: string; value: string; note: string }> = [
-  { name: '--ease-glass',      value: 'cubic-bezier(0.23, 1, 0.32, 1)',   note: 'Default — liquid glass' },
-  { name: '--ease-spring',     value: 'cubic-bezier(0.34, 1.56, 0.64, 1)', note: 'Bouncy — entrances' },
-  { name: '--ease-sheet',      value: 'cubic-bezier(0.16, 1, 0.3, 1)',    note: 'Bottom-sheet — iOS feel' },
-  { name: '--duration-fast',   value: '150ms',  note: 'Color / opacity' },
-  { name: '--duration-normal', value: '250ms',  note: 'Transform / layout' },
-  { name: '--duration-slow',   value: '400ms',  note: 'Glass-card lift' },
-  { name: '--duration-sheet',  value: '180ms',  note: 'Bottom-sheet slide' },
+  { name: '--ease-glass',      value: 'cubic-bezier(0.23, 1, 0.32, 1)',    note: 'Default — fades, presses, state changes' },
+  { name: '--ease-sheet',      value: 'cubic-bezier(0.16, 1, 0.3, 1)',     note: 'Surfaces opening — sheets, collapses, chevrons' },
+  { name: '--ease-out-quart',  value: 'cubic-bezier(0.165, 0.84, 0.44, 1)', note: 'Presses and fills settling to a value' },
+  { name: '--ease-in-out',     value: 'cubic-bezier(0.77, 0, 0.175, 1)',   note: 'Something already on screen travelling A→B' },
+  { name: '--ease-spring',     value: 'cubic-bezier(0.34, 1.56, 0.64, 1)', note: 'Overshoot — rare surfaces only, never the weekly path' },
+  { name: '--duration-press',  value: '100ms', note: 'A finger is down' },
+  { name: '--duration-fast',   value: '150ms', note: 'Colour, opacity, a crossfade, an error arriving' },
+  { name: '--duration-sheet',  value: '180ms', note: 'A surface opening' },
+  { name: '--duration-normal', value: '250ms', note: 'Something travelling on screen' },
+  { name: '--duration-slow',   value: '400ms', note: 'A value settling — a bar filling' },
+];
+
+const MOTION_RECIPES: Array<{ name: string; note: string }> = [
+  { name: '.motion-fade',     note: 'Appear — opacity only; key the element so a swap replays it' },
+  { name: '<Collapse open>',  note: 'Open — grid rows 0fr→1fr; absent from the DOM when closed' },
+  { name: '.motion-chevron',  note: 'Turn — one glyph, rotated 180° when its control is expanded' },
+  { name: 'press ladder',     note: 'Press — cards 0.98, chips 0.97, icon buttons 0.94, text dims to 0.6' },
+  { name: '.motion-fill',     note: 'Fill — a bar settling to its value, on change only' },
 ];
 
 const RADII = [
@@ -114,9 +129,18 @@ export default function TokensPage() {
             </li>
           ))}
         </ul>
+        <ul style={{ listStyle: 'none', padding: '0', margin: 'var(--space-6) 0 0', display: 'grid', gap: 'var(--space-3)' }}>
+          {MOTION_RECIPES.map((r) => (
+            <li key={r.name} style={{ display: 'grid', gap: 'var(--space-05)' }}>
+              <code className="bpm-mono" style={{ fontSize: '0.75rem' }}>{r.name}</code>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{r.note}</div>
+            </li>
+          ))}
+        </ul>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--space-5)' }}>
-          <code className="bpm-mono">prefers-reduced-motion</code> pauses all of these — see{' '}
-          <code className="bpm-mono">app/globals.css</code> reduced-motion block.
+          Under <code className="bpm-mono">prefers-reduced-motion</code>, movement stops and
+          fades survive: an error or a changed state still reads as a change. See the
+          reduced-motion blocks in <code className="bpm-mono">app/globals.css</code>.
         </p>
       </Section>
 
