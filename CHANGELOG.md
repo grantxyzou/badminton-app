@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### "Your groups" looks like the rest of Profile (2026-09-16)
+
+- Each club is a proper row now — its initial, its name, your role — with a tick on the one you're in, instead of a squashed pill with the text on its edge.
+- "Join another group" and "Create another group" are two equal rows like Profile's settings, instead of a grey button over one that looked switched off.
+
 ### Tapping a notification opens the right screen, without restarting the app (2026-09-16)
 
 - **In the app from the store**, tapping a notification used to reload the whole app — splash screen and all — even when it was already open. It now switches straight to the screen the notification is about, and refreshes it.

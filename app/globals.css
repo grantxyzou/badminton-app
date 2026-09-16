@@ -2586,6 +2586,43 @@ html:root .ink-button {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* "Your groups": a club's mark. SQUARE, not round — a round initial is a
+   person everywhere else in the app, and a club is not one. */
+.group-monogram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  background: rgba(var(--glass-tint), 0.08);
+  border: 1px solid rgba(var(--glass-tint), 0.1);
+  color: var(--text-primary);
+  font-family: var(--font-display, "Space Grotesk");
+  font-weight: 600;
+  font-size: var(--fs-lg);
+}
+.group-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+/* Where you already are is not a disabled control: full strength, no pointer. */
+.group-row[aria-current="true"] {
+  cursor: default;
+}
+.group-row:disabled:not([aria-current="true"]):not([data-busy]) {
+  opacity: 0.5;
+  cursor: default;
+}
 .member-avatar__racket {
   /* Fades in once decoded (MemberAvatar sets data-loaded) instead of popping
      into an empty circle a beat after the roster painted. */
