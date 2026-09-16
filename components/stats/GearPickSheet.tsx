@@ -13,6 +13,7 @@ import { budgetWords, type UseGear } from './useGear';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { priceCadPoint } from '@/lib/catalogPrice';
+import Collapse from '@/components/primitives/Collapse';
 
 export interface GearPickSheetProps {
   open: boolean;
@@ -599,20 +600,20 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                 <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                   <span className="fs-base" style={{ color: 'var(--text-muted)' }}>{specRows.length}</span>
                   <span
-                    className="material-icons"
+                    className="material-icons motion-chevron"
+                    data-open={specsOpen ? 'true' : 'false'}
                     aria-hidden="true"
                     style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}
                   >
-                    {specsOpen ? 'expand_less' : 'expand_more'}
+                    expand_more
                   </span>
                 </span>
               </button>
 
-              {specsOpen && (
+              <Collapse open={specsOpen} id="pick-sheet-specs" spaceAbove="var(--space-4)">
                 <dl
-                  id="pick-sheet-specs"
                   style={{
-                    margin: 'var(--space-4) 0 0',
+                    margin: '0',
                     display: 'grid',
                     gridTemplateColumns: 'auto 1fr',
                     columnGap: 'var(--space-5)',
@@ -628,7 +629,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                     </Fragment>
                   ))}
                 </dl>
-              )}
+              </Collapse>
             </section>
           )}
 

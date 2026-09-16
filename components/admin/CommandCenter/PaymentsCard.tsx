@@ -15,6 +15,7 @@ import ReceiptSheet from './ReceiptSheet';
 import type { Session, ETransferRecipient } from '@/lib/types';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import MemberAvatar from '@/components/primitives/MemberAvatar';
+import Collapse from '@/components/primitives/Collapse';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -770,11 +771,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               {lists.removed.length} removed
             </span>
-            <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
-              {removedCollapsed ? 'expand_more' : 'expand_less'}
+            <span className="material-icons motion-chevron" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
+              expand_more
             </span>
           </button>
-          {!removedCollapsed && (
+          <Collapse open={!removedCollapsed}>
             <ul role="list">
               {lists.removed.map((p) => (
                 <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
@@ -798,7 +799,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 </li>
               ))}
             </ul>
-          )}
+          </Collapse>
         </div>
       )}
 

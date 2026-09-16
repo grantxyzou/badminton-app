@@ -189,7 +189,7 @@ function Disclosure({ section, open, onToggle, title, summary, tone, children }:
           <span className="frame-row-title">{title}</span>
           <span className={`frame-row-summary${tone === 'warn' ? ' frame-row-summary--warn' : ''}`}>{summary}</span>
         </span>
-        <span className="material-icons frame-row-chevron" aria-hidden="true">{isOpen ? 'expand_less' : 'expand_more'}</span>
+        <span className="material-icons frame-row-chevron motion-chevron" aria-hidden="true">expand_more</span>
       </button>
       {/* Always mounted and collapsed by CSS (grid rows 0fr → 1fr), so the
           height and opacity transition goes through the global reduced-motion

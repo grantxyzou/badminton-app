@@ -5,6 +5,7 @@ import { renderMarkdown } from '@/lib/miniMarkdown';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import CardHeader from '@/components/primitives/CardHeader';
+import Collapse from '@/components/primitives/Collapse';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -190,7 +191,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
       />
 
 
-      {composing && (
+      <Collapse open={composing} spaceAbove="var(--space-3)">
         <div className="space-y-2">
           <textarea
             value={draft}
@@ -249,7 +250,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
             </button>
           </div>
         </div>
-      )}
+      </Collapse>
 
       {items.length > 0 && (
         <ul className="space-y-2" role="list">

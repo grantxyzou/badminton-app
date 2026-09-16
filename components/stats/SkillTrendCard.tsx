@@ -19,6 +19,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
 import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
+import Collapse from '@/components/primitives/Collapse';
 
 
 /** Response shape of GET /api/stats/club/bands. */
@@ -257,7 +258,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
             {showAll ? t('assess.hideSkills') : t('assess.allSkills')}
           </button>
         </div>
-        {showAll && (
+        <Collapse open={showAll} spaceAbove="var(--space-3)">
           <div className="space-y-3">
             {DIMENSIONS.map((dim) => {
               const dimItems = SKILLS.filter((s) => s.dimension === dim && nowMap.has(s.key)).map(
@@ -268,7 +269,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
               );
             })}
           </div>
-        )}
+        </Collapse>
       </div>
       </div>
 

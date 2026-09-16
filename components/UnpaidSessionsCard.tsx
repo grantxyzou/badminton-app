@@ -360,8 +360,8 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
       )}
 
       {collapsible ? (
-        <Collapse open={open}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', paddingTop: 'var(--space-4)' }}>
+        <Collapse open={open} spaceAbove="var(--space-4)">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             {body}
           </div>
         </Collapse>

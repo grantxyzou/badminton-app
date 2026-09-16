@@ -17,10 +17,12 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
  *    of pop.
  *  - CLOSE flips back to `0fr` and unmounts after `--duration-sheet`.
  *
- * The wrapper is a grid item, so a flex `gap` on the parent still applies to
- * it while it is closing and then vanishes on unmount — a small jump at the
- * end. Put the spacing INSIDE instead: give the content a top padding and
- * leave the parent without a gap for this child.
+ * Spacing ABOVE it must live inside, or it outlives the close: a parent's
+ * `space-y-*` margin or flex `gap` still applies while the body is closing and
+ * vanishes on unmount — a small jump at the end. Pass `spaceAbove` (a token):
+ * it cancels a `space-y` margin on the wrapper and becomes top padding inside
+ * the clipped area, so it closes with everything else. A flex `gap` cannot be
+ * cancelled from the child; drop it from the parent for this child instead.
  *
  * Never wrap a popover that is not portalled; the body clips.
  */
@@ -30,11 +32,14 @@ export default function Collapse({
   open,
   children,
   id,
+  spaceAbove,
 }: {
   open: boolean;
   children: ReactNode;
   /** For the control's `aria-controls`. */
   id?: string;
+  /** A spacing token, e.g. `'var(--space-3)'`. See the note above. */
+  spaceAbove?: string;
 }) {
   const [mounted, setMounted] = useState(open);
   const [expanded, setExpanded] = useState(open);
@@ -59,8 +64,18 @@ export default function Collapse({
 
   if (!mounted) return null;
   return (
-    <div ref={ref} id={id} className="motion-collapse" data-open={expanded ? 'true' : 'false'}>
-      <div>{children}</div>
+    <div
+      ref={ref}
+      id={id}
+      className="motion-collapse"
+      data-open={expanded ? 'true' : 'false'}
+      style={spaceAbove ? { marginTop: '0' } : undefined}
+    >
+      {/* The grid item clips; padding has to sit one level in, because a
+          clipped item's own padding cannot shrink below itself. */}
+      <div>
+        <div style={spaceAbove ? { paddingTop: spaceAbove } : undefined}>{children}</div>
+      </div>
     </div>
   );
 }

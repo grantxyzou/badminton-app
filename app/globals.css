@@ -5892,6 +5892,7 @@ button.fit-rank-row,
 button.cc-pill,
 button.pill-paid,
 button.pill-unpaid,
+.flow-step,
 .sheet-close-btn {
   -webkit-tap-highlight-color: transparent;
   transition:
@@ -5908,6 +5909,7 @@ button.setup-action:active,
 button.setup-suggest:active,
 button.fit-rank-row:active,
 :is(button, a, [role="button"]).cc-dcard:active,
+.flow-step:active,
 .action-row:active:not(:disabled) { transform: scale(0.98); }
 button.stat-card:active,
 .setup-feel-chip:active,
