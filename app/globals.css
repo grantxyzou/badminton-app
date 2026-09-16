@@ -3436,6 +3436,36 @@ html:root[data-tab="admin"] .bottom-sheet {
     transition: none;
   }
 }
+/* While a finger owns the sheet it follows the finger exactly — a transition
+   here would lag the drag by its own duration. Written as a data attribute by
+   BottomSheet, the same way SwipeRow drives its row. */
+.bottom-sheet[data-dragging] {
+  transition: none;
+  will-change: transform;
+}
+/* The grabber: what tells you the sheet can be dragged. `touch-action: none`
+   on the grab surfaces is load-bearing — without it the browser claims the
+   vertical gesture for scrolling before the first pointermove arrives. */
+.bottom-sheet-grab,
+.bottom-sheet [data-sheet-grab] {
+  touch-action: none;
+}
+.bottom-sheet-grab {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: var(--space-6);
+  flex: 0 0 auto;
+  cursor: grab;
+}
+.bottom-sheet[data-dragging] .bottom-sheet-grab { cursor: grabbing; }
+.bottom-sheet-grab span {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--text-muted);
+  opacity: 0.35;
+}
 
 /* ── Pinned sheet footer ─────────────────────────────────────────────
    A sheet whose primary action sat at the bottom of ~700px of reading

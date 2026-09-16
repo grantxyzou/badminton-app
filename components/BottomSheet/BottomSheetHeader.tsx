@@ -55,7 +55,10 @@ export default function BottomSheetHeader({ children, className, bare, onClose, 
   const base = bare ? '' : 'flex items-center justify-between px-5 pt-4 pb-3';
   const cls = [base, className].filter(Boolean).join(' ');
   return (
-    <div className={cls || undefined}>
+    // A grab surface for the sheet's drag-to-dismiss (`BottomSheet`): the
+    // grabber alone is a 20px target, and every native sheet lets you drag by
+    // its title too. The body is deliberately not one — it is the scroller.
+    <div className={cls || undefined} data-sheet-grab>
       {children}
       {onClose && <SheetCloseButton onClose={onClose} label={closeLabel ?? 'Close'} />}
     </div>
