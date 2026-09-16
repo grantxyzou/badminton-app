@@ -626,7 +626,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   if (loading) {
     // Render the REAL header (its slot is static text, no data) and skeleton
-    // only the data cards below it — same pattern as PlayersTab — so the page
+    // only the data cards below it — the pattern the retired Sign-Ups tab used — so the page
     // keeps its exact shape and fills in top-to-bottom instead of flashing a
     // generic block then snapping the layout in.
     return (
