@@ -193,7 +193,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
           {gameDate || t('upcomingSession')}
         </div>
 
-        <div className="px-2 pb-2 space-y-0.5">
+        <div className="px-2 pb-2">
             {activePlayers.map((player, i) => {
               const isMe =
                 !!currentUser &&
@@ -202,7 +202,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center px-3 py-3 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-green' : ''}`}
+                  className={`flex items-center px-3 py-2 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-green' : ''}`}
                   /* Stagger entrance ~40ms/row, capped so a long list doesn't
                      crawl in. Stable key → only first mount + genuinely new
                      rows animate; poll refreshes don't replay it. */
@@ -214,11 +214,6 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                   <MemberAvatar name={player.name} size={28} />
                   <span className="flex-1 fs-md text-gray-200 font-medium">
                     {player.name}
-                    {isMe && (
-                      <span className="ml-1.5 fs-sm font-normal" style={{ color: 'var(--text-muted)' }}>
-                        {t('youSuffix')}
-                      </span>
-                    )}
                   </span>
                   {/* Not on my own row, and only for someone I actually shared
                       this roster with — which is the same rule the server
@@ -231,7 +226,18 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                       onClick={() => setKudosFor(player.name)}
                       className="cc-btn cc-btn-ghost"
                       aria-label={t('kudosAction', { name: player.name })}
-                      style={{ padding: 'var(--space-1) var(--space-3)', color: 'var(--text-muted)' }}
+                      /* The global 44px min-height keeps the tap target, and
+                         the negative block margin stops it setting the row's
+                         height — otherwise every row with this button is 60px
+                         and yours, without it, is 44. No outline: a bordered
+                         box the full height of the row read as the heaviest
+                         thing in the list. */
+                      style={{
+                        padding: 'var(--space-1) var(--space-3)',
+                        marginBlock: 'calc(var(--space-3) * -1)',
+                        color: 'var(--text-muted)',
+                        borderColor: 'transparent',
+                      }}
                     >
                       <span className="material-icons icon-sm" aria-hidden="true">volunteer_activism</span>
                     </button>
@@ -263,7 +269,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
           <div className="list-header-amber px-4 pt-3 pb-2">
             {t('waitlistHeader')}
           </div>
-            <div className="px-2 pb-2 space-y-0.5">
+            <div className="px-2 pb-2">
               {waitlistPlayers.map((player, i) => {
                 const isMe =
                   !!currentUser &&
@@ -272,7 +278,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                 return (
                   <div
                     key={player.id}
-                    className={`flex items-center px-3 py-3 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-amber' : ''}`}
+                    className={`flex items-center px-3 py-2 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-amber' : ''}`}
                     style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                   >
                     <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
@@ -281,11 +287,6 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                     <MemberAvatar name={player.name} size={28} />
                     <span className="flex-1 fs-md text-gray-400 font-medium">
                       {player.name}
-                      {isMe && (
-                        <span className="ml-1.5 fs-sm font-normal" style={{ color: 'var(--text-muted)' }}>
-                          {t('youSuffix')}
-                        </span>
-                      )}
                     </span>
                     {isMe && (
                       <div className="flex flex-col items-end gap-0.5">

@@ -326,7 +326,7 @@ export default function ComponentsPage() {
       {/* ── Player highlight rows ──────────────────────────────────────── */}
       <Row title="PLAYER HIGHLIGHT ROWS (SELF)">
         <div className="player-highlight-green" style={{ padding: 'var(--space-4) var(--space-5)', borderRadius: 'var(--radius-sm, 8px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>1. Grant <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>(you)</span></span>
+          <span>1. Grant</span>
           <span className="pill-paid">Paid</span>
         </div>
         <div className="player-highlight-amber" style={{ padding: 'var(--space-4) var(--space-5)', borderRadius: 'var(--radius-sm, 8px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
