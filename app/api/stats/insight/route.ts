@@ -91,7 +91,12 @@ interface InsightDoc {
    *  fresh check-in invalidate the session cache so the read reflects it.
    *  Absent on pre-assessment docs (treated as "no assessment baked in"). */
   lastAssessmentAt?: string | null;
+  /** The language the slices were written in. Absent on docs written before
+   *  the greeting followed the language toggle — all of them English. */
+  locale?: InsightLocale;
 }
+
+type InsightLocale = 'en' | 'zh-CN';
 
 /**
  * HTTP 200 with every field null — "there is genuinely nothing to say".
@@ -277,7 +282,13 @@ export async function GET(req: NextRequest) {
   // Nullish-normalize both sides: a pre-assessment cached doc (undefined) with a
   // new assessment present (a string) mismatches → regenerate to fold it in.
   const assessmentMatches = (existing?.lastAssessmentAt ?? null) === latestAssessmentAt;
-  const cacheFresh = !!existing && existing.sessionId === activeSessionId && assessmentMatches;
+  // The greeting is WORDS, so it follows the language toggle: a read written in
+  // English is not fresh for a member reading in Chinese, and vice versa. One
+  // doc per member, so switching back and forth rewrites it — rare, and cheaper
+  // than a second doc every member carries forever.
+  const locale: InsightLocale = req.cookies.get('NEXT_LOCALE')?.value === 'zh-CN' ? 'zh-CN' : 'en';
+  const localeMatches = (existing?.locale ?? 'en') === locale;
+  const cacheFresh = !!existing && existing.sessionId === activeSessionId && assessmentMatches && localeMatches;
   // A persisted cards-doc always has at least one non-null slice (the generator
   // bails without writing when both are null), so "any slice present" is the
   // correct freshness test. Keying on `greeting` alone made a legitimately
@@ -322,7 +333,7 @@ export async function GET(req: NextRequest) {
     const signals = signalsByCard(computeInsightSignals({ snapshots: assessmentDocs, canonicalLevel, now: new Date().toISOString() }));
     let cards: { greeting: string | null; trend: CardInsight | null };
     try {
-      cards = await generateCards(member.name, snapshot, signals, existing);
+      cards = await generateCards(member.name, snapshot, signals, existing, locale);
     } catch (err) {
       console.error('insight cards generation failed:', err);
       const stale = staleOrNull(existing);
@@ -332,7 +343,7 @@ export async function GET(req: NextRequest) {
     if (!cards.greeting && !cards.trend) return emptyPayload(true);
 
     const generatedAt = new Date().toISOString();
-    const doc: InsightDoc = { id: insightId, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: cards.greeting, trend: cards.trend, generatedAt, lastAssessmentAt: latestAssessmentAt };
+    const doc: InsightDoc = { id: insightId, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: cards.greeting, trend: cards.trend, generatedAt, lastAssessmentAt: latestAssessmentAt, locale };
     try {
       await scope.upsert('insights', doc);
     } catch (err) {
@@ -530,6 +541,7 @@ async function generateCards(
   s: Snapshot,
   signals: Record<SignalCard, InsightSignal | null>,
   prev: InsightDoc | null,
+  locale: InsightLocale,
 ): Promise<{ greeting: string | null; trend: CardInsight | null }> {
   const lastLine = s.lastPlayed
     ? `Last session ${name} played (${s.lastPlayed.date.slice(0, 10)}).`
@@ -548,7 +560,13 @@ async function generateCards(
         : `- ${card}: (no non-obvious signal — return null for this slot)`;
     })
     .join('\n');
-  const memoryLine = prev?.greeting ? `\n\nYour previous greeting to ${name}: "${prev.greeting}"` : '';
+  // The previous greeting steers away from repeating it — only useful in the
+  // language this one is being written in.
+  const memoryLine = prev?.greeting && (prev.locale ?? 'en') === locale ? `\n\nYour previous greeting to ${name}: "${prev.greeting}"` : '';
+  // Chinese is an added rule; the English prompt is left exactly as it was.
+  const languageLine = locale === 'zh-CN'
+    ? `\n- Write every string in Simplified Chinese, in the same warm, plain voice — the way a friend who plays would put it in a message, not a translation. Keep ${name} and any other names exactly as given.`
+    : '';
 
   const prompt = `${VOICE_PERSONA}
 
@@ -568,7 +586,7 @@ Return ONLY a JSON object, no markdown fences:
 - "greeting": ONE warm, plain-language sentence (max ~16 words) leading with the most interesting honest thing. Translate jargon (never "3.1 / switch / medium confidence"). If nothing is beyond the obvious, a brief encouraging line is fine.
 - "trend": ONLY if that signal is present above — "headline" ≤ 8 words (the punch), "support" ≤ 14 words (one grounding clause). If the slot says "return null", return null for it.
 - Plain, encouraging, specific. No emoji, no hashtags, no jargon. Do NOT repeat a raw rating number the card already shows.
-- NEVER mention attendance, how many sessions they made or missed, or any kind of attendance streak. Those facts are deliberately not given to you; do not infer or imply them. A "streak" signal below counts CHECK-INS, never sessions.`;
+- NEVER mention attendance, how many sessions they made or missed, or any kind of attendance streak. Those facts are deliberately not given to you; do not infer or imply them. A "streak" signal below counts CHECK-INS, never sessions.${languageLine}`;
 
   const message = await anthropic.messages.create({
     model: MODEL,

@@ -115,6 +115,32 @@ describe('/api/stats/insight — distributed insight cards', () => {
     expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 
+  it('writes the greeting in the reader\'s language, and does not serve one language to the other', async () => {
+    const m = seedMember('Akane');
+    seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
+    const asZh = () => makeRequest('GET', `${BASE}?name=Akane`, undefined, {
+      Cookie: `member_session=${memberCookieValue('Akane')}; NEXT_LOCALE=zh-CN`,
+    });
+    const promptOf = (call: number) => (mockCreate.mock.calls[call][0] as { messages: { content: string }[] }).messages[0].content;
+
+    mockCreate.mockResolvedValueOnce(textResponse({ greeting: 'Hi Akane.', trend: null }));
+    expect((await (await GET(getAs('Akane'))).json()).greeting).toBe('Hi Akane.');
+    expect(promptOf(0)).not.toContain('Simplified Chinese');
+
+    // The English read is not fresh for a Chinese reader: a new call, in Chinese.
+    mockCreate.mockResolvedValueOnce(textResponse({ greeting: 'Akane，最近进步很稳。', trend: null }));
+    const zh = await (await GET(asZh())).json();
+    expect(zh.greeting).toBe('Akane，最近进步很稳。');
+    expect(zh.cached).toBe(false);
+    expect(promptOf(1)).toContain('Simplified Chinese');
+    // The English greeting is not handed to a prompt writing Chinese.
+    expect(promptOf(1)).not.toContain('Hi Akane.');
+
+    // Chinese again is served from the cache.
+    expect((await (await GET(asZh())).json()).cached).toBe(true);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+  });
+
   it('gates on account: an unknown name gets no insight and never calls the model', async () => {
     const res = await GET(getAs('Stranger'));
     const json = await res.json();

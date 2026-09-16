@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocale } from 'next-intl';
 import { useActiveName } from '@/lib/useActiveName';
 
 /**
@@ -47,8 +48,16 @@ export type InsightLoad =
 type Entry = { promise: Promise<InsightLoad> };
 const cache = new Map<string, Entry>();
 
-function load(name: string): Promise<InsightLoad> {
-  const key = name.toLowerCase();
+/** The memo is per LANGUAGE as well as per name: the server writes the greeting
+ *  in the reader's language, and the language toggle only refreshes the server
+ *  render — this module outlives it, so a name-only key would keep showing the
+ *  old language until a full reload. */
+function cacheKey(name: string, locale: string): string {
+  return `${locale}:${name.toLowerCase()}`;
+}
+
+function load(name: string, locale: string): Promise<InsightLoad> {
+  const key = cacheKey(name, locale);
   const hit = cache.get(key);
   if (hit) return hit.promise;
   const promise = fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
@@ -114,6 +123,7 @@ export function useInsight(enabled = true): UseInsight {
   // listened for IDENTITY_EVENT only, so signing in from ANOTHER tab left the
   // insight keyed to the departed member while the prop-driven cards moved on.
   const { name: activeName } = useActiveName();
+  const locale = useLocale();
   /* Seeded from the inputs so a hook that mounts ready to fetch reports
      `loading` on its very first render, which is what the old effect's
      synchronous `setState` was really for. `useActiveName` resolves in an
@@ -160,9 +170,9 @@ export function useInsight(enabled = true): UseInsight {
      copy), so it belongs to whoever decides which of those two is wanted, not
      to a lint pass. The `!enabled || !activeName` branch below DOES clear,
      which is why signing out is already clean. */
-  const [prevKey, setPrevKey] = useState({ enabled, activeName });
-  if (prevKey.enabled !== enabled || prevKey.activeName !== activeName) {
-    setPrevKey({ enabled, activeName });
+  const [prevKey, setPrevKey] = useState({ enabled, activeName, locale });
+  if (prevKey.enabled !== enabled || prevKey.activeName !== activeName || prevKey.locale !== locale) {
+    setPrevKey({ enabled, activeName, locale });
     if (!enabled || !activeName) {
       setState({ data: null, loading: false, error: false, forbidden: false, serverError: false });
     } else {
@@ -173,7 +183,7 @@ export function useInsight(enabled = true): UseInsight {
   useEffect(() => {
     if (!enabled || !activeName) return;
     let cancelled = false;
-    load(activeName).then((res) => {
+    load(activeName, locale).then((res) => {
       if (cancelled) return;
       setState({
         data: res.data,
@@ -189,16 +199,16 @@ export function useInsight(enabled = true): UseInsight {
     return () => {
       cancelled = true;
     };
-  }, [enabled, activeName, nonce]);
+  }, [enabled, activeName, locale, nonce]);
 
   const reload = useCallback(() => {
     if (!activeName) return;
     // A failure is memoized by name like a success, so asking again has to
     // drop the entry first or it would replay the same failed promise.
-    cache.delete(activeName.toLowerCase());
+    cache.delete(cacheKey(activeName, locale));
     setState((s) => ({ ...s, loading: true, error: false, forbidden: false, serverError: false }));
     setNonce((n) => n + 1);
-  }, [activeName]);
+  }, [activeName, locale]);
 
   return { ...state, reload };
 }
