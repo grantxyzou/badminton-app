@@ -30,7 +30,9 @@ interface BottomSheetBodyProps {
  * re-state padding — see the note in `BottomSheetHeader`. Use `bare` instead.
  */
 export default function BottomSheetBody({ children, className, style, bare }: BottomSheetBodyProps) {
-  const base = bare ? 'min-h-0 flex-1 overflow-y-auto' : 'min-h-0 flex-1 overflow-y-auto p-5 pb-8';
+  // `overscroll-contain`: scrolling past either end of a sheet must not hand
+  // the gesture to the page behind it.
+  const base = bare ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain' : 'min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pb-8';
   return (
     <div className={[base, className].filter(Boolean).join(' ')} style={style}>
       {children}
