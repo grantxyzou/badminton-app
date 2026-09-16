@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import TopBar from '@/components/primitives/TopBar';
+import SettingsList from './SettingsList';
 import type { GroupListEntry } from '@/lib/useCurrentGroup';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -90,81 +91,96 @@ export default function GroupsPage({
     <div className="animate-slideInRight space-y-5">
       <TopBar title={t('yourGroups')} crumb={t('crumb')} onBack={onBack} backLabel={t('crumb')} />
 
-      <div>
-        <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
-          <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('yourGroupsHint')}</p>
+      <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('yourGroupsHint')}</p>
 
-          {loadError ? (
-            <ErrorState
-              message={t('loadFailed')}
-              action={onRetry ? (
-                <button type="button" className="cc-btn cc-btn-ghost" onClick={onRetry}>
-                  {t('retry')}
-                </button>
-              ) : undefined}
-            />
-          ) : (
-            <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
-              {groups.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => !g.current && switchTo(g.id)}
-                  disabled={g.current || busyId !== null}
-                  aria-label={g.current ? g.name : t('switchTo', { name: g.name })}
-                  className="cc-mini-card"
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 'var(--space-3)',
-                    // The current club is not a disabled control, it is where
-                    // you already are — so it stays fully legible rather than
-                    // taking `.cc-btn:disabled`'s dimming.
-                    opacity: busyId && busyId !== g.id ? 0.5 : 1,
-                    cursor: g.current ? 'default' : 'pointer',
-                  }}
-                >
-                  <span style={{ display: 'grid', gap: 'var(--space-hair)' }}>
-                    <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', fontWeight: 600 }}>
-                      {g.name}
+      {loadError ? (
+        <ErrorState
+          message={t('loadFailed')}
+          action={onRetry ? (
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={onRetry}>
+              {t('retry')}
+            </button>
+          ) : undefined}
+        />
+      ) : (
+        // The same card and rows as Profile's settings lists, which is where
+        // this page is opened from — the first cut borrowed admin's
+        // `.cc-mini-card`, which at page level takes the 30px card radius and
+        // no padding, so each club read as a pill with its text on the rim.
+        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+          <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
+            <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
+              {groups.map((g, idx) => (
+                <li key={g.id} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}>
+                  <button
+                    type="button"
+                    className="group-row"
+                    onClick={() => !g.current && switchTo(g.id)}
+                    disabled={g.current || busyId !== null}
+                    aria-current={g.current ? 'true' : undefined}
+                    data-busy={busyId === g.id ? 'true' : undefined}
+                    aria-label={g.current ? g.name : t('switchTo', { name: g.name })}
+                  >
+                    <span className="group-monogram" aria-hidden="true">
+                      {Array.from(g.name.trim())[0]?.toUpperCase() ?? '?'}
                     </span>
-                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                      {roleLabel(g.role)} · {g.rosterName}
+                    <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 'var(--space-hair)' }}>
+                      <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {g.name}
+                      </span>
+                      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {roleLabel(g.role)} · {g.rosterName}
+                      </span>
                     </span>
-                  </span>
-                  {g.current ? (
-                    <span className="pill-admin" style={{ flexShrink: 0 }}>
-                      {t('current')}
-                    </span>
-                  ) : busyId === g.id ? (
-                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', flexShrink: 0 }}>
-                      {t('switching')}
-                    </span>
-                  ) : null}
-                </button>
+                    {g.current ? (
+                      // A tick, the way a picker marks its selection. Accent
+                      // is the one thing on the page that says "this one".
+                      <span
+                        className="material-icons"
+                        role="img"
+                        aria-label={t('current')}
+                        style={{ fontSize: 'var(--icon-lg)', color: 'var(--accent)', flexShrink: 0 }}
+                      >
+                        check
+                      </span>
+                    ) : busyId === g.id ? (
+                      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', flexShrink: 0 }}>
+                        {t('switching')}
+                      </span>
+                    ) : (
+                      <span
+                        className="material-icons"
+                        aria-hidden="true"
+                        style={{ fontSize: 'var(--icon-md)', color: 'var(--text-secondary)', flexShrink: 0 }}
+                      >
+                        chevron_right
+                      </span>
+                    )}
+                  </button>
+                </li>
               ))}
-
-              {groups.length <= 1 && (
-                <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{t('onlyOne')}</p>
-              )}
-            </div>
-          )}
-
-          {error && <p className="field-error">{error}</p>}
-
-          <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
-            <button type="button" onClick={onJoinAnother} className="cc-btn cc-btn-secondary" style={{ width: '100%' }}>
-              {t('joinAnother')}
-            </button>
-            <button type="button" onClick={onCreateAnother} className="cc-btn cc-btn-ghost" style={{ width: '100%' }}>
-              {t('createAnother')}
-            </button>
+            </ul>
           </div>
+
+          {groups.length <= 1 && (
+            <p style={{ margin: 0, padding: '0 var(--space-5)', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+              {t('onlyOne')}
+            </p>
+          )}
         </div>
-      </div>
+      )}
+
+      {error && <p className="field-error">{error}</p>}
+
+      {/* Rows, not two full-width buttons: a secondary and a ghost button
+          stacked read as "one real action and one disabled one". Both are
+          equal ways onward, so they get equal rows. */}
+      <SettingsList
+        rows={[
+          { icon: 'group_add', label: t('joinAnother'), onClick: onJoinAnother },
+          { icon: 'add', label: t('createAnother'), onClick: onCreateAnother },
+        ]}
+      />
     </div>
   );
 }
