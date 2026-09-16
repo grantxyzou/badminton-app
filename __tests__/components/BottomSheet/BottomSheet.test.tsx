@@ -289,3 +289,55 @@ describe('BottomSheet — drag to dismiss', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe('BottomSheet — stays above the on-screen keyboard', () => {
+  /** jsdom has no visualViewport. A minimal one: a height, an offset, events. */
+  function fakeViewport(height: number) {
+    const target = new EventTarget() as EventTarget & { height: number; offsetTop: number };
+    target.height = height;
+    target.offsetTop = 0;
+    Object.defineProperty(window, 'visualViewport', { value: target, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
+    return target;
+  }
+
+  afterEach(() => {
+    cleanup();
+    // @ts-expect-error — test-only teardown of a property jsdom never had.
+    delete window.visualViewport;
+  });
+
+  function open() {
+    render(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet">
+        <BottomSheetBody><input aria-label="name" /></BottomSheetBody>
+      </BottomSheet>,
+    );
+    return document.body.querySelector('[role="dialog"]') as HTMLElement;
+  }
+
+  it('lifts the sheet by the keyboard height when the visible viewport shrinks', () => {
+    const vv = fakeViewport(900);
+    const sheet = open();
+    expect(sheet.dataset.keyboard).toBeUndefined();
+
+    vv.height = 560; // a 340px keyboard
+    vv.dispatchEvent(new Event('resize'));
+    expect(sheet.dataset.keyboard).toBe('true');
+    expect(sheet.style.getPropertyValue('--keyboard-inset')).toBe('340px');
+    expect(sheet.style.getPropertyValue('--visible-height')).toBe('560px');
+
+    vv.height = 900; // keyboard gone
+    vv.dispatchEvent(new Event('resize'));
+    expect(sheet.dataset.keyboard).toBeUndefined();
+    expect(sheet.style.getPropertyValue('--keyboard-inset')).toBe('');
+  });
+
+  it('a browser toolbar showing or hiding is not a keyboard', () => {
+    const vv = fakeViewport(900);
+    const sheet = open();
+    vv.height = 840; // 60px: Safari's bottom bar, not keys
+    vv.dispatchEvent(new Event('resize'));
+    expect(sheet.dataset.keyboard).toBeUndefined();
+  });
+});

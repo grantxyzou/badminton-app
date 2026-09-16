@@ -3436,6 +3436,17 @@ html:root[data-tab="admin"] .bottom-sheet {
     transition: none;
   }
 }
+/* The on-screen keyboard is up (`useKeyboardInset`). On iOS it covers the
+   layout viewport rather than shrinking it, so a sheet sitting at bottom: 0
+   keeps its footer — the primary action — under the keys. Lift the sheet by
+   the keyboard's height and cap it to what is still visible. The attribute
+   selector is what outranks the `bottom-0` utility the sheet also carries. */
+.bottom-sheet[data-keyboard] {
+  bottom: var(--keyboard-inset);
+  /* Minus the top safe area too: a sheet this tall reaches the status bar,
+     and on a notched phone its title would sit under the clock. */
+  max-height: min(var(--sheet-max-h), calc(var(--visible-height) - var(--space-7) - env(safe-area-inset-top, 0px)));
+}
 /* While a finger owns the sheet it follows the finger exactly — a transition
    here would lag the drag by its own duration. Written as a data attribute by
    BottomSheet, the same way SwipeRow drives its row. */

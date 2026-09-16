@@ -325,6 +325,7 @@ export default function GearSheet({
             <span className="material-icons" aria-hidden="true">search</span>
             <input
               type="search"
+              enterKeyHint="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={searchPlaceholder}
