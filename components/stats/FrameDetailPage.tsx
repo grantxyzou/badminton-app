@@ -90,7 +90,7 @@ export default function FrameDetailPage({ activeName, gear, frameId, onBack, onO
         <div className="frame-identity">
           <button type="button" className="frame-tile" onClick={() => onView3d(owned, row)} aria-label={t('view3d')}>
             {/* eslint-disable-next-line @next/next/no-img-element -- a pre-rendered local WebP of the 3D model. */}
-            <img src={racketSrc(row.id)} alt="" />
+            <img src={racketSrc(row.id)} alt="" width={240} height={624} decoding="async" />
           </button>
           <div className="frame-identity-text">
             <h2 className="frame-name">{row.model}</h2>
@@ -135,7 +135,7 @@ export default function FrameDetailPage({ activeName, gear, frameId, onBack, onO
               <button key={c.id} type="button" className="fit-rank-row frame-close-row" onClick={() => onOpenFrame(c.id)}>
                 <span className="fit-rank-thumb" aria-hidden="true">
                   {/* eslint-disable-next-line @next/next/no-img-element -- a pre-rendered local WebP; next/image adds nothing at 24px. */}
-                  <img src={racketSrc(c.id)} alt="" />
+                  <img src={racketSrc(c.id)} alt="" width={240} height={624} loading="lazy" decoding="async" />
                 </span>
                 <span className="fit-rank-text">
                   <span className="fit-rank-name">{c.model}</span>

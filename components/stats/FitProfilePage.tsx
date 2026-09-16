@@ -328,7 +328,7 @@ function RankedFrames({ picks, ready, onOpenFrame }: { picks: UseGearPicks; read
         <button key={r.item.id} type="button" className="fit-rank-row frame-close-row" disabled={!onOpenFrame} onClick={() => onOpenFrame?.(r.item.id)}>
           <span className="fit-rank-thumb" aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element -- a pre-rendered local WebP; next/image adds nothing at 24px. */}
-            <img src={racketSrc(r.item.id)} alt="" />
+            <img src={racketSrc(r.item.id)} alt="" width={240} height={624} loading="lazy" decoding="async" />
           </span>
           <span className="fit-rank-text">
             <span className="fit-rank-name">{r.item.model}</span>

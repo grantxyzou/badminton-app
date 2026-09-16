@@ -11,7 +11,7 @@ export default function RacketThumb({ catalogId, saved = false }: { catalogId?: 
   return (
     <span className={`setup-thumb${saved ? ' setup-thumb--saved' : ''}`} aria-hidden="true">
       {/* eslint-disable-next-line @next/next/no-img-element -- an inline SVG data URL shown at 24px; next/image cannot optimise a data URL and would add nothing. */}
-      <img src={racketSrc(catalogId)} alt="" />
+      <img src={racketSrc(catalogId)} alt="" width={240} height={624} loading="lazy" decoding="async" />
     </span>
   );
 }
