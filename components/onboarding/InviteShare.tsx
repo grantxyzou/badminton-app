@@ -81,7 +81,7 @@ export default function InviteShare({ token, code, groupName }: Props) {
         </p>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <button type="button" onClick={copy} className="cc-btn cc-btn-secondary" style={{ flex: 1 }}>
-            {copied ? t('copied') : t('copy')}
+            <span key={copied ? 'copied' : 'copy'} className="motion-fade">{copied ? t('copied') : t('copy')}</span>
           </button>
           <button type="button" onClick={share} className="cc-btn cc-btn-secondary" style={{ flex: 1 }}>
             {t('share')}

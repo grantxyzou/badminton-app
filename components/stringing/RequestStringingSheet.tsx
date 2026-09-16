@@ -251,7 +251,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
       </BottomSheetHeader>
       <BottomSheetBody>
         {done ? (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div className="motion-fade" style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p role="status" className="fs-md" style={{ margin: '0', color: 'var(--text-primary)' }}>
               {t('requestSent')}
             </p>

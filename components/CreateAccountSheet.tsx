@@ -99,6 +99,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
           type="button"
           onClick={onClose}
           aria-label={tRecovery('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
@@ -106,7 +107,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
       </BottomSheetHeader>
       <BottomSheetBody>
         {successName ? (
-          <p style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
+          <p className="motion-fade" style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
             {t('successWelcome', { name: successName })}
           </p>
         ) : (

@@ -266,7 +266,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
   if (loading) {
     return (
-      <div className="animate-slideInRight space-y-3">
+      <div className="motion-fade space-y-3">
         <AdminBackHeader onBack={onBack} title="Set up session" />
         <AdminPageSkeleton />
       </div>
@@ -274,7 +274,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   }
 
   return (
-    <div className="animate-slideInRight" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <div className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <AdminBackHeader onBack={onBack} title={`Set up ${date ? new Date(`${date}T${time || '00:00'}`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'session'}`} />
 
       {/* WHEN */}
@@ -499,6 +499,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       )}
       {success ? (
         <div
+          className="status-celebrate"
           style={{
             padding: 'var(--space-4)',
             borderRadius: 'var(--radius-lg)',

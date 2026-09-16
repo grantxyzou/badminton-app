@@ -5,6 +5,7 @@ import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
 import CardHeader from './primitives/CardHeader';
+import Collapse from './primitives/Collapse';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
@@ -185,7 +186,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
                 reason to open the card, so it stays. */}
             {!open && (
               <span
-                className="fs-md"
+                className="fs-md motion-fade"
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontWeight: 600,
@@ -195,8 +196,14 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
                 {fmtMoney(data?.totalOwed ?? 0)}
               </span>
             )}
-            <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
-              {open ? 'expand_less' : 'expand_more'}
+            {/* One glyph that turns, not two that swap. */}
+            <span
+              className="material-icons icon-sm motion-chevron"
+              data-open={open ? 'true' : 'false'}
+              aria-hidden="true"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              expand_more
             </span>
           </span>
         ) : undefined
@@ -204,10 +211,129 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
     />
   );
 
+  // Closed means absent (Collapse unmounts it), so nothing inside is
+  // mounted while the card is shut.
+  const body = (
+    <>
+
+    {/* Signed out is not a failure, so it is not red: nothing went wrong, this
+        device just is not allowed to ask. Muted copy and a ghost button to
+        where you sign in. A real load failure keeps the red — and gets a
+        button, because "refresh to retry" was an instruction with no
+        control attached. */}
+    {forbidden ? (
+      <EmptyState
+        action={onSignIn ? (
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={onSignIn}>
+            {tBal('signIn')}
+          </button>
+        ) : undefined}
+      >
+        {onSignIn ? tBal('signedOut') : t('signInAgain')}
+      </EmptyState>
+    ) : loadError ? (
+      <ErrorState
+        message={t('loadError')}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setRefreshNonce((n) => n + 1)}>
+            {tBal('retry')}
+          </button>
+        }
+      />
+    ) : showPaidUp ? (
+      <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
+    ) : (
+      data && (
+        <>
+          {/* Sessions — one line per unpaid week, no dividers between rows. */}
+          {lineItems.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {grouped && (
+                <p className="fs-2xs" style={{ margin: '0', color: 'var(--text-muted)' }}>
+                  {tBal('groupSessions')}
+                </p>
+              )}
+              {lineItems.map((s) => (
+                <div
+                  key={s.sessionId}
+                  style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}
+                >
+                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                    {format.dateTime(new Date(s.date), DAY_SHORT)}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    {fmtMoney(s.owedAmount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Stringing — a racket that is finished and priced. Never a job
+              still on the bench, and never a band: you cannot pay a range,
+              so a line here is always an exact figure. See
+              lib/stringingBilling.ts. */}
+          {stringingItems.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {grouped && (
+                <p className="fs-2xs" style={{ margin: '0', color: 'var(--text-muted)' }}>
+                  {tBal('groupStringing')}
+                </p>
+              )}
+              {stringingItems.map((j) => (
+                <div
+                  key={j.jobId}
+                  style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}
+                >
+                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', minWidth: 0 }}>
+                    {j.racketLabel}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    {fmtMoney(j.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Total — single hairline rule above, invoice-style. */}
+          <div
+            style={{
+              borderTop: '1px solid var(--inner-card-border)',
+              paddingTop: 'var(--space-4)',
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 'var(--space-3)',
+            }}
+          >
+            <span style={{ fontSize: 'var(--fs-md, 14px)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {(isHome ? tBal : t)('total')}
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+              {fmtMoney(data.totalOwed)}
+            </span>
+          </div>
+
+          {etransferEmail && (
+            <p style={{ margin: '0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+              {tPay('etransfer', { email: etransferEmail })}
+            </p>
+          )}
+        </>
+      )
+    )}
+    </>
+  );
+
   return (
     <div
-      className={`glass-card ${isHome ? "p-4" : "p-5"}`}
-      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
+      // Fades in: Home renders nothing until the balance lands, so the card
+      // arrives into a page that is already on screen.
+      className={`glass-card motion-fade ${isHome ? "p-4" : "p-5"}`}
+      // Collapsible: the gap lives INSIDE the collapse (as its top padding),
+      // so a closing body does not leave a gap behind that snaps on unmount.
+      style={{ display: 'flex', flexDirection: 'column', gap: collapsible ? undefined : 'var(--space-4)' }}
     >
       {collapsible ? (
         <button
@@ -235,117 +361,14 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
         header
       )}
 
-      {(!collapsible || open) && (
-      <>
-
-      {/* Signed out is not a failure, so it is not red: nothing went wrong, this
-          device just is not allowed to ask. Muted copy and a ghost button to
-          where you sign in. A real load failure keeps the red — and gets a
-          button, because "refresh to retry" was an instruction with no
-          control attached. */}
-      {forbidden ? (
-        <EmptyState
-          action={onSignIn ? (
-            <button type="button" className="cc-btn cc-btn-ghost" onClick={onSignIn}>
-              {tBal('signIn')}
-            </button>
-          ) : undefined}
-        >
-          {onSignIn ? tBal('signedOut') : t('signInAgain')}
-        </EmptyState>
-      ) : loadError ? (
-        <ErrorState
-          message={t('loadError')}
-          action={
-            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setRefreshNonce((n) => n + 1)}>
-              {tBal('retry')}
-            </button>
-          }
-        />
-      ) : showPaidUp ? (
-        <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
+      {collapsible ? (
+        <Collapse open={open} spaceAbove="var(--space-4)">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            {body}
+          </div>
+        </Collapse>
       ) : (
-        data && (
-          <>
-            {/* Sessions — one line per unpaid week, no dividers between rows. */}
-            {lineItems.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {grouped && (
-                  <p className="fs-2xs" style={{ margin: '0', color: 'var(--text-muted)' }}>
-                    {tBal('groupSessions')}
-                  </p>
-                )}
-                {lineItems.map((s) => (
-                  <div
-                    key={s.sessionId}
-                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}
-                  >
-                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                      {format.dateTime(new Date(s.date), DAY_SHORT)}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                      {fmtMoney(s.owedAmount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Stringing — a racket that is finished and priced. Never a job
-                still on the bench, and never a band: you cannot pay a range,
-                so a line here is always an exact figure. See
-                lib/stringingBilling.ts. */}
-            {stringingItems.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {grouped && (
-                  <p className="fs-2xs" style={{ margin: '0', color: 'var(--text-muted)' }}>
-                    {tBal('groupStringing')}
-                  </p>
-                )}
-                {stringingItems.map((j) => (
-                  <div
-                    key={j.jobId}
-                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}
-                  >
-                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', minWidth: 0 }}>
-                      {j.racketLabel}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                      {fmtMoney(j.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Total — single hairline rule above, invoice-style. */}
-            <div
-              style={{
-                borderTop: '1px solid var(--inner-card-border)',
-                paddingTop: 'var(--space-4)',
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                gap: 'var(--space-3)',
-              }}
-            >
-              <span style={{ fontSize: 'var(--fs-md, 14px)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {(isHome ? tBal : t)('total')}
-              </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                {fmtMoney(data.totalOwed)}
-              </span>
-            </div>
-
-            {etransferEmail && (
-              <p style={{ margin: '0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                {tPay('etransfer', { email: etransferEmail })}
-              </p>
-            )}
-          </>
-        )
-      )}
-      </>
+        body
       )}
     </div>
   );

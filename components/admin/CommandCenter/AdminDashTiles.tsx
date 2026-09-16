@@ -143,7 +143,7 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
     : 'cc-dcard';
 
   return (
-    <div key="tiles-loaded" className="cc-dgrid animate-fadeIn">
+    <div key="tiles-loaded" className="cc-dgrid motion-fade">
       {birds.problem ? problemTile('inventory_2', 'Birds', birds.problem) : (
         <button
           type="button"

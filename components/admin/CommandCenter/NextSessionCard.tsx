@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { fmtSessionLabel as fmtDate, fmtDeadline } from '@/lib/fmt';
 import { shareSignup } from '@/lib/signupShare';
 import { useInviteLink } from '@/lib/useInviteLink';
@@ -68,6 +68,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const [waitlistCount, setWaitlistCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const loadedRef = useRef(false);
   const [settling, setSettling] = useState(false);
   const [settleError, setSettleError] = useState<string | null>(null);
   // Advancing archives the week and is hard to reverse; a single stray tap
@@ -101,7 +102,11 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   }, [session?.datetime, group?.name, inviteUrl]);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // Skeleton on the first load only: a save or cover used to blink this
+    // whole surface back to a skeleton (and resize the page) before showing
+    // the change it made. A refetch that fails still sets loadError, which
+    // replaces the stale content with the error card.
+    if (!loadedRef.current) setLoading(true);
     try {
       const [sessionRes, playersRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
@@ -122,8 +127,10 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       setActiveCount(players.filter((p) => !p.removed && !p.waitlisted).length);
       setWaitlistCount(players.filter((p) => !p.removed && p.waitlisted).length);
       setLoadError(false);
+      loadedRef.current = true;
     } catch {
       setSession(null);
+      loadedRef.current = false;
       setLoadError(true);
     } finally {
       setLoading(false);
@@ -273,7 +280,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const staleBill = rosterChanged || costChanged;
 
   return (
-    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Next session">
+    <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Next session">
       <header className="flex items-center justify-between gap-3">
         <div>
           <h3 className="bpm-h3">{fmtDate(session.datetime)}</h3>
@@ -298,14 +305,19 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             style={{ cursor: 'pointer', font: 'inherit' }}
             title={open ? 'Sign-ups are open — tap to close' : 'Sign-ups are closed — tap to open'}
           >
-            {open ? 'Signup open' : 'Signup closed'}
+            {/* Keyed so the label crossfades with the pill's colour change —
+                this toggle decides whether players can join and pushes to the
+                roster, so it should be seen to change. */}
+            <span key={open ? 'open' : 'closed'} className="motion-fade">
+              {open ? 'Signup open' : 'Signup closed'}
+            </span>
           </button>
         </div>
       </header>
 
       <div className="space-y-2">
         <div className="flex items-baseline justify-between fs-md">
-          <span className="text-gray-300">{activeCount} / {cap} signed up</span>
+          <span key={activeCount} className="text-gray-300 animate-count-tick">{activeCount} / {cap} signed up</span>
           {waitlistCount > 0 && (
             <span className="fs-sm text-gray-400">+{waitlistCount} waitlist</span>
           )}

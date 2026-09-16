@@ -347,7 +347,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
 
   function savedPanel(catalogId: string | null, title: string) {
     return (
-      <div className="setup-saved" key={catalogId ?? `typed:${title}`}>
+      <div className="setup-saved motion-fade" key={catalogId ?? `typed:${title}`}>
         <div className="setup-saved-head">
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--accent)' }}>check_circle</span>
           {category === 'racket' && <RacketThumb catalogId={catalogId} saved />}
@@ -411,6 +411,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
           type="button"
           onClick={() => { void finish(); }}
           aria-label={tRecovery('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
@@ -449,12 +450,14 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
               <button key={f} type="button" className="filter-chip" aria-expanded={openFacet === f}
                 onClick={() => setOpenFacet(openFacet === f ? null : f)}>
                 {t(FACET_LABEL[f])}
-                <span className="material-icons" aria-hidden="true">{openFacet === f ? 'expand_less' : 'expand_more'}</span>
+                <span className="material-icons motion-chevron" aria-hidden="true">expand_more</span>
               </button>
             ))}
           </div>
           {openFacet && (
-            <div className="filter-options" role="group" aria-label={t(FACET_LABEL[openFacet])}>
+            // Keyed on the facet: switching from Brand to Weight fades the
+            // new options in rather than swapping them under the finger.
+            <div key={openFacet} className="filter-options motion-fade" role="group" aria-label={t(FACET_LABEL[openFacet])}>
               {facetValues(offered, openFacet).map((v) => (
                 <button key={v} type="button" className="filter-chip" onClick={() => applyFacet(openFacet, v)}>
                   {chipLabel(openFacet, v)}

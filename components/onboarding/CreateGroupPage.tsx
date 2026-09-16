@@ -236,7 +236,7 @@ export default function CreateGroupPage({
 
       <div style={{ display: 'grid', gap: 'var(--space-5)', padding: '0 var(--space-5) var(--space-9)' }}>
         {!created && step === 'auth' ? (
-          <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+          <div key="auth" className="motion-fade" style={{ display: 'grid', gap: 'var(--space-5)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>
               {t('auth.body')}
             </p>
@@ -295,15 +295,16 @@ export default function CreateGroupPage({
             )}
           </div>
         ) : created ? (
-          <>
+          // The club exists now — the one moment on this page worth marking.
+          <div key="created" className="status-celebrate" style={{ display: 'grid', gap: 'var(--space-5)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('createdHint')}</p>
             <InviteShare token={created.token} code={created.code} groupName={created.name} />
             <button type="button" onClick={onDone} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
               {t('done')}
             </button>
-          </>
+          </div>
         ) : (
-          <form onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-5)' }}>
+          <form key="form" className="motion-fade" onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-5)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('subtitle')}</p>
 
             {/* "Real account, no mail" — carried from the signup step, because

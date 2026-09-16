@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
+import Collapse from '@/components/primitives/Collapse';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { useStringingShop } from '@/lib/useStringingShop';
@@ -210,8 +211,13 @@ export default function StringingCard({ hasIdentity }: Props) {
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
           <StatusBadge variant="accent">{t('openBadge')}</StatusBadge>
           {collapsible && (
-            <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
-              {expanded ? 'expand_less' : 'expand_more'}
+            <span
+              className="material-icons icon-sm motion-chevron"
+              data-open={expanded ? 'true' : 'false'}
+              aria-hidden="true"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              expand_more
             </span>
           )}
         </span>
@@ -297,12 +303,19 @@ export default function StringingCard({ hasIdentity }: Props) {
             nothing to report. Extra headroom because collapsed it is the
             card's whole content and sat too close to the title. */}
         {active && (
-          <div style={{ paddingTop: expanded ? 0 : 'var(--space-4)' }}>
+          <div
+            style={{
+              paddingTop: expanded ? 0 : 'var(--space-4)',
+              // The headroom closes with the row opening beneath it.
+              transition: 'padding-top var(--duration-sheet) var(--ease-sheet)',
+            }}
+          >
             <StringingSteps current={stepForStage((active.stage as PlayerStage) ?? null)} />
           </div>
         )}
 
-        {active && expanded && (
+        {active && (
+          <Collapse open={expanded} spaceAbove="var(--space-3)">
           <div
             className="cc-mini-card"
             style={{
@@ -332,6 +345,7 @@ export default function StringingCard({ hasIdentity }: Props) {
               </div>
             </div>
           </div>
+          </Collapse>
         )}
 
         {/* Refused renders nothing here: the Balance card directly above already
@@ -396,12 +410,12 @@ export default function StringingCard({ hasIdentity }: Props) {
           style={{ color: 'var(--text-secondary)' }}
         >
           <span className="fs-sm">{t('viewPricing')}</span>
-          <span className="material-icons icon-sm" aria-hidden="true">
-            {pricingOpen ? 'expand_less' : 'expand_more'}
+          <span className="material-icons icon-sm motion-chevron" aria-hidden="true">
+            expand_more
           </span>
         </button>
 
-        {pricingOpen && (
+        <Collapse open={pricingOpen} spaceAbove="var(--space-3)">
           <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
             {pricingFailed && (
               <ErrorState
@@ -432,7 +446,7 @@ export default function StringingCard({ hasIdentity }: Props) {
               </div>
             ))}
           </div>
-        )}
+        </Collapse>
         {!hasIdentity && (
           <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
             {t('needName')}

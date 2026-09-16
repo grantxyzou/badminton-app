@@ -72,6 +72,7 @@ export default function ForgotPasswordSheet({ open, onClose }: Props) {
       <BottomSheetBody>
         {sent ? (
           <p
+            className="motion-fade"
             role="status"
             style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}
           >

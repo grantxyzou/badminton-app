@@ -32,6 +32,9 @@ export default function ActionRow({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      // Press state and transitions live on the class (the press ladder in
+      // globals.css) — inline styles cannot express :active.
+      className="action-row"
       style={{
         display: 'flex',
         alignItems: 'center',

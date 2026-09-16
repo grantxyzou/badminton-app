@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
 import CardHeader from '@/components/primitives/CardHeader';
+import Collapse from '@/components/primitives/Collapse';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
@@ -308,18 +309,19 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                     {t(`status.${local.status}`)}
                   </span>
                   <span
-                    className="material-icons icon-sm"
+                    className="material-icons icon-sm motion-chevron"
+                    data-open={statusOpen ? 'true' : 'false'}
                     aria-hidden="true"
                     style={{ color: 'var(--text-muted)' }}
                   >
-                    {statusOpen ? 'expand_less' : 'expand_more'}
+                    expand_more
                   </span>
                 </span>
               }
             />
             </div>
           </button>
-          {statusOpen && (
+          <Collapse open={statusOpen} spaceAbove="var(--space-3)">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               {STRINGING_FLOW.map((step: StringingStatus) => {
                 const idx = STRINGING_FLOW.indexOf(step);
@@ -331,6 +333,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                     type="button"
                     disabled={busy || !online}
                     onClick={() => patch({ status: step })}
+                    className="flow-step"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -362,7 +365,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 );
               })}
             </div>
-          )}
+          </Collapse>
         </div>
 
         <div className="glass-card p-5 space-y-3">
@@ -486,7 +489,8 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               borderTop: '1px solid var(--banner-green-border)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 'var(--space-3)',
+              // No gap: the only other child is the collapse below, which
+              // carries its own space so the close does not leave a gap behind.
             }}
           >
             <button
@@ -510,16 +514,16 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
             >
               <span className="section-label">{t('propose.title')}</span>
               <span
-                className="material-icons icon-sm"
+                className="material-icons icon-sm motion-chevron"
                 aria-hidden="true"
                 style={{ color: 'var(--text-muted)' }}
               >
-                {changeOpen ? 'expand_less' : 'expand_more'}
+                expand_more
               </span>
             </button>
 
-            {changeOpen && (
-              <>
+            <Collapse open={changeOpen} spaceAbove="var(--space-3)">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             <p
               className="fs-sm"
               style={{ color: 'var(--text-secondary)', margin: 0 }}
@@ -635,7 +639,10 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
             </div>
 
             {forceOpen && (
+              // A confirm for a destructive change: it fades in so it reads as
+              // a response to the tap, not as something that was always there.
               <div
+                className="motion-fade"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -691,8 +698,8 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 {t('propose.noChange')}
               </p>
             )}
-              </>
-            )}
+            </div>
+            </Collapse>
           </div>
         </div>
 

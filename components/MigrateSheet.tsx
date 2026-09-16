@@ -86,6 +86,7 @@ export default function MigrateSheet({ open, onClose }: Props) {
           type="button"
           onClick={onClose}
           aria-label={t('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>

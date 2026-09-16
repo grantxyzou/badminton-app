@@ -208,7 +208,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
       </BottomSheetHeader>
       <BottomSheetBody>
         {expired ? (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div className="motion-fade" style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('pendingExpired')}
             </p>
@@ -224,7 +224,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
             </button>
           </div>
         ) : claiming ? (
-          <form onSubmit={submitClaim} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <form key="claim" className="motion-fade" onSubmit={submitClaim} style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('claimBody', { name: name.trim() })}
             </p>
@@ -281,7 +281,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
             </button>
           </form>
         ) : (
-          <form onSubmit={submitName} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <form key="name" onSubmit={submitName} style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('chooseNameBody')}
             </p>

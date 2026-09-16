@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import type { Player, Session } from '@/lib/types';
 import { getIdentity, setIdentity } from '@/lib/identity';
@@ -31,6 +31,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const loadedRef = useRef(false);
   const [cancelError, setCancelError] = useState('');
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   /* The SECOND door to kudos. The Stats card is the first; this one exists
@@ -41,7 +42,10 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
   const reportFetchFailure = useReportFetchFailure();
 
   const loadPlayers = useCallback(async () => {
-    setLoading(true);
+    // Skeleton on the FIRST load only. Cancelling a spot used to flash the
+    // roster back to a skeleton and re-stagger every row in, instead of the
+    // one row leaving. A refetch keeps the roster while it runs.
+    if (!loadedRef.current) setLoading(true);
     setLoadError(false);
     try {
       const [pRes, sRes] = await Promise.all([
@@ -51,9 +55,15 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
       // A failed load must NOT silently render as an empty roster — track the
       // error so the UI can say "couldn't load" instead (CLAUDE.md).
       if (!pRes.ok || !sRes.ok) setLoadError(true);
+      // A roster that failed to refresh must not keep standing as if current:
+      // drop it, so the full "couldn't load" state renders instead.
       if (pRes.ok) setPlayers(await pRes.json());
+      else setPlayers([]);
+      loadedRef.current = pRes.ok;
       if (sRes.ok) setSession(await sRes.json());
     } catch {
+      loadedRef.current = false;
+      setPlayers([]);
       setLoadError(true);
       reportFetchFailure();
     } finally {
@@ -202,11 +212,12 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center px-3 py-2 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-green' : ''}`}
-                  /* Stagger entrance ~40ms/row, capped so a long list doesn't
-                     crawl in. Stable key → only first mount + genuinely new
-                     rows animate; poll refreshes don't replay it. */
-                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                  className={`flex items-center px-3 py-2 gap-3 rounded-xl motion-fade${isMe ? ' player-highlight-green' : ''}`}
+                  /* Opacity only, staggered 30ms/row and capped at 150ms in
+                     total: this list is seen on every Sign-Ups visit, and a
+                     row-by-row crawl is choreography the second time. Stable
+                     key → only first mount + genuinely new rows animate. */
+                  style={{ animationDelay: `${Math.min(i, 5) * 30}ms` }}
                 >
                   <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
                     {i + 1}
@@ -278,8 +289,8 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                 return (
                   <div
                     key={player.id}
-                    className={`flex items-center px-3 py-2 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-amber' : ''}`}
-                    style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                    className={`flex items-center px-3 py-2 gap-3 rounded-xl motion-fade${isMe ? ' player-highlight-amber' : ''}`}
+                    style={{ animationDelay: `${Math.min(i, 5) * 30}ms` }}
                   >
                     <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
                       {activePlayers.length + i + 1}

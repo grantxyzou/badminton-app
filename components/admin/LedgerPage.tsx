@@ -5,6 +5,7 @@ import AdminBackHeader from './AdminBackHeader';
 import PlayerProfileSheet from './CommandCenter/PlayerProfileSheet';
 import ErrorState from '@/components/primitives/ErrorState';
 import { fmtSessionLabel } from '@/lib/fmt';
+import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -107,7 +108,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
 
   if (loadError) {
     return (
-      <div className="animate-slideInRight space-y-3">
+      <div className="motion-fade space-y-3">
         <AdminBackHeader onBack={onBack} title="Ledger" />
         <div style={{ padding: 'var(--space-9) var(--space-7)' }}>
           <ErrorState
@@ -123,7 +124,18 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
     );
   }
 
-  if (loading || !data) return null;
+  // First load only. A range tap or a focus refetch used to return null here,
+  // so the header and the control just tapped vanished and the whole page slid
+  // in again. Now the last ledger stays (dimmed, via aria-busy) while the next
+  // one loads; a failed refetch still takes the error branch above.
+  if (!data) {
+    return (
+      <div className="space-y-3">
+        <AdminBackHeader onBack={onBack} title="Ledger" />
+        <AdminPageSkeleton />
+      </div>
+    );
+  }
 
   const { summary, bySession, byPlayer } = data;
   const showPlayerTab = byPlayer.length > 0;
@@ -134,7 +146,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
   const activeTab = tab === 'player' && !showPlayerTab ? 'session' : tab;
 
   return (
-    <div className="animate-slideInRight space-y-3">
+    <div className="space-y-3 motion-busy" aria-busy={loading || undefined}>
       <AdminBackHeader onBack={onBack} title="Ledger" />
 
       <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 var(--space-1)' }}>

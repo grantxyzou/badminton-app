@@ -19,6 +19,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
 import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
+import Collapse from '@/components/primitives/Collapse';
 
 
 /** Response shape of GET /api/stats/club/bands. */
@@ -185,7 +186,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   return (
     // The read + level live in the Level card; here a single card holds the
     // always-on radar with strengths / work-on as legends on the right.
-    <div className="animate-fadeIn space-y-3">
+    <div className="motion-fade space-y-3">
       <div className="glass-card p-5 space-y-3">
       {/* Dimension tiles — Technical / Physical / Mental averages, in-card above the radar. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
@@ -257,7 +258,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
             {showAll ? t('assess.hideSkills') : t('assess.allSkills')}
           </button>
         </div>
-        {showAll && (
+        <Collapse open={showAll} spaceAbove="var(--space-3)">
           <div className="space-y-3">
             {DIMENSIONS.map((dim) => {
               const dimItems = SKILLS.filter((s) => s.dimension === dim && nowMap.has(s.key)).map(
@@ -268,7 +269,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
               );
             })}
           </div>
-        )}
+        </Collapse>
       </div>
       </div>
 

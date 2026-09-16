@@ -40,6 +40,7 @@ export default function InstallSheet({ open, onClose }: Props) {
           type="button"
           onClick={onClose}
           aria-label={t('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 'calc(-1 * var(--space-3))' }}
         >
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-muted)' }}>close</span>

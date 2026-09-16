@@ -124,6 +124,10 @@ export default function DimensionBars({
                     width: pct(value),
                     background: FILL[dim],
                     borderRadius: 'var(--radius-pill)',
+                    // Recipe 5 (Fill): a new check-in moves the bar rather than
+                    // redrawing it. A transition runs on CHANGE only, so first
+                    // paint still lands at full width on every register switch.
+                    transition: 'width var(--duration-slow) var(--ease-out-quart)',
                   }}
                 />
               )}
@@ -133,6 +137,7 @@ export default function DimensionBars({
                   style={{
                     position: 'absolute',
                     left: pct(median),
+                    transition: 'left var(--duration-slow) var(--ease-out-quart)',
                     top: -3,
                     height: 14,
                     width: 2,

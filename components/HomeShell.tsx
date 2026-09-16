@@ -778,12 +778,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             />
           ) : (
           <>
-          {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} /></div>}
-          {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="animate-fadeIn"><PlayersTab onTabChange={setActiveTab} /></div>}
-          {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="animate-fadeIn"><SkillsTab onTabChange={setActiveTab} /></div>}
-          {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="animate-fadeIn"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
+          {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="motion-fade"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} /></div>}
+          {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="motion-fade"><PlayersTab onTabChange={setActiveTab} /></div>}
+          {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="motion-fade"><SkillsTab onTabChange={setActiveTab} /></div>}
+          {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="motion-fade"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
           {activeTab === 'profile' && (
-            <div key={`profile-${refreshNonce}`} className="animate-fadeIn">
+            <div key={`profile-${refreshNonce}`} className="motion-fade">
               <ProfileTab
                 sessionId={profileSession.id}
                 sessionLabel={profileSession.label}

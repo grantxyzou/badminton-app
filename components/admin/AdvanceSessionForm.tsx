@@ -485,9 +485,12 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
           {success ? (
             <div className="space-y-3">
+              {/* Rare and consequential — the week just moved — so this is one
+                  of the few places the celebrate entrance is earned. */}
               <StatusBanner
                 tone="success"
                 icon="check_circle"
+                celebrate
                 title="Session created!"
                 body="Previous session archived. Sign-up is closed by default — open it, then share the link."
               />

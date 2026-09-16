@@ -70,6 +70,7 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
           type="button"
           onClick={onClose}
           aria-label={t('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
@@ -77,7 +78,7 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
       </BottomSheetHeader>
       <BottomSheetBody>
         {success ? (
-          <p style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
+          <p className="motion-fade" style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
             {t('success')}
           </p>
         ) : (

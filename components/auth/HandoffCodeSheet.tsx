@@ -45,7 +45,7 @@ export default function HandoffCodeSheet({ prompt, submitCode, dismiss }: Handof
       </BottomSheetHeader>
       <BottomSheetBody>
         {prompt?.expired ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <p className="fs-md" style={{ color: 'var(--text-primary)', margin: '0', lineHeight: 'var(--lh-normal)' }}>
               {t('handoffEnterExpired')}
             </p>

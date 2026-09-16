@@ -14,6 +14,7 @@ import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { crossesFor } from '@/lib/stringing';
 import { racketFeelLine, racketRowSpec, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
 import type { GearItem, RacketFeel } from '@/lib/types';
+import Collapse from '@/components/primitives/Collapse';
 
 export interface SetupLineSheetProps {
   open: boolean;
@@ -108,6 +109,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
           type="button"
           onClick={onClose}
           aria-label={tRecovery('close')}
+          className="sheet-close-btn"
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
@@ -190,7 +192,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                         </div>
                         {onCrosses && <ActionRow icon="swap_horiz" label={t('changeCrosses')} onClick={onCrosses} disabled={!gear.online} />}
                         {confirmCrosses ? (
-                          <div className="setup-action" role="group" aria-label={t('removeCrossesConfirm', { label: crosses.label })}>
+                          <div className="setup-action motion-fade" role="group" aria-label={t('removeCrossesConfirm', { label: crosses.label })}>
                             <span className="setup-action-label" style={{ color: 'var(--text-primary)' }}>{t('removeCrossesConfirm', { label: crosses.label })}</span>
                             <button type="button" className="setup-link" style={{ color: 'var(--sev-crit-text)' }} disabled={gear.busy || !gear.online}
                               onClick={() => { void run(() => gear.setCrosses(item.id, null), () => { setConfirmCrosses(false); setCrossesTension(undefined); }); }}>
@@ -213,7 +215,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
               )}
 
               {confirmRemove ? (
-                <div className="setup-action" role="group" aria-label={t('removeConfirm', { label: item.label })}>
+                <div className="setup-action motion-fade" role="group" aria-label={t('removeConfirm', { label: item.label })}>
                   <span className="setup-action-label" style={{ color: 'var(--text-primary)' }}>{t('removeConfirm', { label: item.label })}</span>
                   <button type="button" className="setup-link" style={{ color: 'var(--sev-crit-text)' }} disabled={gear.busy || !gear.online}
                     onClick={() => { void run(() => gear.remove(item.id), onClose); }}>
@@ -265,13 +267,13 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                 <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{tGear('pickSheetFullSpecs')}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                   <span className="fs-base" style={{ color: 'var(--text-muted)' }}>{specRows.length}</span>
-                  <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
-                    {specsOpen ? 'expand_less' : 'expand_more'}
+                  <span className="material-icons motion-chevron" data-open={specsOpen ? 'true' : 'false'} aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
+                    expand_more
                   </span>
                 </span>
               </button>
-              {specsOpen && (
-                <dl id="setup-line-specs" style={{ margin: 'var(--space-4) 0 0', display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 'var(--space-5)', rowGap: 'var(--space-2)' }}>
+              <Collapse open={specsOpen} id="setup-line-specs" spaceAbove="var(--space-4)">
+                <dl style={{ margin: '0', display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 'var(--space-5)', rowGap: 'var(--space-2)' }}>
                   {specRows.map((r) => (
                     <Fragment key={r.labelKey}>
                       <dt className="fs-sm" style={{ color: 'var(--text-muted)' }}>{tGear(r.labelKey)}</dt>
@@ -279,7 +281,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                     </Fragment>
                   ))}
                 </dl>
-              )}
+              </Collapse>
             </section>
           )}
         </div>

@@ -476,7 +476,7 @@ export default function StringingPage({ onBack }: Props) {
             />
           )}
           {actionTarget && targetArchived && confirmingDelete && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <div className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               {deleteError && <p className="field-error" role="alert">{t('actions.deleteError')}</p>}
               {/* Name what goes. "This cannot be undone" tells someone it is
                   serious without telling them what they lose — and the thing
@@ -562,7 +562,9 @@ export default function StringingPage({ onBack }: Props) {
   }
 
   return (
-    <div>
+    // Returning to the bench from a job, the archive or intake: it fades back
+    // rather than cutting in (the wrapper's slide only runs on first entry).
+    <div className="motion-fade">
       <AdminBackHeader onBack={onBack} title={t('benchTitle')} />
       {/* No horizontal padding here. The app shell's <main> already carries
           `px-4`, and a second inset made every card on the three stringing

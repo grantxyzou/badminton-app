@@ -35,7 +35,17 @@
      enter/exit. Emil's strong ease-in-out — accelerate then decelerate.
      Used by the rail nav's sliding indicator pill. */
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* The duration ladder. Pick by what the motion IS, not by feel:
+     press      — a finger is down; anything slower reads as lag
+     fast       — colour, opacity, a crossfade, an error arriving
+     sheet      — a surface opening: sheets, collapses, reveals
+     normal     — something travelling on screen
+     slow       — a value settling into place (a bar filling)
+     Exits run shorter than entrances; nothing on the weekly path runs
+     past `normal`. See the "Motion system" block for the recipes. */
+  --duration-press: 100ms;
   --duration-fast: 150ms;
+  --duration-sheet: 180ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
 
@@ -957,6 +967,14 @@ h1, h2, h3, h4 {
   font-size: var(--fs-sm);
   line-height: var(--lh-snug);
   color: var(--sev-crit-text);
+}
+/* Recipe 1 (Appear) on every inline alert — the sanctioned class and the
+   hand-styled `<p role="alert">` lines that predate it alike. Every mount
+   replays it, which is the point: a retry that fails again should read as a
+   second failure, not as nothing. */
+.field-error,
+p[role='alert'] {
+  animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
 }
 
 /* ── TopBar / PageHeader (sticky scroll-condensed) ──
@@ -2511,6 +2529,9 @@ html:root .ink-button {
   outline-offset: 2px;
 }
 .member-avatar__racket {
+  /* Fades in once decoded (MemberAvatar sets data-loaded) instead of popping
+     into an empty circle a beat after the roster painted. */
+  transition: opacity var(--duration-fast) var(--ease-glass);
   position: absolute;
   /* Head is ~240px tall in a 624px image: at 90% width it fills ~90% of the
      circle's height, centred, with a hint of the throat below. */
@@ -2520,6 +2541,7 @@ html:root .ink-button {
   top: 4%;
   pointer-events: none;
 }
+.member-avatar__racket[data-loaded='false'] { opacity: 0; }
 
 /* ── Bottom nav · Labeled Rail (spec May 2026) ──
    Full-width, edge-attached, theme-independent dark surface. The LIVE
@@ -2568,7 +2590,7 @@ html:root .ink-button {
   cursor: pointer;
   font-family: var(--font-sans); /* IBM Plex — body/UI font per design system (spec said display, but small UI labels use --font-sans here) */
   color: var(--rail-inactive);
-  transition: color 150ms ease;
+  /* Its transitions are ONE list, with the press, in the touch-feel block below. */
 }
 
 .rail-icon-wrap {
@@ -2934,6 +2956,102 @@ textarea {
   }
 }
 
+/* ── Motion system: the recipes ──
+   Five answers to "something changed — how does it show?". Reach for one of
+   these before writing a keyframe; a new pattern gets named here first.
+
+   1. APPEAR  `.motion-fade` — opacity only, `--duration-fast`. For anything
+      that arrives into a layout that is already on screen: an error line, a
+      figure that finished loading, a step or label swapped in place (key the
+      element so React remounts it and the fade re-runs). No rise: content
+      that moves as it arrives on a surface the user is already reading is
+      performing, and a rise fights any height change happening around it.
+   2. OPEN    `.motion-collapse` + `[data-open='true']`, EXACTLY ONE child —
+      `grid-template-rows: 0fr` sizes the first row only, so a second child
+      half-collapses. Grid rows 0fr→1fr at `--duration-sheet`, the same
+      material as `.frame-row-body`. For disclosures and fields revealed by an
+      earlier answer. Never animate `height` directly. The child clips
+      (`overflow: hidden`), so never wrap a popover that is not portalled —
+      DatePicker portals, an absolutely-positioned menu does not.
+   3. TURN    `.motion-chevron` — one glyph rotated 180° when its control is
+      `[aria-expanded='true']`. Swapping `expand_more` for `expand_less`
+      changes the picture without saying which way it went.
+   4. PRESS   the ladder, applied per class (no utility, because every
+      pressable already owns a class): cards and tiles scale 0.97–0.98, icon
+      buttons 0.94, text links dim to 0.6, list rows flash `--glass-soft-bg`.
+      Always `--duration-press`.
+   5. FILL    `.motion-fill` — a bar or meter settling to its value, by
+      `transform: scaleX` at `--duration-slow`. It is the one slow recipe,
+      because the value IS the information and the travel shows its size.
+
+   Reduced motion keeps 1 (opacity is comprehension, not movement), and 2's
+   opacity half; 3, 4 and 5 snap. */
+@keyframes motionFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.motion-fade {
+  animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
+}
+
+.motion-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--duration-sheet) var(--ease-sheet),
+    opacity var(--duration-sheet) var(--ease-sheet);
+}
+.motion-collapse[data-open='true'] { grid-template-rows: 1fr; opacity: 1; }
+/* The clip is widened by one rung on the sides and bottom (and the content
+   pulled back in by the same) so an input's 3px focus ring inside it is not
+   sliced off. Net layout change: zero. */
+.motion-collapse > * {
+  min-height: 0;
+  overflow: hidden;
+  margin: 0 calc(-1 * var(--space-1)) calc(-1 * var(--space-1));
+  padding: 0 var(--space-1) var(--space-1);
+}
+/* A closed collapse is still in the DOM; keep its controls out of the tab
+   order and away from a stray tap. */
+.motion-collapse:not([data-open='true']) {
+  visibility: hidden;
+  /* visibility flips only once the close has finished, so the content fades
+     out instead of vanishing on the first frame. */
+  transition:
+    grid-template-rows var(--duration-sheet) var(--ease-sheet),
+    opacity var(--duration-sheet) var(--ease-sheet),
+    visibility 0s linear var(--duration-sheet);
+}
+
+.motion-chevron { transition: transform var(--duration-sheet) var(--ease-sheet); }
+/* Child form only: a descendant selector would turn the chevron of a closed
+   disclosure nested inside an open one. Where the glyph is not a direct child
+   of its control, put `data-open` on the glyph itself. */
+[aria-expanded='true'] > .motion-chevron,
+.motion-chevron[data-open='true'] { transform: rotate(180deg); }
+
+.motion-fill {
+  transform-origin: left center;
+  transition: transform var(--duration-slow) var(--ease-out-quart);
+}
+
+/* A page refreshing in place: the old content stays, dimmed, while the new
+   loads. Opacity only, so it survives reduced motion. */
+.motion-busy { transition: opacity var(--duration-fast) var(--ease-glass); }
+.motion-busy[aria-busy='true'] { opacity: 0.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The wildcard above zeroes every animation. A fade is not movement, so it
+     is given back — `!important` on a class outranks the `*` rule. */
+  .motion-fade,
+  .field-error,
+  p[role='alert'] {
+    animation: motionFade var(--duration-fast) ease-out backwards !important;
+  }
+  .motion-collapse { transition-property: opacity, visibility !important; }
+}
+
 /* ── Icon sizes ── */
 .icon-spin-lg {
   font-size: 32px;
@@ -2977,7 +3095,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  animation: statusBannerIn 280ms var(--ease-glass) both;
+  animation: statusBannerIn var(--duration-normal) var(--ease-glass) both;
 }
 .status-banner-green { background: var(--banner-green-solid); }
 .status-banner-orange { background: var(--banner-orange-solid); }
@@ -2987,11 +3105,19 @@ textarea {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* The celebrate entrance must outrank the banners' own: `.status-celebrate`
+   is declared earlier in this file at the same specificity, so the plain
+   `statusBannerIn` above silently replaced it on every celebrating banner and
+   only the icon pop survived. */
+:is(.status-banner-green, .status-banner-orange, .status-banner-red).status-celebrate {
+  animation: signupBannerIn var(--duration-normal) var(--ease-glass) both;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .status-banner-green,
   .status-banner-orange,
-  .status-banner-red { animation: none; }
+  .status-banner-red,
+  :is(.status-banner-green, .status-banner-orange, .status-banner-red).status-celebrate { animation: none; }
 }
 
 /* ── Shared text patterns ── */
@@ -3101,13 +3227,18 @@ textarea {
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-  transition: left var(--duration-fast) var(--ease-glass);
+  /* Travels by transform — `left` is a layout property and repaints. Under
+     reduced motion the knob snaps while the track colour still fades. */
+  transition: transform var(--duration-sheet) var(--ease-sheet);
 }
+.bpm-switch:active .bpm-switch__knob { transform: scale(0.92); }
 
-/* 51px track − 2×1px border = 49px inner; 49 − 25 knob − 2 inset = 22. */
+/* 51px track − 2×1px border = 49px inner; 49 − 25 knob − 2 inset = 22,
+   so the knob travels 20px from its 2px rest. */
 .bpm-switch[aria-checked='true'] .bpm-switch__knob {
-  left: 22px;
+  transform: translateX(20px);
 }
+.bpm-switch[aria-checked='true']:active .bpm-switch__knob { transform: translateX(20px) scale(0.92); }
 
 /* The visual track is 31px tall — under the app-wide 44px touch minimum.
    Extend the hit area with an overlay so the target passes without the
@@ -3758,7 +3889,7 @@ button.sheet-row { cursor: pointer; }
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   cursor: pointer;
-  transition: border-color 120ms var(--ease-glass), background 120ms var(--ease-glass);
+  /* transition + press: the press ladder, near the touch-feel block. */
 }
 
 .onboarding-door__title {
@@ -4288,7 +4419,7 @@ html:root[data-theme="light"] {
   gap: var(--space-3);
   min-height: 96px;
   cursor: pointer;
-  transition: border-color 120ms ease;
+  transition: border-color var(--duration-fast) ease;
 }
 :is(button, a, [role="button"]).cc-dcard:hover { border-color: rgba(255, 255, 255, 0.22); }
 .cc-dcard .htitle {
@@ -4465,6 +4596,7 @@ html:root[data-theme="light"] {
   flex: 1;
   height: var(--step-rail);
   background: var(--divider);
+  transition: background-color var(--duration-normal) var(--ease-glass);
 }
 .bpm-steps__leg--on { background: var(--accent); }
 /* The outer legs of the first and last steps have nothing to connect to. */
@@ -4477,6 +4609,9 @@ html:root[data-theme="light"] {
   border-radius: var(--radius-pill);
   border: var(--step-rail) solid var(--text-muted);
   background: transparent;
+  transition:
+    background-color var(--duration-normal) var(--ease-glass),
+    border-color var(--duration-normal) var(--ease-glass);
 }
 /* Filled means "reached", which includes where you are standing — a hollow
    current step reads as not-started. */
@@ -5201,7 +5336,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   border: 1px solid var(--inner-card-border);
   overflow: hidden;
 }
-.tension-ruler-rated { position: absolute; top: 0; bottom: 0; background: var(--inner-card-border); }
+.tension-ruler-rated { position: absolute; top: 0; bottom: 0; background: var(--inner-card-border); transition: left var(--duration-sheet) var(--ease-sheet), width var(--duration-sheet) var(--ease-sheet); }
 .tension-ruler-club {
   position: absolute;
   top: 3px;
@@ -5749,8 +5884,90 @@ button.setup-line,
 button.setup-line:active,
 .setup-line-hit:active,
 .bpm-row-link:active { opacity: 0.6; }
-.rail-tab { transition: transform 100ms var(--ease-glass); }
+/* ONE transition list for the rail tab. This used to be a second `.rail-tab`
+   rule declaring only `transform`, which — same specificity, later in the
+   file — replaced the colour transition in the nav's own block. The pill slid
+   for 200ms while the label and icon it was sliding to changed colour in one
+   frame. */
+.rail-tab {
+  transition:
+    color var(--duration-fast) ease,
+    transform var(--duration-press) var(--ease-glass);
+}
 .rail-tab:active { transform: scale(0.94); }
+
+/* ── The press ladder, completed (motion pass, 2026-09-16) ─────────────────
+   The touch-feel sweep above gave a press to four families; the motion audit
+   found the controls it missed. Same three answers, same durations:
+     - a surface you can see the edges of SCALES (cards 0.98, chips 0.97,
+       icon-only buttons 0.94)
+     - a row that is a line on a list FLASHES its surface
+     - text with no surface DIMS to 0.6
+   `docs/plans/motion-pass.md` has the audit this came from. */
+button.cc-mini-card,
+a.cc-mini-card,
+.onboarding-door,
+button.stat-card,
+button.setup-action,
+button.setup-suggest,
+button.fit-rank-row,
+:is(button, a, [role="button"]).cc-dcard,
+.action-row,
+.setup-feel-chip,
+.setup-chip-dashed,
+.setup-share-btn,
+button.cc-pill,
+button.pill-paid,
+button.pill-unpaid,
+.flow-step,
+.sheet-close-btn {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--duration-press) var(--ease-out-quart),
+    background-color var(--duration-fast) var(--ease-glass),
+    border-color var(--duration-fast) var(--ease-glass),
+    color var(--duration-fast) var(--ease-glass),
+    opacity var(--duration-fast) var(--ease-glass);
+}
+button.cc-mini-card:active,
+a.cc-mini-card:active,
+.onboarding-door:active,
+button.setup-action:active,
+button.setup-suggest:active,
+button.fit-rank-row:active,
+:is(button, a, [role="button"]).cc-dcard:active,
+.flow-step:active,
+.action-row:active:not(:disabled) { transform: scale(0.98); }
+button.stat-card:active,
+.setup-feel-chip:active,
+.setup-chip-dashed:active,
+.setup-share-btn:active,
+button.cc-pill:active,
+button.pill-paid:active,
+button.pill-unpaid:active { transform: scale(0.97); }
+.sheet-close-btn:active { transform: scale(0.94); }
+
+.settings-row {
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--duration-press) var(--ease-glass);
+}
+.settings-row:active { background: var(--glass-soft-bg); }
+button.sheet-row { transition: background-color var(--duration-press) var(--ease-glass), opacity var(--duration-fast) var(--ease-glass); }
+
+.link-quiet,
+.setup-link,
+button.setup-next,
+button.setup-next-row,
+html:root .state-link {
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--duration-press) var(--ease-glass), color var(--duration-fast) ease;
+}
+.link-quiet:active,
+.setup-link:active,
+button.setup-next:active,
+button.setup-next-row:active,
+html:root .state-link:active { opacity: 0.6; }
 /* The dot stays 32px; this is the part a thumb actually has to hit. */
 .look-swatch::after {
   content: '';
