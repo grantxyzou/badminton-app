@@ -198,6 +198,21 @@
      --inner-card-* so existing call sites keep working unchanged. */
   --glass-soft-bg: var(--inner-card-bg);
   --glass-soft-border: var(--inner-card-border);
+  /* The press flash on a row. Its own token, not --glass-soft-bg: that is a
+     resting SURFACE tint (3% dark, 2% light) and, borrowed for a press, it
+     answered a tap with a change nobody could see — in light mode not at all. */
+  --press-bg: rgba(255, 255, 255, 0.08);
+  /* Stats tiles and bars. These were strings inside StatCard / DimensionBars,
+     which meant ONE value for both themes: brand hues mixed toward black read
+     as quiet depth on a dark page and as heavy saturated slabs on a cream one.
+     Dark keeps exactly those strings; light gets its own below. */
+  --stat-bg-accent:  linear-gradient(140deg, color-mix(in srgb, var(--accent) 82%, black), color-mix(in srgb, var(--accent-dark) 92%, black));
+  --stat-bg-blue:    linear-gradient(140deg, color-mix(in srgb, var(--sev-low-text) 72%, black), color-mix(in srgb, var(--sev-low-text) 36%, black));
+  --stat-bg-amber:   linear-gradient(140deg, color-mix(in srgb, var(--color-amber) 88%, black), color-mix(in srgb, var(--color-red) 78%, black));
+  --stat-bg-neutral: linear-gradient(140deg, color-mix(in srgb, var(--sev-low-text) 24%, black), color-mix(in srgb, var(--sev-low-text) 8%, black));
+  --dim-fill-technical: linear-gradient(90deg, var(--sev-low-text), color-mix(in srgb, var(--sev-low-text) 60%, black));
+  --dim-fill-physical:  linear-gradient(90deg, var(--accent), var(--accent-dark));
+  --dim-fill-mental:    linear-gradient(90deg, var(--accent-amber), color-mix(in srgb, var(--sev-warn) 70%, black));
 
   /* ── List headers ── */
   --list-green-bg: rgba(74, 222, 128, 0.06);
@@ -264,11 +279,24 @@
 [data-theme="light"] {
   --page-bg: #FAF8F5;
   --text-primary: #1a2332;
-  --text-secondary: rgba(0, 0, 0, 0.62);
-  --text-muted: rgba(0, 0, 0, 0.50);
-  --accent: #16a34a;
-  --accent-dark: #15803d;
-  --accent-amber: #d97706;
+  /* SOLID ink, not black at an alpha: an alpha grey composites over whatever
+     is behind it, so its contrast drifted by tab (muted measured 3.6:1 at the
+     Home field's peak and read as faint in a bright room).
+     And the ink takes its TAB's colour (Grant: "the texts should map to the
+     colour"): a neutral grey beside a green, amber or blue field reads as
+     washed out, where a deep shade of the field's own hue reads as part of
+     it. These are Home's (green); the per-tab values sit just after this
+     block. Every pair holds ≥7.4:1 / ≥5.5:1 on the page and ≥4.6:1 at its
+     field's peak. --text-primary stays the brand ink. */
+  --text-secondary: #2f5a3f;
+  --text-muted: #4d6b57;
+  /* Green-700, not 600. #16a34a was 3.1:1 as text on the page and 2.1:1 on
+     the field — the accent carried links, labels and deltas it could not
+     be read in. The deeper green also reads calmer beside the tab fields. */
+  --accent: #15803d;
+  --accent-dark: #166534;
+  /* Amber-700: #d97706 was 3.2:1 as a number on a white tile. */
+  --accent-amber: #b45309;
   --color-scheme: light;
 
   --aurora-bg: #FAF8F5;
@@ -283,14 +311,16 @@
   --glass-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.55) 100%);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --glass-shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.09), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --glass-shadow-hover: 0 2px 4px rgba(26, 35, 50, 0.08), 0 4px 8px rgba(26, 35, 50, 0.07);
   --glass-inset: rgba(255, 255, 255, 0.5);
   --glass-inset-hover: rgba(255, 255, 255, 0.6);
   --glass-blur: 16px;
 
-  --btn-primary-bg: linear-gradient(160deg, #22c55e 0%, #16a34a 100%);
-  --btn-primary-border: rgba(22, 163, 74, 0.3);
-  --btn-primary-shadow: 0 4px 20px rgba(22, 163, 74, 0.15), 0 1px 4px rgba(0, 0, 0, 0.08);
+  /* White on #22c55e was 2.3:1 — the app's most important button failed its
+     own label. Green-700 carries white at 5:1 and is the quieter green. */
+  --btn-primary-bg: linear-gradient(160deg, #1a8a47 0%, #15803d 100%);
+  --btn-primary-border: rgba(21, 128, 61, 0.45);
+  --btn-primary-shadow: 0 1px 2px rgba(21, 128, 61, 0.22), 0 2px 8px rgba(21, 128, 61, 0.14);
   --btn-primary-text: #fff;
   --btn-ghost-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.4) 100%);
   --btn-ghost-border: rgba(0, 0, 0, 0.1);
@@ -306,7 +336,7 @@
   --rail-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.95) 100%);
   --rail-indicator-bg: linear-gradient(160deg, rgba(22, 163, 74, 0.16) 0%, rgba(22, 163, 74, 0.07) 100%);
   --rail-active: #16a34a;
-  --rail-inactive: rgba(0, 0, 0, 0.45);
+  --rail-inactive: var(--text-muted);
   --rail-border: rgba(0, 0, 0, 0.08);
 
   --input-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.55) 100%);
@@ -320,9 +350,9 @@
   --select-option-text: #1a2332;
 
   --segment-bg: rgba(0, 0, 0, 0.05);
-  --segment-active-bg: rgba(22, 163, 74, 0.22);
-  --segment-active-text: #16a34a;
-  --segment-inactive-text: rgba(0, 0, 0, 0.45);
+  --segment-active-bg: rgba(21, 128, 61, 0.14);
+  --segment-active-text: #15803d;
+  --segment-inactive-text: var(--text-muted);
 
   /* ── Release notes terminal — light ── */
   --terminal-bg: #ffffff;
@@ -364,6 +394,15 @@
 
   --inner-card-bg: rgba(0, 0, 0, 0.02);
   --inner-card-border: rgba(0, 0, 0, 0.05);
+  --press-bg: rgba(0, 0, 0, 0.06);
+  /* Stats tiles and bars, quieter: see the dark block for why these are tokens. */
+  --stat-bg-accent:  linear-gradient(140deg, #2d7a4c, #256b41);
+  --stat-bg-blue:    linear-gradient(140deg, #3d5a8c, #334c77);
+  --stat-bg-amber:   linear-gradient(140deg, #95602b, #7f5224);
+  --stat-bg-neutral: linear-gradient(140deg, #4b5563, #3d4652);
+  --dim-fill-technical: #5776ad;
+  --dim-fill-physical:  #3f8a5c;
+  --dim-fill-mental:    #b77b3c;
   --inner-card-green-bg: rgba(22, 163, 74, 0.04);
   --inner-card-green-border: rgba(22, 163, 74, 0.12);
 
@@ -401,20 +440,30 @@
   --pin-color: #dc2626;
 }
 
+/* Per-tab ink (light). Each tab's secondary/muted text is a deep shade of its
+   field's hue — see the note on --text-secondary above. `data-tab` and
+   `data-theme` both live on <html>, so this outranks the base light block;
+   sheets portal into <body> and inherit it, matching their tab's field.
+   Home is the base values (and the un-attributed first paint). */
+html[data-theme="light"][data-tab="players"] { --text-secondary: #5e4a2e; --text-muted: #76603f; }
+html[data-theme="light"][data-tab="skills"]  { --text-secondary: #334d70; --text-muted: #4c6386; }
+html[data-theme="light"][data-tab="profile"] { --text-secondary: #4a3f73; --text-muted: #62588a; }
+html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text-muted: #825a42; }
+
 /* ══════════════════════════════════════════════════════════
    Light mode Tailwind class overrides
    ══════════════════════════════════════════════════════════ */
 [data-theme="light"] .text-white { color: var(--text-primary); }
 [data-theme="light"] .text-gray-200 { color: #374151; }
-[data-theme="light"] .text-gray-300 { color: #4b5563; }
-[data-theme="light"] .text-gray-400 { color: #6b7280; }
-[data-theme="light"] .text-gray-500 { color: #9ca3af; }
+[data-theme="light"] .text-gray-300 { color: var(--text-secondary); }
+[data-theme="light"] .text-gray-400 { color: var(--text-muted); }
+[data-theme="light"] .text-gray-500 { color: var(--text-muted); }
 [data-theme="light"] .text-gray-600 { color: #6b7280; }
 [data-theme="light"] .text-green-400 { color: var(--accent); }
-[data-theme="light"] .text-green-300 { color: #22c55e; }
-[data-theme="light"] .text-amber-400 { color: #d97706; }
+[data-theme="light"] .text-green-300 { color: #15803d; }
+[data-theme="light"] .text-amber-400 { color: #b45309; }
 [data-theme="light"] .text-amber-300 { color: #b45309; }
-[data-theme="light"] .text-orange-400 { color: #ea580c; }
+[data-theme="light"] .text-orange-400 { color: #c2410c; }
 [data-theme="light"] .text-orange-300 { color: #c2410c; }
 [data-theme="light"] .text-red-400 { color: #dc2626; }
 [data-theme="light"] .text-red-300 { color: #b91c1c; }
@@ -842,6 +891,7 @@ body {
   /* The pick — the only opaque card. At most ONE per screen: two solid
      greens and neither reads as the answer. */
   --fcard-pick-bg:    linear-gradient(150deg, rgba(22, 101, 52, 0.86), rgba(74, 222, 128, 0.72) 68%, rgba(163, 230, 53, 0.68));
+
   --fcard-pick-inset: inset 0 1px 0 rgba(255, 255, 255, 0.30);
   /* Semantic fills stay rare — amber/orange/red mean something is waiting,
      closing or wrong. Three at once and the screen has stopped talking. */
@@ -874,11 +924,14 @@ body {
    ══════════════════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
   /* ── Fields — one hue per tab ── */
-  --field-home:      radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.34), transparent 70%);
-  --field-signups:   radial-gradient(120% 70% at 78% 4%, rgba(217, 119, 6, 0.30), transparent 70%);
-  --field-stats:     radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.34), transparent 70%);
-  --field-profile:   radial-gradient(120% 70% at 78% 4%, rgba(167, 139, 250, 0.30), transparent 70%);
-  --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(234, 88, 12, 0.28), transparent 70%);
+  /* Half the dark mode's share. On a light page a hue at .30 is not a ground,
+     it is a wash: Sign-Ups read amber-flooded and every card over it went
+     muddy. The tab stays recognisable by hue; it no longer tints the ink. */
+  --field-home:      radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.16), transparent 70%);
+  --field-signups:   radial-gradient(120% 70% at 78% 4%, rgba(217, 119, 6, 0.13), transparent 70%);
+  --field-stats:     radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.18), transparent 70%);
+  --field-profile:   radial-gradient(120% 70% at 78% 4%, rgba(167, 139, 250, 0.16), transparent 70%);
+  --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(234, 88, 12, 0.12), transparent 70%);
   --field-scrim:     linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 42%, rgba(255, 255, 255, 0.14) 100%);
 
 
@@ -887,11 +940,22 @@ body {
      becomes .72 -> .50). What actually changes in light mode is the EDGE:
      the 1px rgba(0,0,0,.08) border goes away and the top inset nearly
      doubles, so the card edge becomes a highlight instead of a drawn line. */
-  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.50));
-  --fcard-blur:       blur(20px) saturate(140%);
-  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.90);
-  --fcard-shadow:     0 8px 26px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
-  --fcard-pick-bg:    linear-gradient(150deg, #22c55e, #16a34a 74%, #15803d);
+  /* Washed out, fixed at the EDGE, not by brightening the fill.
+     A white card at .72→.50 over a cream page let the field show through and
+     had no boundary at all: its only edge was a white top highlight, which is
+     invisible on white. Dark mode gets its edge from that same highlight
+     because its ground is dark; light mode needs a drawn one. So: a near-
+     opaque fill, a 1px ink ring (an inset shadow, so layout does not move),
+     and a SHORT shadow — a hairline paired with a wide soft shadow is the
+     ghost-card look. */
+  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.90));
+  --fcard-blur:       blur(20px) saturate(120%);
+  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.90), inset 0 0 0 1px rgba(26, 35, 50, 0.10);
+  --fcard-shadow:     0 1px 2px rgba(26, 35, 50, 0.08), 0 3px 8px rgba(26, 35, 50, 0.06);
+  /* Quieter in light: one hue per tile at a muted depth, no gradient that
+     runs through two hues (Mental went amber → red), and every stop dark
+     enough for the white type on it (≥6:1). */
+  --fcard-pick-bg:    linear-gradient(150deg, #2d7a4c, #256b41);
   --fcard-pick-inset: inset 0 1px 0 rgba(255, 255, 255, 0.34);
   --fcard-good-bg:    linear-gradient(160deg, rgba(22, 163, 74, 0.17), rgba(22, 163, 74, 0.07));
   --fcard-wait-bg:    linear-gradient(160deg, rgba(217, 119, 6, 0.17), rgba(217, 119, 6, 0.07));
@@ -900,8 +964,8 @@ body {
   --fcard-locked-bg:  rgba(0, 0, 0, 0.03);
 
   --fcard-title:      var(--text-primary);
-  --fcard-label:      rgba(26, 35, 50, 0.66);
-  --fcard-footnote:   rgba(26, 35, 50, 0.45);
+  --fcard-label:      var(--text-secondary);
+  --fcard-footnote:   var(--text-muted);
 }
 
 /* Bare heading elements default to the display family (Space Grotesk) per
@@ -1711,35 +1775,24 @@ html[data-tab="skills"] .glass-card {
   }
 }
 
+/* Light mode: the same card material as every other tab (--fcard-*).
+   This used to be its own frost — white at .62→.48, no drop shadow, no edge —
+   which only read as a card while a strong blue field sat behind it. With the
+   light fields quieted it vanished into the page ("cards gone"). Its selector
+   (0,3,1) outranks `html:root .glass-card`, so it has to name the tokens
+   itself rather than simply be deleted. */
 [data-theme="light"] html[data-tab="skills"] .glass-card,
 html[data-tab="skills"][data-theme="light"] .glass-card {
-  background:
-    radial-gradient(
-      ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
-      rgba(60, 70, 65, 0.04) 0%,
-      transparent 70%
-    ),
-    /* FROST — light theme keeps the higher wash so cream-on-cream stays legible. */
-    linear-gradient(
-      160deg,
-      rgba(255, 255, 255, 0.62) 0%,
-      rgba(255, 255, 255, 0.48) 100%
-    );
-  /* DISPERSION = 26, FRAY = -3deg */
-  -webkit-backdrop-filter: blur(26px) saturate(180%) contrast(1.04) hue-rotate(-3deg);
-  backdrop-filter: blur(26px) saturate(180%) contrast(1.04) hue-rotate(-3deg);
-  /* DEPTH — softer stack on cream; light surfaces show shadow more readily. */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -1px 1px rgba(22, 33, 27, 0.06);
+  background: var(--fcard-bg);
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
 }
 
 @media (hover: hover) {
   [data-theme="light"] html[data-tab="skills"] :is(button, a, [role="button"]).glass-card:hover,
   html[data-tab="skills"][data-theme="light"] :is(button, a, [role="button"]).glass-card:hover {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.85),
-      inset 0 -1px 1px rgba(22, 33, 27, 0.08);
+    box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
   }
 }
 
@@ -3038,7 +3091,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
       changes the picture without saying which way it went.
    4. PRESS   the ladder, applied per class (no utility, because every
       pressable already owns a class): cards and tiles scale 0.97–0.98, icon
-      buttons 0.94, text links dim to 0.6, list rows flash `--glass-soft-bg`.
+      buttons 0.94, text links dim to 0.6, list rows flash `--press-bg`.
       Always `--duration-press`.
    5. FILL    `.motion-fill` — a bar or meter settling to its value, by
       `transform: scaleX` at `--duration-slow`. It is the one slow recipe,
@@ -5937,7 +5990,7 @@ button.setup-line,
   -webkit-tap-highlight-color: transparent;
 }
 button.sheet-row:active,
-.cc-session-chip:active { background: var(--glass-soft-bg); }
+.cc-session-chip:active { background: var(--press-bg); }
 button.setup-line,
 .setup-line-hit,
 .bpm-row-link { transition: opacity 100ms var(--ease-glass); }
@@ -6012,7 +6065,7 @@ button.pill-unpaid:active { transform: scale(0.97); }
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--duration-press) var(--ease-glass);
 }
-.settings-row:active { background: var(--glass-soft-bg); }
+.settings-row:active { background: var(--press-bg); }
 button.sheet-row { transition: background-color var(--duration-press) var(--ease-glass), opacity var(--duration-fast) var(--ease-glass); }
 
 .link-quiet,

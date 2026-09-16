@@ -6,15 +6,16 @@ export type StatTone = 'accent' | 'blue' | 'amber' | 'neutral';
 
 /**
  * Gradient stat card — the "Insights" visual language (big number + label on a
- * rich gradient, optional inline chart/icon). Brand-harmonious palette built
- * entirely from theme tokens + color-mix (no bare hex → passes the stats token
- * guardrail); each stop is deepened toward black so white text stays legible.
+ * rich gradient, optional inline chart/icon). The fills are theme tokens
+ * (`--stat-bg-*` in app/globals.css): dark mode mixes the brand hues toward
+ * black, light mode uses quieter single-hue depths. Both keep white text
+ * legible.
  */
 const GRADIENTS: Record<StatTone, string> = {
-  accent: 'linear-gradient(140deg, color-mix(in srgb, var(--accent) 82%, black), color-mix(in srgb, var(--accent-dark) 92%, black))',
-  blue: 'linear-gradient(140deg, color-mix(in srgb, var(--sev-low-text) 72%, black), color-mix(in srgb, var(--sev-low-text) 36%, black))',
-  amber: 'linear-gradient(140deg, color-mix(in srgb, var(--color-amber) 88%, black), color-mix(in srgb, var(--color-red) 78%, black))',
-  neutral: 'linear-gradient(140deg, color-mix(in srgb, var(--sev-low-text) 24%, black), color-mix(in srgb, var(--sev-low-text) 8%, black))',
+  accent: 'var(--stat-bg-accent)',
+  blue: 'var(--stat-bg-blue)',
+  amber: 'var(--stat-bg-amber)',
+  neutral: 'var(--stat-bg-neutral)',
 };
 
 const TEXT_SHADOW = '0 1px 2px color-mix(in srgb, black 24%, transparent)';
