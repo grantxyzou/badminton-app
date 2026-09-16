@@ -220,13 +220,15 @@ describe('ProviderButtons', () => {
     await waitFor(() => expect(container.firstChild).toBeNull());
   });
 
-  it('shows an already-linked provider as connected, not as a tappable link', async () => {
-    mockMethods({ available: ['google'], linked: ['google'] });
-    renderButtons(({ mode: 'link', linked: ['google'] }));
+  it('offers no button for an already-linked provider, and draws no second "connected" row', async () => {
+    // SignInMethodsCard lists linked providers itself, with Disconnect. A
+    // connected box here as well put every provider on the sheet twice.
+    mockMethods({ available: ['google', 'apple'], linked: ['google'] });
+    renderButtons({ mode: 'link', linked: ['google'] });
 
-    const connected = await screen.findByText('Google connected');
-    expect(connected.closest('a')).toBeNull();
+    await screen.findByText('Connect Apple');
     expect(screen.queryByText('Connect Google')).toBeNull();
+    expect(screen.queryByText('Google connected')).toBeNull();
   });
 
   it('uses connect wording when linking rather than signing in', async () => {

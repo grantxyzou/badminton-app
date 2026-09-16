@@ -356,6 +356,7 @@
       "methodPassword": "Email and password",
       "methodEmailShort": "Email",
       "methodPinOnly": "Your only way in right now",
+      "linkedAccounts": "{count} accounts",
       "disconnect": "Disconnect",
       "disconnectConfirm": "Disconnect?",
       "disconnectCancel": "Keep it",

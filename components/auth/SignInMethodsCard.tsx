@@ -105,6 +105,14 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
   if (!methods) return null;
 
   const linked = methods.linked ?? [];
+  /* ONE ROW PER PROVIDER. `linked` has an entry per IDENTITY, so a member with
+     two Google accounts got two identical "Google connected" rows, each with a
+     Disconnect that removes whichever one the server finds first — nothing on
+     screen could say which. The count keeps the second account visible, so a
+     Disconnect that leaves the row standing reads as "one of two", not as a
+     button that did nothing. */
+  const linkedCounts = new Map<Provider, number>();
+  for (const p of linked) linkedCounts.set(p, (linkedCounts.get(p) ?? 0) + 1);
   const showNudge = methods.nudge === true && !dismissed;
   /* SAID ONCE. "PIN is your only way in" used to be a checklist row reading
      "PIN", then a sentence under it repeating that a PIN was the only way in —
@@ -132,13 +140,20 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
       <ul style={{ display: 'grid', gap: 'var(--space-2)', margin: '0', padding: '0', listStyle: 'none' }}>
         {methods.hasPin && <MethodRow label={t('methodPin')} note={pinNote} />}
         {methods.hasPassword && <MethodRow label={methods.email || t('methodPassword')} />}
-        {linked.map((p) => (
+        {[...linkedCounts].map(([p, count]) => (
           <li key={p} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>
               check_circle
             </span>
-            <span style={{ flex: 1, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
-              {t(p === 'google' ? 'googleConnected' : 'appleConnected')}
+            <span style={{ flex: 1, display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)' }}>
+              <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
+                {t(p === 'google' ? 'googleConnected' : 'appleConnected')}
+              </span>
+              {count > 1 && (
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                  {t('linkedAccounts', { count })}
+                </span>
+              )}
             </span>
             {confirming === p ? (
               <span style={{ display: 'flex', gap: 'var(--space-2)' }}>
@@ -167,8 +182,10 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
 
       {actionError && <p className="field-error">{actionError}</p>}
 
-      {/* Anything not yet connected. ProviderButtons renders nothing when the
-          deployment has no credentials, or when the probe failed. */}
+      {/* Anything not yet connected — ProviderButtons skips what is in
+          `linked`, because the list above already shows it with its
+          Disconnect. It renders nothing when the deployment has no
+          credentials, or when the probe failed. */}
       <ProviderButtons mode="link" linked={linked} />
 
       {showNudge && (
