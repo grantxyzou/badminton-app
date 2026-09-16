@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSkillText } from '@/lib/useSkillText';
 import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '@/components/BottomSheet';
 import ErrorState from '@/components/primitives/ErrorState';
 import { KUDOS_TAGS, TAG_ICON, KUDOS_NOTE_MAX, type KudosTag } from '@/lib/kudos';
@@ -44,6 +45,7 @@ export default function GiveKudosSheet({
   onSent,
 }: GiveKudosSheetProps) {
   const t = useTranslations('stats.kudos');
+  const skillText = useSkillText();
   const online = useOnline();
 
   const [who, setWho] = useState<string | null>(recipient);
@@ -244,7 +246,7 @@ export default function GiveKudosSheet({
                   >
                     <option value="">{t('skillNone')}</option>
                     {SKILLS.map((s) => (
-                      <option key={s.key} value={s.key}>{s.label}</option>
+                      <option key={s.key} value={s.key}>{skillText.label(s.key)}</option>
                     ))}
                   </select>
                 </div>

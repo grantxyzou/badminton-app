@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSkillText } from '@/lib/useSkillText';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -35,8 +36,6 @@ interface ClubBands {
 
 type Load = 'loading' | 'ready' | 'error' | 'forbidden';
 
-const SKILL_LABEL = new Map(SKILLS.map((s) => [s.key, s.label]));
-
 export interface WhereYouSitCardProps {
   activeName: string | null;
   /**
@@ -54,6 +53,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
   const signInLink = useSignInLink();
   const [bands, setBands] = useState<ClubBands | null>(null);
   const tStats = useTranslations('stats');
+  const skillText = useSkillText();
   const [status, setStatus] = useState<Load>('loading');
   const [attempt, setAttempt] = useState(0);
 
@@ -107,7 +107,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
   if (status === 'forbidden' || historyStatus === 'forbidden') {
     return (
       <LockedCard icon="groups" title={t('title')} message={t.rich('locked', { link: signInLink })}>
-        {SKILLS.slice(0, 2).map((s) => <PreviewMeter key={s.key} label={s.label} />)}
+        {SKILLS.slice(0, 2).map((s) => <PreviewMeter key={s.key} label={skillText.label(s.key)} />)}
       </LockedCard>
     );
   }
@@ -237,14 +237,14 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
           {picked.length === 1
             ? t.rich('ledeOne', {
                 band: bandLabel(bandOf.get(picked[0]) as Band),
-                skill: SKILL_LABEL.get(picked[0]) ?? picked[0],
+                skill: skillText.label(picked[0]),
                 hi: emphasis,
               })
             : t.rich('ledeTwo', {
                 band1: bandLabel(bandOf.get(picked[0]) as Band),
-                skill1: SKILL_LABEL.get(picked[0]) ?? picked[0],
+                skill1: skillText.label(picked[0]),
                 band2: bandLabel(bandOf.get(picked[1]) as Band),
-                skill2: SKILL_LABEL.get(picked[1]) ?? picked[1],
+                skill2: skillText.label(picked[1]),
                 hi: emphasis,
               })}
         </p>
@@ -254,7 +254,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
         {picked.map((key) => (
           <div key={key}>
             <p style={{ margin: '0 0 var(--space-2)', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-              {SKILL_LABEL.get(key) ?? key}
+              {skillText.label(key)}
             </p>
             <BandBar band={revealed ? (bandOf.get(key) as Band) : null} />
           </div>

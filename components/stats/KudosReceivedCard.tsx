@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSkillText } from '@/lib/useSkillText';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useActiveName } from '@/lib/useActiveName';
 import { KUDOS_TAGS, TAG_ICON, type KudosCount, type KudosNote } from '@/lib/kudos';
@@ -25,6 +26,7 @@ type LoadState =
  */
 export default function KudosReceivedCard() {
   const t = useTranslations('stats');
+  const skillText = useSkillText();
   const signInLink = useSignInLink();
   // Subscribed, not resolved-once — see the note in SkillTrendCard.
   const { name: activeName } = useActiveName();
@@ -157,7 +159,7 @@ export default function KudosReceivedCard() {
                   {n.raterName}
                   {' · '}
                   {t(`kudos.tag.${n.tag}`)}
-                  {skillLabel(n.skillKey) ? ` · ${skillLabel(n.skillKey)}` : ''}
+                  {isSkillKey(n.skillKey) ? ` · ${skillText.label(n.skillKey)}` : ''}
                 </p>
               </li>
             ))}
@@ -170,7 +172,6 @@ export default function KudosReceivedCard() {
 
 /** A skill key is stored, not a label — an unknown key renders as nothing
  *  rather than as a raw key like `net_play`. */
-function skillLabel(key?: string): string | null {
-  if (!key) return null;
-  return SKILLS.find((s) => s.key === key)?.label ?? null;
+function isSkillKey(key?: string): key is string {
+  return !!key && SKILLS.some((s) => s.key === key);
 }

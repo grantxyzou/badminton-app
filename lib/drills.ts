@@ -42,8 +42,11 @@ export interface DrillPick {
   minutes: number;
   setting: 'solo' | 'pair' | 'group';
   band: [number, number];
-  /** Why this drill — e.g. "For your net play (rated 2/5)". */
+  /** Why this drill — e.g. "For your net play (rated 2/5)". English, for the
+   *  AI prompt and older clients; the screen words it from `rating`. */
   reason: string;
+  /** The rating the reason quotes, so a client can word it in its own language. */
+  rating: number;
 }
 
 export interface WorkOnSkill {
@@ -112,6 +115,7 @@ function toPick(drill: Drill, skill: WorkOnSkill): DrillPick {
     setting: drill.setting,
     band: drill.band,
     reason: `For your ${skill.label.toLowerCase()} (rated ${skill.value}/5)`,
+    rating: skill.value,
   };
 }
 

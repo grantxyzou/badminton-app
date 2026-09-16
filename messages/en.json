@@ -1978,5 +1978,269 @@
       "noApp": "Email the organiser with the name you signed up under, from an address we can reply to, and the account will be deleted for you.",
       "emailLabel": "Email:"
     }
+  },
+  "skillContent": {
+    "skills": {
+      "serves_returns": {
+        "label": "Serves & Returns",
+        "anchors": [
+          "My serve is easily attacked; returns often go long or into the net.",
+          "I get serves in on easy points, but they sit up or get punished under pressure.",
+          "Reliable low/high serve in games — I'm starting to practice them on purpose.",
+          "Consistent serves I place intentionally; my returns put me on the front foot.",
+          "Serve & return are weapons — varied, disguised, and pressuring from shot one."
+        ]
+      },
+      "net_play": {
+        "label": "Net Play",
+        "anchors": [
+          "I mostly avoid the net; my net shots pop up or go into the tape.",
+          "I can play a net shot in a slow rally but can't kill loose shuttles reliably.",
+          "Tight-ish net shots in games — I'm drilling spin and net kills deliberately.",
+          "Consistent tight net play; I kill loose lifts and control the front court.",
+          "I dominate the net — spinning, tumbling, killing, and dictating the rally."
+        ]
+      },
+      "clears_lifts": {
+        "label": "Clears & Lifts",
+        "anchors": [
+          "I can't reliably reach the back; clears land mid-court and get smashed.",
+          "I clear to the back on easy shots but lose depth when rushed.",
+          "Decent depth in games — I'm training to hit the back tramlines consistently.",
+          "Consistent deep clears/lifts that buy me time and reset the rally.",
+          "I clear with disguise and pinpoint depth to control tempo and force replies."
+        ]
+      },
+      "drops": {
+        "label": "Drops",
+        "anchors": [
+          "I rarely play drops; they land too short or sit up to be killed.",
+          "I attempt drops occasionally but they're loose and predictable.",
+          "Workable drops in games — I'm practicing tighter, deceptive ones.",
+          "Consistent tight drops I use tactically to move opponents and open the court.",
+          "Sharp, disguised slice/fast drops that win or set up points outright."
+        ]
+      },
+      "drives": {
+        "label": "Drives",
+        "anchors": [
+          "Flat exchanges overwhelm me; I can't keep the shuttle low.",
+          "I can drive in a slow exchange but lose flat-rally battles.",
+          "I hold my own in drives — starting to train flat-rally speed on purpose.",
+          "Consistent, fast, flat drives; I win most mid-court exchanges.",
+          "I control flat rallies — punishing, accurate, and varied in pace and angle."
+        ]
+      },
+      "smashes": {
+        "label": "Smashes",
+        "anchors": [
+          "My smash has little power/placement; I rarely win points with it.",
+          "I can smash a sitter but it's slow and easily defended.",
+          "Decent smash in games — I'm training power, steepness, and placement.",
+          "Consistent, well-placed smashes I use to finish or pressure opponents.",
+          "A genuine weapon — steep, powerful, placed, and a real point-ender."
+        ]
+      },
+      "grip_deception": {
+        "label": "Grip & Deception",
+        "anchors": [
+          "I hold one tight grip; I can't change grips or disguise shots.",
+          "I change grips slowly; opponents read my shots early.",
+          "I'm working on a loose grip and starting to disguise some shots.",
+          "Loose grip with quick changes; I disguise direction on several shots.",
+          "Loose-grip mastery — quick changes and consistent deception across the court."
+        ]
+      },
+      "footwork_split_step": {
+        "label": "Footwork & Split Step",
+        "anchors": [
+          "I run flat-footed and arrive late; no split step.",
+          "I move okay on easy shots but get caught flat-footed under pressure.",
+          "I use a split step in games and I'm drilling movement on purpose.",
+          "Efficient footwork, consistent split step, leading with the racket leg.",
+          "Explosive, economical movement — I appear 'light' and rarely get caught out."
+        ]
+      },
+      "court_coverage": {
+        "label": "Court Coverage & Positioning",
+        "anchors": [
+          "I cover only what is near me; big gaps open across the court.",
+          "I reach most shots in slow rallies but get pulled out of position.",
+          "Decent coverage — I'm learning singles/doubles positioning roles.",
+          "Strong coverage; I understand and hold my role in doubles and singles.",
+          "I cover the court seamlessly and anticipate to be in position early."
+        ]
+      },
+      "speed_stamina": {
+        "label": "Speed & Stamina",
+        "anchors": [
+          "I tire quickly; pace and quality drop within a game.",
+          "I last a casual game but fade in longer or faster rallies.",
+          "Decent endurance — I'm adding conditioning to support harder play.",
+          "Good stamina; my movement quality holds across multiple games.",
+          "High-performance fitness — quality degrades only after sustained effort."
+        ]
+      },
+      "game_reading": {
+        "label": "Game Reading & Shot Selection",
+        "anchors": [
+          "I react late and hit whatever I can reach; no real plan.",
+          "I sometimes pick the right shot but mostly play reactively.",
+          "I'm starting to read opponents and choose shots with intent.",
+          "I anticipate from body/racket cues and select shots tactically.",
+          "I read the game several shots ahead and construct points deliberately."
+        ]
+      },
+      "consistency": {
+        "label": "Consistency",
+        "anchors": [
+          "Lots of unforced errors; I go for lines and miss often.",
+          "Inconsistent — good shots mixed with frequent errors.",
+          "Fewer errors — I'm learning to 'bring margins in' on purpose.",
+          "Consistent and low-error; I aim with safe margins under pressure.",
+          "Rock-solid consistency; I force errors while making almost none."
+        ]
+      },
+      "rules_strategy": {
+        "label": "Rules, Etiquette & Strategy",
+        "anchors": [
+          "I am unsure of rules, scoring, and court etiquette.",
+          "I know basic rules and scoring but little strategy.",
+          "Comfortable with rules/formats; starting to think tactically.",
+          "Solid grasp of strategy, formats, and assessing my level of play.",
+          "Deep tactical and format knowledge; I game-plan per opponent."
+        ]
+      },
+      "training_mindset": {
+        "label": "Training Mindset — the Switch",
+        "anchors": [
+          "I just turn up and play; I don't think about improving.",
+          "I play often and want to get better, but don't train deliberately.",
+          "The switch: I'm starting to TRAIN for badminton, not just play it.",
+          "I train with structure — drills, conditioning, and self-assessment.",
+          "Full high-performance mindset: discipline, goals, recovery, the lot."
+        ]
+      }
+    },
+    "drills": {
+      "serves_returns-f": {
+        "title": "Low-serve target practice",
+        "description": "Serve repeatedly to a taped target zone just over the net; partner only judges line and height. Reset every 10 serves."
+      },
+      "serves_returns-s": {
+        "title": "Serve + third-shot routine",
+        "description": "Low serve, partner returns to a called area, you attack the return. Vary serve type every 5 reps so it stays disguised."
+      },
+      "net_play-f": {
+        "title": "Net tumble & spin feeds",
+        "description": "Partner feeds gentle shuttles to the net; play soft spinning returns that drop tight. Focus on a relaxed grip and quiet racket."
+      },
+      "net_play-s": {
+        "title": "Net-kill reaction exchange",
+        "description": "Fast tight net exchanges from mid-net; whoever gets a loose shuttle kills it. Builds soft hands and quick reactions under pressure."
+      },
+      "clears_lifts-f": {
+        "title": "Overhead clear length feed",
+        "description": "Partner feeds to your rearcourt; hit deep clears that land in the back tramlines. Aim for consistent height and full follow-through."
+      },
+      "clears_lifts-s": {
+        "title": "Lift-clear corner ladder",
+        "description": "Alternate defensive lifts and attacking clears to called back corners under a steady feed. Score a point only when you hit the corner."
+      },
+      "drops-f": {
+        "title": "Slow-drop target zones",
+        "description": "From the rearcourt, drop into two forecourt target zones in turn. Prioritize landing tight over speed."
+      },
+      "drops-s": {
+        "title": "Drop-then-net two-shot",
+        "description": "Play a deceptive drop, then chase in and finish the next shuttle at the net. Trains the drop plus the follow-up read."
+      },
+      "drives-f": {
+        "title": "Mid-court drive rally",
+        "description": "Flat crosscourt drive rally with a partner, shuttle kept around net-tape height. Keep the swing short and the grip loose."
+      },
+      "drives-s": {
+        "title": "Drive duel speed-up",
+        "description": "Flat drive duel where either player may speed up at will; the other must hold position and counter. Builds flat-game tempo control."
+      },
+      "smashes-f": {
+        "title": "Smash placement feeds",
+        "description": "Partner feeds high to mid-court; smash to two called body/line targets. Steady, repeatable contact over maximum power."
+      },
+      "smashes-s": {
+        "title": "Jump-smash + net follow",
+        "description": "Smash from a high feed, then immediately move in to finish the block at the net. Third player feeds and rotates in."
+      },
+      "grip_deception-f": {
+        "title": "Grip-change shadow",
+        "description": "Shadow forehand-to-backhand grip changes without a shuttle, slow then quicker. Builds the habit of resetting to a neutral grip."
+      },
+      "grip_deception-s": {
+        "title": "Hold-and-flick deception",
+        "description": "From the net, show a soft shot then flick or hold late to wrong-foot the feeder. Partner calls which way they leaned."
+      },
+      "footwork_split_step-f": {
+        "title": "Split-step shadow corners",
+        "description": "Shadow movement to four corners, landing a split-step as the imaginary opponent hits. No shuttle — own the timing first."
+      },
+      "footwork_split_step-s": {
+        "title": "Six-corner speed footwork",
+        "description": "Timed six-corner pattern from base with a split-step each rep; 3 rounds of 30s work, 30s rest. Quality of the recovery step over raw speed."
+      },
+      "court_coverage-f": {
+        "title": "Two-corner recovery feed",
+        "description": "Partner feeds to two corners; play the shot and recover to base each time. Trains the return-to-centre habit."
+      },
+      "court_coverage-s": {
+        "title": "Random multi-feed coverage",
+        "description": "Feeder sends shuttles to random corners at a brisk pace; cover the full court and reset between shots. Rotate feeder every 90s."
+      },
+      "speed_stamina-f": {
+        "title": "On-court line shuttle runs",
+        "description": "Sprint between court lines (net, service, baseline) touching each; 4 rounds of 30s with a short rest. Pure movement base."
+      },
+      "speed_stamina-s": {
+        "title": "High-intensity multi-feed intervals",
+        "description": "Continuous multi-feed for 45s, rest 45s, repeat 4-6 times. Keep shot quality up as fatigue builds — that's the point."
+      },
+      "game_reading-f": {
+        "title": "Call-the-shot rally",
+        "description": "Before each reply, say out loud where you'll hit; partner does the same. Slows the game down so you read cues, not guess."
+      },
+      "game_reading-s": {
+        "title": "Constraint game: read & react",
+        "description": "Play points with a rule (e.g. no straight smashes), forcing you to read and exploit the opponent's limited options. Swap the constraint each game."
+      },
+      "consistency-f": {
+        "title": "100-shot rally goal",
+        "description": "Cooperative rally aiming to keep the shuttle in for 100 shots; restart the count on every miss. Builds clean repeatable contact."
+      },
+      "consistency-s": {
+        "title": "Pressure consistency ladder",
+        "description": "Hit a target shot N times in a row under a brisker feed; each clean streak raises the target, each miss drops it. Consistency when tired."
+      },
+      "rules_strategy-f": {
+        "title": "Doubles rotation walkthrough",
+        "description": "Walk (don't run) the attack/defence rotation patterns with three others, calling who covers what. Cement the shape before speed."
+      },
+      "rules_strategy-s": {
+        "title": "Situational scenario points",
+        "description": "Play out specific game situations (e.g. defending 18-20, serving for the game) and debrief the choices after each. Trains decisions, not strokes."
+      },
+      "training_mindset-f": {
+        "title": "Session goal & reflect",
+        "description": "Write one specific goal before you play and one note after about whether you trained it. Turns 'just playing' into deliberate practice."
+      },
+      "training_mindset-s": {
+        "title": "Deliberate-practice block",
+        "description": "Pick your weakest shot and drill only that for a focused block, self-scoring each rep. Track the score week to week."
+      }
+    },
+    "settings": {
+      "solo": "solo",
+      "pair": "pair",
+      "group": "group"
+    },
+    "drillReason": "For your {skill} (rated {value}/5)"
   }
 }
