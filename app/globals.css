@@ -1004,10 +1004,14 @@ h1, h2, h3, h4 {
   padding: var(--space-3) var(--space-5) var(--space-4);
   background: transparent;
   border-bottom: 1px solid transparent;
+  /* Background and border only. This runs WHILE SCROLLING, and the two
+     properties dropped here are the two the main thread cannot hand to the
+     compositor: `backdrop-filter` re-samples everything behind the bar on
+     every frame, and `padding` relayouts the header on every frame. The
+     condensed state still changes both — it just arrives rather than
+     animating. */
   transition:
     background 0.25s ease,
-    backdrop-filter 0.25s ease,
-    padding 0.25s ease,
     border-color 0.25s ease;
 }
 .bpm-topbar::before,
@@ -1078,7 +1082,7 @@ h1, h2, h3, h4 {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted, #737373);
-  transition: opacity 0.2s ease, max-height 0.25s ease;
+  transition: opacity 0.2s ease;
   max-height: 1.5em;
   line-height: 1.4;
 }
@@ -1095,7 +1099,6 @@ h1, h2, h3, h4 {
   line-height: 1.25;
   color: var(--text-primary);
   margin: 0;
-  transition: font-size 0.25s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1124,10 +1127,14 @@ h1, h2, h3, h4 {
   padding: var(--space-3) var(--space-5) var(--space-4);
   background: transparent;
   border-bottom: 1px solid transparent;
+  /* Background and border only. This runs WHILE SCROLLING, and the two
+     properties dropped here are the two the main thread cannot hand to the
+     compositor: `backdrop-filter` re-samples everything behind the bar on
+     every frame, and `padding` relayouts the header on every frame. The
+     condensed state still changes both — it just arrives rather than
+     animating. */
   transition:
     background 0.25s ease,
-    backdrop-filter 0.25s ease,
-    padding 0.25s ease,
     border-color 0.25s ease;
 }
 .bpm-page-header.scrolled {
@@ -1138,7 +1145,6 @@ h1, h2, h3, h4 {
   padding-top: var(--space-3);
   padding-bottom: var(--space-3);
 }
-.bpm-page-header__title { transition: font-size 0.25s ease; }
 .bpm-page-header.scrolled .bpm-page-header__title { font-size: 1.125rem; }
 .bpm-page-header__action { display: flex; align-items: center; gap: 8px; }
 
