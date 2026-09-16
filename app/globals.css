@@ -5368,6 +5368,8 @@ button.setup-next-row { cursor: pointer; }
 .fit-section-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 var(--space-05); }
 
 .fit-verdict { display: flex; flex-direction: column; gap: var(--space-4); }
+/* The eyebrow, and the AI badge beside it when a model wrote the verdict. */
+.fit-eyebrow-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .fit-eyebrow--warn { color: var(--sev-warn); }
 .fit-headline {
   margin: 0;

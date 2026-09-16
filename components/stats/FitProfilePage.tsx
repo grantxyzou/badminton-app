@@ -6,6 +6,7 @@ import TopBar from '@/components/primitives/TopBar';
 import Switch from '@/components/primitives/Switch';
 import ErrorState from '@/components/primitives/ErrorState';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import AIBadge from '@/components/primitives/AIBadge';
 import { recordEngagement } from '@/lib/engagement';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { fitAnswers, nearestLevelOption } from '@/lib/fitProfile';
@@ -235,11 +236,12 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
   );
 }
 
-function VerdictCard({ data, error, forbidden, onRetry, known, hasRacket, onBack }: {
+export function VerdictCard({ data, error, forbidden, onRetry, known, hasRacket, onBack }: {
   data: FitVerdictData | null; error: boolean; forbidden: boolean; onRetry: () => void; known: boolean; hasRacket: boolean; onBack: () => void;
 }) {
   const t = useTranslations('stats.gear.fitPage');
   const tHub = useTranslations('valueHub');
+  const tStats = useTranslations('stats');
 
   if (known && !hasRacket) {
     return (
@@ -266,7 +268,16 @@ function VerdictCard({ data, error, forbidden, onRetry, known, hasRacket, onBack
 
   return (
     <div className="glass-card p-5 fit-verdict" aria-live="polite">
-      <p className={`setup-eyebrow ${eyebrow}`}>{t('verdictEyebrow')}</p>
+      <div className="fit-eyebrow-row">
+        <p className={`setup-eyebrow ${eyebrow}`}>{t('verdictEyebrow')}</p>
+        {/* Provenance, and only when it is TRUE: the badge rides on `copy`, the
+            model's words. A reply off the contract, the flag off or no key all
+            leave `copy` null and the card in the page's own strings — marking
+            those "AI" would claim a model wrote what a template did. Same
+            badge and labels as the Stats greeting (`<AIBadge>` is the one AI
+            marker). */}
+        {copy && <AIBadge label={tStats('insightChip.aiGenerated')}>{tStats('summaryGreeting.ai')}</AIBadge>}
+      </div>
       <h2 className="fit-headline">{copy?.headline ?? t(`headline_${facts.state}`, { frame })}</h2>
       <p className="fit-body">{copy?.body ?? (needsFeel ? t('body_needsFeel') : t(`body_${facts.state}`))}</p>
 
