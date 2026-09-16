@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The app stops waiting on Google to draw the first screen (2026-09-15)
+
+- **The icon font is ours now** — 11.7 KB served from the app, instead of a stylesheet on Google's CDN that the browser had to fetch (twice) before it could paint anything. Nothing about the icons changes.
+
 ### Smoother scrolling (2026-09-15)
 
 - **The condensing header no longer animates while you scroll.** It was animating its blur, its padding and its title size — the three things a phone has to redo on every frame — at exactly the moment scrolling needs them. The header still condenses; it just arrives.

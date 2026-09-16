@@ -20,10 +20,12 @@ function walk(dir: string): string[] {
 }
 
 function extractSubset(): Set<string> {
-  const layout = readFileSync(join(ROOT, 'app', 'layout.tsx'), 'utf8');
-  const match = layout.match(/icon_names=([a-z0-9_,]+)/);
-  if (!match) throw new Error('icon_names URL param not found in app/layout.tsx');
-  return new Set(match[1].split(','));
+  // The list moved out of the layout's URL when the font was self-hosted
+  // (scripts/fetch-icon-font.mjs builds the subset FROM this file).
+  const source = readFileSync(join(ROOT, 'lib', 'iconNames.ts'), 'utf8');
+  const match = source.slice(source.indexOf('ICON_NAMES = [')).match(/\[([\s\S]*?)\]/);
+  if (!match) throw new Error('ICON_NAMES not found in lib/iconNames.ts');
+  return new Set([...match[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]));
 }
 
 // `\s*` around the glyph is load-bearing. Without it this only matched spans
@@ -56,7 +58,7 @@ describe('Material Symbols icon subset', () => {
         }
       }
     }
-    expect(missing, 'Add these glyphs to the icon_names URL in app/layout.tsx').toEqual([]);
+    expect(missing, 'Add these glyphs to lib/iconNames.ts (then run scripts/fetch-icon-font.mjs)').toEqual([]);
   });
 
   it('every literal material-icons span usage is in the subset URL', () => {
@@ -79,7 +81,7 @@ describe('Material Symbols icon subset', () => {
     const message =
       missing.length === 0
         ? ''
-        : 'Missing glyphs in app/layout.tsx icon_names URL:\n' +
+        : 'Missing glyphs in lib/iconNames.ts (then run scripts/fetch-icon-font.mjs):\n' +
           missing.map((x) => '  - "' + x.glyph + '" used in ' + x.file).join('\n') +
           '\nAdd the glyph names to the URL or they will render as raw text.';
     expect(missing, message).toEqual([]);
@@ -116,7 +118,7 @@ describe('Material Symbols icon subset', () => {
     const message =
       missing.length === 0
         ? ''
-        : 'Missing expression-chosen glyphs in app/layout.tsx icon_names URL:\n' +
+        : 'Missing expression-chosen glyphs in lib/iconNames.ts (then run scripts/fetch-icon-font.mjs):\n' +
           missing.map((x) => '  - "' + x.glyph + '" used in ' + x.file).join('\n') +
           '\nAdd the glyph names to the URL or they will render as raw text.';
     expect(missing, message).toEqual([]);
@@ -167,7 +169,7 @@ describe('Material Symbols icon subset', () => {
     const message =
       missing.length === 0
         ? ''
-        : 'Missing icon-prop glyphs in app/layout.tsx icon_names URL:\n' +
+        : 'Missing icon-prop glyphs in lib/iconNames.ts (then run scripts/fetch-icon-font.mjs):\n' +
           missing.map((x) => '  - "' + x.glyph + '" used in ' + x.file).join('\n') +
           '\nAdd the glyph names to the URL or they will render as raw text.';
     expect(missing, message).toEqual([]);
@@ -197,7 +199,7 @@ describe('Material Symbols icon subset', () => {
     const message =
       missing.length === 0
         ? ''
-        : 'Missing data-driven icon glyphs in app/layout.tsx icon_names URL:\n' +
+        : 'Missing data-driven icon glyphs in lib/iconNames.ts (then run scripts/fetch-icon-font.mjs):\n' +
           missing.map((x) => '  - "' + x.glyph + '" used in ' + x.file).join('\n') +
           '\nAdd the glyph names to the URL or they will render as raw text.';
     expect(missing, message).toEqual([]);
