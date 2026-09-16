@@ -144,7 +144,8 @@
       "nameAriaLabel": "你的名字",
       "joining": "加入中…",
       "submitting": "报名中…",
-      "viewList": "查看报名名单",
+      "cantMakeIt": "去不了？取消报名",
+      "leaveWaitlist": "退出候补名单",
       "spotsRemaining": "还剩 {remaining}/{total} 个名额",
       "spotsFull": "已报名 {count} 人 · 满员",
       "allSpotsTaken": "{total} 个名额已满。",
@@ -246,7 +247,7 @@
   },
   "nav": {
     "home": "首页",
-    "signups": "报名",
+    "stringing": "穿线",
     "skills": "数据",
     "admin": "管理",
     "profile": "我的"

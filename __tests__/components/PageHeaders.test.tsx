@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import PlayersTab from '../../components/PlayersTab';
+import StringingTab from '../../components/StringingTab';
 import SkillsTab from '../../components/SkillsTab';
 import AdminTab from '../../components/AdminTab';
 import enMessages from '../../messages/en.json';
@@ -20,14 +20,14 @@ describe('PageHeaders', () => {
     vi.restoreAllMocks();
   });
 
-  it('PlayersTab renders "Sign-Up" as an h1', () => {
+  it('StringingTab renders "Stringing" as an h1', () => {
     render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
-        <PlayersTab />
+        <StringingTab />
       </NextIntlClientProvider>
     );
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading.textContent).toBe('Sign-Up');
+    expect(heading.textContent).toBe('Stringing');
   });
 
   // One case, not two: Stage 8 removed the admin-only radar arrangement, so

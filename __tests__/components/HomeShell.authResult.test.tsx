@@ -18,7 +18,7 @@ import enMessages from '../../messages/en.json';
  * would drag their fetches into a test that is not about them.
  */
 vi.mock('@/components/HomeTab', () => ({ default: () => <div data-testid="home-tab" /> }));
-vi.mock('@/components/PlayersTab', () => ({ default: () => null }));
+vi.mock('@/components/StringingTab', () => ({ default: () => null }));
 vi.mock('@/components/SkillsTab', () => ({ default: () => null }));
 vi.mock('@/components/ProfileTab', () => ({ default: () => null }));
 vi.mock('@/components/BottomNav', () => ({ default: () => null }));

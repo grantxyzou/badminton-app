@@ -18,6 +18,7 @@ import { recordEngagement } from '@/lib/engagement';
 import { useCheckIn } from '@/components/stats/useCheckIn';
 import CheckInSheet from '@/components/stats/CheckInSheet';
 import { StatsSignInContext } from '@/components/stats/LockedCard';
+import type { Tab } from '@/components/HomeShell';
 
 // Client-only (reads localStorage identity) — these three resolve an active
 // name at mount, so server-rendering them just produces markup the client
@@ -40,7 +41,7 @@ const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), 
  * restored nothing — it only 404'd three API routes and left the tab showing
  * load errors). This layout is now simply the layout.
  */
-export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void }) {
+export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) => void }) {
   // Identity for the signed-out empty state, from the module that owns the
   // chain. `resolved` carries "not known yet" so the first paint doesn't flash
   // the signed-out state at a signed-in member — unknown is not known-absent.

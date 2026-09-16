@@ -7,10 +7,10 @@ import WhoElseIsIn from '@/components/home/WhoElseIsIn';
 
 afterEach(cleanup);
 
-function renderRow(names: string[], me: string | null) {
+function renderRow(active: string[], me: string | null) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <WhoElseIsIn names={names} me={me} />
+      <WhoElseIsIn active={active} me={me} />
     </NextIntlClientProvider>,
   );
 }
@@ -47,8 +47,8 @@ describe('WhoElseIsIn', () => {
     expect(container.querySelector('.avatar-stack__more')).toBeNull();
   });
 
-  it('is a disclosure: tapping the row lists everyone else who is in', () => {
-    renderRow(['Viktor', 'Akane', 'Lin', 'Kento'], 'Lin');
+  it('is a disclosure: tapping the row opens the numbered roster, the viewer marked', () => {
+    const { container } = renderRow(['Viktor', 'Akane', 'Lin', 'Kento'], 'Lin');
     const row = screen.getByRole('button', { name: /are in/ });
     expect(row.getAttribute('aria-expanded')).toBe('false');
     // Closed means absent, not hidden.
@@ -57,7 +57,15 @@ describe('WhoElseIsIn', () => {
     fireEvent.click(row);
     expect(row.getAttribute('aria-expanded')).toBe('true');
     const items = screen.getAllByRole('listitem').map((li) => li.textContent);
-    expect(items).toEqual(['KKento', 'AAkane', 'VViktor']);
+    expect(items).toEqual(['1VViktor', '2AAkane', '3LLin', '4KKento']);
+    expect(container.querySelectorAll('.player-highlight-green')).toHaveLength(1);
+    expect(container.querySelector('.player-highlight-green')?.textContent).toContain('Lin');
     expect(row.getAttribute('aria-controls')).toBe(screen.getByRole('list').closest('[id]')?.id);
+  });
+
+  it('draws no kudos buttons unless the card passes a handler', () => {
+    renderRow(['Viktor', 'Lin'], 'Lin');
+    fireEvent.click(screen.getByRole('button', { name: /is in/ }));
+    expect(screen.queryByRole('button', { name: /Give kudos/ })).toBeNull();
   });
 });

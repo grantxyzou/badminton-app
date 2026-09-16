@@ -50,7 +50,7 @@ const AdminTab = dynamic(() => import('@/components/AdminTab'), { ssr: false });
 // splitting them costs a chunk fetch on the FIRST visit to a tab and nothing
 // after. HomeTab stays eager on purpose: it renders the server-rendered
 // announcement, which is the LCP element and must be in the first HTML.
-const PlayersTab = dynamic(() => import('@/components/PlayersTab'), { ssr: false, loading: () => <TabSkeleton /> });
+const StringingTab = dynamic(() => import('@/components/StringingTab'), { ssr: false, loading: () => <TabSkeleton /> });
 const SkillsTab = dynamic(() => import('@/components/SkillsTab'), { ssr: false, loading: () => <TabSkeleton /> });
 const ProfileTab = dynamic(() => import('@/components/ProfileTab'), { ssr: false, loading: () => <TabSkeleton /> });
 const DevPanel = dynamic(() => import('@/components/DevPanel'), { ssr: false });
@@ -58,7 +58,22 @@ const DemoMode = dynamic(() => import('@/components/DemoMode'), { ssr: false });
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-export type Tab = 'home' | 'players' | 'skills' | 'admin' | 'profile';
+export type Tab = 'home' | 'stringing' | 'skills' | 'admin' | 'profile';
+
+/**
+ * Read a tab id from anywhere outside React state: a `?tab=` deep link, a
+ * notification's in-app link, or the last tab saved in session/local storage.
+ *
+ * `players` is an ALIAS for Home, not an unknown value. The Sign-Ups tab left
+ * the nav on 2026-09-16 (Home's sign-up card is the list now), and that id
+ * outlives it in places this build does not control: a shared `?tab=players`
+ * link, a push delivered before the deploy, a PWA restoring its last session.
+ * Each of those meant "the sign-up list", which is on Home.
+ */
+export function toTab(v: string | null | undefined): Tab | null {
+  if (v === 'players') return 'home';
+  return v === 'home' || v === 'stringing' || v === 'skills' || v === 'admin' || v === 'profile' ? v : null;
+}
 
 interface Props {
   /**
@@ -347,12 +362,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
 
     if (dirty) window.history.replaceState(window.history.state, '', cleaned);
 
-    const isTab = (v: string | null): v is Tab =>
-      v === 'home' || v === 'players' || v === 'skills' || v === 'admin' || v === 'profile';
-
     // Precedence: explicit ?tab= deep-link → restored last tab → Home default.
-    const tabParam = params.get('tab');
-    if (isTab(tabParam)) {
+    const tabParam = toTab(params.get('tab'));
+    if (tabParam) {
       setActiveTab(tabParam);
       // Strip the param after applying so it doesn't linger in the URL the iOS
       // PWA restores on cold start (which would then override the Home default).
@@ -366,8 +378,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     // (same page session) but is cleared when the PWA is fully quit and
     // relaunched — so a cold start finds nothing here and stays on Home.
     try {
-      const saved = window.sessionStorage.getItem('badminton_active_tab');
-      if (isTab(saved)) { setActiveTab(saved); return; }
+      const saved = toTab(window.sessionStorage.getItem('badminton_active_tab'));
+      if (saved) { setActiveTab(saved); return; }
     } catch { /* sessionStorage unavailable — fall back to Home */ }
     // Cold start (sessionStorage empty). If we got here because iOS evicted the
     // PWA while the user stepped out to a share sheet / receipt image (marked
@@ -375,8 +387,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     // real quit-and-reopen leaves no marker → stays on Home.
     try {
       if (consumeRecentExcursion()) {
-        const lastTab = window.localStorage.getItem('badminton_last_tab');
-        if (isTab(lastTab)) setActiveTab(lastTab);
+        const lastTab = toTab(window.localStorage.getItem('badminton_last_tab'));
+        if (lastTab) setActiveTab(lastTab);
       }
     } catch { /* localStorage unavailable — fall back to Home */ }
   }, []);
@@ -594,7 +606,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   if (activeTab === 'admin' && adminKnown && !showAdmin) setActiveTab('home');
 
   // Expose the active tab to CSS so per-tab background variants can react
-  // (e.g. Sign-Ups tab swaps the global aurora for 03 Court markings).
+  // (e.g. the Stringing tab keeps the 03 Court markings Sign-Ups used to own).
   // The doors depend on whether an identity exists; keep that current.
   useEffect(() => {
     const read = () => {
@@ -646,7 +658,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // is not special-cased: a non-admin asking for it meets the same bounce a
   // `?tab=admin` landing does.
   useInAppNavigation(useCallback(({ tab }: { tab: string | null }) => {
-    const next: Tab = tab === 'players' || tab === 'skills' || tab === 'admin' || tab === 'profile' ? tab : 'home';
+    const next: Tab = toTab(tab) ?? 'home';
     resetSharedReads();
     setActiveTab(next);
     setRefreshNonce((n) => n + 1);
@@ -779,7 +791,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           ) : (
           <>
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="motion-fade"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} /></div>}
-          {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="motion-fade"><PlayersTab onTabChange={setActiveTab} /></div>}
+          {activeTab === 'stringing' && <div key={`stringing-${refreshNonce}`} className="motion-fade"><StringingTab /></div>}
           {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="motion-fade"><SkillsTab onTabChange={setActiveTab} /></div>}
           {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="motion-fade"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
           {activeTab === 'profile' && (
