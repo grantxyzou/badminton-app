@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import YourRecordCard from '../../components/stats/YourRecordCard';
 import { OnlineProvider } from '../../lib/useOnline';
 import enMessages from '../../messages/en.json';
+import { resetSharedReads } from '../../lib/sharedRead';
 
 /** A locked card's sentence, matched whole: its "Sign in" is a link element, so
  *  the text is split across nodes and a plain text query cannot see it. */
@@ -65,6 +66,8 @@ describe('YourRecordCard', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    // Module state (lib/sharedRead.ts): one test's answer must not reach the next.
+    resetSharedReads();
   });
 
   it('shows the won-of-played fraction and the rows', async () => {

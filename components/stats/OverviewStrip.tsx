@@ -4,8 +4,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import StatCard from './StatCard';
 import type { UseCheckIn } from './useCheckIn';
+import { sharedRead } from '@/lib/sharedRead';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 /**
  * The three-tile overview strip that sits above the register switch and stays
@@ -65,11 +65,12 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     const n = encodeURIComponent(activeName);
     let live = true;
 
-    // Deliberately four independent fetches with four independent setStates.
-    const get = (url: string) =>
-      fetch(`${BASE}${url}`, { cache: 'no-store' }).then((r) =>
-        r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
-      );
+    // Deliberately independent fetches with independent setStates — one
+    // card's failure never takes another tile down. Games and kudos go
+    // through `sharedRead` because `YourRecordCard` and `KudosReceivedCard`
+    // ask for the same two on this screen; the read is shared, the states
+    // stay separate.
+    const get = (url: string) => sharedRead<Record<string, unknown>>(url) as Promise<{ level?: { level?: unknown }; games?: unknown[]; kudos?: { count?: number }[] }>;
 
     get(`/api/stats/level?name=${n}`)
       .then((d) => {

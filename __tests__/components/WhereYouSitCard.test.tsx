@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import WhereYouSitCard from '../../components/stats/WhereYouSitCard';
 import enMessages from '../../messages/en.json';
 import type { UseCheckIn } from '../../components/stats/useCheckIn';
+import { resetSharedReads } from '../../lib/sharedRead';
 
 function jsonResponse(body: unknown, ok = true) {
   return Promise.resolve({ ok, status: ok ? 200 : 500, json: async () => body } as Response);
@@ -83,6 +84,8 @@ describe('WhereYouSitCard', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    // Module state (lib/sharedRead.ts): one test's answer must not reach the next.
+    resetSharedReads();
   });
 
   it('names the sharpest and weakest rated skills', async () => {

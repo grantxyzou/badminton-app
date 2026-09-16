@@ -9,6 +9,7 @@ import { summarizeRecord, type GameRecord } from '@/lib/gameRecord';
 import type { GameResult } from '@/lib/types';
 import SteppedGameLoggerSheet from './SteppedGameLoggerSheet';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
+import { sharedRead } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -54,17 +55,14 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
 
   const load = useCallback(() => {
     if (!activeName) return;
-    fetch(`${BASE}/api/games?all=true&name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => {
-        // Owner-gated: a 403 is this device not owning the name, not a failure.
-        if (r.status === 403) return Promise.reject(new Error('forbidden'));
-        return r.ok ? r.json() : Promise.reject(new Error(String(r.status)));
-      })
+    // Shared with `OverviewStrip`'s games tile — same URL, same screen.
+    sharedRead<{ games?: unknown }>(`/api/games?all=true&name=${encodeURIComponent(activeName)}`)
       .then((d) => {
         setRecord(summarizeRecord((d?.games ?? []) as GameResult[], activeName));
         setStatus('ready');
       })
-      .catch((e: Error) => setStatus(e?.message === 'forbidden' ? 'forbidden' : 'error'));
+      // Owner-gated: a 403 is this device not owning the name, not a failure.
+      .catch((e: Error) => setStatus(e?.message === '403' ? 'forbidden' : 'error'));
   }, [activeName]);
 
   useEffect(() => {
