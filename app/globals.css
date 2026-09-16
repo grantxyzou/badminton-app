@@ -308,7 +308,7 @@
   --glass-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.55) 100%);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --glass-shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.09), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --glass-shadow-hover: 0 2px 4px rgba(26, 35, 50, 0.08), 0 4px 8px rgba(26, 35, 50, 0.07);
   --glass-inset: rgba(255, 255, 255, 0.5);
   --glass-inset-hover: rgba(255, 255, 255, 0.6);
   --glass-blur: 16px;
@@ -937,8 +937,8 @@ body {
      ghost-card look. */
   --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.90));
   --fcard-blur:       blur(20px) saturate(120%);
-  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.90), inset 0 0 0 1px rgba(26, 35, 50, 0.08);
-  --fcard-shadow:     0 1px 2px rgba(26, 35, 50, 0.06), 0 2px 8px rgba(26, 35, 50, 0.05);
+  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.90), inset 0 0 0 1px rgba(26, 35, 50, 0.10);
+  --fcard-shadow:     0 1px 2px rgba(26, 35, 50, 0.08), 0 3px 8px rgba(26, 35, 50, 0.06);
   /* Quieter in light: one hue per tile at a muted depth, no gradient that
      runs through two hues (Mental went amber → red), and every stop dark
      enough for the white type on it (≥6:1). */
@@ -1762,35 +1762,24 @@ html[data-tab="skills"] .glass-card {
   }
 }
 
+/* Light mode: the same card material as every other tab (--fcard-*).
+   This used to be its own frost — white at .62→.48, no drop shadow, no edge —
+   which only read as a card while a strong blue field sat behind it. With the
+   light fields quieted it vanished into the page ("cards gone"). Its selector
+   (0,3,1) outranks `html:root .glass-card`, so it has to name the tokens
+   itself rather than simply be deleted. */
 [data-theme="light"] html[data-tab="skills"] .glass-card,
 html[data-tab="skills"][data-theme="light"] .glass-card {
-  background:
-    radial-gradient(
-      ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
-      rgba(60, 70, 65, 0.04) 0%,
-      transparent 70%
-    ),
-    /* FROST — light theme keeps the higher wash so cream-on-cream stays legible. */
-    linear-gradient(
-      160deg,
-      rgba(255, 255, 255, 0.62) 0%,
-      rgba(255, 255, 255, 0.48) 100%
-    );
-  /* DISPERSION = 26, FRAY = -3deg */
-  -webkit-backdrop-filter: blur(26px) saturate(180%) contrast(1.04) hue-rotate(-3deg);
-  backdrop-filter: blur(26px) saturate(180%) contrast(1.04) hue-rotate(-3deg);
-  /* DEPTH — softer stack on cream; light surfaces show shadow more readily. */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -1px 1px rgba(22, 33, 27, 0.06);
+  background: var(--fcard-bg);
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
 }
 
 @media (hover: hover) {
   [data-theme="light"] html[data-tab="skills"] :is(button, a, [role="button"]).glass-card:hover,
   html[data-tab="skills"][data-theme="light"] :is(button, a, [role="button"]).glass-card:hover {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.85),
-      inset 0 -1px 1px rgba(22, 33, 27, 0.08);
+    box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
   }
 }
 
