@@ -51,6 +51,10 @@ describe('locale fallback — missing zh-CN key falls back to English', () => {
         <SignupLabel />
       </NextIntlClientProvider>,
     );
-    expect(screen.getByTestId('label').textContent).toBe('本周参加');
+    // The sign-up button's Chinese label. Pinned literally on purpose: reading
+    // it from the same file the component reads would assert nothing. Update it
+    // when the copy changes (2026-09-15: 本周参加 → 立即报名, the 报名 wording a
+    // Chinese sign-up flow uses).
+    expect(screen.getByTestId('label').textContent).toBe('立即报名');
   });
 });

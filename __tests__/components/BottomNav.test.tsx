@@ -38,7 +38,9 @@ function sharedContract() {
     expect(screen.getByRole('button', { name: '首页' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '报名' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '数据' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '档案' })).toBeTruthy();
+    // 我的, not 档案 (2026-09-15): every Chinese app names this tab 我的, and
+    // the rest of the copy points at it by that name ("去「我的」登录").
+    expect(screen.getByRole('button', { name: '我的' })).toBeTruthy();
     expect(screen.getAllByRole('button').length).toBe(4);
   });
 
