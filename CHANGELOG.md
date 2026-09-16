@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Pull to refresh feels like a phone's (2026-09-16)
+
+- **About a third of the pull.** It used to take ~283px of finger travel to refresh — three times iOS Mail. Now ~100px, and the pull stiffens as it goes instead of moving in a straight line.
+- **One thing moves.** The page used to bounce under the spinner at a different speed; now the page stays put and only the spinner comes down. In an Android browser tab, Chrome's own refresh no longer fires on top and reloads everything.
+- **You can feel when it will refresh**: the spinner swells as it arms, and Android phones give a tiny tick. It also stays on screen long enough to read as a refresh rather than a flicker.
+
 ### The keyboard no longer covers the button you need (2026-09-16)
 
 - **A sheet you're typing into moves up above the keyboard.** On iPhone the keyboard covered the bottom of the sheet — including the button that saves what you just typed. The sheet now lifts by the keyboard's height and shrinks to fit what's still visible, and the field you tapped scrolls into view.

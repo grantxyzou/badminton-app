@@ -26,7 +26,8 @@ few items that were inference are marked.
 | #461 | The Material Symbols subset is self-hosted (`lib/iconNames.ts` → `scripts/fetch-icon-font.mjs` → 11.7 KB in `app/fonts/`), so nothing third-party blocks first paint. Verified on production: the face is served from our origin and the page references neither Google host. |
 | #462 | The club bands, kudos and games are read once per screen instead of twice (`lib/sharedRead.ts`). |
 | #465 | Sheets drag down to dismiss, with a grabber. The grabber and the header are the grab surfaces; the body is not, because it is the scroller. |
-| this PR | A sheet lifts above the on-screen keyboard (`components/BottomSheet/useKeyboardInset.ts`, `visualViewport`), and Android resizes the layout itself (`interactiveWidget: 'resizes-content'`). Search fields show a Search key. |
+| #468 | A sheet lifts above the on-screen keyboard (`components/BottomSheet/useKeyboardInset.ts`, `visualViewport`), and Android resizes the layout itself (`interactiveWidget: 'resizes-content'`). Search fields show a Search key. |
+| this PR | Pull-to-refresh: a damped curve arming at ~100px of finger (was ~283px), the page no longer rubber-bands underneath (`overscroll-behavior-y: none`), listeners stay passive, no render per frame, a swell + Android tick on arming, and a sheet check asked of `lib/sheetStack` instead of sniffed from body styles. |
 
 Each carries a canary, because none of this is visible to a rendering test:
 jsdom computes every length as `0px`, and a static import or a re-added
@@ -61,10 +62,6 @@ transition passes every existing test.
 3. **Deep links replay the cold start.** `components/NativeBridge.tsx:132,140,207`
    use `window.location.assign`, so tapping a push notification tears down the
    document and re-runs the whole launch, splash included, *inside* the app.
-4. **Pull-to-refresh needs ~283px of finger travel** (`THRESHOLD` 115 ÷
-   `RESISTANCE` 0.45 + a 28px dead zone) against ~60–90px for iOS Mail, and its
-   `touchmove` is passive, so the page rubber-bands at 1:1 under an indicator
-   moving at 0.45:1.
 5. **Keyboard hints across the forms.** Sheets now lift above the keyboard and
    search fields say Search, but `enterKeyHint` is still absent from the
    sign-in and admin forms, and `inputMode` covers ~23% of inputs.
@@ -107,10 +104,9 @@ Ranked. These do NOT ship with a web deploy.
 
 ## Ranked, if you want the next one picked for you
 
-**Pull-to-refresh (4)** — it needs roughly three times the finger travel of iOS
-Mail, and the page rubber-bands under the indicator at a different speed.
-Then **deep links (3)**, which replay the whole launch when you tap a
-notification inside the app.
+**Deep links (3)** — tapping a notification inside the app replays the whole
+launch, splash included. After that, the remaining items are measurement
+(a bundle analyzer, then memoisation) rather than feel.
 
 ## Non-goals
 
