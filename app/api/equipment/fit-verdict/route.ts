@@ -41,20 +41,25 @@ import type { CatalogItem, PlayerGear } from '@/lib/types';
  * the same facts from its own strings. Nothing to judge (`insufficient`) never
  * calls the model at all.
  *
- * A reply off the contract is CACHED TOO, as a rejection, for
- * `REJECTION_RETRY_MS`. Without that, the words were cached only on success, so
- * the facts most likely to break the contract re-asked the model on every view
- * and threw every answer away. Changed facts still make a new key and ask at
- * once. A THROWN call (overloaded, timeout) is not cached: that is the service,
- * not these facts. The log names the rule that broke and never the reply.
+ * A reply off the contract is ASKED ONCE MORE straight away, and only a second
+ * miss is CACHED, as a rejection, for `REJECTION_RETRY_MS`. Production showed
+ * misses are one-offs: the 2026-09-15 rejection was followed two seconds later
+ * by a reply that passed. So a lone miss must not hold a member on the
+ * templates, and a pair of them must not re-ask on every view either (the words
+ * were once cached only on success, and failing facts asked on every load).
+ * Changed facts still make a new key and ask at once. A THROWN call
+ * (overloaded, timeout) is neither retried nor cached: that is the service, not
+ * these facts. The log names the rule that broke and never the reply.
  */
 
 export const dynamic = 'force-dynamic';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MAX_OUTPUT_TOKENS = 400;
-/** How long a rejected reply stands before the same facts ask again. */
-const REJECTION_RETRY_MS = 24 * 60 * 60 * 1000;
+/** Replies asked for per view before falling back: the first, and one retry. */
+const COPY_ATTEMPTS = 2;
+/** How long a twice-rejected verdict stands before the same facts ask again. */
+const REJECTION_RETRY_MS = 60 * 60 * 1000;
 
 let insightsReady: Promise<void> | null = null;
 function ensureInsights(): Promise<void> {
@@ -179,25 +184,30 @@ export async function GET(req: NextRequest) {
     let copy: FitVerdictCopy | null = null;
     let rejected: string | undefined;
     try {
-      const message = await anthropic.messages.create({
-        model: INSIGHT_MODEL,
-        max_tokens: MAX_OUTPUT_TOKENS,
-        messages: [{ role: 'user', content: buildCopyPrompt(facts, locale) }],
-      });
-      const text = message.content[0]?.type === 'text' ? message.content[0].text : '';
-      const check = checkCopy(text, facts);
-      copy = check.copy;
-      if (check.rejection) {
-        rejected = check.rejection.rule;
-        // The rule always; the reply itself only outside production, because it
-        // is written from arm-history facts. Constant message, values in the payload.
-        console.warn('fit-verdict copy off contract; using templated copy', {
-          ...check.rejection,
-          state: facts.state,
-          reasons: facts.reasons.length,
-          locale,
-          ...(process.env.NODE_ENV === 'production' ? {} : { reply: text.slice(0, 600) }),
+      for (let attempt = 1; attempt <= COPY_ATTEMPTS && !copy; attempt++) {
+        const message = await anthropic.messages.create({
+          model: INSIGHT_MODEL,
+          max_tokens: MAX_OUTPUT_TOKENS,
+          messages: [{ role: 'user', content: buildCopyPrompt(facts, locale) }],
         });
+        const text = message.content[0]?.type === 'text' ? message.content[0].text : '';
+        const check = checkCopy(text, facts);
+        copy = check.copy;
+        rejected = check.rejection?.rule;
+        if (check.rejection) {
+          // The rule always; the reply itself only outside production, because it
+          // is written from arm-history facts. Constant messages, values in the
+          // payload. Both start "fit-verdict copy off contract" for one grep.
+          const last = attempt === COPY_ATTEMPTS;
+          console.warn(last ? 'fit-verdict copy off contract; using templated copy' : 'fit-verdict copy off contract; asking once more', {
+            ...check.rejection,
+            attempt,
+            state: facts.state,
+            reasons: facts.reasons.length,
+            locale,
+            ...(process.env.NODE_ENV === 'production' ? {} : { reply: text.slice(0, 600) }),
+          });
+        }
       }
     } catch (err) {
       console.error('fit-verdict generation failed:', err);
