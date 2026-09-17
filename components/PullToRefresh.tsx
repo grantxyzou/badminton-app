@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { openSheetCount } from '@/lib/sheetStack';
-import { HOLD, MIN_SPIN_MS, TRIGGER, pullDistance, pullProgress } from '@/lib/pullToRefresh';
+import { HOLD, MIN_SPIN_MS, SCROLL_SETTLE_MS, TRIGGER, pullDistance, pullProgress } from '@/lib/pullToRefresh';
 
 /**
  * Pull-to-refresh. There is no fetch-intercepting service worker (live-only by
@@ -21,9 +21,11 @@ import { HOLD, MIN_SPIN_MS, TRIGGER, pullDistance, pullProgress } from '@/lib/pu
  *    off in CSS instead (`overscroll-behavior-y: none` on the root), so the
  *    indicator is the only thing that moves and nothing has to be prevented.
  * 3. A SCROLL IS NEVER A PULL. The gesture must start at the top with no sheet
- *    open; any upward travel, or sideways travel that beats vertical, retires
- *    it for good — so a scroll that bounces off the top edge can't flip into a
- *    refresh halfway through.
+ *    open, and with the page STILL: a touch within `SCROLL_SETTLE_MS` of the
+ *    last scroll is the tail of scrolling up, not a new pull. Any upward
+ *    travel, or sideways travel that beats vertical, retires it for good — so
+ *    a scroll that bounces off the top edge can't flip into a refresh halfway
+ *    through.
  *
  * The body is the scroll container in this app, so listeners live on `document`.
  */
@@ -47,6 +49,12 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
     let armed = false;
     let busy = false;
     let disqualified = false;
+    // When the page last moved. Momentum scrolling fires `scroll` without a
+    // finger on the glass, which is exactly the window this guards.
+    let lastScrollAt = -Infinity;
+    const onScroll = () => {
+      lastScrollAt = Date.now();
+    };
 
     /** One paint: where the indicator is, and how much of the ring is drawn. */
     function paint(next: number, settle: boolean) {
@@ -78,6 +86,7 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
 
     function onStart(e: TouchEvent) {
       if (busy || window.scrollY > 0 || openSheetCount() > 0) return;
+      if (Date.now() - lastScrollAt < SCROLL_SETTLE_MS) return;
       startY = e.touches[0]?.clientY ?? null;
       startX = e.touches[0]?.clientX ?? 0;
       disqualified = false;
@@ -122,11 +131,13 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
       }
     }
 
+    window.addEventListener('scroll', onScroll, { passive: true });
     document.addEventListener('touchstart', onStart, { passive: true });
     document.addEventListener('touchmove', onMove, { passive: true });
     document.addEventListener('touchend', onEnd, { passive: true });
     document.addEventListener('touchcancel', onEnd, { passive: true });
     return () => {
+      window.removeEventListener('scroll', onScroll);
       document.removeEventListener('touchstart', onStart);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);

@@ -33,6 +33,14 @@ export const MAX_PULL = 130;
 export const STIFFNESS = 150;
 /** Indicator travel that arms a refresh. */
 export const TRIGGER = 80;
+/**
+ * A touch that lands this soon after the page last scrolled belongs to that
+ * scroll, not to a new pull. Scrolling up quickly glides the last stretch to
+ * the top on momentum; the next swipe down lands with the page already at 0,
+ * and without this it read as "at the top, pulling down" and refreshed. Grant,
+ * 2026-09-17: "Scrolling up is still triggering it".
+ */
+export const SCROLL_SETTLE_MS = 400;
 /** Where the indicator rests while a refresh is running. */
 export const HOLD = 68;
 /** A refresh that finishes faster than this still shows the spinner this long,

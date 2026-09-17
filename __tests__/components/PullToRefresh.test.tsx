@@ -73,6 +73,21 @@ describe('PullToRefresh', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
+  it('a swipe that lands while the page is still arriving at the top is the scroll, not a pull', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(10_000);
+    const { onRefresh } = mount();
+    // Scrolling up: the page glides to 0 on momentum and fires scroll events.
+    window.dispatchEvent(new Event('scroll'));
+    now.mockReturnValue(10_200); // the next swipe lands 200ms later
+    await pull(200);
+    expect(onRefresh).not.toHaveBeenCalled();
+
+    now.mockReturnValue(11_000); // once the page has settled, a pull is a pull
+    await pull(200);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    now.mockRestore();
+  });
+
   it('does nothing while a sheet is open — asked of the sheet stack, not sniffed from body styles', async () => {
     const { onRefresh } = mount();
     const unregister = registerOpenSheet(() => {});
