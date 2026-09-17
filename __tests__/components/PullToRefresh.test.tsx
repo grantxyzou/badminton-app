@@ -34,6 +34,17 @@ describe('PullToRefresh', () => {
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
+  it('stays armed while the refresh runs, even though it rests below the trigger', async () => {
+    let finish!: () => void;
+    const { wrap } = mount(vi.fn(() => new Promise<void>((r) => { finish = r; })));
+    await pull(200);
+    // Refreshing: the disc sits at HOLD, which is below TRIGGER. It must not
+    // shrink back the instant the spinner starts.
+    expect(wrap.dataset.armed).toBe('true');
+    await act(async () => { finish(); await new Promise((r) => setTimeout(r, 500)); });
+    expect(wrap.dataset.armed).toBe('false');
+  });
+
   it('a flick-sized pull (~120px) springs back and refreshes nothing', async () => {
     const { onRefresh, wrap } = mount();
     await pull(120);

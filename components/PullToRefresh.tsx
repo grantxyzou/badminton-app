@@ -9,7 +9,7 @@ import { HOLD, MIN_SPIN_MS, SCROLL_SETTLE_MS, TRIGGER, pullDistance, pullProgres
  * design), so "refresh" re-runs the current view's data fetches — the parent
  * does that by remounting the active tab when `onRefresh` fires.
  *
- * The feel lives in `lib/pullToRefresh.ts` (a damped curve, a ~110px trigger);
+ * The feel lives in `lib/pullToRefresh.ts` (a damped curve, a ~180px trigger);
  * this file is the gesture and the paint. Three rules:
  *
  * 1. NO RENDER PER FRAME. The indicator's transform and the ring are written
@@ -74,7 +74,11 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
       }
       // Crossing the trigger is a moment, not a number: the disc pops, and on
       // Android the phone ticks. Once per crossing, both ways.
-      const nowArmed = next >= TRIGGER;
+      // Frozen while a refresh runs. The disc settles to HOLD, which sits BELOW
+      // TRIGGER since the retune, so re-deriving here un-armed it at the very
+      // instant the refresh began: the disc shrank and jumped up as it started
+      // to spin. The end of a refresh clears `busy` first, so it disarms.
+      const nowArmed = busy ? armed : next >= TRIGGER;
       if (nowArmed !== armed) {
         armed = nowArmed;
         wrap.dataset.armed = nowArmed ? 'true' : 'false';
