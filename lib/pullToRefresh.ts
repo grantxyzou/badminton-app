@@ -11,20 +11,36 @@
  * - The pull is DAMPED, not linear: it follows the finger closely at first and
  *   stiffens as it goes (`MAX * (1 - e^(-d/STIFFNESS))`), which is what a native
  *   pull feels like, and it can never run away down the screen.
- * - It triggers at `TRIGGER` of indicator travel, which is ~100px of finger
- *   after the dead zone — about a third of before.
+ * - It triggers at `TRIGGER` of indicator travel.
+ *
+ * RETUNED THE NEXT DAY (2026-09-17). ~100px of finger fired on an ordinary flick
+ * down at the top of a page; Grant: "Swiping gesture for app refresh is way too
+ * sensitive". Native apps get away with ~100px because the content rubber-bands
+ * as you pull, so a small pull LOOKS small. Here the page is pinned
+ * (`overscroll-behavior-y: none`) and only the disc moves, so there is no such
+ * warning. Now ~180px: a 40px dead zone swallows the start of a casual swipe,
+ * and the trigger sits further up the curve. Still under two thirds of the
+ * original 283px, and the damped feel is unchanged.
  * - The page no longer rubber-bands under it: `overscroll-behavior-y: none` on
  *   the root (globals.css) leaves the indicator the ONLY thing that moves.
  */
 
 /** Raw drag ignored before anything moves: the jitter at the top of a scroll. */
-export const DEAD_ZONE = 16;
+export const DEAD_ZONE = 40;
 /** The furthest the indicator can travel, however far the finger goes. */
 export const MAX_PULL = 130;
 /** How quickly the pull stiffens. Larger = looser. */
 export const STIFFNESS = 150;
 /** Indicator travel that arms a refresh. */
-export const TRIGGER = 56;
+export const TRIGGER = 80;
+/**
+ * A touch that lands this soon after the page last scrolled belongs to that
+ * scroll, not to a new pull. Scrolling up quickly glides the last stretch to
+ * the top on momentum; the next swipe down lands with the page already at 0,
+ * and without this it read as "at the top, pulling down" and refreshed. Grant,
+ * 2026-09-17: "Scrolling up is still triggering it".
+ */
+export const SCROLL_SETTLE_MS = 400;
 /** Where the indicator rests while a refresh is running. */
 export const HOLD = 68;
 /** A refresh that finishes faster than this still shows the spinner this long,

@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { openSheetCount } from '@/lib/sheetStack';
-import { HOLD, MIN_SPIN_MS, TRIGGER, pullDistance, pullProgress } from '@/lib/pullToRefresh';
+import { HOLD, MIN_SPIN_MS, SCROLL_SETTLE_MS, TRIGGER, pullDistance, pullProgress } from '@/lib/pullToRefresh';
 
 /**
  * Pull-to-refresh. There is no fetch-intercepting service worker (live-only by
  * design), so "refresh" re-runs the current view's data fetches — the parent
  * does that by remounting the active tab when `onRefresh` fires.
  *
- * The feel lives in `lib/pullToRefresh.ts` (a damped curve, a ~110px trigger);
+ * The feel lives in `lib/pullToRefresh.ts` (a damped curve, a ~180px trigger);
  * this file is the gesture and the paint. Three rules:
  *
  * 1. NO RENDER PER FRAME. The indicator's transform and the ring are written
@@ -21,12 +21,28 @@ import { HOLD, MIN_SPIN_MS, TRIGGER, pullDistance, pullProgress } from '@/lib/pu
  *    off in CSS instead (`overscroll-behavior-y: none` on the root), so the
  *    indicator is the only thing that moves and nothing has to be prevented.
  * 3. A SCROLL IS NEVER A PULL. The gesture must start at the top with no sheet
- *    open; any upward travel, or sideways travel that beats vertical, retires
- *    it for good — so a scroll that bounces off the top edge can't flip into a
- *    refresh halfway through.
+ *    open, and with the page STILL: a touch within `SCROLL_SETTLE_MS` of the
+ *    last scroll is the tail of scrolling up, not a new pull. Any upward
+ *    travel, or sideways travel that beats vertical, retires it for good — so
+ *    a scroll that bounces off the top edge can't flip into a refresh halfway
+ *    through.
  *
  * The body is the scroll container in this app, so listeners live on `document`.
+ *
+ * AND SO THE BODY IS WHAT SCROLLS (2026-09-17). `html, body { height: 100%;
+ * overflow-x: hidden }` makes `<body>` the scroller: `window.scrollY` reads 0
+ * however far down the page is, and a body `scroll` event does not bubble to
+ * `window`. The "at the top" guard read `window.scrollY`, so it never once
+ * refused — a pull could start mid-page, and scrolling up (a finger moving
+ * down) armed a refresh. It went unnoticed while the trigger needed 283px.
+ * Measured on production: body.scrollTop 300, window.scrollY 0, zero `scroll`
+ * events on window. Same trap `useScrollCondensed` documents.
  */
+/** How far the page is scrolled, whichever element is doing the scrolling. */
+function pageScrollTop(): number {
+  return Math.max(window.scrollY, document.documentElement.scrollTop, document.body?.scrollTop ?? 0);
+}
+
 const UP_CANCEL = 8; // px of upward travel that marks the gesture as a scroll
 const H_SLOP = 10; // px of sideways travel tolerated before a diagonal drag disqualifies
 
@@ -47,6 +63,17 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
     let armed = false;
     let busy = false;
     let disqualified = false;
+    // When the page last moved. Momentum scrolling fires `scroll` without a
+    // finger on the glass, which is exactly the window this guards. Listened
+    // for in the CAPTURE phase on document: the body's scroll event does not
+    // bubble, so a window listener never hears it.
+    let lastScrollAt = -Infinity;
+    const onScroll = (e: Event) => {
+      // Capture on document also hears nested scrollers (a card rail, a sheet
+      // body). Only the PAGE moving is the tail of a scroll-up.
+      const t = e.target;
+      if (t === document || t === document.documentElement || t === document.body) lastScrollAt = Date.now();
+    };
 
     /** One paint: where the indicator is, and how much of the ring is drawn. */
     function paint(next: number, settle: boolean) {
@@ -66,7 +93,11 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
       }
       // Crossing the trigger is a moment, not a number: the disc pops, and on
       // Android the phone ticks. Once per crossing, both ways.
-      const nowArmed = next >= TRIGGER;
+      // Frozen while a refresh runs. The disc settles to HOLD, which sits BELOW
+      // TRIGGER since the retune, so re-deriving here un-armed it at the very
+      // instant the refresh began: the disc shrank and jumped up as it started
+      // to spin. The end of a refresh clears `busy` first, so it disarms.
+      const nowArmed = busy ? armed : next >= TRIGGER;
       if (nowArmed !== armed) {
         armed = nowArmed;
         wrap.dataset.armed = nowArmed ? 'true' : 'false';
@@ -77,7 +108,8 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
     }
 
     function onStart(e: TouchEvent) {
-      if (busy || window.scrollY > 0 || openSheetCount() > 0) return;
+      if (busy || pageScrollTop() > 0 || openSheetCount() > 0) return;
+      if (Date.now() - lastScrollAt < SCROLL_SETTLE_MS) return;
       startY = e.touches[0]?.clientY ?? null;
       startX = e.touches[0]?.clientX ?? 0;
       disqualified = false;
@@ -85,7 +117,7 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
 
     function onMove(e: TouchEvent) {
       if (startY === null || busy || disqualified) return;
-      if (window.scrollY > 0) {
+      if (pageScrollTop() > 0) {
         startY = null;
         paint(0, true);
         return;
@@ -122,11 +154,13 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
       }
     }
 
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     document.addEventListener('touchstart', onStart, { passive: true });
     document.addEventListener('touchmove', onMove, { passive: true });
     document.addEventListener('touchend', onEnd, { passive: true });
     document.addEventListener('touchcancel', onEnd, { passive: true });
     return () => {
+      document.removeEventListener('scroll', onScroll, { capture: true });
       document.removeEventListener('touchstart', onStart);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
