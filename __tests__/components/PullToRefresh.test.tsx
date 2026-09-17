@@ -28,15 +28,15 @@ function mount(onRefresh = vi.fn(async () => {})) {
 }
 
 describe('PullToRefresh', () => {
-  it('a pull of ~110px refreshes once — the old version needed ~283px', async () => {
+  it('a deliberate pull of ~200px refreshes once', async () => {
     const { onRefresh } = mount();
-    await pull(120);
+    await pull(200);
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it('a short pull springs back and refreshes nothing', async () => {
+  it('a flick-sized pull (~120px) springs back and refreshes nothing', async () => {
     const { onRefresh, wrap } = mount();
-    await pull(60);
+    await pull(120);
     expect(onRefresh).not.toHaveBeenCalled();
     expect(wrap.style.transform).toBe('translate3d(0, 0px, 0)');
   });
@@ -47,7 +47,7 @@ describe('PullToRefresh', () => {
     touch('touchmove', 100, 150);
     expect(wrap.dataset.settle).toBe('false');
     expect(wrap.dataset.armed).toBe('false');
-    touch('touchmove', 100, 260);
+    touch('touchmove', 100, 300);
     expect(wrap.dataset.armed).toBe('true');
   });
 

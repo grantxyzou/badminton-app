@@ -14,11 +14,16 @@ describe('the pull curve', () => {
     expect(pullDistance(DEAD_ZONE + 1)).toBeGreaterThan(0);
   });
 
-  it('arms at roughly iOS Mail distance, not three times it', () => {
-    // The old linear version needed ~283px. Native sits around 90-120px.
+  it('needs a deliberate pull: more than a flick, well short of the old 283px', () => {
+    // ~100px (the first retune) fired on an ordinary flick down at the top of a
+    // page, and 283px (the original) was a stretch. Aim for ~180.
     const travel = travelToTrigger();
-    expect(travel).toBeGreaterThanOrEqual(90);
-    expect(travel).toBeLessThanOrEqual(130);
+    expect(travel).toBeGreaterThanOrEqual(160);
+    expect(travel).toBeLessThanOrEqual(200);
+  });
+
+  it('a flick-sized drag arms nothing', () => {
+    expect(pullDistance(120)).toBeLessThan(TRIGGER);
   });
 
   it('stiffens as it goes and can never run away down the screen', () => {
