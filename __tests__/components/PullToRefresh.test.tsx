@@ -7,6 +7,7 @@ import { registerOpenSheet } from '../../lib/sheetStack';
 afterEach(() => {
   cleanup();
   Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+  Object.defineProperty(document.body, 'scrollTop', { value: 0, configurable: true });
 });
 
 /** A touch at (x, y) — jsdom has no Touch constructor, so a plain object will do. */
@@ -87,8 +88,9 @@ describe('PullToRefresh', () => {
   it('a swipe that lands while the page is still arriving at the top is the scroll, not a pull', async () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(10_000);
     const { onRefresh } = mount();
-    // Scrolling up: the page glides to 0 on momentum and fires scroll events.
-    window.dispatchEvent(new Event('scroll'));
+    // Scrolling up: the page glides to 0 on momentum. The BODY scrolls in this
+    // app, and its scroll event does not bubble, as a real one would not.
+    document.body.dispatchEvent(new Event('scroll', { bubbles: false }));
     now.mockReturnValue(10_200); // the next swipe lands 200ms later
     await pull(200);
     expect(onRefresh).not.toHaveBeenCalled();
@@ -97,6 +99,14 @@ describe('PullToRefresh', () => {
     await pull(200);
     expect(onRefresh).toHaveBeenCalledTimes(1);
     now.mockRestore();
+  });
+
+  it('does nothing mid-page when the BODY is what scrolls (window.scrollY stays 0)', async () => {
+    // What production does: body.scrollTop moves, window.scrollY never does.
+    Object.defineProperty(document.body, 'scrollTop', { value: 300, configurable: true });
+    const { onRefresh } = mount();
+    await pull(200);
+    expect(onRefresh).not.toHaveBeenCalled();
   });
 
   it('does nothing while a sheet is open — asked of the sheet stack, not sniffed from body styles', async () => {

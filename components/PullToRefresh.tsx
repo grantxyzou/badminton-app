@@ -28,7 +28,21 @@ import { HOLD, MIN_SPIN_MS, SCROLL_SETTLE_MS, TRIGGER, pullDistance, pullProgres
  *    through.
  *
  * The body is the scroll container in this app, so listeners live on `document`.
+ *
+ * AND SO THE BODY IS WHAT SCROLLS (2026-09-17). `html, body { height: 100%;
+ * overflow-x: hidden }` makes `<body>` the scroller: `window.scrollY` reads 0
+ * however far down the page is, and a body `scroll` event does not bubble to
+ * `window`. The "at the top" guard read `window.scrollY`, so it never once
+ * refused — a pull could start mid-page, and scrolling up (a finger moving
+ * down) armed a refresh. It went unnoticed while the trigger needed 283px.
+ * Measured on production: body.scrollTop 300, window.scrollY 0, zero `scroll`
+ * events on window. Same trap `useScrollCondensed` documents.
  */
+/** How far the page is scrolled, whichever element is doing the scrolling. */
+function pageScrollTop(): number {
+  return Math.max(window.scrollY, document.documentElement.scrollTop, document.body?.scrollTop ?? 0);
+}
+
 const UP_CANCEL = 8; // px of upward travel that marks the gesture as a scroll
 const H_SLOP = 10; // px of sideways travel tolerated before a diagonal drag disqualifies
 
@@ -50,7 +64,9 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
     let busy = false;
     let disqualified = false;
     // When the page last moved. Momentum scrolling fires `scroll` without a
-    // finger on the glass, which is exactly the window this guards.
+    // finger on the glass, which is exactly the window this guards. Listened
+    // for in the CAPTURE phase on document: the body's scroll event does not
+    // bubble, so a window listener never hears it.
     let lastScrollAt = -Infinity;
     const onScroll = () => {
       lastScrollAt = Date.now();
@@ -89,7 +105,7 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
     }
 
     function onStart(e: TouchEvent) {
-      if (busy || window.scrollY > 0 || openSheetCount() > 0) return;
+      if (busy || pageScrollTop() > 0 || openSheetCount() > 0) return;
       if (Date.now() - lastScrollAt < SCROLL_SETTLE_MS) return;
       startY = e.touches[0]?.clientY ?? null;
       startX = e.touches[0]?.clientX ?? 0;
@@ -98,7 +114,7 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
 
     function onMove(e: TouchEvent) {
       if (startY === null || busy || disqualified) return;
-      if (window.scrollY > 0) {
+      if (pageScrollTop() > 0) {
         startY = null;
         paint(0, true);
         return;
@@ -135,13 +151,13 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
       }
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     document.addEventListener('touchstart', onStart, { passive: true });
     document.addEventListener('touchmove', onMove, { passive: true });
     document.addEventListener('touchend', onEnd, { passive: true });
     document.addEventListener('touchcancel', onEnd, { passive: true });
     return () => {
-      window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('scroll', onScroll, { capture: true });
       document.removeEventListener('touchstart', onStart);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
