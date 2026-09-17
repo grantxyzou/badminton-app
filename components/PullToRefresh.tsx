@@ -68,8 +68,11 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
     // for in the CAPTURE phase on document: the body's scroll event does not
     // bubble, so a window listener never hears it.
     let lastScrollAt = -Infinity;
-    const onScroll = () => {
-      lastScrollAt = Date.now();
+    const onScroll = (e: Event) => {
+      // Capture on document also hears nested scrollers (a card rail, a sheet
+      // body). Only the PAGE moving is the tail of a scroll-up.
+      const t = e.target;
+      if (t === document || t === document.documentElement || t === document.body) lastScrollAt = Date.now();
     };
 
     /** One paint: where the indicator is, and how much of the ring is drawn. */

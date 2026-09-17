@@ -101,6 +101,19 @@ describe('PullToRefresh', () => {
     now.mockRestore();
   });
 
+  it('a nested scroller moving (a card rail) does not block the next pull', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(20_000);
+    const { onRefresh } = mount();
+    const rail = document.createElement('div');
+    document.body.appendChild(rail);
+    rail.dispatchEvent(new Event('scroll', { bubbles: false }));
+    now.mockReturnValue(20_100);
+    await pull(200);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    rail.remove();
+    now.mockRestore();
+  });
+
   it('does nothing mid-page when the BODY is what scrolls (window.scrollY stays 0)', async () => {
     // What production does: body.scrollTop moves, window.scrollY never does.
     Object.defineProperty(document.body, 'scrollTop', { value: 300, configurable: true });
