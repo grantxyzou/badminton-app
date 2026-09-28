@@ -139,10 +139,18 @@ export function burstPieces(count = BURST_COUNT, rng: () => number = Math.random
       rest: REST_DEG,
       wobble: Math.round(lerp(BURST_WOBBLE_MIN, BURST_WOBBLE_MAX, rng())),
       dur: Math.round(lerp(BURST_DUR_MIN, BURST_DUR_MAX, rng())),
-      delay: Math.round(rng() * BURST_DELAY_MAX),
+      // The LEAD shuttle leaves at once, with the haptic tap; the rest trail
+      // it. Random delays alone could hold the first visible movement back
+      // by tens of ms, and the tap would land on nothing. The rng is still
+      // drawn so every other piece keeps the sequence a test pins.
+      delay: leadDelay(i, rng()),
     });
   }
   return pieces;
+}
+
+function leadDelay(i: number, r: number): number {
+  return i === 0 ? 0 : Math.round(r * BURST_DELAY_MAX);
 }
 
 /** How long the whole burst is on screen: the last piece's landing, plus a beat. */

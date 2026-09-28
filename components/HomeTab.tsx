@@ -27,7 +27,7 @@ import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
-import { tapSuccess } from '@/lib/haptics';
+import { primeHaptics, tapSuccess } from '@/lib/haptics';
 import ShuttleBurst, { type BurstOrigin } from './home/ShuttleBurst';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
@@ -460,24 +460,30 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (joined) setPlayers((prev) => [...prev.filter((p) => p.id !== joined.id), joined]);
       if (!waitlist) setSignupEntrance(morph ? 'morph' : 'pop');
     };
-    // Felt at the same instant it is seen. Native shell only; a no-op anywhere
-    // it cannot be felt, including a shell built before the plugin was added.
     // The burst radiates from the button, whose rect has to be read BEFORE
     // the commit replaces it with the banner. A waitlist join gets none:
     // nothing landed yet. It is FIRED only once the morph has finished:
     // Safari paints a View Transition from static snapshots, so a burst
     // started in the same commit played behind a frozen picture and was
     // gone before the picture came down — invisible on every iPhone.
+    //
+    // The tap is felt in the SAME callback that launches the shuttles, so
+    // the buzz and the pop are one moment. It used to fire as the server
+    // answered, a whole morph (~250 ms) before anything flew — felt, then
+    // seen, which reads as two events. Native shell only; a no-op anywhere
+    // it cannot be felt. Reduced motion has no burst and no morph, so the
+    // tap still lands straight after the commit, with the banner.
     const rect = !waitlist ? submitRef.current?.getBoundingClientRect() : undefined;
-    const fireBurst = () => {
+    const launch = () => {
+      if (waitlist) return;
+      tapSuccess();
       if (rect) setBurst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, key: Date.now() });
     };
-    if (!waitlist) tapSuccess();
     if (morph) {
-      withViewTransition(commit, 'vt-signup', fireBurst);
+      withViewTransition(commit, 'vt-signup', launch);
     } else {
       commit();
-      fireBurst();
+      launch();
     }
     void loadData();
   }
@@ -625,6 +631,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    // Fetch the haptics code while the server works, so the tap is ready the
+    // instant the shuttles launch (see applySignup). A no-op off the shell.
+    primeHaptics();
     await performSignup(false);
   }
 

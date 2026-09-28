@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The buzz lands with the shuttles (2026-09-28)
+
+- **In the app, the little vibration when your sign-up lands now happens at the same instant the shuttles pop off the button.** It used to come about a quarter of a second early, while the button was still turning into the confirmation, so it felt like a separate event. The first shuttle now also leaves exactly on the buzz.
+
 ### The shuttles fly like shuttles (2026-09-28)
 
 - **The sign-up burst now moves the way a shuttlecock does.** It used to scatter in straight lines and fade, which looked like neither confetti nor badminton. Now each piece pops UP out of the button cork-first, runs out of speed the way a real shuttle does, flips nose-down at the top and drops almost straight down at a steady pace with a little rock, landing below the card about a second later — the shape of a shuttle's flight, taken from the published physics rather than guessed.

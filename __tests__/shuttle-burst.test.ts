@@ -89,6 +89,14 @@ describe('burstPieces', () => {
     }
   });
 
+  it('the lead shuttle leaves at once, with the haptic tap; the rest trail it', () => {
+    for (let run = 0; run < 50; run++) {
+      const pieces = burstPieces();
+      expect(pieces[0].delay).toBe(0);
+      expect(pieces.slice(1).some((p) => p.delay > 0)).toBe(true);
+    }
+  });
+
   it('aims the cork along the launch and rests it nose-down, the short way round', () => {
     for (let run = 0; run < 50; run++) {
       for (const p of burstPieces()) {
