@@ -4,8 +4,8 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { resolveIdentity, matchesIdentity, classifyOwed, type OwedReason } from '@/lib/playerIdentity';
-import type { Player, Session } from '@/lib/types';
+import { resolveIdentity, classifyOwed, type OwedReason } from '@/lib/playerIdentity';
+import { loadOwedInputs } from '@/lib/owedRows';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,26 +62,13 @@ export async function GET(req: NextRequest) {
 
     const identity = await resolveIdentity({ name, memberId }, scope.groupId);
 
-    const allSessions = await scope.query<Session>('sessions');
-    const sessionById = new Map<string, Session>();
-    for (const s of allSessions) sessionById.set(s.id, s);
-
-    // All of the group's players (small dataset for a friend group); we need
-    // the full roster per session for the live-share denominator, then filter
-    // to this identity.
-    const players = await scope.query<Player>('players');
-
-    const activeCountBySession = new Map<string, number>();
-    for (const p of players) {
-      if (!sessionById.has(p.sessionId)) continue;
-      if (p.removed === true || p.waitlisted === true) continue;
-      activeCountBySession.set(p.sessionId, (activeCountBySession.get(p.sessionId) ?? 0) + 1);
-    }
+    // Player-first (lib/owedRows.ts), shared with /api/players/unpaid so the
+    // audit and the balance card read the same rows the same way.
+    const { players, sessionById, activeCountBySession } = await loadOwedInputs(scope, identity);
 
     const linkedNames = new Set<string>();
     const rows: AuditRow[] = [];
     for (const p of players) {
-      if (!matchesIdentity(p, identity)) continue;
       const session = sessionById.get(p.sessionId);
       if (!session) continue;
       if (typeof p.name === 'string') linkedNames.add(p.name);

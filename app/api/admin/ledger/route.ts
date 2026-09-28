@@ -70,7 +70,19 @@ export async function GET(req: NextRequest) {
 
     const scope = groupScope(resolveGroupId(req));
 
-    const allSessions = await scope.query<Session>('sessions');
+    // Settled-only in SQL, and for a bounded range a date floor a day EARLIER
+    // than the window: `datetime` is an ISO string with a local offset, so a
+    // string compare can be up to a day off — the exact filter below decides,
+    // this just stops the whole history coming back for a 30-day view. The
+    // mock ignores `@fromBound` and the settled predicate alike, so the JS
+    // filter is unchanged.
+    const fromBound = range === 'all' ? null : new Date(fromMs - 24 * 60 * 60 * 1000).toISOString();
+    const allSessions = await scope.query<Session>('sessions', {
+      where: fromBound
+        ? 'IS_DEFINED(c.settled) AND NOT IS_NULL(c.settled) AND c.datetime >= @fromBound'
+        : 'IS_DEFINED(c.settled) AND NOT IS_NULL(c.settled)',
+      params: fromBound ? [{ name: '@fromBound', value: fromBound }] : [],
+    });
 
     // Settled-only + in-window. Unsettled sessions are deliberately excluded
     // from spent + bySession so the gap reflects bills already frozen.

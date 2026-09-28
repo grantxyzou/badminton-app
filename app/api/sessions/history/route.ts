@@ -43,12 +43,15 @@ export async function GET(req: NextRequest) {
     // Bound as the `@activeId` exclusion; a group with no session excludes nothing.
     const activeId = (await getActiveSessionId(scope.groupId)) ?? '';
 
-    // All PAST sessions (the accessor excludes the pointer and legacy docs;
-    // the active one is excluded here). Sort + slice in JS — the mock store
-    // ignores ORDER BY / LIMIT (same contract as sessions/recent).
+    // PAST sessions (the accessor excludes the pointer and legacy docs; the
+    // active one is excluded here), newest `limit` of them in SQL. The JS
+    // sort + slice stays because the mock store ignores ORDER BY / LIMIT
+    // (same contract as sessions/recent).
     const allSessions = await scope.query<Session>('sessions', {
       where: 'c.id != @activeId',
       params: [{ name: '@activeId', value: activeId }],
+      orderBy: 'c.id DESC',
+      limit,
     });
     const sessions = allSessions
       .sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))

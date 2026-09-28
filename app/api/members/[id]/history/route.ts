@@ -58,10 +58,18 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const sessionMap = new Map<string, Session>();
     const attendanceBySession = new Map<string, number>();
     if (sessionIds.length > 0) {
-      // A member's history reaches back to the legacy default session too.
-      const allSessions = await scope.query<Session>('sessions', { includeLegacy: true });
+      // Only the sessions this member has a row in — a member's history
+      // reaches back to the legacy default session too, hence includeLegacy.
+      // The mock ignores `@sessionIds` and returns every row; the JS checks
+      // below are what keep it honest (lib/owedRows.ts has the same shape).
+      const wanted = new Set(sessionIds);
+      const allSessions = await scope.query<Session>('sessions', {
+        where: 'ARRAY_CONTAINS(@sessionIds, c.id)',
+        params: [{ name: '@sessionIds', value: sessionIds }],
+        includeLegacy: true,
+      });
       for (const s of allSessions) {
-        if (sessionIds.includes(s.id)) sessionMap.set(s.id, s);
+        if (wanted.has(s.id)) sessionMap.set(s.id, s);
       }
       // Count active players per session so cost-per-person uses the right
       // denominator. Previously this read session.prevCostPerPerson, which
@@ -69,10 +77,12 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       // last week's number.
       const allPlayers = await scope.query<{ sessionId?: string; removed?: boolean; waitlisted?: boolean }>('players', {
         select: 'c.sessionId, c.removed, c.waitlisted',
+        where: 'ARRAY_CONTAINS(@sessionIds, c.sessionId)',
+        params: [{ name: '@sessionIds', value: sessionIds }],
       });
       for (const p of allPlayers) {
         if (typeof p.sessionId !== 'string') continue;
-        if (!sessionIds.includes(p.sessionId)) continue;
+        if (!wanted.has(p.sessionId)) continue;
         if (p.removed === true || p.waitlisted === true) continue;
         attendanceBySession.set(p.sessionId, (attendanceBySession.get(p.sessionId) ?? 0) + 1);
       }

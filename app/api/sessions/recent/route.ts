@@ -29,8 +29,10 @@ export async function GET(req: NextRequest) {
   try {
     const scope = groupScope(resolveGroupId(req));
 
-    const allSessions = await scope.query<Session>('sessions');
-    // Sort + limit in JS — Cosmos honors ORDER BY/LIMIT but the mock store doesn't.
+    // ORDER BY + LIMIT in SQL so Cosmos returns `limit` docs, not the whole
+    // history; the JS sort + slice stays because the mock store ignores both
+    // (same contract as lib/kudosEligibility.ts).
+    const allSessions = await scope.query<Session>('sessions', { orderBy: 'c.id DESC', limit });
     const sessions = (allSessions as Session[])
       .sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
       .slice(0, limit);
