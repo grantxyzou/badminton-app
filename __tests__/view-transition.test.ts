@@ -48,6 +48,44 @@ describe('withViewTransition', () => {
     expect(update).toHaveBeenCalledOnce();
   });
 
+  /* `onFinished` is for work that must be SEEN: Safari paints a transition
+     from static snapshots, so an animation started inside one plays behind a
+     frozen picture. It runs after the update when nothing animates, and after
+     the transition settles otherwise — settled, not resolved: a skipped
+     transition rejects `finished` and the update still landed. */
+  it('calls onFinished straight after the update when no transition runs', () => {
+    reducedMotion(false);
+    const order: string[] = [];
+    withViewTransition(() => order.push('update'), undefined, () => order.push('finished'));
+    expect(order).toEqual(['update', 'finished']);
+  });
+
+  it('calls onFinished only once the transition has finished', async () => {
+    reducedMotion(false);
+    let finish!: () => void;
+    const finished = new Promise<void>((r) => { finish = r; });
+    doc().startViewTransition = vi.fn((cb: () => void) => { cb(); return { finished }; });
+    const onFinished = vi.fn();
+    withViewTransition(() => {}, 'vt-test', onFinished);
+    expect(onFinished).not.toHaveBeenCalled();
+    finish();
+    await finished;
+    await Promise.resolve();
+    expect(onFinished).toHaveBeenCalledOnce();
+    expect(document.documentElement.classList.contains('vt-test')).toBe(false);
+  });
+
+  it('still calls onFinished when the transition is skipped (finished rejects)', async () => {
+    reducedMotion(false);
+    const finished = Promise.reject(new Error('skipped'));
+    doc().startViewTransition = vi.fn((cb: () => void) => { cb(); return { finished }; });
+    const onFinished = vi.fn();
+    withViewTransition(() => {}, 'vt-test', onFinished);
+    await finished.catch(() => {});
+    await Promise.resolve();
+    expect(onFinished).toHaveBeenCalledOnce();
+  });
+
   it('holds the scope class on <html> only until the transition finishes', async () => {
     reducedMotion(false);
     let finish!: () => void;

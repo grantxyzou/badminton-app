@@ -462,16 +462,23 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     };
     // Felt at the same instant it is seen. Native shell only; a no-op anywhere
     // it cannot be felt, including a shell built before the plugin was added.
-    if (!waitlist) {
-      tapSuccess();
-      // The burst radiates from the button, whose rect has to be read BEFORE
-      // the commit replaces it with the banner. A waitlist join gets none:
-      // nothing landed yet.
-      const rect = submitRef.current?.getBoundingClientRect();
+    // The burst radiates from the button, whose rect has to be read BEFORE
+    // the commit replaces it with the banner. A waitlist join gets none:
+    // nothing landed yet. It is FIRED only once the morph has finished:
+    // Safari paints a View Transition from static snapshots, so a burst
+    // started in the same commit played behind a frozen picture and was
+    // gone before the picture came down — invisible on every iPhone.
+    const rect = !waitlist ? submitRef.current?.getBoundingClientRect() : undefined;
+    const fireBurst = () => {
       if (rect) setBurst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, key: Date.now() });
+    };
+    if (!waitlist) tapSuccess();
+    if (morph) {
+      withViewTransition(commit, 'vt-signup', fireBurst);
+    } else {
+      commit();
+      fireBurst();
     }
-    if (morph) withViewTransition(commit, 'vt-signup');
-    else commit();
     void loadData();
   }
 

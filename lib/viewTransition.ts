@@ -25,9 +25,19 @@ export function canViewTransition(): boolean {
   }
 }
 
-export function withViewTransition(update: () => void, scope?: string): boolean {
+/**
+ * `onFinished` runs once the transition has settled (resolved OR rejected —
+ * a skipped transition still lands the update), or straight after `update`
+ * when no transition runs. It exists for work that must be SEEN, not just
+ * committed: while a transition runs, Safari paints static snapshots of
+ * both states, so anything animating inside the new DOM plays behind a
+ * frozen picture — the sign-up shuttle burst was invisible on every iPhone
+ * for exactly that reason (docs/plans/signup-shuttle-burst.md).
+ */
+export function withViewTransition(update: () => void, scope?: string, onFinished?: () => void): boolean {
   if (!canViewTransition()) {
     update();
+    onFinished?.();
     return false;
   }
   /* `scope` goes on <html> for the life of the transition only, and the CSS
@@ -42,6 +52,7 @@ export function withViewTransition(update: () => void, scope?: string): boolean 
   }) as { finished?: Promise<unknown> } | undefined;
   const clear = () => {
     if (scope) root.classList.remove(scope);
+    onFinished?.();
   };
   if (transition?.finished) transition.finished.then(clear, clear);
   else clear();
