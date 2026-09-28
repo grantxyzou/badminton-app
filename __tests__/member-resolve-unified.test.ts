@@ -84,8 +84,10 @@ describe('duplicate-member vectors are closed', () => {
     // invisible to it and the admin-bypass branch used to create a duplicate.
     const gone = seedMember('Gone', { active: false });
     const { POST } = await import('@/app/api/players/route');
-    const { makeRequest, seedPointer, seedSession, setupAdminPin, adminCookieValue, getStore } = await import('./helpers');
+    const { makeRequest, seedPointer, seedSession, setupAdminPin, seedTestAdminMember, adminCookieValue, getStore } = await import('./helpers');
     setupAdminPin();
+    // Admin mutations on this route re-read the Member doc (role + active).
+    await seedTestAdminMember();
     seedPointer('session-2026-08-27');
     seedSession('session-2026-08-27', { signupOpen: true, maxPlayers: 12 });
 
