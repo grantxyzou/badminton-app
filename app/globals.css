@@ -2993,7 +2993,8 @@ textarea {
    at its landing (opacity 0) until the layer unmounts, instead of snapping
    back to the origin for a frame. Reduced motion: the component mounts
    nothing, and the blanket rule above would end the flight on frame one
-   regardless. */
+   regardless. It starts AFTER the sign-up View Transition, never inside it —
+   see the note under `html.vt-signup` below for why. */
 .shuttle-burst {
   position: fixed;
   inset: 0;
@@ -3028,17 +3029,14 @@ textarea {
 html.vt-signup .vt-signup-confirm { view-transition-name: signup-confirm; }
 html.vt-signup .vt-signup-card { view-transition-name: signup-card; }
 html.vt-signup .vt-home-account { view-transition-name: home-account; }
-/* The shuttle burst starts in the SAME commit as the morph, so for the
-   transition's 250ms it lives inside the "new" snapshot — and named groups
-   paint ABOVE the root snapshot, which put the card over the first and
-   fastest third of the burst (the screenshot showed three of fourteen pieces,
-   the ones outside the card's box). Named, the layer is the topmost group
-   (it is fixed, z-index 70) and its new image is live, so the flight shows
-   through. No entry fade: the group exists only in the new state, and the
-   default `::view-transition-new` fade-in would dim exactly the frames it is
-   there for. */
-html.vt-signup .shuttle-burst { view-transition-name: signup-burst; }
-::view-transition-new(signup-burst) { animation: none; }
+/* The shuttle burst is deliberately NOT part of this transition. It is fired
+   from `withViewTransition`'s onFinished, after the morph has landed. Two
+   attempts to run it DURING the morph both failed in a browser: unnamed, it
+   sat in the root snapshot under the card's group and only the pieces
+   outside the card's box showed; named (`view-transition-name` on the
+   layer), Chromium painted it live but Safari paints every snapshot STATIC,
+   so the whole flight played behind a frozen picture and had unmounted by
+   the time the picture came down — nothing on any iPhone. */
 /* The morph IS the banner's entrance. Its own slide-in would run inside the
    live "new" snapshot and arrive late and faint. Keyed on a persistent
    attribute, not the <html> class, because dropping that class when the
