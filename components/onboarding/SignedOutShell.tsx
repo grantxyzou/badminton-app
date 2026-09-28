@@ -192,7 +192,9 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
     <>
       <ThemeToggle />
       <LanguageToggle />
-      <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top min-h-screen">
+      {/* `data-signed-out` is what `scripts/smoke-prod.mjs` reads to tell this
+          shell from a half-rendered HomeShell: neither has a nav. */}
+      <main data-page-shell data-signed-out className="max-w-lg mx-auto px-4 page-shell-top min-h-screen">
         <TopToast
           content={
             notice && banner
