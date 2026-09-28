@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isRefused } from '@/lib/apiFetch';
 import { useOnline } from '@/lib/useOnline';
 import { rackets as racketsOf, activeRacket } from '@/lib/activeRacket';
 import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, FitPlayStyle, FitSoreness, FitLevelOption, RacketFeel, ItemLook, StringCrosses } from '@/lib/types';
@@ -189,7 +190,7 @@ export function useGear(name: string | null): UseGear {
       // 401/403: the caller is not (or is no longer) this member. Read the
       // body for nothing — the status alone is the whole story, and it is a
       // story the member can act on.
-      if (res.status === 401 || res.status === 403) {
+      if (isRefused(res)) {
         return { ok: false, reason: 'unauthorized' };
       }
       // The bag limiter runs BEFORE auth (Rule 4), so this is reachable by

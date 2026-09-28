@@ -73,12 +73,28 @@ describe('auth strip canary', () => {
   it('strips email from cross-member responses but NOT from members/me', () => {
     // email is a NARROW canary: the caller must be able to read their own
     // address back on Profile, exactly as statsPrivacy already works. Any
-    // OTHER member-record response must drop it.
-    const listSrc = readFileSync('app/api/members/route.ts', 'utf8');
-    for (const block of listSrc.split('recoveryCode: _rc').slice(1)) {
+    // OTHER member-record response must drop it. Since 2026-09-28 the
+    // member-record responses all go through `publicMember`, so the rule is
+    // checked on the helper and the routes are checked to USE it.
+    const helperSrc = readFileSync('lib/publicShapes.ts', 'utf8');
+    const blocks = helperSrc.split('recoveryCode: _rc').slice(1);
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
       expect(block.slice(0, 400)).toContain('email: _em');
+    }
+    for (const route of ['app/api/members/route.ts', 'app/api/admin/settings/route.ts']) {
+      const src = readFileSync(route, 'utf8');
+      expect(src, `${route} must strip through publicMember`).toContain('publicMember(');
+      expect(src, `${route} must not grow a hand-written strip beside the helper`).not.toContain('recoveryCode: _rc');
     }
     const meSrc = readFileSync('app/api/members/me/route.ts', 'utf8');
     expect(meSrc).not.toContain('email: _em');
+  });
+
+  it('player responses strip through publicPlayer', () => {
+    const src = readFileSync('app/api/players/route.ts', 'utf8');
+    expect(src).toContain('publicPlayer(');
+    expect(src).not.toContain('deleteToken: _dt');
+    expect(src).not.toContain('pinHash: _ph');
   });
 });

@@ -5,6 +5,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import EmptyState from '@/components/primitives/EmptyState';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import CardHeader from '@/components/primitives/CardHeader';
+import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -37,7 +38,7 @@ export default function ETransferRecipientEditor() {
     setLoading(true);
     try {
       const res = await fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' });
-      if (res.status === 401 || res.status === 403) {
+      if (isRefused(res)) {
         setLoadState('refused');
         return;
       }

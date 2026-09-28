@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
+import { publicMember } from '@/lib/publicShapes';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
@@ -105,20 +106,10 @@ export async function PATCH(req: NextRequest) {
         ...(body.eTransferRecipient !== undefined ? { eTransferRecipient: body.eTransferRecipient } : {}),
       });
     }
-    const safe = resource as Record<string, unknown>;
     // This reads and echoes back the caller's own MEMBER document, so every
     // member secret has to come off — not just the PIN hash. `recoveryCode`
     // was already leaking here before the credential fields existed.
-    const {
-      pinHash: _ph,
-      recoveryCode: _rc,
-      passwordHash: _pw,
-      emailVerification: _ev,
-      passwordReset: _pr,
-      email: _em,
-      ...exposed
-    } = safe;
-    return NextResponse.json(exposed);
+    return NextResponse.json(publicMember(resource as Record<string, unknown>));
   } catch (error) {
     console.error('PATCH /api/admin/settings error:', error);
     return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });

@@ -219,7 +219,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   const receiptInput: ReceiptInput | null = useMemo(() => {
     if (!recipient || !date || !time) return null;
     return {
-      datetime: withLocalTz(date, time) || `${date}T${time}`,
+      datetime: withLocalTz(date, time),
       costPerPerson: perPlayer,
       courts: courtsVal,
       totalCost,

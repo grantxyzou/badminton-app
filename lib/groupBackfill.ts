@@ -48,7 +48,7 @@
  * too rather than trusted to the query.
  */
 import { getContainer } from './cosmos';
-import { CONTAINERS, containersOfScope, pkFieldOf, type ContainerName } from './containers';
+import { containersOfScope, pkFieldOf, type ContainerName } from './containers';
 import { BPM_GROUP_ID, groupScope } from './groupScope';
 import {
   rosterNameKey,
@@ -92,7 +92,7 @@ export const DEFAULT_ROW_BUDGET = 5000;
  * is deliberately modest: enough to make the budget above comfortable inside the
  * window, small enough that a backfill cannot starve the live app of RUs.
  */
-export const STAMP_CONCURRENCY = 12;
+const STAMP_CONCURRENCY = 12;
 
 /**
  * Stop stamping at this point and report, even with budget left. The belt to
@@ -100,7 +100,7 @@ export const STAMP_CONCURRENCY = 12;
  * Whatever Cosmos is doing, the operator gets a summary naming what is left
  * instead of a 504 naming nothing.
  */
-export const SOFT_DEADLINE_MS = 150_000;
+const SOFT_DEADLINE_MS = 150_000;
 
 /** Run `worker` over `items`, at most `n` in flight, preserving no order. */
 async function pooled<T>(items: T[], n: number, worker: (item: T) => Promise<void>): Promise<void> {
@@ -713,7 +713,5 @@ async function addRemovedMembership(m: Member): Promise<void> {
   });
 }
 
-/** For the tests: the registry's word on what this file touches. */
-export const BACKFILL_CONTAINERS = { stamped: STAMPED_CONTAINERS, registry: CONTAINERS } as const;
 // `reserveRosterName` is re-exported for the collision test's setup.
 export { reserveRosterName };

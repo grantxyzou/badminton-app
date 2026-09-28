@@ -38,7 +38,7 @@ const TOKEN_LEEWAY_MS = 60 * 1000;
 /** How long FCM should hold an undelivered message — same as the web arm. */
 const TTL_SECONDS = 60 * 60 * 6;
 
-export function loadServiceAccount(): ServiceAccount | null {
+function loadServiceAccount(): ServiceAccount | null {
   const raw = process.env.FCM_SERVICE_ACCOUNT_JSON;
   if (!raw) return null;
   try {
@@ -66,11 +66,6 @@ function b64url(input: Buffer | string): string {
 }
 
 let cached: { token: string; expiresAt: number } | null = null;
-
-/** Tests only — the cache is module state. */
-export function resetFcmTokenCache(): void {
-  cached = null;
-}
 
 /**
  * A bearer token for the messaging scope, minted from the service account and

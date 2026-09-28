@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { StateLink } from '@/components/primitives/StateCard';
+import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -30,7 +31,7 @@ interface RosterData {
 type Tile<T> = { data: T; problem: null } | { data: null; problem: TileProblem } | null;
 
 function problemOf(res: Response): TileProblem {
-  return res.status === 401 || res.status === 403 ? 'refused' : 'failed';
+  return isRefused(res) ? 'refused' : 'failed';
 }
 
 export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashTilesProps) {

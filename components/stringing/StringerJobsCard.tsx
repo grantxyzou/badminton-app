@@ -7,6 +7,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { STRINGING_FLOW } from '@/lib/stringing';
 import type { StringerJob } from '@/lib/types';
+import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -54,7 +55,7 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
     setRefused(false);
     try {
       const res = await fetch(`${BASE}/api/stringing/jobs?view=stringer`, { cache: 'no-store' });
-      if (res.status === 401 || res.status === 403) {
+      if (isRefused(res)) {
         setJobs(null);
         setRefused(true);
         return;

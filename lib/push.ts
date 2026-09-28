@@ -71,7 +71,7 @@ const TTL_SECONDS = 60 * 60 * 6;
  *  exists so a larger roster doesn't open every socket at once. */
 const CHUNK_SIZE = 20;
 
-export function isWebPushConfigured(): boolean {
+function isWebPushConfigured(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
       process.env.VAPID_PRIVATE_KEY &&
@@ -151,7 +151,7 @@ export function isWebSub(d: PushSubscriptionDoc): d is WebSub {
   );
 }
 
-export function isNativeSub(d: PushSubscriptionDoc): d is NativeSub {
+function isNativeSub(d: PushSubscriptionDoc): d is NativeSub {
   return (d.platform === 'ios' || d.platform === 'android') && typeof d.token === 'string' && d.token.length > 0;
 }
 

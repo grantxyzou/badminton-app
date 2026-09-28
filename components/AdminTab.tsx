@@ -10,6 +10,7 @@ import AdminDashboard from './admin/AdminDashboard';
 import PinInput from './PinInput';
 import PageHeader from './primitives/PageHeader';
 import ErrorState from './primitives/ErrorState';
+import { isRefused } from '@/lib/apiFetch';
 
 /* ─────────────────────────── Admin login ───────────────────────────
    Per PR B: admin auth is now per-player. Sign in with your name + your
@@ -41,7 +42,7 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
     let cancelled = false;
     fetch(`${BASE}/api/admin`)
       .then(async (r) => {
-        if (r.status === 401 || r.status === 403) {
+        if (isRefused(r)) {
           if (!cancelled) setIsAuthed(false);
           return;
         }

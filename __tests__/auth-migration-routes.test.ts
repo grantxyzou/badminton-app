@@ -116,7 +116,7 @@ describe('POST /api/auth/migrate/claim', () => {
   it('unknown, expired and used codes are one 404', async () => {
     const res = await claim({ link: 'a'.repeat(64) });
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ status: 'none' });
+    expect(await res.json()).toEqual({ error: 'not_found', status: 'none' });
     expect(setCookies(res)).not.toContain('member_session');
   });
 

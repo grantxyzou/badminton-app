@@ -43,7 +43,7 @@ const lower = (s: string) => s.trim().toLowerCase();
  * (CLAUDE.md) and does not match the dated prefix, so a prefix filter alone
  * would silently exclude the very session most people just played.
  */
-export async function recentSessionIds(
+async function recentSessionIds(
   groupId: string,
   activeSessionId: string,
   limit = CO_PLAY_LOOKBACK_SESSIONS,
