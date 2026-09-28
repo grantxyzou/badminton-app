@@ -7,6 +7,7 @@ import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, ownsNameOrAdm
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { GameResult } from '@/lib/types';
+import { invalidateGroupCalibration } from '@/lib/levelStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,6 +169,9 @@ export async function POST(req: NextRequest) {
       loggedAt: new Date().toISOString(),
     };
     const resource = await scope.create('gameResults', record);
+    // The level fold memoizes this group's games (lib/levelStore.ts); a new
+    // game must show in the next Stats load, not in thirty seconds.
+    invalidateGroupCalibration(scope.groupId);
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST games error:', error);

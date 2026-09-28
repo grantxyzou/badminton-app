@@ -48,6 +48,22 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Five fixes from the 2026-09-28 quality, efficiency and security audit (2026-09-28)
+
+- **Undoing a cover on a settled session can no longer thaw the bill silently.** The re-settle after an uncover swallowed both of its requests; if the first landed and the second failed, the session was left unsettled while the screen showed live numbers as if they were frozen. `lib/resettleSession.ts` is now the one owner of that pair for both the cover sheet and the uncover action, and a failure is shown in the sheet.
+- **A database outage looks like one.** `GET /api/session`, `/api/members` and `/api/sessions` answered a failed read with a default session or an empty list and a 200; they answer 503 now, so the app's "Couldn't load" state can fire.
+- **Sign-in recovery and access-request polling are rate-limited per IP before the body is read.** Both were keyed only on a caller-chosen name, so each new name was a fresh allowance.
+- **A failed push no longer writes the device's push endpoint (a send credential) to the server log.**
+- **Push reads are scoped to the member.** Sending to a member, or registering a device, read every subscription of every member and filtered in code; they read one partition now.
+
+### Five more from the same audit (2026-09-28)
+
+- **Guessing a PIN locks the account, not just the phone it came from.** After five wrong PINs in a row an account refuses PIN sign-in for a minute, doubling each time up to an hour; a correct PIN clears it. Before, every guard was per network address, so a four-digit PIN could be walked through from enough addresses.
+- **Your history matches your receipt.** A member's session history recomputed the per-person cost even for a settled session and ignored resplit covers, so it could show a different number than the receipt. One split now, everywhere; a session with no recorded cost says so instead of drawing a $0 receipt.
+- **Home and the admin landing ask the server less.** Duplicate reads on one screen are made once; the "are you still an admin?" check runs when the app is brought back to the front, at most once a minute, instead of on every focus.
+- **Your balance loads from your own rows.** The unpaid-balance read used to scan every session and every player row in the club on every Home load; it reads your rows first and only the sessions they name.
+- **Stats loads lighter.** The level calculation checks its cache before scanning game and check-in history, and container provisioning is checked once per server start instead of on every request.
+
 ### "Your groups" looks like the rest of Profile (2026-09-16)
 
 - Each club is a proper row now — its initial, its name, your role — with a tick on the one you're in, instead of a squashed pill with the text on its edge.

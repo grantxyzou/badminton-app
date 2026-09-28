@@ -1,6 +1,6 @@
 import type { ETransferRecipient, Session } from './types';
 import type { ReceiptInput } from './receiptTemplate';
-import { sessionCostTotals } from './sessionCost';
+import { costSplit, type SplitPlayer } from './sessionCost';
 
 export interface ReceiptBuild {
   /** Per-person amount whenever it is computable (snapshot or recompute),
@@ -13,12 +13,10 @@ export interface ReceiptBuild {
 }
 
 /** Minimal player shape the resolver needs — decoupled from the full `Player`. */
-type RosterPlayer = { name: string; removed?: boolean; waitlisted?: boolean };
+type RosterPlayer = SplitPlayer & { name: string };
 
-const NO_COST = 'This session has no recorded cost.';
-const NO_RECIPIENT = 'Set an e-transfer recipient first (admin settings) before sharing.';
-
-const round2 = (n: number): number => Math.round(n * 100) / 100;
+export const NO_COST = 'This session has no recorded cost.';
+export const NO_RECIPIENT = 'Set an e-transfer recipient first (admin settings) before sharing.';
 
 /**
  * Single source of truth for "what did this past session cost per person, and
@@ -28,8 +26,8 @@ const round2 = (n: number): number => Math.round(n * 100) / 100;
  *
  * - Settled → snapshot-first: the frozen, cover-aware `costPerPerson` /
  *   `totalCost` / `playerNames` win over any live recompute.
- * - Unsettled → best-effort recompute via the canonical `sessionCostTotals`
- *   helper (cover modes only exist post-settle; this matches the live path).
+ * - Unsettled → best-effort recompute via the canonical `costSplit`, which
+ *   honours a resplit cover the same way settle will when it freezes.
  */
 export function buildReceiptInput(
   session: Session,
@@ -45,14 +43,13 @@ export function buildReceiptInput(
     totalCost = session.settled.totalCost;
     playerNames = session.settled.playerNames;
   } else {
-    const active = players.filter((p) => !p.removed && !p.waitlisted);
-    const totals = sessionCostTotals(session);
-    if (totals.totalCost <= 0 || active.length === 0) {
+    const split = costSplit(session, players);
+    if (split.costPerPerson <= 0) {
       return { costPerPerson: null, input: null, error: NO_COST };
     }
-    totalCost = totals.totalCost;
-    costPerPerson = round2(totalCost / active.length);
-    playerNames = active.map((p) => p.name);
+    totalCost = split.totalCost;
+    costPerPerson = split.costPerPerson;
+    playerNames = split.active.map((p) => p.name);
   }
 
   // Cost is known from here. A receipt additionally needs someone to pay.

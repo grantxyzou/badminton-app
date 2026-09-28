@@ -68,3 +68,26 @@ describe('buildReceiptInput', () => {
     expect(r.error).toMatch(/e-transfer recipient/i);
   });
 });
+
+describe('costSplit is the one denominator', () => {
+  it('unsettled: a resplit cover leaves the denominator, an absorb cover stays in it', () => {
+    const s = settledSession({ settled: undefined, costPerCourt: 30, courts: 2 }); // totalCost 60
+    const players = [
+      { name: 'Lin' },
+      { name: 'Kento' },
+      { name: 'Sindhu', writtenOff: true, coverMode: 'resplit' as const },
+      { name: 'Akane', writtenOff: true }, // legacy cover = absorb
+    ];
+    const r = buildReceiptInput(s, players, RECIPIENT);
+    // 60 / (4 − 1 resplit) = 20, the same number settle will freeze.
+    expect(r.costPerPerson).toBe(20);
+    expect(r.input!.playerNames).toEqual(['Lin', 'Kento', 'Sindhu', 'Akane']);
+  });
+
+  it('unsettled: everyone resplit-covered is "no cost" rather than a division by zero', () => {
+    const s = settledSession({ settled: undefined, costPerCourt: 30, courts: 2 });
+    const r = buildReceiptInput(s, [{ name: 'Lin', writtenOff: true, coverMode: 'resplit' as const }], RECIPIENT);
+    expect(r.input).toBeNull();
+    expect(r.costPerPerson).toBeNull();
+  });
+});

@@ -3,7 +3,7 @@ import { getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { sessionCostTotals } from '@/lib/sessionCost';
+import { costSplit, isResplitCovered } from '@/lib/sessionCost';
 import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import type { Player, Session, SettledSnapshot } from '@/lib/types';
 
@@ -65,7 +65,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { courtTotal, birdTotal, totalCost } = sessionCostTotals(session);
+    // The one cover-aware split (lib/sessionCost.ts `costSplit`); settle
+    // freezes what it returns, so every later reader takes the snapshot.
+    const split = costSplit(session, activePlayers);
+    const { courtTotal, birdTotal, totalCost, denominator, costPerPerson, coveredTotal } = split;
 
     if (totalCost <= 0) {
       return NextResponse.json(
@@ -73,20 +76,6 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-
-    // Cover-aware denominator. A player the admin is covering (writtenOff)
-    // either:
-    //   - 'resplit' → excluded from the denominator, so their share is spread
-    //     across the remaining payers (group total unchanged, admin pays $0);
-    //   - 'absorb'  → kept in the denominator, so everyone else pays the same
-    //     and the admin eats the covered player's share.
-    // Legacy writtenOff with no coverMode is treated as 'absorb'.
-    const isCovered = (p: Player) => p.writtenOff === true;
-    const isResplit = (p: Player) => isCovered(p) && p.coverMode === 'resplit';
-    const isAbsorb = (p: Player) => isCovered(p) && p.coverMode !== 'resplit';
-
-    const resplitCount = activePlayers.filter(isResplit).length;
-    const denominator = activePlayers.length - resplitCount;
     if (denominator <= 0) {
       return NextResponse.json(
         { error: 'Everyone is covered — nobody left to split the cost across.' },
@@ -94,9 +83,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const costPerPerson = Math.round((totalCost / denominator) * 100) / 100;
-    const absorbCount = activePlayers.filter(isAbsorb).length;
-    const coveredTotal = Math.round(absorbCount * costPerPerson * 100) / 100;
     const at = new Date().toISOString();
 
     const snapshot: SettledSnapshot = {
@@ -129,7 +115,7 @@ export async function POST(req: NextRequest) {
       // absorb-covered players carry the per-person figure too so the ledger
       // can total what the admin absorbed — they're just flagged writtenOff so
       // it's never collected.
-      const owed = isResplit(player) ? 0 : costPerPerson;
+      const owed = isResplitCovered(player) ? 0 : costPerPerson;
       const updated: Player = {
         ...player,
         owedAmount: owed,

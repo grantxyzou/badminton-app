@@ -217,6 +217,14 @@ export interface NameReservation {
   name: string;
 }
 
+export interface PinLock {
+  /** Consecutive wrong PINs (decays after a day). */
+  failures: number;
+  lastFailedAt: string;
+  /** ISO; present while the account refuses PIN checks. */
+  lockedUntil?: string;
+}
+
 export interface Member {
   id: string;
   name: string;
@@ -262,6 +270,9 @@ export interface Member {
   canString?: boolean;
   /** Audit trail of recovery-related events (issue / redeem / fail). */
   recoveryEvents?: RecoveryEvent[];
+  /** Per-account wrong-PIN counter and lock (lib/pinLockout.ts). Additive;
+   *  absent = never failed. Not secret, but nothing a client needs. */
+  pinLock?: PinLock;
   /** Admin-only: organizer's default e-transfer recipient, used by the receipt export. */
   eTransferRecipient?: ETransferRecipient;
   /** Admin-only: dates (YYYY-MM-DD) the admin has marked as skipped. Used by the skip_date anomaly. */

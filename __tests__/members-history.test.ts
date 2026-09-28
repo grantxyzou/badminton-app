@@ -33,6 +33,36 @@ describe('GET /api/members/[id]/history', () => {
     expect(res.status).toBe(404);
   });
 
+  it('a settled session reports the FROZEN per-person amount, not a recompute', async () => {
+    // Settled with a resplit cover: 64 / 3 payers = 21.33 frozen. A recompute
+    // over 4 attendees would say 16 — which is what this route used to show,
+    // disagreeing with the member's own receipt.
+    seedMember('Daisy', { id: 'm-daisy' });
+    seedSession('session-2026-05-06', {
+      datetime: '2026-05-06T20:00:00-04:00', courts: 2, costPerCourt: 32,
+      settled: { at: '2026-05-06T23:00:00-04:00', costPerPerson: 21.33, totalCost: 64, courtTotal: 64, birdTotal: 0, playerCount: 3, playerNames: ['Daisy', 'A', 'B', 'C'] },
+    });
+    seedPlayer('session-2026-05-06', 'Daisy', { memberId: 'm-daisy', paid: false, removed: false, waitlisted: false });
+    for (const n of ['A', 'B']) seedPlayer('session-2026-05-06', n, { removed: false, waitlisted: false });
+    seedPlayer('session-2026-05-06', 'C', { removed: false, waitlisted: false, writtenOff: true, coverMode: 'resplit' });
+
+    const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/members/m-daisy/history'), ctx('m-daisy'));
+    const body = await res.json();
+    expect(body.sessions[0].costPerPerson).toBe(21.33);
+  });
+
+  it('an unsettled session splits cover-aware, the way settle will', async () => {
+    seedMember('Daisy', { id: 'm-daisy' });
+    seedSession('session-2026-05-06', { datetime: '2026-05-06T20:00:00-04:00', courts: 2, costPerCourt: 32 });
+    seedPlayer('session-2026-05-06', 'Daisy', { memberId: 'm-daisy', paid: false, removed: false, waitlisted: false });
+    for (const n of ['A', 'B']) seedPlayer('session-2026-05-06', n, { removed: false, waitlisted: false });
+    seedPlayer('session-2026-05-06', 'C', { removed: false, waitlisted: false, writtenOff: true, coverMode: 'resplit' });
+
+    const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/members/m-daisy/history'), ctx('m-daisy'));
+    const body = await res.json();
+    expect(body.sessions[0].costPerPerson).toBe(21.33);
+  });
+
   it('returns sessions ordered DESC by date with attendance/paid status', async () => {
     seedMember('Daisy', { id: 'm-daisy' });
     seedSession('session-2026-04-29', {

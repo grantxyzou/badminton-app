@@ -36,6 +36,8 @@ import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 import Collapse from './primitives/Collapse';
+import { sharedFetch } from '@/lib/sharedRead';
+import { primeMemberAvatars } from '@/lib/useMemberAvatars';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -184,11 +186,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     setWeekLoadError(false);
     setSessionMissing(false);
     try {
+      // `/api/session` and `/api/members` are also read by the shell and the
+      // avatar store on the same mount; `sharedFetch` makes that one request
+      // each while it is in flight (lib/sharedRead.ts).
       const [sRes, pRes, aRes, mRes, rRes] = await Promise.all([
-        fetch(`${BASE}/api/session`, { cache: 'no-store' }),
+        sharedFetch('/api/session'),
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
         fetch(`${BASE}/api/announcements`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/members`, { cache: 'no-store' }).catch(() => null),
+        sharedFetch('/api/members').catch(() => null),
         fetch(`${BASE}/api/releases`, { cache: 'no-store' }).catch(() => null),
       ]);
       // The players list is half of the sign-up card (spots left, are you
@@ -244,6 +249,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (mRes?.ok) {
         const memberList: { name: string; active: boolean }[] = await mRes.json();
         setMemberNames(memberList.filter(m => m.active).map(m => m.name));
+        // The roster's avatars come from this same read; the store used to
+        // fetch it again when the first face rendered.
+        primeMemberAvatars(memberList);
       }
       if (rRes && rRes.ok) setReleases(await rRes.json());
     } catch (e) {

@@ -161,6 +161,53 @@ describe('lib/push', () => {
       expect(subsInStore()[0].failureCount).toBe(1);
     });
 
+    it('never writes the endpoint to the log on a transient failure', async () => {
+      // A WebPushError carries the subscription ENDPOINT — a send credential —
+      // on the error object, and the module's contract is that the endpoint
+      // is never logged. The transient-failure line used to log the raw error.
+      const sub = seedSub('member-lin', 'secret-endpoint');
+      sendNotification.mockRejectedValue(
+        Object.assign(new Error('Received unexpected response code'), {
+          statusCode: 500,
+          body: 'push service says no',
+          headers: { 'x-trace': 'abc' },
+          endpoint: sub.endpoint,
+        }),
+      );
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        const { sendPushToAll } = await loadPush();
+        await sendPushToAll({ title: 'x', body: 'y' });
+        const failedLines = error.mock.calls.filter((c) => c[0] === '[push] send failed');
+        expect(failedLines).toHaveLength(1);
+        const logged = JSON.stringify(failedLines[0]);
+        expect(logged).not.toContain(sub.endpoint);
+        expect(logged).not.toContain('push.example.com');
+        // The debugging signal survives the strip.
+        expect(logged).toContain('500');
+        expect(logged).toContain('push service says no');
+      } finally {
+        error.mockRestore();
+      }
+    });
+
+    it('loggablePushDetail strips endpoint, token and keys and caps the body', async () => {
+      const { loggablePushDetail } = await loadPush();
+      const out = loggablePushDetail({
+        statusCode: 429,
+        endpoint: 'https://push.example.com/x',
+        token: 'fcm-token',
+        keys: { p256dh: 'p', auth: 'a' },
+        body: 'b'.repeat(500),
+      }) as Record<string, unknown>;
+      expect(out).not.toHaveProperty('endpoint');
+      expect(out).not.toHaveProperty('token');
+      expect(out).not.toHaveProperty('keys');
+      expect(out.statusCode).toBe(429);
+      expect((out.body as string).length).toBe(200);
+      expect(loggablePushDetail('plain string')).toBe('plain string');
+    });
+
     it('keeps the subscription when the error carries no status code', async () => {
       seedSub('member-lin', 'netfail');
       sendNotification.mockRejectedValue(new Error('socket hang up'));

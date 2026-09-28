@@ -158,11 +158,21 @@ export function isNativeSub(d: PushSubscriptionDoc): d is NativeSub {
 /** All subscription docs, optionally narrowed to a set of members. */
 async function loadSubscriptions(memberIds?: string[]): Promise<PushSubscriptionDoc[]> {
   await ensurePushContainer();
-  // NOTE: the mock store only understands @sessionId/@name/@id params, so a
-  // @memberId WHERE is ignored there and the whole container comes back. We
-  // JS-filter for mock/real parity — same convention as app/api/kudos/route.ts.
+  // The container is partitioned by /memberId, so a member-narrowed read is
+  // a partition-pruned query in Cosmos; only the true broadcast (no ids) reads
+  // every partition. The mock ignores `@memberIds` and returns every row, so
+  // the JS filter below stays for mock/real parity. (A comment here used to
+  // claim the mock ignored `@memberId` too and justified a whole-container
+  // SELECT on every send — the mock honours it, and the scan was the cost.)
   const { resources } = await getContainer('pushSubscriptions')
-    .items.query({ query: 'SELECT * FROM c' })
+    .items.query(
+      memberIds
+        ? {
+            query: 'SELECT * FROM c WHERE ARRAY_CONTAINS(@memberIds, c.memberId)',
+            parameters: [{ name: '@memberIds', value: memberIds }],
+          }
+        : { query: 'SELECT * FROM c' },
+    )
     .fetchAll();
 
   const all = (resources as PushSubscriptionDoc[]).filter(
@@ -187,6 +197,34 @@ interface Tally {
   sent: number;
   failed: number;
   removed: number;
+}
+
+/**
+ * What a failed send is allowed to leave in the log. A `WebPushError` carries
+ * the subscription ENDPOINT (a send credential) on the error object, so the
+ * raw error must never reach `console.error` — the status and a slice of the
+ * push service's reply are what a person debugging needs. The FCM twin already
+ * arrives redacted (`loggableFcmMessage`); the field strip covers both.
+ */
+export function loggablePushDetail(detail: unknown): unknown {
+  if (detail && typeof detail === 'object') {
+    const {
+      endpoint: _endpoint,
+      token: _token,
+      keys: _keys,
+      headers: _headers,
+      stack: _stack,
+      ...rest
+    } = detail as Record<string, unknown>;
+    const out: Record<string, unknown> = { ...rest };
+    if (detail instanceof Error) {
+      out.name = detail.name;
+      out.message = detail.message;
+    }
+    if (typeof out.body === 'string') out.body = out.body.slice(0, 200);
+    return out;
+  }
+  return detail;
 }
 
 /** A send resolved; a `gone` deletes the doc, anything else keeps it. */
@@ -222,7 +260,11 @@ async function record(
   // Transient (429, 5xx, network). Count it, but KEEP the subscription —
   // evicting on a temporary error would silently unsubscribe live users.
   tally.failed++;
-  console.error('[push] send failed', { id: sub.id, platform: sub.platform ?? 'web' }, outcome.detail);
+  console.error(
+    '[push] send failed',
+    { id: sub.id, platform: sub.platform ?? 'web' },
+    loggablePushDetail(outcome.detail),
+  );
   try {
     await container.items.upsert({ ...sub, failureCount: (sub.failureCount ?? 0) + 1 });
   } catch {

@@ -16,7 +16,7 @@ import PlayerProfileSheet from './PlayerProfileSheet';
 import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
-import { sessionCostTotals } from '@/lib/sessionCost';
+import { buildReceiptInput } from '@/lib/buildReceiptInput';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -82,7 +82,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
         fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' }),
       ]);
       const session = sessionRes.ok ? await sessionRes.json() : null;
-      const players = playersRes.ok ? (await playersRes.json()) as Array<{ name: string; removed?: boolean; waitlisted?: boolean }> : [];
+      const players = playersRes.ok ? (await playersRes.json()) as Array<{ name: string; removed?: boolean; waitlisted?: boolean; writtenOff?: boolean; coverMode?: 'absorb' | 'resplit' }> : [];
       const settings = settingsRes.ok ? (await settingsRes.json()) as { eTransferRecipient?: { name: string; email: string; memo?: string } | null } : null;
 
       const recipient = session?.eTransferRecipient ?? settings?.eTransferRecipient ?? null;
@@ -92,38 +92,18 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
         return;
       }
 
-      // When the session is settled, every field comes from the frozen
-      // snapshot — including playerNames, which means removed-after-settle
-      // players still appear on the receipt with the amount they owe. Live
-      // recompute is only used for unsettled (in-progress) sessions.
-      if (session.settled) {
-        setReceiptInput({
-          datetime: session.datetime,
-          costPerPerson: session.settled.costPerPerson,
-          courts: session.courts ?? 0,
-          totalCost: session.settled.totalCost,
-          playerNames: session.settled.playerNames,
-          recipient: { name: recipient.name, email: recipient.email },
-          memoTemplate: recipient.memo,
-        });
+      // `buildReceiptInput` is the single resolver (CLAUDE.md): snapshot-first
+      // for a settled session (removed-after-settle players still appear with
+      // what they owe), cover-aware recompute for an unsettled one. This used
+      // to be a fourth hand-rolled copy that ignored a resplit cover and drew
+      // a $0 receipt for a session with no cost; the resolver says so instead.
+      const built = buildReceiptInput(session, players, recipient);
+      if (!built.input) {
+        setReceiptError(built.error ?? 'Failed to load receipt data.');
+        setReceiptInput(null);
         return;
       }
-
-      const active = players.filter((p) => !p.removed && !p.waitlisted);
-      const { totalCost } = sessionCostTotals(session);
-      const costPerPerson = active.length > 0 && totalCost > 0
-        ? Math.round((totalCost / active.length) * 100) / 100
-        : 0;
-
-      setReceiptInput({
-        datetime: session.datetime,
-        costPerPerson,
-        courts: session.courts ?? 0,
-        totalCost,
-        playerNames: active.map((p) => p.name),
-        recipient: { name: recipient.name, email: recipient.email },
-        memoTemplate: recipient.memo,
-      });
+      setReceiptInput(built.input);
     } catch {
       setReceiptError('Failed to load receipt data.');
       setReceiptInput(null);

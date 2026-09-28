@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
@@ -405,10 +406,17 @@ export async function POST(req: NextRequest) {
       if (!checkRateLimit(`signup-pin:${trimmedName.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
         return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
       }
-      const ok = await verifyPin(candidate, matchedMember.pinHash);
-      if (!ok) {
+      // Per-account lock (lib/pinLockout.ts): locked reads as a wrong PIN.
+      if (isPinLocked(matchedMember.pinLock)) {
+        await verifyPin('0000', FAKE_HASH);
         return NextResponse.json({ error: 'pin_incorrect' }, { status: 401 });
       }
+      const ok = await verifyPin(candidate, matchedMember.pinHash);
+      if (!ok) {
+        await notePinFailure(matchedMember);
+        return NextResponse.json({ error: 'pin_incorrect' }, { status: 401 });
+      }
+      await notePinSuccess(matchedMember);
       // Verified by PIN on this call → trust this device for future sign-ups.
       // pinHash from body.pin is intentionally NOT mirrored back to the player
       // record (the client wasn't asking to change the PIN, just to authenticate).
@@ -729,9 +737,15 @@ export async function PATCH(req: NextRequest) {
             await verifyPin('0000', member.pinHash as string);
             return NextResponse.json({ error: 'current_pin_required' }, { status: 401 });
           }
-          if (!(await verifyPin(currentPin, member.pinHash as string))) {
+          if (isPinLocked(member.pinLock)) {
+            await verifyPin('0000', FAKE_HASH);
             return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
           }
+          if (!(await verifyPin(currentPin, member.pinHash as string))) {
+            await notePinFailure(member);
+            return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
+          }
+          await notePinSuccess(member);
         }
       }
 

@@ -80,7 +80,7 @@ async function fetchAllGames(groupId: string): Promise<CalGame[]> {
 
 /**
  * Self-seeds for the fold: each player's LATEST self-assessment overall, keyed
- * by lowercased name. Also returns the newest `takenAt` for cache-signing.
+ * by lowercased name.
  *
  * **Name-derived subjects are excluded** (issue #250). `POST /api/assessments`
  * deliberately still accepts writes for a name with no member record, storing
@@ -104,7 +104,7 @@ async function fetchAllGames(groupId: string): Promise<CalGame[]> {
  * every anchor. Closing the name/id split properly means migrating
  * `gameResults` first.
  */
-async function fetchSeeds(groupId: string): Promise<{ seeds: CalSeed[]; maxAt: string }> {
+async function fetchSeeds(groupId: string): Promise<{ seeds: CalSeed[] }> {
   try {
     await ensureContainer('assessments', '/memberId');
     // Narrowed to the roster with the flag on: `assessments` is PERSON-scoped,
@@ -115,46 +115,58 @@ async function fetchSeeds(groupId: string): Promise<{ seeds: CalSeed[]; maxAt: s
       .query({ query: 'SELECT c.memberId, c.name, c.takenAt, c.overall FROM c' })
       .fetchAll();
     const latest = new Map<string, { takenAt: string; overall: number | null }>();
-    let maxAt = '';
     for (const d of resources as { memberId?: string; name?: string; takenAt?: string; overall?: number | null }[]) {
       if (!d || typeof d.name !== 'string' || typeof d.takenAt !== 'string') continue;
       // Unauthenticated, name-derived subject — never an anchor. Mirrors the
       // same `startsWith('name:')` check `fetchLegacyStage` already uses.
       if (typeof d.memberId !== 'string' || d.memberId.startsWith('name:')) continue;
       if (roster && !roster.has(d.memberId)) continue;
-      // maxAt covers only documents that can actually change the result, so a
-      // skipped write doesn't needlessly bust the group-calibration cache.
-      if (d.takenAt > maxAt) maxAt = d.takenAt;
       const key = d.name.trim().toLowerCase();
       const cur = latest.get(key);
       if (!cur || d.takenAt > cur.takenAt) latest.set(key, { takenAt: d.takenAt, overall: typeof d.overall === 'number' ? d.overall : null });
     }
     const seeds: CalSeed[] = [...latest.entries()].map(([nameLower, v]) => ({ nameLower, selfLevel: v.overall }));
-    return { seeds, maxAt };
+    return { seeds };
   } catch (err) {
     console.error('level: seed read failed:', err);
-    return { seeds: [], maxAt: '' };
+    return { seeds: [] };
   }
 }
 
 // ── In-process group-calibration cache (critique I), one entry per group ──
 const CAL_TTL_MS = 30_000;
-const calCache = new Map<string, { sig: string; at: number; map: Map<string, PlayerCalibration> }>();
+const calCache = new Map<string, { at: number; map: Map<string, PlayerCalibration> }>();
 
-/** One group's observed-level fold, memoized for CAL_TTL_MS. The signature
- *  changes when a game or check-in lands, busting the cache immediately.
- *  (The self-seeds are still read person-wide; narrowing them to the group's
- *  roster needs `memberships`, which arrives in Phase 2.) */
+/**
+ * Drop a group's memoized fold (every group's, with no argument). Called by
+ * the writers whose rows feed it — a game landing (`POST /api/games`) and a
+ * check-in (`POST /api/assessments`, which clears every group because
+ * `assessments` is PERSON-scoped and a person can be on two rosters). On a
+ * single B1 instance this is what makes the cache honest without a read.
+ */
+export function invalidateGroupCalibration(groupId?: string): void {
+  if (groupId === undefined) calCache.clear();
+  else calCache.delete(groupId);
+}
+
+/**
+ * One group's observed-level fold, memoized for CAL_TTL_MS.
+ *
+ * The TTL is checked BEFORE anything is read (2026-09-28). The first cut
+ * scanned the group's whole `gameResults` and ALL of `assessments` on every
+ * call to compute a change signature, and only then consulted the cache — so
+ * the cache saved the fold's CPU and never the two cross-partition reads that
+ * were the actual cost (60–120 RU a call, twice per Stats mount, growing with
+ * the club's age). Freshness inside the window comes from
+ * `invalidateGroupCalibration`, which the two writers call; the 30 s window
+ * itself was already the accepted staleness for anything that bypasses them.
+ */
 async function getGroupCalibration(groupId: string, now: string): Promise<Map<string, PlayerCalibration>> {
-  const [games, { seeds, maxAt }] = await Promise.all([fetchAllGames(groupId), fetchSeeds(groupId)]);
-  const maxLogged = games.reduce((m, g) => (g.loggedAt > m ? g.loggedAt : m), '');
-  const sig = `${games.length}:${maxLogged}:${seeds.length}:${maxAt}`;
   const cached = calCache.get(groupId);
-  if (cached && cached.sig === sig && Date.now() - cached.at < CAL_TTL_MS) {
-    return cached.map;
-  }
+  if (cached && Date.now() - cached.at < CAL_TTL_MS) return cached.map;
+  const [games, { seeds }] = await Promise.all([fetchAllGames(groupId), fetchSeeds(groupId)]);
   const map = calibrateRatings(games, seeds, now);
-  calCache.set(groupId, { sig, at: Date.now(), map });
+  calCache.set(groupId, { at: Date.now(), map });
   return map;
 }
 

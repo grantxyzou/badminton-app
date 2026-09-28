@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { randomBytes } from 'crypto';
 import { completeSignIn } from '@/lib/authSession';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -30,6 +31,17 @@ export async function POST(req: NextRequest) {
 }
 
 async function handlePost(req: NextRequest) {
+  // Coarse per-IP guard BEFORE the parse (security rule 4). The precise limit
+  // below is keyed per (name, IP), which needs the name out of the body — and
+  // a bucket keyed on a caller-chosen value is a fresh allowance per name, so
+  // on its own it bounded nothing: every request costs at least one scrypt
+  // (the FAKE_HASH miss), up to MAX_SIGNIN_CANDIDATES with groups on. Same
+  // shape as `auth/signin` and `members/me`'s PIN branch.
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`recover:ip:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
+  }
+
   let body: { name?: unknown; sessionId?: unknown; pin?: unknown; code?: unknown };
   try {
     body = await req.json();
@@ -61,7 +73,6 @@ async function handlePost(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const ip = getClientIp(req);
   if (!checkRateLimit(`recover:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
   }
@@ -135,11 +146,14 @@ async function handlePost(req: NextRequest) {
     const matches: SignInCandidate[] = [];
     for (const c of candidates) {
       const hash = typeof c.member.pinHash === 'string' && c.member.pinHash ? c.member.pinHash : null;
-      if (hash === null) {
+      // A LOCKED account (lib/pinLockout.ts) is verified against FAKE_HASH
+      // like a hash-less one: same cost, same answer, no count.
+      if (hash === null || isPinLocked(c.member.pinLock)) {
         await verifyPin(pin, FAKE_HASH);
         continue;
       }
       if (await verifyPin(pin, hash)) matches.push(c);
+      else await notePinFailure(c.member);
     }
     // And a name nobody holds costs one verification too, exactly as before.
     if (candidates.length === 0) await verifyPin(pin, FAKE_HASH);
@@ -157,6 +171,7 @@ async function handlePost(req: NextRequest) {
     }
     const member = matches[0].member;
     const signInGroupId = matches[0].groupId;
+    await notePinSuccess(member);
 
     // PIN verified. If a session player exists IN THE GROUP WE SIGNED THEM
     // INTO, mint a fresh deleteToken on that row.

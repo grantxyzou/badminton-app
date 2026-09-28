@@ -3,7 +3,7 @@ import { getContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
-import { sessionCostTotals } from '@/lib/sessionCost';
+import { costSplit, type SplitPlayer } from '@/lib/sessionCost';
 import { expandAliasNames } from '@/lib/playerIdentity';
 import type { Alias, Member, Player, Session } from '@/lib/types';
 
@@ -56,40 +56,54 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     // Look up the matching sessions + per-session attendance counts.
     const sessionIds = Array.from(new Set(players.map((p) => p.sessionId).filter(Boolean)));
     const sessionMap = new Map<string, Session>();
-    const attendanceBySession = new Map<string, number>();
+    const rowsBySession = new Map<string, SplitPlayer[]>();
     if (sessionIds.length > 0) {
-      // A member's history reaches back to the legacy default session too.
-      const allSessions = await scope.query<Session>('sessions', { includeLegacy: true });
+      // Only the sessions this member has a row in — a member's history
+      // reaches back to the legacy default session too, hence includeLegacy.
+      // The mock ignores `@sessionIds` and returns every row; the JS checks
+      // below are what keep it honest (lib/owedRows.ts has the same shape).
+      const wanted = new Set(sessionIds);
+      const allSessions = await scope.query<Session>('sessions', {
+        where: 'ARRAY_CONTAINS(@sessionIds, c.id)',
+        params: [{ name: '@sessionIds', value: sessionIds }],
+        includeLegacy: true,
+      });
       for (const s of allSessions) {
-        if (sessionIds.includes(s.id)) sessionMap.set(s.id, s);
+        if (wanted.has(s.id)) sessionMap.set(s.id, s);
       }
       // Count active players per session so cost-per-person uses the right
       // denominator. Previously this read session.prevCostPerPerson, which
       // is the PREVIOUS session's frozen cost — every history row showed
       // last week's number.
-      const allPlayers = await scope.query<{ sessionId?: string; removed?: boolean; waitlisted?: boolean }>('players', {
-        select: 'c.sessionId, c.removed, c.waitlisted',
+      const allPlayers = await scope.query<SplitPlayer & { sessionId?: string }>('players', {
+        select: 'c.sessionId, c.removed, c.waitlisted, c.writtenOff, c.coverMode',
+        where: 'ARRAY_CONTAINS(@sessionIds, c.sessionId)',
+        params: [{ name: '@sessionIds', value: sessionIds }],
       });
       for (const p of allPlayers) {
         if (typeof p.sessionId !== 'string') continue;
-        if (!sessionIds.includes(p.sessionId)) continue;
-        if (p.removed === true || p.waitlisted === true) continue;
-        attendanceBySession.set(p.sessionId, (attendanceBySession.get(p.sessionId) ?? 0) + 1);
+        if (!wanted.has(p.sessionId)) continue;
+        const arr = rowsBySession.get(p.sessionId);
+        if (arr) arr.push(p);
+        else rowsBySession.set(p.sessionId, [p]);
       }
+    }
+
+    // Per session, once: the frozen snapshot when settled (this route used to
+    // recompute even then, and disagreed with the member's own receipt
+    // whenever a cover had been resplit), else the one cover-aware split.
+    const costBySession = new Map<string, number>();
+    for (const [id, session] of sessionMap) {
+      costBySession.set(
+        id,
+        session.settled ? session.settled.costPerPerson : costSplit(session, rowsBySession.get(id) ?? []).costPerPerson,
+      );
     }
 
     const entries: SessionEntry[] = players.map((player) => {
       const session = sessionMap.get(player.sessionId);
       const attended = !player.removed && !player.waitlisted;
-
-      let costPerPerson = 0;
-      if (session) {
-        const { totalCost } = sessionCostTotals(session);
-        const playerCount = attendanceBySession.get(player.sessionId) ?? 0;
-        if (totalCost > 0 && playerCount > 0) {
-          costPerPerson = Math.round((totalCost / playerCount) * 100) / 100;
-        }
-      }
+      const costPerPerson = session ? (costBySession.get(player.sessionId) ?? 0) : 0;
 
       return {
         sessionId: player.sessionId,

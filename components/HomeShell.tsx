@@ -31,7 +31,7 @@ import { consumeRecentExcursion } from '@/lib/excursion';
 import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
 import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
-import { resetSharedReads } from '@/lib/sharedRead';
+import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
 import { useInAppNavigation } from '@/lib/inAppNavigate';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
@@ -57,6 +57,8 @@ const DevPanel = dynamic(() => import('@/components/DevPanel'), { ssr: false });
 const DemoMode = dynamic(() => import('@/components/DemoMode'), { ssr: false });
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
+/** Foregrounding re-checks the admin verdict at most this often. */
+const ADMIN_RECHECK_MIN_MS = 60_000;
 
 export type Tab = 'home' | 'stringing' | 'skills' | 'admin' | 'profile';
 
@@ -494,7 +496,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   }, [authNotice]);
 
   useEffect(() => {
-    fetch(`${BASE}/api/session`, { cache: 'no-store' })
+    // HomeTab reads the same endpoint on the same mount; one request while
+    // it is in flight (lib/sharedRead.ts).
+    sharedFetch('/api/session')
       .then((r) => r.json())
       .then((s: { id?: string; datetime?: string }) => {
         if (!s?.id) return;
@@ -511,7 +515,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // Re-runs on mount, after any identity change (sign-in / sign-out from any
   // component), and on window focus (covers cross-tab sign-out and admin-cookie
   // expiry while the tab was backgrounded).
+  const lastAdminCheck = useRef(0);
   const refreshAdminAccess = useCallback(() => {
+    lastAdminCheck.current = Date.now();
     let netFailed = false;
     const NET_FAIL = Symbol('net-fail');
     Promise.all([
@@ -547,12 +553,23 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     // The offline *signal* is owned by OnlineProvider now. HomeShell only
     // still needs to RE-CONFIRM the admin verdict when connectivity or
     // identity changes (a cookie may have expired while offline).
+    //
+    // Foregrounding re-confirms too, but on `visibilitychange` with a floor
+    // rather than every `focus`: a PWA fires focus on every return from a
+    // share sheet, a notification, a glance at another app — and each was
+    // two requests and three to eight Cosmos reads. A cookie that expires
+    // while backgrounded is still caught, one minute later at most.
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastAdminCheck.current < ADMIN_RECHECK_MIN_MS) return;
+      refreshAdminAccess();
+    };
     window.addEventListener(IDENTITY_EVENT, refreshAdminAccess);
-    window.addEventListener('focus', refreshAdminAccess);
+    document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', refreshAdminAccess);
     return () => {
       window.removeEventListener(IDENTITY_EVENT, refreshAdminAccess);
-      window.removeEventListener('focus', refreshAdminAccess);
+      document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', refreshAdminAccess);
     };
   }, [refreshAdminAccess]);

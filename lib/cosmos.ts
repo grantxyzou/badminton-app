@@ -708,22 +708,48 @@ export function getContainer(name: string): Container {
 /**
  * Ensures a Cosmos container exists with the given partition key. No-op in
  * mock mode (the mock auto-creates containers). Idempotent — safe to call
- * on every request; the first call does the create, subsequent calls just
- * verify existence via Cosmos's createIfNotExists API.
+ * on every request.
+ *
+ * MEMOIZED PER PROCESS (2026-09-28). `createIfNotExists` is a metadata
+ * round trip to Cosmos (~10–30 ms, in series with the read it guards), and
+ * this used to make it on EVERY call: 14 call sites ran it per request, ~8 of
+ * them on one Stats mount, while 16 others each hand-rolled a lazy promise to
+ * avoid exactly that. The memo lives here so every caller gets it, including
+ * the ones that never thought to. A REJECTED attempt is forgotten, so an
+ * outage during the first call does not poison the process — the next call
+ * tries again, which is the contract the hand-rolled `ready` promises had.
+ * Keyed on the partition key too: two callers naming different keys for one
+ * container is a bug the registry test catches, not one this memo hides.
  *
  * Use this for containers added after the initial manual portal setup, so
  * a deploy doesn't require a human to provision the container first.
  */
+const ensured = new Map<string, Promise<void>>();
+
 export async function ensureContainer(
   name: ContainerName,
   /** Defaults to the registry's key. Passing one is allowed, and the registry test pins it. */
   partitionKeyPath: string = pkOf(name),
 ): Promise<void> {
   if (!process.env.COSMOS_CONNECTION_STRING) return;
-  await getDatabase().containers.createIfNotExists({
-    id: name,
-    partitionKey: { paths: [partitionKeyPath] },
-  });
+  const key = `${name}|${partitionKeyPath}`;
+  let pending = ensured.get(key);
+  if (!pending) {
+    pending = getDatabase()
+      .containers.createIfNotExists({ id: name, partitionKey: { paths: [partitionKeyPath] } })
+      .then(() => undefined)
+      .catch((err) => {
+        ensured.delete(key);
+        throw err;
+      });
+    ensured.set(key, pending);
+  }
+  await pending;
+}
+
+/** Test seam — forget every provisioned container so cases don't bleed. */
+export function _resetEnsuredContainers(): void {
+  ensured.clear();
 }
 
 /**

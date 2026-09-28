@@ -4,10 +4,11 @@ import { groupScope, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
-import { resolveIdentity, matchesIdentity, classifyOwed, finiteSessionDate } from '@/lib/playerIdentity';
+import { resolveIdentity, classifyOwed } from '@/lib/playerIdentity';
+import { loadOwedInputs } from '@/lib/owedRows';
 import { isFlagOn } from '@/lib/flags';
 import { stringingCharges, stringingTotal, type StringingCharge } from '@/lib/stringingBilling';
-import type { Player, Session, StringingJob } from '@/lib/types';
+import type { StringingJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,16 +45,6 @@ interface UnpaidSession {
   date: string;
   owedAmount: number;
 }
-
-const EMPTY = {
-  totalOwed: 0,
-  sessionCount: 0,
-  mostRecent: null as UnpaidSession | null,
-  sessions: [] as UnpaidSession[],
-  stringing: [] as StringingCharge[],
-  sessionsOwed: 0,
-  stringingOwed: 0,
-};
 
 /**
  * Stringing charges for this member, or [] when there are none to add.
@@ -106,55 +97,15 @@ export async function GET(req: NextRequest) {
 
     const identity = await resolveIdentity({ name }, scope.groupId);
 
-    const allSessions = await scope.query<Session>('sessions');
-
-    // Sessions a debt can come from: settled (frozen amount) OR unsettled & past
-    // & not the active session (live share). Both require a finite datetime.
-    const relevant = allSessions.filter((s) => {
-      if (!finiteSessionDate(s)) return false;
-      if (s.settled) return true;
-      return s.id !== activeSessionId && new Date(s.datetime).getTime() < now;
-    });
-    if (relevant.length === 0) {
-      // Not EMPTY: a player can have no session debt and still owe for a
-      // racket. Returning the constant here would hide the charge entirely.
-      const stringing = await chargesFor(scope, identity.memberId);
-      const stringingOwed = stringingTotal(stringing);
-      return NextResponse.json({
-        ...EMPTY,
-        stringing,
-        stringingOwed,
-        totalOwed: stringingOwed,
-      });
-    }
-
-    const sessionById = new Map<string, Session>();
-    for (const s of relevant) sessionById.set(s.id, s);
-    const sessionIds = relevant.map((s) => s.id);
-    const sessionIdSet = new Set(sessionIds);
-
-    // Batch fetch. Real Cosmos honors IN(); the mock store ignores it and
-    // returns every row — so we post-filter by the session set for parity
-    // (same contract as stats/attendance + admin/ledger).
-    const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
-    const rawPlayers = await scope.query<Player>('players', {
-      where: `c.sessionId IN (${placeholders})`,
-      params: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
-    });
-    const players = rawPlayers.filter((p) => sessionIdSet.has(p.sessionId));
-
-    // Full active-roster size per session = the live per-person denominator.
-    // Counted independent of who's asking, so the share is right regardless of
-    // how many have paid.
-    const activeCountBySession = new Map<string, number>();
-    for (const p of players) {
-      if (p.removed === true || p.waitlisted === true) continue;
-      activeCountBySession.set(p.sessionId, (activeCountBySession.get(p.sessionId) ?? 0) + 1);
-    }
+    // PLAYER-FIRST (lib/owedRows.ts): this person's rows, then only the
+    // sessions they name, then the roster of only the unsettled ones. This
+    // route runs on every Home mount and used to read the whole history of
+    // two containers to answer for one person. `classifyOwed` decides which
+    // sessions can carry a debt (settled, or past and not active).
+    const { players, sessionById, activeCountBySession } = await loadOwedInputs(scope, identity);
 
     const unpaid: UnpaidSession[] = [];
     for (const p of players) {
-      if (!matchesIdentity(p, identity)) continue;
       const session = sessionById.get(p.sessionId);
       if (!session) continue;
       const result = classifyOwed(p, session, {

@@ -87,13 +87,16 @@ function parseCredential(body: unknown): string | null {
    route just never called it. Reusing it rather than adding a second memo, so
    there is one owner of "does the container exist yet". */
 
-/** Every doc for this member. The mock ignores a @memberId WHERE and returns
- *  the whole container, so we JS-filter for mock/real parity (same convention
- *  as app/api/kudos/route.ts). */
+/** Every doc for this member — one partition (`/memberId`), not the whole
+ *  container. The mock honours `@memberId` (lib/cosmos.ts); the JS filter is
+ *  kept as the re-check every scoped read carries. */
 async function loadForMember(memberId: string): Promise<PushSubscriptionDoc[]> {
   await ensurePushContainer();
   const { resources } = await getContainer('pushSubscriptions')
-    .items.query({ query: 'SELECT * FROM c' })
+    .items.query({
+      query: 'SELECT * FROM c WHERE c.memberId = @memberId',
+      parameters: [{ name: '@memberId', value: memberId }],
+    })
     .fetchAll();
   return (resources as PushSubscriptionDoc[]).filter((d) => d && d.memberId === memberId);
 }

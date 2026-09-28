@@ -52,12 +52,11 @@ const DEPLOYMENT_WIDE: Record<string, string> = {
   'app/api/admin/migrate-memberId/route.ts':
     'A one-shot migration over every Member, from before groups existed. Same argument.',
   'lib/push.ts':
-    'The only sender. `loadSubscriptions(memberIds?)` scans and then JS-filters to the ids the ' +
-    'CALLER supplied, so the narrowing is the caller\'s and is explicit at every call site — ' +
-    '`app/api/session` passes `rosterMemberIds()`. `sendPushToAll` has no caller in app code.',
-  'app/api/push/subscribe/route.ts':
-    'Device management for ONE member: `loadForMember` scans then filters by `memberId`, with the ' +
-    'mock-parity reason stated at the function. Never totals across people.',
+    'The only sender. `loadSubscriptions(memberIds?)` narrows in SQL (`ARRAY_CONTAINS` over the ' +
+    'ids the CALLER supplied — `app/api/session` passes `rosterMemberIds()`) and re-checks in JS; ' +
+    'the one whole-container read left is the true broadcast, `sendPushToAll`, which has no ' +
+    'caller in app code. (`app/api/push/subscribe` was listed here until 2026-09-28, when its ' +
+    'one-member read became a `WHERE c.memberId = @memberId` and stopped scanning.)',
 };
 
 const PERSON_SCOPED = (() => {

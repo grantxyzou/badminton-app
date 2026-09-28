@@ -10,6 +10,7 @@ import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -108,9 +109,11 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     // replaces the stale content with the error card.
     if (!loadedRef.current) setLoading(true);
     try {
+      // PaymentsCard and the dash tiles read the same endpoints on the same
+      // mount; one request each while in flight (lib/sharedRead.ts).
       const [sessionRes, playersRes] = await Promise.all([
-        fetch(`${BASE}/api/session`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/players`, { cache: 'no-store' }),
+        sharedFetch('/api/session'),
+        sharedFetch('/api/players'),
       ]);
       /**
        * A non-ok response is NOT "there is no session" and NOT "nobody signed

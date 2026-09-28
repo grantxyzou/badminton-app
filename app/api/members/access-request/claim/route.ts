@@ -38,7 +38,23 @@ const HOUR_MS = 60 * 60 * 1000;
  */
 const CLAIMS_PER_HOUR = 1400;
 
+/**
+ * The coarse guard the per-name key needs on top of it. Keyed on the name, one
+ * IP cycling names had a fresh 1400/hr for each — unbounded parsing and one to
+ * two Cosmos reads per call. This is sized per MINUTE, not per hour, so a
+ * burst is throttled for sixty seconds rather than the rest of the hour (the
+ * failure the per-name comment above describes): 200/min is ten devices on
+ * one gym WiFi all polling at 3s, with headroom.
+ */
+const CLAIMS_PER_MINUTE_PER_IP = 200;
+const MINUTE_MS = 60 * 1000;
+
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`access-claim:ip:${ip}`, CLAIMS_PER_MINUTE_PER_IP, MINUTE_MS)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null);
   const name = body && typeof body.name === 'string' ? body.name.trim() : '';
   const secret = body && typeof body.secret === 'string' ? body.secret : '';
@@ -48,7 +64,6 @@ export async function POST(req: NextRequest) {
 
   // Keyed per name so one device cannot starve another on the same WiFi. The
   // IP is still in the key so a single host cannot poll for every name at once.
-  const ip = getClientIp(req);
   if (!checkRateLimit(`access-claim:${name.toLowerCase()}:${ip}`, CLAIMS_PER_HOUR, HOUR_MS)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
