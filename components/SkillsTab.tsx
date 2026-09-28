@@ -12,7 +12,6 @@ import GearRegister from '@/components/stats/GearRegister';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
 import StatsSignedOut from '@/components/stats/StatsSignedOut';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
-import { isFlagOn } from '@/lib/flags';
 import { useActiveName } from '@/lib/useActiveName';
 import { recordEngagement } from '@/lib/engagement';
 import { useCheckIn } from '@/components/stats/useCheckIn';
@@ -46,10 +45,6 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
   // chain. `resolved` carries "not known yet" so the first paint doesn't flash
   // the signed-out state at a signed-in member — unknown is not known-absent.
   const { name: activeName, resolved: identResolved } = useActiveName();
-
-  // Equipment register follows the Value-Hub flag; its kill-criterion gate is
-  // still open, so Gear can still be withdrawn without touching the shell.
-  const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
 
   /**
    * "Did anyone open Stats at all?" — the question nothing in the app could
@@ -136,7 +131,7 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
         </>
       }
       learnSlot={<LearnRegister activeName={activeName} checkIn={checkIn} />}
-      gearSlot={valueHubOn ? <GearRegister activeName={activeName} /> : undefined}
+      gearSlot={<GearRegister activeName={activeName} />}
     />
     {/* ONE mount, a sibling of the shell rather than inside a register.
         `BottomSheet` portals to `body`, so position here is irrelevant to where

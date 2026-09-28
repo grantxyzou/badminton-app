@@ -35,7 +35,6 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
     // calls being a no-op so the store (reset to just the 3 manually-upserted
     // fixture rackets below) stays uncontaminated by the full curated catalog.
     _resetCalibrationCache();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     const catalog = getContainer('equipmentCatalog');
     await catalog.items.upsert({ id: 'wide', category: 'racket', brand: 'Y', model: 'All-Round', skillRange: [1, 6], msrp: 120 });
@@ -97,12 +96,6 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
     }
     expect(await (await GET(fixed())).json()).toEqual({ item: null, reason: null });
   });
-
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
-    const res = await GET(get('/api/recommend?name=Anon'));
-    expect(res.status).toBe(404);
-  });
 });
 
 const BASE = 'http://localhost:3000/api/recommend';
@@ -131,11 +124,9 @@ describe('/api/recommend with the engine flag on', () => {
     // after the first would skip reseeding into the now-empty store.
     __resetCatalogSeedForTests();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
   afterEach(() => {

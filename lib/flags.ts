@@ -17,7 +17,6 @@
 
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
-  | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE'
   | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
   | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'
   | 'NEXT_PUBLIC_FLAG_STRINGING'
@@ -55,12 +54,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'never',
     note: 'Deliberately dateless. This gates the /design preview route — developer tooling, not a staged feature, so there is no ship moment to count two weeks from. It retires when the route does.',
-  },
-  NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: {
-    description: 'Slice-0 of the Value-Hub plan (`docs/plans/value-hub-slice-0.md`): a thin end-to-end vertical of equipment catalog (rackets only, seeded ~15 models), one-tap "What\'s your racket?" on Profile, a 30s post-session game-result logger, a single deterministic recommendation card, and the partner-frequency Stats card. Gates the player-facing UI surfaces; the backend containers (`equipmentCatalog`, `playerGear`, `gameResults`) are bootstrapped lazily via `ensureContainer` regardless, so they exist before the flag flips on. On for bpm-next + dev once landed; off on bpm-stable until the 4-week kill-criterion gate clears.',
-    owner: 'grant',
-    plannedRemoval: '2026-09-17',
-    note: 'RETIRE. The gate was READ on 2026-08-25 (since=2026-08-16, the restarted clock) and it returned verdict: kill — recCard 3/12 repeat-tappers (0.25 vs 0.40), games 0/12 loggers (0.00 vs 0.30), racketSavers 3, cohort 12. BUT the criterion is no longer executable and must not be run as written: it says "revert everything else", and three of the four tracks it was meant to gate had ALREADY shipped (Insight: partner card, game logger, skill trend; Equipment: expanded past racket-only to strings, 71 rackets vs the planned ~15; Learning: drill library + AI coach). Only Track 4 (Reach) was never built. The fan-out decision was therefore made by SHIPPING, not by this gate — a written criterion with no scheduled read date is a note, not a gate. Reverting now would tear out months of merged, tested, live work on the strength of a tap rate. Read the numbers as product feedback instead: the rec card fails on REACH, not value (only 4 of 12 ever tapped it, but 3 of those 4 tapped more than once) — it is buried on the Gear register inside the Stats tab. CORRECTION (same day): the games 0/12 was NOT non-use. SteppedGameLoggerSheet read the roster as `d?.players`, but GET /api/players returns a BARE ARRAY, so the partner/opponent picker was EMPTY for every member, permanently — nobody could log a game even if they wanted to. Its own test mocked the same wrong shape, so the suite could never catch it. Fixed 2026-08-25. Treat games 0/12 as NO DATA, not as evidence, and re-read the criterion after the fix has been live for a few sessions — GET /api/admin/slice0 with NO ?since is now correct, since its default is the 2026-08-16 clock restart rather than the v1.7 date. The rec-card 0.25 stands (that surface worked; anyTappers:4 with 3 repeating).',
   },
   NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: {
     description:
@@ -110,7 +103,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description: 'The Equipment redesign (claude.ai/design "Equipment redesign", Turn 2): the Gear register becomes one "Set-up" spec card with two lines to fill (Racket, Strings), a club fact on each filled line, spares on their own line, a per-line manage sheet, "Where you\'d go next" and a share card. Replaces the pick rail, the kit rows and BagList on the flag-on branch; off, the register is unchanged. Client-only: every write still goes through the same /api/equipment/gear verbs, so it cannot change what is stored.',
     owner: 'grant',
     plannedRemoval: '2026-10-12',
-    note: 'Ships dark across three PRs (card → sheets → payoffs). Retiring it means deleting the flag-off register: GearPickRail, GearPickCard, YourKitCard, BagList and GearSheet if nothing else imports it, with their tests. Two things to know at the flip: `rec_card_tap` keeps its kind but its population changes ("Where you\'d go next" renders only once a racket is in play, the rail\'s card rendered always), so the slice0 tap rate moves for a reason that is not engagement; and this register nests inside NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE, so until that retires the register forks twice.',
+    note: 'Ships dark across three PRs (card → sheets → payoffs). Retiring it means deleting the flag-off register: GearPickRail, GearPickCard, YourKitCard, BagList and GearSheet if nothing else imports it, with their tests. Two things to know at the flip: `rec_card_tap` keeps its kind but its population changes ("Where you\'d go next" renders only once a racket is in play, the rail\'s card rendered always), so the slice0 tap rate moves for a reason that is not engagement. (It used to nest inside the value-hub flag, retired 2026-09-28.)',
   },
   NEXT_PUBLIC_FLAG_GEAR_PAGES: {
     description: 'Equipment redesign Turn 3: "Your fit" and a racket\'s name open full pages inside Stats → Equipment (the fit profile, 3a; the frame page, 3d) instead of sheets. Client-only: the pages write through the same /api/equipment/gear verbs.',
@@ -130,8 +123,6 @@ function readFlag(name: FlagName): string | undefined {
   switch (name) {
     case 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW':
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
-    case 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE':
-      return process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     case 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS':

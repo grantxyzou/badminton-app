@@ -59,7 +59,6 @@ jobs:
           NEXT_PUBLIC_ENV: stable
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
-          NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
           NEXT_PUBLIC_FLAG_RACKET_FIT: 'true'
           # The Equipment redesign (the Set-up card). On since 2026-09-14; revert

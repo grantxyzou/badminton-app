@@ -10,7 +10,6 @@ function req(url: string): NextRequest {
 
 describe('GET /api/equipment/catalog', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
   });
 
   it('returns only rackets for category=racket', async () => {
@@ -24,11 +23,5 @@ describe('GET /api/equipment/catalog', () => {
     expect(res.status).toBe(200);
     expect(body.items.every((i: { category: string }) => i.category === 'racket')).toBe(true);
     expect(body.items.find((i: { id: string }) => i.id === 's1')).toBeUndefined();
-  });
-
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
-    const res = await GET(req('/api/equipment/catalog?category=racket'));
-    expect(res.status).toBe(404);
   });
 });

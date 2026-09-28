@@ -89,7 +89,6 @@ jobs:
           NEXT_PUBLIC_ENV: next
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
-          NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
           # Mirrors deploy-next.yml. CI must BUILD what production builds:
           # 13 flags and the VAPID key were missing here on 2026-08-28, so every
           # PR was compiled as a materially different app than the one that

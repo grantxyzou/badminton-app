@@ -6,7 +6,6 @@ const originalEnv = { ...process.env };
 describe('feature flags', () => {
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
-    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     delete process.env.NEXT_PUBLIC_ENV;
   });
@@ -51,14 +50,6 @@ describe('feature flags', () => {
     process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
     expect(isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')).toBe(true);
     delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
-  });
-
-  it('recognizes NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE', () => {
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(false);
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(true);
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = '1';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(false);
   });
 
   // Sets and deletes explicitly rather than relying on the `beforeEach` reset,

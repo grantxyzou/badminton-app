@@ -4,7 +4,6 @@ import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, ownsNameOrAdmin, requireMember } from '@/lib/auth';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { GameResult } from '@/lib/types';
 import { invalidateGroupCalibration } from '@/lib/levelStore';
@@ -29,9 +28,6 @@ function names(raw: unknown): string[] | null {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   const gate = await requireMember(req);
   if (!gate.ok) return gate.response;
   try {
@@ -110,9 +106,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   // Rate limit before any work — same posture as the rest of the API.
   const ip = getClientIp(req);
   if (!checkRateLimit(`games:${ip}`, 30, 60 * 1000)) {

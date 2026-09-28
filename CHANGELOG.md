@@ -56,6 +56,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **A failed push no longer writes the device's push endpoint (a send credential) to the server log.**
 - **Push reads are scoped to the member.** Sending to a member, or registering a device, read every subscription of every member and filtered in code; they read one partition now.
 
+### Items 11 to 15 from the same audit (2026-09-28)
+
+- **The equipment features no longer sit behind a stale switch.** The value-hub flag was overdue and turning it off broke six screens rather than hiding them; it and its twelve off-branches are gone.
+- **A wrong PIN no longer stalls everyone else.** PIN and password checks run off the server's main thread, so one sign-in attempt cannot pause other requests on the single instance.
+- **Mail that cannot connect gives up in seconds, not minutes**, so a stringing status update is never held hostage by an unreachable mail server.
+- **Admin powers on the sign-up route are checked against the live account**, not just the cookie, so a demoted admin loses them immediately; the PIN-change path resolves the member inside the club.
+- **CLAUDE.md's numbers are pinned to the tree** so counts that drift now fail the build, and a plan is recorded for replacing the deprecated OAuth library.
+
 ### Five more from the same audit (2026-09-28)
 
 - **Guessing a PIN locks the account, not just the phone it came from.** After five wrong PINs in a row an account refuses PIN sign-in for a minute, doubling each time up to an hour; a correct PIN clears it. Before, every guard was per network address, so a four-digit PIN could be walked through from enough addresses.

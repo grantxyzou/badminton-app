@@ -116,9 +116,6 @@ function ensureGear(): Promise<void> {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   // Probes by name — rate-limit like /api/members/me so it can't enumerate members + stages.
   // Rule 4: rate limit stays first, before any auth check, so it can't be bypassed.
   // 30/min: a Stats visit is two calls and every racket swapped in is two

@@ -21,10 +21,8 @@ describe('gear — string selection', () => {
     resetMockStore();
     setupAdminPin();
     seedMember('Lin', { id: 'member-lin' });
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
   });
 
   it('accepts a string and stores its category', async () => {

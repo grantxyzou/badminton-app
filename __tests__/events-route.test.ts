@@ -41,41 +41,25 @@ function postAs(memberId: string, name: string, body: unknown): NextRequest {
 beforeEach(() => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
 });
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
 });
 
 describe('POST /api/events', () => {
   /**
-   * The flag gate is PER-KIND, not blanket.
-   *
-   * Equipment kinds keep the original posture — flag off leaves no live write
-   * endpoint behind. The skill-funnel kinds deliberately do not, because this
-   * gate was a blanket 404 on a flag carrying a retirement date, so every
-   * beacon in the app would have gone silent on the day that flag was deleted.
-   * A measurement that switches itself off on a date is not a measurement.
+   * The value-hub flag that once 404'd the equipment kinds retired on
+   * 2026-09-28; every allowlisted kind records now. The auth ordering it
+   * used to sit behind is the property that still matters here.
    */
-  it('404s an EQUIPMENT kind when the value-hub flag is off, leaving no live write endpoint behind', async () => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
-    const res = await POST(postAs('member-lin', 'Lin', { kind: 'rec_card_tap' }));
-    expect(res.status).toBe(404);
-    expect(getStore()['events'] ?? []).toHaveLength(0);
+  it('records an equipment kind and a skill kind alike', async () => {
+    expect((await POST(postAs('member-lin', 'Lin', { kind: 'rec_card_tap' }))).status).toBe(201);
+    expect((await POST(postAs('member-lin', 'Lin', { kind: 'stats_open' }))).status).toBe(201);
+    expect(getStore()['events'] ?? []).toHaveLength(2);
   });
 
-  it('still records a SKILL kind when the value-hub flag is off — the funnel outlives the flag', async () => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
-    const res = await POST(postAs('member-lin', 'Lin', { kind: 'stats_open' }));
-    expect(res.status).toBe(201);
-    expect(getStore()['events'] ?? []).toHaveLength(1);
-  });
-
-  it('keeps rate limit and auth AHEAD of the per-kind gate (rules 4 and 12)', async () => {
-    // A skill kind is ungated, but that must not become an unauthenticated
-    // write path: the cookie check still runs first.
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
+  it('keeps rate limit and auth AHEAD of the write (rules 4 and 12)', async () => {
+    // An unauthenticated write path must not exist: the cookie check runs first.
     const res = await POST(post({ kind: 'stats_open' }));
     expect(res.status).toBe(401);
     expect(getStore()['events'] ?? []).toHaveLength(0);

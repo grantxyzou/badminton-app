@@ -154,10 +154,8 @@ describe('GET /api/equipment/catalog — category validation', () => {
     // on [] — which is exactly how the "defaults to rackets" case below was
     // passing while serving nothing at all.
     __resetCatalogSeedForTests();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
   });
 
   it('400s on an unrecognized category instead of silently returning rackets', async () => {

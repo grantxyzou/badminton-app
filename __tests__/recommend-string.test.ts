@@ -75,12 +75,10 @@ describe('GET /api/recommend?category=string', () => {
     resetMockStore();
     __resetCatalogSeedForTests();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
   });
 
   afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
 

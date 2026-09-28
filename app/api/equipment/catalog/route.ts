@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
-import { isFlagOn } from '@/lib/flags';
 import type { EquipmentCategory } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -9,9 +8,6 @@ export const dynamic = 'force-dynamic';
 const VALID: EquipmentCategory[] = ['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip'];
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   try {
     // Creates the container AND fills it from the curated seed if empty — the
     // production container was never seeded, so this read used to return [].

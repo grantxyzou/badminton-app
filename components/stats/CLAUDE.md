@@ -5,7 +5,7 @@ directory.
 
 ## Gear register (v2, 2026-08-20)
 
-`GearRegister` is the whole register, gated on `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`.
+`GearRegister` is the whole register (its `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE` gate retired 2026-09-28).
 It composes four surfaces — the pick rail, "Your equipment", string tension, and
 "What the club plays" — and is a pure composition component: it holds no
 state of its own except the one thing it exists to own (below).

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, isValueHubKind, isCheckInSource, CLIENT_PAYLOAD } from '@/lib/events';
+import { writeEvent, isClientKind, isCheckInSource, CLIENT_PAYLOAD } from '@/lib/events';
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { EngagementEvent } from '@/lib/types';
 
@@ -86,10 +85,6 @@ export async function POST(req: NextRequest) {
   // Order is load-bearing: rate limit (rule 4) and auth (rule 12) both still
   // run FIRST. Hoisting the kind parse above them to decide the gate earlier
   // would put body parsing in front of authentication.
-  if (isValueHubKind(body.kind) && !isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   try {
     const resource = await writeEvent(
       {

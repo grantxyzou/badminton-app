@@ -218,7 +218,7 @@ describe('server-rendered pages do not bypass the gate', () => {
 });
 
 describe('behaviour of the gated routes', () => {
-  const FLAGS = ['NEXT_PUBLIC_FLAG_MEMBERS_ONLY', 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE', 'NEXT_PUBLIC_FLAG_STRINGING'] as const;
+  const FLAGS = ['NEXT_PUBLIC_FLAG_MEMBERS_ONLY', 'NEXT_PUBLIC_FLAG_STRINGING'] as const;
   const saved: Record<string, string | undefined> = {};
 
   beforeEach(() => {
@@ -227,9 +227,8 @@ describe('behaviour of the gated routes', () => {
     // "not refused" case would fail for a reason that has nothing to do with the gate.
     setupAdminPin();
     for (const f of FLAGS) saved[f] = process.env[f];
-    // The gated routes behind a feature flag 404 before the gate when their
-    // feature is off, which would pass "not 200" for the wrong reason.
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
+    // A route behind a feature flag 404s before the gate when its feature is
+    // off, which would pass "not 200" for the wrong reason.
     process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true';
     seedMember('Lin', { id: 'member-lin' });
   });

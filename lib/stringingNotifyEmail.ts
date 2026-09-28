@@ -22,6 +22,7 @@
  * browser — and is translated properly.
  */
 import type { PlayerNotice } from './stringingNotify';
+import { gmailTransport } from './mailTransport';
 import { APP_NAME } from './brand';
 
 export interface MailResult {
@@ -40,8 +41,7 @@ async function send(to: string, subject: string, text: string): Promise<MailResu
   // is additive, and the in-app notice is the channel that always works.
   if (!user || !pass || !to) return { sent: false };
 
-  const nodemailer = (await import('nodemailer')).default;
-  const transport = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
+  const transport = await gmailTransport(user, pass);
   // The SENDER is the product: one mailbox serves every club, and the From
   // name is what a mail client shows in the inbox list. The sign-off inside
   // the body is the CLUB — see `composeEmail`.
