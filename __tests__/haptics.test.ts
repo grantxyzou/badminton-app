@@ -54,6 +54,26 @@ describe('tapSuccess', () => {
     expect(impact).toHaveBeenCalledWith({ style: 'LIGHT' });
   });
 
+  it('priming never taps, and never throws off the shell', async () => {
+    const { primeHaptics } = await import('@/lib/haptics');
+    expect(() => primeHaptics()).not.toThrow();
+    shell({ plugin: false });
+    expect(() => primeHaptics()).not.toThrow();
+    shell({ plugin: true });
+    primeHaptics();
+    await settle();
+    expect(impact).not.toHaveBeenCalled();
+  });
+
+  it('a primed tap still taps exactly once', async () => {
+    shell({ plugin: true });
+    const { primeHaptics, tapSuccess } = await import('@/lib/haptics');
+    primeHaptics();
+    tapSuccess();
+    await settle();
+    expect(impact).toHaveBeenCalledOnce();
+  });
+
   it('swallows a plugin failure rather than rejecting', async () => {
     shell({ plugin: true });
     impact.mockRejectedValueOnce(new Error('unimplemented'));
