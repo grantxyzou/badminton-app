@@ -29,6 +29,7 @@
  * accounts AND which of those have PINs: a map of who is easiest to attack.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
@@ -120,8 +121,15 @@ export async function POST(req: NextRequest) {
     }
 
     if (pin) {
-      const stored = typeof member.pinHash === 'string' ? member.pinHash : FAKE_HASH;
-      if (!(await verifyPin(pin, stored)) || !member.pinHash) return FAIL();
+      // A locked account (lib/pinLockout.ts) verifies against FAKE_HASH like
+      // one with no PIN: same cost, same answer.
+      const usable = typeof member.pinHash === 'string' && !isPinLocked(member.pinLock);
+      const stored = usable ? (member.pinHash as string) : FAKE_HASH;
+      if (!(await verifyPin(pin, stored)) || !member.pinHash) {
+        if (usable) await notePinFailure(member);
+        return FAIL();
+      }
+      await notePinSuccess(member);
     } else {
       if (!(await verifyRecoveryCode(member.recoveryCode, code!))) {
         await container.items.upsert({

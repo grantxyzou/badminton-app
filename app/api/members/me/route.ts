@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -405,10 +406,17 @@ async function handlePatch(req: NextRequest) {
       await verifyPin('0000', member.pinHash);
       return NextResponse.json({ error: 'current_pin_required' }, { status: 401 });
     }
-    const ok = await verifyPin(currentPin, member.pinHash);
-    if (!ok) {
+    // Per-account lock (lib/pinLockout.ts): locked reads as a wrong PIN.
+    if (isPinLocked(member.pinLock)) {
+      await verifyPin('0000', FAKE_HASH);
       return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
     }
+    const ok = await verifyPin(currentPin, member.pinHash);
+    if (!ok) {
+      await notePinFailure(member);
+      return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
+    }
+    await notePinSuccess(member);
   }
   // No prior pinHash → first-set / claim flow. There's no currentPin to require,
   // but identity must still be proven: a member_session cookie for THIS name

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { randomBytes } from 'crypto';
 import { completeSignIn } from '@/lib/authSession';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -145,11 +146,14 @@ async function handlePost(req: NextRequest) {
     const matches: SignInCandidate[] = [];
     for (const c of candidates) {
       const hash = typeof c.member.pinHash === 'string' && c.member.pinHash ? c.member.pinHash : null;
-      if (hash === null) {
+      // A LOCKED account (lib/pinLockout.ts) is verified against FAKE_HASH
+      // like a hash-less one: same cost, same answer, no count.
+      if (hash === null || isPinLocked(c.member.pinLock)) {
         await verifyPin(pin, FAKE_HASH);
         continue;
       }
       if (await verifyPin(pin, hash)) matches.push(c);
+      else await notePinFailure(c.member);
     }
     // And a name nobody holds costs one verification too, exactly as before.
     if (candidates.length === 0) await verifyPin(pin, FAKE_HASH);
@@ -167,6 +171,7 @@ async function handlePost(req: NextRequest) {
     }
     const member = matches[0].member;
     const signInGroupId = matches[0].groupId;
+    await notePinSuccess(member);
 
     // PIN verified. If a session player exists IN THE GROUP WE SIGNED THEM
     // INTO, mint a fresh deleteToken on that row.

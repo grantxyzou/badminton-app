@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { randomBytes } from 'crypto';
 import {
   setAdminCookie,
@@ -147,10 +148,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
   }
 
-  const ok = await verifyPin(pin, member.pinHash);
-  if (!ok) {
+  // Per-ACCOUNT lock (lib/pinLockout.ts): the IP limiter above is per caller,
+  // this counts guesses against the admin however they arrive. Locked reads
+  // as a plain wrong PIN, and still pays the scrypt.
+  if (isPinLocked(member.pinLock)) {
+    await verifyPin(pin, FAKE_HASH);
     return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
   }
+  const ok = await verifyPin(pin, member.pinHash);
+  if (!ok) {
+    await notePinFailure(member);
+    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
+  }
+  await notePinSuccess(member);
 
   const res = NextResponse.json({
     success: true,
