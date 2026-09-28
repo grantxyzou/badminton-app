@@ -16,7 +16,11 @@ const cache = new Map<EquipmentCategory, Promise<CatalogItem[]>>();
 function load(category: EquipmentCategory): Promise<CatalogItem[]> {
   let p = cache.get(category);
   if (!p) {
-    p = fetch(`${BASE}/api/equipment/catalog?category=${category}`, { cache: 'no-store' })
+    // Default cache mode on purpose: the route answers `Cache-Control:
+    // private, max-age=300`, so a second page in five minutes costs no round
+    // trip. The `no-store` every other fetch here carries is for data a tap
+    // can change; the catalog changes with a deploy.
+    p = fetch(`${BASE}/api/equipment/catalog?category=${category}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => (d?.items ?? []) as CatalogItem[]);
     p.catch(() => cache.delete(category));

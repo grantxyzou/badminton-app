@@ -18,6 +18,7 @@ import StringingSteps, { stepForStage } from './StringingSteps';
 import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import type { PlayerStage } from '@/lib/stringing';
 import type { PlayerStringingJob } from '@/lib/types';
+import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -106,7 +107,7 @@ export default function StringingCard({ hasIdentity }: Props) {
     setJobsProblem(null);
     fetch(`${BASE}/api/stringing/jobs?view=player`, { cache: 'no-store' })
       .then((r) => {
-        if (r.status === 401 || r.status === 403) return 'refused' as const;
+        if (isRefused(r)) return 'refused' as const;
         if (!r.ok) throw new Error(`player jobs ${r.status}`);
         return r.json();
       })

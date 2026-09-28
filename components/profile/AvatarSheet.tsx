@@ -8,6 +8,7 @@ import { useGear } from '@/components/stats/useGear';
 import { useOnline } from '@/lib/useOnline';
 import { setMemberAvatar } from '@/lib/useMemberAvatars';
 import { DEFAULT_RACKET_ID, isRacketAvatarId, racketAvatarIds, type MemberAvatar as Avatar } from '@/lib/memberAvatar';
+import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -70,7 +71,7 @@ function AvatarPicker({ name, current, onClose, onSaved }: Omit<Props, 'open'>) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, avatar: draft }),
       });
-      if (res.status === 401 || res.status === 403) {
+      if (isRefused(res)) {
         setError('auth');
         return;
       }

@@ -84,6 +84,17 @@ const nextConfig = {
               "font-src 'self'",
               "img-src 'self' data:",
               "connect-src 'self'",
+              // The four the 2026-09-28 audit found missing. `frame-ancestors`
+              // is the CSP form of the X-Frame-Options DENY above (XFO is
+              // ignored by a browser that honours this); `base-uri` stops an
+              // injected <base> from redirecting every relative URL;
+              // `object-src` shuts the plugin door; `form-action` keeps a form
+              // from posting off-origin. Apple's form_post lands ON this origin
+              // from Apple's page, which Apple's CSP governs, not this one.
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "object-src 'none'",
+              "form-action 'self'",
             ].join('; '),
           },
         ],

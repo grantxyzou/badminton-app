@@ -17,11 +17,11 @@ export function parseVersion(v: string | null | undefined): Version | null {
   return m ? { major: Number(m[1]), minor: Number(m[2]), patch: m[3] ? Number(m[3]) : 0 } : null;
 }
 
-export function compareVersions(a: Version, b: Version): number {
+function compareVersions(a: Version, b: Version): number {
   return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
 }
 
-export function nextMinor(v: Version): string {
+function nextMinor(v: Version): string {
   return `v${v.major}.${v.minor + 1}`;
 }
 

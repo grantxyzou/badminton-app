@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { publicPlayer } from '@/lib/publicShapes';
 import { groupScope, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
@@ -79,8 +80,10 @@ export async function GET(req: NextRequest) {
     // handed every member's failed sign-in history to anyone who asked, which
     // is a map of whose account is being attacked. Admins keep it.
     const admin = isAdminAuthed(req);
-    return NextResponse.json(resources.map(({ deleteToken: _dt, pinHash: _ph, recoveryEvents, ...p }: { deleteToken?: string; pinHash?: string; recoveryEvents?: unknown; [key: string]: unknown }) =>
-      admin && recoveryEvents !== undefined ? { ...p, recoveryEvents } : p));
+    return NextResponse.json(resources.map((row: Record<string, unknown>) => {
+      const { recoveryEvents, ...p } = publicPlayer(row);
+      return admin && recoveryEvents !== undefined ? { ...p, recoveryEvents } : p;
+    }));
   } catch (error) {
     // Surface the failure (500) rather than a lying 200 + []: an empty array is
     // indistinguishable from a legitimately empty roster, which is exactly how
@@ -536,8 +539,9 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
-      const out = NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
+      // The one-time `deleteToken` is added back on purpose: sign-up is the
+      // only response that ever carries it (security rule 1).
+      const out = NextResponse.json({ ...publicPlayer(resource as unknown as Record<string, unknown>), deleteToken }, { status: 201 });
       if (matchedMember && (trustDevice || pinHash) && !admin) {
         setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
       }
@@ -583,9 +587,11 @@ export async function POST(req: NextRequest) {
 
     // Return the deleteToken once so the client can store it for self-cancellation
     // (waitlisted reflects any race-demotion above).
-    const { pinHash: _ph, ...safeResource } =
-      { ...(resource as unknown as Record<string, unknown>), waitlisted } as Record<string, unknown>;
-    const out = NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
+    // As above: the minted `deleteToken` rides on this one response only.
+    const out = NextResponse.json(
+      { ...publicPlayer({ ...(resource as unknown as Record<string, unknown>), waitlisted }), deleteToken },
+      { status: 201 },
+    );
     // Trust this device for future sign-ups when this request proved (sign-in)
     // or created (first PIN) the member's PIN — the "stay logged in" model.
     // Skip for admins acting on behalf of others and for anon (no-PIN) names.
@@ -788,8 +794,7 @@ export async function PATCH(req: NextRequest) {
         }
       }
 
-      const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;
-      return NextResponse.json(safe);
+      return NextResponse.json(publicPlayer(updated as typeof existing));
     }
 
     // Non-PIN paths still require id. The PIN branch above handles the
@@ -822,8 +827,7 @@ export async function PATCH(req: NextRequest) {
         ...existing,
         selfReportedPaid: true,
       });
-      const { deleteToken: _dt, pinHash: _ph, ...safe } = updated;
-      return NextResponse.json(safe);
+      return NextResponse.json(publicPlayer(updated));
     }
 
     // Admin-only path for all other updates
@@ -886,8 +890,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await scope.upsert('players', { ...existing, ...updates });
-    const { deleteToken: _dt, pinHash: _ph, ...safe } = updated;
-    return NextResponse.json(safe);
+    return NextResponse.json(publicPlayer(updated));
   } catch (error) {
     console.error('PATCH player error:', error);
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 });

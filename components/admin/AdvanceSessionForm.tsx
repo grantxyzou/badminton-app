@@ -12,18 +12,9 @@ import StatusBanner from '../primitives/StatusBanner';
 import ErrorState from '../primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import { StateLink } from '@/components/primitives/StateCard';
+import { withLocalTz } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-
-function withLocalTz(date: string, time: string): string {
-  if (!date || !time) return '';
-  const offset = new Date().getTimezoneOffset();
-  const sign = offset <= 0 ? '+' : '-';
-  const abs = Math.abs(offset);
-  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
-  const mm = String(abs % 60).padStart(2, '0');
-  return `${date}T${time}:00${sign}${hh}:${mm}`;
-}
 
 function Label({ text, children }: { text: string; children: React.ReactNode }) {
   return (
@@ -113,6 +104,9 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   }, [prefillAttempt]);
 
   useEffect(() => {
+    // Best-effort, on purpose: these three reads only fill the autosuggest
+    // chips and the going tube price. A failure leaves the chips empty and
+    // the form fully usable, so nothing the admin sees depends on them.
     fetch(`${BASE}/api/sessions/costs`, { cache: 'no-store' })
       .then(r => r.ok ? r.json() : { costs: [] })
       .then((data: { costs: number[] }) => setRecentCosts(data.costs ?? []))

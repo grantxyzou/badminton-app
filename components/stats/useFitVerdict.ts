@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FitFacts } from '@/lib/fitVerdict';
 import type { FitVerdictCopy } from '@/lib/fitVerdictCopy';
 import type { PlayerGear } from '@/lib/types';
+import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -61,7 +62,7 @@ export function useFitVerdict(name: string | null, gear: PlayerGear | null, read
       try {
         const frameQuery = frame ? `&frame=${encodeURIComponent(frame)}` : '';
         const res = await fetch(`${BASE}/api/equipment/fit-verdict?name=${encodeURIComponent(name)}${frameQuery}`, { cache: 'no-store' });
-        if (res.status === 401 || res.status === 403) {
+        if (isRefused(res)) {
           if (id === seq.current) { setForbidden(true); setError(true); }
           return;
         }

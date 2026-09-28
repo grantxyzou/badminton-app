@@ -34,12 +34,23 @@ const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
-  if (!checkRateLimit(`members-me:${ip}`, 10, 60 * 1000)) {
-    // `statsPrivacy: null` means UNKNOWN, not "never asked". These degraded
-    // paths never read the member doc, so answering with the default
-    // (`promptedAt: null`) would tell the client the member is unprompted and
-    // re-fire the first-run consent sheet at someone who already answered.
-    return NextResponse.json({ role: 'member', hasPin: false, statsPrivacy: null });
+  // Two limits, and a 429 rather than a degraded 200. The single 10/min
+  // per-IP bucket this used to be put a whole gym on one NAT address into the
+  // same ten probes, and the over-limit answer was a 200 carrying
+  // `hasPin: false` — which `useMemberProbe` read as "no account yet" and
+  // rendered the anonymous sign-up form to a member who has a PIN. A client
+  // can only treat an answer as UNKNOWN when the status says so: the probe
+  // hook drops any non-ok response, and `useStatsPrivacy` rejects on it.
+  // The coarse bucket is per IP (what a shared address needs), the precise
+  // one is per (IP, name) — what a PIN-guesser's reconnaissance actually
+  // looks like. The name is read before any I/O so the limit runs before the
+  // gate (security rule 4).
+  const probeName = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
+  if (
+    !checkRateLimit(`members-me:ip:${ip}`, 120, 60 * 1000) ||
+    !checkRateLimit(`members-me:${ip}:${probeName.toLowerCase()}`, 10, 60 * 1000)
+  ) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
   const gate = await requireMember(req);
   if (!gate.ok) return gate.response;

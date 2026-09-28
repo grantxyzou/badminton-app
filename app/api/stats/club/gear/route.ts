@@ -43,8 +43,18 @@ export async function GET(req: NextRequest) {
     // roster. `c.memberId` had to join the projection — without it there was
     // nothing on the row to narrow BY.
     const roster = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') ? await rosterMemberIds(resolveGroupId(req)) : null;
+    // Narrowed in SQL as well when there is a roster (one partition per
+    // member, not every partition); the mock ignores `@memberIds`, so the JS
+    // filter below is the one tests exercise and production re-checks.
     const { resources } = await getContainer('playerGear')
-      .items.query({ query: 'SELECT c.memberId, c.items FROM c' })
+      .items.query(
+        roster
+          ? {
+              query: 'SELECT c.memberId, c.items FROM c WHERE ARRAY_CONTAINS(@memberIds, c.memberId)',
+              parameters: [{ name: '@memberIds', value: [...roster] }],
+            }
+          : { query: 'SELECT c.memberId, c.items FROM c' },
+      )
       .fetchAll();
     const rows = (resources as (Pick<PlayerGear, 'items'> & { memberId?: string })[]).filter(
       (r) => !roster || (typeof r.memberId === 'string' && roster.has(r.memberId)),

@@ -179,8 +179,8 @@ export function fitLevel(p: PlayerProfile): FitLevel | null {
 // ---------------------------------------------------------------------------
 
 export const BALANCE_AXIS: Record<string, number> = { 'head-light': 1, even: 2, 'head-heavy': 3 };
-export const FLEX_AXIS: Record<string, number> = { flexible: 1, medium: 2, 'medium-stiff': 3, stiff: 4, 'extra-stiff': 5 };
-export const TIER_AXIS: Record<string, number> = { 'entry-level': 1, 'mid-range': 2, premium: 3 };
+const FLEX_AXIS: Record<string, number> = { flexible: 1, medium: 2, 'medium-stiff': 3, stiff: 4, 'extra-stiff': 5 };
+const TIER_AXIS: Record<string, number> = { 'entry-level': 1, 'mid-range': 2, premium: 3 };
 
 /** The catalog's own words for each rung, for reason params. */
 const FLEX_NAME = ['', 'Flexible', 'Medium', 'Medium-Stiff', 'Stiff', 'Extra Stiff'];
@@ -262,7 +262,7 @@ export const GOAL_DELTA: Record<FitGoal, { balance: number | 'toward2'; flex: nu
  *  the literature supports directly: lower tension lowers elbow load. Not
  *  part of the racket target: the route hands it to `pairString`, which
  *  scores and names the string at the same eased tension. */
-export const COMFORT_TENSION_DELTA_LB: Record<FitArmComfort, number> = { fine: 0, sometimes_sore: -1, often_sore: -2 };
+const COMFORT_TENSION_DELTA_LB: Record<FitArmComfort, number> = { fine: 0, sometimes_sore: -1, often_sore: -2 };
 export function comfortTensionDeltaLb(c: FitArmComfort | undefined): number {
   return c ? COMFORT_TENSION_DELTA_LB[c] : 0;
 }
@@ -343,7 +343,7 @@ export const WEIGHTS = { balance: 22, flex: 12, weight: 1.2, tier: 6 } as const;
  *  tier (Entry) when unanchored, the anchor's own tier when anchored, so a
  *  Beginner who already plays Premium is not steered down from it. Reordered
  *  toward the rows that fit as well, never excluded from a Premium frame. */
-export const TIER_UP_BEGINNER = 12;
+const TIER_UP_BEGINNER = 12;
 const WEIGHT_DELTA_CAP = 10;
 const CAP_FLEX = 10;
 const CAP_WEIGHT = 4;
@@ -353,7 +353,7 @@ const SECONDARY = { format: 4, formatBoth: 3, style: 3, gripMiss: -6, overBudget
  *  budget. fit-1 charged the full 20 for $7 over $200, and the owner's own
  *  golden rating (2026-09-10) chose exactly that racket: a budget is a
  *  preference, and D6 already says it never excludes. */
-export const BUDGET_RAMP = 0.25;
+const BUDGET_RAMP = 0.25;
 
 export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, input: FitInput, anchorAxes: Axes | null): Scored {
   const reasons: FitReason[] = [];

@@ -91,9 +91,76 @@ function wellKnown(req: NextRequest): NextResponse | null {
   });
 }
 
+/**
+ * Two request-level guards for every mutating `/api/*` call, in the one place
+ * that sees every request before a handler does (the 2026-09-28 audit, S9
+ * and S10). Both are DEFENCE IN DEPTH — no handler relies on them.
+ *
+ *  - BODY SIZE. No handler capped its body; every per-field cap ran after
+ *    `req.json()` had already read the lot. A declared `content-length` over
+ *    `MAX_BODY_BYTES` is refused with 413 before any read. The largest real
+ *    body here is a report (2,000 chars) or a Claude prompt; 256 KiB is a
+ *    ceiling on abuse, not a budget. A chunked body declares no length and
+ *    passes this check — the per-route rate limits bound that case.
+ *  - CROSS-SITE WRITES. The session cookies are SameSite=Lax (OAuth callbacks
+ *    need it), which is what stops a cross-site form from carrying them — one
+ *    setting, no second line. A `Sec-Fetch-Site: cross-site` mutation, or an
+ *    `Origin` whose host is not the request's own, is refused with 403. The
+ *    one legitimate cross-site POST is Apple's `form_post` callback, which
+ *    arrives from appleid.apple.com by design and proves itself with the
+ *    state cookie instead. A browser that sends neither header (old, or a
+ *    non-browser client) is let through: this is the second line, not the
+ *    first. GET/HEAD/OPTIONS are never touched.
+ */
+const MAX_BODY_BYTES = 256 * 1024;
+const CROSS_SITE_WRITE_ALLOWED = new Set(['/api/auth/apple/callback']);
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function apiPath(req: NextRequest): string | null {
+  // As with `.well-known`: the basePath may or may not be on the raw URL.
+  const raw = new URL(req.url).pathname.replace(/^\/bpm(?=\/)/, '');
+  const p = req.nextUrl.pathname.startsWith('/api/') ? req.nextUrl.pathname : raw;
+  return p.startsWith('/api/') ? p : null;
+}
+
+export function apiGuards(req: NextRequest): NextResponse | null {
+  const path = apiPath(req);
+  if (!path || SAFE_METHODS.has(req.method.toUpperCase())) return null;
+
+  const declared = Number(req.headers.get('content-length') ?? '');
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
+  }
+
+  if (!CROSS_SITE_WRITE_ALLOWED.has(path)) {
+    if (req.headers.get('sec-fetch-site') === 'cross-site') {
+      return NextResponse.json({ error: 'cross_site_request' }, { status: 403 });
+    }
+    const origin = req.headers.get('origin');
+    if (origin !== null) {
+      let originHost: string | null = null;
+      try {
+        originHost = new URL(origin).host;
+      } catch {
+        originHost = null; // `null`, or unparseable: not this origin
+      }
+      if (!originHost || originHost !== req.headers.get('host')) {
+        return NextResponse.json({ error: 'cross_site_request' }, { status: 403 });
+      }
+    }
+  }
+  return null;
+}
+
 export function proxy(req: NextRequest): NextResponse {
   const known = wellKnown(req);
   if (known) return known;
+
+  if (apiPath(req) !== null) {
+    // API responses never carry the locale cookie; the guards are all that
+    // runs here.
+    return apiGuards(req) ?? NextResponse.next();
+  }
 
   if (req.cookies.get(COOKIE_NAME)) {
     return NextResponse.next();
@@ -125,9 +192,9 @@ export function proxy(req: NextRequest): NextResponse {
   return res;
 }
 
-// Run on all user-visible paths; skip API routes, Next internals, and static
-// files. `.well-known` is deliberately NOT excluded — the three association
-// files above are answered from here.
+// Run on all user-visible paths AND the API (for `apiGuards`); skip Next
+// internals and static files. `.well-known` is deliberately NOT excluded —
+// the three association files above are answered from here.
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

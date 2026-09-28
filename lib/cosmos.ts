@@ -762,19 +762,47 @@ export function _resetEnsuredContainers(): void {
  * answer is `null`, not an id that points at nothing. Callers decide what that
  * means for them (a 404, an empty list, a skipped best-effort write).
  */
+/**
+ * The pointer read is the first read of almost every request — a Home mount
+ * is five or six of them in parallel, each one a Cosmos round trip for a
+ * value that changes once a week. A 5-second memo per group is short enough
+ * that a stale answer cannot outlive the admin's own advance screen, and
+ * `setActiveSessionId` overwrites it in the same process anyway. Cosmos
+ * only: the mock store is reset between tests and a memo there would carry
+ * one case's session into the next.
+ */
+const POINTER_TTL_MS = 5 * 1000;
+const pointerMemo = new Map<string, { at: number; id: string | null }>();
+
+function pointerMemoEnabled() {
+  return Boolean(process.env.COSMOS_CONNECTION_STRING);
+}
+
+/** Test seam: forget every memoized pointer. */
+export function _resetPointerMemo() {
+  pointerMemo.clear();
+}
+
 export async function getActiveSessionId(groupId: string): Promise<string | null> {
   const fallback = groupId === BPM_GROUP_ID ? SESSION_ID : null;
+  const hit = pointerMemoEnabled() ? pointerMemo.get(groupId) : undefined;
+  if (hit && Date.now() - hit.at < POINTER_TTL_MS) return hit.id;
   try {
     const pointerId = groupDocId(groupId, POINTER_ID);
     const { resource } = await getContainer('sessions').item(pointerId, pointerId).read();
-    return (resource as { activeSessionId?: string } | undefined)?.activeSessionId ?? fallback;
+    const id = (resource as { activeSessionId?: string } | undefined)?.activeSessionId ?? fallback;
+    if (pointerMemoEnabled()) pointerMemo.set(groupId, { at: Date.now(), id });
+    return id;
   } catch (err) {
     // A MISSING pointer is the fallback case (a point read of a doc that does
     // not exist is a 404). Anything else — an outage, a misconfiguration — is
     // a failure, and a failure must not come back as "this group has no
     // session": every caller treats that answer as a true empty. The mock
     // never throws, so this branch is exercised only by production.
-    if ((err as { code?: number }).code === 404) return fallback;
+    if ((err as { code?: number }).code === 404) {
+      if (pointerMemoEnabled()) pointerMemo.set(groupId, { at: Date.now(), id: fallback });
+      return fallback;
+    }
     throw err;
   }
 }
@@ -788,6 +816,8 @@ export async function setActiveSessionId(groupId: string, id: string): Promise<v
     groupId,
     activeSessionId: id,
   });
+  // Same process, same answer at once. Another instance learns within the TTL.
+  if (pointerMemoEnabled()) pointerMemo.set(groupId, { at: Date.now(), id });
 }
 
 // Keep for any remaining references during migration

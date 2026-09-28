@@ -72,8 +72,20 @@ interface AssessmentDoc extends StoredAssessment {
 async function latestRatingsByMember(groupId: string, viewerId: string): Promise<Map<string, Rating[]>> {
   await ensureContainer('assessments', '/memberId');
   const roster = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') ? await rosterMemberIds(groupId) : null;
+  // With a roster in hand the scan is narrowed IN SQL too (the container is
+  // partitioned by `/memberId`, so this is one read per roster partition
+  // instead of every partition in the account). The viewer is added so their
+  // own row survives the narrowing — see the admission rule in the loop. The
+  // mock ignores `@memberIds`, so the JS check below is still what tests see.
   const { resources } = await getContainer('assessments')
-    .items.query({ query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c' })
+    .items.query(
+      roster
+        ? {
+            query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c WHERE ARRAY_CONTAINS(@memberIds, c.memberId)',
+            parameters: [{ name: '@memberIds', value: [...roster, viewerId] }],
+          }
+        : { query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c' },
+    )
     .fetchAll();
 
   const latestAt = new Map<string, string>();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { publicMember } from '@/lib/publicShapes';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
@@ -41,9 +42,7 @@ export async function GET(req: NextRequest) {
     // Admin clients have no use for the scrypt hash; if they need to verify
     // a PIN, they go through /api/admin (server-side timingSafeEqual).
     return NextResponse.json(
-      (resources as unknown as Array<Record<string, unknown>>).map(
-        ({ pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...m }) => m,
-      ),
+      (resources as unknown as Array<Record<string, unknown>>).map(publicMember),
     );
   } catch (error) {
     // 503, not an empty roster with a 200 — an outage must look like one.
@@ -65,10 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     const container = getContainer('members');
-    const strip = (doc: Record<string, unknown>) => {
-      const { pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...safe } = doc;
-      return safe;
-    };
+    const strip = publicMember;
 
     // With groups on a name is unique PER GROUP, so the global scan below
     // would refuse a name another club uses and, worse, reactivate that
@@ -130,8 +126,7 @@ export async function POST(req: NextRequest) {
       if (inactive) {
         const reactivated = { ...inactive, active: true };
         const { resource } = await container.items.upsert(reactivated);
-        const { pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...safe } = (resource ?? {}) as Record<string, unknown>;
-        return NextResponse.json(safe, { status: 200 });
+        return NextResponse.json(publicMember(resource as Record<string, unknown> | undefined), { status: 200 });
       }
       return NextResponse.json(
         { error: 'A member with that name already exists.', code: 'member_exists' },
@@ -151,8 +146,7 @@ export async function POST(req: NextRequest) {
     };
 
     const { resource } = await container.items.create(member);
-    const { pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...safe } = (resource ?? {}) as Record<string, unknown>;
-    return NextResponse.json(safe, { status: 201 });
+    return NextResponse.json(publicMember(resource as Record<string, unknown> | undefined), { status: 201 });
   } catch (error) {
     console.error('POST members error:', error);
     return NextResponse.json({ error: 'Failed to create member' }, { status: 500 });
@@ -262,8 +256,7 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const { pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...safe } = (updated ?? {}) as Record<string, unknown>;
-    return NextResponse.json(safe);
+    return NextResponse.json(publicMember(updated as Record<string, unknown> | undefined));
   } catch (error) {
     console.error('PATCH members error:', error);
     return NextResponse.json({ error: 'Failed to update member' }, { status: 500 });
@@ -296,8 +289,7 @@ export async function DELETE(req: NextRequest) {
     // readers until Phase 3's per-group route replaces this one.
     if (groupsOn()) await removeFromRoster(resolveGroupId(req), id);
     const { resource: updated } = await container.items.upsert({ ...existing, active: false });
-    const { pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...safe } = (updated ?? {}) as Record<string, unknown>;
-    return NextResponse.json(safe);
+    return NextResponse.json(publicMember(updated as Record<string, unknown> | undefined));
   } catch (error) {
     console.error('DELETE members error:', error);
     return NextResponse.json({ error: 'Failed to delete member' }, { status: 500 });

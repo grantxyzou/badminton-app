@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -69,7 +70,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
          *
          * Anything else non-ok is an ordinary load failure.
          */
-        if (res.status === 401 || res.status === 403) setAuthExpired(true);
+        if (isRefused(res)) setAuthExpired(true);
         else setLoadError(true);
         setItems([]);
         return;

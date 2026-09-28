@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   try {
     const claim = await claimMigration(input);
     // Absent, expired and already-used are ONE answer, by design.
-    if (claim.status !== 'ready') return NextResponse.json({ status: 'none' }, { status: 404 });
+    if (claim.status !== 'ready') return NextResponse.json({ error: 'not_found', status: 'none' }, { status: 404 });
 
     const { resource: member } = await getContainer('members')
       .item(claim.memberId, claim.memberId)

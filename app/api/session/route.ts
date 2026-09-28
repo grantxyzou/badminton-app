@@ -67,9 +67,17 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * A datetime the session may store: parseable AND carrying a timezone
+ * offset (`Z` or `±HH:MM`). The coding convention is "never store a plain
+ * `YYYY-MM-DDThh:mm:00`" and every client goes through `withLocalTz` — but
+ * this was the one place that would have accepted one anyway, and an
+ * offset-less string means a different instant on the server than on the
+ * phone that wrote it. Invalid resolves to '' exactly as before.
+ */
 export function toValidIso(val: unknown): string {
   const s = String(val ?? '').slice(0, 30);
-  return s && !isNaN(Date.parse(s)) ? s : '';
+  return s && !isNaN(Date.parse(s)) && /(?:Z|[+-]\d{2}:\d{2})$/.test(s) ? s : '';
 }
 
 export async function PUT(req: NextRequest) {

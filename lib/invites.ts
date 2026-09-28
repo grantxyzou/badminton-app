@@ -89,11 +89,11 @@ function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-export function inviteDocId(token: string): string {
+function inviteDocId(token: string): string {
   return `invite:${sha256(token)}`;
 }
 
-export function codeDocId(code: string): string {
+function codeDocId(code: string): string {
   return `code:${sha256(normalizeCode(code))}`;
 }
 
@@ -103,7 +103,7 @@ export function codeDocId(code: string): string {
  * outside A–Z and 0–9 is dropped, which covers spaces, hyphens and the
  * invisible characters a paste brings with it.
  */
-export function normalizeCode(raw: string): string {
+function normalizeCode(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
