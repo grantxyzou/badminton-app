@@ -2985,10 +2985,10 @@ textarea {
 
 /* Sign-up shuttle burst (docs/plans/signup-shuttle-burst.md). Fourteen brand
    shuttlecocks fly off the "I'm in" button when the server confirms a sign-up,
-   each with its own random direction, distance, size, spin and flight time
-   set as custom properties by components/home/ShuttleBurst.tsx. Once a week,
-   under a second: the one other place besides the banner that delight is
-   spent on this moment. No overshoot — `--ease-out-quart`, so `baddicon-pop`
+   each with its own random launch angle, distance, size, wobble and flight
+   time set as custom properties by components/home/ShuttleBurst.tsx. Once a
+   week, about a second: the one other place besides the banner that delight
+   is spent on this moment. No overshoot — `--ease-out-quart`, so `baddicon-pop`
    stays the one `--ease-spring` site. `forwards` on purpose: the piece stays
    at its landing (opacity 0) until the layer unmounts, instead of snapping
    back to the origin for a frame. Reduced motion: the component mounts
@@ -3002,19 +3002,58 @@ textarea {
   pointer-events: none;
   overflow: hidden;
 }
+/* Two phases and an attitude, from the physics (see lib/shuttleBurst.ts):
+   the wrapper flies the PATH, the image inside holds the ORIENTATION, so the
+   two never share one transform. The phase boundary is 30% of the flight
+   (LAUNCH_FRACTION in the lib — keep them equal).
+   - 0→30%, LAUNCH: a hard ease-out. Drag rises with speed squared, so a
+     shuttle sheds most of its speed in the first tenths of a second and
+     covers most of the launch distance early.
+   - 30→100%, FALL: ease in briefly, then LINEAR. It settles at terminal speed
+     (~6.8 m/s for a feather shuttle) and comes down at a steady pace, nearly
+     vertical — a "skewed parabola", not a symmetric one. The bezier's second
+     handle sits on the diagonal so the segment ENDS at constant speed.
+   - Opacity holds until the last fifth, then fades on the way out of frame.
+   - Attitude: aimed along the launch from the first frame (a shuttle flips
+     cork-first within ~20 ms of the hit), turned nose-down through the apex,
+     then a slow rock either side of vertical — the spin and wobble of the
+     descent — settling as it fades. */
 .shuttle-burst__piece {
   position: absolute;
-  transform: translate(-50%, -50%) scale(0.5);
+  display: block;
+  transform: translate(-50%, -50%) scale(0.7);
   opacity: 0;
-  animation: shuttle-burst var(--burst-dur, var(--duration-slow)) var(--ease-out-quart) var(--burst-delay, 0ms) forwards;
+  animation: shuttle-flight var(--burst-dur, var(--duration-slow)) linear var(--burst-delay, 0ms) forwards;
 }
-@keyframes shuttle-burst {
-  0% { transform: translate(-50%, -50%) scale(0.5) rotate(0deg); opacity: 1; }
-  65% { opacity: 1; }
+.shuttle-burst__body {
+  display: block;
+  transform: rotate(var(--burst-rest, 0deg));
+  animation: shuttle-attitude var(--burst-dur, var(--duration-slow)) var(--ease-out-quart) var(--burst-delay, 0ms) forwards;
+}
+@keyframes shuttle-flight {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(0.7);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.1, 0.75, 0.25, 1);
+  }
+  30% {
+    transform: translate(-50%, -50%) translate(var(--burst-x1), var(--burst-y1)) scale(1);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.8, 0.8);
+  }
+  80% { opacity: 1; }
   100% {
-    transform: translate(-50%, -50%) translate(var(--burst-dx), var(--burst-dy)) scale(1) rotate(var(--burst-rot));
+    transform: translate(-50%, -50%) translate(var(--burst-x2), var(--burst-y2)) scale(1);
     opacity: 0;
   }
+}
+@keyframes shuttle-attitude {
+  0% { transform: rotate(var(--burst-aim)); }
+  14% { transform: rotate(var(--burst-aim)); }
+  46% { transform: rotate(var(--burst-rest)); }
+  64% { transform: rotate(calc(var(--burst-rest) + var(--burst-wobble))); }
+  82% { transform: rotate(calc(var(--burst-rest) - var(--burst-wobble))); }
+  100% { transform: rotate(var(--burst-rest)); }
 }
 
 /* The sign-up button becomes the confirmation (HomeTab). lib/viewTransition.ts
