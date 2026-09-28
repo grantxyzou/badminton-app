@@ -25,3 +25,18 @@ describe('GET /api/equipment/catalog', () => {
     expect(body.items.find((i: { id: string }) => i.id === 's1')).toBeUndefined();
   });
 });
+
+describe('GET /api/equipment/catalog caching', () => {
+  it('sends a private, five-minute Cache-Control header', async () => {
+    const res = await GET(req('/api/equipment/catalog?category=racket'));
+    expect(res.headers.get('cache-control')).toBe('private, max-age=300');
+  });
+
+  it('does not memoize against the mock store (tests re-seed between cases)', async () => {
+    const container = getContainer('equipmentCatalog');
+    await container.items.upsert({ id: 'r-memo', category: 'racket', brand: 'Li-Ning', model: 'Axforce 90', skillRange: [3, 6] });
+    const res = await GET(req('/api/equipment/catalog?category=racket'));
+    const body = await res.json();
+    expect(body.items.find((i: { id: string }) => i.id === 'r-memo')).toBeDefined();
+  });
+});

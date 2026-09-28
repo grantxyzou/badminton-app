@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations, useFormatter } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -16,17 +17,12 @@ import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
 import SkillDiscoveryCard from './home/SkillDiscoveryCard';
-import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
-import ReleaseNotesSheet from './ReleaseNotesSheet';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
-import EnterCodeSheet from './EnterCodeSheet';
-import AskAccessSheet from './AskAccessSheet';
 import { OFFER_PIN_KEY } from '@/lib/offerPin';
-import RecoveryPinSheet from './RecoveryPinSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
 import WhoElseIsIn from './home/WhoElseIsIn';
@@ -38,6 +34,18 @@ import { renderMarkdown } from '@/lib/miniMarkdown';
 import Collapse from './primitives/Collapse';
 import { sharedFetch } from '@/lib/sharedRead';
 import { primeMemberAvatars } from '@/lib/useMemberAvatars';
+import { useEverOpened } from '@/lib/useEverOpened';
+
+// HomeTab itself stays eager (it carries the LCP announcement), but the
+// sheets it can open do not need to: each is behind a tap or a one-shot
+// marker, and `GiveKudosSheet` alone drags the kudos picker and the avatar
+// reader into the first payload. Each is rendered only while open, so the
+// chunk is fetched on first open and never for a visitor who never taps.
+const GiveKudosSheet = dynamic(() => import('@/components/stats/GiveKudosSheet'), { ssr: false });
+const ReleaseNotesSheet = dynamic(() => import('./ReleaseNotesSheet'), { ssr: false });
+const EnterCodeSheet = dynamic(() => import('./EnterCodeSheet'), { ssr: false });
+const AskAccessSheet = dynamic(() => import('./AskAccessSheet'), { ssr: false });
+const RecoveryPinSheet = dynamic(() => import('./RecoveryPinSheet'), { ssr: false });
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -159,6 +167,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // Forgot-PIN handoff from the inline sign-in form opens this code-entry sheet.
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
+  // The four lazily loaded sheets mount on first open and stay (see
+  // `useEverOpened`): no chunk for a visitor who never taps, no cut-short
+  // close animation for one who does.
+  const kudosEver = useEverOpened(kudosFor !== null);
+  const enterCodeEver = useEverOpened(enterCodeOpen);
+  const askAccessEver = useEverOpened(askAccessOpen);
+  const releaseEver = useEverOpened(releaseSheetOpen);
   /* Opened straight after a recovery-code redemption: that path deliberately
      CLEARS the old PIN server-side, so leaving the user here without offering
      a replacement is how they ended up PIN-less without being told. */
@@ -1139,8 +1154,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       </BottomSheet>
       {/* Opened on a specific person from the roster, so the sheet skips its
           picker. Same sheet as Stats: one flow, two entry points. */}
-      <GiveKudosSheet open={kudosFor !== null} onClose={() => setKudosFor(null)} recipient={kudosFor} />
+      {kudosEver && (
+        <GiveKudosSheet open={kudosFor !== null} onClose={() => setKudosFor(null)} recipient={kudosFor} />
+      )}
 
+      {askAccessEver && (
       <AskAccessSheet
         open={askAccessOpen}
         onClose={() => setAskAccessOpen(false)}
@@ -1156,6 +1174,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           void loadData();
         }}
       />
+      )}
+      {enterCodeEver && (
       <EnterCodeSheet
         open={enterCodeOpen}
         onClose={() => {
@@ -1178,6 +1198,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           setSetPinOpen(true);
         }}
       />
+      )}
       {/* Only mounted once we have a name — `identity` is required, and a
           sheet that cannot say who it is setting a PIN for should not exist. */}
       {recoveredName !== '' && (
@@ -1199,11 +1220,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       />
       )}
       </div>
-      <ReleaseNotesSheet
-        open={releaseSheetOpen}
-        releases={releases}
-        onClose={() => setReleaseSheetOpen(false)}
-      />
+      {releaseEver && (
+        <ReleaseNotesSheet
+          open={releaseSheetOpen}
+          releases={releases}
+          onClose={() => setReleaseSheetOpen(false)}
+        />
+      )}
     </div>
   );
 }

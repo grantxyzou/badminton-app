@@ -3,15 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import ChooseNameSheet from './auth/ChooseNameSheet';
-import HandoffCodeSheet from './auth/HandoffCodeSheet';
-import WelcomeDoors from './onboarding/WelcomeDoors';
-import CreateGroupPage from './onboarding/CreateGroupPage';
-import JoinGroupPage from './onboarding/JoinGroupPage';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { consumeOnboardingResume, pruneStaleOnboardingResume } from '@/lib/onboardingResume';
-import ResetPasswordSheet from './auth/ResetPasswordSheet';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
 import NativeBridge from '@/components/NativeBridge';
@@ -33,6 +27,7 @@ import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
 import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
 import { useInAppNavigation } from '@/lib/inAppNavigate';
+import { useEverOpened } from '@/lib/useEverOpened';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
 const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
@@ -55,6 +50,18 @@ const SkillsTab = dynamic(() => import('@/components/SkillsTab'), { ssr: false, 
 const ProfileTab = dynamic(() => import('@/components/ProfileTab'), { ssr: false, loading: () => <TabSkeleton /> });
 const DevPanel = dynamic(() => import('@/components/DevPanel'), { ssr: false });
 const DemoMode = dynamic(() => import('@/components/DemoMode'), { ssr: false });
+// The onboarding and auth surfaces are the same story one rung down: each is
+// reached by a specific URL or a rare tap (a pending handoff, a reset link, a
+// `?join=` invite, the create-group flow), never on an ordinary Home mount,
+// and together they pulled the provider buttons, the invite preview and the
+// group forms into everyone's first payload. Closed is still ABSENT (each is
+// rendered behind a condition), so the chunk loads on first open only.
+const ChooseNameSheet = dynamic(() => import('./auth/ChooseNameSheet'), { ssr: false });
+const HandoffCodeSheet = dynamic(() => import('./auth/HandoffCodeSheet'), { ssr: false });
+const ResetPasswordSheet = dynamic(() => import('./auth/ResetPasswordSheet'), { ssr: false });
+const WelcomeDoors = dynamic(() => import('./onboarding/WelcomeDoors'), { ssr: false });
+const CreateGroupPage = dynamic(() => import('./onboarding/CreateGroupPage'), { ssr: false });
+const JoinGroupPage = dynamic(() => import('./onboarding/JoinGroupPage'), { ssr: false });
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 /** Foregrounding re-checks the admin verdict at most this often. */
@@ -431,6 +438,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     setIdentity({ name, sessionId: sessionIdRef.current });
     setAuthNotice({ kind: 'signedIn', provider: 'google' });
   });
+  // Each lazily loaded sheet mounts on its first open and stays (see
+  // `useEverOpened`), so its chunk is never fetched for a visitor who never
+  // reaches it and its close animation is never cut short.
+  const chooseNameEver = useEverOpened(chooseNameOpen);
+  const handoffEver = useEverOpened(!!handoffCollect.prompt);
+  const resetEver = useEverOpened(!!resetRequest);
 
   /**
    * MEMBERS ONLY: THE SERVER'S ANSWER ABOUT WHO THIS IS WINS.
@@ -853,6 +866,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           regardless of which one that is. */}
       {/* Keyed on open so the sheet REMOUNTS each time: mode, PIN field and
           error all reset without setState-in-effect. */}
+      {chooseNameEver && (
       <ChooseNameSheet
         inviteToken={joinToken}
         key={chooseNameOpen ? 'choose-name-open' : 'choose-name-closed'}
@@ -864,13 +878,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           window.location.assign(nativeReturnHref(code));
         }}
       />
+      )}
       {/* The typed-code fallback for a Google/Apple sign-in that finished
           somewhere that could not report back. Shell level: it can be needed
           on whatever tab the app restores. */}
-      <HandoffCodeSheet {...handoffCollect} />
+      {handoffEver && <HandoffCodeSheet {...handoffCollect} />}
       {/* Shell level for the same reason as ChooseNameSheet: a reset link lands
           on /bpm at whatever tab the app restores. Keyed so the fields reset on
           each open rather than via setState-in-effect. */}
+      {resetEver && (
       <ResetPasswordSheet
         key={resetRequest ? 'reset-open' : 'reset-closed'}
         open={!!resetRequest}
@@ -886,6 +902,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           setActiveTab('profile');
         }}
       />
+      )}
     </>
   );
 }

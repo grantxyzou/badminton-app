@@ -126,7 +126,30 @@ export default getRequestConfig(async () => {
       ? enMessages
       : ((await import(`../messages/${locale}.json`)).default as MessageTree);
 
-  const messages = brandMessages(deepMerge(enMessages, localeMessages));
+  const messages = mergedMessages(locale, enMessages, localeMessages);
 
   return { locale, messages, timeZone: APP_TIME_ZONE };
 });
+
+/**
+ * The merged, branded tree per locale, built once per process. Both inputs
+ * are bundler imports — the same object on every request — so the walk over
+ * ~1,900 strings that `deepMerge` + `brandMessages` do was pure repetition,
+ * paid on every server render of every page. Keyed by locale only because
+ * that is the only thing that varies.
+ */
+const merged = new Map<string, MessageTree>();
+
+export function mergedMessages(locale: string, en: MessageTree, local: MessageTree): MessageTree {
+  let tree = merged.get(locale);
+  if (!tree) {
+    tree = brandMessages(deepMerge(en, local));
+    merged.set(locale, tree);
+  }
+  return tree;
+}
+
+/** Test seam: forget every merged tree. */
+export function _resetMergedMessages() {
+  merged.clear();
+}
