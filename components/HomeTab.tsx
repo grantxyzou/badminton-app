@@ -28,6 +28,7 @@ import NameAutocompleteInput from './home/NameAutocompleteInput';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
 import { tapSuccess } from '@/lib/haptics';
+import ShuttleBurst, { type BurstOrigin } from './home/ShuttleBurst';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
@@ -155,6 +156,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // entrance, where the browser has no transitions or motion is reduced. Never
   // both, which would move the same thing twice.
   const [signupEntrance, setSignupEntrance] = useState<'none' | 'pop' | 'morph'>('none');
+  // The shuttle burst (docs/plans/signup-shuttle-burst.md): set once per
+  // CONFIRMED sign-up from the submit button's viewport rect, cleared by the
+  // layer itself when the last piece lands.
+  const [burst, setBurst] = useState<BurstOrigin | null>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const clearBurst = useCallback(() => setBurst(null), []);
   /* Cancelling a spot and giving kudos lived on the Sign-Ups tab until it left
      the nav (2026-09-16). The card is the sign-up list now, so both live here.
      ONE confirmation sheet for both lists: coming off a waitlist is not the same
@@ -455,7 +462,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     };
     // Felt at the same instant it is seen. Native shell only; a no-op anywhere
     // it cannot be felt, including a shell built before the plugin was added.
-    if (!waitlist) tapSuccess();
+    if (!waitlist) {
+      tapSuccess();
+      // The burst radiates from the button, whose rect has to be read BEFORE
+      // the commit replaces it with the banner. A waitlist join gets none:
+      // nothing landed yet.
+      const rect = submitRef.current?.getBoundingClientRect();
+      if (rect) setBurst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, key: Date.now() });
+    }
     if (morph) withViewTransition(commit, 'vt-signup');
     else commit();
     void loadData();
@@ -1028,6 +1042,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               {pinReveal}
               {error && <p id="signup-error" role="alert" className="field-error">{error}</p>}
               <button
+                ref={submitRef}
                 type="submit"
                 disabled={
                   isSubmitting || !(memberName ?? name).trim() || !online
@@ -1227,6 +1242,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           onClose={() => setReleaseSheetOpen(false)}
         />
       )}
+      <ShuttleBurst origin={burst} onDone={clearBurst} />
     </div>
   );
 }

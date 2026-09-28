@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Signing up throws shuttles (2026-09-28)
+
+- **When your sign-up lands, a burst of little shuttlecocks flies off the button** — the same pink, yellow and green ones the PIN field uses, each at its own size and in its own direction. Once a week, under a second, and never for a waitlist join (nothing has landed yet). If your phone asks for reduced motion, you get the confirmation without the burst.
+
 ### The rest of the 2026-09-28 audit (2026-09-28)
 
 - **The site refuses what a browser should never send it.** Every API write is refused when it comes from another site or with a body over 256 KB, before any handler runs; the page cannot be framed by another site, and its forms cannot be pointed elsewhere.
