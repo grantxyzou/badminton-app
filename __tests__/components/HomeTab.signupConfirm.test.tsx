@@ -4,6 +4,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
 import HomeTab from '@/components/HomeTab';
+import { resetSharedReads } from '@/lib/sharedRead';
 
 /**
  * The moment of signing up.
@@ -43,6 +44,9 @@ function renderHome() {
 
 beforeEach(() => {
   localStorage.clear();
+  // `holdReads` leaves a read hanging forever; a hung request must not be
+  // shared into the next case's mount (lib/sharedRead.ts test seam).
+  resetSharedReads();
   holdReads = false;
   roster = [
     { id: 'p1', name: 'Viktor', waitlisted: false },

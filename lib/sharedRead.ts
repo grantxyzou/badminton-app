@@ -27,9 +27,44 @@ type Entry = { at: number; promise: Promise<unknown> };
 
 const inflight = new Map<string, Entry>();
 
+const inflightFetches = new Map<string, Promise<Response>>();
+
 /** Test seam: a suite that asserts on fetch counts must start from nothing. */
 export function resetSharedReads(): void {
   inflight.clear();
+  inflightFetches.clear();
+}
+
+/**
+ * One GET while it is IN FLIGHT, however many callers — and nothing after.
+ *
+ * The sibling of `sharedRead` for callers that keep their own `Response`
+ * handling: Home's shell and tab both ask for `/api/session` on mount, the
+ * tab and the avatar store both ask for `/api/members`, every
+ * `useCurrentGroup()` instance asks for both group endpoints, and the admin
+ * landing's cards each ask for the session and its roster. Each caller gets
+ * its own clone of the one response, so a 404 is still a 404 to the caller
+ * that knows what a 404 means on its screen.
+ *
+ * NO freshness tail, on purpose. These callers also refetch right after a
+ * mutation (a sign-up, a paid toggle, a cover), and even a two-second window
+ * could hand the refetch the answer from before the write. Sharing only
+ * while the request is open cannot: a refetch that starts after the write
+ * finds nothing in flight and goes to the server.
+ */
+export function sharedFetch(path: string): Promise<Response> {
+  let promise = inflightFetches.get(path);
+  if (!promise) {
+    promise = fetch(`${BASE}${path}`, { cache: 'no-store' });
+    inflightFetches.set(path, promise);
+    const done = () => {
+      if (inflightFetches.get(path) === promise) inflightFetches.delete(path);
+    };
+    promise.then(done, done);
+  }
+  // A body reads once; every sharer takes a clone and the original stays
+  // unread. (A test double without `clone` is handed back as is.)
+  return promise.then((r) => (typeof r.clone === 'function' ? r.clone() : r));
 }
 
 export function sharedRead<T = unknown>(path: string): Promise<T> {

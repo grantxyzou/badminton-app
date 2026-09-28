@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { normalizeAvatar, type MemberAvatar } from '@/lib/memberAvatar';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+import { sharedFetch } from '@/lib/sharedRead';
 
 /**
  * EVERYONE'S PICTURE, READ ONCE.
@@ -30,21 +30,31 @@ function notify() {
   for (const l of listeners) l();
 }
 
+/**
+ * Feed the store from a roster read somebody else already made. Home's tab
+ * reads `GET /api/members` for the invite list on every mount and the first
+ * avatar to render used to read it again seconds later; the tab primes the
+ * store instead, and `load()` then has nothing to do.
+ */
+export function primeMemberAvatars(rows: unknown): void {
+  if (!Array.isArray(rows)) return;
+  const next = new Map(byName);
+  for (const row of rows as Array<{ name?: unknown; avatar?: unknown }>) {
+    if (typeof row?.name !== 'string') continue;
+    // A save made while this read was in flight wins over the older answer.
+    if (!next.has(key(row.name))) next.set(key(row.name), normalizeAvatar(row.avatar));
+  }
+  byName = next;
+  loaded = true;
+  notify();
+}
+
 function load(): void {
   if (loaded || inflight || typeof window === 'undefined') return;
-  inflight = fetch(`${BASE}/api/members`, { cache: 'no-store' })
+  inflight = sharedFetch('/api/members')
     .then((r) => (r.ok ? r.json() : null))
     .then((rows: unknown) => {
-      if (!Array.isArray(rows)) return;
-      const next = new Map(byName);
-      for (const row of rows as Array<{ name?: unknown; avatar?: unknown }>) {
-        if (typeof row?.name !== 'string') continue;
-        // A save made while this read was in flight wins over the older answer.
-        if (!next.has(key(row.name))) next.set(key(row.name), normalizeAvatar(row.avatar));
-      }
-      byName = next;
-      loaded = true;
-      notify();
+      if (Array.isArray(rows)) primeMemberAvatars(rows);
     })
     .catch(() => {
       /* initials until the next mount retries */

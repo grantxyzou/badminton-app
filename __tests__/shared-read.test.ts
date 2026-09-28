@@ -51,3 +51,63 @@ describe('sharedRead', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('sharedFetch', () => {
+  it('shares one request among concurrent callers and gives each its own body', async () => {
+    const { sharedFetch, resetSharedReads } = await import('../lib/sharedRead');
+    resetSharedReads();
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: 's1' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const [a, b] = await Promise.all([sharedFetch('/api/session'), sharedFetch('/api/session')]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      // Both clones are readable — a body reads once, so the original must stay unread.
+      expect(await a.json()).toEqual({ id: 's1' });
+      expect(await b.json()).toEqual({ id: 's1' });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('shares NOTHING once the request has settled — a refetch after a write goes to the server', async () => {
+    const { sharedFetch, resetSharedReads } = await import('../lib/sharedRead');
+    resetSharedReads();
+    const fetchMock = vi.fn(async () => new Response('[]', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      await sharedFetch('/api/players');
+      await sharedFetch('/api/players');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps a non-ok status for every sharer instead of throwing', async () => {
+    const { sharedFetch, resetSharedReads } = await import('../lib/sharedRead');
+    resetSharedReads();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+    try {
+      const [a, b] = await Promise.all([sharedFetch('/api/session'), sharedFetch('/api/session')]);
+      expect(a.status).toBe(404);
+      expect(b.status).toBe(404);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('a rejected request is not shared with the next caller', async () => {
+    const { sharedFetch, resetSharedReads } = await import('../lib/sharedRead');
+    resetSharedReads();
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      await expect(sharedFetch('/api/session')).rejects.toThrow('offline');
+      expect((await sharedFetch('/api/session')).ok).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

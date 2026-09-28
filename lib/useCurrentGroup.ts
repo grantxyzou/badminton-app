@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { isFlagOn } from '@/lib/flags';
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+import { sharedFetch } from '@/lib/sharedRead';
 
 export interface CurrentGroup {
   id: string;
@@ -70,9 +69,11 @@ export function useCurrentGroup() {
       return;
     }
     try {
+      // Six consumers mount this hook, several together; one request each
+      // while it is in flight (lib/sharedRead.ts), not one per instance.
       const [currentRes, mineRes] = await Promise.all([
-        fetch(`${BASE}/api/groups/current`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/groups/mine`, { cache: 'no-store' }),
+        sharedFetch('/api/groups/current'),
+        sharedFetch('/api/groups/mine'),
       ]);
 
       // 404 = the feature is off; 401 = signed out. Neither is a failure.
