@@ -8,7 +8,6 @@ describe('gear preferences', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
   });
 
   it('persists playFormat and budgetMaxCad', async () => {
@@ -54,7 +53,6 @@ describe('fit questionnaire fields', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     seedMember('Lin', { id: 'member-lin' });
     // The admin GET below goes through the fresh role re-check, which reads
     // the admin's member row — a cookie alone is not enough.
@@ -190,7 +188,6 @@ describe('typed racket feel', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     seedMember('Lin', { id: 'member-lin' });
   });
 

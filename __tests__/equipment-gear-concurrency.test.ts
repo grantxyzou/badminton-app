@@ -46,7 +46,6 @@ beforeEach(() => {
   resetMockStore();
   setupAdminPin();
   seedMember(NAME, { id: MEMBER_ID });
-  process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
 });
 
 describe('gear document — concurrent writers must not lose an update', () => {

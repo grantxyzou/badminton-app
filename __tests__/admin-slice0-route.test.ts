@@ -61,7 +61,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
 });
 
 describe('GET /api/admin/slice0', () => {

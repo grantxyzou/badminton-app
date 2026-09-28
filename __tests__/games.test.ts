@@ -59,7 +59,6 @@ const validGame = {
 
 describe('/api/games', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     setupAdminPin(); // sets SESSION_SECRET so member cookies sign/verify deterministically
   });
 
@@ -119,17 +118,10 @@ describe('/api/games', () => {
     const res = await POST(postAs('m-lin', 'Lin', { ...validGame, scoreA: 'lots' }));
     expect(res.status).toBe(400);
   });
-
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
-    const res = await POST(post(validGame));
-    expect(res.status).toBe(404);
-  });
 });
 
 describe('/api/games — sessionId override is admin-only (rule 7)', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     setupAdminPin();
     resetMockStore();
     seedPointer('session-active');

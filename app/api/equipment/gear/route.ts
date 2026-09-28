@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { verifyMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
-import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, FIT_PLAY_STYLES, FIT_SORENESS, FIT_LEVEL_OPTIONS, type PlayerGear, type GearItem, type EquipmentCategory, type RacketFeel } from '@/lib/types';
@@ -216,9 +215,6 @@ async function commitGearDoc(
 }
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   const gate = await requireMember(req);
   if (!gate.ok) return gate.response;
   try {
@@ -294,9 +290,6 @@ export async function GET(req: NextRequest) {
 // server-side — the client never sends the whole items array, so a failed
 // read can't wipe the bag (see the atomic-append lesson in CLAUDE.md).
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   try {
     await ensureGear();
     const body = await req.json();
@@ -422,9 +415,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   try {
     await ensureGear();
     const body = await req.json();
@@ -596,9 +586,6 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   try {
     await ensureGear();
     const url = new URL(req.url);
@@ -638,9 +625,6 @@ export async function DELETE(req: NextRequest) {
 // admin. See the owner/admin check below. GET stays public — a racket
 // preference is low-sensitivity to read.
 export async function PUT(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   try {
     await ensureGear();
     const body = await req.json();

@@ -21,7 +21,6 @@ function get(url: string, cookieName = 'Lin'): NextRequest {
 describe('GET /api/stats/partners', () => {
   beforeEach(async () => {
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     const players = getContainer('players');
     // Two sessions; Lin co-attends with Viktor twice, Carolina once.
     await players.items.upsert({ id: 'p1', sessionId: 'session-2026-05-14', name: 'Lin' });
@@ -54,11 +53,5 @@ describe('GET /api/stats/partners', () => {
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.partners.find((p: { name: string }) => p.name === 'Akane')?.count).toBe(1);
-  });
-
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
-    const res = await GET(get('/api/stats/partners?name=Lin'));
-    expect(res.status).toBe(404);
   });
 });

@@ -33,13 +33,11 @@ describe('GET /api/recommend — the fit engine', () => {
     __resetCatalogSeedForTests();
     _resetCalibrationCache();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
     process.env.NEXT_PUBLIC_FLAG_RACKET_FIT = 'true';
     seedMember('Lin', { id: 'member-lin' });
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     delete process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
   });

@@ -123,13 +123,11 @@ beforeEach(async () => {
   __resetCatalogSeedForTests();
   setupAdminPin();
   process.env[FLAG] = 'true';
-  process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
   await seedTestAdminMember();
 });
 
 afterEach(() => {
   delete process.env[FLAG];
-  delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
 });
 
 describe('GET /api/games — a name-keyed read', () => {

@@ -71,11 +71,9 @@ describe('every engagement kind is counted by a reader', () => {
     resetMockStore();
     setupAdminPin();
     seedAdminMember();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
   });
 
   afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
   });
 
   it('has at least one kind to check (guards against a vacuous pass)', () => {

@@ -60,12 +60,10 @@ describe('Stats privacy gate — /insight, /partners, /attendance', () => {
     resetMockStore();
     setupAdminPin();
     mockCreate.mockReset();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     process.env.ANTHROPIC_API_KEY = 'test-key';
     seedPointer('session-2026-06-17');
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     delete process.env.ANTHROPIC_API_KEY;
   });
 
@@ -195,14 +193,13 @@ describe('Stats privacy gate — /insight, /partners, /attendance', () => {
 
     // Rule 4: the rate limiter must be the first thing in the handler, so a
     // flag flip cannot be used to skip past it.
-    it('rate-limits before the flag check', async () => {
+    it('rate-limits before the read', async () => {
       const ip = `partners-order-${Math.random()}`;
       const req = () =>
         new NextRequest(new URL(`${PARTNERS}?name=Lin`), {
           headers: { 'x-client-ip': ip, cookie: `member_session=${memberCookieValue('Lin')}` },
         });
       for (let i = 0; i < 11; i++) await partnersGET(req());
-      process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
       const res = await partnersGET(req());
       expect(res.status).toBe(429);
     });

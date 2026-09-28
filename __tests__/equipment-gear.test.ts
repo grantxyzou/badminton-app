@@ -50,7 +50,6 @@ describe('/api/equipment/gear', () => {
     // idempotent-PUT tests were added — those legitimately re-save the same
     // racket and need a clean bag to assert bag shape against.
     resetMockStore();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     setupAdminPin();
     const members = getContainer('members');
     await members.items.upsert({ id: 'm-lin', name: 'Lin', active: true, stage: 4 });
@@ -209,11 +208,5 @@ describe('/api/equipment/gear', () => {
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.gear).toBeNull();
-  });
-
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
-    const res = await GET(get('/api/equipment/gear?name=Lin'));
-    expect(res.status).toBe(404);
   });
 });

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sessionIdFromDate } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { topPartners } from '@/lib/recommend';
@@ -29,9 +28,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
 
   const url = new URL(req.url);
   const name = url.searchParams.get('name')?.trim().slice(0, 50) ?? '';

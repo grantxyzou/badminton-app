@@ -60,12 +60,10 @@ export const SERVER_KINDS = ['pick_served'] as const;
 export const PICK_KINDS = ['pick_served', 'pick_added', 'pick_tried', 'pick_rated'] as const;
 
 /**
- * Kinds whose SURFACE is gated by NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE, and which
- * therefore keep the "flag off leaves no live write endpoint behind" posture.
- *
- * The skill-funnel kinds are deliberately NOT here. `POST /api/events` used to
- * 404 wholesale on that flag, and the flag is dated for retirement — a
- * measurement that switches itself off on a date is not a measurement.
+ * The equipment (value-hub) kinds. Until 2026-09-28 their surface was gated by
+ * NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE and `POST /api/events` 404'd them with it
+ * off; the flag has retired and every allowlisted kind records. The list
+ * stays because `GET /api/admin/slice0` reads it to tally the kill criterion.
  */
 export const VALUE_HUB_KINDS = [
   'rec_card_tap',

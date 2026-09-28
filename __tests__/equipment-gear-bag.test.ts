@@ -41,7 +41,6 @@ beforeEach(() => {
   setupAdminPin(); // sets SESSION_SECRET so member_session cookies sign/verify deterministically
   seedMember(NAME, { id: MEMBER_ID });
   seedMember(OTHER_NAME, { id: OTHER_MEMBER_ID });
-  process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
 });
 
 // A caller authenticated as a DIFFERENT member — the impersonation case this

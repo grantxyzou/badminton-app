@@ -17,7 +17,6 @@ describe('GET /api/admin/fit-preview', () => {
     __resetCatalogSeedForTests();
     setupAdminPin();
     seedAdminMember();
-    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     seedMember('Lin', { id: 'member-lin' });
     await ensureContainer('playerGear', '/memberId');
     await getContainer('playerGear').items.upsert({
