@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib/memberPurge';
@@ -168,5 +168,58 @@ describe('docs canary — every path a governing doc names still resolves', () =
     const named = new Set(refs.map((r) => r.path));
     const unused = Object.keys(DELIBERATELY_ABSENT).filter((p) => !named.has(p));
     expect(unused).toEqual([]);
+  });
+});
+
+/**
+ * NUMERIC claims CLAUDE.md makes about the tree. A path that stops resolving
+ * is caught above; a number that stops being true is not, and the audit of
+ * 2026-09-28 found six of ten sampled ones stale ("279 test files" with 404
+ * in the tree, "~31 BottomSheet consumers" with 48, "zero escape hatches"
+ * with eight). Each pin below names the sentence it holds to, with the
+ * tolerance the claim deserves: a count that moves with every PR is held
+ * within a band, one that moves only by decision is held exactly.
+ */
+describe('docs canary — the numbers CLAUDE.md states about the tree', () => {
+  const claude = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8');
+
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full, out);
+      else out.push(full);
+    }
+    return out;
+  }
+  const within = (stated: number, actual: number, tolerance: number) =>
+    Math.abs(stated - actual) <= Math.ceil(actual * tolerance);
+
+  it('the stated test-file count is within 10% of the tree', () => {
+    const m = claude.match(/\*\*(\d+) test files \/ ~?[\d,]+ tests\*\*/);
+    expect(m, 'CLAUDE.md no longer states a test-file count in the pinned form').not.toBeNull();
+    const stated = Number(m![1]);
+    const actual = walk(join(process.cwd(), '__tests__')).filter((f) => /\.test\.tsx?$/.test(f)).length;
+    expect(within(stated, actual, 0.1), `CLAUDE.md says ${stated} test files; the tree has ${actual}`).toBe(true);
+  });
+
+  it('the stated BottomSheet consumer count is within 25% of the tree', () => {
+    const m = claude.match(/\*\*(\d+) consumers\*\*/);
+    expect(m, 'CLAUDE.md no longer states a BottomSheet consumer count in the pinned form').not.toBeNull();
+    const stated = Number(m![1]);
+    const actual = [...walk(join(process.cwd(), 'components')), ...walk(join(process.cwd(), 'app'))]
+      .filter((f) => /\.tsx?$/.test(f))
+      .filter((f) => readFileSync(f, 'utf8').includes('<BottomSheet')).length;
+    expect(within(stated, actual, 0.25), `CLAUDE.md says ${stated} consumers; the tree has ${actual}`).toBe(true);
+  });
+
+  it('the stated no-restricted-syntax escape-hatch count is exact', () => {
+    const m = claude.match(/\*\*(\d+)\*\* files carrying a `no-restricted-syntax` escape hatch/);
+    expect(m, 'CLAUDE.md no longer states the escape-hatch count in the pinned form').not.toBeNull();
+    const stated = Number(m![1]);
+    const actual = ['app', 'lib', 'components']
+      .flatMap((d) => walk(join(process.cwd(), d)))
+      .filter((f) => /\.tsx?$/.test(f))
+      .filter((f) => /eslint-disable[^\n]*no-restricted-syntax/.test(readFileSync(f, 'utf8'))).length;
+    expect(stated, `CLAUDE.md says ${stated} files carry an escape hatch; the tree has ${actual}`).toBe(actual);
   });
 });
