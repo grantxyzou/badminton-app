@@ -6,6 +6,7 @@ import { verifyMemberAuth, isAdminAuthedWithMember, ownsNameOrAdmin } from '@/li
 import { SKILLS, scoreAssessment, placePhase, type Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
+import { invalidateGroupCalibration } from '@/lib/levelStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,6 +103,9 @@ export async function POST(req: NextRequest) {
       phase: placePhase(score.overall),
     };
     const { resource } = await getContainer('assessments').items.create(record);
+    // A check-in is a self-seed for the level fold (lib/levelStore.ts). The
+    // container is PERSON-scoped, so every group's memo is dropped.
+    invalidateGroupCalibration();
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST assessments error:', error);
