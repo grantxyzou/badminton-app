@@ -48,6 +48,16 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The rest of the 2026-09-28 audit (2026-09-28)
+
+- **The site refuses what a browser should never send it.** Every API write is refused when it comes from another site or with a body over 256 KB, before any handler runs; the page cannot be framed by another site, and its forms cannot be pointed elsewhere.
+- **Fewer database reads on every screen.** The session pointer is remembered for five seconds, the equipment catalog for a minute (and for five minutes in your browser), the translations are merged once per server start, and club statistics in a multi-club deployment read only the club's members.
+- **A first visit downloads less.** Eleven sheets that open on a tap — kudos, release notes, the recovery-code and PIN sheets, the onboarding and sign-in screens — load the first time they open instead of with the page.
+- **Too many sign-up probes now say so.** Over the limit the probe answered "no account" and showed a member with a PIN the anonymous form; it answers "try again shortly" and the form keeps what it knew. The limit is per name, so a shared gym address is no longer one bucket.
+- **A purchase logged after 5 pm lands on today's date.** The bird purchase form's "Add" reset the date in UTC; it uses local time now. The purchase and reconcile sheets are their own components.
+- **The session editor refuses a time with no timezone**, and the client no longer has a fallback that could send one.
+- Under the hood: one helper strips credentials from every member and player response and one names "the server refused this caller", each replacing a dozen hand-written copies; eighteen internal symbols are no longer exported.
+
 ### Five fixes from the 2026-09-28 quality, efficiency and security audit (2026-09-28)
 
 - **Undoing a cover on a settled session can no longer thaw the bill silently.** The re-settle after an uncover swallowed both of its requests; if the first landed and the second failed, the session was left unsettled while the screen showed live numbers as if they were frozen. `lib/resettleSession.ts` is now the one owner of that pair for both the cover sheet and the uncover action, and a failure is shown in the sheet.

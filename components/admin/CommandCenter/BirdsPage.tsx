@@ -1,12 +1,12 @@
 'use client';
 
-import { todayIso } from '@/lib/stringingDue';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import AssignUsageSheet from '../AssignUsageSheet';
+import BirdPurchaseSheet from './BirdPurchaseSheet';
+import BirdReconcileSheet from './BirdReconcileSheet';
 import { fmtShortDate as fmtDate } from '@/lib/fmt';
 import type { BirdPurchase } from '@/lib/types';
 import { splitPurchasesByRecency } from '@/lib/birdPurchaseGroups';
@@ -137,34 +137,14 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [loadError, setLoadError] = useState(false);
   const loadedRef = useRef(false);
 
-  // Purchase sheet state — used for both Add and Edit. editingId === null
-  // means Add mode; non-null means Edit mode for that purchase.
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Both sheets own their forms (`BirdPurchaseSheet`, `BirdReconcileSheet`);
+  // the page holds only what is open, and an opening counter used as the
+  // sheet's `key` so each opening starts from a fresh form while the close
+  // animation still plays on the instance that is closing.
+  const [purchaseSheet, setPurchaseSheet] = useState<{ nonce: number; open: boolean; editing: BirdPurchase | null }>({ nonce: 0, open: false, editing: null });
+  const [reconcileSheet, setReconcileSheet] = useState<{ nonce: number; open: boolean }>({ nonce: 0, open: false });
   // Assign-to-sessions sheet (allows retro-assigning tubes to past sessions).
   const [assignTarget, setAssignTarget] = useState<BirdPurchase | null>(null);
-  const [formName, setFormName] = useState('');
-  const [formTubes, setFormTubes] = useState<number | ''>('');
-  const [formCost, setFormCost] = useState<number | ''>('');
-  const [formSpeed, setFormSpeed] = useState<number | ''>('');
-  const [formQuality, setFormQuality] = useState<number>(0);
-  /* `todayIso()`, not `toISOString().slice(0,10)`. The latter is UTC, and
-     Vancouver is 7-8 hours behind it — so every purchase logged after 5pm
-     local defaulted to TOMORROW'S date, silently, on the screen that decides
-     which week a shuttle spend lands in. */
-  const [formDate, setFormDate] = useState(() => todayIso());
-  const [formNotes, setFormNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [formError, setFormError] = useState('');
-
-  // Reconcile-count sheet — correct the on-hand total to a physical recount.
-  const [reconcileOpen, setReconcileOpen] = useState(false);
-  const [reconcileCount, setReconcileCount] = useState<number | ''>('');
-  const [reconcileReason, setReconcileReason] = useState('');
-  const [reconcileSaving, setReconcileSaving] = useState(false);
-  const [reconcileError, setReconcileError] = useState('');
 
   const load = useCallback(async () => {
     // Skeleton on the first load only: a save or cover used to blink this
@@ -218,134 +198,11 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openAddSheet() {
-    setConfirmingDelete(false);
-    setEditingId(null);
-    setFormName('');
-    setFormTubes('');
-    setFormCost('');
-    setFormSpeed('');
-    setFormQuality(0);
-    setFormDate(new Date().toISOString().slice(0, 10));
-    setFormNotes('');
-    setFormError('');
-    setSheetOpen(true);
-  }
-
-  function openEditSheet(p: BirdPurchase) {
-    setConfirmingDelete(false);
-    setEditingId(p.id);
-    setFormName(p.name);
-    setFormTubes(p.tubes);
-    setFormCost(p.totalCost);
-    setFormSpeed(typeof p.speed === 'number' ? p.speed : '');
-    setFormQuality(typeof p.qualityRating === 'number' ? p.qualityRating : 0);
-    setFormDate(p.date.slice(0, 10));
-    setFormNotes(p.notes ?? '');
-    setFormError('');
-    setSheetOpen(true);
-  }
-
-  async function handleSave() {
-    const name = formName.trim();
-    const tubes = typeof formTubes === 'number' ? formTubes : 0;
-    const totalCost = typeof formCost === 'number' ? formCost : 0;
-    if (!name) { setFormError('Brand / model required.'); return; }
-    if (tubes <= 0) { setFormError('Tubes must be > 0.'); return; }
-    if (totalCost <= 0) { setFormError('Total cost must be > 0.'); return; }
-
-    setSaving(true);
-    setFormError('');
-    try {
-      const body: Record<string, unknown> = {
-        name,
-        tubes,
-        totalCost,
-        date: formDate,
-        ...(typeof formSpeed === 'number' ? { speed: formSpeed } : {}),
-        ...(formQuality > 0 ? { qualityRating: formQuality } : {}),
-        ...(formNotes.trim() ? { notes: formNotes.trim() } : {}),
-      };
-      const res = await fetch(`${BASE}/api/birds`, {
-        method: editingId ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingId ? { id: editingId, ...body } : body),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setFormError(data.error ?? `Failed to ${editingId ? 'save' : 'add'} purchase.`);
-        return;
-      }
-      setSheetOpen(false);
-      await load();
-    } catch {
-      setFormError('Network error.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!editingId) return;
-    setDeleting(true);
-    setFormError('');
-    try {
-      const res = await fetch(`${BASE}/api/birds`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingId }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        // 409 = referenced by sessions; the server message carries the
-        // "move its tubes first" guidance. Drop back out of the confirm row
-        // so the error is what the admin reads.
-        setFormError(data.error ?? 'Failed to delete.');
-        setConfirmingDelete(false);
-        return;
-      }
-      setSheetOpen(false);
-      await load();
-    } catch {
-      setFormError('Network error.');
-      setConfirmingDelete(false);
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  function openReconcileSheet() {
-    setReconcileCount(currentStock);
-    setReconcileReason('');
-    setReconcileError('');
-    setReconcileOpen(true);
-  }
-
-  async function handleReconcile() {
-    const counted = typeof reconcileCount === 'number' ? reconcileCount : NaN;
-    if (!Number.isFinite(counted) || counted < 0) { setReconcileError('Enter the number of tubes you counted.'); return; }
-    if (counted === currentStock) { setReconcileError('That already matches the current count — nothing to change.'); return; }
-    setReconcileSaving(true);
-    setReconcileError('');
-    try {
-      const res = await fetch(`${BASE}/api/birds/reconcile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ countedTotal: counted, ...(reconcileReason.trim() ? { reason: reconcileReason.trim() } : {}) }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setReconcileError(data.error ?? 'Failed to reconcile.');
-        return;
-      }
-      setReconcileOpen(false);
-      await load();
-    } catch {
-      setReconcileError('Network error.');
-    } finally {
-      setReconcileSaving(false);
-    }
-  }
+  const openAddSheet = () => setPurchaseSheet((prev) => ({ nonce: prev.nonce + 1, open: true, editing: null }));
+  const openEditSheet = (p: BirdPurchase) => setPurchaseSheet((prev) => ({ nonce: prev.nonce + 1, open: true, editing: p }));
+  const closePurchaseSheet = () => setPurchaseSheet((prev) => ({ ...prev, open: false }));
+  const openReconcileSheet = () => setReconcileSheet((prev) => ({ nonce: prev.nonce + 1, open: true }));
+  const closeReconcileSheet = () => setReconcileSheet((prev) => ({ ...prev, open: false }));
 
   const weeksRunway = burnPerSession > 0 ? currentStock / burnPerSession : null;
   const currentPrice = useMemo(() => currentPricePerTube(purchases), [purchases]);
@@ -727,284 +584,22 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         </>
       )}
 
-      {/* Add / Edit purchase sheet */}
-      <BottomSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        ariaLabel={editingId ? 'Edit purchase' : 'Log purchase'}
-      >
-        <BottomSheetHeader>
-          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{editingId ? 'Edit purchase' : 'Log purchase'}</span>
-          <button
-            type="button"
-            onClick={() => setSheetOpen(false)}
-            aria-label="Close"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              minWidth: 44,
-              minHeight: 44,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-          </button>
-        </BottomSheetHeader>
-        <BottomSheetBody>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            <Field label="Brand / model">
-              <input
-                type="text"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Ling-Mei 60"
-                maxLength={120}
-              />
-            </Field>
-            <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-              <Field label="Tubes" style={{ flex: 1 }}>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step={0.5}
-                  value={formTubes}
-                  onChange={(e) => setFormTubes(e.target.value === '' ? '' : Number(e.target.value))}
-                />
-              </Field>
-              <Field label="Total cost" style={{ flex: 1 }}>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step={0.01}
-                  value={formCost}
-                  onChange={(e) => setFormCost(e.target.value === '' ? '' : Number(e.target.value))}
-                />
-              </Field>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-              <Field label="Date" style={{ flex: 1 }}>
-                <input
-                  type="date"
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                />
-              </Field>
-              <Field label="Speed" style={{ flex: 1 }}>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={formSpeed}
-                  onChange={(e) => setFormSpeed(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="e.g. 76"
-                />
-              </Field>
-            </div>
-            <Field label="Quality (1–5)">
-              <div style={{ display: 'inline-flex', gap: 'var(--space-1)' }}>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setFormQuality(formQuality === i ? 0 : i)}
-                    aria-label={`${i} stars`}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '0',
-                      lineHeight: 0,
-                    }}
-                  >
-                    <span
-                      className="material-icons"
-                      style={{
-                        fontSize: 'var(--icon-lg)',
-                        color: i <= formQuality ? 'var(--amber)' : 'rgba(var(--glass-tint), 0.18)',
-                      }}
-                    >
-                      star
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </Field>
-            <Field label="Notes (optional)">
-              <input
-                type="text"
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-                placeholder="e.g. Same as last batch"
-                maxLength={200}
-              />
-            </Field>
+      <BirdPurchaseSheet
+        key={`purchase-${purchaseSheet.nonce}`}
+        open={purchaseSheet.open}
+        editing={purchaseSheet.editing}
+        onClose={closePurchaseSheet}
+        onSaved={() => { void load(); }}
+        onAssign={setAssignTarget}
+      />
 
-            {formError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
-                {formError}
-              </p>
-            )}
-
-            {editingId && (() => {
-              const target = purchases.find((p) => p.id === editingId);
-              if (!target) return null;
-              return (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSheetOpen(false);
-                    setAssignTarget(target);
-                  }}
-                  className="cc-btn cc-btn-secondary"
-                  style={{ alignSelf: 'flex-start' }}
-                >
-                  <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>event</span>
-                  Assign tubes to sessions
-                </button>
-              );
-            })()}
-
-            {/* Two-step delete confirm — in-sheet (no stacked sheet, no native
-                confirm()). A referenced purchase comes back 409 with guidance
-                ("move its tubes first"), surfaced via formError above. */}
-            {confirmingDelete ? (
-              // Fades in: a confirm that appears in one frame reads as a mis-tap.
-              <div className="motion-fade" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span className="fs-sm" style={{ color: 'var(--text-secondary)', flex: 1, minWidth: 160 }}>
-                  Delete this purchase? This cannot be undone.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingDelete(false)}
-                  className="cc-btn cc-btn-ghost"
-                  disabled={deleting}
-                >
-                  Keep it
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="cc-btn cc-btn-danger"
-                  aria-label="Confirm delete purchase"
-                >
-                  {deleting ? 'Deleting…' : 'Confirm delete'}
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-                {editingId && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingDelete(true)}
-                    disabled={saving || deleting}
-                    className="cc-btn cc-btn-danger"
-                    aria-label="Delete this purchase"
-                  >
-                    Delete
-                  </button>
-                )}
-                <div style={{ flex: 1 }} />
-                <button
-                  type="button"
-                  onClick={() => setSheetOpen(false)}
-                  className="cc-btn cc-btn-ghost"
-                  disabled={saving || deleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="cc-btn cc-btn-primary"
-                  disabled={saving || deleting}
-                  style={{ minWidth: 100 }}
-                >
-                  {saving ? 'Saving…' : editingId ? 'Save' : 'Add'}
-                </button>
-              </div>
-            )}
-          </div>
-        </BottomSheetBody>
-      </BottomSheet>
-
-      {/* Reconcile count */}
-      <BottomSheet
-        open={reconcileOpen}
-        onClose={() => setReconcileOpen(false)}
-        ariaLabel="Reconcile count"
-      >
-        <BottomSheetHeader>
-          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Reconcile count</span>
-          <button
-            type="button"
-            onClick={() => setReconcileOpen(false)}
-            aria-label="Close"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-          </button>
-        </BottomSheetHeader>
-        <BottomSheetBody>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0', lineHeight: 1.5 }}>
-              The app counts <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand
-              (purchased − used). If your physical count differs — broken tubes, gifts, miscounts — enter the real
-              number and we&apos;ll log the difference.
-            </p>
-            <Field label="Tubes actually on hand">
-              <input
-                type="number"
-                inputMode="decimal"
-                step={0.25}
-                min={0}
-                value={reconcileCount}
-                onChange={(e) => setReconcileCount(e.target.value === '' ? '' : Number(e.target.value))}
-              />
-            </Field>
-            {typeof reconcileCount === 'number' && reconcileCount !== currentStock && (
-              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-faint)', margin: '0', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
-                adjustment: {reconcileCount - currentStock > 0 ? '+' : '−'}{Math.abs(Math.round((reconcileCount - currentStock) * 100) / 100)} tubes
-              </p>
-            )}
-            <Field label="Reason (optional)">
-              <input
-                type="text"
-                value={reconcileReason}
-                onChange={(e) => setReconcileReason(e.target.value)}
-                placeholder="e.g. 2 tubes water-damaged"
-                maxLength={200}
-              />
-            </Field>
-            {reconcileError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
-                {reconcileError}
-              </p>
-            )}
-            <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setReconcileOpen(false)}
-                className="cc-btn cc-btn-ghost"
-                disabled={reconcileSaving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleReconcile}
-                className="cc-btn cc-btn-primary"
-                disabled={reconcileSaving}
-                style={{ minWidth: 100 }}
-              >
-                {reconcileSaving ? 'Saving…' : 'Reconcile'}
-              </button>
-            </div>
-          </div>
-        </BottomSheetBody>
-      </BottomSheet>
+      <BirdReconcileSheet
+        key={`reconcile-${reconcileSheet.nonce}`}
+        open={reconcileSheet.open}
+        currentStock={currentStock}
+        onClose={closeReconcileSheet}
+        onSaved={() => { void load(); }}
+      />
 
       {/* Retro-assign tubes to past sessions */}
       <AssignUsageSheet
@@ -1013,15 +608,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         purchase={assignTarget}
         onSaved={() => { void load(); }}
       />
-    </div>
-  );
-}
-
-function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', ...style }}>
-      <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{label}</label>
-      {children}
     </div>
   );
 }
