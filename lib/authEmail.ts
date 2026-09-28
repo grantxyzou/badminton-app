@@ -16,6 +16,7 @@
  * bank.
  */
 import { APP_NAME } from './brand';
+import { gmailTransport } from './mailTransport';
 export interface AuthMailResult {
   sent: boolean;
 }
@@ -43,8 +44,7 @@ async function send(to: string, subject: string, text: string): Promise<AuthMail
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass || !to) return { sent: false };
 
-  const nodemailer = (await import('nodemailer')).default;
-  const transport = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
+  const transport = await gmailTransport(user, pass);
 
   await transport.sendMail({
     from: `${APP_NAME} <${user}>`,

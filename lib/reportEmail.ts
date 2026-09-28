@@ -12,6 +12,7 @@
  * to the sending account) in Azure App Settings.
  */
 import { APP_NAME, APP_SHORT_NAME } from './brand';
+import { gmailTransport } from './mailTransport';
 export interface ReportNotification {
   message: string;
   name?: string;
@@ -26,11 +27,7 @@ export async function notifyReport(report: ReportNotification): Promise<{ sent: 
   const to = process.env.REPORT_EMAIL_TO || user;
   if (!user || !pass || !to) return { sent: false };
 
-  const nodemailer = (await import('nodemailer')).default;
-  const transport = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass },
-  });
+  const transport = await gmailTransport(user, pass);
 
   const body = [
     report.message,

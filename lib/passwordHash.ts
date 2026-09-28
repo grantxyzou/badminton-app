@@ -13,7 +13,7 @@
  * memory is the binding constraint. Node's default scrypt maxmem is 32 MiB and
  * THROWS above it, so maxmem must be passed explicitly.
  */
-import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { randomBytes, scrypt, scryptSync, timingSafeEqual } from 'crypto';
 
 const SCHEME = 'scrypt';
 const N = 65536;
@@ -22,13 +22,19 @@ const P = 1;
 const KEY_LENGTH = 32;
 const MAXMEM = 128 * N * R * 2; // 128 MiB headroom; scrypt needs 128*N*r
 
-function derive(password: string, salt: Buffer): Buffer {
-  return scryptSync(password, salt, KEY_LENGTH, { N, r: R, p: P, maxmem: MAXMEM });
+type ScryptParams = { N: number; r: number; p: number; maxmem: number };
+
+/** Async on the request path (libuv threadpool) — see lib/recoveryHash.ts for
+ *  why; at 64 MiB per hash this one blocked the loop for longer still. */
+function derive(password: string, salt: Buffer, params: ScryptParams = { N, r: R, p: P, maxmem: MAXMEM }): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(password, salt, KEY_LENGTH, params, (err, key) => (err ? reject(err) : resolve(key)));
+  });
 }
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const hash = derive(password, salt);
+  const hash = await derive(password, salt);
   return `${SCHEME}$${N}$${R}$${P}$${salt.toString('hex')}$${hash.toString('hex')}`;
 }
 
@@ -56,12 +62,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (salt.length === 0 || expected.length !== KEY_LENGTH) return false;
   let candidate: Buffer;
   try {
-    candidate = scryptSync(password, salt, KEY_LENGTH, {
-      N: n,
-      r,
-      p,
-      maxmem: 128 * n * r * 2,
-    });
+    candidate = await derive(password, salt, { N: n, r, p, maxmem: 128 * n * r * 2 });
   } catch {
     return false;
   }
@@ -75,7 +76,8 @@ export async function verifyPassword(password: string, stored: string): Promise<
  */
 export const FAKE_PASSWORD_HASH: string = (() => {
   const salt = Buffer.from('00000000000000000000000000000000', 'hex');
-  const hash = derive('__never_match__', salt);
+  // Once, at module load: the sync form is fine here and keeps the constant a constant.
+  const hash = scryptSync('__never_match__', salt, KEY_LENGTH, { N, r: R, p: P, maxmem: MAXMEM });
   return `${SCHEME}$${N}$${R}$${P}$${salt.toString('hex')}$${hash.toString('hex')}`;
 })();
 
