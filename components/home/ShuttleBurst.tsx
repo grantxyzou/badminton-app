@@ -21,8 +21,13 @@ interface Props {
 
 /**
  * The sign-up shuttle burst (docs/plans/signup-shuttle-burst.md): fourteen
- * brand shuttlecocks flying off the button in random directions at random
- * sizes, once, when the server has confirmed a sign-up.
+ * brand shuttlecocks fired upward off the button, each flying like a
+ * shuttle — a fast, drag-killed launch, a flip to nose-down, a steady
+ * near-vertical fall with a slight rock — once, when the server has
+ * confirmed a sign-up. The geometry is `lib/shuttleBurst.ts`; here each
+ * piece is a wrapper that flies the PATH (`shuttle-flight`) around an image
+ * that holds the ATTITUDE (`shuttle-attitude`), so the two rotations never
+ * fight over one transform.
  *
  * A FIXED layer portaled to <body>: the card the button sits in carries a
  * backdrop-filter, which would make it the containing block for anything
@@ -51,25 +56,37 @@ export default function ShuttleBurst({ origin, onDone }: Props) {
   return createPortal(
     <div className="shuttle-burst" aria-hidden="true" data-testid="shuttle-burst">
       {pieces.map((p) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <span
           key={`${origin.key}-${p.id}`}
-          src={`${BASE}/brand/baddicon-${p.icon}.svg`}
-          alt=""
           className="shuttle-burst__piece"
-          width={p.size}
           style={{
             left: origin.x,
             top: origin.y,
-            width: p.size,
-            height: Math.round((p.size * 22) / 24),
-            '--burst-dx': `${p.dx}px`,
-            '--burst-dy': `${p.dy}px`,
-            '--burst-rot': `${p.rot}deg`,
+            '--burst-x1': `${p.x1}px`,
+            '--burst-y1': `${p.y1}px`,
+            '--burst-x2': `${p.x2}px`,
+            '--burst-y2': `${p.y2}px`,
             '--burst-dur': `${p.dur}ms`,
             '--burst-delay': `${p.delay}ms`,
           } as CSSProperties}
-        />
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${BASE}/brand/baddicon-${p.icon}.svg`}
+            alt=""
+            className="shuttle-burst__body"
+            width={p.size}
+            style={{
+              width: p.size,
+              height: Math.round((p.size * 22) / 24),
+              '--burst-aim': `${p.aim}deg`,
+              '--burst-rest': `${p.rest}deg`,
+              '--burst-wobble': `${p.wobble}deg`,
+              '--burst-dur': `${p.dur}ms`,
+              '--burst-delay': `${p.delay}ms`,
+            } as CSSProperties}
+          />
+        </span>
       ))}
     </div>,
     document.body,

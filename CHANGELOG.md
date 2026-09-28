@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The shuttles fly like shuttles (2026-09-28)
+
+- **The sign-up burst now moves the way a shuttlecock does.** It used to scatter in straight lines and fade, which looked like neither confetti nor badminton. Now each piece pops UP out of the button cork-first, runs out of speed the way a real shuttle does, flips nose-down at the top and drops almost straight down at a steady pace with a little rock, landing below the card about a second later — the shape of a shuttle's flight, taken from the published physics rather than guessed.
+
 ### Signing up throws shuttles (2026-09-28)
 
 - **When your sign-up lands, a burst of little shuttlecocks flies off the button** — the same pink, yellow and green ones the PIN field uses, each at its own size and in its own direction. Once a week, under a second, and never for a waitlist join (nothing has landed yet). If your phone asks for reduced motion, you get the confirmation without the burst.
