@@ -3,6 +3,7 @@ import {
   resetMockStore,
   getStore,
   setupAdminPin,
+  seedTestAdminMember,
   seedPointer,
   seedSession,
   seedMember,
@@ -310,6 +311,8 @@ describe('a PIN-less member cannot be claimed by anyone who knows the name', () 
     const original = await hashPin('2468');
     const member = seedMember('Viktor', { pinHash: original });
 
+    // Admin mutations on this route re-read the Member doc (role + active).
+    await seedTestAdminMember();
     const { makeAdminRequest } = await import('./helpers');
     const res = await POST(
       makeAdminRequest('POST', 'http://x/api/players', { name: 'Viktor', pin: '9999' }),

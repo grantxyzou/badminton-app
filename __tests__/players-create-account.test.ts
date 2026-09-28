@@ -6,6 +6,7 @@ import {
   seedSession,
   seedMember,
   setupAdminPin,
+  seedTestAdminMember,
   makeRequest,
   makeAdminRequest,
   memberCookieValue,
@@ -16,11 +17,13 @@ import { verifyPin } from '@/lib/recoveryHash';
 const SESSION = 'session-2026-04-30';
 const URL_PATH = 'http://localhost:3000/api/players';
 
-beforeEach(() => {
+beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   seedPointer(SESSION);
   seedSession(SESSION);
+  // Admin mutations on this route re-read the Member doc (role + active).
+  await seedTestAdminMember();
 });
 
 describe('POST /api/players { sessionSignup: false } — account-only path', () => {

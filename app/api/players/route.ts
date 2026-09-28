@@ -103,6 +103,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
+  // ONE admin verdict for the whole handler, re-read from the Member doc
+  // (role AND active). This route creates and reactivates members and skips
+  // the invite, claim and PIN gates on it, so the cookie-signature-only
+  // check was not enough: a demoted or deactivated admin kept those powers
+  // for the cookie's remaining TTL (up to 30 days). The sync check
+  // short-circuits, so a non-admin still costs no read.
+  const admin = isAdminAuthed(req) && (await isAdminAuthedWithMember(req)).authed;
+
   /**
    * MEMBERS ONLY: YOU SIGN UP AS YOURSELF, WITH AN ACCOUNT
    * (docs/plans/members-only.md). Grant: "People shouldn't be allowed to sign
@@ -119,15 +127,15 @@ export async function POST(req: NextRequest) {
    *
    * Admins keep signing up anyone by name, as before.
    */
-  const signedIn = membersOnly && !isAdminAuthed(req) ? await requireGroupMember(req) : null;
-  if (membersOnly && !isAdminAuthed(req) && !signedIn) return unauthorized();
+  const signedIn = membersOnly && !admin ? await requireGroupMember(req) : null;
+  if (membersOnly && !admin && !signedIn) return unauthorized();
   if (signedIn && !checkRateLimit(`signup:member:${signedIn.memberId}`, 10, 60 * 1000)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
   try {
     const body = await req.json();
-    const sessionId = isAdminAuthed(req) && typeof body.sessionId === 'string'
+    const sessionId = admin && typeof body.sessionId === 'string'
       ? body.sessionId
       : await getActiveSessionId(resolveGroupId(req));
     if (!sessionId) return noActiveSession();
@@ -190,7 +198,7 @@ export async function POST(req: NextRequest) {
       // the name in the members container. Profile copy says "Account
       // creation is invite only — contact admin for inquiries (beta)" so
       // the server has to enforce that. Admins bypass.
-      if (!existingMember && !isAdminAuthed(req)) {
+      if (!existingMember && !admin) {
         return NextResponse.json({ error: 'invite_list_not_found', name: trimmedName }, { status: 403 });
       }
       // Refuse to overwrite an existing PIN. Otherwise anyone who knows a
@@ -231,7 +239,7 @@ export async function POST(req: NextRequest) {
         (claimAuth.memberId === existingMember.id ||
           (typeof existingMember.name === 'string' &&
             claimAuth.name.toLowerCase() === existingMember.name.toLowerCase()));
-      if (existingMember && !ownsExistingMember && !isAdminAuthed(req)) {
+      if (existingMember && !ownsExistingMember && !admin) {
         return NextResponse.json({ error: 'account_claim_needs_approval' }, { status: 403 });
       }
       const memberDoc = {
@@ -265,7 +273,7 @@ export async function POST(req: NextRequest) {
       // OWN device — a name with no member row is already refused by the invite
       // gate — so this re-affirms a cookie that device already holds. It can no
       // longer mint one for a stranger.
-      if (!isAdminAuthed(req)) setMemberCookie(out, safe.id, safe.name, resolveGroupId(req));
+      if (!admin) setMemberCookie(out, safe.id, safe.name, resolveGroupId(req));
       return out;
     }
 
@@ -297,11 +305,11 @@ export async function POST(req: NextRequest) {
     const maxPlayers =
       sessionData?.maxPlayers ?? defaultMaxPlayers();
 
-    if (sessionData?.signupOpen === false && !isAdminAuthed(req)) {
+    if (sessionData?.signupOpen === false && !admin) {
       return NextResponse.json({ error: 'Sign-ups are not open yet' }, { status: 403 });
     }
 
-    if (sessionData?.deadline && new Date() > new Date(sessionData.deadline) && !isAdminAuthed(req)) {
+    if (sessionData?.deadline && new Date() > new Date(sessionData.deadline) && !admin) {
       return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
     }
 
@@ -312,14 +320,14 @@ export async function POST(req: NextRequest) {
       // Already resolved inside the group above: one doc or none. A roster
       // always has at least its owner, so the invite gate always applies.
       matchedMember = allMembers[0] ?? null;
-      if (!matchedMember && !isAdminAuthed(req)) {
+      if (!matchedMember && !admin) {
         return NextResponse.json({ error: 'invite_list_not_found', name: trimmedName }, { status: 403 });
       }
     } else if (allMembers.length > 0) {
       matchedMember = allMembers.find(
         (m: { name: string }) => m.name.toLowerCase() === trimmedName.toLowerCase()
       ) ?? null;
-      if (!matchedMember && !isAdminAuthed(req)) {
+      if (!matchedMember && !admin) {
         return NextResponse.json({ error: 'invite_list_not_found', name: trimmedName }, { status: 403 });
       }
     }
@@ -336,12 +344,12 @@ export async function POST(req: NextRequest) {
     // `LOWER(c.name)` query with no ORDER BY picks between them, and that id is
     // the storage key for drills, assessments, kudos and gear. Mirrors the
     // reactivate branch in POST /api/members.
-    if (!matchedMember && isAdminAuthed(req) && groupsOn()) {
+    if (!matchedMember && admin && groupsOn()) {
       // With groups on: rejoin the name's holder here, else a new person —
       // never the global reactivation scan below, which would resurrect
       // another club's soft-deleted person onto this roster.
       matchedMember = (await adminAddToRoster(scope.groupId, trimmedName)).member as unknown as typeof matchedMember;
-    } else if (!matchedMember && isAdminAuthed(req)) {
+    } else if (!matchedMember && admin) {
       const { resources: anyNamed } = await membersContainer.items
         .query({
           query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name)',
@@ -393,7 +401,7 @@ export async function POST(req: NextRequest) {
       matchedMember &&
       typeof matchedMember.pinHash === 'string' &&
       matchedMember.pinHash.length > 0 &&
-      !isAdminAuthed(req) &&
+      !admin &&
       !trustedAsMember
     ) {
       const candidate = typeof body.pin === 'string' ? body.pin : null;
@@ -476,7 +484,7 @@ export async function POST(req: NextRequest) {
       (typeof matchedMember.pinHash !== 'string' || matchedMember.pinHash.length === 0) &&
       typeof body.pin === 'string' &&
       body.pin.length > 0 &&
-      !isAdminAuthed(req) &&
+      !admin &&
       !trustedAsMember
     ) {
       return NextResponse.json(
@@ -530,7 +538,7 @@ export async function POST(req: NextRequest) {
 
       const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
       const out = NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
-      if (matchedMember && (trustDevice || pinHash) && !isAdminAuthed(req)) {
+      if (matchedMember && (trustDevice || pinHash) && !admin) {
         setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
       }
       return out;
@@ -581,7 +589,7 @@ export async function POST(req: NextRequest) {
     // Trust this device for future sign-ups when this request proved (sign-in)
     // or created (first PIN) the member's PIN — the "stay logged in" model.
     // Skip for admins acting on behalf of others and for anon (no-PIN) names.
-    if (matchedMember && (trustDevice || pinHash) && !isAdminAuthed(req)) {
+    if (matchedMember && (trustDevice || pinHash) && !admin) {
       setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
     }
     return out;
@@ -697,25 +705,27 @@ export async function PATCH(req: NextRequest) {
       // is both what the gate binds to and what the mirror writes — binding
       // the gate to the row the mirror will touch is what stops the two
       // reasoning about different people.
+      //
+      // Resolved INSIDE the group (lib/memberResolve), then a point read: a
+      // name means something only in a group, and the cross-partition
+      // `LOWER(c.name)` scan with `members[0]` this used to be picks between
+      // two clubs' same-named people once groups are on. The self-check is
+      // on the resolved ID only — a name is mutable and, with groups on, a
+      // per-club roster name (the rule `members/me` adopted).
       const membersContainer = getContainer('members');
-      const { resources: members } = await membersContainer.items
-        .query({
-          query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-          parameters: [{ name: '@name', value: existing.name }],
-        })
-        .fetchAll();
-      const member = members[0] as
-        | (Record<string, unknown> & { id: string; name?: string; pinHash?: string })
-        | undefined;
+      const memberId = typeof existing.name === 'string'
+        ? await resolveActiveMemberId(resolveGroupId(req), existing.name)
+        : null;
+      const member = memberId
+        ? ((await membersContainer.item(memberId, memberId).read()).resource as
+            | (Record<string, unknown> & { id: string; name?: string; pinHash?: string })
+            | undefined)
+        : undefined;
 
       if (!isAdmin) {
         // No member row means there is no account to prove ownership of. Fail
         // closed rather than answering 200 for a write that reaches nothing.
-        const isSelf =
-          !!member &&
-          !!caller &&
-          (caller.memberId === member.id ||
-            caller.name.toLowerCase() === String(member.name ?? '').toLowerCase());
+        const isSelf = !!member && !!caller && caller.memberId === member.id;
         if (!isSelf) {
           return NextResponse.json({ error: 'auth_required' }, { status: 401 });
         }
