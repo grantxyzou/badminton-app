@@ -30,6 +30,17 @@ export async function POST(req: NextRequest) {
 }
 
 async function handlePost(req: NextRequest) {
+  // Coarse per-IP guard BEFORE the parse (security rule 4). The precise limit
+  // below is keyed per (name, IP), which needs the name out of the body — and
+  // a bucket keyed on a caller-chosen value is a fresh allowance per name, so
+  // on its own it bounded nothing: every request costs at least one scrypt
+  // (the FAKE_HASH miss), up to MAX_SIGNIN_CANDIDATES with groups on. Same
+  // shape as `auth/signin` and `members/me`'s PIN branch.
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`recover:ip:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
+  }
+
   let body: { name?: unknown; sessionId?: unknown; pin?: unknown; code?: unknown };
   try {
     body = await req.json();
@@ -61,7 +72,6 @@ async function handlePost(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const ip = getClientIp(req);
   if (!checkRateLimit(`recover:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
   }

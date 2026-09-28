@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { resettleSession } from '@/lib/resettleSession';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -64,19 +65,11 @@ export default function CoverSheet({
   }
 
   // Re-freeze the bill after a cover change so the per-person math reflects it.
-  // DELETE preserves paid checkmarks; POST re-stamps owedAmount with the cover
-  // flags applied. Only runs when the session was already settled.
+  // Only runs when the session was already settled. `resettleSession` is the
+  // one owner of the DELETE+POST pair and throws if either half fails.
   async function resettle() {
     if (!wasSettled) return;
-    const q = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : '';
-    const del = await fetch(`${BASE}/api/session/settle${q}`, { method: 'DELETE' });
-    if (!del.ok && del.status !== 404) {
-      throw new Error('Could not refresh the bill.');
-    }
-    const post = await fetch(`${BASE}/api/session/settle${q}`, { method: 'POST' });
-    if (!post.ok) {
-      throw new Error('Could not refresh the bill.');
-    }
+    await resettleSession(sessionId);
   }
 
   async function doCover(choice: CoverChoice) {

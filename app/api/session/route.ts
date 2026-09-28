@@ -58,8 +58,12 @@ export async function GET(req: NextRequest) {
       ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
     return NextResponse.json(isAdminAuthed(req) ? session : stripForPublic(session));
   } catch (error) {
+    // A failed read is a 503, never a default session with a 200. The client's
+    // `loadError` path exists for exactly this, and can only fire on a non-ok
+    // status; answering DEFAULT_SESSION rendered a Cosmos outage as "no
+    // session yet" (the lying-empty-state rule, server side).
     console.error('GET session error:', error);
-    return NextResponse.json(DEFAULT_SESSION);
+    return NextResponse.json({ error: 'read_failed' }, { status: 503 });
   }
 }
 

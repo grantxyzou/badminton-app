@@ -46,8 +46,9 @@ export async function GET(req: NextRequest) {
       ),
     );
   } catch (error) {
+    // 503, not an empty roster with a 200 — an outage must look like one.
     console.error('GET members error:', error);
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'read_failed' }, { status: 503 });
   }
 }
 

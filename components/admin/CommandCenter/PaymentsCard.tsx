@@ -11,6 +11,7 @@ import ActionRow from '@/components/primitives/ActionRow';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
+import { resettleSession, RESETTLE_FAILED } from '@/lib/resettleSession';
 import ReceiptSheet from './ReceiptSheet';
 import type { Session, ETransferRecipient } from '@/lib/types';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
@@ -394,10 +395,22 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       }
       // If the bill is already frozen, re-settle so the split reverts (a
       // re-split cover that's undone must give the others their money back).
+      // Both halves are checked: this used to swallow them, and a DELETE that
+      // landed without its POST left the session silently unsettled while the
+      // reload below showed live numbers as if they were frozen. The uncover
+      // itself has already been saved, so the error names the bill, not the
+      // cover, and the reload still runs so the screen shows what is true.
       if (viewedSession?.settled) {
-        const q = viewedSessionId ? `?sessionId=${encodeURIComponent(viewedSessionId)}` : '';
-        await fetch(`${BASE}/api/session/settle${q}`, { method: 'DELETE' }).catch(() => {});
-        await fetch(`${BASE}/api/session/settle${q}`, { method: 'POST' }).catch(() => {});
+        try {
+          await resettleSession(viewedSessionId);
+        } catch {
+          // Keep the sheet open: the error renders inside it, and closing it
+          // would hide the one line saying the bill is no longer frozen.
+          setActionError(RESETTLE_FAILED);
+          if (viewedSessionId) await loadPlayers(viewedSessionId);
+          void load();
+          return;
+        }
       }
       setActionTarget(null);
       if (viewedSessionId) await loadPlayers(viewedSessionId);

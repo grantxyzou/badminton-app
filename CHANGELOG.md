@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Five fixes from the 2026-09-28 quality, efficiency and security audit (2026-09-28)
+
+- **Undoing a cover on a settled session can no longer thaw the bill silently.** The re-settle after an uncover swallowed both of its requests; if the first landed and the second failed, the session was left unsettled while the screen showed live numbers as if they were frozen. `lib/resettleSession.ts` is now the one owner of that pair for both the cover sheet and the uncover action, and a failure is shown in the sheet.
+- **A database outage looks like one.** `GET /api/session`, `/api/members` and `/api/sessions` answered a failed read with a default session or an empty list and a 200; they answer 503 now, so the app's "Couldn't load" state can fire.
+- **Sign-in recovery and access-request polling are rate-limited per IP before the body is read.** Both were keyed only on a caller-chosen name, so each new name was a fresh allowance.
+- **A failed push no longer writes the device's push endpoint (a send credential) to the server log.**
+- **Push reads are scoped to the member.** Sending to a member, or registering a device, read every subscription of every member and filtered in code; they read one partition now.
+
 ### "Your groups" looks like the rest of Profile (2026-09-16)
 
 - Each club is a proper row now — its initial, its name, your role — with a tick on the one you're in, instead of a squashed pill with the text on its edge.

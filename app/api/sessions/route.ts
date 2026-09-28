@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
     const resources = await groupScope(resolveGroupId(req)).query('sessions', { orderBy: 'c.id DESC' });
     return NextResponse.json(resources);
   } catch (error) {
+    // 503, not `[]` with a 200 — an outage must look like one.
     console.error('GET sessions error:', error);
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'read_failed' }, { status: 503 });
   }
 }
