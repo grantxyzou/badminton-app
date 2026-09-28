@@ -2983,6 +2983,39 @@ textarea {
   animation: signupBannerIn var(--duration-normal) var(--ease-glass) both;
 }
 
+/* Sign-up shuttle burst (docs/plans/signup-shuttle-burst.md). Fourteen brand
+   shuttlecocks fly off the "I'm in" button when the server confirms a sign-up,
+   each with its own random direction, distance, size, spin and flight time
+   set as custom properties by components/home/ShuttleBurst.tsx. Once a week,
+   under a second: the one other place besides the banner that delight is
+   spent on this moment. No overshoot — `--ease-out-quart`, so `baddicon-pop`
+   stays the one `--ease-spring` site. `forwards` on purpose: the piece stays
+   at its landing (opacity 0) until the layer unmounts, instead of snapping
+   back to the origin for a frame. Reduced motion: the component mounts
+   nothing, and the blanket rule above would end the flight on frame one
+   regardless. */
+.shuttle-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  overflow: hidden;
+}
+.shuttle-burst__piece {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(0.5);
+  opacity: 0;
+  animation: shuttle-burst var(--burst-dur, var(--duration-slow)) var(--ease-out-quart) var(--burst-delay, 0ms) forwards;
+}
+@keyframes shuttle-burst {
+  0% { transform: translate(-50%, -50%) scale(0.5) rotate(0deg); opacity: 1; }
+  65% { opacity: 1; }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--burst-dx), var(--burst-dy)) scale(1) rotate(var(--burst-rot));
+    opacity: 0;
+  }
+}
+
 /* The sign-up button becomes the confirmation (HomeTab). lib/viewTransition.ts
    runs the transition only when the browser has the API and motion is not
    reduced, and puts `vt-signup` on <html> for its duration only; the names hang
@@ -2995,6 +3028,17 @@ textarea {
 html.vt-signup .vt-signup-confirm { view-transition-name: signup-confirm; }
 html.vt-signup .vt-signup-card { view-transition-name: signup-card; }
 html.vt-signup .vt-home-account { view-transition-name: home-account; }
+/* The shuttle burst starts in the SAME commit as the morph, so for the
+   transition's 250ms it lives inside the "new" snapshot — and named groups
+   paint ABOVE the root snapshot, which put the card over the first and
+   fastest third of the burst (the screenshot showed three of fourteen pieces,
+   the ones outside the card's box). Named, the layer is the topmost group
+   (it is fixed, z-index 70) and its new image is live, so the flight shows
+   through. No entry fade: the group exists only in the new state, and the
+   default `::view-transition-new` fade-in would dim exactly the frames it is
+   there for. */
+html.vt-signup .shuttle-burst { view-transition-name: signup-burst; }
+::view-transition-new(signup-burst) { animation: none; }
 /* The morph IS the banner's entrance. Its own slide-in would run inside the
    live "new" snapshot and arrive late and faint. Keyed on a persistent
    attribute, not the <html> class, because dropping that class when the

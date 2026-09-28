@@ -1,0 +1,46 @@
+# Sign-up shuttle burst
+
+**Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); requested directly by the owner on 2026-09-28
+**Status:** in-flight
+**Review on:** 2026-10-19 — after three Thursdays: has anyone said it is annoying, and has anyone said it is the reason they noticed the sign-up landed?
+
+## Problem
+
+Grant, 2026-09-28: "When people sign up for the week and you make a bunch of little small confetti like animation when they click on sign up, using the shuttles? Size the. Direction should be random."
+
+No player has reported anything. The moment already has a haptic tap (native shell only), a banner that pops in, and a View Transition that morphs the button into the banner — but on the web, where most members are, the confirmation is a colour change and a line of text. The request is for the sign-up landing to feel like something happened.
+
+## Kill criterion
+
+This failed if any of the following is true a month in:
+- it fires on anything other than a CONFIRMED, non-waitlist sign-up (a 201 with a roster row) — never on tap, never on a waitlist join, never on cancel or on any admin action;
+- it plays for someone who asked for reduced motion;
+- a tap under a falling shuttle is swallowed (the layer must be `pointer-events: none`);
+- a screenshot pass at a phone viewport shows it fighting the banner's own entrance or the View Transition morph;
+- more than one member says it is annoying. Delight spent weekly is a tax; the burst is under a second and does not repeat until next week's sign-up.
+
+## Non-goals
+
+- No burst on the waitlist path, on cancel, on admin sign-ups made on someone's behalf, or on Profile sign-in.
+- No sound. No new `--ease-spring` site: `baddicon-pop` stays the one sanctioned overshoot (PRODUCT.md #2); the flight eases out with `--ease-out-quart`.
+- No animation library, no canvas. Fourteen `<img>` pieces driven by one keyframe and per-piece CSS custom properties.
+- Not a generic confetti primitive. One consumer, one moment.
+
+## Decisions
+
+- **Shuttles, not paper.** The three brand baddicons (`public/brand/baddicon-{pink,yello,green}.svg`), the same set `PinInput` cycles per typed digit, so the burst reads as the PIN field's icons flying off the button.
+- **Random size AND direction, per the request** — each piece gets its own angle over the full circle, distance, size (12–26 px), spin and duration, from `lib/shuttleBurst.ts`'s `burstPieces(count, rng)`. The rng is injectable so a test can pin every value; `Math.random` is fine here because nothing is an identifier (the `randomBytes` rule is for ids).
+- **Fired from the server's answer, not the tap.** `applySignup` in HomeTab runs only after a 201; the burst is set there, beside `tapSuccess()`, with the submit button's rect captured BEFORE the commit replaces it with the banner. An optimistic burst on a refused sign-up would be a celebration of nothing.
+- **A fixed, portaled layer.** `position: fixed; inset: 0; pointer-events: none`, portaled to `body` so no card's `transform` or `backdrop-filter` becomes its containing block (the documented trap). It centres on the button's viewport coordinates, which is what `getBoundingClientRect` gives.
+- **Reduced motion renders nothing.** The global rule would collapse the keyframe to its end frame (opacity 0) anyway, but the component checks `matchMedia` and mounts no pieces at all — fourteen images fetched for a frame nobody sees is waste.
+- **Self-clearing.** The layer unmounts on a timer just past the longest piece; the pieces keep their end frame (`fill-mode: forwards`, opacity 0) until then, so nothing snaps back to the origin.
+
+## Shape
+
+| Piece | File |
+|---|---|
+| Particle generator (pure, tested) | `lib/shuttleBurst.ts` |
+| Layer + portal + reduced-motion guard | `components/home/ShuttleBurst.tsx` |
+| Keyframe and layer rules | `app/globals.css` ("Sign-up shuttle burst") |
+| Trigger | `components/HomeTab.tsx` → `applySignup` |
+| Tests | `__tests__/shuttle-burst.test.ts`, `__tests__/components/ShuttleBurst.test.tsx` |
