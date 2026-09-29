@@ -956,8 +956,9 @@ export async function DELETE(req: NextRequest) {
     if (trimmedName.length > 50) {
       return NextResponse.json({ error: 'Name too long' }, { status: 400 });
     }
-    // Require either admin cookie or a deleteToken for self-cancellation
-    if (!isAdmin && !deleteToken) {
+    // Self-cancel needs a credential: the admin cookie, the row's deleteToken,
+    // or the member's own `member_session` (checked below, once the row is known).
+    if (!isAdmin && !deleteToken && !verifyMemberAuth(req)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -975,10 +976,37 @@ export async function DELETE(req: NextRequest) {
 
     const player = resources[0];
 
-    // Non-admin must supply a token that matches the stored token
+    /**
+     * A NON-ADMIN CANCELS WITH THE ROW'S TOKEN OR AS THE ROW'S OWN MEMBER.
+     *
+     * The `deleteToken` lives in ONE browser's localStorage — the one that
+     * signed up. Before this route accepted `member_session`, anybody who
+     * signed up in Chrome and opened the installed app, switched phones,
+     * cleared storage, or was added by an admin was signed in and could not
+     * give their spot back: "Couldn't cancel" on every tap. Admins never saw
+     * it, because their cookie skips this block entirely — which is why the
+     * report was "works for me, not for anyone else".
+     *
+     * The member path re-reads the membership (`requireGroupMember`), so a
+     * removed member's 30-day cookie is not enough, and it matches on the
+     * row's `memberId` when the row carries one — a name is only a fallback
+     * for a row written before memberIds were stamped, and it is the verified
+     * CURRENT name, never the one in the body.
+     */
     if (!isAdmin) {
-      if (!player.deleteToken || !deleteToken || player.deleteToken.length !== deleteToken.length || !timingSafeEqual(Buffer.from(player.deleteToken), Buffer.from(deleteToken))) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const tokenOk = !!player.deleteToken && !!deleteToken
+        && player.deleteToken.length === deleteToken.length
+        && timingSafeEqual(Buffer.from(player.deleteToken), Buffer.from(deleteToken));
+      if (!tokenOk) {
+        const member = await requireGroupMember(req);
+        const owns = !!member && member.groupId === scope.groupId && (
+          typeof player.memberId === 'string' && player.memberId
+            ? player.memberId === member.memberId
+            : member.name.toLowerCase() === trimmedName.toLowerCase()
+        );
+        if (!owns) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
       }
     }
 

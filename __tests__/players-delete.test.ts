@@ -8,6 +8,8 @@ import {
   makeRequest,
   makeAdminRequest,
   seedAdminMember,
+  seedMember,
+  memberCookieValue,
 } from './helpers';
 import { DELETE } from '@/app/api/players/route';
 
@@ -86,6 +88,82 @@ describe('DELETE /api/players', () => {
       // ASSERT: missing token with no admin cookie → 401
       expect(res.status).toBe(401);
       expect(data.error).toBe('Unauthorized');
+    });
+
+    // The deleteToken lives only in the browser that signed up. A member who
+    // opens the installed app, changes phones or clears storage is still
+    // signed in, and must still be able to give their spot back.
+    it('lets the signed-in member cancel their own row with no token', async () => {
+      const alice = seedMember('Alice');
+      const player = seedPlayer(SESSION_ID, 'Alice', { deleteToken: VALID_TOKEN, memberId: alice.id });
+
+      const req = makeRequest('DELETE', 'http://localhost:3000/api/players', { name: 'Alice' }, {
+        Cookie: `member_session=${memberCookieValue('Alice', alice.id)}`,
+      });
+      const res = await DELETE(req);
+
+      expect(res.status).toBe(200);
+      const store = (global as typeof globalThis & { _mockStore?: Record<string, Record<string, unknown>[]> })._mockStore!;
+      const stored = store['players'].find((p) => p.id === player.id);
+      expect(stored?.removed).toBe(true);
+      expect(stored?.cancelledBySelf).toBe(true);
+    });
+
+    it('lets the member cancel with a stale token from an older sign-up', async () => {
+      const alice = seedMember('Alice');
+      seedPlayer(SESSION_ID, 'Alice', { deleteToken: VALID_TOKEN, memberId: alice.id });
+
+      const req = makeRequest('DELETE', 'http://localhost:3000/api/players', {
+        name: 'Alice',
+        deleteToken: 'b'.repeat(32),
+      }, { Cookie: `member_session=${memberCookieValue('Alice', alice.id)}` });
+
+      expect((await DELETE(req)).status).toBe(200);
+    });
+
+    it("refuses one member's cookie on another member's row", async () => {
+      const alice = seedMember('Alice');
+      const bob = seedMember('Bob');
+      const player = seedPlayer(SESSION_ID, 'Alice', { deleteToken: VALID_TOKEN, memberId: alice.id });
+
+      const req = makeRequest('DELETE', 'http://localhost:3000/api/players', { name: 'Alice' }, {
+        Cookie: `member_session=${memberCookieValue('Bob', bob.id)}`,
+      });
+      const res = await DELETE(req);
+
+      expect(res.status).toBe(401);
+      const store = (global as typeof globalThis & { _mockStore?: Record<string, Record<string, unknown>[]> })._mockStore!;
+      expect(store['players'].find((p) => p.id === player.id)?.removed).toBe(false);
+    });
+
+    it("refuses a member cookie naming the row when the row belongs to another memberId", async () => {
+      const alice = seedMember('Alice');
+      seedPlayer(SESSION_ID, 'Alice', { deleteToken: VALID_TOKEN, memberId: 'someone-else' });
+
+      const req = makeRequest('DELETE', 'http://localhost:3000/api/players', { name: 'Alice' }, {
+        Cookie: `member_session=${memberCookieValue('Alice', alice.id)}`,
+      });
+      expect((await DELETE(req)).status).toBe(401);
+    });
+
+    it('refuses a removed member whose cookie has not expired yet', async () => {
+      const alice = seedMember('Alice', { active: false });
+      seedPlayer(SESSION_ID, 'Alice', { deleteToken: VALID_TOKEN, memberId: alice.id });
+
+      const req = makeRequest('DELETE', 'http://localhost:3000/api/players', { name: 'Alice' }, {
+        Cookie: `member_session=${memberCookieValue('Alice', alice.id)}`,
+      });
+      expect((await DELETE(req)).status).toBe(401);
+    });
+
+    it('matches a legacy row with no memberId by the verified name', async () => {
+      const alice = seedMember('Alice');
+      seedPlayer(SESSION_ID, 'alice', { deleteToken: VALID_TOKEN });
+
+      const req = makeRequest('DELETE', 'http://localhost:3000/api/players', { name: 'alice' }, {
+        Cookie: `member_session=${memberCookieValue('Alice', alice.id)}`,
+      });
+      expect((await DELETE(req)).status).toBe(200);
     });
 
     it('returns 404 when the named player does not exist in the session', async () => {
