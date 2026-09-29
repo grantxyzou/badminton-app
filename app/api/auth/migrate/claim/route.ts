@@ -5,9 +5,9 @@
  * Body: `{ link }` (the 64-hex code from the universal link) or
  * `{ name, short }` (the 6-digit code typed by hand).
  *
- * THE deleteToken RE-MINT IS MANDATORY, NOT A NICETY. `DELETE /api/players`
- * accepts admin or `deleteToken` but never `member_session`, so a migrated
- * member would be signed in yet unable to cancel their own spot. The token
+ * THE deleteToken RE-MINT. `DELETE /api/players` was written to accept only
+ * admin or `deleteToken`; it now also accepts the row's own member's
+ * `member_session`, but the token is still what the client sends first. The token
  * is `randomBytes(16)` on the Player doc — random, not derivable — so it has
  * to be minted fresh, exactly as `app/api/players/recover/route.ts` does when
  * any credential is presented. `null` means "authenticated but not registered
