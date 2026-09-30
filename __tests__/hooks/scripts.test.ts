@@ -511,6 +511,33 @@ describe('smoke-prod.mjs (post-deploy / pre-merge)', () => {
     });
   });
 
+  it('passes the members-only signed-out shell, which has no nav by design', { timeout: 30_000 }, async () => {
+    const signedOut =
+      `<!DOCTYPE html><html><head><meta name="bpm-build" content="abc"/>` +
+      `<script src="${CHUNK}"></script></head><body>` +
+      `<main data-page-shell data-signed-out class="page-shell-top"><h1>Welcome</h1></main>` +
+      `</body></html>`;
+    await withServer('abc', (url) => (url === '/bpm' || url === '/bpm/' ? { status: 200, body: signedOut } : null), async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
+      expect(r.stdout).toContain('SMOKE OK');
+      expect(r.status).toBe(0);
+    });
+  });
+
+  it('still fails a shell with neither nav nor signed-out marker', { timeout: 30_000 }, async () => {
+    const half =
+      `<!DOCTYPE html><html><head><meta name="bpm-build" content="abc"/>` +
+      `<script src="${CHUNK}"></script></head><body>` +
+      `<main data-page-shell class="page-shell-top"></main></body></html>`;
+    await withServer('abc', (url) => (url === '/bpm' || url === '/bpm/' ? { status: 200, body: half } : null), async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
+      // FAIL lines and the failure summary both go to stderr.
+      expect(r.stderr).toContain('FAIL  page renders');
+      expect(r.stderr).toContain('SMOKE FAILED');
+      expect(r.status).toBe(1);
+    });
+  });
+
   it('refuses the WRONG build rather than grading the old instance', { timeout: 30_000 }, async () => {
     // The swap race: webapps-deploy returns before warm-up, so the previous
     // (healthy) instance answers and every other check would go green.

@@ -102,12 +102,18 @@ async function get(url, accept = '*/*') {
  *     page sails through, which is exactly the failure we are buying this to
  *     catch.
  *
- * Both markers below are emitted by `HomeShell` — `<main data-page-shell>` at
- * HomeShell.tsx:530 and `<BottomNav>` at :604 — and by NOTHING in
- * `app/layout.tsx`. That is the whole reason they were chosen. When Home
+ * The markers below are emitted by the page shells — `<main data-page-shell>`
+ * by both `HomeShell` and `SignedOutShell`, `<BottomNav>` (the nav) by
+ * HomeShell only, `data-signed-out` by SignedOutShell only — and by NOTHING
+ * in `app/layout.tsx`. That is the whole reason they were chosen. When Home
  * throws, `app/error.tsx` replaces the page while the layout keeps rendering,
  * so a layout-level marker (the splash, the `bpm-build` meta)
  * stays present and reports healthy through a completely broken screen.
+ *
+ * With members-only on (2026-09-28) a signed-out GET renders
+ * `SignedOutShell`, which has NO nav by design — Welcome, Sign up, Log in.
+ * So "complete" is EITHER shell: the nav, or the signed-out marker. A shell
+ * with neither is still the half-rendered HomeShell this check exists for.
  *
  * Deliberately NOT asserted:
  *   - the nav's LABEL text ("Home", "Sign-Ups") — locale comes from the
@@ -124,8 +130,8 @@ async function get(url, accept = '*/*') {
  * ──────────────────────────────────────────────────────────────────────────── */
 function assertAlive(html) {
   if (!html.includes('data-page-shell')) return 'no page shell — HomeShell did not render';
-  if (!html.includes('aria-label="Primary navigation"')) {
-    return 'no nav — the shell rendered incomplete';
+  if (!html.includes('aria-label="Primary navigation"') && !html.includes('data-signed-out')) {
+    return 'no nav and not the signed-out shell — the shell rendered incomplete';
   }
   return null;
 }

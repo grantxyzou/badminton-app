@@ -57,6 +57,7 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
     - *The access sheet said "Grant … his phone".* The sign-in and access copy now says "an admin" in both languages. Stringing copy still names Grant, because he is the stringer; the privacy page names him because it is legally accurate.
     - *The scrolled header was see-through.* Its background is dense enough (0.96 dark / 0.97 light, 22px blur) that text passing under it cannot be read, even where the blur is not rendered.
 19. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
+20. **Flipped on 2026-09-28** (Grant's call, after the rest of the audit landed in #495). Both workflows carry `'true'` — `pr-ci.yml` mirrors `deploy-next.yml` so CI builds what production builds. Step 4 below is the post-deploy check; step 6's retirement date is 2026-10-12.
 
 ## Shape
 
