@@ -123,7 +123,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
       'E-transfer auto-detection (docs/plans/payments.md, Phase 1): the admin\'s Apps Script forwards Interac emails to POST /api/payments/etransfer, which marks matched rows paid and queues the rest; the "I\'ve sent it" button; and the soft hold (2+ unpaid settled sessions → sign-up lands on the waitlist). Read SERVER-side by every payments route and by the hold in POST /api/players; off, those routes 404 and sign-up is unchanged.',
     owner: 'grant',
     plannedRemoval: '2026-11-21',
-    note: 'Ship date + 2 weeks is not enough here: the kill criterion reads four weeks of matches (Review on 2026-11-07 in the plan). Retiring it deletes the 404 guards and the hold\'s off branch.',
+    note: 'On in production since 2026-10-03 (Grant). Ship date + 2 weeks is not enough here: the kill criterion reads four weeks of matches (Review on 2026-11-07 in the plan). Retiring it deletes the 404 guards and the hold\'s off branch.',
   },
 };
 
