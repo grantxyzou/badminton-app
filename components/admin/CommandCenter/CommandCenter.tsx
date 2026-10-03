@@ -11,6 +11,7 @@ import AccessRequestsCard from './AccessRequestsCard';
 import SignInReadinessCard from './SignInReadinessCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
+import PaymentsInboxCard from './PaymentsInboxCard';
 import AdminDashTiles from './AdminDashTiles';
 import PlayerProfileSheet from './PlayerProfileSheet';
 import ReceiptSheet from './ReceiptSheet';
@@ -131,6 +132,9 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
         onOpenBirds={() => setView('birds')}
         onOpenRoster={() => setView('members')}
       />
+      {/* E-transfers waiting for a person sit right above the paid pills they
+          resolve into; a match bumps the refresh so the pills move with it. */}
+      <PaymentsInboxCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
       <PaymentsCard
         refreshKey={composedRefresh}
         onOpenPlayer={openPlayer}
