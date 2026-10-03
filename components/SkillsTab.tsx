@@ -11,6 +11,7 @@ import LearnRegister from '@/components/stats/LearnRegister';
 import GearRegister from '@/components/stats/GearRegister';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
 import StatsSignedOut from '@/components/stats/StatsSignedOut';
+import { StatsFallback } from '@/components/TabFallbacks';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import { useActiveName } from '@/lib/useActiveName';
 import { recordEngagement } from '@/lib/engagement';
@@ -84,7 +85,9 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
   const promptOpen = shouldPromptForComparison(privacyState);
   const comparisonKey = `${privacyState.privacy?.promptedAt ?? 'unasked'}:${privacyState.privacy?.clubComparison ?? 'unknown'}`;
 
-  if (!identResolved) return null;
+  // The same frame the chunk fallback showed, so resolving who is signed in
+  // is not a blank frame between it and the shell (loading cascade).
+  if (!identResolved) return <StatsFallback />;
   if (!activeName) {
     return <StatsSignedOut onSignIn={onTabChange ? () => onTabChange('profile') : undefined} />;
   }

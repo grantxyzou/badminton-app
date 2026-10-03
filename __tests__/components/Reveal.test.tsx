@@ -1,9 +1,30 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { useEffect, useState } from 'react';
 import { render, screen, cleanup, act } from '@testing-library/react';
-import { RevealGroup, RevealSlot } from '../../components/primitives/Reveal';
+import { RevealGroup, RevealSlot, useRevealReady, INSTANT_MS } from '../../components/primitives/Reveal';
 
-afterEach(cleanup);
+/*
+ * The clock is driven: "instant" means ready within INSTANT_MS of the screen
+ * mounting, so every case says how late its data arrives. `performance.now`
+ * is spied rather than faked timers alone because jsdom's fake clock does not
+ * reach it reliably.
+ */
+let now = 0;
+beforeEach(() => {
+  now = 0;
+  vi.useFakeTimers();
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+});
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
+const later = () => {
+  now = INSTANT_MS + 400;
+};
+const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 
 const ph = (n: number) => <div data-testid={`ph-${n}`}>skeleton {n}</div>;
 
@@ -17,15 +38,24 @@ function Screen({ a, b, c, bEmpty = false }: { a: boolean; b: boolean; c: boolea
   );
 }
 
-const shown = (t: string) => screen.queryByText(t) !== null;
+/** Visible = rendered and not inside a `hidden` ancestor. */
+const shown = (t: string) => {
+  const el = screen.queryByText(t);
+  return !!el && !el.closest('[hidden]');
+};
+const placeholderUp = (n: number) => {
+  const el = screen.queryByTestId(`ph-${n}`);
+  return !!el && !el.closest('[hidden]');
+};
 
 describe('RevealGroup / RevealSlot', () => {
   it('never reveals a card before the one above it', () => {
     const { rerender } = render(<Screen a={false} b={false} c={false} />);
+    later();
     // The bottom card's data arrives first: it must wait behind its skeleton.
     rerender(<Screen a={false} b={false} c={true} />);
     expect(shown('card 3')).toBe(false);
-    expect(screen.getByTestId('ph-3')).toBeTruthy();
+    expect(placeholderUp(3)).toBe(true);
 
     rerender(<Screen a={true} b={false} c={true} />);
     expect(shown('card 1')).toBe(true);
@@ -33,17 +63,25 @@ describe('RevealGroup / RevealSlot', () => {
 
     // The middle one lands: it and the waiting card below it reveal together.
     rerender(<Screen a={true} b={true} c={true} />);
+    advance(200);
     expect(shown('card 2')).toBe(true);
     expect(shown('card 3')).toBe(true);
   });
 
-  it('staggers a batch revealed together, 40ms apart', () => {
-    const { rerender, container } = render(<Screen a={false} b={false} c={false} />);
+  it('staggers a batch 40ms apart, keeping each skeleton until its turn', () => {
+    const { rerender } = render(<Screen a={false} b={false} c={false} />);
+    later();
     rerender(<Screen a={true} b={true} c={true} />);
-    const delays = [...container.querySelectorAll('.motion-fade')].map(
-      (el) => (el as HTMLElement).style.animationDelay,
-    );
-    expect(delays).toEqual(['0ms', '40ms', '80ms']);
+    // First of the batch goes at once; the others hold their SKELETON, not a
+    // blank gap where an invisible card waits.
+    expect(shown('card 1')).toBe(true);
+    expect(placeholderUp(2) && placeholderUp(3)).toBe(true);
+    advance(40);
+    expect(shown('card 2')).toBe(true);
+    expect(placeholderUp(3)).toBe(true);
+    advance(40);
+    expect(shown('card 3')).toBe(true);
+    expect(placeholderUp(3)).toBe(false);
   });
 
   it('caps the stagger at the fourth slot', () => {
@@ -54,44 +92,82 @@ describe('RevealGroup / RevealSlot', () => {
         ))}
       </RevealGroup>
     );
-    const { rerender, container } = render(many(false));
+    const { rerender } = render(many(false));
+    later();
     rerender(many(true));
-    const delays = [...container.querySelectorAll('.motion-fade')].map(
-      (el) => (el as HTMLElement).style.animationDelay,
-    );
-    expect(delays).toEqual(['0ms', '40ms', '80ms', '120ms', '120ms', '120ms']);
+    advance(120);
+    // 4, 5 and 6 all share the fourth slot's 120ms.
+    expect([1, 2, 3, 4, 5, 6].every((n) => shown(`card ${n}`))).toBe(true);
   });
 
-  it('data already there on first render shows at once, with no fade', () => {
-    const { container } = render(<Screen a={true} b={true} c={true} />);
+  it('data that arrives within INSTANT_MS shows at once, with no fade', () => {
+    const { rerender, container } = render(<Screen a={false} b={false} c={false} />);
+    now = INSTANT_MS - 10; // a warm tab: answered from cache, a frame or two late
+    rerender(<Screen a={true} b={true} c={true} />);
     expect(shown('card 1') && shown('card 2') && shown('card 3')).toBe(true);
     expect(container.querySelectorAll('.motion-fade')).toHaveLength(0);
-    expect(screen.queryByTestId('ph-1')).toBeNull();
+  });
+
+  it('data that arrives late fades in', () => {
+    const { rerender, container } = render(<Screen a={false} b={false} c={false} />);
+    later();
+    rerender(<Screen a={true} b={false} c={false} />);
+    expect(container.querySelectorAll('.motion-fade')).toHaveLength(1);
   });
 
   it('an empty card closes its skeleton and lets the card below through', () => {
     const { rerender } = render(<Screen a={true} b={false} c={true} />);
+    later();
     expect(shown('card 3')).toBe(false);
     rerender(<Screen a={true} b={true} bEmpty c={true} />);
+    advance(400);
     expect(shown('card 2')).toBe(false);
+    expect(placeholderUp(2)).toBe(false);
     expect(shown('card 3')).toBe(true);
   });
 
-  it('a card already known to be empty on first render takes no space at all', () => {
+  it('a card already known to be empty takes no space at all', () => {
     render(<Screen a={true} b={true} bEmpty c={true} />);
-    expect(screen.queryByTestId('ph-2')).toBeNull();
+    expect(placeholderUp(2)).toBe(false);
     expect(shown('card 2')).toBe(false);
     expect(shown('card 3')).toBe(true);
   });
 
   it('a revealed card never goes back to its skeleton', () => {
     const { rerender } = render(<Screen a={false} b={false} c={false} />);
+    later();
     rerender(<Screen a={true} b={false} c={false} />);
     expect(shown('card 1')).toBe(true);
     // A refetch flips the card's `ready` back off: the content stays.
     rerender(<Screen a={false} b={false} c={false} />);
     expect(shown('card 1')).toBe(true);
-    expect(screen.queryByTestId('ph-1')).toBeNull();
+    expect(placeholderUp(1)).toBe(false);
+  });
+
+  it('a card that fetches inside itself is mounted, fetches, and reveals itself', () => {
+    const fetched = vi.fn();
+    function SelfFetching() {
+      const [data, setData] = useState<string | null>(null);
+      useEffect(() => {
+        fetched();
+        const t = setTimeout(() => setData('kudos!'), 500);
+        return () => clearTimeout(t);
+      }, []);
+      useRevealReady(data !== null);
+      return <p>{data ?? 'nothing yet'}</p>;
+    }
+    render(
+      <RevealGroup>
+        <RevealSlot placeholder={ph(1)}><SelfFetching /></RevealSlot>
+      </RevealGroup>,
+    );
+    // The fetch ran while the skeleton was showing.
+    expect(fetched).toHaveBeenCalledTimes(1);
+    expect(placeholderUp(1)).toBe(true);
+    later();
+    advance(500);
+    expect(shown('kudos!')).toBe(true);
+    expect(placeholderUp(1)).toBe(false);
   });
 
   it('a slot outside a group reveals on its own, and fades when it waited', () => {
@@ -99,8 +175,9 @@ describe('RevealGroup / RevealSlot', () => {
       <RevealSlot ready={ready} placeholder={ph(1)}><p>solo</p></RevealSlot>
     );
     const { rerender, container } = render(one(false));
-    expect(screen.getByTestId('ph-1')).toBeTruthy();
-    act(() => rerender(one(true)));
+    expect(placeholderUp(1)).toBe(true);
+    later();
+    rerender(one(true));
     expect(shown('solo')).toBe(true);
     expect(container.querySelectorAll('.motion-fade')).toHaveLength(1);
   });

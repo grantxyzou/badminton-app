@@ -30,14 +30,19 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 
 - **Ordered cascade over one gate per screen.** A per-screen gate is simpler but makes the slowest fetch hold the whole screen; the cascade reveals each card as soon as it AND everything above it are ready, so the top of the screen is never held up by the bottom.
 - **Opacity only, 150ms, 40ms stagger capped at 4 slots.** Tab switches happen tens of times a day; motion has to be near-invisible at that frequency (`emil-design-eng`: frequency decides). Matches the motion-pass rule that content arriving into a surface already on screen does not rise.
-- **Instant data skips the animation.** A slot whose data is ready before first paint renders without a fade, so a warm switch is not slowed by choreography.
+- **Instant data skips the animation.** A slot whose data is ready within 100ms of the screen mounting renders without a fade, so a warm switch is not slowed by choreography.
 - **An empty slot collapses through `<Collapse>`** rather than vanishing, because a skeleton that disappears in one frame is the same jump the cascade exists to remove.
+- **The card stays MOUNTED behind its skeleton** (hidden), and reports readiness itself with `useRevealReady()`. The first cut rendered the placeholder INSTEAD of the card, so a card that fetches inside itself — most of the ones the audit named — would never have mounted, never fetched, and kept its skeleton forever. Lifting every fetch into the screen was the alternative, and is a non-goal.
+- **"Instant" is time-based: ready within 100ms of the screen mounting.** The first cut meant "ready on first render", which never happens in practice (tabs remount on every switch and data always arrives after an async fetch), so every warm switch would have played the stagger — this plan's own kill criterion.
+- **A staggered slot keeps its skeleton until its turn.** Holding the card at opacity 0 for its delay showed a blank gap where the skeleton had just been.
+- **The splash spinner is stopped after load.** Fading the splash to `visibility: hidden` instead of `display: none` left its spinner running invisibly for the whole session (measured: `spin` still "running" after hydration).
 
 ## Shape
 
 | Piece | File |
 |---|---|
 | Reveal primitive | `components/primitives/Reveal.tsx` |
-| Per-tab chunk fallbacks | `components/primitives/CardSkeleton.tsx`, `components/HomeShell.tsx` |
-| Splash fade + reduced-motion failsafe | `app/globals.css` |
+| Per-tab chunk fallbacks (`StringingFallback`, `StatsFallback`, `ProfileFallback`, `AdminFallback`) | `components/TabFallbacks.tsx`, wired in `components/HomeShell.tsx` |
+| Splash fade, spinner stop, reduced-motion failsafe | `app/globals.css` |
+| Canaries | `__tests__/components/Reveal.test.tsx`, `__tests__/tab-fallback-canary.test.ts`, `__tests__/design-canary.test.ts` |
 | Spec | `docs/superpowers/specs/2026-10-03-loading-cascade-design.md` |

@@ -3736,6 +3736,14 @@ html[data-hydrated="true"] .splash {
   from { opacity: 1; visibility: visible; }
   to   { opacity: 0; visibility: hidden; }
 }
+/* `display: none` used to stop the spinner with the splash; `visibility:
+   hidden` does not, so it would spin invisibly for the whole session — the GPU
+   heat the reduced-motion thermal block exists to prevent. Freezing it for the
+   150ms fade is invisible. */
+html[data-hydrated="true"] .splash .ring-spinner {
+  animation: none;
+  will-change: auto;
+}
 /* Failsafe: if hydration stalls silently, the splash spinner would loop
    forever and keep the GPU warm. Force-fade + hide after 5s regardless
    of React state. Once data-hydrated is set the rule above wins and

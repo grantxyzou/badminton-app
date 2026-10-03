@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useId,
   useLayoutEffect,
   useMemo,
@@ -23,24 +24,31 @@ import Collapse from './Collapse';
  * card's place with its skeleton from the first frame, and a `RevealGroup`
  * lets a slot show its content only once every slot ABOVE it has shown — so
  * the screen fills from the top whatever order the network answers in.
- * Fetching is untouched; this only decides what is rendered.
+ *
+ * Fetching is untouched. The card is MOUNTED from the start (hidden while its
+ * skeleton shows), so a card that fetches inside itself still fetches; it says
+ * it is ready with `useRevealReady()`. Data the parent owns can be passed as
+ * the slot's `ready` prop instead. A hidden card measures 0 — a card that
+ * sizes itself on mount should measure again when shown.
  *
  * Motion (opacity only, the existing `.motion-fade`):
- *  - Slots revealed together stagger 40ms apart, capped at the fourth, so a
- *    long screen never makes its last card wait on the ones above it.
- *  - Data already there when a slot first renders shows AT ONCE with no fade:
- *    a tab switched back to from cache must not wait on choreography.
- *  - Reduced motion keeps the fade and drops the stagger — the reduced-motion
- *    `.motion-fade` rule restates `animation` with `!important`, which resets
- *    the inline delay.
+ *  - Anything ready within `INSTANT_MS` of the screen appearing shows with no
+ *    fade at all: a tab switched back to, answered from cache, must not wait
+ *    on choreography.
+ *  - Slots revealed together after that stagger 40ms apart, capped at the
+ *    fourth. A waiting slot keeps its SKELETON until its turn — the card is
+ *    never held invisible in its place, which would read as a blank gap.
+ *  - Reduced motion keeps the fade and drops the stagger.
  *
  * Once revealed a slot never goes back to its skeleton, even if `ready` turns
  * false again: a refetch keeps its content (the `loadedRef` rule, enforced
  * here instead of in every card).
  */
 
-const STAGGER_MS = 40;
+export const STAGGER_MS = 40;
 const STAGGER_CAP = 3;
+/** Ready within this long of the screen mounting = it was effectively already here. */
+export const INSTANT_MS = 100;
 /** --duration-sheet, the Collapse close. */
 const CLOSE_MS = 180;
 
@@ -63,6 +71,30 @@ interface GroupApi {
 
 const GroupContext = createContext<GroupApi | null>(null);
 
+/** Lets a card inside a slot say "my data is here" without lifting its fetch. */
+const SlotReadyContext = createContext<((ready: boolean, empty: boolean) => void) | null>(null);
+
+/**
+ * Called by a card rendered inside a `RevealSlot` that has no `ready` prop.
+ * `ready` true once the card has something to show — loaded OR failed (an
+ * error is content too). `empty` when it loaded and has nothing to show.
+ * Outside a slot it does nothing.
+ */
+export function useRevealReady(ready: boolean, empty = false) {
+  const set = useContext(SlotReadyContext);
+  useLayoutEffect(() => {
+    set?.(ready, empty);
+  }, [set, ready, empty]);
+}
+
+function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
 function byDomOrder(a: SlotReport, b: SlotReport): number {
   if (!a.node || !b.node || a.node === b.node) return 0;
   return a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
@@ -72,20 +104,22 @@ export function RevealGroup({ children }: { children: ReactNode }) {
   const slots = useRef(new Map<string, SlotReport>());
   const [revealed, setRevealed] = useState<ReadonlyMap<string, Reveal>>(() => new Map());
   const revealedRef = useRef(revealed);
+  const mountedAt = useRef<number | null>(null);
   // Reveals made in the same commit share one batch, so they stagger against
   // each other. Layout effects of one commit run synchronously; a microtask
   // closes the batch after them.
   const batch = useRef<{ count: number; open: boolean }>({ count: 0, open: false });
 
-  const recompute = useCallback((freshId: string | null) => {
+  const recompute = useCallback(() => {
+    const now = performance.now();
+    mountedAt.current ??= now;
+    const instant = now - mountedAt.current <= INSTANT_MS;
+    const reduce = prefersReducedMotion();
     const ordered = [...slots.current.entries()].sort(([, a], [, b]) => byDomOrder(a, b));
     let next: Map<string, Reveal> | null = null;
     for (const [id, slot] of ordered) {
       if (revealedRef.current.has(id) || next?.has(id)) continue;
       if (!slot.ready) break;
-      // Ready on its very first report, with nothing above it waiting: the
-      // data was already here, so show it as-is.
-      const instant = id === freshId;
       let delay: number | null = null;
       if (!instant) {
         if (!batch.current.open) {
@@ -94,7 +128,7 @@ export function RevealGroup({ children }: { children: ReactNode }) {
             batch.current.open = false;
           });
         }
-        delay = Math.min(batch.current.count, STAGGER_CAP) * STAGGER_MS;
+        delay = reduce ? 0 : Math.min(batch.current.count, STAGGER_CAP) * STAGGER_MS;
         batch.current.count += 1;
       }
       next ??= new Map(revealedRef.current);
@@ -108,29 +142,17 @@ export function RevealGroup({ children }: { children: ReactNode }) {
 
   const report = useCallback(
     (id: string, ready: boolean, empty: boolean, node: HTMLElement | null) => {
-      const prev = slots.current.get(id);
       slots.current.set(id, { ready, empty, node });
-      recompute(!prev && ready && allAboveRevealed(id) ? id : null);
+      recompute();
     },
     [recompute],
   );
-
-  // A slot ready on arrival is instant only if everything above it has
-  // already revealed — otherwise it waited, and waiting is what the fade marks.
-  function allAboveRevealed(id: string): boolean {
-    const me = slots.current.get(id);
-    for (const [otherId, other] of slots.current) {
-      if (otherId === id) continue;
-      if (byDomOrder(other, me!) < 0 && !revealedRef.current.has(otherId)) return false;
-    }
-    return true;
-  }
 
   const unregister = useCallback(
     (id: string) => {
       slots.current.delete(id);
       // A pending slot leaving may unblock the ones below it.
-      recompute(null);
+      recompute();
     },
     [recompute],
   );
@@ -140,32 +162,51 @@ export function RevealGroup({ children }: { children: ReactNode }) {
 }
 
 export function RevealSlot({
-  ready,
+  ready: readyProp,
   placeholder,
-  empty,
+  empty: emptyProp,
+  canBeEmpty = emptyProp !== undefined,
   children,
 }: {
-  /** The card's data has arrived (loaded OR failed — an error is content too). */
-  ready: boolean;
+  /**
+   * The card's data has arrived (loaded OR failed). Omit it when the card
+   * reports its own readiness with `useRevealReady()`.
+   */
+  ready?: boolean;
   /** Shaped like the final card, so nothing moves when it is replaced. */
   placeholder: ReactNode;
-  /**
-   * The card has nothing to show (no kudos, no requests). Its skeleton closes
-   * instead of the card appearing. Pass it only on a card that can be empty —
-   * the skeleton is then wrapped so it can close.
-   */
+  /** The card has nothing to show. Its skeleton closes instead. */
   empty?: boolean;
+  /**
+   * The card might turn out empty, so its skeleton is wrapped to be able to
+   * close. Implied by passing `empty`; set it when the card reports emptiness
+   * through `useRevealReady`.
+   */
+  canBeEmpty?: boolean;
   children: ReactNode;
 }) {
   const group = useContext(GroupContext);
   const id = useId();
   const node = useRef<HTMLDivElement>(null);
-  const canBeEmpty = empty !== undefined;
-  const isEmpty = !!empty;
+
+  // Readiness: the prop when given, else what the card inside reports.
+  const [reported, setReported] = useState({ ready: false, empty: false });
+  const onReport = useCallback((ready: boolean, empty: boolean) => {
+    setReported((prev) => (prev.ready === ready && prev.empty === empty ? prev : { ready, empty }));
+  }, []);
+  const ready = readyProp ?? reported.ready;
+  const isEmpty = emptyProp ?? reported.empty;
 
   // Standalone (no group): the slot is its own ordering.
-  const [solo, setSolo] = useState<Reveal | null>(() => (!group && ready ? { delay: null } : null));
-  if (!group && ready && !solo) setSolo({ delay: 0 });
+  const soloMountedAt = useRef<number | null>(null);
+  const [solo, setSolo] = useState<Reveal | null>(null);
+  useLayoutEffect(() => {
+    if (group) return;
+    const now = performance.now();
+    soloMountedAt.current ??= now;
+    if (!ready || solo) return;
+    setSolo({ delay: now - soloMountedAt.current <= INSTANT_MS ? null : 0 });
+  }, [group, ready, solo]);
 
   useLayoutEffect(() => {
     group?.report(id, ready, isEmpty, node.current);
@@ -178,36 +219,40 @@ export function RevealSlot({
 
   const reveal = group ? group.revealed.get(id) ?? null : solo;
 
+  // A staggered slot keeps its skeleton until its turn, then fades the card in.
+  const [turnCame, setTurnCame] = useState(false);
+  const delay = reveal?.delay ?? null;
+  useEffect(() => {
+    if (!delay) return;
+    const t = setTimeout(() => setTurnCame(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  const shown = !!reveal && (delay === null || delay === 0 || turnCame);
+  const fade = shown && delay !== null;
+
   // An empty card's skeleton closes, then the slot leaves the layout.
   const [gone, setGone] = useState(false);
-  const closing = !!reveal && isEmpty;
-  // Empty on arrival: there is nothing to close, so it was never there.
-  const instantEmpty = closing && reveal.delay === null;
+  const closing = shown && isEmpty;
+  const instantEmpty = closing && delay === null;
   useLayoutEffect(() => {
     if (!closing || instantEmpty) return;
     const t = setTimeout(() => setGone(true), CLOSE_MS);
     return () => clearTimeout(t);
   }, [closing, instantEmpty]);
 
-  if (gone || instantEmpty) return null;
+  const showPlaceholder = !shown || (isEmpty && !instantEmpty);
 
-  if (!reveal || isEmpty) {
-    return (
-      <div ref={node} data-reveal-slot="">
-        {canBeEmpty ? <Collapse open={!closing}>{placeholder}</Collapse> : placeholder}
-      </div>
-    );
-  }
-
-  const fade = reveal.delay !== null;
   return (
-    <div
-      ref={node}
-      data-reveal-slot=""
-      className={fade ? 'motion-fade' : undefined}
-      style={fade ? { animationDelay: `${reveal.delay}ms` } : undefined}
-    >
-      {children}
+    <div ref={node} data-reveal-slot="" hidden={gone || instantEmpty}>
+      {showPlaceholder &&
+        (canBeEmpty ? <Collapse open={!closing}>{placeholder}</Collapse> : placeholder)}
+      {/* Mounted from the start so a card that fetches inside itself fetches.
+          `hidden` until its turn, then faded in as it appears. */}
+      <div hidden={!shown || isEmpty} className={fade ? 'motion-fade' : undefined}>
+        <SlotReadyContext.Provider value={readyProp === undefined ? onReport : null}>
+          {children}
+        </SlotReadyContext.Provider>
+      </div>
     </div>
   );
 }

@@ -272,6 +272,13 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(body).toContain('splash-out');
   });
 
+  it('stops the splash spinner once the app has loaded', () => {
+    // The splash now fades to `visibility: hidden` rather than `display: none`,
+    // which no longer stops its spinner. Measured in a browser before this
+    // rule: \`spin\` still "running" on .splash-shuttle after hydration.
+    expect(css).toMatch(/html\[data-hydrated="true"\] \.splash \.ring-spinner\s*\{[^}]*animation: none/);
+  });
+
   it('keeps the splash failsafe under reduced motion', () => {
     const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(block).toMatch(/html \.splash\s*\{[^}]*splash-failsafe[^}]*!important/);

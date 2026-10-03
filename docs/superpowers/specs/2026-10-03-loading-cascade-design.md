@@ -23,41 +23,48 @@ loading states in the same change.
 
 ```tsx
 <RevealGroup>
+  {/* data the parent owns */}
   <RevealSlot ready={!!session} placeholder={<CardSkeleton height={108} />}>…</RevealSlot>
-  <RevealSlot ready={kudos !== null} empty={kudos?.length === 0} placeholder={…}>…</RevealSlot>
+  {/* a card that fetches inside itself */}
+  <RevealSlot canBeEmpty placeholder={<CardSkeleton height={160} />}><KudosReceivedCard /></RevealSlot>
 </RevealGroup>
+
+// inside KudosReceivedCard
+useRevealReady(kudos !== null || !!error, kudos?.length === 0);
 ```
 
-- `RevealGroup` holds the ordered list of slots (registration order = DOM order, via a counter
-  assigned during render and stable across re-renders through a ref) and the index of the last
-  slot revealed.
-- `RevealSlot` props: `ready: boolean`, `placeholder: ReactNode`, optional `empty: boolean`.
-  - Renders `placeholder` until `ready` AND every earlier slot has revealed (or resolved empty).
-  - Then renders `children` in a wrapper carrying `.motion-fade` with
-    `animation-delay: min(position-in-current-batch, 3) * 40ms`, where a batch is the run of
-    slots that became revealable in the same commit.
-  - `ready` already true on the slot's first render → no `.motion-fade`, no delay.
-  - `ready && empty` → the placeholder closes through `<Collapse open={false}>` and the slot
-    counts as revealed for the slots below it.
-  - Once revealed, a slot never returns to its placeholder, even if `ready` goes false again
-    (a refetch keeps its content — the existing `loadedRef` rule, enforced by the primitive).
-- Outside a `RevealGroup`, `RevealSlot` behaves as an unordered single slot (placeholder until
-  ready, then fade), so a card can adopt it before its screen does.
-- Fetching is untouched: the primitive only decides what is rendered.
+- `RevealGroup` orders its slots by DOM position (`compareDocumentPosition`) and reveals, in
+  order, every slot that is ready with nothing unrevealed above it.
+- `RevealSlot` props: `ready?`, `placeholder`, `empty?`, `canBeEmpty?`.
+  - The card is MOUNTED from the start, hidden while the placeholder shows, so a card that
+    fetches inside itself still fetches. It reports with `useRevealReady(ready, empty)`;
+    a `ready` prop overrides that for data the parent owns. A hidden card measures 0.
+  - Ready within `INSTANT_MS` (100ms) of the group mounting → shown with no fade.
+  - Later → the batch revealed together staggers 40ms apart (capped at the 4th); each slot
+    keeps its PLACEHOLDER until its turn, then the card appears with `.motion-fade`.
+    Reduced motion: no stagger, fade kept.
+  - `empty` → the placeholder closes through `<Collapse>` and the slot leaves the layout;
+    empty within `INSTANT_MS` → never takes space. Pass `canBeEmpty` (implied by `empty`) so
+    the placeholder is wrapped to be able to close.
+  - Once revealed, a slot never returns to its placeholder.
+- Outside a `RevealGroup`, a slot is its own ordering.
 
 ## Phase 1 cross-tab fixes
 
 1. **Per-tab chunk fallbacks.** `HomeShell`'s `dynamic()` fallbacks stop borrowing Home's
-   `TabSkeleton`. New `TabFallback({ title, children })` renders the real `<PageHeader>` with
-   the tab's translated title, then a body skeleton shaped like that tab:
+   `TabSkeleton`. `components/TabFallbacks.tsx` exports one per tab, each a copy of that
+   tab's OWN first loading frame (real `<PageHeader>` + its skeletons), so the chunk arriving
+   changes nothing. `SkillsTab` also shows `StatsFallback` (not `null`) while the active name
+   resolves:
    - Stringing: one card (height measured from the live "Coming soon" card).
    - Stats: OverviewStrip row + segment control + the You register's first two cards.
    - Profile: the identity card + a settings list block (heights measured).
    - Admin: gets a fallback at all (today it has none), `PageHeader` + `AdminTabSkeleton`,
      identical to `AdminTab`'s own auth-check state so the hand-off does not change frame.
-   Heights are measured from the running app at 390px, recorded in the component's comment.
-2. **Splash fades out.** On `html[data-hydrated]` the splash goes to `opacity: 0;
-   visibility: hidden` over 150ms instead of `display: none`.
+   Heights are measured from the running app at 400px, recorded in the component's comment.
+2. **Splash fades out.** On `html[data-hydrated]` the splash animates to `opacity: 0;
+   visibility: hidden` over 150ms instead of `display: none`, and its spinner is stopped
+   (`visibility` alone left it spinning invisibly all session).
 3. **Reduced-motion splash failsafe.** Under `prefers-reduced-motion` the failsafe keeps a
    `steps(1, end)` 5.4s animation, so the splash still disappears if hydration stalls (today it
    stays forever for those users). Specificity + `!important` outranks the wildcard rule.
@@ -72,7 +79,7 @@ loading states in the same change.
 - Canary: every `dynamic()` tab import in `HomeShell` passes a `loading` fallback that is not
   `TabSkeleton` (except Home itself, which is eager).
 - `design-canary` updated for the splash rules.
-- Real-browser screenshots at 390px of each tab's fallback and of a cold Home load — the suite
+- Real-browser screenshots at 400px of each tab's fallback and of a cold Home load — the suite
   cannot see layout.
 
 ## Out of scope for phase 1
