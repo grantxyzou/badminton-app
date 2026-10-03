@@ -109,7 +109,29 @@ export async function groupForPaymentsKey(provided: string | null): Promise<stri
  * bridge — and every "remember this name" tap in the queue grows it, which is
  * what moves a club from mostly-queued to mostly-automatic.
  */
-export async function candidatesFor(scope: GroupScope, senderName: string | null): Promise<MatchCandidate[]> {
+/**
+ * The roster name a memo carries, if it carries one. The club's receipt memo
+ * template is `{group} {date} - {name}` — a real one read "BPM Oct 1 - Gary",
+ * from a sender whose legal name was something else entirely — so the name
+ * after the last dash is the strongest single clue there is. Returned only
+ * when it is EXACTLY a roster name; a guess is not a clue.
+ */
+export function memoRosterName(memo: string | null, rosterNames: readonly string[]): string | null {
+  if (!memo) return null;
+  const tail = memo.split(/\s[-\u2013\u2014]\s?|\s?[-\u2013\u2014]\s/).pop()?.trim().toLowerCase() ?? '';
+  const whole = memo.trim().toLowerCase();
+  for (const name of rosterNames) {
+    const n = name.trim().toLowerCase();
+    if (n && (n === tail || n === whole)) return name;
+  }
+  return null;
+}
+
+export async function candidatesFor(
+  scope: GroupScope,
+  senderName: string | null,
+  memo: string | null = null,
+): Promise<MatchCandidate[]> {
   if (!senderName) return [];
   const lower = senderName.trim().toLowerCase();
   const aliases = await scope.query<Alias>('aliases');
@@ -123,6 +145,12 @@ export async function candidatesFor(scope: GroupScope, senderName: string | null
   for (const { member } of roster) {
     if (member.name.trim().toLowerCase() === lower) names.add(member.name.trim());
   }
+  // The memo is a third, independent clue. When it names the same person the
+  // sender resolves to, the dedupe below makes it one candidate; when it names
+  // SOMEONE ELSE ("Bruce paid for Gary"), that is two candidates and a person
+  // decides — exactly the case that should not be automatic.
+  const fromMemo = memoRosterName(memo, roster.map((r) => r.member.name));
+  if (fromMemo) names.add(fromMemo.trim());
 
   const byPerson = new Map<string, MatchCandidate>();
   for (const name of names) {
@@ -180,13 +208,20 @@ export interface IngestResult {
 export async function ingestEmail(groupId: string, raw: RawInteracEmail): Promise<IngestResult> {
   await ensurePayments();
   const scope = groupScope(groupId);
-  const id = `etx:${sha256(raw.messageId)}`;
+  const parsed = parseInteracEmail(raw);
+  // Interac's reference when the email carries one (it does — verified on a
+  // real notification), so two notices about ONE transfer are one payment.
+  // Only an AUTHENTICATED email may claim a reference: a forged one could
+  // otherwise squat a real transfer's id before the real email arrives.
+  const id =
+    parsed.referenceNumber && parsed.authenticated
+      ? `etx:${sha256(`ref:${parsed.referenceNumber}`)}`
+      : `etx:${sha256(raw.messageId)}`;
 
   const existing = await scope.read<EtransferPayment>('payments', id);
   if (existing) return { id, status: existing.status, duplicate: true };
 
-  const parsed = parseInteracEmail(raw);
-  const candidates = parsed.kind === 'received' ? await candidatesFor(scope, parsed.senderName) : [];
+  const candidates = parsed.kind === 'received' ? await candidatesFor(scope, parsed.senderName, parsed.memo) : [];
   const decision = decideMatch({
     recognized: parsed.kind === 'received',
     authenticated: parsed.authenticated,

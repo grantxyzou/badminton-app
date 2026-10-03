@@ -7,7 +7,7 @@ import { POST as mintKey } from '@/app/api/admin/payments/key/route';
 import { POST as selfReport } from '@/app/api/payments/self-report/route';
 import { POST as signup, PATCH as patchPlayer } from '@/app/api/players/route';
 import { apiGuards } from '../proxy';
-import { mintPaymentsKey, signupHeldForUnpaid, setHoldThreshold, holdCount } from '@/lib/paymentsInbox';
+import { mintPaymentsKey, signupHeldForUnpaid, setHoldThreshold, holdCount, memoRosterName } from '@/lib/paymentsInbox';
 import { PATCH as patchSettings } from '@/app/api/admin/payments/settings/route';
 import { groupScope } from '@/lib/groupScope';
 import {
@@ -217,6 +217,60 @@ describe('matching', () => {
   it('never stores the email body', async () => {
     await post(email('Lin', '12.00'));
     expect(JSON.stringify(getStore()['payments'])).not.toContain('Hi Grant');
+  });
+});
+
+describe('the memo and the reference — from a real notification', () => {
+  const real = (sender: string, dollars: string, memo: string | null, ref: string | null, over: Record<string, unknown> = {}) =>
+    email(sender, dollars, {
+      subject: `Interac e-Transfer: You've received $${dollars} from ${sender} and it has been automatically deposited.`,
+      from: `${sender} <notify@payments.interac.ca>`,
+      body: [
+        'Hi Grant Example,', 'Funds Deposited!', `$${dollars}`,
+        'Transfer Details', 'Message:', memo ?? '', 'Date:', 'Oct 2, 2026',
+        ...(ref ? ['Reference Number:', ref] : []), 'Sent From:', sender, 'Amount:', `$${dollars} (CAD)`,
+      ].join('\n'),
+      ...over,
+    });
+
+  it('an unknown legal name whose memo names a roster member matches on the FIRST payment', async () => {
+    const res = await post(real('MEI LING CHAN', '12.00', 'BPM Sep 24 - Lin', 'C1AB2cDEFGhJ'));
+    expect((await res.json()).status).toBe('matched');
+    expect(rowById(row1.id).paid).toBe(true);
+  });
+
+  it('a memo naming someone OTHER than the known sender is a person\'s call', async () => {
+    const viktor = seedMember('Viktor');
+    seedPlayer(S1, 'Viktor', { memberId: viktor.id, owedAmount: 12, settledAt: '2026-10-02T00:00:00Z' });
+    // Lin's alias is known; the memo says Viktor — Lin paying for Viktor.
+    seedDoc('aliases', { id: 'a1', groupId: 'bpm', appName: 'Lin', etransferName: 'LIN DAN' });
+    const res = await post(real('LIN DAN', '12.00', 'BPM Sep 24 - Viktor', 'C1AB2cDEFGh2'));
+    expect((await res.json()).status).toBe('review');
+    expect((getStore()['payments'] as Array<{ reason: string }>)[0].reason).toBe('ambiguous_sender');
+  });
+
+  it('two emails about ONE transfer (same reference, new Message-ID) pay once', async () => {
+    await post(real('Lin', '12.00', null, 'C1AB2cDEFGh3'));
+    const again = await (await post(real('Lin', '12.00', null, 'C1AB2cDEFGh3'))).json();
+    expect(again.duplicate).toBe(true);
+    expect(rowById(row2.id).paid).toBe(false);
+  });
+
+  it('a forged email cannot squat a real reference', async () => {
+    await post(real('Lin', '12.00', null, 'C1AB2cDEFGh4', { authResults: undefined }));
+    const realOne = await (await post(real('Lin', '12.00', null, 'C1AB2cDEFGh4'))).json();
+    expect(realOne).toMatchObject({ duplicate: false, status: 'matched' });
+  });
+
+  it('memoRosterName: the template tail, exact names only', () => {
+    const roster = ['Gary', 'Lin', 'Kento M'];
+    expect(memoRosterName('BPM Oct 1 - Gary', roster)).toBe('Gary');
+    expect(memoRosterName('BPM Oct 1 – kento m', roster)).toBe('Kento M');
+    expect(memoRosterName('Lin', roster)).toBe('Lin');
+    expect(memoRosterName('badminton thursday', roster)).toBeNull();
+    expect(memoRosterName('BPM Oct 1 - Gar', roster)).toBeNull();
+    expect(memoRosterName('BPM Oct 1 - Gary + Lin', roster)).toBeNull();
+    expect(memoRosterName(null, roster)).toBeNull();
   });
 });
 

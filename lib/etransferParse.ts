@@ -39,6 +39,12 @@ export interface ParsedEtransfer {
   senderName: string | null;
   amountCents: number | null;
   memo: string | null;
+  /**
+   * Interac's own id for the transfer ("Reference Number: C1AV…"). Two emails
+   * about ONE transfer share it — the dedupe key when present, because the
+   * email's Message-ID would let a second notice pay the next-oldest line.
+   */
+  referenceNumber: string | null;
   /** True only when Google verified the message really came from Interac. */
   authenticated: boolean;
 }
@@ -91,8 +97,12 @@ export function parseAmountCents(text: string): number | null {
 const SENDER_PATTERNS: RegExp[] = [
   // Subject, EN: "INTERAC e-Transfer: JOHN SMITH sent you money."
   /e-?transfer\s*:?\s*(.+?)\s+(?:has\s+)?sent you\b/i,
-  // Subject, EN autodeposit: "...You've received $12.00 from JOHN SMITH and it has been automatically deposited."
+  // Subject, EN autodeposit — VERIFIED against a real notification, 2026-10:
+  // "Interac e-Transfer: You've received $15.75 from CHEUK SHAN CHUNG and it has been automatically deposited."
   /received\s+\$[\d,.]+\s*(?:\(CAD\))?\s+from\s+(.+?)(?:\s+and\b|\.\s|\.$|$)/im,
+  // Body, the "Transfer Details" block of the same real email: "Sent From:\nCHEUK SHAN CHUNG".
+  /sent\s+from\s*:\s*([^\n]+)/i,
+  /envoy[ée]\s+par\s*:\s*([^\n]+)/i,
   // Subject, FR: "Virement INTERAC : JOHN SMITH vous a envoyé de l'argent."
   /virement\s+interac\s*:?\s*(.+?)\s+vous a envoy/i,
   // Body, EN: "Hi GRANT, JOHN SMITH has sent you $12.00 (CAD)" — the name follows a greeting's comma or a line start.
@@ -129,10 +139,33 @@ function findSender(subject: string, body: string): string | null {
   return null;
 }
 
+/**
+ * Interac's transfer reference. In the real email it sits in a two-column
+ * "Transfer Details" table, and a plain-text rendering of a table can put the
+ * neighbouring cell ("Oct 2, 2026") between the label and the value — so this
+ * looks a short way past the label for a token shaped like one: 8–16
+ * letters-and-digits with at least one of each.
+ */
+function findReference(body: string): string | null {
+  const m = /r[ée]f[ée]rence\s*(?:number|no\.?)?\s*:([\s\S]{0,120})/i.exec(body);
+  if (!m) return null;
+  const tok = /\b(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])([A-Za-z0-9]{8,16})\b/.exec(m[1]);
+  return tok ? tok[1] : null;
+}
+
+/** The display name in `"CHEUK SHAN CHUNG" <notify@payments.interac.ca>` — Interac puts the SENDER there. */
+function fromDisplayName(from: string): string | null {
+  const m = /^\s*"?([^"<]+?)"?\s*</.exec(from);
+  return m ? cleanName(m[1]) : null;
+}
+
 function findMemo(body: string): string | null {
   const m = /^\s*(?:message|memo|note)\s*:\s*(.+)$/im.exec(body);
   const memo = m?.[1].trim().slice(0, 200);
-  return memo ? memo : null;
+  // No message on the transfer: the label is followed straight by the next
+  // label of the details table, which is not a memo.
+  if (!memo || /^(?:date|reference|r[ée]f[ée]rence|sent from|envoy[ée] par|amount|montant)\b.*:?$/i.test(memo) || /:$/.test(memo)) return null;
+  return memo;
 }
 
 export function parseInteracEmail(email: RawInteracEmail): ParsedEtransfer {
@@ -144,16 +177,17 @@ export function parseInteracEmail(email: RawInteracEmail): ParsedEtransfer {
     senderName: null,
     amountCents: null,
     memo: null,
+    referenceNumber: null,
     authenticated,
   };
 
   if (NOT_A_PAYMENT.test(subject)) return unrecognized;
   if (!INCOMING.test(`${subject}\n${body}`)) return unrecognized;
 
-  const senderName = findSender(subject, body);
+  const senderName = findSender(subject, body) ?? fromDisplayName(email.from ?? '');
   const amountCents = parseAmountCents(subject) ?? parseAmountCents(body);
   if (!senderName || amountCents === null || amountCents <= 0) {
     return { ...unrecognized, senderName, amountCents };
   }
-  return { kind: 'received', senderName, amountCents, memo: findMemo(body), authenticated };
+  return { kind: 'received', senderName, amountCents, memo: findMemo(body), referenceNumber: findReference(body), authenticated };
 }

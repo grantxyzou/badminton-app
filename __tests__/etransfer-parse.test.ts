@@ -24,7 +24,7 @@ describe('parseInteracEmail — the two formats', () => {
         body: 'Hi GRANT ZOU,\nBRUCE WAYNE has sent you $12.00 (CAD).\nMessage: badminton Oct 2\nTo deposit your money, click here',
       }),
     );
-    expect(r).toEqual({ kind: 'received', senderName: 'BRUCE WAYNE', amountCents: 1200, memo: 'badminton Oct 2', authenticated: true });
+    expect(r).toEqual({ kind: 'received', senderName: 'BRUCE WAYNE', amountCents: 1200, memo: 'badminton Oct 2', referenceNumber: null, authenticated: true });
   });
 
   it('reads an Autodeposit notification (EN)', () => {
@@ -58,6 +58,67 @@ describe('parseInteracEmail — the two formats', () => {
       }),
     );
     expect(r).toMatchObject({ kind: 'received', senderName: 'Kento Momota', amountCents: 1550 });
+  });
+});
+
+/**
+ * STRUCTURE COPIED FROM A REAL NOTIFICATION (Autodeposit, Wealthsimple,
+ * 2026-10-01), with every name, the reference and the account replaced — this
+ * repo is public. Line breaks follow the HTML's blocks; the Transfer Details
+ * table is two columns, so the plain-text order is the uncertain part, and
+ * the second fixture puts the neighbouring cell between label and value.
+ */
+const REAL_SUBJECT = "Interac e-Transfer: You've received $15.75 from MEI LING CHAN and it has been automatically deposited.";
+const REAL_FROM = 'MEI LING CHAN <notify@payments.interac.ca>';
+const REAL_BODY = [
+  'Interac',
+  'View in browser | FR',
+  'Hi Grant Example,',
+  'Funds Deposited!',
+  '$15.75',
+  'Your funds have been automatically deposited into your account at Some Bank.',
+  'Some Bank',
+  'Account ending in 0000',
+  'Transfer Details',
+  'Message:',
+  'BPM Oct 1 - Gary',
+  'Date:',
+  'Oct 2, 2026',
+  'Reference Number:',
+  'C1AB2cDEFGhJ',
+  'Sent From:',
+  'MEI LING CHAN',
+  'Amount:',
+  '$15.75 (CAD)',
+  'FAQ | This is a secure transaction.',
+].join('\n');
+
+describe('parseInteracEmail — the real Autodeposit shape', () => {
+  it('reads sender, amount, memo and reference', () => {
+    const r = parseInteracEmail(email({ subject: REAL_SUBJECT, from: REAL_FROM, body: REAL_BODY }));
+    expect(r).toEqual({
+      kind: 'received',
+      senderName: 'MEI LING CHAN',
+      amountCents: 1575,
+      memo: 'BPM Oct 1 - Gary',
+      referenceNumber: 'C1AB2cDEFGhJ',
+      authenticated: true,
+    });
+  });
+
+  it('finds the reference when the table cells interleave', () => {
+    const body = REAL_BODY.replace('Date:\nOct 2, 2026\nReference Number:\nC1AB2cDEFGhJ', 'Date:\nReference Number:\nOct 2, 2026\nC1AB2cDEFGhJ');
+    expect(parseInteracEmail(email({ subject: REAL_SUBJECT, from: REAL_FROM, body })).referenceNumber).toBe('C1AB2cDEFGhJ');
+  });
+
+  it('a transfer with no message has no memo (not the next label)', () => {
+    const body = REAL_BODY.replace('Message:\nBPM Oct 1 - Gary\n', 'Message:\n');
+    expect(parseInteracEmail(email({ subject: REAL_SUBJECT, from: REAL_FROM, body })).memo).toBeNull();
+  });
+
+  it('falls back to the From display name when the subject and body carry none', () => {
+    const r = parseInteracEmail(email({ subject: 'Interac e-Transfer: Funds deposited', from: REAL_FROM, body: "You've received $15.75 (CAD)." }));
+    expect(r.senderName).toBe('MEI LING CHAN');
   });
 });
 

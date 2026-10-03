@@ -62,16 +62,28 @@ fix before anything in Phase 2 starts.
   lock screen) are Phase 1b, because App Service has nothing that runs on a schedule; they need a GitHub
   Actions `schedule:` calling a keyed endpoint.
 
+## What a real notification settled (2026-10-03)
+
+Grant shared a real Autodeposit notification (Wealthsimple). It confirmed the subject wording
+("You've received $15.75 from CHEUK SHAN CHUNG and it has been automatically deposited."), the sender
+address `notify@payments.interac.ca` with the SENDER's name as its display name, and a "Transfer
+Details" block carrying `Message:`, `Reference Number:`, `Sent From:` and `Amount:`. Two decisions
+followed:
+
+- **Dedupe on Interac's Reference Number**, not the Message-ID — two notices about one transfer are
+  one payment. Only an authenticated email may claim a reference, so a forgery cannot squat one.
+- **The memo is a first-class clue.** The memo read "BPM Oct 1 - Gary" — the club's own receipt template
+  (`{group} {date} - {name}`) — from a sender whose legal name was something else. A memo whose tail is
+  EXACTLY a roster name adds that person as a candidate, so a member who uses the template matches on
+  their very first payment, before any alias exists. When the memo names someone other than the
+  sender's known identity ("Bruce paid for Gary"), that is two candidates and the admin decides.
+
 ## Open before the flag goes on
 
-- **A real Interac notification, headers included** (Gmail → ⋮ → Show original): the `From`, the
-  topmost `Authentication-Results`, the subject and a redacted body. Every fixture today is synthetic.
-  If Interac signs through a mail provider whose DKIM `d=` is not `interac.ca`, every real email lands in
-  review and the kill criterion reads 0% for a reason that is not the matcher. If the bank sends its own
-  notification instead of `notify@payments.interac.ca`, the script's search finds nothing.
-- **Dedupe key.** Payments are deduped on the email's `Message-ID`. If a real notification carries a
-  transfer reference number, dedupe on that instead: two emails about ONE transfer would otherwise pay
-  the person's next-oldest line too.
+- **The `Authentication-Results` header** of a real notification (Gmail → ⋮ → Show original, the top
+  few lines). The screenshot showed the body, not the headers. If Interac's DKIM `d=` is not an
+  `interac.ca` domain, every real email lands in review and the kill criterion reads 0% for a reason
+  that is not the matcher.
 
 ## Roadmap
 
