@@ -463,8 +463,10 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
           >
             Mark paid
           </button>
-          <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore' })}>
-            Not a session payment — dismiss
+          <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore', ...(name && remember ? { name, remember: true } : {}) })}>
+            {name && remember && payment.senderName && payment.senderName.toLowerCase() !== name.toLowerCase()
+              ? `Dismiss, and remember as ${name}`
+              : 'Not a session payment — dismiss'}
           </button>
         </div>
       </BottomSheetBody>

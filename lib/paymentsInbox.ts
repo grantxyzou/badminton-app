@@ -297,16 +297,39 @@ export class AssignError extends Error {
 }
 
 /**
+ * Save "this bank name is this member" as an alias, once. The queue's
+ * "Remember X as Y" — on a match AND on a dismiss: a payment already ticked by
+ * hand is dismissed, but who sent it is still worth learning, or the next
+ * transfer from them lands in the queue again for the same reason.
+ */
+async function rememberSender(scope: GroupScope, senderName: string | null, payerName: string): Promise<void> {
+  if (!senderName || !payerName) return;
+  const sender = senderName.trim().toLowerCase();
+  const payer = payerName.trim().toLowerCase();
+  if (!sender || !payer || sender === payer) return;
+  const known = (await scope.query<Alias>('aliases')).some(
+    (a) => a.etransferName?.trim().toLowerCase() === sender && a.appName?.trim().toLowerCase() === payer,
+  );
+  if (known) return;
+  await scope.create<Alias>('aliases', {
+    id: randomBytes(12).toString('hex'),
+    appName: payerName.trim().slice(0, 50),
+    etransferName: senderName.trim().slice(0, 50),
+  });
+}
+
+/**
  * The admin resolves a queued payment: for `person`, paying `refs` (lines they
  * owe) — or, with no refs, the clean allocation if there is one. `remember`
  * writes the sender's name as an alias so the next one matches on its own.
- * `ignore` files it away without marking anything (a refund, a gift, a dupe).
+ * `ignore` files it away without marking anything (a refund, a gift, a dupe,
+ * a session already ticked by hand) — and may still `remember` who sent it.
  */
 export async function resolvePayment(
   groupId: string,
   paymentId: string,
   action:
-    | { kind: 'ignore'; adminId: string }
+    | { kind: 'ignore'; adminId: string; memberId?: string; name?: string; remember?: boolean }
     | { kind: 'assign'; adminId: string; memberId?: string; name?: string; refs?: string[]; remember?: boolean },
 ): Promise<EtransferPayment> {
   await ensurePayments();
@@ -317,6 +340,11 @@ export async function resolvePayment(
   const now = new Date().toISOString();
 
   if (action.kind === 'ignore') {
+    if (action.remember && (action.memberId || action.name)) {
+      const who = await resolveIdentity(action.memberId ? { memberId: action.memberId } : { name: action.name }, groupId);
+      if (action.memberId && !who.memberId) throw new AssignError('unknown_person');
+      await rememberSender(scope, payment.senderName, who.member?.name ?? action.name ?? '');
+    }
     const next = { ...payment, status: 'ignored' as const, matchedBy: action.adminId, resolvedAt: now };
     return (await scope.replace('payments', next)) ?? next;
   }
@@ -339,20 +367,7 @@ export async function resolvePayment(
   const landed = await applyAllocations(scope, chosen.map(toAllocation), payment.id);
   const payerName = identity.member?.name ?? action.name ?? '';
 
-  if (action.remember && payment.senderName && payerName) {
-    const known = (await scope.query<Alias>('aliases')).some(
-      (a) =>
-        a.etransferName?.trim().toLowerCase() === payment.senderName!.trim().toLowerCase() &&
-        a.appName?.trim().toLowerCase() === payerName.trim().toLowerCase(),
-    );
-    if (!known && payment.senderName.trim().toLowerCase() !== payerName.trim().toLowerCase()) {
-      await scope.create<Alias>('aliases', {
-        id: randomBytes(12).toString('hex'),
-        appName: payerName.slice(0, 50),
-        etransferName: payment.senderName.slice(0, 50),
-      });
-    }
-  }
+  if (action.remember) await rememberSender(scope, payment.senderName, payerName);
 
   await releaseHoldIfSettled(scope, identity.memberId);
 
