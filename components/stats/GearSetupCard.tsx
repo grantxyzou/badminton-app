@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -73,6 +74,8 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
     [rackets.items, strings.items],
   );
 
+  // The Gear register's RevealSlot holds this place on first load.
+  useRevealReady(!activeName || gear.loaded);
   if (!activeName) return null;
   if (gear.forbidden) {
     return (

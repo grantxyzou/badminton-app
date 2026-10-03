@@ -1253,7 +1253,6 @@
       "done": "完成",
       "alreadySent": "这个标签本周已经发过了，换一个。",
       "noCandidates": "打过一场之后，一起打的人会出现在这里。",
-      "loading": "加载中…",
       "candidateCount": "和你一起打过球的 {count} {count, plural, one {人} other {人}}",
       "giveCta": "送出点赞",
       "needsSignIn": "登录已过期，去「我的」重新登录后再点赞。",

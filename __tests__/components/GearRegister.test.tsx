@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { resetSharedReads } from '@/lib/sharedRead';
 import { render, cleanup, waitFor, act, screen, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import GearRegister from '../../components/stats/GearRegister';
@@ -12,6 +13,11 @@ function gearReads(): string[] {
     .map((c) => String(c[0]))
     .filter((u) => u.includes('/api/equipment/gear') && !u.includes('method'));
 }
+
+
+// The level read now goes through sharedRead (shared with OverviewStrip),
+// whose 2s dedupe would hand one test's answer to the next.
+beforeEach(() => resetSharedReads());
 
 describe('GearRegister — single owner of the gear document', () => {
   beforeEach(() => {

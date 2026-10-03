@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import { racketSrc } from '@/lib/racketLook';
@@ -36,6 +37,11 @@ export interface NextRacketCardProps {
 export default function NextRacketCard({ gear, picks, onOpen, onOpenFit }: NextRacketCardProps) {
   const t = useTranslations('stats.gear.setup');
   const tGear = useTranslations('stats.gear');
+  // The Gear register's RevealSlot holds this place and closes it when there
+  // is no racket in play. Ready once the gear doc has answered and, if there
+  // IS a racket, its pick has too — the skeleton used to appear mid-stack.
+  const hasRacket = gear.loaded && !gear.loadError && !!setupLines(gear.gear).racket;
+  useRevealReady(gear.loaded && (!hasRacket || picks.refused || picks.view.racket.status !== 'loading'));
   if (!gear.loaded || gear.loadError || picks.refused) return null;
   const { racket } = setupLines(gear.gear);
   if (!racket) return null;
