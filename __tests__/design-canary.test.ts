@@ -261,6 +261,22 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(block).toContain('will-change: auto !important');
   });
 
+  /* Loading cascade, phase 1. The splash used to cut away (`display: none`) the
+     instant the app hydrated, and under reduced motion the `animation: none` above
+     also switched off its 5.4s failsafe — so if hydration stalled, those users
+     kept the splash forever. */
+  it('fades the splash out on hydration instead of cutting it', () => {
+    const rule = css.slice(css.indexOf('html[data-hydrated="true"] .splash'));
+    const body = rule.slice(0, rule.indexOf('}'));
+    expect(body).not.toContain('display: none');
+    expect(body).toContain('splash-out');
+  });
+
+  it('keeps the splash failsafe under reduced motion', () => {
+    const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(block).toMatch(/html \.splash\s*\{[^}]*splash-failsafe[^}]*!important/);
+  });
+
   /* Overshoot easing is rare-surface-only (PRODUCT.md → Design Principles #2).
      `.animate-slideUp` was the one broad surface applying it and is deliberately
      gone; re-adding a general-purpose bounce utility should fail here. */
