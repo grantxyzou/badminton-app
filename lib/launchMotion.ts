@@ -5,7 +5,7 @@
  * SAME numbers drive both halves of the screen's life:
  *
  *   - before hydration, no JS runs, so the loading shot loops as CSS keyframes
- *     sampled from `loopFrame` (`loopKeyframesCss`, rendered into the page);
+ *     sampled from `loopFrame` (`launchLoopCss`, rendered into the page);
  *   - after hydration, `LaunchScreen` takes over at a shot boundary and drives
  *     `resolveFrame` per animation frame.
  *
@@ -43,8 +43,6 @@ export const RESOLVE_FLIGHT_MS = 1200;
 export const WELCOME_AT_MS = 1400;
 /** If the page never gives the screen a decision after hydration, it leaves anyway. */
 export const HARD_TIMEOUT_MS = 8000;
-/** Before hydration, the failsafe that lifts the screen if JS never arrives (globals.css repeats it). */
-export const PREHYDRATION_FAILSAFE_MS = 10000;
 
 /**
  * When a signed-out visitor's splash hands over to Welcome: once the lockup has
@@ -54,8 +52,8 @@ export const PREHYDRATION_FAILSAFE_MS = 10000;
  */
 export const WELCOME_HANDOFF_MS = RESOLVE_FLIGHT_MS + 500;
 
-/** Welcome's buttons, relative to W: Sign up then Log in, 150ms apart. */
-export const BUTTON_RISE = { delayMs: 450, staggerMs: 150, durationMs: 700, fromPx: 16 } as const;
+/** Welcome's buttons, relative to W: Sign up then Log in, 150ms apart. (The rise itself is `launch-rise` in globals.css.) */
+export const BUTTON_RISE = { delayMs: 450, staggerMs: 150 } as const;
 
 /**
  * A Welcome button's animation delay, counted from the moment Welcome is
@@ -144,16 +142,21 @@ export const SETTLED_FRAME: LaunchFrame = {
 };
 
 /* ── Applying a frame ─────────────────────────────────────────────────────
-   The trail is drawn with ONE dash: `stroke-dasharray: <len> 300` on a path
-   whose pathLength is 100, shifted by `stroke-dashoffset: -<from>`. The 300 gap
-   is longer than the path, so the pattern never repeats. A zero-length dash
-   still paints its round caps as a dot, so an empty trail is hidden outright. */
+   The trail is the handoff's dash form: `stroke-dasharray: 0 <from> <len> 300`
+   on a path whose pathLength is 100. Every number is POSITIVE on purpose — the
+   obvious alternative, one dash shifted by a negative `stroke-dashoffset`, is
+   a value older WebKit builds ignored, which would draw the settled trail from
+   the launch point, across the letters. The 300 gap is longer than the path,
+   so the pattern never repeats. `.launch-trail` carries a constant
+   `stroke-dashoffset: 0.001` (globals.css), which pushes the zero-length first
+   dash off the start of the path; without it its round cap paints a dot at the
+   launch point. An empty trail is hidden outright for the same reason. */
 
 const f3 = (v: number) => Number(v.toFixed(3));
 
 export interface FrameStyles {
   shuttle: { offsetDistance: string; offsetRotate: string; opacity: string };
-  trail: { strokeDasharray: string; strokeDashoffset: string; opacity: string };
+  trail: { strokeDasharray: string; opacity: string };
   text: { opacity: string; transform: string };
   tagline: { opacity: string; transform: string };
 }
@@ -167,8 +170,7 @@ export function frameStyles(f: LaunchFrame): FrameStyles {
       opacity: String(f3(f.bird)),
     },
     trail: {
-      strokeDasharray: `${f3(len)} 300`,
-      strokeDashoffset: String(f3(-f.trailFrom * 100)),
+      strokeDasharray: `0 ${f3(f.trailFrom * 100)} ${f3(len)} 300`,
       opacity: len < 0.05 ? '0' : '1',
     },
     text: { opacity: String(f3(f.text)), transform: `translateY(${f3(10 * (1 - f.text))}px)` },
@@ -177,12 +179,15 @@ export function frameStyles(f: LaunchFrame): FrameStyles {
 }
 
 /**
- * The pre-hydration loop as CSS keyframes, sampled from `loopFrame` at evenly
- * spaced stops with linear interpolation between them. Stops, not CSS
- * `linear()`: that easing function needs Safari 17.2, and the drag curve has no
- * cubic-bezier equivalent.
+ * The pre-hydration loop as CSS: the keyframes, sampled from `loopFrame` at
+ * evenly spaced stops with linear interpolation between them, AND the two rules
+ * that run them — emitted together so the loop's period is `SHOT_MS` here and
+ * nowhere else. (A `2000ms` typed into globals.css would keep running at 2s
+ * after this constant moved, and the takeover below would land mid-flight.)
+ * Stops, not CSS `linear()`: that easing function needs Safari 17.2, and the
+ * drag curve has no cubic-bezier equivalent.
  */
-export function loopKeyframesCss(stops = 50): string {
+export function launchLoopCss(stops = 50): string {
   const shuttle: string[] = [];
   const trail: string[] = [];
   for (let i = 0; i <= stops; i++) {
@@ -191,18 +196,36 @@ export function loopKeyframesCss(stops = 50): string {
     shuttle.push(
       `${pct}{offset-distance:${s.shuttle.offsetDistance};offset-rotate:${s.shuttle.offsetRotate};opacity:${s.shuttle.opacity}}`,
     );
-    trail.push(
-      `${pct}{stroke-dasharray:${s.trail.strokeDasharray};stroke-dashoffset:${s.trail.strokeDashoffset};opacity:${s.trail.opacity}}`,
-    );
+    trail.push(`${pct}{stroke-dasharray:${s.trail.strokeDasharray};opacity:${s.trail.opacity}}`);
   }
-  return `@keyframes launch-shuttle-loop{${shuttle.join('')}}@keyframes launch-trail-loop{${trail.join('')}}`;
+  return (
+    `@keyframes launch-shuttle-loop{${shuttle.join('')}}@keyframes launch-trail-loop{${trail.join('')}}` +
+    `.launch-canvas--loop .launch-shuttle{animation:launch-shuttle-loop ${SHOT_MS}ms linear infinite}` +
+    `.launch-canvas--loop .launch-trail{animation:launch-trail-loop ${SHOT_MS}ms linear infinite}`
+  );
 }
 
-/** How long until the running loop next reaches a shot boundary (trail cleared, shuttle back at launch). */
-export function msToShotBoundary(loopMs: number): number {
+/**
+ * How far into a loading shot the final shot can still be ADOPTED from it.
+ *
+ * A loading shot and the resolve shot are the same frames until the wordmark
+ * starts to arrive: same flight, same wobble, shuttle fully visible, trail
+ * from the launch point. So when the page resolves inside that window, the
+ * shot already in the air simply BECOMES the final one — nothing is
+ * interrupted, and nobody waits out a whole extra shot for a page that is
+ * ready. Past it the shuttle has landed and is fading, and the shot has to
+ * finish and clear first.
+ */
+export const ADOPT_UNTIL_MS = RESOLVE_FLIGHT_MS - 100;
+
+/**
+ * What to do with the running loop at `loopMs`: take the shot in flight over
+ * as the resolve shot (`adopt` = how far into it we already are), or `wait`
+ * for it to finish. Callers re-ask after a wait rather than trusting the
+ * timer: a `setTimeout` set during hydration fires late, and a late start
+ * that assumed it was on the boundary would snap the next shot back to launch.
+ */
+export function shotTakeover(loopMs: number): { adopt: number } | { wait: number } {
   const into = ((loopMs % SHOT_MS) + SHOT_MS) % SHOT_MS;
-  const left = SHOT_MS - into;
-  // Within a frame of a boundary on either side counts as on it: a shuttle a
-  // frame into its flight has not visibly left the launch point.
-  return into < 16 || left < 16 ? 0 : left;
+  return into <= ADOPT_UNTIL_MS ? { adopt: into } : { wait: SHOT_MS - into };
 }

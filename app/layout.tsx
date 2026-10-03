@@ -3,9 +3,8 @@ import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import PreviewBanner from '@/components/PreviewBanner';
-import HydrationMark from '@/components/HydrationMark';
 import LaunchScreen from '@/components/launch/LaunchScreen';
-import { loopKeyframesCss } from '@/lib/launchMotion';
+import { launchLoopCss } from '@/lib/launchMotion';
 import { APP_TIME_ZONE } from '@/i18n/request';
 import { APP_NAME, APP_SHORT_NAME } from '@/lib/brand';
 import './globals.css';
@@ -158,6 +157,9 @@ export const viewport: Viewport = {
   interactiveWidget: 'resizes-content',
 };
 
+// Constant, so built once per process rather than on every request.
+const LAUNCH_LOOP_CSS = launchLoopCss();
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   const messages = await getMessages();
@@ -192,7 +194,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* BEFORE FIRST PAINT, two things CSS cannot do alone:
             - `--launch-k`: the launch screen is a fixed 360×740 composition
               scaled to fit, and a unitless scale factor from viewport units
-              needs typed calc() division, which Safari does not ship.
+              needs typed calc() division, which Safari does not ship. Written
+              only when the value CHANGES (a phone is width-bound, so a
+              collapsing toolbar or a keyboard does not restyle the document),
+              and never as 0 — a viewport not laid out yet keeps the CSS
+              fallback of 1.
             - `data-theme`: ThemeToggle sets it in an effect, after hydration,
               so a light-mode member watched the whole dark splash and then a
               flash to cream. Same rule as ThemeToggle's `read()`: a stored
@@ -200,19 +206,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             Synchronous on purpose, and tiny; CSP allows inline scripts. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var d=document.documentElement;function k(){d.style.setProperty('--launch-k',String(Math.min(innerWidth/360,innerHeight/740)))}k();addEventListener('resize',k);try{var t=localStorage.getItem('badminton_theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.setAttribute('data-theme',t)}catch(e){}})()`,
+            __html: `(function(){var d=document.documentElement,l;function k(){var v=Math.min(innerWidth/360,innerHeight/740);if(v>0&&v!==l){l=v;d.style.setProperty('--launch-k',String(v))}}k();addEventListener('resize',k);try{var t=localStorage.getItem('badminton_theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.setAttribute('data-theme',t)}catch(e){}})()`,
           }}
         />
-        {/* The loading shot as keyframes, sampled from the same model that
-            drives the post-hydration frames (lib/launchMotion.ts). */}
-        <style dangerouslySetInnerHTML={{ __html: loopKeyframesCss() }} />
+        {/* The loading shot — keyframes and the rules that run them — from the
+            same model that drives the post-hydration frames
+            (lib/launchMotion.ts). */}
+        <style dangerouslySetInnerHTML={{ __html: LAUNCH_LOOP_CSS }} />
       </head>
       <body>
-        {/* HydrationMark sets html[data-hydrated="true"] on mount so the splash
-            hides instantly on every route (not just /). Lives in root layout
-            so non-index routes like /design don't fall through to the 5.4s
-            CSS failsafe. */}
-        <HydrationMark />
         <PreviewBanner />
         {/* Cold-start splash: the loading shot until the page resolves, then
             Welcome or Home. See components/launch/LaunchScreen.tsx. */}

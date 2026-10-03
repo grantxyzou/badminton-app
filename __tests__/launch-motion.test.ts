@@ -6,10 +6,12 @@ import {
   flight,
   frameStyles,
   loopFrame,
-  loopKeyframesCss,
-  msToShotBoundary,
+  launchLoopCss,
   resolveFrame,
+  ADOPT_UNTIL_MS,
+  RESOLVE_FLIGHT_MS,
   SETTLED_FRAME,
+  shotTakeover,
   SHOT_MS,
   TRAIL_END,
   TRAIL_SETTLED_START,
@@ -98,26 +100,41 @@ describe('Welcome buttons', () => {
 describe('frame styles', () => {
   it('hides an empty trail outright (a zero-length dash still paints its round cap)', () => {
     expect(frameStyles(loopFrame(0)).trail.opacity).toBe('0');
-    expect(frameStyles(SETTLED_FRAME).trail).toEqual({
-      strokeDasharray: '58 300',
-      strokeDashoffset: '-30',
-      opacity: '1',
-    });
+    expect(frameStyles(SETTLED_FRAME).trail).toEqual({ strokeDasharray: '0 30 58 300', opacity: '1' });
   });
 
-  it('matches the reduced-motion settled state globals.css hardcodes', () => {
+  it('never writes a negative dash value (older WebKit ignored a negative dashoffset)', () => {
+    for (let ms = 0; ms < SHOT_MS; ms += 37) {
+      for (const f of [loopFrame(ms), resolveFrame(ms)]) {
+        const t = frameStyles(f).trail;
+        expect(t.strokeDasharray).not.toContain('-');
+        expect(t).not.toHaveProperty('strokeDashoffset');
+      }
+    }
+  });
+
+  it('matches what globals.css hardcodes for the same picture', () => {
     const css = readFileSync('app/globals.css', 'utf8');
-    expect(css).toContain('stroke-dasharray: 58 300 !important');
-    expect(css).toContain('stroke-dashoffset: -30 !important');
+    // Reduced motion's settled trail, and the constant offset the dash form needs.
+    expect(css).toContain('stroke-dasharray: 0 30 58 300 !important');
+    expect(css).toMatch(/\.launch-trail\s*\{[^}]*stroke-dashoffset: 0\.001/);
+    expect(css).not.toMatch(/stroke-dashoffset:\s*-/);
   });
 });
 
-describe('the pre-hydration keyframes', () => {
-  const css = loopKeyframesCss();
+describe('the pre-hydration loop CSS', () => {
+  const css = launchLoopCss();
   it('defines both loops with a first and last stop', () => {
     expect(css).toContain('@keyframes launch-shuttle-loop{0%{');
     expect(css).toContain('@keyframes launch-trail-loop{0%{');
     expect(css).toMatch(/100%\{offset-distance:/);
+  });
+
+  it('runs them at SHOT_MS, and globals.css does not run them a second way', () => {
+    expect(css).toContain(`.launch-canvas--loop .launch-shuttle{animation:launch-shuttle-loop ${SHOT_MS}ms linear infinite}`);
+    expect(css).toContain(`.launch-canvas--loop .launch-trail{animation:launch-trail-loop ${SHOT_MS}ms linear infinite}`);
+    const globals = readFileSync('app/globals.css', 'utf8');
+    expect(globals).not.toMatch(/animation:\s*launch-(shuttle|trail)-loop/);
   });
 
   it('uses no linear() easing (Safari < 17.2)', () => {
@@ -129,11 +146,25 @@ describe('the pre-hydration keyframes', () => {
   });
 });
 
-describe('shot boundary', () => {
-  it('waits for the shot in flight to finish', () => {
-    expect(msToShotBoundary(0)).toBe(0);
-    expect(msToShotBoundary(500)).toBe(1500);
-    expect(msToShotBoundary(SHOT_MS * 3 + 1990)).toBe(0);
+describe('taking the loop over', () => {
+  it('adopts a shot still in flight, from exactly where it is', () => {
+    expect(shotTakeover(0)).toEqual({ adopt: 0 });
+    expect(shotTakeover(500)).toEqual({ adopt: 500 });
+    expect(shotTakeover(SHOT_MS * 3 + 500)).toEqual({ adopt: 500 });
+    expect(shotTakeover(ADOPT_UNTIL_MS)).toEqual({ adopt: ADOPT_UNTIL_MS });
+  });
+
+  it('waits out a shot that has landed', () => {
+    expect(shotTakeover(1500)).toEqual({ wait: 500 });
+    expect(shotTakeover(SHOT_MS - 5)).toEqual({ wait: 5 });
+  });
+
+  it('is seamless: across the whole adoption window the two shots are the same frame', () => {
+    // If these ever differ, adopting a shot mid-flight would visibly jump.
+    for (let ms = 0; ms <= ADOPT_UNTIL_MS; ms += 25) {
+      expect(frameStyles(resolveFrame(ms))).toEqual(frameStyles(loopFrame(ms)));
+    }
+    expect(ADOPT_UNTIL_MS).toBeLessThan(RESOLVE_FLIGHT_MS);
   });
 });
 

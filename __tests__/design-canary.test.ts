@@ -274,6 +274,14 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(body).toContain('splash-out');
   });
 
+  it('the splash takes taps while it covers the page', () => {
+    // It used to leave at hydration, so `pointer-events: none` cost nothing.
+    // It now sits over a live, hydrated page for the length of a shot, and a
+    // tap passed through would press a button nobody can see.
+    const rule = css.slice(css.indexOf('\n.splash {'));
+    expect(rule.slice(0, rule.indexOf('}'))).not.toContain('pointer-events: none');
+  });
+
   it('runs the failsafe only while nothing has taken the screen', () => {
     // A failsafe still running after React took over would lift the splash
     // mid-shot on a slow device, 10s in.

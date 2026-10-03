@@ -3715,7 +3715,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
    canvas scaled to fit by `--launch-k` (set before first paint in
    app/layout.tsx) — scaled, never reflowed, so every number below is the
    handoff's own, in canvas pixels. The motion lives in lib/launchMotion.ts;
-   the loop's keyframes are generated from it and rendered by the layout.
+   the loading loop's CSS is generated from it and rendered by the layout.
 
    `<html data-launch>` is the screen's state:
      loading   — server-rendered; the CSS loop plays and the failsafe runs
@@ -3746,10 +3746,14 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   color: var(--text-primary);
   font-family: var(--font-sans);
 }
-/* The splash: above everything until it leaves, and never a tap target. */
+/* The splash: above everything until it leaves. It TAKES taps, deliberately:
+   the page under it is hydrated and live, and a tap passed through would press
+   a button nobody can see (Home's "I'm in", or Welcome's doors while they are
+   still invisible). Hidden, it takes none — every way out ends in
+   `visibility: hidden` and then an unmount. */
 .splash {
   z-index: 100;
-  pointer-events: none;
+  touch-action: none;
 }
 /* Welcome sits UNDER the theme/language toggles (60) and toasts (55): it is a
    page, not an overlay. */
@@ -3782,6 +3786,9 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 .launch-trail {
   fill: none;
   stroke-linecap: round;
+  /* Pushes the dash pattern's zero-length first dash off the start of the path
+     (its round cap would paint a dot there). See lib/launchMotion.ts. */
+  stroke-dashoffset: 0.001;
 }
 .launch-trail--tube {
   stroke: var(--launch-tube);
@@ -3835,13 +3842,9 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   color: var(--launch-tagline);
 }
 
-/* The loading shot, before JS. Keyframes: `loopKeyframesCss()`. */
-.launch-canvas--loop .launch-shuttle {
-  animation: launch-shuttle-loop 2000ms linear infinite;
-}
-.launch-canvas--loop .launch-trail {
-  animation: launch-trail-loop 2000ms linear infinite;
-}
+/* The loading shot, before JS, is NOT here: `launchLoopCss()` emits both the
+   keyframes and the `.launch-canvas--loop` rules that run them, so the loop's
+   period has one home (lib/launchMotion.ts → SHOT_MS). */
 
 /* Welcome's two doors, real DOM pinned to the bottom (outside the scaled
    canvas, so the home indicator is honoured and the text stays crisp), as wide
@@ -3944,8 +3947,7 @@ html[data-launch="loading"] .splash {
   }
   html .launch-canvas--loop .launch-trail {
     animation: none !important;
-    stroke-dasharray: 58 300 !important;
-    stroke-dashoffset: -30 !important;
+    stroke-dasharray: 0 30 58 300 !important;
     opacity: 1 !important;
   }
   html .launch-canvas--loop .launch-wordmark,
