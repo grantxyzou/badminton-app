@@ -3841,6 +3841,18 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   font-size: 17px;
   color: var(--launch-tagline);
 }
+/* Chinese: the tagline is spaced out to the width of `bpm` above it (Grant,
+   2026-10-03). Stretching it to the lockup column makes it exactly as wide as
+   the wordmark, the column's widest child, and justifying its one line puts
+   the slack between the characters — so it tracks the wordmark at any length
+   rather than carrying a letter-spacing tuned to seven characters. A tagline
+   longer than the wordmark simply widens the column and sets normally, which
+   is what the English one does. */
+.launch-tagline:lang(zh) {
+  align-self: stretch;
+  text-align: justify;
+  text-align-last: justify;
+}
 
 /* The loading shot, before JS, is NOT here: `launchLoopCss()` emits both the
    keyframes and the `.launch-canvas--loop` rules that run them, so the loop's
