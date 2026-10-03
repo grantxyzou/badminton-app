@@ -122,6 +122,68 @@ describe('parseInteracEmail — the real Autodeposit shape', () => {
   });
 });
 
+/**
+ * The PLAIN-TEXT part and the Authentication-Results header of a second real
+ * notification (Autodeposit, no message, 2026-10-02), as Gmail's "Show
+ * original" printed them. Names, the reference, the account and the SES ids
+ * are replaced; the WORDING and LAYOUT are verbatim. This is what
+ * `getPlainBody()` hands the script: one "Label: value" per line, and no
+ * "Message:" line at all when the sender typed none.
+ */
+const REAL_AUTH =
+  'mx.google.com; dkim=pass header.i=@payments.interac.ca header.s=default header.b=AbCdEfGh; dkim=pass header.i=@amazonses.com header.s=xxxxxxxxxxxxxxxx header.b=IjKlMnOp; spf=pass (google.com: domain of 0000-000000@mail.payments.interac.ca designates 54.240.80.234 as permitted sender) smtp.mailfrom=0000-000000@mail.payments.interac.ca; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=payments.interac.ca';
+const REAL_PLAIN = [
+  '', '', '',
+  'Hi Grant Example,',
+  '',
+  'Funds Deposited!',
+  '$15.75',
+  '',
+  'Your funds have been automatically deposited into your account at Some Bank.',
+  '',
+  'Some Bank',
+  'Account ending in 0000',
+  '',
+  'Transfer Details',
+  '',
+  'Date: Oct 2, 2026',
+  'Reference Number: C1A2BcdeFGH6',
+  'Sent From: mei ling',
+  'Amount: $15.75 (CAD)',
+  '',
+  '',
+  'FAQ: https://www.interac.ca/en/interac-etransfer/etransfer-faq | This is a secure transaction.',
+  '',
+  'This email was sent to you by Interac Corp., the owner of the Interac e-Transfer service, on behalf of mei ling at Some Bank.',
+].join('\n');
+
+describe('parseInteracEmail — the real plain-text part and headers', () => {
+  it('Google\'s real header for an Interac email (sent through Amazon SES) authenticates', () => {
+    expect(isInteracAuthenticated(REAL_AUTH, 'mei ling <notify@payments.interac.ca>')).toBe(true);
+  });
+
+  it('reads it end to end — lowercase sender, no message, inline labels', () => {
+    const r = parseInteracEmail(
+      email({
+        subject: "Interac e-Transfer: You've received $15.75 from mei ling and it has been automatically deposited.",
+        from: 'mei ling <notify@payments.interac.ca>',
+        body: REAL_PLAIN,
+        authResults: REAL_AUTH,
+      }),
+    );
+    expect(r).toEqual({ kind: 'received', senderName: 'mei ling', amountCents: 1575, memo: null, referenceNumber: 'C1A2BcdeFGH6', authenticated: true });
+  });
+
+  it('an inline "Message: …" line is the memo', () => {
+    const body = REAL_PLAIN.replace('Date: Oct 2, 2026', 'Message: BPM Oct 1 - Gary\nDate: Oct 2, 2026');
+    expect(parseInteracEmail(email({ subject: "Interac e-Transfer: You've received $15.75 from mei ling and it has been automatically deposited.", from: 'mei ling <notify@payments.interac.ca>', body, authResults: REAL_AUTH })).memo).toBe('BPM Oct 1 - Gary');
+  });
+
+  it('the same header copied into a forged email from elsewhere does not pass alignment', () => {
+    expect(isInteracAuthenticated(REAL_AUTH, 'Interac <notify@payments-interac.ca>')).toBe(false);
+  });
+});
+
 describe('parseInteracEmail — what is NOT a payment', () => {
   it('a reminder for an unaccepted transfer is the same money again', () => {
     const r = parseInteracEmail(email({ subject: 'Reminder: INTERAC e-Transfer: BRUCE WAYNE sent you money.', body: 'BRUCE WAYNE has sent you $12.00 (CAD).' }));

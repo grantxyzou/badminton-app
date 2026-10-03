@@ -78,12 +78,14 @@ followed:
   their very first payment, before any alias exists. When the memo names someone other than the
   sender's known identity ("Bruce paid for Gary"), that is two candidates and the admin decides.
 
-## Open before the flag goes on
-
-- **The `Authentication-Results` header** of a real notification (Gmail → ⋮ → Show original, the top
-  few lines). The screenshot showed the body, not the headers. If Interac's DKIM `d=` is not an
-  `interac.ca` domain, every real email lands in review and the kill criterion reads 0% for a reason
-  that is not the matcher.
+**Headers, confirmed (2026-10-03).** "Show original" on a second real notification:
+`Authentication-Results: mx.google.com; dkim=pass header.i=@payments.interac.ca …; dkim=pass
+header.i=@amazonses.com …; spf=pass …; dmarc=pass (p=REJECT …) header.from=payments.interac.ca`.
+Interac sends through Amazon SES but signs with its own key too, and its DMARC policy is REJECT — so
+the anti-spoof check passes real mail and nothing forged can carry that signature. Raw headers also
+hold an `ARC-Authentication-Results` line ABOVE it; the script matches lines that START with
+`Authentication-Results:`, so it takes the right one. The plain-text part is one `Label: value` per
+line, with no `Message:` line when the sender typed none. Nothing is left open on the email shape.
 
 ## Roadmap
 
