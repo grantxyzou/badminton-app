@@ -36,6 +36,7 @@ const NULL_WHILE_LOADING_BACKLOG = new Set<string>([
   'components/admin/CommandCenter/AnomalyFeed.tsx', // phase 5 (Admin)
   'components/admin/CommandCenter/AccessRequestsCard.tsx', // phase 5
   'components/admin/CommandCenter/SignInReadinessCard.tsx', // phase 5
+  'components/admin/CommandCenter/PaymentsInboxCard.tsx', // phase 5 — added by #506 the same day
 ]);
 
 /** Shows "Loading…" text where a skeleton belongs. */
