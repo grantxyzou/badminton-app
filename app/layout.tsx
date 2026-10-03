@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import PreviewBanner from '@/components/PreviewBanner';
-import HydrationMark from '@/components/HydrationMark';
+import LaunchScreen from '@/components/launch/LaunchScreen';
+import { launchLoopCss } from '@/lib/launchMotion';
 import { APP_TIME_ZONE } from '@/i18n/request';
 import { APP_NAME, APP_SHORT_NAME } from '@/lib/brand';
 import './globals.css';
@@ -156,9 +157,15 @@ export const viewport: Viewport = {
   interactiveWidget: 'resizes-content',
 };
 
+// Constant, so built once per process rather than on every request.
+const LAUNCH_LOOP_CSS = launchLoopCss();
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   const messages = await getMessages();
+  // The splash renders outside NextIntlClientProvider, so its one string is
+  // resolved here on the server.
+  const tagline = (await getTranslations('signedOut'))('tagline');
 
   return (
     /* This used to carry `data-visual="field"`, stamped on the SERVER from
@@ -168,8 +175,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
        attribute is gone. The field rules in globals.css kept an `html:root`
        prefix in its place — that is a SPECIFICITY device, not a leftover;
        globals.css explains why above the field-card padding rule. */
+    /* `data-launch` is the launch screen's state ('loading' until JS takes over;
+       see components/launch/LaunchScreen.tsx). suppressHydrationWarning: the
+       pre-paint script below writes `data-theme` and `--launch-k` onto this
+       element before React hydrates it. */
     <html
       lang={locale}
+      data-launch="loading"
+      suppressHydrationWarning
       className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} ${materialSymbols.variable}`}
     >
       <head>
@@ -178,20 +191,34 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             still reads the apple-prefixed name — declare it explicitly so the
             home-screen app opens fullscreen on every iOS version. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        {/* BEFORE FIRST PAINT, two things CSS cannot do alone:
+            - `--launch-k`: the launch screen is a fixed 360×740 composition
+              scaled to fit, and a unitless scale factor from viewport units
+              needs typed calc() division, which Safari does not ship. Written
+              only when the value CHANGES (a phone is width-bound, so a
+              collapsing toolbar or a keyboard does not restyle the document),
+              and never as 0 — a viewport not laid out yet keeps the CSS
+              fallback of 1.
+            - `data-theme`: ThemeToggle sets it in an effect, after hydration,
+              so a light-mode member watched the whole dark splash and then a
+              flash to cream. Same rule as ThemeToggle's `read()`: a stored
+              choice wins, else the system setting.
+            Synchronous on purpose, and tiny; CSP allows inline scripts. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var d=document.documentElement,l;function k(){var v=Math.min(innerWidth/360,innerHeight/740);if(v>0&&v!==l){l=v;d.style.setProperty('--launch-k',String(v))}}k();addEventListener('resize',k);try{var t=localStorage.getItem('badminton_theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.setAttribute('data-theme',t)}catch(e){}})()`,
+          }}
+        />
+        {/* The loading shot — keyframes and the rules that run them — from the
+            same model that drives the post-hydration frames
+            (lib/launchMotion.ts). */}
+        <style dangerouslySetInnerHTML={{ __html: LAUNCH_LOOP_CSS }} />
       </head>
       <body>
-        {/* HydrationMark sets html[data-hydrated="true"] on mount so the splash
-            hides instantly on every route (not just /). Lives in root layout
-            so non-index routes like /design don't fall through to the 5.4s
-            CSS failsafe. */}
-        <HydrationMark />
         <PreviewBanner />
-        {/* Cold-start splash — hidden by CSS once HydrationMark sets data-hydrated */}
-        <div className="splash" aria-hidden="true">
-          <div className="splash-shuttle ring-spinner" />
-          <h1 className="splash-title">{APP_NAME}</h1>
-          <p className="splash-tagline">Weekly sessions</p>
-        </div>
+        {/* Cold-start splash: the loading shot until the page resolves, then
+            Welcome or Home. See components/launch/LaunchScreen.tsx. */}
+        <LaunchScreen tagline={tagline} />
         {/* Badminton court background */}
         <div className="court-bg" aria-hidden="true">
           <div className="aurora-blob-1" />
