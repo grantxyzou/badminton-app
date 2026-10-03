@@ -21,6 +21,10 @@ export interface UnpaidSession {
   playerId: string;
   date: string;
   owedAmount: number;
+  /** The bill is frozen (settled) — only these count toward the soft hold. */
+  settled: boolean;
+  /** The member tapped "I've sent it" for this line. */
+  selfReported: boolean;
 }
 
 /** One payable line, in cents, for matching an amount against. */
@@ -84,7 +88,14 @@ export async function computeOwed(
       activeCount: activeCountBySession.get(p.sessionId) ?? 0,
     });
     if (result.counted) {
-      sessions.push({ sessionId: p.sessionId, playerId: p.id, date: session.datetime, owedAmount: result.owedAmount });
+      sessions.push({
+        sessionId: p.sessionId,
+        playerId: p.id,
+        date: session.datetime,
+        owedAmount: result.owedAmount,
+        settled: !!session.settled,
+        selfReported: p.selfReportedPaid === true,
+      });
     }
   }
   sessions.sort((a, b) => (a.date < b.date ? 1 : -1));

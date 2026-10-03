@@ -17,6 +17,8 @@ interface Inbox {
   lastReceivedAt: string | null;
   review: EtransferPayment[];
   recent: EtransferPayment[];
+  last28Days: { received: number; autoMatched: number; adminMatched: number; ignored: number; waiting: number };
+  hold: { threshold: number; suggested: number; names: string[] };
 }
 
 /** No email for this long while set up reads as "the script may have stopped". */
@@ -110,15 +112,14 @@ export default function PaymentsInboxCard({ refreshKey = 0, onChanged }: { refre
   const stale = !data.lastReceivedAt
     ? Date.now() - Date.parse(data.keyCreatedAt ?? '') > STALE_MS
     : Date.now() - Date.parse(data.lastReceivedAt) > STALE_MS;
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const autoThisWeek = data.recent.filter((p) => p.matchedBy === 'auto' && Date.parse(p.receivedAt) > weekAgo).length;
+  const w = data.last28Days;
 
   return (
     <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
       <CardHeader
         icon="receipt_long"
         title={title}
-        subtitle={`Last email ${ago(data.lastReceivedAt)}${autoThisWeek > 0 ? ` · ${autoThisWeek} matched on their own this week` : ''}`}
+        subtitle={`Last email ${ago(data.lastReceivedAt)}${w.received > 0 ? ` · ${w.autoMatched} of ${w.received} matched on their own (28 days)` : ''}`}
         action={
           <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setSetupOpen(true)}>
             Setup
@@ -170,9 +171,62 @@ export default function PaymentsInboxCard({ refreshKey = 0, onChanged }: { refre
           </ul>
         </>
       )}
+      <HoldRow hold={data.hold} onDone={done} />
       <SetupSheet open={setupOpen} onClose={() => setSetupOpen(false)} onDone={done} configured />
       {assigning && <AssignSheet payment={assigning} onClose={() => setAssigning(null)} onDone={done} />}
     </section>
+  );
+}
+
+// ── The soft hold ──────────────────────────────────────────────────────────
+
+/**
+ * Off by default, and the switch shows WHO it would hold before it is
+ * pressed: a club whose payments were ticked by hand for months carries old
+ * rows, and the admin should see "this would hold Lin and Viktor" — and clean
+ * that up — before anyone is waitlisted for a debt they paid in cash.
+ */
+function HoldRow({ hold, onDone }: { hold: Inbox['hold']; onDone: () => void }) {
+  const online = useOnline();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const on = hold.threshold > 0;
+  const n = on ? hold.threshold : hold.suggested;
+
+  async function set(holdAfterUnpaid: number) {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch(`${BASE}/api/admin/payments/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ holdAfterUnpaid }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      onDone();
+    } catch {
+      setError("Couldn't save — try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const who = hold.names.length === 0 ? 'nobody' : hold.names.join(', ');
+  return (
+    <div className="flex flex-col gap-2" style={{ borderTop: '1px solid var(--inner-card-border)', paddingTop: 'var(--space-4)' }}>
+      <p className="section-label-muted" style={{ margin: 0 }}>
+        Unpaid hold · {on ? 'on' : 'off'}
+      </p>
+      <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+        {on
+          ? `Anyone owing for ${n}+ finalized sessions joins the waitlist until they pay. Held now: ${who}.`
+          : `If on, anyone owing for ${n}+ finalized sessions joins the waitlist until they pay. Today that would be: ${who}.`}
+      </p>
+      <button type="button" className="cc-btn cc-btn-secondary" disabled={!online || busy} onClick={() => void set(on ? 0 : n)}>
+        {on ? 'Turn off' : 'Turn on'}
+      </button>
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </div>
   );
 }
 

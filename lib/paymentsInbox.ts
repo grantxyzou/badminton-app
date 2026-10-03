@@ -32,8 +32,16 @@ export function paymentsSettingsId(groupId: string): string {
   return groupDocId(groupId, PAYMENTS_SETTINGS_ID);
 }
 
-/** Unpaid settled sessions at which a sign-up waits on the list (0 = off). */
-export const DEFAULT_HOLD_AFTER_UNPAID = 2;
+/**
+ * Unpaid SETTLED sessions at which a sign-up waits on the list. 0 = off, and
+ * off is the default: the hold is opted into from the admin card, after the
+ * admin has seen who it would hold today. Production carries months of rows
+ * that were ticked by hand or never ticked at all, and switching it on with
+ * the inbox would have waitlisted people for debts already paid in cash.
+ */
+export const DEFAULT_HOLD_AFTER_UNPAID = 0;
+/** What the admin card offers when the hold is switched on. */
+export const SUGGESTED_HOLD_AFTER_UNPAID = 2;
 
 export interface PaymentsSettingsDoc {
   id: string;
@@ -333,12 +341,31 @@ export async function inboxSummary(groupId: string) {
   const rows = await scope.query<EtransferPayment>('payments', { orderBy: 'c.receivedAt DESC', limit: 200 });
   const sorted = [...rows].sort((a, b) => (a.receivedAt < b.receivedAt ? 1 : -1));
   const settings = await readPaymentsSettings(groupId);
+  // The kill criterion's readout (docs/plans/payments.md): of what arrived in
+  // the last 28 days, how much matched with nobody touching it. Counted from
+  // the same bounded read, so a club past 200 payments a month reads a floor.
+  const since = Date.now() - 28 * 24 * 60 * 60 * 1000;
+  const window = sorted.filter((p) => Date.parse(p.receivedAt) >= since);
+  const threshold = settings?.holdAfterUnpaid ?? DEFAULT_HOLD_AFTER_UNPAID;
   return {
     configured: !!settings?.keyHash,
     keyCreatedAt: settings?.keyCreatedAt ?? null,
     lastReceivedAt: settings?.lastReceivedAt ?? null,
     review: sorted.filter((p) => p.status === 'review'),
     recent: sorted.filter((p) => p.status !== 'review').slice(0, 20),
+    last28Days: {
+      received: window.length,
+      autoMatched: window.filter((p) => p.status === 'matched' && p.matchedBy === 'auto').length,
+      adminMatched: window.filter((p) => p.status === 'matched' && p.matchedBy !== 'auto').length,
+      ignored: window.filter((p) => p.status === 'ignored').length,
+      waiting: window.filter((p) => p.status === 'review').length,
+    },
+    hold: {
+      threshold,
+      suggested: SUGGESTED_HOLD_AFTER_UNPAID,
+      // Who it holds now, or — while off — who it WOULD hold if switched on.
+      names: await wouldHold(groupId, threshold > 0 ? threshold : SUGGESTED_HOLD_AFTER_UNPAID),
+    },
   };
 }
 
@@ -356,13 +383,43 @@ export async function signupHeldForUnpaid(scope: GroupScope, memberId: string): 
     const settings = await readPaymentsSettings(scope.groupId);
     const threshold = settings?.holdAfterUnpaid ?? DEFAULT_HOLD_AFTER_UNPAID;
     if (!(threshold > 0)) return false;
-    const identity = await resolveIdentity({ memberId }, scope.groupId);
-    const { sessions } = await computeOwed(scope, identity);
-    return sessions.length >= threshold;
+    return (await holdCount(scope, memberId)) >= threshold;
   } catch (err) {
     console.error('payments: hold check failed, letting the sign-up through', err);
     return false;
   }
+}
+
+/**
+ * The sessions a hold counts: SETTLED (a frozen bill, not a live estimate of a
+ * session nobody has finalized) and NOT self-reported. Someone who tapped
+ * "I've sent it" gets the benefit of the doubt until the money is matched —
+ * otherwise a slow match would hold exactly the people who paid.
+ */
+export async function holdCount(scope: GroupScope, memberId: string): Promise<number> {
+  const identity = await resolveIdentity({ memberId }, scope.groupId);
+  const { sessions } = await computeOwed(scope, identity);
+  return sessions.filter((s) => s.settled && !s.selfReported).length;
+}
+
+/** Who a threshold WOULD hold today — shown before the admin switches it on. */
+export async function wouldHold(groupId: string, threshold: number): Promise<string[]> {
+  const scope = groupScope(groupId);
+  const roster = await rosterMembers(groupId);
+  const out: string[] = [];
+  for (const { member } of roster) {
+    if ((await holdCount(scope, member.id)) >= threshold) out.push(member.name);
+  }
+  return out;
+}
+
+export async function setHoldThreshold(groupId: string, holdAfterUnpaid: number): Promise<void> {
+  await ensurePayments();
+  const existing = await readPaymentsSettings(groupId);
+  await groupScope(groupId).upsert<PaymentsSettingsDoc>('clubSettings', {
+    ...(existing ?? { id: paymentsSettingsId(groupId) }),
+    holdAfterUnpaid,
+  });
 }
 
 /**
@@ -391,8 +448,14 @@ export async function releaseHoldIfSettled(scope: GroupScope, memberId: string |
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
     });
-    const activeCount = active.filter((p) => p.sessionId === sessionId && !p.removed && !p.waitlisted).length;
-    const room = activeCount < (session?.maxPlayers ?? defaultMaxPlayers());
+    const inSession = active.filter((p) => p.sessionId === sessionId && !p.removed);
+    const activeCount = inSession.filter((p) => !p.waitlisted).length;
+    // Never past someone who was waiting first: an ordinary waitlister who
+    // signed up before this person keeps their claim on the next spot.
+    const aheadOnList = inSession.filter(
+      (p) => p.waitlisted && p.id !== held.id && p.heldForUnpaid !== true && p.timestamp < held.timestamp,
+    ).length;
+    const room = activeCount + aheadOnList < (session?.maxPlayers ?? defaultMaxPlayers());
     await scope.replace('players', { ...held, heldForUnpaid: false, waitlisted: room ? false : true }, sessionId);
   } catch (err) {
     console.error('payments: releasing the hold failed', err);

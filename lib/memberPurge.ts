@@ -27,7 +27,7 @@
  * exists that appears in none of the three tables, so this cannot go stale the
  * next time someone adds one.
  */
-import { getContainer } from './cosmos';
+import { ensureContainer, getContainer } from './cosmos';
 import { pkFieldOf, type ContainerName } from './containers';
 import { listMembershipsForMember, reassignOwnership } from './groups';
 import { listIdentitiesForMember } from './authIdentity';
@@ -267,6 +267,11 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
   // person go. A payment still in the review queue was never tied to anyone,
   // so nothing here can find it — it is the admin's to resolve or ignore.
   try {
+    // Created on first use (`provisioned: false`): before a club turns the
+    // inbox on, real Cosmos 404s this query, and a deletion would report a
+    // failure for a container that simply holds nothing yet. The mock creates
+    // containers on demand, which is why only production would show it.
+    await ensureContainer('payments');
     const paid = await queryAll(
       'payments',
       'c.memberId = @memberId',

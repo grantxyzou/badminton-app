@@ -106,7 +106,7 @@ read in `app/api/admin/slice0/route.ts`.
 - **A sender's LEGAL name is matched through `aliases`** (etransferName → appName), then the roster name. The queue's "Remember X as Y" writes the alias, which is how a club goes from mostly-queued to mostly-automatic.
 - **`Player.paid` stays the truth.** A match writes `paid: true` plus additive `paidAt` / `paidVia: 'etransfer'` / `paymentId`; the admin's manual tap writes `paidVia: 'manual'`. A row already paid or covered when a payment lands is skipped, never overwritten.
 - **The email body is never stored**; `payments` docs are anonymized by `purgeMember`.
-- **The soft hold**: a member owing for ≥ `holdAfterUnpaid` (default 2) past sessions signs up onto the waitlist with `heldForUnpaid: true`; a payment (inbox or manual) releases it and promotes them if there is room. Admin-added sign-ups bypass it, and it fails OPEN on a read error. Reminders are Phase 1b (needs a scheduler).
+- **The soft hold is OFF by default** (`holdAfterUnpaid` 0 in the club's payments settings doc); the admin card shows who it would hold before it is switched on. On, a member owing for ≥ N SETTLED sessions — not counting lines they self-reported — signs up onto the waitlist with `heldForUnpaid: true`; a payment (inbox or manual) releases it, and promotes them only into a spot no earlier waitlister is waiting for. Admin-added sign-ups bypass it, and it fails OPEN on a read error. Reminders are Phase 1b (needs a scheduler).
 - **The pay-to address reaches a member in one place**: `payTo` on `GET /api/players/unpaid` (`lib/payTo.ts`), only when they owe — security rule 10 keeps it off every general read.
 
 ### Waitlist

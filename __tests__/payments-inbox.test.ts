@@ -7,7 +7,8 @@ import { POST as mintKey } from '@/app/api/admin/payments/key/route';
 import { POST as selfReport } from '@/app/api/payments/self-report/route';
 import { POST as signup, PATCH as patchPlayer } from '@/app/api/players/route';
 import { apiGuards } from '../proxy';
-import { mintPaymentsKey, signupHeldForUnpaid } from '@/lib/paymentsInbox';
+import { mintPaymentsKey, signupHeldForUnpaid, setHoldThreshold, holdCount } from '@/lib/paymentsInbox';
+import { PATCH as patchSettings } from '@/app/api/admin/payments/settings/route';
 import { groupScope } from '@/lib/groupScope';
 import {
   resetMockStore,
@@ -232,37 +233,100 @@ describe('"I\'ve sent it"', () => {
 });
 
 describe('the soft hold', () => {
-  it('owing for two sessions puts a sign-up on the waitlist, with the reason', async () => {
-    expect(await signupHeldForUnpaid(groupScope('bpm'), lin.id)).toBe(true);
-    const res = await signup(makeRequest('POST', `${BASE}/players`, { name: 'Lin' }, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }));
-    expect(res.status).toBe(201);
-    expect(await res.json()).toMatchObject({ waitlisted: true, heldForUnpaid: true });
-  });
+  const asLin = () => ({ Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` });
+  const signUpLin = () => signup(makeRequest('POST', `${BASE}/players`, { name: 'Lin' }, asLin()));
 
-  it('one unpaid session is under the line', async () => {
-    rowById(row1.id).paid = true;
+  it('is OFF by default — turning the inbox on holds nobody', async () => {
     expect(await signupHeldForUnpaid(groupScope('bpm'), lin.id)).toBe(false);
+    expect(await (await signUpLin()).json()).toMatchObject({ waitlisted: false });
   });
 
-  it('flag off: no hold', async () => {
-    process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'false';
-    const res = await signup(makeRequest('POST', `${BASE}/players`, { name: 'Lin' }, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }));
-    expect(await res.json()).toMatchObject({ waitlisted: false });
+  describe('switched on at 2', () => {
+    beforeEach(async () => {
+      await setHoldThreshold('bpm', 2);
+    });
+
+    it('owing for two finalized sessions puts a sign-up on the waitlist, with the reason', async () => {
+      const res = await signUpLin();
+      expect(res.status).toBe(201);
+      expect(await res.json()).toMatchObject({ waitlisted: true, heldForUnpaid: true });
+    });
+
+    it('holds under members-only too (production has it on)', async () => {
+      process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
+      try {
+        const res = await signUpLin();
+        expect(res.status).toBe(201);
+        expect(await res.json()).toMatchObject({ waitlisted: true, heldForUnpaid: true });
+      } finally {
+        delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
+      }
+    });
+
+    it('one unpaid session is under the line', async () => {
+      rowById(row1.id).paid = true;
+      expect(await signupHeldForUnpaid(groupScope('bpm'), lin.id)).toBe(false);
+    });
+
+    it('counts only FINALIZED sessions, not a live estimate', async () => {
+      const s = (getStore()['sessions'] as Array<Record<string, unknown>>).find((x) => x.id === S1)!;
+      delete s.settled;
+      expect(await holdCount(groupScope('bpm'), lin.id)).toBe(1);
+    });
+
+    it('"I\'ve sent it" gets the benefit of the doubt', async () => {
+      rowById(row1.id).selfReportedPaid = true;
+      expect(await holdCount(groupScope('bpm'), lin.id)).toBe(1);
+      expect(await signupHeldForUnpaid(groupScope('bpm'), lin.id)).toBe(false);
+    });
+
+    it('flag off: no hold', async () => {
+      process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'false';
+      expect(await (await signUpLin()).json()).toMatchObject({ waitlisted: false });
+    });
+
+    it('paying releases the hold and takes the spot', async () => {
+      const { id } = await (await signUpLin()).json();
+      await post(email('Lin', '12.00'));
+      expect(rowById(id)).toMatchObject({ waitlisted: false, heldForUnpaid: false });
+    });
+
+    it('a released hold never jumps someone who was waiting first', async () => {
+      const s = (getStore()['sessions'] as Array<Record<string, unknown>>).find((x) => x.id === ACTIVE)!;
+      s.maxPlayers = 1;
+      const { id } = await (await signUpLin()).json(); // held
+      seedPlayer(ACTIVE, 'Viktor', { waitlisted: true, timestamp: '2000-01-01T00:00:00Z' });
+      await post(email('Lin', '12.00'));
+      expect(rowById(id)).toMatchObject({ waitlisted: true, heldForUnpaid: false });
+    });
+
+    it("an admin's manual paid tap releases it too, and stamps paidAt", async () => {
+      const { id } = await (await signUpLin()).json();
+      await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id: row1.id, sessionId: S1, paid: true }));
+      expect(rowById(row1.id)).toMatchObject({ paid: true, paidVia: 'manual' });
+      expect(typeof rowById(row1.id).paidAt).toBe('string');
+      expect(rowById(id)).toMatchObject({ waitlisted: false, heldForUnpaid: false });
+    });
   });
 
-  it('paying releases the hold and takes the spot', async () => {
-    const res = await signup(makeRequest('POST', `${BASE}/players`, { name: 'Lin' }, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }));
-    const { id } = await res.json();
-    await post(email('Lin', '12.00'));
-    expect(rowById(id)).toMatchObject({ waitlisted: false, heldForUnpaid: false });
+  it('the admin card shows who it WOULD hold before it is switched on', async () => {
+    const inbox = await (await inboxGet(makeAdminRequest('GET', `${BASE}/admin/payments`))).json();
+    expect(inbox.hold).toEqual({ threshold: 0, suggested: 2, names: ['Lin'] });
   });
 
-  it("an admin's manual paid tap releases it too, and stamps paidAt", async () => {
-    const res = await signup(makeRequest('POST', `${BASE}/players`, { name: 'Lin' }, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }));
-    const { id } = await res.json();
-    await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id: row1.id, sessionId: S1, paid: true }));
-    expect(rowById(row1.id)).toMatchObject({ paid: true, paidVia: 'manual' });
-    expect(typeof rowById(row1.id).paidAt).toBe('string');
-    expect(rowById(id)).toMatchObject({ waitlisted: false, heldForUnpaid: false });
+  it('switching it is admin-only and validated', async () => {
+    expect((await patchSettings(makeRequest('PATCH', `${BASE}/admin/payments/settings`, { holdAfterUnpaid: 2 }))).status).toBe(401);
+    expect((await patchSettings(makeAdminRequest('PATCH', `${BASE}/admin/payments/settings`, { holdAfterUnpaid: -1 }))).status).toBe(400);
+    expect((await patchSettings(makeAdminRequest('PATCH', `${BASE}/admin/payments/settings`, { holdAfterUnpaid: 2 }))).status).toBe(200);
+    expect(await signupHeldForUnpaid(groupScope('bpm'), lin.id)).toBe(true);
+  });
+});
+
+describe('the kill-criterion readout', () => {
+  it('counts what arrived in the last 28 days by how it was resolved', async () => {
+    await post(email('Lin', '12.00', { date: new Date().toISOString() }));
+    await post(email('Stranger', '9.00', { date: new Date().toISOString() }));
+    const inbox = await (await inboxGet(makeAdminRequest('GET', `${BASE}/admin/payments`))).json();
+    expect(inbox.last28Days).toEqual({ received: 2, autoMatched: 1, adminMatched: 0, ignored: 0, waiting: 1 });
   });
 });

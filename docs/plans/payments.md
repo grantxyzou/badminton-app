@@ -51,10 +51,27 @@ fix before anything in Phase 2 starts.
   `/api/players/unpaid` uses — a player who owes $12 + $30 sends $42.
 - **`Player.paid` stays the truth every reader uses.** The match writes `paid` plus additive
   `paidAt` / `paidVia` / `paymentId`. No reader of `paid` changes.
-- **Late payment: a soft hold, no fee.** A member with ≥ 2 unpaid settled sessions signs up onto the
-  waitlist with a reason, until they settle. Reminders (push, no amount on the lock screen) are Phase 1b,
-  because App Service has nothing that runs on a schedule; they need a GitHub Actions `schedule:` calling a
-  keyed endpoint.
+- **Late payment: a soft hold, no fee — OFF until the admin switches it on.** A member owing for ≥ 2
+  *finalized* (settled) sessions signs up onto the waitlist with a reason, until they settle. Three
+  refinements after review, before anything shipped: (1) it is a separate switch on the admin card, not
+  part of the flag, and the card shows who it WOULD hold today before it is pressed — production carries
+  months of hand-ticked rows, and turning it on with the inbox would have waitlisted people for debts paid
+  in cash; (2) unsettled sessions (a live estimate) do not count; (3) a line the member marked "I've sent
+  it" does not count, so a slow match never holds the people who paid. A payment releases the hold and
+  promotes them only into a spot no earlier waitlister is waiting for. Reminders (push, no amount on the
+  lock screen) are Phase 1b, because App Service has nothing that runs on a schedule; they need a GitHub
+  Actions `schedule:` calling a keyed endpoint.
+
+## Open before the flag goes on
+
+- **A real Interac notification, headers included** (Gmail → ⋮ → Show original): the `From`, the
+  topmost `Authentication-Results`, the subject and a redacted body. Every fixture today is synthetic.
+  If Interac signs through a mail provider whose DKIM `d=` is not `interac.ca`, every real email lands in
+  review and the kill criterion reads 0% for a reason that is not the matcher. If the bank sends its own
+  notification instead of `notify@payments.interac.ca`, the script's search finds nothing.
+- **Dedupe key.** Payments are deduped on the email's `Message-ID`. If a real notification carries a
+  transfer reference number, dedupe on that instead: two emails about ONE transfer would otherwise pay
+  the person's next-oldest line too.
 
 ## Roadmap
 
