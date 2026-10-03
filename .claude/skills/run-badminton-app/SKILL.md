@@ -70,7 +70,8 @@ identical. To match bpm-next, use the next-mode launch below instead.
 
 ## Run as bpm-next (all flags on)
 
-bpm-next builds with `NEXT_PUBLIC_ENV=next` and all 15 `NEXT_PUBLIC_FLAG_*` on.
+Production builds with `NEXT_PUBLIC_ENV=stable` (no preview banner) and every
+`NEXT_PUBLIC_FLAG_*` that `deploy-next.yml` sets; `dev:next` matches both.
 Two npm scripts replicate that locally (flag list kept in sync with
 `.github/workflows/deploy-next.yml`):
 
