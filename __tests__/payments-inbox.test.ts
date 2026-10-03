@@ -187,6 +187,33 @@ describe('matching', () => {
     expect((await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: id, action: 'ignore' }))).status).toBe(409);
   });
 
+  it('dismissing can still remember who sent it — and marks nothing paid', async () => {
+    rowById(row1.id).paid = true; // ticked by hand before the inbox existed
+    rowById(row2.id).paid = true;
+    await post(email('MEI LING CHAN', '12.00'));
+    const id = (getStore()['payments'] as Array<{ id: string }>)[0].id;
+    const res = await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: id, action: 'ignore', name: 'Lin', remember: true }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).status).toBe('ignored');
+    expect(getStore()['aliases']).toEqual([expect.objectContaining({ appName: 'Lin', etransferName: 'MEI LING CHAN', groupId: 'bpm' })]);
+    // The next one from that bank name matches on its own.
+    rowById(row2.id).paid = false;
+    expect((await (await post(email('MEI LING CHAN', '15.00'))).json()).status).toBe('matched');
+  });
+
+  it('a plain dismiss learns nothing, and remembering twice writes one alias', async () => {
+    await post(email('Stranger', '1.00'));
+    await post(email('Stranger', '2.00'));
+    const [a, b] = (getStore()['payments'] as Array<{ id: string }>).map((p) => p.id);
+    await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: a, action: 'ignore' }));
+    expect(getStore()['aliases'] ?? []).toHaveLength(0);
+    await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: b, action: 'ignore', name: 'Lin', remember: true }));
+    await post(email('Stranger', '3.00'));
+    const c = (getStore()['payments'] as Array<{ id: string; status: string }>).find((p) => p.status === 'review')!.id;
+    await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: c, action: 'ignore', name: 'Lin', remember: true }));
+    expect(getStore()['aliases']).toHaveLength(1);
+  });
+
   it('assigning is admin-only', async () => {
     await post(email('Stranger', '12.00'));
     const id = (getStore()['payments'] as Array<{ id: string }>)[0].id;

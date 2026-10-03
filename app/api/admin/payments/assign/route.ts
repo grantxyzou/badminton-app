@@ -2,7 +2,7 @@
  * POST /api/admin/payments/assign — the admin's one tap on a queued e-transfer.
  *
  *   { paymentId, action: 'assign', memberId? | name?, refs?, remember? }
- *   { paymentId, action: 'ignore' }
+ *   { paymentId, action: 'ignore', name?, remember? }  — dismiss, optionally learning the sender
  *
  * `refs` are the owed lines (player row ids / stringing job ids) the money
  * pays; omitted, the clean allocation is used if there is one. `remember`
@@ -52,7 +52,13 @@ export async function POST(req: NextRequest) {
       resolveGroupId(req),
       paymentId,
       body.action === 'ignore'
-        ? { kind: 'ignore', adminId: admin.memberId }
+        ? {
+            kind: 'ignore',
+            adminId: admin.memberId,
+            memberId: typeof body.memberId === 'string' ? body.memberId : undefined,
+            name: typeof body.name === 'string' ? body.name.trim().slice(0, 50) : undefined,
+            remember: body.remember === true,
+          }
         : {
             kind: 'assign',
             adminId: admin.memberId,
