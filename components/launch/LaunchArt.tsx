@@ -28,7 +28,12 @@ interface Props {
 export default function LaunchArt({ tagline, variant }: Props) {
   const s = frameStyles(variant === 'loop' ? loopFrame(0) : SETTLED_FRAME);
   return (
-    <div className={`launch-canvas launch-canvas--${variant}`} aria-hidden="true">
+    // The splash is decoration over a page that is loading; Welcome's lockup is
+    // the only place that screen says what app this is, so it is named.
+    <div
+      className={`launch-canvas launch-canvas--${variant}`}
+      {...(variant === 'loop' ? { 'aria-hidden': true } : { role: 'img', 'aria-label': `bpm. ${tagline}` })}
+    >
       <div className="launch-hero">
         <svg viewBox="0 0 1024 1024" className="launch-arc">
           <path className="launch-trail launch-trail--tube" d={ARC} pathLength={100} style={s.trail} />

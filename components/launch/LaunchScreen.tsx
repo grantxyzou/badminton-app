@@ -6,13 +6,15 @@ import {
   frameStyles,
   HARD_TIMEOUT_MS,
   msToShotBoundary,
-  PREHYDRATION_FAILSAFE_MS,
   resolveFrame,
   SETTLED_FRAME,
   WELCOME_AT_MS,
   WELCOME_HANDOFF_MS,
   type LaunchFrame,
 } from '@/lib/launchMotion';
+
+/** URL params that mean "this visit is a landing, not a launch" — see `launchDecision`. */
+const LANDING_PARAMS = ['authError', 'verified', 'signedIn', 'authFlow', 'reset', 'join', 'native'];
 
 /** Where the launch screen goes once it knows. */
 export type LaunchDecision = 'welcome' | 'app' | 'none';
@@ -31,7 +33,14 @@ export type LaunchDecision = 'welcome' | 'app' | 'none';
  * Neither marker means a route that is not the app at all — `/legal/*`,
  * `/design/*`, `/migrate`, `/auth/done` — which must not sit through a shot.
  */
-export function launchDecision(doc: Document): LaunchDecision {
+export function launchDecision(doc: Document, search = ''): LaunchDecision {
+  // A landing that carries something to SAY (a sign-in error, a verified
+  // email, the name step of a new Google account) or that leaves Welcome
+  // (an invite, a reset link, the native return). The page reads these after
+  // this runs, so the URL still has them, and a shot played over them would
+  // hide a toast for most of its life.
+  const params = new URLSearchParams(search);
+  if (LANDING_PARAMS.some((k) => params.has(k))) return 'none';
   if (doc.querySelector('[data-signed-out-welcome]')) return 'welcome';
   if (doc.querySelector('[data-launch-app]')) return 'app';
   return 'none';
@@ -89,14 +98,16 @@ export default function LaunchScreen({ tagline }: { tagline: string }) {
     // Hydration arrived after the failsafe had already lifted the screen.
     // Playing the shot now would bring the splash back over a page in use, and
     // even `done` would replay the fade from full opacity — `lifted` keeps it
-    // hidden (globals.css) until it unmounts.
-    if (performance.now() >= PREHYDRATION_FAILSAFE_MS * 0.92) {
+    // hidden (globals.css) until it unmounts. Asked of the element itself, not
+    // the clock: `performance.now()` counts from navigation START, and on an
+    // Azure wake the HTML (and so the failsafe's animation) arrives ~10s in.
+    if (getComputedStyle(root).visibility === 'hidden') {
       html.setAttribute('data-launch', 'lifted');
       timers.push(window.setTimeout(() => setGone(true), 0));
       return () => timers.forEach(clearTimeout);
     }
 
-    if (launchDecision(document) === 'none') {
+    if (launchDecision(document, window.location.search) === 'none') {
       leave('done');
       return () => timers.forEach(clearTimeout);
     }
@@ -115,7 +126,7 @@ export default function LaunchScreen({ tagline }: { tagline: string }) {
     const canvas = root.querySelector<HTMLElement>('.launch-canvas');
 
     const begin = () => {
-      const decision = launchDecision(document);
+      const decision = launchDecision(document, window.location.search);
       if (decision === 'none') return leave('done');
       // Stop the CSS loop; the inline styles written below take over from the
       // exact frame it ended on (a shot boundary: shuttle at launch, no trail).

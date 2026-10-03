@@ -92,6 +92,20 @@ describe('LaunchScreen', () => {
     expect(launch()).toBe('done');
   });
 
+  it('asks the element, not the clock: a slow first byte is not a lifted splash', () => {
+    now = 20_000; // navigation started 20s ago (an Azure wake), HTML just arrived
+    mount('data-launch-app');
+    expect(launch()).toBe('resolving');
+  });
+
+  it('gets out of the way of an auth landing, which has a toast or a sheet to show', () => {
+    for (const q of ['?authError=denied', '?verified=1', '?authFlow=name', '?join=abc', '?reset=t']) {
+      window.history.replaceState(null, '', q);
+      expect(launchDecision(document, window.location.search)).toBe('none');
+    }
+    window.history.replaceState(null, '', '/');
+  });
+
   it('never covers the app for good, even if the frames stop', () => {
     vi.stubGlobal('requestAnimationFrame', () => 0);
     mount('data-launch-app');
@@ -100,7 +114,11 @@ describe('LaunchScreen', () => {
   });
 
   it('does not bring back a splash the failsafe already lifted', () => {
-    now = 20_000;
+    const real = window.getComputedStyle;
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el, p) => {
+      const cs = real(el, p);
+      return (el as Element).classList?.contains('splash') ? ({ ...cs, visibility: 'hidden' } as CSSStyleDeclaration) : cs;
+    });
     const { container } = mount('data-launch-app');
     expect(launch()).toBe('lifted');
     act(() => vi.advanceTimersByTime(1));
