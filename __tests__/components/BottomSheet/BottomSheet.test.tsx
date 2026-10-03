@@ -266,6 +266,27 @@ describe('BottomSheet — drag to dismiss', () => {
     expect(sheet.style.transform).toBe('translateY(-18px)');
   });
 
+  it('pressing the header ✕ does not start a drag, so its click still lands', () => {
+    // The header is a grab surface and the ✕ lives inside it. Capturing the
+    // pointer on the sheet retargets the pointerup to the sheet, so a real
+    // browser never fires the button's click — every header ✕ was dead.
+    // jsdom does not retarget, so the capture itself is what is asserted.
+    const onClose = vi.fn();
+    render(
+      <BottomSheet open onClose={onClose} ariaLabel="Test sheet">
+        <BottomSheetHeader onClose={onClose} closeLabel="Close">title</BottomSheetHeader>
+      </BottomSheet>,
+    );
+    const sheet = document.body.querySelector('[role="dialog"]') as HTMLElement;
+    sheet.setPointerCapture = vi.fn();
+    const close = screen.getByRole('button', { name: 'Close' });
+    fireEvent.pointerDown(close, { pointerId: 1, clientY: 0 });
+    expect(sheet.setPointerCapture).not.toHaveBeenCalled();
+    expect(sheet.dataset.dragging).toBeUndefined();
+    fireEvent.click(close);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('the body is not a grab surface — it is the scroller', () => {
     const { sheet, onClose } = openSheet();
     const body = sheet.querySelector('.overflow-y-auto') as HTMLElement;
