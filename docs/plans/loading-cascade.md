@@ -44,5 +44,6 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 | Reveal primitive | `components/primitives/Reveal.tsx` |
 | Per-tab chunk fallbacks (`StringingFallback`, `StatsFallback`, `ProfileFallback`, `AdminFallback`) | `components/TabFallbacks.tsx`, wired in `components/HomeShell.tsx` |
 | Splash fade, spinner stop, reduced-motion failsafe | `app/globals.css` |
-| Canaries | `__tests__/components/Reveal.test.tsx`, `__tests__/tab-fallback-canary.test.ts`, `__tests__/design-canary.test.ts` |
+| Canaries | `__tests__/components/Reveal.test.tsx`, `__tests__/tab-fallback-canary.test.ts`, `__tests__/design-canary.test.ts`, `__tests__/loading-canary.test.ts` (ratchet — each phase deletes its entries) |
+| The rule | CLAUDE.md → Design System → Motion system → "Loading" |
 | Spec | `docs/superpowers/specs/2026-10-03-loading-cascade-design.md` |
