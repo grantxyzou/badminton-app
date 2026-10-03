@@ -162,7 +162,13 @@ export default function BottomSheet({
     // Only from a grab surface: the grabber and the header. Dragging from the
     // body would fight its own scroll, and this sheet's body is the scroller
     // for every list in the app.
-    if (!(e.target as HTMLElement).closest('[data-sheet-grab]')) return;
+    const target = e.target as HTMLElement;
+    if (!target.closest('[data-sheet-grab]')) return;
+    // A control inside the header (the ✕, a header action) is not a grab
+    // handle. Capturing the pointer below retargets its pointerup to the sheet,
+    // and a browser then never fires the button's click — that is how every
+    // header ✕ stopped closing its sheet after drag-to-dismiss shipped.
+    if (target.closest('button, a, input, select, textarea, [role="button"]')) return;
     // 'opening' counts: that state lasts one frame, and a finger already on
     // the glass as the sheet arrives is a real gesture, not a mistake.
     if ((state !== 'open' && state !== 'opening') || !closeOnEscape || drag.current) return;
