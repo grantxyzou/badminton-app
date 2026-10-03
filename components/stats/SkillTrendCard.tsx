@@ -12,6 +12,7 @@ import StatCard, { type StatTone } from '@/components/stats/StatCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import LevelTrendChart from './LevelTrendChart';
 import type { UseCheckIn } from './useCheckIn';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -85,6 +86,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   // `CheckInSheet` TWICE — once per branch, with different props.
   const snapshots = (checkIn?.snapshots ?? []) as Snapshot[];
   const loaded = checkIn ? checkIn.status !== 'loading' : true;
+  useRevealReady(loaded);
   const loadError = checkIn?.status === 'error';
   // Distributed AI insight — a short, non-obvious chip about the skill trend.
   const { data: insight } = useInsight();
@@ -186,7 +188,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   return (
     // The read + level live in the Level card; here a single card holds the
     // always-on radar with strengths / work-on as legends on the right.
-    <div className="motion-fade space-y-3">
+    <div className="space-y-3">
       <div className="glass-card p-5 space-y-3">
       {/* Dimension tiles — Technical / Physical / Mental averages, in-card above the radar. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -74,6 +75,8 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
     };
   }, [activeName, attempt]);
 
+  // The Play register's RevealSlot holds this place on first load.
+  useRevealReady(!activeName || status !== 'loading');
   if (!activeName) return null;
   // Refused (this device holds no session for the name): the card stays, as
   // its own shape with nothing in it, and Sign in carries the weight.

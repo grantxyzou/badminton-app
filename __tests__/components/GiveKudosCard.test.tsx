@@ -80,7 +80,10 @@ describe('GiveKudosCard — always present', () => {
     mockEligible(() => new Promise(() => {}) as Promise<Response>); // never settles
     wrap();
     expect(screen.getByText(K.giveTitle)).toBeTruthy();
-    expect(await screen.findByText(K.loading)).toBeTruthy();
+    // Loading is a shimmer line where the list will be, never a sentence
+    // (the loading rule — CLAUDE.md, loading-canary).
+    expect(document.querySelector('.glass-card .shimmer-line')).toBeTruthy();
+    expect(screen.queryByText(/loading/i)).toBeNull();
   });
 
   it('offers the action when there ARE co-players', async () => {

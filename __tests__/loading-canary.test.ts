@@ -28,9 +28,6 @@ const ROOT = join(__dirname, '..');
 
 /** Renders nothing while it loads. Phase that fixes each is noted. */
 const NULL_WHILE_LOADING_BACKLOG = new Set<string>([
-  'components/stats/KudosReceivedCard.tsx', // phase 3 (Stats)
-  'components/stats/NextRacketCard.tsx', // phase 3
-  'components/stats/StringTensionCard.tsx', // phase 3
   'components/stringing/StringerJobsCard.tsx', // phase 4 (Stringing)
   'components/admin/CommandCenter/AnomalyFeed.tsx', // phase 5 (Admin)
   'components/admin/CommandCenter/AccessRequestsCard.tsx', // phase 5
@@ -47,7 +44,6 @@ const LOADING_TEXT_BACKLOG = new Set<string>([
 /** messages/en.json copy that says "Loading…". */
 const LOADING_COPY_BACKLOG = new Set<string>([
   'home.loading',
-  'stats.kudos.loading',
   'players.loading',
 ]);
 

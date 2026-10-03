@@ -5,6 +5,8 @@ import { useInsight } from '@/lib/useInsight';
 import AIBadge from '@/components/primitives/AIBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import LockedCard, { useSignInLink } from './LockedCard';
+import { useRevealReady } from '@/components/primitives/Reveal';
+import { useActiveName } from '@/lib/useActiveName';
 
 /**
  * The single plain-language AI takeaway at the top of the Stats Summary — the
@@ -41,8 +43,17 @@ import LockedCard, { useSignInLink } from './LockedCard';
 export default function SummaryGreeting() {
   const t = useTranslations('stats');
   const signInLink = useSignInLink();
-  const { data, forbidden, serverError, reload } = useInsight(true);
+  const { data, loading, error, forbidden, serverError, reload } = useInsight(true);
+  const { name, resolved } = useActiveName();
   const greeting = data?.greeting ?? null;
+  // The You register's RevealSlot holds this place. Ready on an ANSWER — data,
+  // a failure, a refusal — not on `!loading`: before the active name resolves
+  // the insight hook reports "not loading" with nothing asked, and the slot
+  // took that as "nothing to show", let every card below it through, and the
+  // greeting then landed on top of them (seen with a slow insight read). A
+  // plain failure renders nothing and the slot closes, rather than a skeleton
+  // waiting forever and holding back the cards below.
+  useRevealReady(resolved && (!name || (!loading && (data !== null || error || forbidden))));
 
   // Refused (no session on this device): the greeting's own shape, locked, with
   // Sign in — the same treatment as every other Stats card (LockedCard).
@@ -73,7 +84,7 @@ export default function SummaryGreeting() {
 
   return (
     <div
-      className="glass-card motion-fade"
+      className="glass-card"
       /* `flex-start`, not `center`: the greeting runs to two or three lines
          depending on what the model says, and a centred badge drifts down
          beside line 2 of a three-line one, reading as though it floats rather

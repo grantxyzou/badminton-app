@@ -46,6 +46,16 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 - **Tile skeletons 108 → 133.** Re-measured: the club address and a long date both wrap to two lines on a phone, so 108 jumped every week.
 - **The release-notes line still appears with the week**, not before it: it comes from the same gate, and it sat in the loaded branch before too.
 
+### Phase 3 — Stats (2026-10-03)
+
+- **Each register is its own group** (You, Play, Equipment), in a flex column: a closed slot leaves no gap, which `space-y` would not guarantee.
+- **A slot detects an empty card from the DOM.** With `canBeEmpty`, a card that is READY and rendered nothing is empty — no card restates its own "nothing to show" conditions (WhereYouSit alone has five). Before ready, rendering nothing is loading, never emptiness.
+- **Ready means an ANSWER, not `!loading`.** Found by the slow-network check, not by any test: before the active name resolves, `useInsight` reports `loading: false` with nothing asked, so SummaryGreeting reported "ready, empty", let the whole register through, and then landed on top of it 2.5s later. SummaryGreeting and KudosReceivedCard (the two that read the name themselves) now wait for `resolved` and a real answer; `SummaryGreeting.reveal.test.tsx` holds it.
+- **A same-member check-in reload keeps its data** (`useCheckIn`). Saving a check-in used to drop SkillTrendCard and WhereYouSitCard back to skeletons.
+- **StringTensionCard waits for `suppressionKnown`** — whether the string pairing outranks it — instead of appearing and then vanishing; it also reads the level through `sharedRead`, one request shared with OverviewStrip.
+- **GiveKudosCard's "Loading…" is a shimmer line**; the `stats.kudos.loading` copy is deleted in both locales.
+- **Placeholders measured on a data-rich member** (Lin, the seed): You 94 / 320 / 192 / 140, Play 201 / 212 / 112, Equipment 226 / 226 / 257 / 160. The trend card stays 320 — it runs 240 (no check-ins) to 680+ (with data), and the empty case is the first impression.
+
 ## Shape
 
 | Piece | File |

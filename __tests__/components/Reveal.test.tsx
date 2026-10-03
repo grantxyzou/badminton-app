@@ -170,6 +170,31 @@ describe('RevealGroup / RevealSlot', () => {
     expect(placeholderUp(1)).toBe(false);
   });
 
+  it('a card that is ready but renders nothing is treated as empty (canBeEmpty)', () => {
+    function NothingToSay({ ready }: { ready: boolean }) {
+      useRevealReady(ready);
+      return null;
+    }
+    const screenOf = (ready: boolean) => (
+      <RevealGroup>
+        <RevealSlot canBeEmpty placeholder={ph(1)}><NothingToSay ready={ready} /></RevealSlot>
+        <RevealSlot ready placeholder={ph(2)}><p>below</p></RevealSlot>
+      </RevealGroup>
+    );
+    const { rerender } = render(screenOf(false));
+    later();
+    // Loading and rendering nothing is NOT empty: it is still loading.
+    expect(placeholderUp(1)).toBe(true);
+    expect(shown('below')).toBe(false);
+    const { container } = { container: document.body };
+    rerender(screenOf(true));
+    advance(400);
+    expect(placeholderUp(1)).toBe(false);
+    expect(shown('below')).toBe(true);
+    // And it leaves the layout — an empty box would still take its gap.
+    expect(container.querySelector('[data-reveal-slot]')!.hasAttribute('hidden')).toBe(true);
+  });
+
   it('a slot outside a group reveals on its own, and fades when it waited', () => {
     const one = (ready: boolean) => (
       <RevealSlot ready={ready} placeholder={ph(1)}><p>solo</p></RevealSlot>

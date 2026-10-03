@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -69,6 +70,8 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
     load();
   }, [load]);
 
+  // The Play register's RevealSlot holds this place on first load.
+  useRevealReady(!activeName || status !== 'loading');
   if (!activeName) return null;
   if (status === 'loading') return <CardSkeleton height={260} />;
   // Refused (this device holds no session for the name): the card stays, as

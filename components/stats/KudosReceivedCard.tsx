@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useSkillText } from '@/lib/useSkillText';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useActiveName } from '@/lib/useActiveName';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import { KUDOS_TAGS, TAG_ICON, type KudosCount, type KudosNote } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -29,7 +30,7 @@ export default function KudosReceivedCard() {
   const skillText = useSkillText();
   const signInLink = useSignInLink();
   // Subscribed, not resolved-once — see the note in SkillTrendCard.
-  const { name: activeName } = useActiveName();
+  const { name: activeName, resolved } = useActiveName();
   const [state, setState] = useState<LoadState>({ kind: 'idle' });
   const [loaded, setLoaded] = useState(false);
 
@@ -59,6 +60,10 @@ export default function KudosReceivedCard() {
 
   useEffect(() => { load(); }, [load]);
 
+  // The You register's RevealSlot holds this place while it loads, and
+  // closes it when there are no kudos to show. `resolved` first: before it,
+  // a null name means "not known yet", not "nobody" (see SummaryGreeting).
+  useRevealReady(resolved && (!activeName || loaded));
   if (!activeName || !loaded) return null;
   // Quiet until there's something to celebrate.
   if (state.kind === 'ok' && state.kudos.length === 0) return null;

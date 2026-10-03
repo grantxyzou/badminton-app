@@ -179,8 +179,8 @@ export function RevealSlot({
   empty?: boolean;
   /**
    * The card might turn out empty, so its skeleton is wrapped to be able to
-   * close. Implied by passing `empty`; set it when the card reports emptiness
-   * through `useRevealReady`.
+   * close. Implied by passing `empty`. With it set, a card that is ready and
+   * renders nothing is taken as empty without having to say so.
    */
   canBeEmpty?: boolean;
   children: ReactNode;
@@ -195,7 +195,21 @@ export function RevealSlot({
     setReported((prev) => (prev.ready === ready && prev.empty === empty ? prev : { ready, empty }));
   }, []);
   const ready = readyProp ?? reported.ready;
-  const isEmpty = emptyProp ?? reported.empty;
+  // A card that can be empty and, once READY, rendered nothing at all is
+  // empty — read off the DOM, so no card has to restate its own "nothing to
+  // show" conditions to report them. Before ready, rendering nothing is just
+  // loading, never emptiness.
+  const content = useRef<HTMLDivElement>(null);
+  const [rendersNothing, setRendersNothing] = useState(false);
+  // No dependency list on purpose: the card can stop or start rendering on
+  // any commit. The comparison is what stops it looping.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (!canBeEmpty) return;
+    const none = !!content.current && content.current.childElementCount === 0;
+    if (none !== rendersNothing) setRendersNothing(none);
+  });
+  const isEmpty = emptyProp ?? (reported.empty || (canBeEmpty && ready && rendersNothing));
 
   // Standalone (no group): the slot is its own ordering.
   const soloMountedAt = useRef<number | null>(null);
@@ -248,7 +262,7 @@ export function RevealSlot({
         (canBeEmpty ? <Collapse open={!closing}>{placeholder}</Collapse> : placeholder)}
       {/* Mounted from the start so a card that fetches inside itself fetches.
           `hidden` until its turn, then faded in as it appears. */}
-      <div hidden={!shown || isEmpty} className={fade ? 'motion-fade' : undefined}>
+      <div ref={content} hidden={!shown || isEmpty} className={fade ? 'motion-fade' : undefined}>
         <SlotReadyContext.Provider value={readyProp === undefined ? onReport : null}>
           {children}
         </SlotReadyContext.Provider>

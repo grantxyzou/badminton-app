@@ -1253,7 +1253,6 @@
       "done": "Done",
       "alreadySent": "You already sent that one this week \u2014 try a different tag.",
       "noCandidates": "Once you\u2019ve played a session, the people you played with show up here.",
-      "loading": "Loading\u2026",
       "candidateCount": "{count} {count, plural, one {person} other {people}} you\u2019ve played with",
       "giveCta": "Give kudos",
       "needsSignIn": "Your session expired \u2014 sign in again from Profile to send kudos.",

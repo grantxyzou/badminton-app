@@ -12,6 +12,8 @@ import GearRegister from '@/components/stats/GearRegister';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
 import StatsSignedOut from '@/components/stats/StatsSignedOut';
 import { StatsFallback } from '@/components/TabFallbacks';
+import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import { useActiveName } from '@/lib/useActiveName';
 import { recordEngagement } from '@/lib/engagement';
@@ -41,6 +43,23 @@ const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), 
  * restored nothing — it only 404'd three API routes and left the tab showing
  * load errors). This layout is now simply the layout.
  */
+/**
+ * Placeholder heights for the You and Play registers' slots, each the card's
+ * own loading skeleton (or, where the card had none, its measured height at
+ * 400px, 2026-10-03). Change one when its card changes shape.
+ */
+const STATS_HEIGHTS = {
+  greeting: 94,
+  // 240 empty (a first-time member's "rate your skills") to 680+ with data:
+  // no one height fits, and the empty case is the first impression.
+  trend: 320,
+  whereYouSit: 192,
+  kudosReceived: 140,
+  record: 201,
+  playWith: 212,
+  giveKudos: 112,
+} as const;
+
 export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) => void }) {
   // Identity for the signed-out empty state, from the module that owns the
   // chain. `resolved` carries "not known yet" so the first paint doesn't flash
@@ -104,21 +123,39 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
       // same number twice on one screen reads as two different facts.
       youSlot={
         <>
+          {/* LOADING CASCADE (docs/plans/loading-cascade.md): each card holds
+              its place from the first frame and shows in THIS order, however
+              the four reads answer. The greeting used to land last and push
+              the whole register down; the trend card's chunk used to insert a
+              skeleton above WhereYouSit's. A flex gap, not space-y, so a slot
+              that closes (no greeting, no kudos) leaves no gap behind. */}
+          <div className="flex flex-col gap-5">
+          <RevealGroup>
           {/* Distributed AI insight: a plain-language greeting leads You. */}
-          <SummaryGreeting />
+          <RevealSlot canBeEmpty placeholder={<CardSkeleton height={STATS_HEIGHTS.greeting} />}>
+            <SummaryGreeting />
+          </RevealSlot>
           {/* Both comparison-dependent cards are keyed on the answer, so
               saying yes remounts them and they re-read the bands endpoint
               — which only returns bands once the prompt is answered.
               Without this the member would answer and see nothing change
               until a reload. */}
-          <SkillTrendCard key={`trend-${comparisonKey}`} checkIn={checkIn} />
-          <WhereYouSitCard
-            key={`sit-${comparisonKey}`}
-            activeName={activeName}
-            promptOpen={promptOpen}
-            checkIn={checkIn}
-          />
-          <KudosReceivedCard />
+          <RevealSlot placeholder={<CardSkeleton height={STATS_HEIGHTS.trend} />}>
+            <SkillTrendCard key={`trend-${comparisonKey}`} checkIn={checkIn} />
+          </RevealSlot>
+          <RevealSlot canBeEmpty placeholder={<CardSkeleton height={STATS_HEIGHTS.whereYouSit} />}>
+            <WhereYouSitCard
+              key={`sit-${comparisonKey}`}
+              activeName={activeName}
+              promptOpen={promptOpen}
+              checkIn={checkIn}
+            />
+          </RevealSlot>
+          <RevealSlot canBeEmpty placeholder={<CardSkeleton height={STATS_HEIGHTS.kudosReceived} />}>
+            <KudosReceivedCard />
+          </RevealSlot>
+          </RevealGroup>
+          </div>
           <ClubConsentSheet
             open={promptOpen}
             saving={privacyState.saving}
@@ -127,11 +164,19 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
         </>
       }
       playSlot={
-        <>
-          <YourRecordCard activeName={activeName} />
-          <WhoYouPlayWithCard activeName={activeName} />
-          <GiveKudosCard />
-        </>
+        <div className="flex flex-col gap-5">
+        <RevealGroup>
+          <RevealSlot placeholder={<CardSkeleton height={STATS_HEIGHTS.record} />}>
+            <YourRecordCard activeName={activeName} />
+          </RevealSlot>
+          <RevealSlot canBeEmpty placeholder={<CardSkeleton height={STATS_HEIGHTS.playWith} />}>
+            <WhoYouPlayWithCard activeName={activeName} />
+          </RevealSlot>
+          <RevealSlot placeholder={<CardSkeleton height={STATS_HEIGHTS.giveKudos} />}>
+            <GiveKudosCard />
+          </RevealSlot>
+        </RevealGroup>
+        </div>
       }
       learnSlot={<LearnRegister activeName={activeName} checkIn={checkIn} />}
       gearSlot={<GearRegister activeName={activeName} />}

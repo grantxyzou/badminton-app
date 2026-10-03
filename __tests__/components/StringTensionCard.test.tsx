@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { beforeEach, describe, it, expect, afterEach, vi } from 'vitest';
+import { resetSharedReads } from '@/lib/sharedRead';
 import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import StringTensionCard from '../../components/stats/StringTensionCard';
@@ -56,6 +57,11 @@ function renderCard(gear: UseGear = fakeGear(), suppressed = false) {
 
 const TENSION_ERROR = enMessages.stats.gear.tensionError;
 const SIGN_IN_COPY = enMessages.stats.signInAgain;
+
+
+// The level read now goes through sharedRead (shared with OverviewStrip),
+// whose 2s dedupe would hand one test's answer to the next.
+beforeEach(() => resetSharedReads());
 
 describe('StringTensionCard — no number without something behind it', () => {
   afterEach(() => {
