@@ -104,4 +104,4 @@ top-ups ≥ $40 with the payer covering the fee.
 | Script → app | `POST /api/payments/etransfer` |
 | Admin queue, assign, key | `/api/admin/payments`, `/api/admin/payments/assign`, `/api/admin/payments/key` |
 | "I've sent it" | `POST /api/payments/self-report` |
-| The script admins paste | `docs/payments/apps-script.gs` |
+| The script admins paste | `public/payments/apps-script.gs` (served at `/bpm/payments/apps-script.gs`, so the setup sheet can copy it) |

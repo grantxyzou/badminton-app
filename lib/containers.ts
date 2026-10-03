@@ -54,6 +54,7 @@ export const CONTAINERS = {
   clubSettings: { pk: '/id', scope: 'group', provisioned: true, reason: 'shop sign, stocked strings, rate card — per club, per-group ids' },
   events: { pk: '/memberId', scope: 'group', provisioned: true, reason: "an engagement happens inside one group's tabs; slice0 is a per-group readout" },
   insights: { pk: '/memberId', scope: 'group', provisioned: true, reason: 'narrates group play (partners, kudos); one cache doc per group per member' },
+  payments: { pk: '/id', scope: 'group', provisioned: false, reason: "Interac notifications forwarded by one club's admin, matched against that club's owed rows" },
   memberships: { pk: '/groupId', scope: 'group', provisioned: false, reason: "a person's role and roster name IN ONE GROUP, plus that group's name reservations; the group is the partition" },
   // ── person-scoped ───────────────────────────────────────────────────────
   members: { pk: '/id', scope: 'person', provisioned: true, reason: 'the person: one account, one PIN, one email — many groups' },

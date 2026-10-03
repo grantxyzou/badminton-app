@@ -182,6 +182,8 @@
       "signedUpWhenWhere": "{when} at {place}",
       "waitlistLabel": "Waitlist",
       "waitlistTitle": "You're on the waitlist",
+      "heldTitle": "Settle up to grab your spot",
+      "heldBody": "You owe for a couple of past sessions. You'll move into a spot as soon as your e-transfer lands, if there's still room.",
       "waitlistPositionLabel": "Position #{position} of {total}"
     },
     "loading": "Loading session...",
@@ -204,7 +206,10 @@
       "count": "{count, plural, =0 {No players yet} one {# player signed up} other {# players signed up}}"
     },
     "payment": {
-      "etransfer": "E-transfer to {email}"
+      "etransfer": "E-transfer to {email}",
+      "sentIt": "I\u2019ve sent it",
+      "sentItDone": "Thanks \u2014 it\u2019ll be marked paid when the e-transfer arrives.",
+      "sentItError": "Couldn\u2019t save that \u2014 try again."
     },
     "balance": {
         "groupSessions": "Badminton",

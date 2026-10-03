@@ -134,6 +134,7 @@ export const CLASSIFIED_ELSEWHERE: Readonly<Record<string, string>> = {
   players: 'shared cost history — `anonymizePlayerRows`',
   gameResults: 'shared match history — `anonymizeGameResults`',
   feedback: 'reports carry a name and an IP — `anonymizeFeedback`',
+  payments: 'club bookkeeping that names a payer — anonymized in `purgeMember` (sender, memo, member link)',
   groups: 'a group names its owner — `reassignOwnership` (lib/groups.ts) runs in `purgeMember` before the owned rows go',
 };
 
@@ -258,6 +259,35 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
       console.error(`[purge] ${t.container} failed:`, err);
       summary.failed.push(t.container);
     }
+  }
+
+  // E-transfers matched to them: the club's bookkeeping keeps the amount and
+  // which rows it paid (those rows are anonymized, not deleted, for the same
+  // reason), but the legal name on the transfer, its memo and the link to the
+  // person go. A payment still in the review queue was never tied to anyone,
+  // so nothing here can find it — it is the admin's to resolve or ignore.
+  try {
+    const paid = await queryAll(
+      'payments',
+      'c.memberId = @memberId',
+      [{ name: '@memberId', value: memberId }],
+      (row) => row.memberId === memberId,
+    );
+    for (const row of paid) {
+      const { suggestions: _s, ...rest } = row as Record<string, unknown>;
+      await getContainer('payments').items.upsert({
+        ...rest,
+        memberId: TOMBSTONE_MEMBER_ID,
+        payerName: TOMBSTONE_NAME,
+        senderName: TOMBSTONE_NAME,
+        memo: null,
+        subject: '',
+      });
+      summary.anonymized += 1;
+    }
+  } catch (err) {
+    console.error('[purge] payments failed:', err);
+    summary.failed.push('payments');
   }
 
   // Kudos they GAVE: the recipient earned those, so the row stays and only the

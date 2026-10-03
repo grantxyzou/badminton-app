@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveSessionId } from '@/lib/cosmos';
-import { groupScope, type GroupScope } from '@/lib/groupScope';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
-import { resolveIdentity, classifyOwed } from '@/lib/playerIdentity';
-import { loadOwedInputs } from '@/lib/owedRows';
-import { isFlagOn } from '@/lib/flags';
-import { stringingCharges, stringingTotal, type StringingCharge } from '@/lib/stringingBilling';
-import type { StringingJob } from '@/lib/types';
+import { resolveIdentity } from '@/lib/playerIdentity';
+import { computeOwed } from '@/lib/owedBalance';
+import { stringingTotal } from '@/lib/stringingBilling';
+import { clubPayTo } from '@/lib/payTo';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,34 +38,6 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-interface UnpaidSession {
-  sessionId: string;
-  date: string;
-  owedAmount: number;
-}
-
-/**
- * Stringing charges for this member, or [] when there are none to add.
- *
- * Deliberately swallows its own failure. The balance card's PRIMARY job is
- * session money, and a stringing container that does not exist yet — or a
- * throw while reading it — must not take the whole balance down with it. The
- * asymmetry is intentional: showing session debt without stringing is
- * incomplete, while showing nothing at all is useless.
- */
-async function chargesFor(scope: GroupScope, memberId: string | null): Promise<StringingCharge[]> {
-  if (!memberId || !isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) return [];
-  try {
-    const resources = await scope.query<StringingJob>('stringingJobs', {
-      where: 'c.memberId = @memberId',
-      params: [{ name: '@memberId', value: memberId }],
-    });
-    return stringingCharges(resources);
-  } catch {
-    return [];
-  }
-}
-
 export async function GET(req: NextRequest) {
   // Rate limit before anything else (CLAUDE.md security #4).
   const ip = getClientIp(req);
@@ -90,52 +60,30 @@ export async function GET(req: NextRequest) {
 
   try {
     const scope = groupScope(resolveGroupId(req));
-    // Only an EXCLUSION comparand here (the active session is not yet a debt);
-    // a group with no session excludes nothing, which is right.
-    const activeSessionId = await getActiveSessionId(scope.groupId);
-    const now = Date.now();
-
     const identity = await resolveIdentity({ name }, scope.groupId);
 
-    // PLAYER-FIRST (lib/owedRows.ts): this person's rows, then only the
-    // sessions they name, then the roster of only the unsettled ones. This
-    // route runs on every Home mount and used to read the whole history of
-    // two containers to answer for one person. `classifyOwed` decides which
-    // sessions can carry a debt (settled, or past and not active).
-    const { players, sessionById, activeCountBySession } = await loadOwedInputs(scope, identity);
-
-    const unpaid: UnpaidSession[] = [];
-    for (const p of players) {
-      const session = sessionById.get(p.sessionId);
-      if (!session) continue;
-      const result = classifyOwed(p, session, {
-        activeSessionId: activeSessionId ?? '',
-        now,
-        activeCount: activeCountBySession.get(p.sessionId) ?? 0,
-      });
-      if (result.counted) {
-        unpaid.push({ sessionId: p.sessionId, date: session.datetime, owedAmount: result.owedAmount });
-      }
-    }
-
-    // Newest first.
-    unpaid.sort((a, b) => (a.date < b.date ? 1 : -1));
+    // One owner for "what does this person owe" (lib/owedBalance.ts), shared
+    // with the e-transfer matcher so a payment of exactly this total matches.
+    const { sessions: unpaid, stringing } = await computeOwed(scope, identity);
     const sessionsOwed = round2(unpaid.reduce((sum, s) => sum + s.owedAmount, 0));
-    const stringing = await chargesFor(scope, identity.memberId);
     const stringingOwed = stringingTotal(stringing);
+    const totalOwed = round2(sessionsOwed + stringingOwed);
+    // Only to someone who owes — see lib/payTo.ts for why this is the one place.
+    const payTo = totalOwed > 0 ? await clubPayTo(scope.groupId) : null;
 
     return NextResponse.json({
       // `totalOwed` still means EVERYTHING owed, so existing callers that only
       // read it keep working and keep being right. The two halves are also
       // reported separately so the receipt can show its own subtotals without
       // re-deriving them and risking a total that disagrees with its lines.
-      totalOwed: round2(sessionsOwed + stringingOwed),
+      totalOwed,
       sessionsOwed,
       stringingOwed,
       sessionCount: unpaid.length,
       mostRecent: unpaid[0] ?? null,
       sessions: unpaid,
       stringing,
+      payTo,
     });
   } catch (error) {
     console.error('GET /api/players/unpaid error:', error);
