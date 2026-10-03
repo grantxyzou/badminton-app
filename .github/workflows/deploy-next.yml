@@ -69,11 +69,12 @@ jobs:
           # the fixed verdict wording (verdict). See lib/flags.ts.
           NEXT_PUBLIC_FLAG_GEAR_PAGES: 'true'
           NEXT_PUBLIC_FLAG_FIT_VERDICT: 'true'
-          # E-transfer auto-detection + the soft hold (docs/plans/payments.md).
-          # OFF until Grant has installed the Apps Script and watched one real
-          # e-transfer land. Read server-side; off, /api/payments/* 404s and
-          # sign-up is unchanged.
-          NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: 'false'
+          # E-transfer auto-detection (docs/plans/payments.md). ON since
+          # 2026-10-03, after a real notification's headers confirmed the
+          # anti-spoof check. Inert until an admin mints a key and installs
+          # the Gmail script; the unpaid hold is a separate admin switch,
+          # off by default. Read server-side; off, /api/payments/* 404s.
+          NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: 'true'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.
           #
