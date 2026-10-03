@@ -182,6 +182,8 @@
       "signedUpWhenWhere": "{when}，{place}",
       "waitlistLabel": "候补",
       "waitlistTitle": "你在候补名单中",
+      "heldTitle": "付清欠款即可入场",
+      "heldBody": "你还有几次活动的费用未付。转账到账后，如仍有名额，会自动为你保留位置。",
       "waitlistPositionLabel": "候补第 {position} 位，共 {total} 位"
     },
     "loading": "场次加载中…",
@@ -204,7 +206,10 @@
       "count": "{count, plural, =0 {还没有人报名} one {# 人已报名} other {# 人已报名}}"
     },
     "payment": {
-      "etransfer": "转账至 {email}"
+      "etransfer": "转账至 {email}",
+      "sentIt": "我已转账",
+      "sentItDone": "谢谢！收到转账后会自动标记为已付。",
+      "sentItError": "保存失败，请重试。"
     },
     "balance": {
       "groupSessions": "羽毛球",

@@ -10,6 +10,7 @@ import { adminAddToRoster } from '@/lib/roster';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 import { defaultMaxPlayers } from '@/lib/defaults';
+import { signupHeldForUnpaid, releaseHoldIfSettled } from '@/lib/paymentsInbox';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, membersOnlyOn, unauthorized } from '@/lib/auth';
@@ -511,6 +512,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Session is full' }, { status: 409 });
     }
 
+    // The soft hold (docs/plans/payments.md): owing for too many past sessions
+    // puts a sign-up on the waitlist instead of in a spot. Admins adding
+    // someone bypass it; it fails open on a read error.
+    const heldForUnpaid =
+      isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && !admin && !!matchedMember
+        ? await signupHeldForUnpaid(scope, matchedMember.id)
+        : false;
+    const startWaitlisted = (isFull && joinWaitlist) || heldForUnpaid;
+
     const deleteToken = randomBytes(16).toString('hex');
 
     // If a soft-deleted record exists for this name, restore it instead of creating a new one
@@ -523,7 +533,8 @@ export async function POST(req: NextRequest) {
         removed: false,
         removedAt: undefined,
         cancelledBySelf: undefined,
-        waitlisted: isFull && joinWaitlist ? true : false,
+        waitlisted: startWaitlisted,
+        heldForUnpaid: heldForUnpaid ? true : undefined,
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
         ...(pinHash ? { pinHash } : {}),
       };
@@ -556,7 +567,8 @@ export async function POST(req: NextRequest) {
       deleteToken,
       paid: false,
       removed: false,
-      waitlisted: isFull && joinWaitlist ? true : false,
+      waitlisted: startWaitlisted,
+        heldForUnpaid: heldForUnpaid ? true : undefined,
       ...(matchedMember ? { memberId: matchedMember.id } : {}),
       ...(pinHash ? { pinHash } : {}),
     };
@@ -847,6 +859,17 @@ export async function PATCH(req: NextRequest) {
     const updates: Record<string, unknown> = {};
     if (typeof body.paid === 'boolean') {
       updates.paid = body.paid;
+      // How and when (docs/plans/payments.md). Un-paying clears both, and
+      // the e-transfer link with them, so a stale paymentId cannot claim a
+      // row nobody has paid.
+      if (body.paid === true && existing.paid !== true) {
+        updates.paidAt = new Date().toISOString();
+        updates.paidVia = 'manual';
+      } else if (body.paid === false) {
+        updates.paidAt = undefined;
+        updates.paidVia = undefined;
+        updates.paymentId = undefined;
+      }
       // Mutex: setting paid:true clears writtenOff. Existing behavior
       // when only paid is sent.
       if (body.paid === true && typeof body.writtenOff !== 'boolean') {
@@ -890,6 +913,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await scope.upsert('players', { ...existing, ...updates });
+    if (updates.paid === true && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && typeof existing.memberId === 'string') {
+      await releaseHoldIfSettled(scope, existing.memberId);
+    }
     return NextResponse.json(publicPlayer(updated));
   } catch (error) {
     console.error('PATCH player error:', error);

@@ -82,6 +82,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/ledger': admin(),
   'admin/migrate-groups': admin('isAdminAuthedWithMember'),
   'admin/owed-audit': admin(),
+  'admin/payments': admin('isAdminAuthedWithMember'),
   'admin/settings': admin('isAdminAuthedWithMember'),
   'admin/slice0': admin(),
   'admin/sign-in-readiness': admin('isAdminAuthedWithMember'),

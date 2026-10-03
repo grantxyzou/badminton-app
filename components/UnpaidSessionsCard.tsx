@@ -5,6 +5,8 @@ import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
 import CardHeader from './primitives/CardHeader';
+import { isFlagOn } from '@/lib/flags';
+import { useOnline } from '@/lib/useOnline';
 import Collapse from './primitives/Collapse';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -34,6 +36,8 @@ interface UnpaidData {
   stringing?: StringingCharge[];
   sessionsOwed?: number;
   stringingOwed?: number;
+  /** Where to send it — the club's recipient, only on a response that owes. */
+  payTo?: { name: string; email: string } | null;
 }
 
 function fmtMoney(n: number): string {
@@ -85,7 +89,21 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   const [refreshNonce, setRefreshNonce] = useState(0);
   const isHome = variant === 'home';
 
-  const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
+  const online = useOnline();
+  // "I've sent it" (docs/plans/payments.md): a claim, not a payment — the
+  // e-transfer itself is what the inbox marks paid. Remembered per mount only;
+  // the admin sees the tag on their side.
+  const [sent, setSent] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  const canSayPaid = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
+  async function sayPaid() {
+    setSent('busy');
+    try {
+      const res = await fetch(`${BASE}/api/payments/self-report`, { method: 'POST' });
+      setSent(res.ok ? 'done' : 'error');
+    } catch {
+      setSent('error');
+    }
+  }
 
   useEffect(() => {
     // name is always the signed-in identity (non-empty) when this renders.
@@ -315,10 +333,34 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
             </span>
           </div>
 
-          {etransferEmail && (
-            <p style={{ margin: '0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-              {tPay('etransfer', { email: etransferEmail })}
-            </p>
+          {(() => {
+            // The server's answer first; the build-time env only for a
+            // response from before `payTo` existed.
+            const email = data.payTo?.email ?? (data.payTo === undefined ? process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null : null);
+            return email ? (
+              <p style={{ margin: '0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                {tPay('etransfer', { email })}
+              </p>
+            ) : null;
+          })()}
+          {canSayPaid && data.totalOwed > 0 && (
+            sent === 'done' ? (
+              <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>
+                {tPay('sentItDone')}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={!online || sent === 'busy'}
+                  onClick={() => void sayPaid()}
+                >
+                  {tPay('sentIt')}
+                </button>
+                {sent === 'error' && <p className="field-error" role="alert">{tPay('sentItError')}</p>}
+              </div>
+            )
           )}
         </>
       )

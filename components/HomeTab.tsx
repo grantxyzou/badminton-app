@@ -364,6 +364,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const isWaitlisted = currentUser
     ? waitlistPlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase())
     : false;
+  // Waitlisted by the unpaid soft hold rather than a full session
+  // (docs/plans/payments.md) — the banner says why, and how it ends.
+  const heldForUnpaid = currentUser
+    ? waitlistPlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase() && p.heldForUnpaid === true)
+    : false;
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
   const needsCredential = !!memberName && hasCredential === false;
@@ -454,11 +459,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     setIdentity({ name: trimmed, token: typeof created.deleteToken === 'string' ? created.deleteToken : '', sessionId });
     const { deleteToken: _dt, ...row } = created;
     const joined = typeof row.id === 'string' && typeof row.name === 'string' ? (row as unknown as Player) : null;
-    const morph = !waitlist && joined !== null && joined.waitlisted !== true && canViewTransition();
+    // Where the row actually LANDED, not what was asked for: the server can
+    // put a "give me a spot" on the list (a capacity race, or the unpaid soft
+    // hold), and nothing should fly for a spot that was not given.
+    const onList = waitlist || joined?.waitlisted === true;
+    const morph = !onList && joined !== null && canViewTransition();
     const commit = () => {
       setCurrentUser(trimmed);
       if (joined) setPlayers((prev) => [...prev.filter((p) => p.id !== joined.id), joined]);
-      if (!waitlist) setSignupEntrance(morph ? 'morph' : 'pop');
+      if (!onList) setSignupEntrance(morph ? 'morph' : 'pop');
     };
     // The burst radiates from the button, whose rect has to be read BEFORE
     // the commit replaces it with the banner. A waitlist join gets none:
@@ -473,9 +482,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // seen, which reads as two events. Native shell only; a no-op anywhere
     // it cannot be felt. Reduced motion has no burst and no morph, so the
     // tap still lands straight after the commit, with the banner.
-    const rect = !waitlist ? submitRef.current?.getBoundingClientRect() : undefined;
+    const rect = !onList ? submitRef.current?.getBoundingClientRect() : undefined;
     const launch = () => {
-      if (waitlist) return;
+      if (onList) return;
       tapSuccess();
       if (rect) setBurst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, key: Date.now() });
     };
@@ -944,8 +953,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             <StatusBanner
               tone="warn"
               icon="schedule"
-              title={tStates('waitlistTitle')}
-              body={`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
+              title={heldForUnpaid ? tStates('heldTitle') : tStates('waitlistTitle')}
+              body={
+                heldForUnpaid
+                  ? tStates('heldBody')
+                  : `${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`
+              }
             />
             {signInSetupBanner}
             <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} />

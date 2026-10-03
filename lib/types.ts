@@ -127,6 +127,61 @@ export interface Player {
    *                their share is spread across the remaining payers.
    *  Absent on a writtenOff player (legacy / pre-v1.6) is treated as 'absorb'. */
   coverMode?: 'absorb' | 'resplit';
+  /** ISO — when `paid` last went true. Absent on rows marked before 2026-10. */
+  paidAt?: string;
+  /** How it was marked: an admin's tap, or an e-transfer the inbox matched. */
+  paidVia?: 'manual' | 'etransfer';
+  /** The `payments` doc that paid it (`paidVia: 'etransfer'`). */
+  paymentId?: string;
+  /**
+   * Waitlisted by the soft hold, not by a full session: the member owed for
+   * too many past sessions at sign-up (docs/plans/payments.md). Cleared — and
+   * the row promoted if there is room — when a payment brings them under it.
+   */
+  heldForUnpaid?: boolean;
+}
+
+/** One line of money a payment settled — a session row or a stringing job. */
+export interface PaymentAllocation {
+  kind: 'session' | 'stringing';
+  /** `players` row id, or stringing job id. */
+  ref: string;
+  /** Partition key VALUE of that row: its sessionId, or the job's memberId. */
+  pk: string;
+  amountCents: number;
+}
+
+/**
+ * Container `payments` (PK `/id`, GROUP scoped) — one doc per Interac
+ * notification the admin's Apps Script forwarded (`lib/paymentsInbox.ts`).
+ * The email BODY is never stored: the parsed fields are what the club needs,
+ * and the body carries the admin's own name and bank details.
+ */
+export interface EtransferPayment {
+  /** `etx:${sha256(messageId)}` — a re-sent email is the same doc. */
+  id: string;
+  groupId?: string;
+  source: 'etransfer';
+  senderName: string | null;
+  amountCents: number | null;
+  memo: string | null;
+  subject: string;
+  receivedAt: string;
+  /** Google verified it as Interac's (DKIM + From alignment). */
+  authenticated: boolean;
+  status: 'matched' | 'review' | 'ignored';
+  /** Why it is waiting for a person (`lib/etransferMatch.ts`). */
+  reason?: string;
+  /** Who it paid for, once matched. */
+  memberId?: string | null;
+  payerName?: string;
+  allocations: PaymentAllocation[];
+  /** People it might be, for the review row. */
+  suggestions?: { memberId: string | null; name: string; owedCents: number; proposed: PaymentAllocation[] }[];
+  /** `'auto'`, or the admin's memberId. */
+  matchedBy?: string;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 export type RecoveryEvent =
