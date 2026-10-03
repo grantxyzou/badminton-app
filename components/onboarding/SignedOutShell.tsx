@@ -311,8 +311,10 @@ function WelcomeView({ onSignUp, onLogIn }: { onSignUp: () => void; onLogIn: () 
 
       {/* Pinned to the bottom, where the thumb is. Sign up is the filled one:
           this screen is a stranger's first, and a returning player knows which
-          door is theirs. */}
-      <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+          door is theirs. The data attribute is what scripts/smoke-prod.mjs
+          looks for: with members-only on, this is the page a signed-out
+          deploy check gets, and it has no nav to find. */}
+      <div data-signed-out-welcome style={{ display: 'grid', gap: 'var(--space-3)' }}>
         <button type="button" onClick={onSignUp} className="btn-primary w-full">
           {t('signUp')}
         </button>

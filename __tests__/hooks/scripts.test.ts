@@ -559,6 +559,38 @@ describe('smoke-prod.mjs (post-deploy / pre-merge)', () => {
     });
   });
 
+  // Members-only: a signed-out request gets SignedOutShell, which has the page
+  // shell and the Welcome buttons but no nav, and the session read 401s.
+  const signedOutPage = (marker: string) => (url: string) =>
+    url === '/bpm' || url === '/bpm/'
+      ? {
+          status: 200,
+          body:
+            `<!DOCTYPE html><html><head><meta name="bpm-build" content="abc"/>` +
+            `<script src="${CHUNK}"></script></head><body>` +
+            `<main data-page-shell class="page-shell-top"><div ${marker}></div></main>` +
+            `</body></html>`,
+        }
+      : url === '/bpm/api/session'
+        ? { status: 401, body: JSON.stringify({ error: 'Unauthorized' }), type: 'application/json' }
+        : null;
+
+  it('passes the members-only signed-out welcome, which has no nav', { timeout: 30_000 }, async () => {
+    await withServer('abc', signedOutPage('data-signed-out-welcome'), async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
+      expect(r.stdout).toContain('SMOKE OK');
+      expect(r.status).toBe(0);
+    });
+  });
+
+  it('fails a page shell with neither the nav nor the signed-out welcome', { timeout: 30_000 }, async () => {
+    await withServer('abc', signedOutPage('id="app"'), async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain('no nav and no signed-out welcome');
+    });
+  });
+
   it('fails when the session endpoint returns a 200 that is not JSON', { timeout: 30_000 }, async () => {
     const badJson = (url: string) =>
       url === '/bpm/api/session' ? { status: 200, body: '<html>error</html>' } : null;
