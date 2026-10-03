@@ -3,16 +3,18 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { StrictMode, useEffect } from 'react';
 import { render, cleanup, act } from '@testing-library/react';
 import LaunchScreen, { launchDecision } from '@/components/launch/LaunchScreen';
-import { HARD_TIMEOUT_MS, WELCOME_AT_MS, WELCOME_HANDOFF_MS } from '@/lib/launchMotion';
+import { HARD_TIMEOUT_MS, WELCOME_HANDOFF_MS } from '@/lib/launchMotion';
 
 /* jsdom has no CSS animations, so `getAnimations` is absent and the screen
    treats the loop as sitting on a boundary — which is exactly the case these
    tests want: what happens once the shot in flight has finished. */
 
-function mount(marker?: 'data-signed-out-welcome' | 'data-launch-app') {
-  const page = document.createElement('div');
-  if (marker) page.setAttribute(marker, '');
-  document.body.appendChild(page);
+/** `welcome`: the signed-out Welcome. `app`: HomeShell, as the server renders it for a member. */
+function mount(page?: 'welcome' | 'app') {
+  const el = document.createElement(page === 'app' ? 'main' : 'div');
+  if (page === 'welcome') el.setAttribute('data-signed-out-welcome', '');
+  if (page === 'app') el.setAttribute('data-page-shell', '');
+  document.body.appendChild(el);
   return render(<LaunchScreen tagline="Weekly badminton with your crew." />);
 }
 
@@ -22,8 +24,9 @@ describe('launchDecision', () => {
   afterEach(() => (document.body.innerHTML = ''));
   it('reads where the server sent this visitor', () => {
     expect(launchDecision(document)).toBe('none');
-    document.body.innerHTML = '<main data-launch-app></main>';
-    expect(launchDecision(document)).toBe('app');
+    // A signed-in member's page is ready at hydration: no final shot to sit through.
+    document.body.innerHTML = '<main data-page-shell></main>';
+    expect(launchDecision(document)).toBe('none');
     document.body.innerHTML = '<div data-signed-out-welcome></div>';
     expect(launchDecision(document)).toBe('welcome');
   });
@@ -53,7 +56,7 @@ describe('LaunchScreen', () => {
   });
 
   it('renders the shot artwork on the server-rendered splash', () => {
-    const { container } = mount('data-launch-app');
+    const { container } = mount('welcome');
     expect(container.querySelector('.splash .launch-canvas .launch-shuttle img')).not.toBeNull();
     expect(container.textContent).toContain('Weekly badminton with your crew.');
   });
@@ -65,25 +68,26 @@ describe('LaunchScreen', () => {
     expect(container.querySelector('.splash')).toBeNull();
   });
 
-  it('plays the resolve shot for a member, then leaves for Home at W', () => {
-    const { container } = mount('data-launch-app');
-    expect(launch()).toBe('resolving');
-    act(() => vi.advanceTimersByTime(WELCOME_AT_MS - 100));
-    expect(launch()).toBe('resolving');
-    expect(container.querySelector('.launch-canvas--resolving')).not.toBeNull();
-    act(() => vi.advanceTimersByTime(200));
+  it('does not keep a signed-in member waiting: the app is ready, so it leaves at hydration', () => {
+    // "its done loading faster than 1.5s" — a final shot here was a wait, not a loader.
+    const { container } = mount('app');
     expect(launch()).toBe('done');
+    expect(container.querySelector('.launch-canvas--resolving')).toBeNull();
     act(() => vi.advanceTimersByTime(400));
     // Unmounted, not hidden: nothing keeps animating for the session.
     expect(container.querySelector('.splash')).toBeNull();
   });
 
   it('hands a signed-out visitor to Welcome once the lockup has landed', () => {
-    mount('data-signed-out-welcome');
+    const { container } = mount('welcome');
+    expect(launch()).toBe('resolving');
+    expect(container.querySelector('.launch-canvas--resolving')).not.toBeNull();
     act(() => vi.advanceTimersByTime(WELCOME_HANDOFF_MS - 100));
     expect(launch()).toBe('resolving');
     act(() => vi.advanceTimersByTime(200));
     expect(launch()).toBe('welcome');
+    act(() => vi.advanceTimersByTime(400));
+    expect(container.querySelector('.splash')).toBeNull();
   });
 
   it('re-reads the page when the final shot starts: a view that left Welcome skips it', () => {
@@ -100,7 +104,7 @@ describe('LaunchScreen', () => {
       ],
     });
     try {
-      mount('data-signed-out-welcome');
+      mount('welcome');
       expect(launch()).toBe('resolving');
       document.querySelector('[data-signed-out-welcome]')!.remove();
       t = 2000;
@@ -113,7 +117,7 @@ describe('LaunchScreen', () => {
 
   it('asks the element, not the clock: a slow first byte is not a lifted splash', () => {
     now = 20_000; // navigation started 20s ago (an Azure wake), HTML just arrived
-    mount('data-launch-app');
+    mount('welcome');
     expect(launch()).toBe('resolving');
   });
 
@@ -128,7 +132,7 @@ describe('LaunchScreen', () => {
 
   it('never covers the app for good, even if the frames stop', () => {
     vi.stubGlobal('requestAnimationFrame', () => 0);
-    mount('data-launch-app');
+    mount('welcome');
     act(() => vi.advanceTimersByTime(HARD_TIMEOUT_MS + 10));
     expect(launch()).toBe('done');
   });
@@ -144,7 +148,7 @@ describe('LaunchScreen', () => {
 
   it('does not bring back a splash the failsafe already lifted', () => {
     paintedAs({ visibility: 'hidden' });
-    const { container } = mount('data-launch-app');
+    const { container } = mount('welcome');
     expect(launch()).toBe('lifted');
     act(() => vi.advanceTimersByTime(1));
     expect(container.querySelector('.splash')).toBeNull();
@@ -153,14 +157,15 @@ describe('LaunchScreen', () => {
   it('nor one the failsafe is halfway through lifting', () => {
     // Through the fade the splash is still `visible`, and already see-through.
     paintedAs({ visibility: 'visible', opacity: '0.5' });
-    mount('data-launch-app');
+    mount('welcome');
     expect(launch()).toBe('lifted');
   });
 
-  it('a reload is not a cold start: no final shot after signing in', () => {
+  it('a reload is not a cold start: Welcome gets no final shot either', () => {
     vi.spyOn(performance, 'getEntriesByType').mockReturnValue([{ type: 'reload' } as unknown as PerformanceEntry]);
-    mount('data-launch-app');
-    expect(launch()).toBe('done');
+    const { container } = mount('welcome');
+    expect(launch()).toBe('welcome');
+    expect(container.querySelector('.launch-canvas--resolving')).toBeNull();
   });
 
   it('adopts the shot in flight instead of waiting for the next one', () => {
@@ -168,11 +173,11 @@ describe('LaunchScreen', () => {
     const getAnimations = vi.fn(() => [{ currentTime: 600 }]);
     Object.defineProperty(HTMLElement.prototype, 'getAnimations', { configurable: true, value: getAnimations });
     try {
-      mount('data-launch-app');
-      act(() => vi.advanceTimersByTime(WELCOME_AT_MS - 600 - 100));
+      mount('welcome');
+      act(() => vi.advanceTimersByTime(WELCOME_HANDOFF_MS - 600 - 100));
       expect(launch()).toBe('resolving');
       act(() => vi.advanceTimersByTime(200));
-      expect(launch()).toBe('done');
+      expect(launch()).toBe('welcome');
     } finally {
       delete (HTMLElement.prototype as { getAnimations?: unknown }).getAnimations;
     }
@@ -214,7 +219,7 @@ describe('LaunchScreen', () => {
     });
     try {
       const page = document.createElement('div');
-      page.setAttribute('data-launch-app', '');
+      page.setAttribute('data-signed-out-welcome', '');
       document.body.appendChild(page);
       const { container } = render(
         <StrictMode>
@@ -224,8 +229,8 @@ describe('LaunchScreen', () => {
       // 600ms into the flight, not back at the launch point.
       const shuttle = container.querySelector<HTMLElement>('.launch-shuttle')!;
       expect(parseFloat(shuttle.style.offsetDistance)).toBeGreaterThan(50);
-      act(() => vi.advanceTimersByTime(WELCOME_AT_MS - 600 + 100));
-      expect(launch()).toBe('done');
+      act(() => vi.advanceTimersByTime(WELCOME_HANDOFF_MS - 600 + 100));
+      expect(launch()).toBe('welcome');
     } finally {
       delete (HTMLElement.prototype as { getAnimations?: unknown }).getAnimations;
     }
@@ -245,7 +250,7 @@ describe('LaunchScreen', () => {
       ],
     });
     try {
-      const { container } = mount('data-launch-app');
+      const { container } = mount('welcome');
       expect(container.querySelector('.launch-canvas--loop')).not.toBeNull();
       // The timer fires LATE: the loop is already 120ms into the next shot.
       t = 2120;
@@ -261,7 +266,7 @@ describe('LaunchScreen', () => {
 
   it('under reduced motion, skips the flight and leaves at once', () => {
     vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('reduce'), addEventListener() {}, removeEventListener() {} }));
-    mount('data-signed-out-welcome');
+    mount('welcome');
     act(() => vi.advanceTimersByTime(1));
     expect(launch()).toBe('welcome');
   });

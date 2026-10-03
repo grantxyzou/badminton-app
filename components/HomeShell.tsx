@@ -718,7 +718,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       <div className="min-h-screen pb-32">
         <ThemeToggle />
         <LanguageToggle />
-        <main data-page-shell data-launch-app className="max-w-lg mx-auto px-4 page-shell-top">
+        <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
           {/* Moments float at the top (TopToast): offline for as long as it is
               true, with no ✕ because reconnecting is what clears it, and the
               sign-in notices on their own timer. Offline wins while both

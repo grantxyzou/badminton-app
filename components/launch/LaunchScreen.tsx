@@ -9,34 +9,34 @@ import {
   resolveFrame,
   SETTLED_FRAME,
   shotTakeover,
-  WELCOME_AT_MS,
   WELCOME_HANDOFF_MS,
   type LaunchFrame,
 } from '@/lib/launchMotion';
 
 /** Where the launch screen goes once it knows. */
-export type LaunchDecision = 'welcome' | 'app' | 'none';
+export type LaunchDecision = 'welcome' | 'none';
 
 /**
  * READ FROM THE PAGE THE SERVER RENDERED, never from a client opinion.
  *
  * `app/page.tsx` decides who is signed in on the server and renders either
  * `SignedOutShell` (whose Welcome carries `data-signed-out-welcome`) or
- * `HomeShell` (`data-launch-app`). Both are in the HTML before any JS, so the
- * answer is in the DOM by the time this runs — and it is read AGAIN when the
- * final shot starts, because a landing can leave Welcome straight after
- * hydration, and then the screen should simply get out of the way.
+ * `HomeShell`. That is in the HTML before any JS, so the answer is in the DOM
+ * by the time this runs — and it is read AGAIN when the final shot starts,
+ * because a view can leave Welcome straight after hydration, and then the
+ * screen should simply get out of the way.
  *
- * Neither marker means a route that is not the app at all — `/legal/*`,
- * `/design/*`, `/migrate`, `/auth/done` — which must not sit through a shot.
- * Nor must a LANDING (`lib/landingParams.ts`): the shells read those
- * parameters after this runs, so the URL still carries them.
+ * ONLY WELCOME GETS A FINAL SHOT. There the shot is the screen: the shuttle
+ * lands and the lockup it lands on is Welcome. For a signed-in member it was
+ * a wait — Grant, 2026-10-03: "its done loading faster than 1.5s". The app is
+ * ready at hydration, so the screen leaves at hydration, as it does for a
+ * route that is not the app at all (`/legal/*`, `/design/*`, `/migrate`) and
+ * for a LANDING (`lib/landingParams.ts`; the shells read those parameters
+ * after this runs, so the URL still carries them).
  */
 export function launchDecision(doc: Document, search = ''): LaunchDecision {
   if (isLandingUrl(search)) return 'none';
-  if (doc.querySelector('[data-signed-out-welcome]')) return 'welcome';
-  if (doc.querySelector('[data-launch-app]')) return 'app';
-  return 'none';
+  return doc.querySelector('[data-signed-out-welcome]') ? 'welcome' : 'none';
 }
 
 /**
@@ -76,16 +76,17 @@ function apply(p: ReturnType<typeof parts>, f: LaunchFrame) {
  * The cold-start screen (design handoff "BPM launch / loading screen").
  *
  * Server-rendered in the root layout, so it is on screen before any JS: the
- * loading shot loops as CSS (`<html data-launch="loading">`, `launchLoopCss`).
- * Once React hydrates, the shot becomes the final one — the shot already in
- * the air if it is still flying, the next one if it has landed (`shotTakeover`;
- * a shuttle is never cut off mid-air) — and then:
+ * loading shot loops as CSS (`<html data-launch="loading">`, `launchLoopCss`)
+ * for exactly as long as the page takes to arrive. Once React hydrates:
  *
- *   - signed out: the wordmark lands, and at `WELCOME_HANDOFF_MS` the screen
- *     hands over to Welcome (`data-launch="welcome"`), which draws the same
- *     lockup underneath and raises its buttons;
- *   - signed in: it leaves for Home at W;
- *   - a route that is not the app, a landing, or a reload: it leaves at once.
+ *   - signed in, a route that is not the app, a landing, or a reload: the page
+ *     is ready, so it fades away at once;
+ *   - signed out, on Welcome: the shot becomes the final one — the shot
+ *     already in the air if it is still flying, the next one if it has landed
+ *     (`shotTakeover`; a shuttle is never cut off mid-air) — the wordmark
+ *     lands, and at `WELCOME_HANDOFF_MS` the screen hands over to Welcome
+ *     (`data-launch="welcome"`), which draws the same lockup underneath and
+ *     raises its buttons.
  *
  * While it is up it TAKES taps (no `pointer-events: none`): the page under it
  * is hydrated and live, and a tap passed through would press a button nobody
@@ -184,8 +185,7 @@ export default function LaunchScreen({ tagline }: { tagline: string }) {
 
     /** `into`: how far into the adopted shot we already are. */
     const begin = (into: number) => {
-      const decision = decide();
-      if (decision === 'none') return leave('done');
+      if (decide() === 'none') return leave('done');
       // Stop the CSS loop; the inline styles written below continue it from
       // the frame it is on (`resolveFrame(into)` IS that frame — see
       // ADOPT_UNTIL_MS).
@@ -193,16 +193,15 @@ export default function LaunchScreen({ tagline }: { tagline: string }) {
       if (reduced) {
         // No flight: the finished lockup at once, then straight on.
         apply(p, SETTLED_FRAME);
-        return leave(decision === 'welcome' ? 'welcome' : 'done');
+        return leave('welcome');
       }
-      const handoffAt = decision === 'welcome' ? WELCOME_HANDOFF_MS : WELCOME_AT_MS;
       const start = performance.now() - into;
       shotStart.current = start;
       apply(p, resolveFrame(into));
       const tick = (now: number) => {
         const ms = now - start;
         apply(p, resolveFrame(ms));
-        if (ms >= handoffAt) return leave(decision === 'welcome' ? 'welcome' : 'done');
+        if (ms >= WELCOME_HANDOFF_MS) return leave('welcome');
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);

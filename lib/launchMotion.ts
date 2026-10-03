@@ -34,11 +34,10 @@ export const SHOT_MS = 2000;
 /** The resolve shot's flight; the shuttle stays where it lands. */
 export const RESOLVE_FLIGHT_MS = 1200;
 /**
- * `W` in the handoff: when Welcome begins, or, for a signed-in member, when the
- * screen leaves for Home. One constant for both on purpose. The handoff routes
- * an authed launch to Home at W, which puts a final shot between a regular and
- * the app on every cold open. Shortening that is a product call, and this is
- * the one number it would change.
+ * `W` in the handoff: when Welcome begins, measured from the start of the final
+ * shot. Welcome's buttons are timed from it. (The handoff also routes a
+ * signed-in launch to Home at W; this build does not play a final shot for a
+ * signed-in member at all — see `launchDecision`.)
  */
 export const WELCOME_AT_MS = 1400;
 /** If the page never gives the screen a decision after hydration, it leaves anyway. */

@@ -2,7 +2,7 @@
 
 **Track:** native shell / store launch — the first screen a store download shows
 **Status:** in-flight
-**Review on:** 2026-10-24 — did any member say opening the app feels slower since the launch screen? If so, shorten `WELCOME_AT_MS` for signed-in members
+**Review on:** 2026-10-24 — did any member say opening the app feels slower since the launch screen? Signed-in launches no longer wait on it, so a yes points at the pre-hydration loop or the Welcome sequence
 
 ## Problem
 
@@ -15,14 +15,13 @@ this is a brand and first-impression change ahead of the store listing.
 
 ## Kill criterion
 
-Members notice the launch for its slowness rather than its look. Measured
-locally (WebKit, warm dev server), a signed-in member reaches Home at ~1.5s on
-a cold navigation, against ~0.15s with the old splash; a reload costs ~0.1s.
-The first cut measured ~3.4s, because it waited out the shot in flight and then
-played a second one, and replayed all of it on the reload after every sign-in;
-the code review removed both (see Decisions). What is left is the final shot
-itself, `WELCOME_AT_MS`. If that still shows up in feedback, it is the number
-to cut for signed-in members.
+Members notice the launch for its slowness rather than its look. It already
+failed this once, before shipping: the first cut held a signed-in member for
+~3.4s, the code review got that to ~1.5s, and Grant's answer to "is 1.5s
+acceptable?" was "its done loading faster than 1.5s". So a signed-in launch now
+leaves at hydration — measured locally (WebKit, warm dev server) the splash
+starts fading ~0.1s after the page arrives, the same as the old splash. The
+shot loops only for as long as the page actually takes.
 
 ## Non-goals
 
@@ -35,11 +34,10 @@ to cut for signed-in members.
 
 - **The session signal is the server-rendered DOM, not a client store.**
   `app/page.tsx` already decides signed-in vs signed-out on the server. The
-  splash reads `[data-signed-out-welcome]` (SignedOutShell's Welcome) or
-  `[data-launch-app]` (HomeShell) at hydration, then again at the shot boundary,
-  because `?join=`, `?reset=` and `?native=1` leave Welcome right after
-  hydration. Neither marker (`/legal`, `/design`, `/migrate`) means leave at
-  once. A store that the shells announced into would have been a second
+  splash reads `[data-signed-out-welcome]` (SignedOutShell's Welcome) at
+  hydration, then again when the final shot starts, because a view can leave
+  Welcome right after hydration. No marker (Home, `/legal`, `/design`,
+  `/migrate`) means leave at once. A store that the shells announced into would have been a second
   opinion about "signed in", and its effect would run after the splash's.
 - **One motion model, two runtimes.** Before hydration no JS runs, so the
   loading shot loops as CSS keyframes, sampled at 50 stops from
@@ -54,8 +52,12 @@ to cut for signed-in members.
   viewport units needs typed `calc()` division, which Safari lacks. The same
   script sets `data-theme` before first paint. Light-mode members used to see
   the whole dark splash, then a flash to cream.
-- **Authed timing follows the handoff, behind one constant** (`WELCOME_AT_MS`).
-  See the kill criterion.
+- **Only Welcome gets a final shot.** The handoff routes a signed-in launch to
+  Home at W, after a final shot. Built that way first, it was a wait over a
+  page that was already ready, so it was cut (see the kill criterion): signed
+  in, the loop is a real loader and nothing more. On Welcome the final shot IS
+  the screen, so it stays. This and the next bullet are the two places the
+  build departs from the handoff's letter.
 - **The shot in flight BECOMES the final shot** (`shotTakeover`). The handoff
   says to wait for the current shot's trail to clear and then play the final
   one. But a loading shot and the final shot are the same frames until the
@@ -63,8 +65,7 @@ to cut for signed-in members.
   mid-flight the shot already in the air is simply kept. Nothing is
   interrupted, which is what the handoff's rule protects, and nobody waits out
   an extra shot for a page that is ready. A shot that has already landed is
-  still waited out. This is the one place the build departs from the handoff's
-  letter.
+  still waited out.
 - **A reload is not a cold start.** Signing in reloads, and so do the error
   boundaries. The splash leaves at once on `navigation.type === 'reload'`.
   Untested on a device: whether iOS reports a restored, evicted PWA as a
