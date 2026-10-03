@@ -8,6 +8,7 @@ import CardHeader from './primitives/CardHeader';
 import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import Collapse from './primitives/Collapse';
+import { useRevealReady } from './primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
@@ -152,6 +153,10 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   }, []);
 
   const owesNothing = !loadError && !forbidden && (!data || data.totalOwed <= 0);
+
+  // On Home a RevealSlot holds this card's place with a skeleton and reveals
+  // it in order (loading cascade). Profile has no slot; this is a no-op there.
+  useRevealReady(loaded || loadError || forbidden);
 
   // Profile: render nothing while loading or when nothing is owed (no clutter).
   if (!isHome && owesNothing) return null;
@@ -370,9 +375,9 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
 
   return (
     <div
-      // Fades in: Home renders nothing until the balance lands, so the card
-      // arrives into a page that is already on screen.
-      className={`glass-card motion-fade ${isHome ? "p-4" : "p-5"}`}
+      // Profile renders nothing until the balance lands, so the card fades in
+      // there. On Home the RevealSlot around it does the fade, in order.
+      className={`glass-card ${isHome ? "p-4" : "motion-fade p-5"}`}
       // Collapsible: the gap lives INSIDE the collapse (as its top padding),
       // so a closing body does not leave a gap behind that snaps on unmount.
       style={{ display: 'flex', flexDirection: 'column', gap: collapsible ? undefined : 'var(--space-4)' }}

@@ -28,7 +28,6 @@ const ROOT = join(__dirname, '..');
 
 /** Renders nothing while it loads. Phase that fixes each is noted. */
 const NULL_WHILE_LOADING_BACKLOG = new Set<string>([
-  'components/UnpaidSessionsCard.tsx', // phase 2 (Home)
   'components/stats/KudosReceivedCard.tsx', // phase 3 (Stats)
   'components/stats/NextRacketCard.tsx', // phase 3
   'components/stats/StringTensionCard.tsx', // phase 3
