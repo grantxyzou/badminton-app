@@ -14,7 +14,8 @@ import { defaultMaxPlayers } from '@/lib/defaults';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Tab } from '@/components/HomeShell';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
-import { TabSkeleton } from '@/components/primitives/CardSkeleton';
+import CardSkeleton, { TabSkeleton } from '@/components/primitives/CardSkeleton';
+import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
 import SkillDiscoveryCard from './home/SkillDiscoveryCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
@@ -48,6 +49,9 @@ const EnterCodeSheet = dynamic(() => import('./EnterCodeSheet'), { ssr: false })
 const AskAccessSheet = dynamic(() => import('./AskAccessSheet'), { ssr: false });
 const RecoveryPinSheet = dynamic(() => import('./RecoveryPinSheet'), { ssr: false });
 
+/** The Home balance row (UnpaidSessionsCard, collapsed), measured at 400px. */
+const BALANCE_ROW_HEIGHT = 50;
+
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -78,9 +82,15 @@ interface HomeTabProps {
    * anything typed (docs/plans/members-only.md). `null` with the flag off.
    */
   memberName?: string | null;
+  /**
+   * HomeShell has not decided the starting tab yet (it restores the last tab
+   * after mount). Home holds its fetches until it has, so a restore to another
+   * tab does not fire Home's five requests for a screen nobody will see.
+   */
+  deferFetch?: boolean;
 }
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null }: HomeTabProps) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, deferFetch = false }: HomeTabProps) {
   const t = useTranslations('home');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   /**
@@ -194,6 +204,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
    * again when it lapses (2026-09-13 flow audit).
    */
   const [hasCredential, setHasCredential] = useState<boolean | null>(null);
+  /** The credential probe has finished, whatever it found — what orders the banner's slot. */
+  const [credentialChecked, setCredentialChecked] = useState(false);
 
   const maxPlayers = defaultMaxPlayers();
 
@@ -291,6 +303,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // was initialised from it. localStorage may not have caught up yet —
     // HomeShell reconciles it, but its effect runs after this child's — so it
     // must not be allowed to override that here.
+    if (deferFetch) return;
     if (memberName) {
       loadData();
       return;
@@ -306,7 +319,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       setName(id.name);
     }
     loadData();
-  }, [loadData, memberName]);
+  }, [loadData, memberName, deferFetch]);
 
   // Ask the server what the verified member can sign in with. `auth/methods`
   // answers for the cookie's own member (PIN, password, providers); where that
@@ -330,6 +343,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         if (typeof d.createdAt === 'string' && !cancelled) setHasCredential(d.hasPin === true);
       } catch {
         /* unknown — show nothing */
+      } finally {
+        if (!cancelled) setCredentialChecked(true);
       }
     })();
     return () => {
@@ -686,27 +701,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     </Collapse>
   );
 
-  if (loading) {
-    // Render the REAL header (its slot is static text, no data) and skeleton
-    // only the data cards below it — the pattern the retired Sign-Ups tab used — so the page
-    // keeps its exact shape and fills in top-to-bottom instead of flashing a
-    // generic block then snapping the layout in.
-    return (
-      <div className="space-y-5">
-        {/* `compact`, like the loaded branch below — the full-size header here
-            shrank 30px → 16px the moment the data landed. */}
-        <PageHeader compact>{clubName}</PageHeader>
-        <TabSkeleton />
-      </div>
-    );
-  }
-
   const sessionWhen = session
     ? `${format.dateTime(new Date(session.datetime), DAY_LONG)}, ${format.dateTime(new Date(session.datetime), TIME_SHORT)}`
     : undefined;
   const sessionWhenWhere = sessionWhen && session?.locationName
     ? tStates('signedUpWhenWhere', { when: sessionWhen, place: session.locationName })
     : sessionWhen;
+
+  const announcementCard = (a: Announcement) => (
+    <div className="glass-card p-5 space-y-2">
+      <p className="section-label">{t('announcement.label')}</p>
+      <div className="announcement-body fs-md text-gray-200 leading-relaxed">
+        {renderMarkdown(a.text)}
+      </div>
+    </div>
+  );
 
   const mapsUrl = session?.locationAddress
     ? `https://maps.google.com/?q=${encodeURIComponent(session.locationAddress)}`
@@ -735,12 +744,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           {clubName}
         </span>
       </PageHeader>
-      <div style={{ marginTop: 'var(--space-1)' }}>
-        <ReleaseNotesTrigger
-          releases={releases}
-          onOpen={openReleaseSheet}
-        />
-      </div>
+      {!loading && (
+        <div style={{ marginTop: 'var(--space-1)' }}>
+          <ReleaseNotesTrigger
+            releases={releases}
+            onOpen={openReleaseSheet}
+          />
+        </div>
+      )}
 
       {/* Reveal the data cards together on load. Wrapping below the sticky
           PageHeader keeps the header out of the transform (containing-block
@@ -751,7 +762,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           group is this week's session — where, when, and are you in. The
           second is your account — what you owe and what you have with the
           stringer. Five evenly-spaced cards read as five unrelated errands. */}
-      <div className="bpm-home-stack motion-fade">
+      {/* LOADING CASCADE (docs/plans/loading-cascade.md). One group, filling top
+          to bottom: the week (one gate — its five reads land together), then
+          the skill prompt, the credential banner and the balance, each held
+          in order however the network answers. The week's skeleton draws the
+          SERVER-RENDERED announcement for real — it is the LCP element, and
+          hiding it behind a shimmer threw away the reason it is fetched on the
+          server — and reserves no announcement slot when the server says there
+          is none. */}
+      <RevealGroup>
+      <RevealSlot
+        ready={!loading}
+        placeholder={<TabSkeleton announcement={initialAnnouncement ? announcementCard(initialAnnouncement) : null} />}
+      >
+      {!loading && (
+      <div className="bpm-home-stack">
       {/* One-time nudge to install to the home screen (mobile browser only). */}
       <InstallBanner />
 
@@ -846,14 +871,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
 
       {/* Announcement card — pure club communications surface. */}
-      {effectiveAnnouncement && (
-        <div className="glass-card p-5 space-y-2">
-          <p className="section-label">{t('announcement.label')}</p>
-          <div className="announcement-body fs-md text-gray-200 leading-relaxed">
-            {renderMarkdown(effectiveAnnouncement.text)}
-          </div>
-        </div>
-      )}
+      {effectiveAnnouncement && announcementCard(effectiveAnnouncement)}
 
       {/* Sign-Up Card — the submit button / payment action / "I paid" button
           sit in the thumb zone for one-handed use. */}
@@ -1124,11 +1142,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           Sign-Ups tab: the moment a player has just confirmed they're playing
           is when "is my game improving?" lands. Self-retiring: flag-on,
           identified, unrated and undismissed only. */}
-      <SkillDiscoveryCard
-        name={currentUser}
-        signedUp={isSignedUp}
-        onOpen={() => onTabChange?.('skills')}
-      />
+      {/* No placeholder: it is usually absent. It reports through
+          useRevealReady, and nothing below shows before it has answered. */}
+      <RevealSlot canBeEmpty placeholder={null}>
+        <SkillDiscoveryCard
+          name={currentUser}
+          signedUp={isSignedUp}
+          onOpen={() => onTabChange?.('skills')}
+        />
+      </RevealSlot>
 
       </section>
       )}
@@ -1136,6 +1158,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <section className="bpm-home-group vt-home-account" aria-label={t('groups.account')}>
       {/* MEMBERS ONLY: signed in, but nothing to sign in WITH next time — the
           state an admin-approved access request leaves. One tap to a PIN. */}
+      {memberName && (
+      <RevealSlot ready={credentialChecked} empty={!needsCredential} placeholder={null}>
       {needsCredential && (
         <StatusBanner
           tone="warn"
@@ -1159,11 +1183,17 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           }
         />
       )}
+      </RevealSlot>
+      )}
       {/* Your balance — what you owe, across sessions and stringing. Sits in
           the ACCOUNT group rather than above sign-up: as a one-line row
           carrying its own figure it no longer needs the top slot to be read,
           and most weeks it says $0. */}
-      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" onSignIn={() => onTabChange?.('profile')} />}
+      {currentUser && (
+        <RevealSlot placeholder={<CardSkeleton height={BALANCE_ROW_HEIGHT} />}>
+          <UnpaidSessionsCard name={currentUser} variant="home" onSignIn={() => onTabChange?.('profile')} />
+        </RevealSlot>
+      )}
 
       {/* Stringing moved to its own tab (components/StringingTab.tsx) when
           it took the nav slot Sign-Ups held. */}
@@ -1266,6 +1296,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       />
       )}
       </div>
+      )}
+      </RevealSlot>
+      </RevealGroup>
       {releaseEver && (
         <ReleaseNotesSheet
           open={releaseSheetOpen}

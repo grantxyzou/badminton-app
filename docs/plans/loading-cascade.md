@@ -37,6 +37,15 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 - **A staggered slot keeps its skeleton until its turn.** Holding the card at opacity 0 for its delay showed a blank gap where the skeleton had just been.
 - **The splash spinner is stopped after load.** Fading the splash to `visibility: hidden` instead of `display: none` left its spinner running invisibly for the whole session (measured: `spin` still "running" after hydration).
 
+### Phase 2 — Home (2026-10-03)
+
+- **The week stays ONE slot.** Its five reads already land together behind one `Promise.all`; splitting it into tiles / announcement / sign-up slots would add choreography to data that has no order to choreograph.
+- **The skeleton draws the server-rendered announcement for real.** `app/page.tsx` reads it on the server precisely because it is the LCP element, and the old skeleton hid it behind a shimmer until the client re-fetched it. When the server found none, no slot is reserved.
+- **The skill prompt and the credential banner reserve NO space** (`placeholder={null}`): both are usually absent, and a skeleton that usually closes is its own jump. They still hold their ORDER — nothing below them shows before they have answered.
+- **Home waits for the starting tab** (`deferFetch`). A child's effects run before its parent's, so Home fired five requests before the shell's post-mount restore moved the screen to another tab.
+- **Tile skeletons 108 → 133.** Re-measured: the club address and a long date both wrap to two lines on a phone, so 108 jumped every week.
+- **The release-notes line still appears with the week**, not before it: it comes from the same gate, and it sat in the loaded branch before too.
+
 ## Shape
 
 | Piece | File |

@@ -405,6 +405,16 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  // The starting tab is decided by the effect above, AFTER mount — and a
+  // child's effects run before its parent's, so Home (the SSR'd first tab)
+  // had already fired its five requests by the time a restore moved the
+  // screen to Stats or Profile. Home waits for this instead. Declared after
+  // the restore effect so both state updates land in one commit: when the
+  // restore picks another tab, Home unmounts without ever fetching.
+  const [tabResolved, setTabResolved] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- marks the post-mount restore above as done
+  useEffect(() => setTabResolved(true), []);
+
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
   // ProfileTab is allowed to render with empty values (anonymous state).
   /**
@@ -822,7 +832,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             />
           ) : (
           <>
-          {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="motion-fade"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} /></div>}
+          {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="motion-fade"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} /></div>}
           {activeTab === 'stringing' && <div key={`stringing-${refreshNonce}`} className="motion-fade"><StringingTab /></div>}
           {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="motion-fade"><SkillsTab onTabChange={setActiveTab} /></div>}
           {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="motion-fade"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}

@@ -52,16 +52,22 @@ export default function CardSkeleton({
  * 210). HomeTab renders the real `<PageHeader>` above this, so there is no
  * header strip here — the header slot is the real component, not a shimmer.
  */
-export function TabSkeleton() {
+export function TabSkeleton({ announcement }: { announcement?: React.ReactNode } = {}) {
   return (
     <div className="space-y-5" role="status" aria-label="Loading">
-      {/* tile row: Location | When */}
+      {/* tile row: Location | When. 133, re-measured 2026-10-03 at 400px: the
+          club's address and a long date ("Monday, October 5") both wrap to two
+          lines on a phone, so the old 108 (one line) jumped every week. */}
       <div className="grid grid-cols-2 gap-3">
-        <CardSkeleton height={108} />
-        <CardSkeleton height={108} />
+        <CardSkeleton height={133} />
+        <CardSkeleton height={133} />
       </div>
-      {/* announcement / cost card */}
-      <CardSkeleton height={120} />
+      {/* The announcement. Home passes the SERVER-RENDERED card itself (it is
+          the LCP element, so it is drawn for real, not shimmered), or `null`
+          when the server found none — then no slot is reserved, because a
+          skeleton for a card that will not exist is a jump waiting to happen.
+          Omitted entirely, the old fixed 120px block. */}
+      {announcement === undefined ? <CardSkeleton height={120} /> : announcement}
       {/* sign-up card */}
       <CardSkeleton height={210} />
     </div>

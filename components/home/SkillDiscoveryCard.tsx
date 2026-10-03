@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { readStored, useClientValue } from '@/lib/useClientValue';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DISMISS_KEY = 'badminton_skill_discovery_dismissed';
@@ -32,6 +33,7 @@ export default function SkillDiscoveryCard({
   const [justDismissed, setJustDismissed] = useState(false);
   const dismissed = storedDismissed || justDismissed;
   const [hasRated, setHasRated] = useState<boolean | null>(null);
+  const [checkFailed, setCheckFailed] = useState(false);
 
   // Self-retire once the player has rated at least once.
   useEffect(() => {
@@ -43,12 +45,18 @@ export default function SkillDiscoveryCard({
       // Unknown stays unknown: a failed or refused read is not evidence that
       // they never rated, and nudging someone to "rate your skills" who has
       // already done it is a lying empty state wearing a call to action.
-      .catch(() => { /* hasRated stays null — render nothing */ });
+      .catch(() => { if (!cancelled) setCheckFailed(true); /* hasRated stays null — render nothing */ });
     return () => { cancelled = true; };
   }, [name]);
 
   // Show only once we know the player hasn't rated; null = still loading.
-  if (!name || dismissed || hasRated !== false) return null;
+  const show = !!name && !dismissed && hasRated === false;
+  // Home's RevealSlot holds this place (no space — it is usually absent) and
+  // keeps everything below it waiting until the answer is in. Ready waits on
+  // the FETCH, not on `dismissed`: that reads `true` before the stored value
+  // settles, and a slot that latched "empty" on it would never show the card.
+  useRevealReady(!name || hasRated !== null || checkFailed, !show);
+  if (!show) return null;
 
   const dismiss = () => {
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
@@ -56,8 +64,8 @@ export default function SkillDiscoveryCard({
   };
 
   return (
-    // Fades in: it arrives after its own fetch, below a roster already read.
-    <div className="glass-card p-4 motion-fade" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+    // No fade of its own: Home's RevealSlot fades it in, in order.
+    <div className="glass-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
       <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-lg)', color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
         trending_up
       </span>
