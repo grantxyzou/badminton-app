@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import EmptyState from '@/components/primitives/EmptyState';
-import BpmWordmark from '@/components/BpmWordmark';
+import LaunchArt from '@/components/launch/LaunchArt';
+import { buttonDelayMs } from '@/lib/launchMotion';
 import TopBar from '@/components/primitives/TopBar';
 import TopToast from '@/components/primitives/TopToast';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -291,34 +292,37 @@ function reloadIntoApp() {
 
 function WelcomeView({ onSignUp, onLogIn }: { onSignUp: () => void; onLogIn: () => void }) {
   const t = useTranslations('signedOut');
+  /* The launch screen's finished lockup, drawn by the SAME component as the
+     cold-start splash and at the same geometry — so on a cold start the splash
+     fades away over an identical picture and only the buttons arrive (their
+     rise waits for `data-launch="welcome"`; see globals.css "Launch screen").
+     Coming Back from Sign up or Log in there is no splash, and they simply
+     rise. */
   return (
-    <div
-      className="animate-fadeIn"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        minHeight: 'calc(100dvh - var(--space-9) - env(safe-area-inset-top))',
-        // The bottom pad clears the iPhone home indicator in the installed app,
-        // where the pinned buttons would otherwise sit under it.
-        paddingBlock: 'var(--space-9) calc(var(--space-7) + env(safe-area-inset-bottom))',
-      }}
-    >
-      <div style={{ display: 'grid', gap: 'var(--space-4)', justifyItems: 'center', textAlign: 'center', marginTop: 'var(--space-9)' }}>
-        <BpmWordmark size="3.5rem" color="var(--text-primary)" />
-        <p style={{ margin: 0, fontSize: 'var(--fs-lg)', color: 'var(--text-secondary)' }}>{t('tagline')}</p>
-      </div>
+    <div className="launch-stage launch-stage--welcome">
+      <LaunchArt tagline={t('tagline')} variant="settled" />
 
       {/* Pinned to the bottom, where the thumb is. Sign up is the filled one:
           this screen is a stranger's first, and a returning player knows which
           door is theirs. The data attribute is what scripts/smoke-prod.mjs
-          looks for: with members-only on, this is the page a signed-out
-          deploy check gets, and it has no nav to find. */}
-      <div data-signed-out-welcome style={{ display: 'grid', gap: 'var(--space-3)' }}>
-        <button type="button" onClick={onSignUp} className="btn-primary w-full">
+          looks for — with members-only on, this is the page a signed-out
+          deploy check gets, and it has no nav to find — and it is also how the
+          launch screen knows to hand over to Welcome rather than to Home. */}
+      <div data-signed-out-welcome className="launch-actions">
+        <button
+          type="button"
+          onClick={onSignUp}
+          className="btn-primary launch-btn launch-btn--primary"
+          style={{ animationDelay: `${buttonDelayMs(0)}ms` }}
+        >
           {t('signUp')}
         </button>
-        <button type="button" onClick={onLogIn} className="btn-ghost w-full">
+        <button
+          type="button"
+          onClick={onLogIn}
+          className="btn-ghost launch-btn launch-btn--ghost"
+          style={{ animationDelay: `${buttonDelayMs(1)}ms` }}
+        >
           {t('logIn')}
         </button>
       </div>

@@ -79,7 +79,7 @@ components/
   DatePicker.tsx           Portal-rendered calendar popover, RAF-coalesced scroll
   GlassPhysics.tsx         Mouse-tracking CSS var for glass-card hover (touch devices skip)
   HomeTab.tsx              7-state sign-up card + tile row + announcement
-  HydrationMark.tsx        Root-mounted; flips html[data-hydrated="true"] to hide splash
+  launch/                  Cold-start launch screen (LaunchScreen) + the lockup it shares with Welcome (LaunchArt)
   PlayersTab.tsx           Active list + waitlist; court background variant
   ShuttleIcon.tsx          Brand shuttlecock SVG (replaces sports_tennis in empty states)
   ShuttleLoader.tsx        BPM waveform loading animation
