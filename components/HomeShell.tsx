@@ -15,7 +15,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import TopToast from '@/components/primitives/TopToast';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import PullToRefresh from '@/components/PullToRefresh';
-import { TabSkeleton } from '@/components/primitives/CardSkeleton';
+import { StringingFallback, StatsFallback, ProfileFallback, AdminFallback } from '@/components/TabFallbacks';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -37,7 +37,7 @@ const readDevParam = () => new URLSearchParams(window.location.search).has('dev'
 // is `?dev`-gated), so eager-importing them was bloating the initial JS
 // bundle for everyone. Lighthouse flagged ~100 KB of unused JS in the home
 // payload; this is the cheap chunk of that.
-const AdminTab = dynamic(() => import('@/components/AdminTab'), { ssr: false });
+const AdminTab = dynamic(() => import('@/components/AdminTab'), { ssr: false, loading: () => <AdminFallback /> });
 // The other three tabs are lazy for the same reason, and they are the
 // expensive half: ProfileTab and the whole Stats/Equipment tree (its register,
 // every sheet, the catalog pickers) used to be parsed by everyone who opened
@@ -45,9 +45,11 @@ const AdminTab = dynamic(() => import('@/components/AdminTab'), { ssr: false });
 // splitting them costs a chunk fetch on the FIRST visit to a tab and nothing
 // after. HomeTab stays eager on purpose: it renders the server-rendered
 // announcement, which is the LCP element and must be in the first HTML.
-const StringingTab = dynamic(() => import('@/components/StringingTab'), { ssr: false, loading: () => <TabSkeleton /> });
-const SkillsTab = dynamic(() => import('@/components/SkillsTab'), { ssr: false, loading: () => <TabSkeleton /> });
-const ProfileTab = dynamic(() => import('@/components/ProfileTab'), { ssr: false, loading: () => <TabSkeleton /> });
+// Each fallback is a copy of that tab's own first loading frame (TabFallbacks.tsx),
+// so the chunk arriving changes nothing on screen.
+const StringingTab = dynamic(() => import('@/components/StringingTab'), { ssr: false, loading: () => <StringingFallback /> });
+const SkillsTab = dynamic(() => import('@/components/SkillsTab'), { ssr: false, loading: () => <StatsFallback /> });
+const ProfileTab = dynamic(() => import('@/components/ProfileTab'), { ssr: false, loading: () => <ProfileFallback /> });
 const DevPanel = dynamic(() => import('@/components/DevPanel'), { ssr: false });
 const DemoMode = dynamic(() => import('@/components/DemoMode'), { ssr: false });
 // The onboarding and auth surfaces are the same story one rung down: each is

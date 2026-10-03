@@ -693,7 +693,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // generic block then snapping the layout in.
     return (
       <div className="space-y-5">
-        <PageHeader>{clubName}</PageHeader>
+        {/* `compact`, like the loaded branch below — the full-size header here
+            shrank 30px → 16px the moment the data landed. */}
+        <PageHeader compact>{clubName}</PageHeader>
         <TabSkeleton />
       </div>
     );

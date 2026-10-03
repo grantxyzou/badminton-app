@@ -3726,8 +3726,23 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   color: var(--text-primary, #e2e8f0);
   pointer-events: none;
 }
+/* Fades out rather than cutting to the page (loading cascade, phase 1). An
+   animation, not a transition: the failsafe animation below owns opacity until
+   this replaces it, and a transition would start from wherever that left it. */
 html[data-hydrated="true"] .splash {
-  display: none;
+  animation: splash-out var(--duration-fast) var(--ease-glass) forwards;
+}
+@keyframes splash-out {
+  from { opacity: 1; visibility: visible; }
+  to   { opacity: 0; visibility: hidden; }
+}
+/* `display: none` used to stop the spinner with the splash; `visibility:
+   hidden` does not, so it would spin invisibly for the whole session — the GPU
+   heat the reduced-motion thermal block exists to prevent. Freezing it for the
+   150ms fade is invisible. */
+html[data-hydrated="true"] .splash .ring-spinner {
+  animation: none;
+  will-change: auto;
 }
 /* Failsafe: if hydration stalls silently, the splash spinner would loop
    forever and keep the GPU warm. Force-fade + hide after 5s regardless
@@ -3760,6 +3775,16 @@ html[data-hydrated="true"] .splash {
 }
 @media (prefers-reduced-motion: reduce) {
   .splash-shuttle { animation: none; }
+  /* The thermal block above stops `.splash` outright, which also switched off
+     its failsafe: a stalled hydration kept the splash up forever, only for
+     these users. `html .splash` outranks it. `steps(1, end)` makes the 5.4s
+     hide a single cut — no fade is played, so nothing animates. */
+  html .splash {
+    animation: splash-failsafe 5.4s steps(1, end) forwards !important;
+  }
+  html[data-hydrated="true"] .splash {
+    animation: splash-out var(--duration-fast) ease-out forwards !important;
+  }
 }
 
 /* ── Release notes terminal sheet ── */
