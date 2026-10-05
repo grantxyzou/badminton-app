@@ -111,7 +111,8 @@
       },
       "title": "穿线服务",
       "subtitle": "在这里申请穿线，查看球拍进度。",
-      "soon": "敬请期待"
+      "soon": "敬请期待",
+      "shopUnavailable": "暂时无法确认穿线服务是否开放。"
     },
     "skillDiscovery": {
       "title": "想知道自己有没有进步吗？",

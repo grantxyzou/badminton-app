@@ -78,3 +78,13 @@ describe('GroupsPage', () => {
     expect(profile).toMatch(/from '\.\/profile\/SettingsList'/);
   });
 });
+
+describe('GroupsPage while the list loads (loading cascade, phase 4)', () => {
+  it('shows a skeleton, not an empty list that reads as "in no clubs"', () => {
+    renderPage([], { loading: true });
+    // The join / create rows stay; what must not appear is a verdict about
+    // membership drawn from a list that has not arrived.
+    expect(screen.queryByText(enMessages.groups.onlyOne)).toBeNull();
+    expect(document.querySelector('.shimmer-line')).toBeTruthy();
+  });
+});

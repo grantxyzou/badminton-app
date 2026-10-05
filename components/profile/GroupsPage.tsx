@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import TopBar from '@/components/primitives/TopBar';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 import SettingsList from './SettingsList';
 import type { GroupListEntry } from '@/lib/useCurrentGroup';
 
@@ -12,6 +13,9 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 interface Props {
   onBack: () => void;
   groups: GroupListEntry[];
+  /** No answer yet. `groups` is `[]` until then, and rendered as a list it
+   *  read as "you are in no clubs" — the lying empty state. */
+  loading?: boolean;
   loadError?: boolean;
   /** Ask again after a failed load — a sub-page has no pull-to-refresh. */
   onRetry?: () => void;
@@ -49,6 +53,7 @@ interface Props {
 export default function GroupsPage({
   onBack,
   groups,
+  loading = false,
   loadError,
   onRetry,
   onSwitched,
@@ -93,7 +98,9 @@ export default function GroupsPage({
 
       <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('yourGroupsHint')}</p>
 
-      {loadError ? (
+      {loading && !loadError ? (
+        <CardSkeleton height={97} />
+      ) : loadError ? (
         <ErrorState
           message={t('loadFailed')}
           action={onRetry ? (

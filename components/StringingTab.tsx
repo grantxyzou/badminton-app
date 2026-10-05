@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import StringingCard from '@/components/stringing/StringingCard';
 import StringerJobsCard from '@/components/stringing/StringerJobsCard';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -34,9 +36,18 @@ export default function StringingTab() {
   return (
     <div className="space-y-5">
       <PageHeader>{tNav('stringing')}</PageHeader>
-      <div className="space-y-4">
-        <StringingCard hasIdentity={hasIdentity} />
-        <StringerJobsCard hasIdentity={hasIdentity} />
+      {/* Loading cascade: the shop card first, then the stringer's queue (only
+          ever there for the stringer), each holding its place. A flex gap so a
+          closed slot leaves none. */}
+      <div className="flex flex-col gap-4">
+        <RevealGroup>
+          <RevealSlot placeholder={<CardSkeleton height={84} />}>
+            <StringingCard hasIdentity={hasIdentity} />
+          </RevealSlot>
+          <RevealSlot canBeEmpty placeholder={null}>
+            <StringerJobsCard hasIdentity={hasIdentity} />
+          </RevealSlot>
+        </RevealGroup>
       </div>
     </div>
   );

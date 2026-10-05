@@ -56,6 +56,16 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 - **GiveKudosCard's "Loading…" is a shimmer line**; the `stats.kudos.loading` copy is deleted in both locales.
 - **Placeholders measured on a data-rich member** (Lin, the seed): You 94 / 320 / 192 / 140, Play 201 / 212 / 112, Equipment 226 / 226 / 257 / 160. The trend card stays 320 — it runs 240 (no check-ins) to 680+ (with data), and the empty case is the first impression.
 
+### Phase 4 — Profile and Stringing (2026-10-04)
+
+- **Profile's identity has a third state, "not read yet".** It started as `null` ("signed out"), so a signed-in member's first frame was the anonymous sign-in card until an effect read localStorage. `ProfileTab.firstFrame.test.tsx` looks at that frame with `renderToString`, the one render that runs no effects.
+- **Profile's skeleton is the page's shape** (`ProfileSkeleton`: identity card 84, then two labelled settings groups 195 and 97), shared by the chunk fallback and the tab's own loading frame. Measured in a browser: every block lands where the real page's does.
+- **GroupsPage takes `loading`.** `groups` is `[]` until the read answers, and the page drew it as a list, with "you're only in one club" under it.
+- **The stringing shop has three states, not two.** `useStringingShop` returned `null` for both "not answered" and "could not read", and the card showed "Coming soon" for both — a shop that could not be read said it was closed, and kept saying so. Now: skeleton, error with Retry, and "Coming soon" only when the server says closed. The safety half is unchanged — no request button on anything but a confirmed open shop.
+- **The pricing disclosure shows a shimmer line while prices load** instead of opening onto nothing.
+- **The Stringing tab is a RevealGroup**: the shop card, then the stringer's queue (`canBeEmpty` — it exists only for the stringer). `StringerJobsCard` leaves the loading-canary backlog.
+- **Not done here:** the push row in Profile's settings still appears after its probe (inserting a row); the request sheet still treats "strings loading" like "strings failed". Both are small and behind a tap; left for a follow-up rather than widening this PR.
+
 ## Shape
 
 | Piece | File |

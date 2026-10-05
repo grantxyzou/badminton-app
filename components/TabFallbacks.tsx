@@ -58,15 +58,34 @@ export function StatsFallback() {
   );
 }
 
-/** ProfileTab's `profile-loading` branch, exactly. */
-export function ProfileFallback() {
-  const tNav = useTranslations('nav');
-  return (
-    <div className="flex flex-col gap-4" role="status" aria-label="Loading">
-      <PageHeader>{tNav('profile')}</PageHeader>
-      <CardSkeleton height={220} />
+/**
+ * The member Profile page's shape: header, the identity card (84), then the
+ * first two settings groups, each an eyebrow label over its list (195, 97).
+ * Measured at 400px, 2026-10-03. It used to be one 220px block, which matched
+ * nothing on the page it stood in for.
+ */
+export function ProfileSkeleton({ title }: { title: string }) {
+  const label = (
+    <div style={{ height: 22, display: 'flex', alignItems: 'center' }} aria-hidden="true">
+      <div className="shimmer-line rounded-lg" style={{ height: 10, width: '30%' }} />
     </div>
   );
+  return (
+    <div className="flex flex-col gap-4" role="status" aria-label="Loading">
+      <PageHeader>{title}</PageHeader>
+      <CardSkeleton height={84} />
+      {label}
+      <CardSkeleton height={195} />
+      {label}
+      <CardSkeleton height={97} />
+    </div>
+  );
+}
+
+/** ProfileTab's own loading frame, exactly. */
+export function ProfileFallback() {
+  const tNav = useTranslations('nav');
+  return <ProfileSkeleton title={tNav('profile')} />;
 }
 
 /** AdminTab's auth-check branch, exactly. */

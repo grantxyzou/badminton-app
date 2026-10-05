@@ -19,6 +19,8 @@ import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import type { PlayerStage } from '@/lib/stringing';
 import type { PlayerStringingJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
+import { useRevealReady } from '@/components/primitives/Reveal';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -66,7 +68,8 @@ export default function StringingCard({ hasIdentity }: Props) {
   const gear = useGear(activeName.name ?? '');
   const t = useTranslations('home.stringing');
   const online = useOnline();
-  const open = useStringingShop();
+  const shop = useStringingShop();
+  const open = shop.open;
   const [jobs, setJobs] = useState<PlayerStringingJob[] | null>(null);
   // The shop's half of "when were these strung" — null until read, and when
   // they have never used it.
@@ -151,7 +154,30 @@ export default function StringingCard({ hasIdentity }: Props) {
     };
   }, [pricingOpen, pricing, pricingFailed]);
 
-  // Anything that is not a confirmed open shop keeps the original card.
+  // The Stringing tab's RevealSlot holds this place until the shop has answered.
+  useRevealReady(shop.status !== 'loading');
+
+  // Unknown is not closed. Before the shop answers this is a skeleton the size
+  // of the card; if it cannot be read, it says so. "Coming soon" is only for a
+  // shop the server says is closed — it used to stand in for all three.
+  if (shop.status === 'loading') return <CardSkeleton height={84} />;
+  if (shop.status === 'error') {
+    return (
+      <div className="glass-card p-5 space-y-3">
+        <CardHeader compact icon="grid_4x4" title={t('title')} subtitle={t('subtitle')} />
+        <ErrorState
+          message={t('shopUnavailable')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={shop.retry}>
+              {t('retry')}
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
+  // A confirmed closed shop keeps the original card.
   if (open !== true) {
     return (
       <div className="glass-card p-5 space-y-3">
@@ -418,6 +444,11 @@ export default function StringingCard({ hasIdentity }: Props) {
 
         <Collapse open={pricingOpen} spaceAbove="var(--space-3)">
           <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+            {/* While the prices load: a shimmer line where the first row will
+                be, not an empty disclosure that opens onto nothing. */}
+            {pricing === null && !pricingFailed && (
+              <div className="shimmer-line rounded-lg" style={{ height: 12, width: '70%' }} aria-hidden="true" />
+            )}
             {pricingFailed && (
               <ErrorState
                 message={t('pricingUnavailable')}
