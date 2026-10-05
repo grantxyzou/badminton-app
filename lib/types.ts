@@ -139,6 +139,11 @@ export interface Player {
    * the row promoted if there is room — when a payment brings them under it.
    */
   heldForUnpaid?: boolean;
+  /**
+   * When each payment reminder for this row went out (docs/plans/payments.md,
+   * Phase 1b): one at settle + 3 days, one at + 7, then never again.
+   */
+  remindedAt?: string[];
 }
 
 /** One line of money a payment settled — a session row or a stringing job. */

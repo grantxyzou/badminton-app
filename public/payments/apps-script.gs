@@ -12,7 +12,9 @@
  *      for permission to read your Gmail and connect to an external service; this
  *      script is the only thing that gets it, and it only sends Interac emails.
  *
- * It then runs every 5 minutes. It looks only at mail from Interac's address in
+ * It then runs every 5 minutes. Once a day (about 10am) it also asks the app to
+ * send payment reminders — that does nothing unless reminders are switched on
+ * in the app. It looks only at mail from Interac's address in
  * the last 3 days, and sends each message once. The app decides what each one
  * is and whether it can be trusted — including whether Google verified it was
  * really sent by Interac — so nothing here needs updating when Interac changes
@@ -25,16 +27,33 @@ const SEARCH = 'from:notify@payments.interac.ca newer_than:3d';
 const SEEN_KEY = 'seenMessageIds';
 const SEEN_MAX = 300;
 
+const HANDLERS = ['forwardInteracEmails', 'sendPaymentReminders'];
+
 function install() {
   uninstall();
   ScriptApp.newTrigger('forwardInteracEmails').timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger('sendPaymentReminders').timeBased().everyDays(1).atHour(10).create();
   forwardInteracEmails();
 }
 
 function uninstall() {
   ScriptApp.getProjectTriggers()
-    .filter((t) => t.getHandlerFunction() === 'forwardInteracEmails')
+    .filter((t) => HANDLERS.indexOf(t.getHandlerFunction()) !== -1)
     .forEach((t) => ScriptApp.deleteTrigger(t));
+}
+
+/** Daily: ask the app to send any payment reminders that are due. */
+function sendPaymentReminders() {
+  const props = PropertiesService.getScriptProperties();
+  const url = props.getProperty('BPM_URL');
+  const key = props.getProperty('BPM_KEY');
+  if (!url || !key) throw new Error('Set BPM_URL and BPM_KEY in Project Settings → Script properties.');
+  const res = UrlFetchApp.fetch(url.replace(/\/etransfer\/?$/, '/remind'), {
+    method: 'post',
+    headers: { 'x-payments-key': key },
+    muteHttpExceptions: true,
+  });
+  console.log('BPM reminders: ' + res.getResponseCode() + ' ' + res.getContentText());
 }
 
 function forwardInteracEmails() {

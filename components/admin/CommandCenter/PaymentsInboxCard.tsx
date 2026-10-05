@@ -19,6 +19,7 @@ interface Inbox {
   recent: EtransferPayment[];
   last28Days: { received: number; autoMatched: number; adminMatched: number; ignored: number; waiting: number };
   hold: { threshold: number; suggested: number; names: string[] };
+  reminders: { on: boolean; lastRunAt: string | null; wouldRemind: string[] };
 }
 
 /** No email for this long while set up reads as "the script may have stopped". */
@@ -171,10 +172,65 @@ export default function PaymentsInboxCard({ refreshKey = 0, onChanged }: { refre
           </ul>
         </>
       )}
+      <ReminderRow reminders={data.reminders} onDone={done} />
       <HoldRow hold={data.hold} onDone={done} />
       <SetupSheet open={setupOpen} onClose={() => setSetupOpen(false)} onDone={done} configured />
       {assigning && <AssignSheet payment={assigning} onClose={() => setAssigning(null)} onDone={done} />}
     </section>
+  );
+}
+
+// ── Reminders ──────────────────────────────────────────────────────────────
+
+/** The script calls daily; two missed days on means the pasted script predates reminders. */
+const REMINDER_STALE_MS = 2.5 * 24 * 60 * 60 * 1000;
+
+function ReminderRow({ reminders, onDone }: { reminders: Inbox['reminders']; onDone: () => void }) {
+  const online = useOnline();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const { on, lastRunAt, wouldRemind } = reminders;
+  const stale = on && (!lastRunAt || Date.now() - Date.parse(lastRunAt) > REMINDER_STALE_MS);
+
+  async function set(remindersOn: boolean) {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch(`${BASE}/api/admin/payments/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remindersOn }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      onDone();
+    } catch {
+      setError("Couldn't save — try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const who = wouldRemind.length === 0 ? 'nobody' : wouldRemind.join(', ');
+  return (
+    <div className="flex flex-col gap-2" style={{ borderTop: '1px solid var(--inner-card-border)', paddingTop: 'var(--space-4)' }}>
+      <p className="section-label-muted" style={{ margin: 0 }}>
+        Reminders · {on ? 'on' : 'off'}
+      </p>
+      <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+        A push 3 and 7 days after a session is finalized, to anyone who hasn&apos;t paid or said they&apos;ve sent it. No
+        amount on the lock screen. {on ? 'Due now' : 'If on, today it would nudge'}: {who}.
+      </p>
+      {stale && (
+        <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--sev-warn)' }}>
+          Your Gmail script hasn&apos;t asked for reminders yet. Paste the latest script from Setup and run{' '}
+          <code>install</code> again.
+        </p>
+      )}
+      <button type="button" className="cc-btn cc-btn-secondary" disabled={!online || busy} onClick={() => void set(!on)}>
+        {on ? 'Turn off' : 'Turn on'}
+      </button>
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </div>
   );
 }
 

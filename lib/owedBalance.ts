@@ -25,6 +25,10 @@ export interface UnpaidSession {
   settled: boolean;
   /** The member tapped "I've sent it" for this line. */
   selfReported: boolean;
+  /** ISO — when the bill was frozen on this row; the reminder clock starts here. */
+  settledAt: string | null;
+  /** Reminders already sent for this row. */
+  remindedCount: number;
 }
 
 /** One payable line, in cents, for matching an amount against. */
@@ -95,6 +99,8 @@ export async function computeOwed(
         owedAmount: result.owedAmount,
         settled: !!session.settled,
         selfReported: p.selfReportedPaid === true,
+        settledAt: typeof p.settledAt === 'string' ? p.settledAt : null,
+        remindedCount: Array.isArray(p.remindedAt) ? p.remindedAt.length : 0,
       });
     }
   }
