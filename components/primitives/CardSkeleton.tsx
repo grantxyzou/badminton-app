@@ -75,22 +75,22 @@ export function TabSkeleton({ announcement }: { announcement?: React.ReactNode }
 }
 
 /**
- * Admin dashboard (Command Center) skeleton — mirrors the console's real stack:
- * the tall status card, the 2-col Birds|Roster tile row, then a card. Heights
- * track the live layout (measured ≈300 / 104 tiles / 176). This is what
- * next/prod shows, so the auth-check skeleton reserves the tiles immediately.
- * The page title is rendered separately by the caller's `<PageHeader>`.
+ * Admin dashboard (Command Center) skeleton — the console's first three cards
+ * as they actually measure (next session 274, the Birds | Roster tiles 109,
+ * payments 351; 400px, 2026-10-05), in the console's own tile grid and gap.
+ * It used to be 300 / 104 / 176 at a 16px gap, which matched none of them, so
+ * the console jumped as it replaced this. Keep in step with CONSOLE_HEIGHTS in
+ * CommandCenter.tsx. The bar above is the caller's.
  */
 export function AdminTabSkeleton() {
   return (
-    <div className="space-y-4" role="status" aria-label="Loading">
-      <CardSkeleton height={300} />
-      {/* Birds | Roster tile row */}
-      <div className="grid grid-cols-2 gap-3">
-        <CardSkeleton height={104} />
-        <CardSkeleton height={104} />
+    <div className="flex flex-col gap-5" role="status" aria-label="Loading">
+      <CardSkeleton height={274} />
+      <div className="cc-dgrid">
+        <CardSkeleton height={109} />
+        <CardSkeleton height={109} />
       </div>
-      <CardSkeleton height={176} />
+      <CardSkeleton height={351} />
     </div>
   );
 }

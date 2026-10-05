@@ -835,6 +835,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="motion-fade"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} /></div>}
           {activeTab === 'stringing' && <div key={`stringing-${refreshNonce}`} className="motion-fade"><StringingTab /></div>}
           {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="motion-fade"><SkillsTab onTabChange={setActiveTab} /></div>}
+          {/* Admin's verdict is still pending (a reload or deep link onto the
+              tab): show the console's loading frame, not an empty page. */}
+          {activeTab === 'admin' && !adminKnown && <div key="admin-pending" className="motion-fade"><AdminFallback /></div>}
           {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="motion-fade"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
           {activeTab === 'profile' && (
             <div key={`profile-${refreshNonce}`} className="motion-fade">

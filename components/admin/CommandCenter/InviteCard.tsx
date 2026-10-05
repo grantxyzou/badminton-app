@@ -6,6 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import InviteShare from '@/components/onboarding/InviteShare';
 import { useInviteLink } from '@/lib/useInviteLink';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 interface Props {
   /** Only rendered for an admin of the current club; the endpoint enforces it too. */
@@ -38,6 +39,8 @@ export default function InviteCard({ enabled = true, groupName }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  // The console's RevealSlot holds this place until the invite has answered.
+  useRevealReady(!enabled || !loading);
   if (!enabled) return null;
 
   async function doRegenerate() {
@@ -75,9 +78,10 @@ export default function InviteCard({ enabled = true, groupName }: Props) {
 
       <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
         {loading ? (
-          // Reserve the shape rather than collapsing the card to nothing — the
-          // skeleton contract the tabs use, so the card does not jump on load.
-          <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>…</p>
+          // Reserve the shape with a shimmer line where the link will be — not
+          // a "…" standing in for content (the loading rule). Seen only on a
+          // reload; the first load is held behind the console's skeleton.
+          <div className="shimmer-line rounded-lg" style={{ height: 12, width: '55%' }} aria-hidden="true" />
         ) : invite ? (
           <>
             <InviteShare token={invite.token} code={invite.code} groupName={groupName} />

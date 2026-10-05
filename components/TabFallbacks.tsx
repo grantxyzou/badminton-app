@@ -88,12 +88,26 @@ export function ProfileFallback() {
   return <ProfileSkeleton title={tNav('profile')} />;
 }
 
-/** AdminTab's auth-check branch, exactly. */
+/**
+ * AdminTab's auth-check branch: the console's TopBar, then its skeleton.
+ *
+ * The bar is a static copy of `<TopBar>`'s markup with an INERT chevron: a
+ * chunk fallback gets no props, so it has no back action to give the button,
+ * and a working-looking button that did nothing would be worse than a glyph.
+ * It is on screen only while the admin chunk downloads.
+ */
 export function AdminFallback() {
   const pageT = useTranslations('pages.admin');
   return (
     <div className="space-y-5" role="status" aria-label="Loading">
-      <PageHeader>{pageT('title')}</PageHeader>
+      <div className="bpm-topbar">
+        <span className="bpm-topbar__back" aria-hidden="true">
+          <span className="material-icons" aria-hidden="true">chevron_left</span>
+        </span>
+        <div className="bpm-topbar__col">
+          <h1 className="bpm-topbar__title">{pageT('title')}</h1>
+        </div>
+      </div>
       <AdminTabSkeleton />
     </div>
   );

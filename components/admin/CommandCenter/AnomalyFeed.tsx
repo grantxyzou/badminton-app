@@ -55,7 +55,9 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   const [paused, setPaused] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // Only the FIRST load hides the stack. Every refresh (NextSessionCard's
+    // onChanged bumps the key) used to set loading again, so every toast on
+    // screen vanished and reappeared — the refetch rule, on an overlay.
     setLoadError(false);
     setAuthExpired(false);
     try {

@@ -12,11 +12,9 @@ import { join, relative } from 'node:path';
  * slot shows the skeleton; such a card calls `useRevealReady`, and that is what
  * exempts it here.
  *
- * This is a RATCHET. Today's offenders are listed below and each phase of the
- * cascade deletes the ones it fixes. A NEW offender fails at once. When an
- * entry stops offending, the test fails too, until the entry is deleted — so
- * the list can only shrink. When both lists are empty, drop the ratchet and
- * keep the rule.
+ * It began as a RATCHET — the offenders of the day listed, each phase of the
+ * cascade deleting the ones it fixed — and phase 5 emptied it. The rule is
+ * strict now: a new offender fails, with nowhere to list it.
  *
  * It is a heuristic over source text, not a parser: it sees `if (<loading
  * condition>) return null` on one line, in a file that fetches. A null return
@@ -26,24 +24,19 @@ import { join, relative } from 'node:path';
 
 const ROOT = join(__dirname, '..');
 
-/** Renders nothing while it loads. Phase that fixes each is noted. */
-const NULL_WHILE_LOADING_BACKLOG = new Set<string>([
-  'components/admin/CommandCenter/AnomalyFeed.tsx', // phase 5 (Admin)
-  'components/admin/CommandCenter/AccessRequestsCard.tsx', // phase 5
-  'components/admin/CommandCenter/SignInReadinessCard.tsx', // phase 5
-  'components/admin/CommandCenter/PaymentsInboxCard.tsx', // phase 5 — added by #506 the same day
-]);
-
-/** Shows "Loading…" text where a skeleton belongs. */
-const LOADING_TEXT_BACKLOG = new Set<string>([
-  'components/admin/ReleasesView.tsx', // phase 5
-  'components/admin/CommandCenter/PlayerProfileSheet.tsx', // phase 5
-]);
-
-/** messages/en.json copy that says "Loading…". */
-const LOADING_COPY_BACKLOG = new Set<string>([
-  'home.loading',
-  'players.loading',
+/**
+ * The ratchet is EMPTY (loading cascade phase 5, 2026-10-05): every offender
+ * listed when this canary landed has been fixed, so the rule is strict now — a
+ * new offender fails, with no list to add it to.
+ *
+ * One standing exemption, with its reason. Not a backlog: nothing here is
+ * waiting to be fixed.
+ */
+const OVERLAYS = new Set<string>([
+  // The anomaly toasts render into `.toast-stack`, which is position: fixed —
+  // they float over the page and hold no place in it, so there is no layout
+  // for a skeleton to keep. Nothing while loading is correct for an overlay.
+  'components/admin/CommandCenter/AnomalyFeed.tsx',
 ]);
 
 function walk(dir: string): string[] {
@@ -71,7 +64,9 @@ function nullWhileLoading(src: string): boolean {
   const empty = nullStates(src);
   // A file that already draws a skeleton has a loading branch; a null on
   // empty state there is a loaded-and-nothing-to-show, not a loading hole.
-  const drawsSkeleton = /\b(CardSkeleton|RevealSlot)\b/.test(src);
+  // JSX, not the bare word: a comment saying "the RevealSlot holds this place"
+  // matched the bare word and exempted a card that drew no skeleton at all.
+  const drawsSkeleton = /<(CardSkeleton|RevealSlot)\b/.test(src);
   // Two-space indent = a component's own top-level guard, not a helper's.
   for (const m of src.matchAll(/^ {2}if \(([^\n]*)\) return null;?/gm)) {
     const cond = m[1];
@@ -104,7 +99,7 @@ function loadingCopy(): string[] {
 describe('loading rule: a skeleton holds the place, never nothing or "Loading…"', () => {
   it('no card renders null while it loads, unless a RevealSlot holds its place', () => {
     const offenders = FILES.filter((f) => nullWhileLoading(f.src)).map((f) => f.path);
-    const fresh = offenders.filter((p) => !NULL_WHILE_LOADING_BACKLOG.has(p));
+    const fresh = offenders.filter((p) => !OVERLAYS.has(p));
     expect(
       fresh,
       'Render a skeleton the size of the card while it loads, or wrap it in a RevealSlot and call useRevealReady (components/primitives/Reveal.tsx).',
@@ -113,24 +108,18 @@ describe('loading rule: a skeleton holds the place, never nothing or "Loading…
 
   it('no component shows "Loading…" text where a skeleton belongs', () => {
     const offenders = FILES.filter((f) => loadingText(f.src)).map((f) => f.path);
-    const fresh = offenders.filter((p) => !LOADING_TEXT_BACKLOG.has(p));
-    expect(fresh, 'Use a CardSkeleton shaped like the content instead of "Loading…" text.').toEqual([]);
+    expect(offenders, 'Use a CardSkeleton shaped like the content instead of "Loading…" text.').toEqual([]);
   });
 
-  it('no new "Loading…" copy is added to the messages', () => {
-    const fresh = loadingCopy().filter((k) => !LOADING_COPY_BACKLOG.has(k));
-    expect(fresh, 'A loading state is a skeleton, not a sentence.').toEqual([]);
+  it('no "Loading…" copy in the messages', () => {
+    expect(loadingCopy(), 'A loading state is a skeleton, not a sentence.').toEqual([]);
   });
 
-  // The ratchet: a fixed file must leave its backlog, or the list rots into a
-  // permanent exemption nobody can tell from a live one.
-  it('every backlog entry still offends (delete the ones you fixed)', () => {
+  // An exemption must still be needed and still exist: a fixed or deleted file
+  // left here would be a permanent pass nobody can tell from a live one.
+  it('every overlay exemption is still an overlay that renders null while loading', () => {
     const byPath = new Map(FILES.map((f) => [f.path, f.src]));
-    const stale = [
-      ...[...NULL_WHILE_LOADING_BACKLOG].filter((p) => !byPath.has(p) || !nullWhileLoading(byPath.get(p)!)),
-      ...[...LOADING_TEXT_BACKLOG].filter((p) => !byPath.has(p) || !loadingText(byPath.get(p)!)),
-      ...[...LOADING_COPY_BACKLOG].filter((k) => !loadingCopy().includes(k)),
-    ];
-    expect(stale, 'These are fixed — remove them from the backlog in this file.').toEqual([]);
+    const stale = [...OVERLAYS].filter((p) => !byPath.has(p) || !nullWhileLoading(byPath.get(p)!));
+    expect(stale, 'No longer needed — remove from OVERLAYS.').toEqual([]);
   });
 });

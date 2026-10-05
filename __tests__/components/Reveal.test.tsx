@@ -195,6 +195,35 @@ describe('RevealGroup / RevealSlot', () => {
     expect(container.querySelector('[data-reveal-slot]')!.hasAttribute('hidden')).toBe(true);
   });
 
+  it('StrictMode remounting never lets a ready slot jump the queue', async () => {
+    // Dev mounts, unmounts and remounts every effect. Unregistering slots one by
+    // one used to re-run the order each time, and once only the always-ready
+    // LAST slot was registered it revealed — latched — while every slot above
+    // it was still a skeleton. Seen on the admin console's settings list.
+    const { StrictMode } = await import('react');
+    render(
+      <StrictMode>
+        <RevealGroup>
+          <RevealSlot ready={false} placeholder={ph(1)}><p>card 1</p></RevealSlot>
+          <RevealSlot ready placeholder={ph(2)}><p>card 2</p></RevealSlot>
+        </RevealGroup>
+      </StrictMode>,
+    );
+    await act(async () => { await Promise.resolve(); });
+    expect(shown('card 2')).toBe(false);
+    expect(placeholderUp(2)).toBe(true);
+  });
+
+  it('a slot with no placeholder takes no space until it has something to show', () => {
+    const { container } = render(
+      <RevealGroup>
+        <RevealSlot ready={false} placeholder={null}><p>card 1</p></RevealSlot>
+      </RevealGroup>,
+    );
+    // A pending wrapper in a flex column would still take a gap.
+    expect(container.querySelector('[data-reveal-slot]')!.hasAttribute('hidden')).toBe(true);
+  });
+
   it('a slot outside a group reveals on its own, and fades when it waited', () => {
     const one = (ready: boolean) => (
       <RevealSlot ready={ready} placeholder={ph(1)}><p>solo</p></RevealSlot>

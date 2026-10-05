@@ -18,6 +18,8 @@ import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
+import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -38,6 +40,12 @@ interface CommandCenterProps {
  * across every admin domain (session, payments, birds, roster) so the
  * organizer can confirm "everything looks right" in 30 seconds.
  */
+/** Slot placeholders for the console's cards. */
+// Measured on the running console at 400px, 2026-10-05. AdminTabSkeleton
+// (the auth-check frame shown before this) uses the same numbers and gaps, so
+// the hand-off from it to these placeholders changes nothing on screen.
+export const CONSOLE_HEIGHTS = { nextSession: 274, tile: 109, payments: 351, invite: 343, settings: 391 } as const;
+
 export default function CommandCenter({ refreshKey, setView, onExit }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
@@ -117,10 +125,23 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
           affordance (no crumb — "ADMIN" over an "Admin" title is redundant). */}
       <TopBar title={pageT('title')} onBack={onExit} backLabel="Back to profile" />
 
+      {/* Toasts float over the page (`.toast-stack` is fixed) and hold no place
+          in it, so they sit outside the cascade below. */}
       <AnomalyFeed refreshKey={composedRefresh} />
+
+      {/* LOADING CASCADE (docs/plans/loading-cascade.md): every card holds its
+          place and shows in this order, however the eight reads answer. The
+          usually-empty cards (requests, inbox, readiness) reserve no space but
+          keep their order — so the settings list, last, cannot be pushed down
+          by one of them arriving. A flex gap so a closed slot leaves none. */}
+      <div className="flex flex-col gap-5">
+      <RevealGroup>
       {/* Above the session card: somebody locked out is waiting on a human,
           and it renders nothing at all when nobody is. */}
-      <AccessRequestsCard refreshKey={composedRefresh} />
+      <RevealSlot canBeEmpty placeholder={null}>
+        <AccessRequestsCard refreshKey={composedRefresh} />
+      </RevealSlot>
+      <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />}>
       <NextSessionCard
         refreshKey={composedRefresh}
         onEdit={() => setView('session-details')}
@@ -128,34 +149,55 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
         onShareCost={() => openReceipt({ mode: 'group' })}
         onChanged={() => setLocalRefresh((n) => n + 1)}
       />
+      </RevealSlot>
+      <RevealSlot
+        placeholder={
+          <div className="cc-dgrid">
+            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
+            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
+          </div>
+        }
+      >
       <AdminDashTiles
         onOpenBirds={() => setView('birds')}
         onOpenRoster={() => setView('members')}
       />
+      </RevealSlot>
       {/* E-transfers waiting for a person sit right above the paid pills they
           resolve into; a match bumps the refresh so the pills move with it. */}
-      <PaymentsInboxCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
+      <RevealSlot canBeEmpty placeholder={null}>
+        <PaymentsInboxCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
+      </RevealSlot>
+      <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>
       <PaymentsCard
         refreshKey={composedRefresh}
         onOpenPlayer={openPlayer}
       />
+      </RevealSlot>
 
       {/* BELOW the week's work, not above it. Growing the club matters, but an
           organiser opens this screen to run Thursday — the invite is the thing
           you come looking for, not the thing you are interrupted by. Renders
           nothing with the flag off (the endpoint 404s) or for a non-admin. */}
-      <InviteCard enabled={invitesOn} groupName={groupName} />
+      <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.invite} />}>
+        <InviteCard enabled={invitesOn} groupName={groupName} />
+      </RevealSlot>
 
       {/* Members only (docs/plans/members-only.md): who would be locked out.
           BELOW the week's work, beside the invite, for the invite card's own
           reason — it is a checklist worked through over weeks before the flip,
           not something to be interrupted by every Thursday. Access requests,
           which are someone waiting, stay at the top. */}
-      <SignInReadinessCard refreshKey={composedRefresh} />
+      <RevealSlot canBeEmpty placeholder={null}>
+        <SignInReadinessCard refreshKey={composedRefresh} />
+      </RevealSlot>
 
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
           Announcements / E-transfer / Skip dates / Ledger / Release notes
-          are drill-in sub-pages (AdminBackHeader) wired in AdminDashboard. */}
+          are drill-in sub-pages (AdminBackHeader) wired in AdminDashboard.
+          Static, so ready at once — but slotted, so it shows only after the
+          cards above it, which would otherwise push it down as they arrive. */}
+      <RevealSlot ready placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.settings} />}>
       <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
         <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
           {[
@@ -214,6 +256,9 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
             </li>
           ))}
         </ul>
+      </div>
+      </RevealSlot>
+      </RevealGroup>
       </div>
 
       <PlayerProfileSheet
