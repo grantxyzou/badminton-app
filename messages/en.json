@@ -111,7 +111,8 @@
         },
       "title": "Stringing service",
       "subtitle": "Request and track the progress of your racket here.",
-      "soon": "Coming soon"
+      "soon": "Coming soon",
+      "shopUnavailable": "Couldn\u2019t check whether the stringing service is open."
     },
     "skillDiscovery": {
       "title": "Curious if your game's improving?",

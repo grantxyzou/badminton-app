@@ -25,6 +25,7 @@ import { usePush } from '@/lib/usePush';
 import { isStandalone } from '@/lib/standalone';
 import { isNative } from '@/lib/native';
 import PageHeader from './primitives/PageHeader';
+import { ProfileSkeleton } from './TabFallbacks';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
@@ -34,7 +35,6 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import GroupsPage from './profile/GroupsPage';
 import SettingsList, { type SettingsRow } from './profile/SettingsList';
 import StatusBanner from './primitives/StatusBanner';
-import CardSkeleton from './primitives/CardSkeleton';
 import MemberAvatar from './primitives/MemberAvatar';
 import AvatarSheet from './profile/AvatarSheet';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
@@ -90,8 +90,11 @@ export default function ProfileTab({
   const tGroups = useTranslations('groups');
   // Multi-group: the switcher's data. Resolves to `group: null` with the flag
   // off (the endpoints 404 by design), so the row simply does not render.
-  const { group, groups, error: groupsError, refresh: refreshGroups } = useCurrentGroup();
-  const [identity, setLocalIdentity] = useState<Identity | null>(null);
+  const { group, groups, loading: groupsLoading, error: groupsError, refresh: refreshGroups } = useCurrentGroup();
+  // `undefined` = not read yet. It used to start as `null` — "signed out" — so
+  // a signed-in member's first frame was the anonymous sign-in card, before
+  // the effect below read localStorage. Not read yet renders the loading frame.
+  const [identity, setLocalIdentity] = useState<Identity | null | undefined>(undefined);
   /**
    * Which credential the anonymous card is asking for. One form is visible at a
    * time — a PIN form, an email form and two account-creation buttons stacked
@@ -318,11 +321,12 @@ export default function ProfileTab({
   // and never for an admin, whose sign-in mints only the admin cookie.
   const deviceSignedOut = !!identity && authKnown && pinAuthed === false && !isAdmin;
 
-  if (identity && !authKnown && !isAdmin) {
+  if (identity === undefined || (identity && !authKnown && !isAdmin)) {
+    // The same frame the chunk fallback showed (TabFallbacks), shaped like the
+    // member page it becomes — so nothing changes until the content does.
     return (
-      <div key="profile-loading" className="motion-fade flex flex-col gap-4">
-        <PageHeader>{tNav('profile')}</PageHeader>
-        <CardSkeleton height={220} />
+      <div key="profile-loading">
+        <ProfileSkeleton title={tNav('profile')} />
       </div>
     );
   }
@@ -604,6 +608,7 @@ export default function ProfileTab({
       <GroupsPage
         onBack={() => setView('root')}
         groups={groups}
+        loading={groupsLoading}
         loadError={groupsError}
         onRetry={() => void refreshGroups()}
         // A switch re-mints both cookies, so every tab has to refetch; this
