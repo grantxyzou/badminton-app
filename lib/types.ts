@@ -130,7 +130,7 @@ export interface Player {
   /** ISO — when `paid` last went true. Absent on rows marked before 2026-10. */
   paidAt?: string;
   /** How it was marked: an admin's tap, or an e-transfer the inbox matched. */
-  paidVia?: 'manual' | 'etransfer';
+  paidVia?: 'manual' | 'etransfer' | 'credit';
   /** The `payments` doc that paid it (`paidVia: 'etransfer'`). */
   paymentId?: string;
   /**
@@ -144,6 +144,28 @@ export interface Player {
    * Phase 1b): one at settle + 3 days, one at + 7, then never again.
    */
   remindedAt?: string[];
+}
+
+/**
+ * Container `ledger` (PK `/memberId`, GROUP scoped) — store credit, the first
+ * slice of the Phase 2 ledger (docs/plans/payments.md). APPEND-ONLY: an entry
+ * is never edited or upserted, a mistake is corrected by a new entry, and a
+ * balance is the sum. Phase 2 adds charge and payment kinds to the same rails.
+ */
+export interface LedgerEntry {
+  id: string;
+  groupId?: string;
+  memberId: string;
+  kind: 'credit_grant' | 'gift_redeem' | 'credit_spend' | 'credit_refund';
+  /** Signed cents: + adds credit, − uses it. */
+  amountCents: number;
+  /** What the admin wrote ("Birthday", "Bruce prepaid"), or what it paid. */
+  note: string;
+  /** What a spend paid — a session row or a stringing job. */
+  ref?: { kind: 'session' | 'stringing'; id: string; pk: string };
+  createdAt: string;
+  /** memberId of whoever made it: the admin who granted, the member who spent. */
+  createdBy: string;
 }
 
 /** One line of money a payment settled — a session row or a stringing job. */
@@ -238,14 +260,33 @@ export interface Group {
    */
   closedAt?: string;
   /**
-   * Pointers at the group's CURRENT invite docs — `invite:${sha256(token)}` and
-   * `code:${sha256(code)}`, siblings in this same container. The secrets
-   * themselves live on those docs and deliberately not here, so a route that
-   * returns a group verbatim cannot leak a working invite. `lib/invites.ts`
-   * owns both; absent means the group has never minted a pair.
+   * LEGACY (until 2026-10-06): pointers at the club-wide multi-use invite pair.
+   * No longer read — invites are one-time now (`invites` below) — and kept
+   * only so a rollback runs older code against the same documents. Never
+   * write them again.
    */
   inviteId?: string;
   inviteCodeId?: string;
+  /**
+   * The club's LIVE one-time invites (docs/plans/one-time-invites.md). Each
+   * entry points at a pair of sibling docs in this container —
+   * `invite:${sha256(token)}` and `code:${sha256(code)}` — whose plaintext
+   * secrets live there and deliberately not here, so a route that returns a
+   * group verbatim cannot leak a working invite. An invite is live exactly
+   * while it is listed here and unexpired; using it removes the entry under an
+   * etag condition. `lib/invites.ts` owns the list. Additive: absent means none.
+   */
+  invites?: PendingInvite[];
+}
+
+/** One live one-time invite, as listed on its `Group`. */
+export interface PendingInvite {
+  /** The link doc's id, `invite:${sha256(token)}`. */
+  id: string;
+  /** The code doc's id, `code:${sha256(code)}`. */
+  codeId: string;
+  createdAt: string;
+  expiresAt: string;
 }
 
 /** Container `memberships`, PK `/groupId`; id is `${groupId}:${memberId}`. */

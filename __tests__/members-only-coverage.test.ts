@@ -83,6 +83,8 @@ const ROUTES: Record<string, Entry> = {
   'admin/migrate-groups': admin('isAdminAuthedWithMember'),
   'admin/owed-audit': admin(),
   'admin/payments': admin('isAdminAuthedWithMember'),
+  'admin/credit': admin('isAdminAuthedWithMember'),
+  'admin/giftcards': admin('isAdminAuthedWithMember'),
   'admin/settings': admin('isAdminAuthedWithMember'),
   'admin/slice0': admin(),
   'admin/sign-in-readiness': admin('isAdminAuthedWithMember'),
@@ -109,6 +111,7 @@ const ROUTES: Record<string, Entry> = {
   'kudos/eligible': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
+  credit: { kind: 'authed', helper: 'requireGroupMember' },
   'stringing/jobs': { kind: 'authed', helper: 'verifyMemberAuth' },
 
   // ── Public by design: nothing about the club ─────────────────────────────

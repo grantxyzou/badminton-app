@@ -10,7 +10,7 @@ import { isFlagOn } from '@/lib/flags';
  * (docs/plans/members-only.md), so the admin has to be able to hand one out.
  *
  * ONE DEFINITION, IMPORTED BY BOTH SIDES. The server's `lib/groupRoutes.ts`
- * had this rule and the client's `useInviteLink` had an older one (multi-group
+ * had this rule and the client's invite hook (now `useInvites`) had an older one (multi-group
  * alone). On 2026-10-03 production turned members-only on with multi-group
  * off, and the two disagreed in the one state that mattered: the server
  * answered the invite and nobody asked for it. The Invite card rendered with

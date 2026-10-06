@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor, cleanup } from '@testing-library/react';
 import { useCurrentGroup } from '../lib/useCurrentGroup';
-import { useInviteLink } from '../lib/useInviteLink';
+import { useInvites } from '../lib/useInvites';
 
 // With the multi-group flag off, every `/api/groups/*` route 404s by design.
 // The hooks used to ask anyway, and six mounted consumers turned that into a
@@ -25,7 +25,7 @@ describe('group hooks and the multi-group flag', () => {
         return jsonResponse({ id: 'bpm', name: 'BPM', role: 'member', rosterName: 'Lin', isOwner: false, memberCount: 6 });
       }
       if (url.endsWith('/api/groups/mine')) return jsonResponse({ groups: [] });
-      if (url.endsWith('/api/groups/invite')) return jsonResponse({ token: 't', code: 'ABCDEFGH', createdAt: '2026-09-13' });
+      if (url.endsWith('/api/groups/invite')) return jsonResponse({ invites: [{ id: 'invite:x', token: 't', code: 'ABCDEFGH', createdAt: '2026-09-13', expiresAt: '2026-09-20' }] });
       return jsonResponse({}, 404);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -58,22 +58,22 @@ describe('group hooks and the multi-group flag', () => {
     expect(result.current.group?.id).toBe('bpm');
   });
 
-  it('useInviteLink: both flags off makes no request', async () => {
+  it('useInvites: both flags off makes no request', async () => {
     process.env[FLAG] = 'false';
     process.env[MEMBERS_ONLY] = 'false';
-    const { result } = renderHook(() => useInviteLink());
+    const { result } = renderHook(() => useInvites());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.current.invite).toBeNull();
+    expect(result.current.invites).toEqual([]);
     expect(result.current.error).toBe(false);
   });
 
-  it('useInviteLink: flag on asks for the invite', async () => {
+  it('useInvites: flag on asks for the invites', async () => {
     process.env[FLAG] = 'true';
-    const { result } = renderHook(() => useInviteLink());
+    const { result } = renderHook(() => useInvites());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(fetchMock.mock.calls.some((c) => String(c[0]).endsWith('/api/groups/invite'))).toBe(true);
-    expect(result.current.invite?.code).toBe('ABCDEFGH');
+    expect(result.current.invites[0]?.code).toBe('ABCDEFGH');
   });
 
   /**
@@ -85,13 +85,12 @@ describe('group hooks and the multi-group flag', () => {
    * link and "Share sign-up link" shared the bare app address. A new person
    * who opened it was asked for an invite code nobody could give them.
    */
-  it('useInviteLink: members-only alone asks for the invite, as the server allows', async () => {
+  it('useInvites: members-only alone asks for the invites, as the server allows', async () => {
     process.env[FLAG] = 'false';
     process.env[MEMBERS_ONLY] = 'true';
-    const { result } = renderHook(() => useInviteLink());
+    const { result } = renderHook(() => useInvites());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(fetchMock.mock.calls.some((c) => String(c[0]).endsWith('/api/groups/invite'))).toBe(true);
-    expect(result.current.invite?.code).toBe('ABCDEFGH');
-    expect(result.current.url).toContain('?join=t');
+    expect(result.current.invites[0]?.code).toBe('ABCDEFGH');
   });
 });

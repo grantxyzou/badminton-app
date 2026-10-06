@@ -22,17 +22,15 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  *     makes that structural rather than remembered — it marks on both the
  *     native and the web branch, and falls back to the clipboard.
  *
- * THE LINK CARRIES THE INVITE when the club has one. That is what makes this
- * message work for a stranger as well as a member: the club chat forwards it to
- * someone who has never opened the app, and they land on the join step for THAT
- * club instead of a generic front door. A member tapping it is already on the
- * roster and joining is idempotent, so one link serves both.
+ * THE LINK IS THE PLAIN APP ADDRESS — no invite. It used to carry the club's
+ * invite so the chat could forward it to a newcomer; invites are one-time now
+ * (docs/plans/one-time-invites.md), and a one-time link in a group chat is
+ * used up by the first tap. A newcomer gets their own link from the admin's
+ * Invite card. Everyone this message reaches is already a member.
  */
 export interface SignupShareInput {
   /** The club's name. Falls back to the deployment's own name. */
   groupName?: string | null;
-  /** From `useInviteLink()`. Absent for a non-admin, or with the flag off. */
-  inviteUrl?: string | null;
   /** The session's ISO datetime, for the "(Thursday, Sep 18)" aside. */
   datetime?: string | null;
 }
@@ -48,7 +46,7 @@ const DEFAULT_CLUB = APP_NAME;
 
 export function buildSignupShare(input: SignupShareInput): { title: string; text: string; url: string } {
   const club = input.groupName?.trim() || DEFAULT_CLUB;
-  const url = input.inviteUrl || (typeof window === 'undefined' ? BASE : `${window.location.origin}${BASE}`);
+  const url = typeof window === 'undefined' ? BASE : `${window.location.origin}${BASE}`;
 
   let dateLabel = '';
   if (input.datetime) {

@@ -72,6 +72,10 @@ const OWNED: readonly PurgeTarget[] = [
   { container: 'events', by: 'memberId' },
   { container: 'drillCompletions', by: 'memberId' },
   { container: 'stringingJobs', by: 'memberId' },
+  // Store credit: a balance belongs to the person, and closing the account
+  // forfeits it. Deleted, not anonymized — nobody else's arithmetic depends
+  // on it (the session rows a spend paid stay paid; those are anonymized).
+  { container: 'ledger', by: 'memberId' },
   // Kudos RECEIVED are about them. Kudos they GAVE are part of someone else's
   // count and are anonymized instead — see below.
   { container: 'kudos', by: 'recipientMemberId' },

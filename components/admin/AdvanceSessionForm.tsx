@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import type { Session, BirdPurchase } from '@/lib/types';
 import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
 import { shareSignup } from '@/lib/signupShare';
-import { useInviteLink } from '@/lib/useInviteLink';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
@@ -165,20 +164,16 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   }
 
   const [shareCopied, setShareCopied] = useState(false);
-  // Admin-only screen, so the invite read is allowed; both resolve to null with
-  // the flag off and the share falls back to the plain app URL.
-  const { url: inviteUrl } = useInviteLink();
   const { group } = useCurrentGroup();
 
   async function shareSignupLink() {
     // The message and the link are built in `lib/signupShare.ts`, shared with
-    // NextSessionCard — the club's name is not a constant any more, and the URL
-    // carries the club's INVITE so the chat can forward it to someone who has
-    // never opened the app. One share path for browser, PWA and native shell;
-    // it marks the excursion itself (iOS may evict the PWA mid-sheet).
+    // NextSessionCard — the club's name is not a constant any more. The link is
+    // the plain app address: invites are one-time, and live on the Invite card.
+    // One share path for browser, PWA and native shell; it marks the excursion
+    // itself (iOS may evict the PWA mid-sheet).
     const outcome = await shareSignup({
       groupName: group?.name,
-      inviteUrl,
       datetime: date ? `${date}T00:00:00` : null,
     });
     if (outcome === 'copied') {

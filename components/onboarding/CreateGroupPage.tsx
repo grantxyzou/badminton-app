@@ -69,7 +69,7 @@ export default function CreateGroupPage({
   const [rosterName, setRosterName] = useState(defaultName ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ name: string; token: string; code: string } | null>(null);
+  const [created, setCreated] = useState<{ name: string; token: string; code: string; expiresAt?: string } | null>(null);
   const [step, setStep] = useState<'auth' | 'form'>(startAtAuth ? 'auth' : 'form');
   const [credMode, setCredMode] = useState<'signup' | 'signin'>('signup');
   const [mailNote, setMailNote] = useState<string | null>(null);
@@ -186,6 +186,7 @@ export default function CreateGroupPage({
         name: data.group?.name ?? trimmed,
         token: data.invite?.token ?? '',
         code: data.invite?.code ?? '',
+        expiresAt: data.invite?.expiresAt,
       });
       onCreated?.();
     } catch {
@@ -298,7 +299,7 @@ export default function CreateGroupPage({
           // The club exists now — the one moment on this page worth marking.
           <div key="created" className="status-celebrate" style={{ display: 'grid', gap: 'var(--space-5)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('createdHint')}</p>
-            <InviteShare token={created.token} code={created.code} groupName={created.name} />
+            <InviteShare token={created.token} code={created.code} groupName={created.name} expiresAt={created.expiresAt} />
             <button type="button" onClick={onDone} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
               {t('done')}
             </button>

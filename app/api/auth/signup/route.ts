@@ -106,112 +106,134 @@ export async function POST(req: NextRequest) {
   if (!invited.ok) {
     return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
   }
-  const signupGroupId = invited.groupId;
-  // `null` is the create-a-group case: a real account deliberately on no
-  // roster yet (lib/inviteSignup.ts). Three consequences here.
-  //
-  // 1. NO NAME-TAKEN CHECK. A roster name is unique per CLUB, and this account
-  //    is in none — the reservation happens when `createGroup` mints the owner's
-  //    membership, which is the only place that can know the club.
-  // 2. NO MEMBERSHIP WRITE.
-  // 3. The COOKIE still claims BPM, because `completeSignIn` would fall back to
-  //    it anyway: `groupForMember` tolerates a member with no membership and
-  //    never checks BPM itself. Non-admin, and enough for `POST /api/groups`.
-  const joinsAClub = signupGroupId !== null;
-  const cookieGroupId = signupGroupId ?? BPM_GROUP_ID;
+  /**
+   * THE INVITE IS ALREADY CONSUMED (docs/plans/one-time-invites.md). Whatever
+   * `finish` answers, the claim is settled afterwards: an account was created
+   * → the invite is finalized against it; anything else — a taken name, a
+   * database error — → it is released so the person can try again.
+   */
+  const claim = invited.invited ? invited.claim : null;
+  let createdId: string | null = null;
+  const finish = async (): Promise<NextResponse> => {
+    const signupGroupId = invited.groupId;
+    // `null` is the create-a-group case: a real account deliberately on no
+    // roster yet (lib/inviteSignup.ts). Three consequences here.
+    //
+    // 1. NO NAME-TAKEN CHECK. A roster name is unique per CLUB, and this account
+    //    is in none — the reservation happens when `createGroup` mints the owner's
+    //    membership, which is the only place that can know the club.
+    // 2. NO MEMBERSHIP WRITE.
+    // 3. The COOKIE still claims BPM, because `completeSignIn` would fall back to
+    //    it anyway: `groupForMember` tolerates a member with no membership and
+    //    never checks BPM itself. Non-admin, and enough for `POST /api/groups`.
+    const joinsAClub = signupGroupId !== null;
+    const cookieGroupId = signupGroupId ?? BPM_GROUP_ID;
 
-  // Is the display name already someone's? A name collision is a REFUSAL, never
-  // a silent link. Member names are enumerable via GET /api/members, so
-  // attaching a new credential to an existing name on the strength of the name
-  // alone is account takeover — the same hazard WS#3 closed in 2026-06-03.
-  //
-  // Goes through lib/memberResolve.ts rather than issuing its own
-  // case-insensitive name query: that lookup has exactly one owner, because it
-  // once existed as ten hand-copied variants that disagreed about whether to
-  // filter on `active`. `__tests__/member-resolve-canary.test.ts` enforces it.
-  // With groups on the WRITE-side check is the reservation itself — a name a
-  // removed member still holds is not free — and the account that follows is
-  // joined to this group, or nothing could ever resolve it. Note this is now
-  // checked against the INVITED club's roster, which is the one the name will
-  // actually have to be unique in.
-  const taken = !joinsAClub
-    ? false
-    : isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
-    ? (await rosterNameHolder(signupGroupId, name)) !== null
-    : (await resolveActiveMemberId(signupGroupId, name)) !== null;
-  if (taken) {
-    return NextResponse.json({ error: 'name_taken' }, { status: 409 });
-  }
+    // Is the display name already someone's? A name collision is a REFUSAL, never
+    // a silent link. Member names are enumerable via GET /api/members, so
+    // attaching a new credential to an existing name on the strength of the name
+    // alone is account takeover — the same hazard WS#3 closed in 2026-06-03.
+    //
+    // Goes through lib/memberResolve.ts rather than issuing its own
+    // case-insensitive name query: that lookup has exactly one owner, because it
+    // once existed as ten hand-copied variants that disagreed about whether to
+    // filter on `active`. `__tests__/member-resolve-canary.test.ts` enforces it.
+    // With groups on the WRITE-side check is the reservation itself — a name a
+    // removed member still holds is not free — and the account that follows is
+    // joined to this group, or nothing could ever resolve it. Note this is now
+    // checked against the INVITED club's roster, which is the one the name will
+    // actually have to be unique in.
+    const taken = !joinsAClub
+      ? false
+      : isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
+      ? (await rosterNameHolder(signupGroupId, name)) !== null
+      : (await resolveActiveMemberId(signupGroupId, name)) !== null;
+    if (taken) {
+      return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+    }
 
-  const memberId = `member-${randomBytes(8).toString('hex')}`;
+    const memberId = `member-${randomBytes(8).toString('hex')}`;
 
-  // Reserve the address. A 409 here IS the uniqueness check — Cosmos has no
-  // cross-partition unique constraint, so a query-then-write would race.
-  const reservation = await reserveIdentity('email', email, memberId);
-  if (!reservation.ok) {
-    return NextResponse.json({ error: 'email_taken' }, { status: 409 });
-  }
+    // Reserve the address. A 409 here IS the uniqueness check — Cosmos has no
+    // cross-partition unique constraint, so a query-then-write would race.
+    const reservation = await reserveIdentity('email', email, memberId);
+    if (!reservation.ok) {
+      return NextResponse.json({ error: 'email_taken' }, { status: 409 });
+    }
 
+    try {
+      const verification = createToken(VERIFICATION_TTL_MS);
+      const member: Member = {
+        id: memberId,
+        name,
+        role: 'member',
+        sessionCount: 0,
+        active: true,
+        createdAt: new Date().toISOString(),
+        email,
+        emailVerified: false,
+        passwordHash: await hashPassword(password),
+        emailVerification: verification.record,
+      };
+      await membersContainer.items.create(member);
+      createdId = member.id;
+      if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+        if (joinsAClub) {
+          await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
+        }
+      }
+      // Somebody new is in. Tell the club's admins (best-effort, never fails
+      // the sign-up) — an invite admits a person with no approval step, so this
+      // is the only way an admin hears about it before sign-up day.
+      if (joinsAClub && invited.invited) await notifyAdminsOfJoin(signupGroupId, { id: member.id, name: member.name });
+
+      // Best-effort. The account already exists and works, so a mail failure must
+      // not fail the request — but the caller is told, so the UI can offer a
+      // resend rather than silently implying a mail is on its way.
+      // NEVER from the request: `req.url` follows the client-controlled Host
+      // header, so a spoofed one would mail this member a genuine-looking BPM
+      // email whose verification link points at the attacker. Skip the send
+      // outright rather than send a poisoned link — the account already exists
+      // and works, and the response reports `verificationSent: false` so the UI
+      // can offer a resend once APP_ORIGIN is configured.
+      const origin = outboundOriginOrNull();
+      let sent = false;
+      if (!origin) {
+        console.error('signup: APP_ORIGIN unset — skipping verification email');
+      } else {
+        const verifyUrl =
+          `${origin}/bpm/api/auth/verify-email` +
+          `?token=${verification.token}&email=${encodeURIComponent(email)}`;
+        try {
+          ({ sent } = await sendVerificationEmail(email, name, verifyUrl));
+        } catch (err) {
+          console.error('signup verification mail failed:', err);
+        }
+      }
+
+      const res = NextResponse.json(
+        { id: memberId, name, email, emailVerified: false, verificationSent: sent },
+        { status: 201 },
+      );
+      await completeSignIn(res, member, cookieGroupId);
+      return res;
+    } catch (err) {
+      // Free the address so this person can try again, and so it is not blocked
+      // for whoever legitimately owns it.
+      await releaseIdentity('email', email);
+      console.error('POST /api/auth/signup failed after reservation:', err);
+      return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
+    }
+  };
+  // `finally`, not after: a throw out of `finish` (a lookup before its own
+  // try, a database error) must still settle the claim, or the invite is
+  // lost with nobody told. The review bot caught this on #542.
   try {
-    const verification = createToken(VERIFICATION_TTL_MS);
-    const member: Member = {
-      id: memberId,
-      name,
-      role: 'member',
-      sessionCount: 0,
-      active: true,
-      createdAt: new Date().toISOString(),
-      email,
-      emailVerified: false,
-      passwordHash: await hashPassword(password),
-      emailVerification: verification.record,
-    };
-    await membersContainer.items.create(member);
-    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
-      if (joinsAClub) {
-        await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
-      }
+    return await finish();
+  } finally {
+    if (claim) {
+      if (createdId) await claim.finalize(createdId);
+      else await claim.release();
     }
-    // Somebody new is in. Tell the club's admins (best-effort, never fails
-    // the sign-up) — an invite admits a person with no approval step, so this
-    // is the only way an admin hears about it before sign-up day.
-    if (joinsAClub && invited.invited) await notifyAdminsOfJoin(signupGroupId, { id: member.id, name: member.name });
-
-    // Best-effort. The account already exists and works, so a mail failure must
-    // not fail the request — but the caller is told, so the UI can offer a
-    // resend rather than silently implying a mail is on its way.
-    // NEVER from the request: `req.url` follows the client-controlled Host
-    // header, so a spoofed one would mail this member a genuine-looking BPM
-    // email whose verification link points at the attacker. Skip the send
-    // outright rather than send a poisoned link — the account already exists
-    // and works, and the response reports `verificationSent: false` so the UI
-    // can offer a resend once APP_ORIGIN is configured.
-    const origin = outboundOriginOrNull();
-    let sent = false;
-    if (!origin) {
-      console.error('signup: APP_ORIGIN unset — skipping verification email');
-    } else {
-      const verifyUrl =
-        `${origin}/bpm/api/auth/verify-email` +
-        `?token=${verification.token}&email=${encodeURIComponent(email)}`;
-      try {
-        ({ sent } = await sendVerificationEmail(email, name, verifyUrl));
-      } catch (err) {
-        console.error('signup verification mail failed:', err);
-      }
-    }
-
-    const res = NextResponse.json(
-      { id: memberId, name, email, emailVerified: false, verificationSent: sent },
-      { status: 201 },
-    );
-    await completeSignIn(res, member, cookieGroupId);
-    return res;
-  } catch (err) {
-    // Free the address so this person can try again, and so it is not blocked
-    // for whoever legitimately owns it.
-    await releaseIdentity('email', email);
-    console.error('POST /api/auth/signup failed after reservation:', err);
-    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 }
