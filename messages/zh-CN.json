@@ -1787,6 +1787,7 @@
       "waiting": "{count, plural, other {还有 # 个邀请待使用}}",
       "expires": "{date} 到期",
       "show": "查看",
+      "showAria": "查看邀请 {code}",
       "revoke": "撤销",
       "revokeFailed": "撤销失败，该邀请仍然有效。",
       "none": "暂无待使用的邀请。有人想加入时再创建。",

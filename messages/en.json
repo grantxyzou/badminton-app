@@ -1787,6 +1787,7 @@
       "waiting": "{count, plural, one {# more waiting to be used} other {# more waiting to be used}}",
       "expires": "expires {date}",
       "show": "Show",
+      "showAria": "Show invite {code}",
       "revoke": "Revoke",
       "revokeFailed": "Couldn't revoke that one. It still works.",
       "none": "No invites waiting. Create one when someone wants to join.",

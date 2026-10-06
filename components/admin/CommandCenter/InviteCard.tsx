@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import InviteShare from '@/components/onboarding/InviteShare';
+import ListRow from '@/components/primitives/ListRow';
 import { useInvites, type Invite } from '@/lib/useInvites';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
 import { useRevealReady } from '@/components/primitives/Reveal';
@@ -104,24 +105,29 @@ export default function InviteCard({ enabled = true, groupName }: Props) {
 
             {waiting.length > 0 && (
               <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
-                <span className="section-label">{t('waiting', { count: waiting.length })}</span>
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 'var(--space-2)' }}>
+                {/* Muted, not accent: the two labels above it name what is
+                    being sent; this one only counts what is still waiting. */}
+                <span className="section-label-muted">{t('waiting', { count: waiting.length })}</span>
+                <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                  {/* A row is one tap target (ListRow's cc-mini-card button,
+                      44px+): tapping shows that invite in full above, where
+                      its Copy, Share and Revoke are. No buttons inside the
+                      row — the first cut had 18px Show/Revoke links there. */}
                   {waiting.map((i) => (
-                    <li key={i.id} className="cc-mini-card" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{i.code.slice(0, 4)} {i.code.slice(4)}</span>
-                        {' · '}
-                        {t('expires', { date: new Date(i.expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })}
-                      </span>
-                      <button type="button" onClick={() => setLatest(i)} className="link-quiet" style={{ minHeight: 'auto', padding: 0 }}>
-                        {t('show')}
-                      </button>
-                      <button type="button" onClick={() => void doRevoke(i.id)} disabled={busy} className="link-quiet" style={{ minHeight: 'auto', padding: 0 }}>
-                        {t('revoke')}
-                      </button>
-                    </li>
+                    <ListRow
+                      key={i.id}
+                      onClick={() => setLatest(i)}
+                      ariaLabel={t('showAria', { code: i.code })}
+                      title={
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
+                          {i.code.slice(0, 4)} {i.code.slice(4)}
+                        </span>
+                      }
+                      subtitle={t('expires', { date: new Date(i.expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })}
+                      trailing={<span className="material-icons icon-md" style={{ color: 'var(--text-muted)' }} aria-hidden="true">chevron_right</span>}
+                    />
                   ))}
-                </ul>
+                </div>
               </div>
             )}
             {failed === 'revoke' && <p className="field-error" role="alert">{t('revokeFailed')}</p>}
