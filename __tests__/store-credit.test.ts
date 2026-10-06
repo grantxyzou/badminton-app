@@ -128,6 +128,17 @@ describe('gift cards', () => {
     expect(await balance()).toBe(2500);
   });
 
+  it('the claim is a doc partitioned by its own id — unique across members, not only within one', async () => {
+    // Cosmos enforces id uniqueness per PARTITION; the ledger is per member.
+    // The mock ignores partitions, so assert the shape that makes it safe.
+    const { code } = await mintOne();
+    await redeemAs(code);
+    const claims = (getStore()['clubSettings'] as Array<{ id: string; kind?: string }>).filter((d) => d.kind === 'giftclaim');
+    expect(claims).toHaveLength(1);
+    expect(claims[0].id).toMatch(/^giftcard:[0-9a-f]{64}:claim$/);
+    expect(JSON.stringify(claims[0])).not.toContain(lin.id);
+  });
+
   it('forgives case, spaces and dashes when typed', async () => {
     const { code } = await mintOne(1000);
     expect((await redeemAs(code.toLowerCase().replace(/-/g, ' '))).status).toBe(200);
@@ -171,6 +182,16 @@ describe('Pay with credit', () => {
     await giveLin(5000);
     await Promise.all([pay(), pay()]);
     expect(await balance()).toBe(5000 - 2700);
+  });
+
+  it('two taps at once never take the balance below zero', async () => {
+    await giveLin(2000); // $12 and $15 owed: either fits, not both
+    await Promise.all([pay(), pay(), pay()]);
+    const left = await balance();
+    expect(left).toBeGreaterThanOrEqual(0);
+    const paidRows = [row(row1.id), row(row2.id)].filter((r) => r.paid === true);
+    const paidCents = paidRows.reduce((sum, r) => sum + Math.round(Number(r.owedAmount) * 100), 0);
+    expect(paidCents).toBe(2000 - left);
   });
 
   it('nothing owed or no credit → 409, nothing moves', async () => {

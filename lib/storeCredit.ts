@@ -11,11 +11,13 @@
  *             lines the credit covers IN FULL (Grant's call: partial use waits
  *             for the full ledger, so no screen has to learn "half paid").
  *
- * IDEMPOTENCE IS IN THE IDS. A gift redemption is `gift:<codeHash>` and a
- * spend is `spend:<lineRef>`, and both are CREATED, never upserted — so two
- * phones redeeming one code, or a double-tapped "Pay with credit", collide on
- * insert and the second gets nothing. That replaces a lock nobody would get
- * right with a primary key Cosmos already enforces.
+ * IDEMPOTENCE IS IN THE IDS — within the right partition. A gift card is
+ * claimed by a `clubSettings` doc whose id is the card (PK `/id`: unique
+ * outright, so two different members cannot both claim it); a spend is
+ * `spend:<lineRef>` in the member's own ledger partition (only that member
+ * spends from it, so a double tap collides). Both are CREATED, never
+ * upserted. A spend also re-reads the balance after inserting and refunds
+ * itself if a concurrent spend took the balance below zero.
  */
 import { createHash, randomBytes } from 'crypto';
 import { ensureContainer } from './cosmos';
@@ -166,10 +168,22 @@ export async function redeemGiftCard(groupId: string, rawCode: string, memberId:
   const card = await scope.read<GiftCardDoc>('clubSettings', giftDocId(groupId, code));
   if (!card || card.kind !== 'giftcard' || card.redeemedAt) throw new CreditError('gift_not_found');
   const at = new Date().toISOString();
+  // THE CLAIM IS ITS OWN DOCUMENT, in `clubSettings` (PK `/id`), whose id IS
+  // the card. Cosmos enforces a unique id only WITHIN a partition, and the
+  // ledger is partitioned by member — so a `gift:<hash>` entry alone would
+  // let Lin and Viktor, redeeming at the same moment, each insert one under
+  // their own partition and both be credited. A doc that is its own partition
+  // is unique outright: the second claimant, whoever they are, 409s here.
+  // (The mock store ignores partition keys, which is why no test could see it.)
+  try {
+    await scope.create('clubSettings', { id: `${card.id}:claim`, kind: 'giftclaim', claimedAt: at });
+  } catch (err) {
+    if (isConflict(err)) throw new CreditError('gift_not_found');
+    throw err;
+  }
   let entry: LedgerEntry;
   try {
-    // The id is the card: a second redemption — another phone, a double tap —
-    // conflicts here and gets nothing.
+    // Same-member duplicates also collide on the ledger id (belt and braces).
     entry = await scope.create<LedgerEntry>('ledger', {
       id: `gift:${sha256(code)}`,
       memberId,
@@ -223,6 +237,26 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
     } catch (err) {
       if (isConflict(err)) continue; // already paid from credit — a double tap
       throw err;
+    }
+    // Two "Pay with credit" requests at once each read the same starting
+    // balance and could each pay a DIFFERENT line, overdrawing it together.
+    // Re-read after inserting: if the sum is now negative, this spend lost the
+    // race — refund it and leave the line owed. Both racers may refund; that
+    // errs toward paying too little, never toward spending credit that is not
+    // there.
+    if (balanceOf(await ledgerFor(scope, memberId)) < 0) {
+      await scope.create<LedgerEntry>('ledger', {
+        id: `refund:${line.ref}:${randomBytes(4).toString('hex')}`,
+        memberId,
+        kind: 'credit_refund',
+        amountCents: line.amountCents,
+        note: 'Not enough credit — returned',
+        ref: { kind: line.kind, id: line.ref, pk: line.pk },
+        createdAt: now,
+        createdBy: memberId,
+      });
+      balance = balanceOf(await ledgerFor(scope, memberId));
+      continue;
     }
     let landed = false;
     if (line.kind === 'session') {
