@@ -32,9 +32,30 @@ export function StringingFallback() {
 }
 
 /**
- * StatsV2Shell: header + subhead, the OverviewStrip (115px), the register
- * switch (32px), then the You register's two skeletons (SkillTrendCard 320,
- * WhereYouSitCard 180) in the order they finally sit.
+ * Placeholder heights for the Stats You and Play registers' RevealSlots,
+ * measured at 400px (2026-10-03). They live HERE, not in SkillsTab, so the
+ * chunk fallback below and the register it hands over to read one set of
+ * numbers — and so HomeShell's import of this file does not pull the Stats
+ * chunk into the first download.
+ */
+export const STATS_HEIGHTS = {
+  greeting: 94,
+  // 240 empty (a first-time member's "rate your skills") to 680+ with data:
+  // no one height fits, and the empty case is the first impression.
+  trend: 320,
+  whereYouSit: 192,
+  kudosReceived: 140,
+  record: 201,
+  playWith: 212,
+  giveKudos: 112,
+} as const;
+
+/**
+ * StatsV2Shell: header + subhead, the OverviewStrip (98px while loading), the register
+ * switch (32px), then the You register's slots exactly as its first frame
+ * draws them (STATS_HEIGHTS). It was written before the register became a
+ * RevealGroup and drifted (no greeting slot, 180 not 192), so the chunk
+ * arriving moved the page.
  */
 export function StatsFallback() {
   const t = useTranslations('stats');
@@ -44,15 +65,20 @@ export function StatsFallback() {
       <p className="fs-md text-gray-400 px-2" style={{ marginTop: 'var(--space-1)' }}>
         {t('subheadV2')}
       </p>
+      {/* 98: the OverviewStrip's OWN loading height (blank captions), which is
+          the frame this hands over to. Loaded it can grow to 115 when a level
+          trend wraps to a second line — data, not loading, decides that. */}
       <div className="grid grid-cols-3 gap-3">
-        <CardSkeleton height={115} />
-        <CardSkeleton height={115} />
-        <CardSkeleton height={115} />
+        <CardSkeleton height={98} />
+        <CardSkeleton height={98} />
+        <CardSkeleton height={98} />
       </div>
       <div className="segment-control w-full" style={{ height: 32 }} aria-hidden="true" />
-      <div className="space-y-5">
-        <CardSkeleton height={320} />
-        <CardSkeleton height={180} />
+      <div className="flex flex-col gap-5">
+        <CardSkeleton height={STATS_HEIGHTS.greeting} />
+        <CardSkeleton height={STATS_HEIGHTS.trend} />
+        <CardSkeleton height={STATS_HEIGHTS.whereYouSit} />
+        <CardSkeleton height={STATS_HEIGHTS.kudosReceived} />
       </div>
     </div>
   );

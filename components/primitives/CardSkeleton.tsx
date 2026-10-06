@@ -75,22 +75,29 @@ export function TabSkeleton({ announcement }: { announcement?: React.ReactNode }
 }
 
 /**
+ * The admin console's card heights, measured on the running console at 400px
+ * (2026-10-05). ONE copy, read by AdminTabSkeleton below and by the console's
+ * RevealSlot placeholders (CommandCenter.tsx), so the auth-check frame and the
+ * console it hands over to cannot drift apart. Here rather than in the admin
+ * code so this file — which everyone downloads — imports nothing from it.
+ */
+export const CONSOLE_HEIGHTS = { nextSession: 274, tile: 109, payments: 351, invite: 343, settings: 391 } as const;
+
+/**
  * Admin dashboard (Command Center) skeleton — the console's first three cards
- * as they actually measure (next session 274, the Birds | Roster tiles 109,
- * payments 351; 400px, 2026-10-05), in the console's own tile grid and gap.
- * It used to be 300 / 104 / 176 at a 16px gap, which matched none of them, so
- * the console jumped as it replaced this. Keep in step with CONSOLE_HEIGHTS in
- * CommandCenter.tsx. The bar above is the caller's.
+ * (CONSOLE_HEIGHTS) in the console's own tile grid and gap. It used to be
+ * 300 / 104 / 176 at a 16px gap, which matched none of them, so the console
+ * jumped as it replaced this. The bar above is the caller's.
  */
 export function AdminTabSkeleton() {
   return (
     <div className="flex flex-col gap-5" role="status" aria-label="Loading">
-      <CardSkeleton height={274} />
+      <CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />
       <div className="cc-dgrid">
-        <CardSkeleton height={109} />
-        <CardSkeleton height={109} />
+        <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
+        <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
       </div>
-      <CardSkeleton height={351} />
+      <CardSkeleton height={CONSOLE_HEIGHTS.payments} />
     </div>
   );
 }

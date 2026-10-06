@@ -11,7 +11,7 @@ import LearnRegister from '@/components/stats/LearnRegister';
 import GearRegister from '@/components/stats/GearRegister';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
 import StatsSignedOut from '@/components/stats/StatsSignedOut';
-import { StatsFallback } from '@/components/TabFallbacks';
+import { StatsFallback, STATS_HEIGHTS } from '@/components/TabFallbacks';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
@@ -43,23 +43,6 @@ const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), 
  * restored nothing — it only 404'd three API routes and left the tab showing
  * load errors). This layout is now simply the layout.
  */
-/**
- * Placeholder heights for the You and Play registers' slots, each the card's
- * own loading skeleton (or, where the card had none, its measured height at
- * 400px, 2026-10-03). Change one when its card changes shape.
- */
-const STATS_HEIGHTS = {
-  greeting: 94,
-  // 240 empty (a first-time member's "rate your skills") to 680+ with data:
-  // no one height fits, and the empty case is the first impression.
-  trend: 320,
-  whereYouSit: 192,
-  kudosReceived: 140,
-  record: 201,
-  playWith: 212,
-  giveKudos: 112,
-} as const;
-
 export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) => void }) {
   // Identity for the signed-out empty state, from the module that owns the
   // chain. `resolved` carries "not known yet" so the first paint doesn't flash

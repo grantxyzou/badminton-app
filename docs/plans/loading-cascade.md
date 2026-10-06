@@ -2,7 +2,7 @@
 
 **Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); follow-on to `docs/plans/motion-pass.md`; requested directly by the owner on 2026-10-03
 **Status:** shipped 2026-10-05 (phases 1–5)
-**Review on:** 2026-10-24 — did phases 2–5 (Home, Stats, Profile + Stringing, Admin) each land, or did the cascade stop at the primitive?
+**Review on:** 2026-10-24 — the kill criterion, on a PHONE: record a cold and a warm load of Home and Stats. Does any card appear above one already on screen, and does a warm tab switch feel slower than before? (Phases 2–5 all landed: #510, #512, #513, #515, follow-ups #538.)
 
 ## Problem
 
@@ -88,7 +88,7 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 |---|---|
 | Reveal primitive | `components/primitives/Reveal.tsx` |
 | Per-tab chunk fallbacks (`StringingFallback`, `StatsFallback`, `ProfileFallback`, `AdminFallback`) | `components/TabFallbacks.tsx`, wired in `components/HomeShell.tsx` |
-| Splash fade, spinner stop, reduced-motion failsafe | `app/globals.css` |
+| Splash fade + reduced-motion failsafe | `app/globals.css` — since adopted and extended by the launch screen (#511, `docs/plans/launch-screen.md`) under `html[data-launch]`; the spinner-stop rule left with the spinner |
 | Canaries | `__tests__/components/Reveal.test.tsx`, `__tests__/tab-fallback-canary.test.ts`, `__tests__/design-canary.test.ts`, `__tests__/loading-canary.test.ts` (ratchet — each phase deletes its entries) |
 | The rule | CLAUDE.md → Design System → Motion system → "Loading" |
 | Spec | `docs/superpowers/specs/2026-10-03-loading-cascade-design.md` |
