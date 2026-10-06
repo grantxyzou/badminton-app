@@ -4,7 +4,7 @@
 block reserved for Stage-2 (#81): multi-GROUP inside the one deployment, not the
 SaaS the April memo costed — no billing, no marketing site, no super-admin plane.
 **Status:** in-flight (Phases 0–4 landed and the production backfill has run — BPM is group #1, 72/72 memberships, `mismatched: 0`. The flag is still OFF, so nothing is observable yet. Phases 5–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
-**Review on:** 2026-10-05 — Has the Stats racket-fit rebuild merged and Phase 1 (the sweep) started, or is the sequencing decision stale? And is the store listing still the driver?
+**Review on:** 2026-10-20 — Has Phase 5 (the flag on) happened, and was the week after it clean of `[group-leak]` logs? If not, what is blocking the flip?
 
 ## Problem
 
@@ -156,6 +156,10 @@ don't copy.
   gate**, next to the "what does a person in no club see" question: the flag is
   off, so every claim is still true today, and both stop being true on the same
   day.
+- **2026-10-06 review: the store listing is still the driver** (Grant: "Yes it
+  is"). The other half of the question had answered itself: Phases 0–4 landed
+  and the production backfill ran, so the sequencing worry about the Stats
+  rebuild is moot. The next read is about the Phase 5 flip and its gates.
 
 ## Shape
 
