@@ -46,6 +46,7 @@ import { createToken, VERIFICATION_TTL_MS } from '@/lib/authToken';
 import { sendVerificationEmail } from '@/lib/authEmail';
 import { completeSignIn } from '@/lib/authSession';
 import { signupGroupFor } from '@/lib/inviteSignup';
+import { notifyAdminsOfJoin } from '@/lib/joinNotify';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 import {
   normalizeEmail,
@@ -171,6 +172,10 @@ export async function POST(req: NextRequest) {
         await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
       }
     }
+    // Somebody new is in. Tell the club's admins (best-effort, never fails
+    // the sign-up) — an invite admits a person with no approval step, so this
+    // is the only way an admin hears about it before sign-up day.
+    if (joinsAClub && invited.invited) await notifyAdminsOfJoin(signupGroupId, { id: member.id, name: member.name });
 
     // Best-effort. The account already exists and works, so a mail failure must
     // not fail the request — but the caller is told, so the UI can offer a
