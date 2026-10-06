@@ -225,10 +225,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
     }
   };
-  const res = await finish();
-  if (claim) {
-    if (createdId) await claim.finalize(createdId);
-    else await claim.release();
+  // `finally`, not after: a throw out of `finish` (a lookup before its own
+  // try, a database error) must still settle the claim, or the invite is
+  // lost with nobody told. The review bot caught this on #542.
+  try {
+    return await finish();
+  } finally {
+    if (claim) {
+      if (createdId) await claim.finalize(createdId);
+      else await claim.release();
+    }
   }
-  return res;
 }
