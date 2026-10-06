@@ -6,6 +6,7 @@ import TopBar from '../../primitives/TopBar';
 import AnomalyFeed from './AnomalyFeed';
 import InviteCard from './InviteCard';
 import { isFlagOn } from '@/lib/flags';
+import { invitesOn } from '@/lib/invitesOn';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AccessRequestsCard from './AccessRequestsCard';
 import SignInReadinessCard from './SignInReadinessCard';
@@ -48,10 +49,10 @@ export const CONSOLE_HEIGHTS = { nextSession: 274, tile: 109, payments: 351, inv
 
 export default function CommandCenter({ refreshKey, setView, onExit }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
-  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   // Members only needs the invite card even with one club: a new account can
-  // only be made with an invite (docs/plans/members-only.md).
-  const invitesOn = groupsOn || isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
+  // only be made with an invite (docs/plans/members-only.md). The one rule,
+  // shared with the hook and the server (lib/invitesOn.ts).
+  const inviteSurfaces = invitesOn();
   // Names the club in the share sheet. `null` with the flag off, which is also
   // when `InviteCard` renders nothing.
   const { group } = useCurrentGroup();
@@ -180,7 +181,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
           you come looking for, not the thing you are interrupted by. Renders
           nothing with the flag off (the endpoint 404s) or for a non-admin. */}
       <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.invite} />}>
-        <InviteCard enabled={invitesOn} groupName={groupName} />
+        <InviteCard enabled={inviteSurfaces} groupName={groupName} />
       </RevealSlot>
 
       {/* Members only (docs/plans/members-only.md): who would be locked out.
