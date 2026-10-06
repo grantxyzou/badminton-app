@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
+import RedeemGiftSheet from './RedeemGiftSheet';
 import AskAccessSheet from './AskAccessSheet';
 import MigrateSheet from './MigrateSheet';
 import MigrateCodeSheet from './MigrateCodeSheet';
@@ -126,6 +127,7 @@ export default function ProfileTab({
   const [avatar, setAvatar] = useState<MemberAvatarValue | null>(null);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
+  const [redeemOpen, setRedeemOpen] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
@@ -790,8 +792,14 @@ export default function ProfileTab({
             label: tSettings('recoveryCode'),
             onClick: () => setEnterCodeOpen(true),
           },
+          // Store credit (docs/plans/payments.md): a gift card becomes credit
+          // on the Home balance. Flag-gated; the route 404s with it off.
+          ...(isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')
+            ? [{ icon: 'payments', label: tSettings('redeemGift'), onClick: () => setRedeemOpen(true) }]
+            : []),
         ]}
       />
+      <RedeemGiftSheet open={redeemOpen} onClose={() => setRedeemOpen(false)} />
 
       {/* Four groups, each one question: who am I here (ACCOUNT, above), what
           do others see (PRIVACY), how does this device behave (APP), and where

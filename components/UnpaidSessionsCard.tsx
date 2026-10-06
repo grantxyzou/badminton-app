@@ -96,6 +96,47 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   // the admin sees the tag on their side.
   const [sent, setSent] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const canSayPaid = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
+
+  // Store credit (docs/plans/payments.md): the balance, and "Pay with
+  // credit", which pays the oldest lines it covers IN FULL. Shown only when
+  // there is credit — a "$0 credit" line would be clutter on every Home.
+  const tCredit = useTranslations('home.credit');
+  const creditOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
+  const [creditCents, setCreditCents] = useState<number | null>(null);
+  const [spend, setSpend] = useState<'idle' | 'busy' | 'notEnough' | 'error'>('idle');
+  useEffect(() => {
+    if (!creditOn || !name) return;
+    let cancelled = false;
+    fetch(`${BASE}/api/credit`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { balanceCents?: number } | null) => {
+        // A failed read shows no credit line — the balance card's job is what
+        // is OWED, and that has its own error state above.
+        if (!cancelled) setCreditCents(typeof d?.balanceCents === 'number' ? d.balanceCents : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCreditCents(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [creditOn, name, refreshNonce]);
+  async function payWithCredit() {
+    setSpend('busy');
+    try {
+      const res = await fetch(`${BASE}/api/credit/spend`, { method: 'POST' });
+      if (res.status === 409) {
+        setSpend('notEnough');
+        return;
+      }
+      if (!res.ok) throw new Error(String(res.status));
+      setSpend('idle');
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      setSpend('error');
+    }
+  }
+  const hasCredit = creditOn && (creditCents ?? 0) > 0;
   async function sayPaid() {
     setSent('busy');
     try {
@@ -264,7 +305,14 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
         }
       />
     ) : showPaidUp ? (
-      <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
+      <>
+        <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
+        {hasCredit && (
+          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)', textAlign: 'center' }}>
+            {tCredit('balance', { amount: fmtMoney((creditCents ?? 0) / 100) })}
+          </p>
+        )}
+      </>
     ) : (
       data && (
         <>
@@ -348,6 +396,23 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
               </p>
             ) : null;
           })()}
+          {hasCredit && data.totalOwed > 0 && (
+            <div className="flex flex-col gap-2">
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>{tCredit('label')}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
+                  {fmtMoney((creditCents ?? 0) / 100)}
+                </span>
+              </div>
+              <button type="button" className="btn-ghost" disabled={!online || spend === 'busy'} onClick={() => void payWithCredit()}>
+                {tCredit('pay')}
+              </button>
+              {spend === 'notEnough' && (
+                <p className="fs-sm" role="status" style={{ margin: '0', color: 'var(--text-muted)' }}>{tCredit('notEnough')}</p>
+              )}
+              {spend === 'error' && <p className="field-error" role="alert">{tCredit('error')}</p>}
+            </div>
+          )}
           {canSayPaid && data.totalOwed > 0 && (
             sent === 'done' ? (
               <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>

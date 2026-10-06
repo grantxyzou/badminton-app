@@ -212,6 +212,13 @@
       "sentItDone": "Thanks \u2014 it\u2019ll be marked paid when the e-transfer arrives.",
       "sentItError": "Couldn\u2019t save that \u2014 try again."
     },
+    "credit": {
+      "label": "Your credit",
+      "balance": "You have {amount} in credit.",
+      "pay": "Pay with credit",
+      "notEnough": "Your credit doesn\u2019t cover a whole session yet \u2014 it stays for next time.",
+      "error": "Couldn\u2019t use your credit \u2014 try again."
+    },
     "balance": {
         "groupSessions": "Badminton",
         "groupStringing": "Stringing",
@@ -474,6 +481,17 @@
       "needYou": "{count} need you",
       "allClear": "All clear"
     },
+    "redeem": {
+      "title": "Redeem a gift card",
+      "help": "Enter the code on your gift card. It becomes credit you can use for sessions.",
+      "placeholder": "XXXX-XXXX",
+      "submit": "Redeem",
+      "success": "{amount} added to your credit.",
+      "notFound": "That code didn\u2019t work. Check it and try again.",
+      "rateLimited": "Let's give it a rest for a bit, then try again.",
+      "error": "Couldn\u2019t redeem right now \u2014 try again.",
+      "close": "Close"
+    },
     "settings": {
       "helpGroup": "Help",
       "privacyGroup": "Privacy",
@@ -482,6 +500,7 @@
       "newPin": "New PIN",
       "updatePin": "Update PIN",
       "recoveryCode": "Have a recovery code?",
+      "redeemGift": "Redeem a gift card",
       "statsPrivacy": "Stats & privacy",
       "statsPrivacyOn": "On",
       "statsPrivacyOff": "Private",

@@ -130,7 +130,7 @@ export interface Player {
   /** ISO — when `paid` last went true. Absent on rows marked before 2026-10. */
   paidAt?: string;
   /** How it was marked: an admin's tap, or an e-transfer the inbox matched. */
-  paidVia?: 'manual' | 'etransfer';
+  paidVia?: 'manual' | 'etransfer' | 'credit';
   /** The `payments` doc that paid it (`paidVia: 'etransfer'`). */
   paymentId?: string;
   /**
@@ -144,6 +144,28 @@ export interface Player {
    * Phase 1b): one at settle + 3 days, one at + 7, then never again.
    */
   remindedAt?: string[];
+}
+
+/**
+ * Container `ledger` (PK `/memberId`, GROUP scoped) — store credit, the first
+ * slice of the Phase 2 ledger (docs/plans/payments.md). APPEND-ONLY: an entry
+ * is never edited or upserted, a mistake is corrected by a new entry, and a
+ * balance is the sum. Phase 2 adds charge and payment kinds to the same rails.
+ */
+export interface LedgerEntry {
+  id: string;
+  groupId?: string;
+  memberId: string;
+  kind: 'credit_grant' | 'gift_redeem' | 'credit_spend' | 'credit_refund';
+  /** Signed cents: + adds credit, − uses it. */
+  amountCents: number;
+  /** What the admin wrote ("Birthday", "Bruce prepaid"), or what it paid. */
+  note: string;
+  /** What a spend paid — a session row or a stringing job. */
+  ref?: { kind: 'session' | 'stringing'; id: string; pk: string };
+  createdAt: string;
+  /** memberId of whoever made it: the admin who granted, the member who spent. */
+  createdBy: string;
 }
 
 /** One line of money a payment settled — a session row or a stringing job. */
