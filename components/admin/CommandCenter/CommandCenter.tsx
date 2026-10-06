@@ -126,10 +126,11 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
       <AnomalyFeed refreshKey={composedRefresh} />
 
       {/* LOADING CASCADE (docs/plans/loading-cascade.md): every card holds its
-          place and shows in this order, however the eight reads answer. The
-          usually-empty cards (requests, inbox, readiness) reserve no space but
-          keep their order — so the settings list, last, cannot be pushed down
-          by one of them arriving. A flex gap so a closed slot leaves none. */}
+          place from the first frame. The usually-empty cards (requests,
+          readiness) reserve no space; the cards below one wait for it, but
+          only briefly (SPACELESS_WAIT_MS) — the settings list, last and
+          static, is never more than that far away. A flex gap so a closed
+          slot leaves none. */}
       <div className="flex flex-col gap-5">
       <RevealGroup>
       {/* Above the session card: somebody locked out is waiting on a human,
@@ -161,7 +162,10 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
       </RevealSlot>
       {/* E-transfers waiting for a person sit right above the paid pills they
           resolve into; a match bumps the refresh so the pills move with it. */}
-      <RevealSlot canBeEmpty placeholder={null}>
+      {/* Holds a box: with the flag on this card ALWAYS renders (a status line
+          or the set-up invitation), so it is not "usually absent" — and a
+          space-less slot would hold the payments list below it. */}
+      <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.inbox} />}>
         <PaymentsInboxCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
       </RevealSlot>
       <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>

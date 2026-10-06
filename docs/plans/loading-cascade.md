@@ -75,6 +75,15 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 - **Lying states:** Payments said "No active players yet" before the players answered (and showed the previous session's rows unmarked during a chip switch — now dimmed with `aria-busy`); Announcements said "No announcements posted" before the list was read. RosterPage and ReleasesView no longer drop back to a skeleton after every save. `SignInReadinessCard` treats a malformed body as a load error instead of crashing the console.
 - **The canary is strict.** Its backlog is empty and gone; "Loading…" copy (`home.loading`, `players.loading`, both unused) is deleted in both locales.
 
+### The kill criterion fired (2026-10-06)
+
+Grant, on his phone: "A little slow." The ordering rule was too strict — a card waited for EVERY card above it, so on Stats the trend, where-you-sit and kudos cards sat behind the AI greeting's live model call (once per member per session) with their own data already in hand; on Admin the static settings menu waited for the payments list; on Home the balance waited for the skill-rating check. None of that was protecting anything: a card whose skeleton already holds its box cannot shove the cards below it when it fills in.
+
+- **Revised rule:** only a SPACE-LESS slot (no placeholder — a card that is usually absent) holds the cards below it, and only for `SPACELESS_WAIT_MS` (300ms). Measured on the local mock: Stats with the greeting 3s late now shows the trend at 0.9s (was 3.7s); Admin with payments 3.5s late has the settings menu tappable at 1.3s (was 3.5s+).
+- **A card that always renders something gets a box.** The admin e-transfer inbox was space-less and, under the old rule, held the payments list; it has a measured 190px placeholder now (its "Set up" state — re-measure the configured card when the Gmail script is installed).
+- **Trade-off accepted:** a usually-absent card that answers after 300ms *and* exists nudges the cards below it. Rare, slow-network only, better than everyone waiting.
+- The Review-on question stands: the same two checks on a phone, now against this rule.
+
 ### Follow-ups (2026-10-06)
 
 - **Profile's Notifications row is there from the first frame,** with no status until the push probe answers. It was hidden while probing and inserted afterwards, pushing the rows below it down; only its STATUS ever needed withholding ("Off" before we know is a confirmed negative from an unknown state).

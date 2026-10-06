@@ -21,9 +21,16 @@ import Collapse from './Collapse';
  * Every card on a screen fetches on its own, so they used to land in NETWORK
  * order, and a card that rendered `null` until its data arrived would insert
  * itself above or between cards already on screen. A `RevealSlot` holds the
- * card's place with its skeleton from the first frame, and a `RevealGroup`
- * lets a slot show its content only once every slot ABOVE it has shown — so
- * the screen fills from the top whatever order the network answers in.
+ * card's place with its skeleton from the first frame; a `RevealGroup` keeps
+ * the cards below a SPACE-LESS slot (one with no placeholder — a card that is
+ * usually absent) from showing until it has answered, for at most
+ * `SPACELESS_WAIT_MS`, so it cannot land on top of something being read.
+ *
+ * A slot that holds its skeleton never holds anything up: its box is already
+ * the size of the card, so filling it in moves nothing. The first cut made
+ * every card wait for every card above it, and the Stats tab sat behind the
+ * AI greeting's live model call while cards with their data already in hand
+ * showed skeletons — Grant, on his phone, 2026-10-06: "a little slow".
  *
  * Fetching is untouched. The card is MOUNTED from the start (hidden while its
  * skeleton shows), so a card that fetches inside itself still fetches; it says
@@ -51,6 +58,10 @@ const STAGGER_CAP = 3;
 export const INSTANT_MS = 100;
 /** --duration-sheet, the Collapse close. */
 const CLOSE_MS = 180;
+/** How long a space-less slot may hold the cards below it. Past this, they
+ *  show, and if the card then turns out to exist it nudges them — rare, and
+ *  better than everyone waiting on the one card that is usually absent. */
+export const SPACELESS_WAIT_MS = 300;
 
 interface Reveal {
   /** Fade delay in ms, or null for an instant (un-faded) reveal. */
@@ -60,11 +71,15 @@ interface Reveal {
 interface SlotReport {
   ready: boolean;
   empty: boolean;
+  /** Has a placeholder, so its box is reserved and it can shove nothing. */
+  holdsSpace: boolean;
+  /** When it first registered — a space-less slot's wait runs from here. */
+  since: number;
   node: HTMLElement | null;
 }
 
 interface GroupApi {
-  report: (id: string, ready: boolean, empty: boolean, node: HTMLElement | null) => void;
+  report: (id: string, ready: boolean, empty: boolean, holdsSpace: boolean, node: HTMLElement | null) => void;
   unregister: (id: string) => void;
   revealed: ReadonlyMap<string, Reveal>;
 }
@@ -109,6 +124,10 @@ export function RevealGroup({ children }: { children: ReactNode }) {
   // each other. Layout effects of one commit run synchronously; a microtask
   // closes the batch after them.
   const batch = useRef<{ count: number; open: boolean }>({ count: 0, open: false });
+  // A space-less slot's wait ends on a clock, not on a report; this is the
+  // one pending re-order for the earliest deadline.
+  const wakeup = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (wakeup.current) clearTimeout(wakeup.current); }, []);
 
   const recompute = useCallback(() => {
     const now = performance.now();
@@ -117,9 +136,17 @@ export function RevealGroup({ children }: { children: ReactNode }) {
     const reduce = prefersReducedMotion();
     const ordered = [...slots.current.entries()].sort(([, a], [, b]) => byDomOrder(a, b));
     let next: Map<string, Reveal> | null = null;
+    if (wakeup.current) { clearTimeout(wakeup.current); wakeup.current = null; }
     for (const [id, slot] of ordered) {
       if (revealedRef.current.has(id) || next?.has(id)) continue;
-      if (!slot.ready) break;
+      if (!slot.ready) {
+        // Its skeleton holds its place: nothing below need wait.
+        if (slot.holdsSpace) continue;
+        const remaining = slot.since + SPACELESS_WAIT_MS - now;
+        if (remaining <= 0) continue; // waited long enough — let them through
+        wakeup.current = setTimeout(recomputeRef.current, remaining);
+        break;
+      }
       let delay: number | null = null;
       if (!instant) {
         if (!batch.current.open) {
@@ -140,9 +167,13 @@ export function RevealGroup({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const recomputeRef = useRef(recompute);
+  recomputeRef.current = recompute;
+
   const report = useCallback(
-    (id: string, ready: boolean, empty: boolean, node: HTMLElement | null) => {
-      slots.current.set(id, { ready, empty, node });
+    (id: string, ready: boolean, empty: boolean, holdsSpace: boolean, node: HTMLElement | null) => {
+      const prev = slots.current.get(id);
+      slots.current.set(id, { ready, empty, holdsSpace, since: prev?.since ?? performance.now(), node });
       recompute();
     },
     [recompute],
@@ -227,9 +258,10 @@ export function RevealSlot({
     setSolo({ delay: now - soloMountedAt.current <= INSTANT_MS ? null : 0 });
   }, [group, ready, solo]);
 
+  const holdsSpace = placeholder !== null && placeholder !== undefined;
   useLayoutEffect(() => {
-    group?.report(id, ready, isEmpty, node.current);
-  }, [group?.report, id, ready, isEmpty]); // eslint-disable-line react-hooks/exhaustive-deps
+    group?.report(id, ready, isEmpty, holdsSpace, node.current);
+  }, [group?.report, id, ready, isEmpty, holdsSpace]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
     if (!group) return;
@@ -263,7 +295,7 @@ export function RevealSlot({
   // No placeholder and nothing to show (pending, or answered empty): take no
   // space. An empty wrapper is still a flex item, so it took a gap and moved
   // the column — and with no skeleton there is nothing to animate closed.
-  const holdsNothing = (placeholder === null || placeholder === undefined) && (!shown || isEmpty);
+  const holdsNothing = !holdsSpace && (!shown || isEmpty);
 
   return (
     <div ref={node} data-reveal-slot="" hidden={gone || instantEmpty || holdsNothing}>
