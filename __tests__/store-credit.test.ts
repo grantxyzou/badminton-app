@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as cosmos from '@/lib/cosmos';
 import { GET as myCredit } from '@/app/api/credit/route';
 import { POST as redeem } from '@/app/api/credit/redeem/route';
 import { POST as spend } from '@/app/api/credit/spend/route';
@@ -201,6 +202,91 @@ describe('Pay with credit', () => {
     row(row2.id).paid = true;
     expect((await pay()).status).toBe(409);
     expect(await balance()).toBe(1000);
+  });
+});
+
+describe('failure recovery (review of #544)', () => {
+  const pay = () => spend(makeRequest('POST', `${BASE}/credit/spend`, {}, asLin()));
+  const entry = (id: string, kind: string, amountCents: number, ref?: string) =>
+    seedDoc('ledger', {
+      id, groupId: 'bpm', memberId: lin.id, kind, amountCents, note: '', createdAt: '2026-10-05T00:00:00Z', createdBy: lin.id,
+      ...(ref ? { ref: { kind: 'session', id: ref, pk: 'session-2026-09-24' } } : {}),
+    });
+
+  it('a spend whose row update never happened (process died) is FINISHED, not skipped', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, row1.id);
+    const res = await (await pay()).json();
+    expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'credit' });
+    expect(res.balanceCents).toBe(800); // debited once, not twice
+  });
+
+  it('a line whose earlier spend was refunded can be paid with credit again', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, row1.id);
+    entry(`refund:${row1.id}:0`, 'credit_refund', 1200, row1.id);
+    expect(await (await pay()).json()).toMatchObject({ paid: 1, spentCents: 1200, balanceCents: 800 });
+    expect(row(row1.id).paid).toBe(true);
+    expect((getStore()['ledger'] as Array<{ id: string }>).map((e) => e.id)).toContain(`spend:${row1.id}:1`);
+  });
+
+  it('a database error while marking the row paid gives the credit back', async () => {
+    await giveLin(2000);
+    const real = cosmos.getContainer;
+    const spy = vi.spyOn(cosmos, 'getContainer').mockImplementation(((name: string) => {
+      const c = real(name as never);
+      if (name !== 'players') return c;
+      return { ...c, item: (id: string, pk: string) => ({ ...c.item(id, pk), read: c.item(id, pk).read.bind(c.item(id, pk)), replace: async () => { throw Object.assign(new Error('boom'), { code: 503 }); } }), items: c.items } as never;
+    }) as never);
+    try {
+      expect((await pay()).status).toBe(500);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(row(row1.id).paid).toBe(false);
+    expect(await balance()).toBe(2000);
+    // …and a retry pays it.
+    expect(await (await pay()).json()).toMatchObject({ paid: 1, spentCents: 1200 });
+  });
+
+  it('an unfinished spend is finished even when the balance left is below zero', async () => {
+    entry('grant:a', 'credit_grant', 1500);
+    entry(`spend:${row2.id}:0`, 'credit_spend', -1500, row2.id);
+    (getStore()['ledger'] as Array<Record<string, unknown>>).find((e) => e.id === `spend:${row2.id}:0`)!.ref = { kind: 'session', id: row2.id, pk: 'session-2026-10-01' };
+    expect(await (await pay()).json()).toMatchObject({ paid: 1, balanceCents: 0 });
+    expect(row(row2.id).paid).toBe(true);
+  });
+
+  it('a FRESH spend from another request is left alone (no double-tap rescue race)', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, row1.id);
+    (getStore()['ledger'] as Array<Record<string, unknown>>).find((e) => e.id === `spend:${row1.id}:0`)!.createdAt = new Date().toISOString();
+    await pay().catch(() => undefined);
+    expect(row(row1.id).paid).toBe(false); // the other request owns it
+    expect((getStore()['ledger'] as Array<{ id: string }>).some((e) => e.id.startsWith(`refund:${row1.id}`))).toBe(false);
+  });
+
+  it('a gift claim is released if crediting fails, so the card still works', async () => {
+    const { code } = (await (await mint(makeAdminRequest('POST', `${BASE}/admin/giftcards`, { amountCents: 1000 }))).json()) as { code: string };
+    const real = cosmos.getContainer;
+    const spy = vi.spyOn(cosmos, 'getContainer').mockImplementation(((name: string) => {
+      const c = real(name as never);
+      if (name !== 'ledger') return c;
+      return { ...c, items: { ...c.items, create: async () => { throw Object.assign(new Error('boom'), { code: 503 }); } } } as never;
+    }) as never);
+    try {
+      expect((await redeem(makeRequest('POST', `${BASE}/credit/redeem`, { code }, asLin()))).status).toBe(500);
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await redeem(makeRequest('POST', `${BASE}/credit/redeem`, { code }, asLin()))).status).toBe(200);
+    expect(await balance()).toBe(1000);
+  });
+
+  it('gift codes draw every character evenly enough (no modulo bias by construction)', () => {
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 4000; i++) for (const ch of newGiftCode().slice(4).replace('-', '')) counts.set(ch, (counts.get(ch) ?? 0) + 1);
+    expect(counts.size).toBe(31);
   });
 });
 

@@ -29,6 +29,12 @@ import type { LedgerEntry, Player, StringingJob } from './types';
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 export const MAX_GRANT_CENTS = 50_000;
+/**
+ * A spend with no row update this long after it was written belongs to an
+ * attempt that died. A live request writes both within a second; two minutes
+ * keeps a slow request from being "rescued" out from under itself.
+ */
+export const UNFINISHED_SPEND_MS = 2 * 60 * 1000;
 
 let ready: Promise<void> | null = null;
 export function ensureLedger(): Promise<void> {
@@ -93,8 +99,17 @@ export async function grantCredit(
 /** No 0/O, 1/I/L: a code is read off a screen or a card and typed by a person. */
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export function newGiftCode(): string {
-  const bytes = randomBytes(8);
-  const chars = [...bytes].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]);
+  // Rejection sampling: 256 is not a multiple of 31, so `byte % 31` would make
+  // the first eight letters slightly likelier. Bytes at or above the largest
+  // multiple are discarded and redrawn.
+  const n = CODE_ALPHABET.length;
+  const limit = 256 - (256 % n);
+  const chars: string[] = [];
+  while (chars.length < 8) {
+    for (const b of randomBytes(16)) {
+      if (b < limit && chars.length < 8) chars.push(CODE_ALPHABET[b % n]);
+    }
+  }
   return `BPM-${chars.slice(0, 4).join('')}-${chars.slice(4).join('')}`;
 }
 /** Case, spaces and dashes are not part of a code — "bpm 7k2q x9fa" redeems. */
@@ -195,6 +210,9 @@ export async function redeemGiftCard(groupId: string, rawCode: string, memberId:
     });
   } catch (err) {
     if (isConflict(err)) throw new CreditError('gift_not_found');
+    // The claim is in and the credit is not: release the claim, or the card
+    // is burned with nothing to show for it and a retry says "not found".
+    await scope.remove('clubSettings', `${card.id}:claim`).catch((e) => console.error('gift: claim not released', e));
     throw err;
   }
   await scope.replace<GiftCardDoc>('clubSettings', { ...card, redeemedAt: at });
@@ -207,25 +225,91 @@ export async function redeemGiftCard(groupId: string, rawCode: string, memberId:
  * Pay this member's owed lines from their credit: oldest first, each line
  * only if what is left covers it in full. Returns what was paid.
  *
- * Spend entry FIRST (its id is the line, so a line is never paid twice), then
- * the row. If the row moved under us (paid by an e-transfer that landed a
- * moment ago), a refund entry puts the credit straight back.
+ * PER-LINE ACCOUNTING, so every failure is recoverable:
+ *   - A line's spends are numbered: `spend:<ref>:<n>`, where n is how many
+ *     spends that line has ever had. A double tap computes the same n and
+ *     collides on insert; a line whose earlier spend was REFUNDED gets n+1
+ *     and can be paid again (a fixed `spend:<ref>` id stranded it forever).
+ *   - A line whose spends outweigh its refunds already has credit taken for
+ *     it. If its row is still unpaid — the process died between the two
+ *     writes — the row update is FINISHED, not skipped.
+ *   - Any failure to mark the row writes `refund:<ref>:<n>` before giving up,
+ *     so credit is never taken for a line that stays owed.
+ *   - Two requests at once could each pay a different line from the same
+ *     starting balance: the balance is re-read after each insert, and a spend
+ *     that took it below zero refunds itself.
  */
 export async function payWithCredit(groupId: string, memberId: string): Promise<{ paid: number; spentCents: number; balanceCents: number }> {
   const scope = groupScope(groupId);
-  let balance = balanceOf(await ledgerFor(scope, memberId));
+  let ledger = await ledgerFor(scope, memberId);
   const identity = await resolveIdentity({ memberId }, groupId);
   const lines = owedLines(await computeOwed(scope, identity), identity.memberId);
-  if (lines.length === 0 || balance <= 0) throw new CreditError('nothing_to_pay');
+  if (lines.length === 0) throw new CreditError('nothing_to_pay');
 
   let paid = 0;
   let spent = 0;
   const now = new Date().toISOString();
-  for (const line of lines) {
-    if (line.amountCents <= 0 || line.amountCents > balance) continue;
+
+  const refund = async (line: (typeof lines)[number], n: number, note: string) => {
     try {
       await scope.create<LedgerEntry>('ledger', {
-        id: `spend:${line.ref}`,
+        id: `refund:${line.ref}:${n}`,
+        memberId,
+        kind: 'credit_refund',
+        amountCents: line.amountCents,
+        note,
+        ref: { kind: line.kind, id: line.ref, pk: line.pk },
+        createdAt: now,
+        createdBy: memberId,
+      });
+    } catch (err) {
+      if (!isConflict(err)) throw err; // already refunded — another request got there
+    }
+  };
+
+  /**
+   * Mark the row paid. `'paid'` — by this call. `'already'` — something else
+   * paid it first (an e-transfer that just landed): the credit must go back.
+   * `'gone'` — removed, covered or deleted: the credit must go back too.
+   */
+  const markPaid = async (line: (typeof lines)[number]): Promise<'paid' | 'already' | 'gone'> => {
+    if (line.kind === 'session') {
+      const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
+      if (!row || row.writtenOff === true) return 'gone';
+      if (row.paid === true) return 'already';
+      return (await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: 'credit' }, line.pk)) ? 'paid' : 'gone';
+    }
+    const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
+    if (!job) return 'gone';
+    if (job.paidAt !== null) return 'already';
+    return (await scope.replace('stringingJobs', { ...job, paidAt: now, updatedAt: now }, line.pk)) ? 'paid' : 'gone';
+  };
+
+  for (const line of lines) {
+    const forLine = ledger.filter((e) => e.ref?.id === line.ref);
+    const spends = forLine.filter((e) => e.kind === 'credit_spend').length;
+    const net = forLine.reduce((sum, e) => sum + e.amountCents, 0);
+
+    if (net < 0) {
+      // Credit already taken for this line. If that spend is FRESH, another
+      // request is mid-way through paying it (a double tap) — leave it be;
+      // touching it would race that request and could refund a good payment.
+      // If it is STALE, the attempt died between its two writes: finish it,
+      // or give the credit back if the line was settled some other way.
+      const last = forLine.filter((e) => e.kind === 'credit_spend').map((e) => Date.parse(e.createdAt)).sort().pop() ?? 0;
+      if (Date.now() - last < UNFINISHED_SPEND_MS) continue;
+      const outcome = await markPaid(line);
+      if (outcome === 'paid') paid += 1;
+      else await refund(line, spends - 1, 'Already settled — credit returned');
+      ledger = await ledgerFor(scope, memberId);
+      continue;
+    }
+    if (line.amountCents <= 0 || line.amountCents > balanceOf(ledger)) continue;
+
+    const n = spends;
+    try {
+      await scope.create<LedgerEntry>('ledger', {
+        id: `spend:${line.ref}:${n}`,
         memberId,
         kind: 'credit_spend',
         amountCents: -line.amountCents,
@@ -235,57 +319,32 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
         createdBy: memberId,
       });
     } catch (err) {
-      if (isConflict(err)) continue; // already paid from credit — a double tap
+      if (isConflict(err)) continue; // a double tap: the other request is paying this line
       throw err;
     }
-    // Two "Pay with credit" requests at once each read the same starting
-    // balance and could each pay a DIFFERENT line, overdrawing it together.
-    // Re-read after inserting: if the sum is now negative, this spend lost the
-    // race — refund it and leave the line owed. Both racers may refund; that
-    // errs toward paying too little, never toward spending credit that is not
-    // there.
-    if (balanceOf(await ledgerFor(scope, memberId)) < 0) {
-      await scope.create<LedgerEntry>('ledger', {
-        id: `refund:${line.ref}:${randomBytes(4).toString('hex')}`,
-        memberId,
-        kind: 'credit_refund',
-        amountCents: line.amountCents,
-        note: 'Not enough credit — returned',
-        ref: { kind: line.kind, id: line.ref, pk: line.pk },
-        createdAt: now,
-        createdBy: memberId,
-      });
-      balance = balanceOf(await ledgerFor(scope, memberId));
+
+    ledger = await ledgerFor(scope, memberId);
+    if (balanceOf(ledger) < 0) {
+      await refund(line, n, 'Not enough credit — returned');
+      ledger = await ledgerFor(scope, memberId);
       continue;
     }
-    let landed = false;
-    if (line.kind === 'session') {
-      const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
-      if (row && row.paid !== true && row.writtenOff !== true) {
-        landed = !!(await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: 'credit' }, line.pk));
-      }
-    } else {
-      const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
-      if (job && job.paidAt === null) {
-        landed = !!(await scope.replace('stringingJobs', { ...job, paidAt: now, updatedAt: now }, line.pk));
-      }
+
+    let outcome: 'paid' | 'already' | 'gone';
+    try {
+      outcome = await markPaid(line);
+    } catch (err) {
+      await refund(line, n, 'Could not mark it paid — returned');
+      throw err;
     }
-    if (!landed) {
-      await scope.create<LedgerEntry>('ledger', {
-        id: `refund:${line.ref}:${randomBytes(4).toString('hex')}`,
-        memberId,
-        kind: 'credit_refund',
-        amountCents: line.amountCents,
-        note: 'Already paid — credit returned',
-        ref: { kind: line.kind, id: line.ref, pk: line.pk },
-        createdAt: now,
-        createdBy: memberId,
-      });
+    if (outcome !== 'paid') {
+      await refund(line, n, 'Already settled — credit returned');
+      ledger = await ledgerFor(scope, memberId);
       continue;
     }
-    balance -= line.amountCents;
     spent += line.amountCents;
     paid += 1;
   }
-  return { paid, spentCents: spent, balanceCents: balance };
+  if (paid === 0) throw new CreditError('nothing_to_pay');
+  return { paid, spentCents: spent, balanceCents: balanceOf(await ledgerFor(scope, memberId)) };
 }
