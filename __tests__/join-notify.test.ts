@@ -139,7 +139,10 @@ describe('admins hear about a new member', () => {
       expect(pushes()).toHaveLength(1);
       expect(pushes()[0].ids).toEqual([secondAdmin.id]);
       expect(pushes()[0].payload.body).toContain('Lin');
-      expect((await join()).status).toBe(200);
+      // A repeat join by a FRESH link (the first was consumed): welcome back, no push.
+      const spare = await mintInvite('riverside', secondAdmin.id);
+      const again = await joinRoute(new NextRequest(JOIN, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Client-IP': `10.7.0.${ipSeq++}`, Cookie: cookie }, body: JSON.stringify({ token: spare!.token }) } as never));
+      expect(again.status).toBe(200);
       expect(pushes()).toHaveLength(1);
     });
   });

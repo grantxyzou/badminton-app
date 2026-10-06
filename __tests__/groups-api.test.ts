@@ -38,7 +38,7 @@ const { POST: joinRoute } = await import('../app/api/groups/join/route');
 const { POST: switchRoute } = await import('../app/api/groups/switch/route');
 const { GET: mineRoute } = await import('../app/api/groups/mine/route');
 const { GET: currentRoute } = await import('../app/api/groups/current/route');
-const { GET: inviteRoute, POST: regenerateRoute } = await import('../app/api/groups/invite/route');
+const { GET: inviteRoute, POST: regenerateRoute, DELETE: revokeRoute } = await import('../app/api/groups/invite/route');
 const { PATCH: patchMemberRoute, DELETE: deleteMemberRoute } = await import(
   '../app/api/groups/members/[memberId]/route'
 );
@@ -132,26 +132,30 @@ describe('GET /api/groups/preview — the unauthenticated door', () => {
     expect((await res.json()).name).toBe('Tuesday Smash');
   });
 
-  it('answers an unknown token exactly as it answers a retired one', async () => {
-    // BPM's own pair, because the admin cookie names BPM and regeneration acts
-    // on the club the ADMIN is in — a different club's link is not theirs to
-    // retire, which is itself asserted in the switch/invite cases below.
-    const before = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
-    expect((await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).status).toBe(200);
-
-    const retired = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${before.token}`));
-    const nonsense = await previewRoute(makeRequest('GET', `${BASE}/preview?token=deadbeef`));
-    expect(retired.status).toBe(404);
-    expect(nonsense.status).toBe(404);
-    expect(await retired.json()).toEqual(await nonsense.json());
-  });
-
-  it('leaves another club\'s link alone when this club regenerates', async () => {
+  it('answers an unknown token exactly as it answers a USED one', async () => {
+    // One-time invites (docs/plans/one-time-invites.md): a used link and a
+    // nonsense link must be indistinguishable, or the preview is an oracle
+    // for which invites have been redeemed.
     const owner = seedMember('Ada');
     const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
+    const joiner = seedMember('Grace');
+    expect((await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)))).status).toBe(200);
 
-    // The admin cookie names BPM; regenerating there must not reach Ada's club.
-    expect((await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).status).toBe(200);
+    const used = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${invite.token}`));
+    const usedCode = await previewRoute(makeRequest('GET', `${BASE}/preview?code=${invite.code}`));
+    const nonsense = await previewRoute(makeRequest('GET', `${BASE}/preview?token=deadbeef`));
+    expect(used.status).toBe(404);
+    expect(usedCode.status).toBe(404);
+    expect(nonsense.status).toBe(404);
+    expect(await used.json()).toEqual(await nonsense.json());
+  });
+
+  it("leaves another club's invite alone when this club revokes one", async () => {
+    const owner = seedMember('Ada');
+    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
+    // The admin cookie names BPM; revoking there must not reach Ada's club.
+    const mine = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
+    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: mine.id }))).status).toBe(200);
 
     const theirs = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${invite.token}`));
     expect(theirs.status).toBe(200);
@@ -179,17 +183,24 @@ describe('POST /api/groups/join', () => {
     expect(res.headers.get('set-cookie') ?? '').toContain('member_session=');
   });
 
-  it('is idempotent — a second tap re-enters without rejoining', async () => {
+  it('a one-time link is used by the first join; a member already in gets "welcome back" from a FRESH link without burning it', async () => {
     const owner = seedMember('Ada');
-    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
+    const { id, invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
     const joiner = seedMember('Grace');
 
     await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)));
-    const again = await joinRoute(
-      makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)),
-    );
-    expect(again.status).toBe(200);
-    expect((await again.json()).joined).toBe(false);
+    // The same link again: it was consumed by the join above.
+    const again = await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)));
+    expect(again.status).toBe(404);
+
+    // A different, live link meant for somebody else: welcome back, and the
+    // link is still live for the person it was made for.
+    const { mintInvite, resolveInvite } = await import('../lib/invites');
+    const spare = (await mintInvite(id, owner.id))!;
+    const back = await joinRoute(makeRequest('POST', `${BASE}/join`, { token: spare.token }, asMember('Grace', joiner.id)));
+    expect(back.status).toBe(200);
+    expect((await back.json()).joined).toBe(false);
+    expect(await resolveInvite(spare.token, 'invite')).toBe(id);
   });
 
   it('answers 409 and names the fix when the roster name is taken', async () => {
@@ -383,73 +394,72 @@ describe('POST /api/groups/switch', () => {
   });
 });
 
-describe('GET|POST /api/groups/invite', () => {
-  it('mints lazily for a club that has never had one — BPM after the backfill', async () => {
+describe('GET|POST|DELETE /api/groups/invite — one-time invites', () => {
+  it('a club with none lists none; nothing is minted by a READ', async () => {
     const res = await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`));
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.token).toMatch(/^[0-9a-f]{32}$/);
-    expect(body.code).toMatch(/^[2-9A-HJ-NP-TV-Z]{8}$/);
+    expect(await res.json()).toEqual({ invites: [] });
   });
 
-  it('returns the same pair on a second read', async () => {
-    const first = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
-    const second = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
-    expect(second.token).toBe(first.token);
-    expect(second.code).toBe(first.code);
+  it('POST makes a new one each time, and GET lists them newest first with the secrets', async () => {
+    const a = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
+    const b = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
+    expect(a.token).toMatch(/^[0-9a-f]{32}$/);
+    expect(a.code).toMatch(/^[2-9A-HJ-NP-TV-Z]{8}$/);
+    expect(a.token).not.toBe(b.token);
+    expect(Date.parse(a.expiresAt) - Date.parse(a.createdAt)).toBe(7 * 24 * 60 * 60 * 1000);
+    const list = (await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json()).invites;
+    expect(list.map((i: { token: string }) => i.token)).toEqual([b.token, a.token]);
+    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${a.token}`))).status).toBe(200);
   });
 
-  it('regenerating retires the old pair — the only revocation there is', async () => {
-    const before = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
-    const after = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
-    expect(after.token).not.toBe(before.token);
-
-    const old = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${before.token}`));
-    const oldCode = await previewRoute(makeRequest('GET', `${BASE}/preview?code=${before.code}`));
-    const fresh = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${after.token}`));
-    expect(old.status).toBe(404);
-    expect(oldCode.status).toBe(404);
-    expect(fresh.status).toBe(200);
+  it('DELETE revokes one by id; the link and code die, the others stay', async () => {
+    const a = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
+    const b = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
+    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: a.id }))).status).toBe(200);
+    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${a.token}`))).status).toBe(404);
+    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?code=${a.code}`))).status).toBe(404);
+    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${b.token}`))).status).toBe(200);
+    // Gone from the list, and a second revoke is a 404, not an error.
+    const list = (await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json()).invites;
+    expect(list.map((i: { id: string }) => i.id)).toEqual([b.id]);
+    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: a.id }))).status).toBe(404);
   });
 
-  it('a retired token stays dead even if its doc survives the delete', async () => {
-    const before = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
+  it('a revoked token stays dead even if its doc survives the delete', async () => {
+    const a = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
     const groups = getStore()['groups'] as Record<string, unknown>[];
-    const oldDoc = groups.find((d) => typeof d.id === 'string' && (d.id as string).startsWith('invite:'));
+    const oldDoc = groups.find((d) => d.id === a.id);
     expect(oldDoc).toBeTruthy();
-
-    await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`));
-
-    // Put the old doc back, standing in for a delete that 429'd. Retirement
-    // must not depend on that write having succeeded — the group's pointer is
-    // the authority, and it no longer names this doc.
+    await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: a.id }));
+    // Put the doc back, standing in for a delete that 429'd. Retirement must
+    // not depend on that write — the club's list is the authority.
     seedDoc('groups', { ...(oldDoc as Record<string, unknown>) });
-
-    const res = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${before.token}`));
-    expect(res.status).toBe(404);
+    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${a.token}`))).status).toBe(404);
   });
 
-  it('repairs a half-lost pair instead of replacing both', async () => {
-    const before = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
-    const groups = getStore()['groups'] as Record<string, unknown>[];
-    const codeIdx = groups.findIndex((d) => typeof d.id === 'string' && (d.id as string).startsWith('code:'));
-    expect(codeIdx).toBeGreaterThan(-1);
-    groups.splice(codeIdx, 1); // the code doc goes missing
-
-    const after = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
-    // The surviving LINK is untouched — opening the admin card must not revoke
-    // the link a club posted in its group chat months ago.
-    expect(after.token).toBe(before.token);
-    expect(after.code).not.toBe(before.code);
-    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${before.token}`))).status).toBe(200);
+  it('a USED invite leaves the list', async () => {
+    const owner = seedMember('Ada');
+    const { id, invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
+    const joiner = seedMember('Grace');
+    const { listInvites } = await import('../lib/invites');
+    expect((await listInvites(id)).map((i) => i.token)).toEqual([invite.token]);
+    await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)));
+    expect(await listInvites(id)).toEqual([]);
   });
 
-  it('refuses a non-admin on the READ as well as the write', async () => {
+  it('DELETE validates its body', async () => {
+    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: 'nope' }))).status).toBe(400);
+    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, {}))).status).toBe(400);
+  });
+
+  it('refuses a non-admin on every verb', async () => {
     const person = seedMember('Grace');
     seedMembership('bpm', person.id, { name: 'Grace' });
     const headers = asMember('Grace', person.id);
     expect((await inviteRoute(makeRequest('GET', `${BASE}/invite`, undefined, headers))).status).toBe(401);
     expect((await regenerateRoute(makeRequest('POST', `${BASE}/invite`, undefined, headers))).status).toBe(401);
+    expect((await revokeRoute(makeRequest('DELETE', `${BASE}/invite`, { id: 'invite:' + 'a'.repeat(64) }, headers))).status).toBe(401);
   });
 });
 

@@ -645,12 +645,33 @@ function getMockContainer(name: string) {
          * Replaces in place so array order (and therefore any test asserting
          * on ordering) survives the write, which is also what Cosmos does from
          * a query's point of view once you sort.
+         *
+         * HONOURS `IfMatch` AND MINTS AN ETAG, like `upsert` above — since
+         * 2026-10-06. Until then this ignored the condition and stored the doc
+         * with no `_etag` at all, so every read-modify-write under `replace`
+         * (`movePointers`, the backfill, the invite list) looked race-safe in
+         * tests while the mock could not produce the 412 their retry loops
+         * exist for. One-time invites are the first thing whose correctness
+         * IS that 412: two sign-ups racing on one link must not both get in.
          */
-        async replace(next: Record<string, unknown>) {
+        async replace(
+          next: Record<string, unknown>,
+          options?: { accessCondition?: { type: string; condition: string } },
+        ) {
           const idx = store.findIndex((r) => r.id === id);
-          if (idx >= 0) store[idx] = next;
-          else store.push(next);
-          return { resource: next };
+          const condition = options?.accessCondition;
+          if (condition?.type === 'IfMatch') {
+            const current = idx >= 0 ? store[idx] : undefined;
+            if (!current || current._etag !== condition.condition) {
+              const error = new Error('Precondition Failed') as Error & { code: number };
+              error.code = 412;
+              throw error;
+            }
+          }
+          const stored = { ...next, _etag: `mock-etag-${++etagSeq}` };
+          if (idx >= 0) store[idx] = stored;
+          else store.push(stored);
+          return { resource: stored };
         },
         async delete() {
           const idx = store.findIndex((r) => r.id === id);

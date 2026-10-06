@@ -45,7 +45,7 @@ describe('invitesOn has one definition', () => {
   });
 
   it('the hook and the server both import it', () => {
-    for (const rel of ['lib/useInviteLink.ts', 'lib/groupRoutes.ts', 'components/admin/CommandCenter/CommandCenter.tsx']) {
+    for (const rel of ['lib/useInvites.ts', 'lib/groupRoutes.ts', 'components/admin/CommandCenter/CommandCenter.tsx']) {
       const src = readFileSync(join(ROOT, rel), 'utf8');
       expect(src, rel).toMatch(/from '@\/lib\/invitesOn'/);
     }

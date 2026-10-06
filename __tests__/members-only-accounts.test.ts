@@ -120,12 +120,19 @@ describe('a new account needs an invite', () => {
     expect(res.status).toBe(201);
   });
 
-  it('a retired invite is refused — regenerating is the revocation', async () => {
+  it('a revoked invite is refused, and so is a used one', async () => {
+    const { revokeInvite } = await import('../lib/invites');
     const old = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    await mintInvite('bpm', ADMIN_MEMBER_ID);
+    await revokeInvite('bpm', old!.id);
     const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ inviteToken: old!.token })));
     expect(res.status).toBe(404);
     expect(membersNamed('Carolina')).toEqual([]);
+
+    const once = await mintInvite('bpm', ADMIN_MEMBER_ID);
+    expect((await signupRoute(makeRequest('POST', SIGNUP, signupBody({ inviteToken: once!.token })))).status).toBe(201);
+    const second = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ name: 'Second', email: 'second@example.com', inviteToken: once!.token })));
+    expect(second.status).toBe(404);
+    expect(membersNamed('Second')).toEqual([]);
   });
 
   it('with groups off, ANOTHER club\'s invite does not mint a BPM account', async () => {
@@ -184,11 +191,14 @@ describe('a new account needs an invite', () => {
 });
 
 describe('the invite surfaces exist with only one club', () => {
-  it('the admin can read BPM\'s link and code', async () => {
+  it('the admin can make and list BPM\'s invites', async () => {
+    const { POST: createInvite } = await import('../app/api/groups/invite/route');
+    const made = await createInvite(makeAdminRequest('POST', `${GROUPS}/invite`));
+    expect(made.status).toBe(201);
+    expect((await made.json()).token).toMatch(/^[0-9a-f]{32}$/);
     const res = await inviteRoute(makeAdminRequest('GET', `${GROUPS}/invite`));
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.token).toMatch(/^[0-9a-f]{32}$/);
+    expect((await res.json()).invites).toHaveLength(1);
   });
 
   it('a signed-out visitor can preview a valid invite — the club name and nothing else', async () => {
