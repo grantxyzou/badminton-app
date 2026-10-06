@@ -1,7 +1,7 @@
 # Loading cascade
 
 **Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); follow-on to `docs/plans/motion-pass.md`; requested directly by the owner on 2026-10-03
-**Status:** in-flight
+**Status:** shipped 2026-10-05 (phases 1–5)
 **Review on:** 2026-10-24 — did phases 2–5 (Home, Stats, Profile + Stringing, Admin) each land, or did the cascade stop at the primitive?
 
 ## Problem
@@ -65,6 +65,15 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 - **The pricing disclosure shows a shimmer line while prices load** instead of opening onto nothing.
 - **The Stringing tab is a RevealGroup**: the shop card, then the stringer's queue (`canBeEmpty` — it exists only for the stringer). `StringerJobsCard` leaves the loading-canary backlog.
 - **Not done here:** the push row in Profile's settings still appears after its probe (inserting a row); the request sheet still treats "strings loading" like "strings failed". Both are small and behind a tap; left for a follow-up rather than widening this PR.
+
+### Phase 5 — Admin (2026-10-05)
+
+- **The console is one RevealGroup**, top to bottom: access requests, next session, the tiles, the e-transfer inbox, payments, invite, sign-in readiness, the settings list. The usually-empty cards reserve no space but keep their order; the settings list is static but slotted LAST, so none of them can push it down by arriving.
+- **The anomaly toasts stay outside the group.** They render into a fixed `.toast-stack` and hold no place in the page; they no longer blink off and back on with every refresh (only the first load hides them). They are the loading canary's one exemption, with that reason.
+- **One header, one skeleton.** The auth-check frame, the chunk fallback and the console all use the TopBar (it used to switch from a page title to a back bar as the console loaded), and the admin tab is no longer BLANK while the shell decides who is an admin. `AdminTabSkeleton` and the console's slot placeholders share one set of measured heights (274 / 109 / 351) and gaps: in a browser the frame's blocks sit at 95 / 389 / 518 and the console's at 95 / 389 / 517.
+- **Two bugs in the primitive, both found by the browser trace, not the tests.** (1) React's dev double-mount unregistered the slots one at a time, re-ordering after each; with only the always-ready settings slot left registered, it revealed — latched — above a screen of skeletons. Re-ordering after an unregister now waits a microtask. (2) A slot with no placeholder was still a flex item while pending, so it took a gap and moved the column 20px. It is now hidden until it has something to show. Both have tests.
+- **Lying states:** Payments said "No active players yet" before the players answered (and showed the previous session's rows unmarked during a chip switch — now dimmed with `aria-busy`); Announcements said "No announcements posted" before the list was read. RosterPage and ReleasesView no longer drop back to a skeleton after every save. `SignInReadinessCard` treats a malformed body as a load error instead of crashing the console.
+- **The canary is strict.** Its backlog is empty and gone; "Loading…" copy (`home.loading`, `players.loading`, both unused) is deleted in both locales.
 
 ## Shape
 

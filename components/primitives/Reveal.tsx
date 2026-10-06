@@ -151,8 +151,13 @@ export function RevealGroup({ children }: { children: ReactNode }) {
   const unregister = useCallback(
     (id: string) => {
       slots.current.delete(id);
-      // A pending slot leaving may unblock the ones below it.
-      recompute();
+      // A pending slot leaving may unblock the ones below it — but re-order
+      // AFTER the commit, not per removal. React (StrictMode in dev, and any
+      // remount) unregisters slots one at a time and registers them again in
+      // the same commit; re-ordering between removals once found only the
+      // always-ready LAST slot registered and revealed it, latched, above a
+      // screen of skeletons. By the microtask the slots are back.
+      queueMicrotask(recompute);
     },
     [recompute],
   );
@@ -255,9 +260,13 @@ export function RevealSlot({
   }, [closing, instantEmpty]);
 
   const showPlaceholder = !shown || (isEmpty && !instantEmpty);
+  // No placeholder and nothing to show (pending, or answered empty): take no
+  // space. An empty wrapper is still a flex item, so it took a gap and moved
+  // the column — and with no skeleton there is nothing to animate closed.
+  const holdsNothing = (placeholder === null || placeholder === undefined) && (!shown || isEmpty);
 
   return (
-    <div ref={node} data-reveal-slot="" hidden={gone || instantEmpty}>
+    <div ref={node} data-reveal-slot="" hidden={gone || instantEmpty || holdsNothing}>
       {showPlaceholder &&
         (canBeEmpty ? <Collapse open={!closing}>{placeholder}</Collapse> : placeholder)}
       {/* Mounted from the start so a card that fetches inside itself fetches.

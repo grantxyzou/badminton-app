@@ -21,6 +21,9 @@ interface AnnouncementsCardProps {
 
 export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardProps) {
   const [items, setItems] = useState<Announcement[]>([]);
+  /** The list has been READ. `items` is `[]` until then, and the subtitle
+   *  said "No announcements posted" over a list nobody had read yet. */
+  const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState('');
   const [polished, setPolished] = useState('');
   const [polishing, setPolishing] = useState(false);
@@ -46,6 +49,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
         return;
       }
       setItems(await res.json());
+      setLoaded(true);
       // Cleared on success rather than on entry, so a Try again in flight
       // keeps saying "couldn't load" instead of flashing "No announcements
       // posted" over a list nobody has read yet.
@@ -187,7 +191,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
       <CardHeader
         icon="campaign"
         title="Announcements"
-        subtitle={items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
+        subtitle={!loaded ? undefined : items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
       />
 
 

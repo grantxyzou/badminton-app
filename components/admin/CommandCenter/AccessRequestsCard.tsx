@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import CardHeader from '@/components/primitives/CardHeader';
 import { useOnline } from '@/lib/useOnline';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -70,6 +71,9 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
       setBusy(null);
     }
   }
+
+  // The console's RevealSlot holds this place; with nobody waiting it closes.
+  useRevealReady(waiting !== null || loadError);
 
   if (loadError) {
     return (

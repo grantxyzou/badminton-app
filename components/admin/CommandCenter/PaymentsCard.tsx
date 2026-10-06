@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -69,6 +70,10 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [viewedSessionId, setViewedSessionId] = useState<string | null>(null);
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+  /** The session whose players `allPlayers` actually holds. Until it matches
+   *  the viewed one, the list is either empty-because-unread or the PREVIOUS
+   *  session's — neither may be read as "no active players". */
+  const [playersFor, setPlayersFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const loadedRef = useRef(false);
@@ -179,6 +184,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       }
       const data = (await res.json()) as Player[];
       setAllPlayers(Array.isArray(data) ? data : []);
+      setPlayersFor(sessionId);
       setPlayersError(false);
     } catch (err) {
       console.warn('PaymentsCard loadPlayers failed:', err);
@@ -474,6 +480,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     }
   }
 
+  // The console's RevealSlot holds this place until the sessions AND the
+  // viewed session's players have answered (loading cascade, phase 5).
+  const playersReady = !!viewedSessionId && playersFor === viewedSessionId;
+  useRevealReady(!loading && (loadError || playersError || playersReady || !viewedSessionId));
+
   if (loading) return <CardSkeleton height={240} />;
 
   // A failed load tints the whole card rather than tucking a red line under
@@ -510,7 +521,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
   }
 
   return (
-    <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Payments">
+    // Dimmed (not blanked) while another session's players load: the chips
+    // switch instantly and the old rows must not read as the new session's.
+    <section className="glass-card p-4 space-y-3 motion-busy" aria-label="Payments" aria-busy={!playersReady && !playersError}>
       <CardHeader icon="payments" title="Payments" />
       {/* Session selector — horizontal chips replace the old prev/next
           chevrons AND the standalone RecentSessionsStrip card (merged here).
@@ -559,7 +572,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           it read as a caption someone forgot to finish. The glyph is
           `group_add` because the way out of this state is the add-player field
           directly below it. */}
-      {total === 0 && (
+      {total === 0 && playersReady && (
         <EmptyState icon="group_add">No active players yet</EmptyState>
       )}
 

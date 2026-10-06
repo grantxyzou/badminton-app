@@ -80,8 +80,11 @@ export default function RosterPage({ onBack }: RosterPageProps) {
     open: boolean; playerName: string; code: string; expiresAt: number;
   }>({ open: false, playerName: '', code: '', expiresAt: 0 });
 
+  // Only the FIRST load shows the skeleton. `load()` runs again after every
+  // save and deactivate, and setting `loading` there flipped the whole page
+  // back to a skeleton after each one (the refetch rule). `loading` starts
+  // true, so nothing needs setting here at all.
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const [membersRes, aliasesRes, recentRes, adminRes] = await Promise.all([
         fetch(`${BASE}/api/members`, { cache: 'no-store' }),

@@ -8,6 +8,7 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import type { EtransferPayment, PaymentAllocation } from '@/lib/types';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -73,6 +74,9 @@ export default function PaymentsInboxCard({ refreshKey = 0, onChanged }: { refre
   useEffect(() => {
     if (enabled) void load();
   }, [enabled, load, refreshKey]);
+
+  // The console's RevealSlot holds this place until the inbox has answered.
+  useRevealReady(!enabled || data !== null || loadError);
 
   if (!enabled) return null;
   const title = 'E-transfers';

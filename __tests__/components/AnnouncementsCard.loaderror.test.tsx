@@ -32,3 +32,12 @@ describe('<AnnouncementsCard /> — load failure', () => {
     expect(screen.queryByText(/No announcements posted/i)).toBeNull();
   });
 });
+
+describe('AnnouncementsCard while the list loads (loading cascade, phase 5)', () => {
+  it('does not say "No announcements posted" over a list nobody has read', () => {
+    global.fetch = (() => new Promise<Response>(() => {})) as typeof fetch;
+    render(<AnnouncementsCard />);
+    expect(screen.queryByText('No announcements posted')).toBeNull();
+    global.fetch = originalFetch;
+  });
+});

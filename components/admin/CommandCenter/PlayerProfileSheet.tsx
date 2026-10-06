@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { fmtFullDate as fmtDate } from '@/lib/fmt';
 import MemberAvatar from '@/components/primitives/MemberAvatar';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -218,7 +219,9 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
 
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-          {loading && <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: '0' }}>Loading…</p>}
+          {/* A skeleton the size of the profile block, not a line of loading text
+              (the loading rule). */}
+          {loading && <CardSkeleton height={160} />}
           {error && (
             <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
               {error}
@@ -316,7 +319,10 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                     Couldn’t load owed breakdown.
                   </p>
                 ) : !audit ? (
-                  <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0' }}>Loading…</p>
+                  <div style={{ display: 'grid', gap: 'var(--space-3)' }} aria-hidden="true">
+                    <div className="shimmer-line rounded-lg" style={{ height: 12, width: '70%' }} />
+                    <div className="shimmer-line rounded-lg" style={{ height: 12, width: '50%' }} />
+                  </div>
                 ) : audit.sessions.length === 0 ? (
                   <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: '0' }}>No billable sessions on record.</p>
                 ) : (

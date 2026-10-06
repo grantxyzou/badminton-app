@@ -187,7 +187,6 @@
       "heldBody": "你还有几次活动的费用未付。转账到账后，如仍有名额，会自动为你保留位置。",
       "waitlistPositionLabel": "候补第 {position} 位，共 {total} 位"
     },
-    "loading": "场次加载中…",
     "cost": {
       "label": "预估费用",
       "emphasis": "本周费用：<amount>{value}</amount>",
@@ -1361,7 +1360,6 @@
     }
   },
   "players": {
-    "loading": "名单加载中…",
     "empty": "还没有人报名，来当第一个！",
     "upcomingSession": "本周场次",
     "waitlistHeader": "候补名单",

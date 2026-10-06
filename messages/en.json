@@ -187,7 +187,6 @@
       "heldBody": "You owe for a couple of past sessions. You'll move into a spot as soon as your e-transfer lands, if there's still room.",
       "waitlistPositionLabel": "Position #{position} of {total}"
     },
-    "loading": "Loading session...",
     "cost": {
       "label": "Estimated cost",
       "emphasis": "Cost this week: <amount>{value}</amount>",
@@ -1361,7 +1360,6 @@
     }
   },
   "players": {
-    "loading": "Loading players...",
     "empty": "No one's signed up yet — be the first!",
     "upcomingSession": "UPCOMING SESSION",
     "waitlistHeader": "WAITLIST",

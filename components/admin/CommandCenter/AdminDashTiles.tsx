@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { StateLink } from '@/components/primitives/StateCard';
 import { isRefused } from '@/lib/apiFetch';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -105,6 +106,9 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
       cancelled = true;
     };
   }, [attempt]);
+
+  // The console's RevealSlot holds this place until both tiles have answered.
+  useRevealReady(birds !== null && roster !== null);
 
   if (birds === null || roster === null) {
     return (

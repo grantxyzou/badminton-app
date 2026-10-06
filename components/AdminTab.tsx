@@ -8,7 +8,7 @@ import { getIdentity } from '@/lib/identity';
 import { AdminTabSkeleton } from './primitives/CardSkeleton';
 import AdminDashboard from './admin/AdminDashboard';
 import PinInput from './PinInput';
-import PageHeader from './primitives/PageHeader';
+import TopBar from './primitives/TopBar';
 import ErrorState from './primitives/ErrorState';
 import { isRefused } from '@/lib/apiFetch';
 
@@ -92,7 +92,9 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
   if (checkFailed) {
     return (
       <div className="space-y-5">
-        <PageHeader>{pageT('title')}</PageHeader>
+        {/* The console's own bar: the header used to change component the
+            moment the console loaded, from a page title to a back bar. */}
+        <TopBar title={pageT('title')} onBack={onExit} backLabel="Back to profile" />
         <div className="flex items-center justify-center min-h-[50vh]">
           <ErrorState
             message={pageT('checkError')}
@@ -110,7 +112,9 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
   if (isAuthed === null) {
     return (
       <div className="space-y-5">
-        <PageHeader>{pageT('title')}</PageHeader>
+        {/* The console's own bar: the header used to change component the
+            moment the console loaded, from a page title to a back bar. */}
+        <TopBar title={pageT('title')} onBack={onExit} backLabel="Back to profile" />
         <AdminTabSkeleton />
       </div>
     );
@@ -119,7 +123,9 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
   if (!isAuthed) {
     return (
       <div className="space-y-5">
-        <PageHeader>{pageT('title')}</PageHeader>
+        {/* The console's own bar: the header used to change component the
+            moment the console loaded, from a page title to a back bar. */}
+        <TopBar title={pageT('title')} onBack={onExit} backLabel="Back to profile" />
         <div className="flex items-center justify-center min-h-[50vh]">
           <div className="glass-card p-5 w-full max-w-xs space-y-5">
             <div className="text-center">

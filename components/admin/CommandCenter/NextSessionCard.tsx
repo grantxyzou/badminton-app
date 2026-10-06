@@ -11,6 +11,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { sharedFetch } from '@/lib/sharedRead';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -223,6 +224,8 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
+  // The console's RevealSlot holds this place on first load.
+  useRevealReady(!loading);
   if (loading) return <CardSkeleton height={180} />;
   if (loadError) {
     // "We could not ask" and "there is no session" look identical and mean
