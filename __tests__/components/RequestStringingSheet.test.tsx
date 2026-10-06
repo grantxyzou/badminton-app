@@ -68,7 +68,7 @@ describe('the standard form', () => {
   it('offers the strings the club stocks, as a dropdown', async () => {
     mockApi(['BG80 white', 'Aerobite', 'NBG95']);
     wrap();
-    const select = await screen.findByLabelText('Which string?');
+    const select = await screen.findByRole('combobox', { name: 'Which string?' });
     expect(select.tagName).toBe('SELECT');
     expect(screen.getByRole('option', { name: 'Aerobite' })).toBeDefined();
   });
@@ -76,7 +76,7 @@ describe('the standard form', () => {
   it('asks for ONE tension, not two', async () => {
     mockApi(['BG80 white']);
     wrap();
-    await screen.findByLabelText('Which string?');
+    await screen.findByRole('combobox', { name: 'Which string?' });
     expect(screen.getByText('Tension')).toBeDefined();
     expect(screen.queryByText('Mains')).toBeNull();
     expect(screen.queryByText('Crosses')).toBeNull();
@@ -126,7 +126,7 @@ describe('custom request', () => {
     // Someone opening custom usually wants to ADJUST what they had.
     mockApi(['BG80 white']);
     wrap();
-    fireEvent.change(await screen.findByLabelText('Which string?'), {
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Which string?' }), {
       target: { value: 'BG80 white' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Custom request' }));
@@ -326,5 +326,26 @@ describe('a kit that has not answered yet is not an empty kit', () => {
     await waitFor(() =>
       expect(screen.getByText("Type the racket — we'll add it to your equipment.")).toBeDefined(),
     );
+  });
+});
+
+// Loading cascade follow-up: the string list loading and the list FAILING were
+// one `null`. Loading forced the form into free text and then swapped it for a
+// dropdown; failing said "Grant hasn't listed what he stocks" — untrue.
+describe('RequestStringingSheet while the string list is unknown', () => {
+  it('shows a disabled placeholder, not free text, while the list loads', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    wrap();
+    const field = screen.getByLabelText('Which string?') as HTMLInputElement;
+    expect(field.tagName).toBe('INPUT');
+    expect(field.disabled).toBe(true);
+    expect(screen.queryByText(enMessages.home.stringing.noStringsYet)).toBeNull();
+  });
+
+  it('says the list could not load, not that nothing is stocked, when it fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) } as Response));
+    wrap();
+    expect(await screen.findByText(enMessages.home.stringing.stringsUnavailable)).toBeDefined();
+    expect(screen.queryByText(enMessages.home.stringing.noStringsYet)).toBeNull();
   });
 });

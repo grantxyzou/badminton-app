@@ -93,6 +93,7 @@
         "backToKit": "Pick from my equipment",
         "noRacketsYet": "Type the racket \u2014 we'll add it to your equipment.",
         "kitUnavailable": "Couldn't load your equipment. Type the racket instead.",
+        "stringsUnavailable": "Couldn't load the string list. Type the one you'd like.",
         "racketPlaceholder": "Which racket?",
         "stringPlaceholder": "Which string? e.g. BG80 white",
         "mains": "Mains",

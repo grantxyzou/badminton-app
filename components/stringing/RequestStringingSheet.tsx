@@ -66,6 +66,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const online = useOnline();
 
   const [offered, setOffered] = useState<string[] | null>(null);
+  /** Loading and failed used to be the same `null`, so a list still on its
+   *  way forced the form into free text and then swapped to a dropdown, and a
+   *  list that FAILED said "Grant hasn't listed what he stocks" — untrue. */
+  const [stringsStatus, setStringsStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [racketLabel, setRacketLabel] = useState('');
   /* Typing a racket rather than picking one from the kit. Forced when the kit
      is empty or unreadable — an empty select is a dead end, the same reasoning
@@ -104,10 +108,17 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     fetch(`${BASE}/api/stringing/strings`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!cancelled) setOffered(d && Array.isArray(d.strings) ? d.strings : null);
+        if (cancelled) return;
+        if (d && Array.isArray(d.strings)) {
+          setOffered(d.strings);
+          setStringsStatus('ready');
+        } else {
+          setStringsStatus('failed');
+        }
       })
       .catch(() => {
-        /* stays null — the form falls back to the custom path */
+        // Failed: the form falls back to the custom path, and says why.
+        if (!cancelled) setStringsStatus('failed');
       });
     return () => {
       cancelled = true;
@@ -115,8 +126,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   }, []);
 
   // No list, or a list we could not read, means the dropdown has nothing to
-  // offer. Forcing custom is the only honest option.
-  const mustBeCustom = offered === null || offered.length === 0;
+  // offer. Forcing custom is the only honest option — once we KNOW. While the
+  // list loads, neither control shows (like the racket field above).
+  const stringsLoading = stringsStatus === 'loading';
+  const mustBeCustom = stringsStatus === 'failed' || (stringsStatus === 'ready' && (offered ?? []).length === 0);
   const isCustom = custom || mustBeCustom;
 
   const clamp = (n: number) => Math.max(TENSION_MIN_LB, Math.min(TENSION_MAX_LB, n));
@@ -334,7 +347,18 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
 
             )}
 
-            {isCustom ? (
+            {stringsLoading && !custom ? (
+              /* Asking, not answering: the same disabled placeholder the racket
+                 field uses while the kit loads. */
+              <input
+                type="text"
+                value=""
+                disabled
+                readOnly
+                placeholder={t('pickString')}
+                aria-label={t('whichString')}
+              />
+            ) : isCustom ? (
               <input
                 type="text"
                 value={customString}
@@ -372,9 +396,9 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
               stepper(t('tension'), tension, setTension)
             )}
 
-            {mustBeCustom ? (
+            {stringsLoading ? null : mustBeCustom ? (
               <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-                {t('noStringsYet')}
+                {stringsStatus === 'failed' ? t('stringsUnavailable') : t('noStringsYet')}
               </p>
             ) : (
               <button
