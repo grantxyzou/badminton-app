@@ -23,6 +23,7 @@ import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 import { signupGroupFor } from '@/lib/inviteSignup';
+import { notifyAdminsOfJoin } from '@/lib/joinNotify';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 import { rosterNameHolder, addMembership } from '@/lib/groups';
 
@@ -167,6 +168,8 @@ export async function POST(req: NextRequest) {
         await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
       }
     }
+    // Somebody new is in: tell the club's admins (lib/joinNotify.ts).
+    if (joinsAClub && invited.invited) await notifyAdminsOfJoin(signupGroupId, { id: member.id, name: member.name });
 
     /* The PWA case: this response's cookies are being issued to Safari, so
        park the member the app can collect instead. Without this a brand-new
