@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { isFlagOn } from '@/lib/flags';
+import { invitesOn } from '@/lib/invitesOn';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -24,9 +24,11 @@ export interface Invite {
  * working the moment it resolves. Callers MUST confirm before calling it —
  * there is no undo and no way to tell who still holds the old one.
  *
- * With the flag off it does not ask (see `useCurrentGroup`). A 401 or 404
- * resolves to `invite: null` with no error, the same posture: not an admin, or
- * a server whose flag disagrees with this bundle. A real failure sets
+ * It asks exactly when the server answers — `invitesOn()`, multi-group OR
+ * members-only — and otherwise does not (see `useCurrentGroup` for why a
+ * flag-off hook must make no request). A 401 or 404 resolves to
+ * `invite: null` with no error, the same posture: not an admin, or a server
+ * whose flag disagrees with this bundle. A real failure sets
  * `error`, so the card can say it could not load rather than render an empty
  * box that reads as "your club has no link".
  */
@@ -37,7 +39,7 @@ export function useInviteLink(enabled = true) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!enabled || !isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+    if (!enabled || !invitesOn()) {
       setLoading(false);
       return;
     }

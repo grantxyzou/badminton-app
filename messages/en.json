@@ -122,7 +122,7 @@
       "dismiss": "Dismiss"
     },
     "signup": {
-      "spotsLeftSuffix": "spots left",
+      "spotsLeftSuffix": "{remaining, plural, one {spot left} other {spots left}} out of {total}",
       "othersInOne": "{a} is in",
       "othersInTwo": "{a} and {b} are in",
       "othersInMany": "{a}, {b} and {count, plural, one {# other} other {# others}} are in",
@@ -148,7 +148,7 @@
       "submitting": "Signing up…",
       "cantMakeIt": "Can't make it? Cancel my spot",
       "leaveWaitlist": "Leave the waitlist",
-      "spotsRemaining": "{remaining} of {total} spots left",
+      "spotsRemaining": "{remaining, plural, one {# spot left} other {# spots left}} out of {total}",
       "spotsFull": "Signed-up: {count} · Full",
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",

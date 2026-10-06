@@ -25,6 +25,7 @@ import { verifyMemberAuth, unauthorized } from '@/lib/auth';
 import { completeSignIn } from '@/lib/authSession';
 import { getContainer } from '@/lib/cosmos';
 import { addMembership, readGroup, readMembership, RosterNameTakenError } from '@/lib/groups';
+import { notifyAdminsOfJoin } from '@/lib/joinNotify';
 import { resolveInvite } from '@/lib/invites';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import {
@@ -90,6 +91,9 @@ export async function POST(req: NextRequest) {
       role: 'member',
       joinedVia: token ? 'link' : 'code',
     });
+    // A first join tells the club's admins; a repeat join ("welcome back")
+    // does not. Best-effort, past the write (lib/joinNotify.ts).
+    if (!wasMember) await notifyAdminsOfJoin(group.id, { id: member.id, name: rosterName });
 
     const res = NextResponse.json({
       id: group.id,

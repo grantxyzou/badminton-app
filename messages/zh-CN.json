@@ -122,7 +122,7 @@
       "dismiss": "关闭"
     },
     "signup": {
-      "spotsLeftSuffix": "个空位",
+      "spotsLeftSuffix": "个空位，共 {total} 个",
       "othersInOne": "{a} 已报名",
       "othersInTwo": "{a} 和 {b} 已报名",
       "othersInMany": "{a}、{b} 和另外 {count} 人已报名",
@@ -148,7 +148,7 @@
       "submitting": "报名中…",
       "cantMakeIt": "去不了？取消报名",
       "leaveWaitlist": "退出候补名单",
-      "spotsRemaining": "还剩 {remaining}/{total} 个名额",
+      "spotsRemaining": "还剩 {remaining} 个名额，共 {total} 个",
       "spotsFull": "已报名 {count} 人 · 满员",
       "allSpotsTaken": "{total} 个名额已满。",
       "closesOn": "报名截止 {date}",
