@@ -103,6 +103,16 @@ card, overpayment), `transfer` (payer ≠ beneficiary — "Bruce paid Grant's Sa
 `Player.paid` and `StringingJob.paidAt` become projections written when allocations cover a charge; settle
 auto-applies available credit. An overpayment stops being a "Needs a look" dead end and becomes credit.
 
+**Store credit + gift cards — SHIPPED 2026-10-06, ahead of the gate, by Grant's decision** ("without
+the match rate can we have the gift card, store credit idea quickly? But not throw away work"). Built as
+the FIRST SLICE of Phase 2, not beside it: an append-only `ledger` container (credit grants, gift
+redemptions, spends, refunds) whose balance is a sum, so the full ledger adds session and payment entry
+kinds to the same rails instead of replacing anything. Scope Grant chose: admin gives (or takes back)
+credit; admin mints single-use gift codes (`BPM-XXXX-XXXX`, only the hash stored); members redeem in
+Profile and "Pay with credit" on Home. NOT included: auto-applying credit at settle, overpayment → credit,
+partial use (credit pays a line only if it covers it in full), Apple Wallet. Idempotence is in the ids:
+`gift:<codeHash>` and `spend:<lineRef>` are created, never upserted, so a double tap collides on insert.
+
 **Phase 3 — cards** (needs the ROADMAP non-goal changed first). Stripe Checkout with Apple/Google Pay;
 webhook → ledger `payment`. In the native app this is a real-world service, so App Store guideline
 3.1.3(e) permits external payment — no in-app purchase. One club: a plain Stripe account. Many clubs:
@@ -142,4 +152,5 @@ top-ups ≥ $40 with the payer covering the fee.
 | Admin queue, assign, key | `/api/admin/payments`, `/api/admin/payments/assign`, `/api/admin/payments/key` |
 | "I've sent it" | `POST /api/payments/self-report` |
 | Reminders (who, when, send) | `lib/paymentReminders.ts`, `POST /api/payments/remind` |
+| Store credit, gift cards | `lib/storeCredit.ts`; `/api/credit{,/redeem,/spend}`, `/api/admin/credit`, `/api/admin/giftcards` |
 | The script admins paste | `public/payments/apps-script.gs` (served at `/bpm/payments/apps-script.gs`, so the setup sheet can copy it) |

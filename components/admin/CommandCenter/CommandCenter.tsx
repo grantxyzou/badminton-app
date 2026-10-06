@@ -13,6 +13,7 @@ import SignInReadinessCard from './SignInReadinessCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import PaymentsInboxCard from './PaymentsInboxCard';
+import GiftCardsCard from './GiftCardsCard';
 import AdminDashTiles from './AdminDashTiles';
 import PlayerProfileSheet from './PlayerProfileSheet';
 import ReceiptSheet from './ReceiptSheet';
@@ -176,6 +177,11 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
           nothing with the flag off (the endpoint 404s) or for a non-admin. */}
       <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.invite} />}>
         <InviteCard enabled={inviteSurfaces} groupName={groupName} />
+      </RevealSlot>
+
+      {/* Occasional, like the invite: below the week's work. */}
+      <RevealSlot canBeEmpty placeholder={null}>
+        <GiftCardsCard refreshKey={composedRefresh} />
       </RevealSlot>
 
       {/* Members only (docs/plans/members-only.md): who would be locked out.

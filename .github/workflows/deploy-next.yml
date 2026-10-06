@@ -75,6 +75,8 @@ jobs:
           # the Gmail script; the unpaid hold is a separate admin switch,
           # off by default. Read server-side; off, /api/payments/* 404s.
           NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: 'true'
+          # Store credit + gift cards (docs/plans/payments.md). Read server-side.
+          NEXT_PUBLIC_FLAG_STORE_CREDIT: 'true'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.
           #

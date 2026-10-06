@@ -5,6 +5,7 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import { fmtFullDate as fmtDate } from '@/lib/fmt';
 import MemberAvatar from '@/components/primitives/MemberAvatar';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import CreditSection from '@/components/admin/CreditSection';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -234,6 +235,8 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                 <Stat label="Sessions attended" value={history.lifetime.attended} />
                 <Stat label="Times paid" value={history.lifetime.totalPaid} />
               </div>
+
+              {memberId && <CreditSection memberId={memberId} />}
 
               <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                 <p style={{

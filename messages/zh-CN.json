@@ -212,6 +212,13 @@
       "sentItDone": "谢谢！收到转账后会自动标记为已付。",
       "sentItError": "保存失败，请重试。"
     },
+    "credit": {
+      "label": "你的余额",
+      "balance": "你有 {amount} 的余额。",
+      "pay": "用余额支付",
+      "notEnough": "余额还不够支付一整次活动，会留到下次使用。",
+      "error": "余额使用失败，请重试。"
+    },
     "balance": {
       "groupSessions": "羽毛球",
       "groupStringing": "穿线",
@@ -474,6 +481,17 @@
       "needYou": "{count} 项待处理",
       "allClear": "没有待办"
     },
+    "redeem": {
+      "title": "兑换礼品卡",
+      "help": "输入礼品卡上的兑换码，金额会存入你的余额，可用于支付活动费用。",
+      "placeholder": "XXXX-XXXX",
+      "submit": "兑换",
+      "success": "已将 {amount} 存入你的余额。",
+      "notFound": "兑换码无效，请检查后重试。",
+      "rateLimited": "先休息一下，稍后再试。",
+      "error": "暂时无法兑换，请重试。",
+      "close": "关闭"
+    },
     "settings": {
       "helpGroup": "帮助",
       "privacyGroup": "隐私",
@@ -482,6 +500,7 @@
       "newPin": "设置 PIN",
       "updatePin": "修改 PIN",
       "recoveryCode": "有恢复码？",
+      "redeemGift": "兑换礼品卡",
       "statsPrivacy": "数据与隐私",
       "statsPrivacyOn": "已开启",
       "statsPrivacyOff": "私密",
