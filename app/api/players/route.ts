@@ -879,6 +879,9 @@ export async function PATCH(req: NextRequest) {
     }
     if (typeof body.removed === 'boolean') updates.removed = body.removed;
     if (typeof body.waitlisted === 'boolean') updates.waitlisted = body.waitlisted;
+    // Promoting by hand ends the unpaid hold: the row is no longer held, and a
+    // stale flag would let a later payment treat it as still waiting.
+    if (body.waitlisted === false) updates.heldForUnpaid = undefined;
     if (typeof body.writtenOff === 'boolean') {
       updates.writtenOff = body.writtenOff;
       // Mutual exclusion: writtenOff:true forces paid:false. If the client

@@ -295,6 +295,11 @@ async function touchLastReceived(groupId: string, at: string): Promise<void> {
   }
 }
 
+/** Cents of this payment already marked onto rows (a partial auto-match). */
+export function appliedCents(payment: Pick<EtransferPayment, 'allocations'>): number {
+  return (payment.allocations ?? []).reduce((sum, a) => sum + a.amountCents, 0);
+}
+
 export class AssignError extends Error {
   constructor(readonly code: 'not_found' | 'already_resolved' | 'not_owed' | 'unknown_person') {
     super(code);
@@ -307,7 +312,12 @@ export class AssignError extends Error {
  * hand is dismissed, but who sent it is still worth learning, or the next
  * transfer from them lands in the queue again for the same reason.
  */
-async function rememberSender(scope: GroupScope, senderName: string | null, payerName: string): Promise<void> {
+async function rememberSender(
+  scope: GroupScope,
+  senderName: string | null,
+  payerName: string,
+  memberId: string | null,
+): Promise<void> {
   if (!senderName || !payerName) return;
   const sender = senderName.trim().toLowerCase();
   const payer = payerName.trim().toLowerCase();
@@ -320,6 +330,8 @@ async function rememberSender(scope: GroupScope, senderName: string | null, paye
     id: randomBytes(12).toString('hex'),
     appName: payerName.trim().slice(0, 50),
     etransferName: senderName.trim().slice(0, 50),
+    // So deleting the member's account deletes the link to their legal name.
+    ...(memberId ? { memberId } : {}),
   });
 }
 
@@ -348,7 +360,7 @@ export async function resolvePayment(
     if (action.remember && (action.memberId || action.name)) {
       const who = await resolveIdentity(action.memberId ? { memberId: action.memberId } : { name: action.name }, groupId);
       if (action.memberId && !who.memberId) throw new AssignError('unknown_person');
-      await rememberSender(scope, payment.senderName, who.member?.name ?? action.name ?? '');
+      await rememberSender(scope, payment.senderName, who.member?.name ?? action.name ?? '', who.memberId);
     }
     const next = { ...payment, status: 'ignored' as const, matchedBy: action.adminId, resolvedAt: now };
     return (await scope.replace('payments', next)) ?? next;
@@ -365,14 +377,17 @@ export async function resolvePayment(
     chosen = lines.filter((l) => wanted.has(l.ref));
     if (chosen.length !== wanted.size) throw new AssignError('not_owed');
   } else {
-    chosen = payment.amountCents !== null ? allocateAmount(lines, payment.amountCents) ?? [] : [];
+    // A payment that half-applied before landing in the queue has already
+    // paid some rows; only what is left of it is the amount to allocate.
+    const remaining = payment.amountCents !== null ? payment.amountCents - appliedCents(payment) : null;
+    chosen = remaining !== null && remaining > 0 ? allocateAmount(lines, remaining) ?? [] : [];
     if (chosen.length === 0) throw new AssignError('not_owed');
   }
 
   const landed = await applyAllocations(scope, chosen.map(toAllocation), payment.id);
   const payerName = identity.member?.name ?? action.name ?? '';
 
-  if (action.remember) await rememberSender(scope, payment.senderName, payerName);
+  if (action.remember) await rememberSender(scope, payment.senderName, payerName, identity.memberId);
 
   await releaseHoldIfSettled(scope, identity.memberId);
 
@@ -382,7 +397,9 @@ export async function resolvePayment(
     reason: undefined,
     memberId: identity.memberId,
     payerName,
-    allocations: landed,
+    // KEEP what an earlier, partial auto-match already paid: those rows carry
+    // this payment's id, and replacing the list would orphan them.
+    allocations: [...payment.allocations, ...landed],
     matchedBy: action.adminId,
     resolvedAt: now,
   };
@@ -506,7 +523,17 @@ export async function releaseHoldIfSettled(scope: GroupScope, memberId: string |
         { name: '@memberId', value: memberId },
       ],
     });
-    const held = rows.find((r) => r.sessionId === sessionId && r.memberId === memberId && r.heldForUnpaid === true && r.removed !== true);
+    // Only a row STILL on the waitlist: an admin may have promoted a held
+    // player by hand, and that row is active — counting it against its own
+    // spot would push a confirmed player back onto the list for paying.
+    const held = rows.find(
+      (r) =>
+        r.sessionId === sessionId &&
+        r.memberId === memberId &&
+        r.heldForUnpaid === true &&
+        r.waitlisted === true &&
+        r.removed !== true,
+    );
     if (!held) return;
     if (await signupHeldForUnpaid(scope, memberId)) return;
     const session = await scope.read<{ id: string; maxPlayers?: number }>('sessions', sessionId, sessionId);

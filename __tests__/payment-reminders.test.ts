@@ -53,12 +53,21 @@ afterEach(() => {
 });
 
 describe('reminderDue — the rules', () => {
-  const line = (over: Partial<Parameters<typeof reminderDue>[0]> = {}) => ({ settled: true, selfReported: false, settledAt: ago(4), remindedCount: 0, ...over });
+  const line = (over: Partial<Parameters<typeof reminderDue>[0]> = {}) => ({
+    settled: true,
+    selfReported: false,
+    settledAt: ago(4),
+    remindedCount: 0,
+    lastRemindedAt: null as string | null,
+    ...over,
+  });
   const now = Date.now();
   it.each([
     ['first nudge at 3 days', line({ settledAt: ago(3.1) }), true],
     ['not before 3 days', line({ settledAt: ago(2.9) }), false],
-    ['second nudge at 7 days', line({ settledAt: ago(7.1), remindedCount: 1 }), true],
+    ['second nudge at 7 days', line({ settledAt: ago(7.1), remindedCount: 1, lastRemindedAt: ago(4.1) }), true],
+    ['a LATE first nudge does not pull the second to the next morning', line({ settledAt: ago(9), remindedCount: 1, lastRemindedAt: ago(1) }), false],
+    ['…it waits the 4-day gap instead', line({ settledAt: ago(13), remindedCount: 1, lastRemindedAt: ago(4.1) }), true],
     ['not between 3 and 7 once nudged', line({ settledAt: ago(5), remindedCount: 1 }), false],
     ['never a third', line({ settledAt: ago(20), remindedCount: 2 }), false],
     ['not past 30 days — old history stays asleep', line({ settledAt: ago(31) }), false],

@@ -99,7 +99,9 @@ const SENDER_PATTERNS: RegExp[] = [
   /e-?transfer\s*:?\s*(.+?)\s+(?:has\s+)?sent you\b/i,
   // Subject, EN autodeposit — VERIFIED against a real notification, 2026-10:
   // "Interac e-Transfer: You've received $15.75 from CHEUK SHAN CHUNG and it has been automatically deposited."
-  /received\s+\$[\d,.]+\s*(?:\(CAD\))?\s+from\s+(.+?)(?:\s+and\b|\.\s|\.$|$)/im,
+  // Ends at "and it has been", never a bare "and": a joint account is "LIN AND
+  // MARY WONG", and cutting that to "LIN" could auto-match the wrong member.
+  /received\s+\$[\d,.]+\s*(?:\(CAD\))?\s+from\s+(.+?)(?:\s+and\s+(?:it|the\s+money)\b|\.\s|\.$|$)/im,
   // Body, the "Transfer Details" block of the same real email: "Sent From:\nCHEUK SHAN CHUNG".
   /sent\s+from\s*:\s*([^\n]+)/i,
   /envoy[ée]\s+par\s*:\s*([^\n]+)/i,
@@ -126,7 +128,15 @@ function cleanName(raw: string): string | null {
   return name;
 }
 
+/** The labelled field is the most literal source there is — read it first. */
+const FIELD_PATTERNS: RegExp[] = [/^\s*sent\s+from\s*:\s*([^\n]+)/im, /^\s*envoy[ée]\s+par\s*:\s*([^\n]+)/im];
+
 function findSender(subject: string, body: string): string | null {
+  for (const re of FIELD_PATTERNS) {
+    const m = re.exec(body);
+    const name = m ? cleanName(m[1]) : null;
+    if (name) return name;
+  }
   for (const text of [subject, body]) {
     for (const re of SENDER_PATTERNS) {
       const m = re.exec(text);
