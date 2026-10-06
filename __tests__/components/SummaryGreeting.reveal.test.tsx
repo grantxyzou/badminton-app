@@ -7,9 +7,11 @@ import enMessages from '../../messages/en.json';
 /**
  * Loading cascade, phase 3. Before the active name resolves, useInsight reports
  * `loading: false` with nothing asked. SummaryGreeting took that as "ready, and
- * nothing to show", the You register let every card below it through, and the
- * greeting then landed on top of them — seen in a browser with a slow insight
- * read. It must report ready only on an ANSWER.
+ * nothing to show": its slot CLOSED, giving up its box, and the greeting then
+ * landed on top of the cards below — seen in a browser with a slow insight
+ * read. It must report ready only on an ANSWER, so its skeleton holds the box
+ * until then. (Since the 2026-10-06 rule change a boxed slot never holds the
+ * cards below it, so the box staying up is the whole guarantee.)
  */
 const insight = vi.hoisted(() => ({ value: { data: null, loading: false, error: false, forbidden: false, serverError: false, reload: () => {} } as Record<string, unknown> }));
 const active = vi.hoisted(() => ({ value: { name: null as string | null, resolved: false } }));
@@ -38,24 +40,24 @@ const visible = (t: string) => {
 };
 
 describe('SummaryGreeting in a RevealSlot', () => {
-  it('holds the cards below while the name is unresolved', () => {
+  it('keeps its box while the name is unresolved', () => {
     active.value = { name: null, resolved: false };
     render(<YouRegister />);
-    expect(visible('trend card')).toBe(false);
     expect(visible('greeting skeleton')).toBe(true);
   });
 
-  it('holds them while the insight is still being asked', () => {
+  it('keeps its box while the insight is still being asked', () => {
     active.value = { name: 'Lin', resolved: true };
     insight.value = { ...insight.value, data: null, loading: true };
     render(<YouRegister />);
-    expect(visible('trend card')).toBe(false);
+    expect(visible('greeting skeleton')).toBe(true);
   });
 
-  it('lets them through once the insight answered, even with nothing to say', () => {
+  it('gives the box up once the insight answered with nothing to say', () => {
     active.value = { name: 'Lin', resolved: true };
     insight.value = { ...insight.value, data: { greeting: null }, loading: false };
     render(<YouRegister />);
+    expect(visible('greeting skeleton')).toBe(false);
     expect(visible('trend card')).toBe(true);
   });
 });

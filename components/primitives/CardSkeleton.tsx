@@ -81,7 +81,17 @@ export function TabSkeleton({ announcement }: { announcement?: React.ReactNode }
  * console it hands over to cannot drift apart. Here rather than in the admin
  * code so this file — which everyone downloads — imports nothing from it.
  */
-export const CONSOLE_HEIGHTS = { nextSession: 274, tile: 109, payments: 351, invite: 343, settings: 391 } as const;
+export const CONSOLE_HEIGHTS = {
+  nextSession: 274,
+  tile: 109,
+  // The e-transfer inbox in its "Set up" state, which is production's until
+  // the Gmail script is installed; re-measure the configured one-line status
+  // card then. Flag off, the slot closes at once and this is never drawn.
+  inbox: 190,
+  payments: 351,
+  invite: 343,
+  settings: 391,
+} as const;
 
 /**
  * Admin dashboard (Command Center) skeleton — the console's first three cards

@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { useEffect, useState } from 'react';
 import { render, screen, cleanup, act } from '@testing-library/react';
-import { RevealGroup, RevealSlot, useRevealReady, INSTANT_MS } from '../../components/primitives/Reveal';
+import { RevealGroup, RevealSlot, useRevealReady, INSTANT_MS, SPACELESS_WAIT_MS } from '../../components/primitives/Reveal';
 
 /*
  * The clock is driven: "instant" means ready within INSTANT_MS of the screen
@@ -23,6 +23,10 @@ afterEach(() => {
 });
 const later = () => {
   now = INSTANT_MS + 400;
+};
+/** Past the instant window, still inside a space-less slot's wait. */
+const soon = () => {
+  now = INSTANT_MS + 50;
 };
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 
@@ -49,23 +53,55 @@ const placeholderUp = (n: number) => {
 };
 
 describe('RevealGroup / RevealSlot', () => {
-  it('never reveals a card before the one above it', () => {
+  /* THE RULE (revised 2026-10-06, after Grant found Stats "a little slow" on
+     his phone): a card is held back only by a card above it that holds NO
+     SPACE yet, and only for SPACELESS_WAIT_MS. A card whose skeleton already
+     reserves its box cannot shove anything when it fills in, so nothing has
+     to wait for it — the first cut waited on everything above, and the Stats
+     tab sat behind a live model call for the AI greeting. */
+
+  it('a card holding its skeleton never holds up the cards below it', () => {
     const { rerender } = render(<Screen a={false} b={false} c={false} />);
-    later();
-    // The bottom card's data arrives first: it must wait behind its skeleton.
+    // Inside the space-less wait window, so this proves "never", not
+    // "not for long".
+    soon();
     rerender(<Screen a={false} b={false} c={true} />);
-    expect(shown('card 3')).toBe(false);
-    expect(placeholderUp(3)).toBe(true);
-
-    rerender(<Screen a={true} b={false} c={true} />);
-    expect(shown('card 1')).toBe(true);
-    expect(shown('card 3')).toBe(false);
-
-    // The middle one lands: it and the waiting card below it reveal together.
+    expect(shown('card 3')).toBe(true);
+    expect(placeholderUp(1)).toBe(true);
     rerender(<Screen a={true} b={true} c={true} />);
     advance(200);
+    expect(shown('card 1') && shown('card 2')).toBe(true);
+  });
+
+  function Spaceless({ top, below }: { top: boolean; below: boolean }) {
+    return (
+      <RevealGroup>
+        <RevealSlot ready={top} canBeEmpty placeholder={null}><p>prompt</p></RevealSlot>
+        <RevealSlot ready={below} placeholder={ph(2)}><p>card 2</p></RevealSlot>
+      </RevealGroup>
+    );
+  }
+
+  it('a space-less card above holds the cards below — briefly', () => {
+    const { rerender } = render(<Spaceless top={false} below={false} />);
+    soon();
+    rerender(<Spaceless top={false} below={true} />);
+    expect(shown('card 2')).toBe(false);
+    expect(placeholderUp(2)).toBe(true);
+    now = SPACELESS_WAIT_MS + 50;
+    advance(SPACELESS_WAIT_MS + 50);
     expect(shown('card 2')).toBe(true);
-    expect(shown('card 3')).toBe(true);
+  });
+
+  it('a space-less card that answers inside the wait releases the cards below at once', () => {
+    const { rerender } = render(<Spaceless top={false} below={false} />);
+    soon();
+    rerender(<Spaceless top={false} below={true} />);
+    expect(shown('card 2')).toBe(false);
+    rerender(<Spaceless top={true} below={true} />);
+    advance(200);
+    expect(shown('prompt')).toBe(true);
+    expect(shown('card 2')).toBe(true);
   });
 
   it('staggers a batch 40ms apart, keeping each skeleton until its turn', () => {
@@ -118,7 +154,6 @@ describe('RevealGroup / RevealSlot', () => {
   it('an empty card closes its skeleton and lets the card below through', () => {
     const { rerender } = render(<Screen a={true} b={false} c={true} />);
     later();
-    expect(shown('card 3')).toBe(false);
     rerender(<Screen a={true} b={true} bEmpty c={true} />);
     advance(400);
     expect(shown('card 2')).toBe(false);
@@ -183,9 +218,9 @@ describe('RevealGroup / RevealSlot', () => {
     );
     const { rerender } = render(screenOf(false));
     later();
-    // Loading and rendering nothing is NOT empty: it is still loading.
+    // Loading and rendering nothing is NOT empty: it is still loading, and
+    // its skeleton stays up (the card below shows — the box is reserved).
     expect(placeholderUp(1)).toBe(true);
-    expect(shown('below')).toBe(false);
     const { container } = { container: document.body };
     rerender(screenOf(true));
     advance(400);
@@ -204,7 +239,7 @@ describe('RevealGroup / RevealSlot', () => {
     render(
       <StrictMode>
         <RevealGroup>
-          <RevealSlot ready={false} placeholder={ph(1)}><p>card 1</p></RevealSlot>
+          <RevealSlot ready={false} canBeEmpty placeholder={null}><p>card 1</p></RevealSlot>
           <RevealSlot ready placeholder={ph(2)}><p>card 2</p></RevealSlot>
         </RevealGroup>
       </StrictMode>,
