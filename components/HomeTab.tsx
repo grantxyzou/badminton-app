@@ -1059,11 +1059,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 className="animate-count-tick"
                 style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}
               >
+                {/* No slash. "12/12" reads as a score or a full battery — taken
+                    out of total — so an EMPTY session looked full (Grant,
+                    2026-10-06). The big number is the spots still open; the
+                    total follows in words. */}
                 <span className="bpm-count">
-                  {spotsTotal - activePlayers.length}/{spotsTotal}
+                  {spotsTotal - activePlayers.length}
                 </span>
                 <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>
-                  {t('signup.spotsLeftSuffix')}
+                  {t('signup.spotsLeftSuffix', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}
                 </span>
               </p>
             </div>

@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The sign-up count says what it means (2026-10-06)
+
+- **An empty session no longer looks full.** The count on Home read "12/12 spots left", and a slash reads as "taken out of total", so twelve open spots looked like twelve taken. It now reads "12 spots left out of 12", and "1 spot left" when there is one.
+
 ### The buzz lands with the shuttles (2026-09-28)
 
 - **In the app, the little vibration when your sign-up lands now happens at the same instant the shuttles pop off the button.** It used to come about a quarter of a second early, while the button was still turning into the confirmation, so it felt like a separate event. The first shuttle now also leaves exactly on the buzz.

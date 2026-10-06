@@ -97,6 +97,32 @@ describe('signing up', () => {
     expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull();
   });
 
+  it('states the open spots in words, never as a slash that reads like "12 of 12 taken"', async () => {
+    roster = [];
+    renderHome();
+    await screen.findByText('Signing up as Lin');
+    // An EMPTY session: twelve open, said as such.
+    expect(document.querySelector('.bpm-count')?.textContent?.trim()).toBe('12');
+    expect(screen.getByText('spots left out of 12')).toBeDefined();
+    expect(document.body.textContent).not.toMatch(/\d+\s*\/\s*12/);
+  });
+
+  it('says "spot", not "spots", when one is left', async () => {
+    roster = Array.from({ length: 11 }, (_, i) => ({ id: `p${i}`, name: `Player ${i}`, waitlisted: false }));
+    renderHome();
+    await screen.findByText('Signing up as Lin');
+    expect(document.querySelector('.bpm-count')?.textContent?.trim()).toBe('1');
+    expect(screen.getByText('spot left out of 12')).toBeDefined();
+  });
+
+  it('keeps the same wording once you are in', async () => {
+    renderHome();
+    await screen.findByText('Signing up as Lin');
+    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
+    await screen.findByText("Lin, you're in");
+    expect(screen.getByText('8 spots left out of 12')).toBeDefined();
+  });
+
   it('never carries the delete token into the roster it renders', async () => {
     renderHome();
     await screen.findByText('Signing up as Lin');
