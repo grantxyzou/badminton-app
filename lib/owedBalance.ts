@@ -29,6 +29,8 @@ export interface UnpaidSession {
   settledAt: string | null;
   /** Reminders already sent for this row. */
   remindedCount: number;
+  /** ISO — when the latest of them went out, or null. */
+  lastRemindedAt: string | null;
 }
 
 /** One payable line, in cents, for matching an amount against. */
@@ -101,6 +103,7 @@ export async function computeOwed(
         selfReported: p.selfReportedPaid === true,
         settledAt: typeof p.settledAt === 'string' ? p.settledAt : null,
         remindedCount: Array.isArray(p.remindedAt) ? p.remindedAt.length : 0,
+        lastRemindedAt: Array.isArray(p.remindedAt) && p.remindedAt.length > 0 ? p.remindedAt[p.remindedAt.length - 1] : null,
       });
     }
   }

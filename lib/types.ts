@@ -385,6 +385,12 @@ export interface Alias {
   groupId?: string;
   appName: string;
   etransferName: string;
+  /**
+   * The member the bank name belongs to, when known — written by the payments
+   * queue's "Remember" (2026-10-06). Account deletion finds an alias by it, and
+   * by `appName` for the older rows that never carried one.
+   */
+  memberId?: string;
 }
 
 export interface BirdPurchase {
