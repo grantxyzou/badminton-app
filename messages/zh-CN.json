@@ -93,6 +93,7 @@
       "backToKit": "从我的装备里选",
       "noRacketsYet": "直接输入球拍名，会自动加进装备里。",
       "kitUnavailable": "装备加载失败，直接输入球拍名。",
+      "stringsUnavailable": "线的列表加载失败，直接输入你想要的线。",
       "racketPlaceholder": "哪支球拍？",
       "stringPlaceholder": "什么线？例如 BG80 白色",
       "mains": "竖线",

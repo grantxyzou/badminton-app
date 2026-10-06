@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
@@ -176,7 +176,12 @@ export default function ProfileTab({
   // button share one state and can't disagree after a toggle.
   const push = usePush();
 
-  useEffect(() => {
+  // A layout effect, not an effect: the check is synchronous, and running it
+  // after paint showed the "Add to Home Screen" row for a frame and then
+  // removed it — in the native shell and every installed PWA, i.e. most of
+  // the people who open this screen. ProfileTab is client-only (ssr: false),
+  // so there is no server render for this to disagree with.
+  useLayoutEffect(() => {
     // The native shell IS the installed app; the "Add to Home Screen" row
     // would be telling it to install itself.
     setInstalled(isStandalone() || isNative());
@@ -632,15 +637,19 @@ export default function ProfileTab({
   // This device: every row here can be absent (push still probing, already
   // installed, no migration), so the group hides rather than titling nothing.
   const appRows: SettingsRow[] = [
-    /* Hidden while the probe is unresolved: rendering "Off" before we
-       know would be a confirmed negative from an unknown state
-       (CLAUDE.md, "Unknown ≠ known-false"). */
-    ...(push.state.status !== 'loading'
-      ? [{
+    /* Present from the first frame, with NO status until the probe answers:
+       rendering "Off" before we know would be a confirmed negative from an
+       unknown state (CLAUDE.md, "Unknown ≠ known-false"), and hiding the row
+       instead inserted it later, pushing the rows below it down (loading
+       cascade follow-up). The row is shown for every answer, so it never
+       needed hiding — only its status did. */
+    ...([{
           icon: 'notifications',
           label: tSettings('notifications'),
           meta:
-            push.state.status === 'on'
+            push.state.status === 'loading'
+              ? undefined
+              : push.state.status === 'on'
               ? tPush('metaOn')
               : push.state.status === 'denied'
                 ? tPush('metaBlocked')
@@ -648,8 +657,7 @@ export default function ProfileTab({
                   ? undefined
                   : tPush('metaOff'),
           onClick: () => setPushOpen(true),
-        }]
-      : []),
+        }]),
     ...(!installed
       ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
       : []),

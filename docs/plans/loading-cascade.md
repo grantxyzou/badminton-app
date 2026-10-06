@@ -64,7 +64,7 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 - **The stringing shop has three states, not two.** `useStringingShop` returned `null` for both "not answered" and "could not read", and the card showed "Coming soon" for both — a shop that could not be read said it was closed, and kept saying so. Now: skeleton, error with Retry, and "Coming soon" only when the server says closed. The safety half is unchanged — no request button on anything but a confirmed open shop.
 - **The pricing disclosure shows a shimmer line while prices load** instead of opening onto nothing.
 - **The Stringing tab is a RevealGroup**: the shop card, then the stringer's queue (`canBeEmpty` — it exists only for the stringer). `StringerJobsCard` leaves the loading-canary backlog.
-- **Not done here:** the push row in Profile's settings still appears after its probe (inserting a row); the request sheet still treats "strings loading" like "strings failed". Both are small and behind a tap; left for a follow-up rather than widening this PR.
+- **Done in the follow-up (2026-10-06):** the push row in Profile's settings appeared after its probe (inserting a row); the request sheet treated "strings loading" like "strings failed". See "Follow-ups" below.
 
 ### Phase 5 — Admin (2026-10-05)
 
@@ -74,6 +74,13 @@ This failed if, after phase 2, a cold load of Home on a phone still shows any ca
 - **Two bugs in the primitive, both found by the browser trace, not the tests.** (1) React's dev double-mount unregistered the slots one at a time, re-ordering after each; with only the always-ready settings slot left registered, it revealed — latched — above a screen of skeletons. Re-ordering after an unregister now waits a microtask. (2) A slot with no placeholder was still a flex item while pending, so it took a gap and moved the column 20px. It is now hidden until it has something to show. Both have tests.
 - **Lying states:** Payments said "No active players yet" before the players answered (and showed the previous session's rows unmarked during a chip switch — now dimmed with `aria-busy`); Announcements said "No announcements posted" before the list was read. RosterPage and ReleasesView no longer drop back to a skeleton after every save. `SignInReadinessCard` treats a malformed body as a load error instead of crashing the console.
 - **The canary is strict.** Its backlog is empty and gone; "Loading…" copy (`home.loading`, `players.loading`, both unused) is deleted in both locales.
+
+### Follow-ups (2026-10-06)
+
+- **Profile's Notifications row is there from the first frame,** with no status until the push probe answers. It was hidden while probing and inserted afterwards, pushing the rows below it down; only its STATUS ever needed withholding ("Off" before we know is a confirmed negative from an unknown state).
+- **The "Add to Home Screen" row reads the platform before paint** (`useLayoutEffect`). Run after paint, it showed for a frame and then vanished — in the native shell and every installed PWA, which is most of the people who open Profile.
+- **The request sheet's string list has three states.** Loading shows the same disabled placeholder the racket field uses; failing says the list could not load (it said "Grant hasn't listed what he stocks"); only a loaded-and-empty list says that.
+- **RosterPage treats a failed members read as an error** with Try again. It became `[]`, an empty roster, on the screen an admin manages people from.
 
 ## Shape
 
