@@ -184,6 +184,22 @@ describe('parseInteracEmail — the real plain-text part and headers', () => {
   });
 });
 
+describe('joint accounts', () => {
+  it('"LIN AND MARY WONG" is not "LIN" — subject alone', () => {
+    const r = parseInteracEmail(
+      email({ subject: "Interac e-Transfer: You've received $15.00 from LIN AND MARY WONG and it has been automatically deposited.", body: 'Funds Deposited!' }),
+    );
+    expect(r.senderName).toBe('LIN AND MARY WONG');
+  });
+
+  it('the body\'s "Sent From:" field wins over the subject', () => {
+    const r = parseInteracEmail(
+      email({ subject: "Interac e-Transfer: You've received $15.00 from LIN and it has been automatically deposited.", body: 'Sent From: LIN AND MARY WONG\nAmount: $15.00 (CAD)' }),
+    );
+    expect(r.senderName).toBe('LIN AND MARY WONG');
+  });
+});
+
 describe('parseInteracEmail — what is NOT a payment', () => {
   it('a reminder for an unaccepted transfer is the same money again', () => {
     const r = parseInteracEmail(email({ subject: 'Reminder: INTERAC e-Transfer: BRUCE WAYNE sent you money.', body: 'BRUCE WAYNE has sent you $12.00 (CAD).' }));

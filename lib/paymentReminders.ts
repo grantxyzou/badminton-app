@@ -32,15 +32,33 @@ const DAY = 24 * 60 * 60 * 1000;
 export const REMINDER_STAGES_DAYS = [3, 7] as const;
 export const REMINDER_MAX_AGE_DAYS = 30;
 
-/** Is this line due its next reminder at `now`? Pure. */
-export function reminderDue(line: Pick<UnpaidSession, 'settled' | 'selfReported' | 'settledAt' | 'remindedCount'>, now: number): boolean {
+/**
+ * Is this line due its next reminder at `now`? Pure.
+ *
+ * Two clocks, both must be satisfied: the line's AGE has reached the next
+ * stage, and the GAP since the previous reminder is at least the gap between
+ * the stages (4 days). Age alone let a first reminder sent late — reminders
+ * switched on at day 8, or a script that stopped for a week — be followed by
+ * the second the very next morning.
+ */
+export function reminderDue(
+  line: Pick<UnpaidSession, 'settled' | 'selfReported' | 'settledAt' | 'remindedCount' | 'lastRemindedAt'>,
+  now: number,
+): boolean {
   if (!line.settled || line.selfReported || !line.settledAt) return false;
   const settled = Date.parse(line.settledAt);
   if (!Number.isFinite(settled)) return false;
   const age = now - settled;
   if (age > REMINDER_MAX_AGE_DAYS * DAY) return false;
-  const stage = REMINDER_STAGES_DAYS[line.remindedCount];
-  return stage !== undefined && age >= stage * DAY;
+  const k = line.remindedCount;
+  const stage = REMINDER_STAGES_DAYS[k];
+  if (stage === undefined || age < stage * DAY) return false;
+  if (k > 0) {
+    const last = line.lastRemindedAt ? Date.parse(line.lastRemindedAt) : NaN;
+    const gap = (REMINDER_STAGES_DAYS[k] - REMINDER_STAGES_DAYS[k - 1]) * DAY;
+    if (!Number.isFinite(last) || now - last < gap) return false;
+  }
+  return true;
 }
 
 export function reminderPayload(lineCount: number): PushPayload {

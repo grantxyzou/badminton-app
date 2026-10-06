@@ -261,6 +261,29 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
     }
   }
 
+  // Aliases from before they carried a `memberId` (the admin alias screen
+  // never wrote one) cannot be found by the OWNED loop above, so the link
+  // between this person's app name and their bank's legal name would outlive
+  // a deletion request — and a later member taking that name would inherit
+  // it. Matched by `appName`, and ONLY on rows with no `memberId`: a row that
+  // names its member belongs to that member and was handled above.
+  try {
+    const legacy = await queryAll(
+      'aliases',
+      'LOWER(c.appName) = @appName',
+      [{ name: '@appName', value: lowerName }],
+      (row) =>
+        !row.memberId && typeof row.appName === 'string' && row.appName.trim().toLowerCase() === lowerName,
+    );
+    for (const row of legacy) {
+      await getContainer('aliases').item(String(row.id), String(row.id)).delete();
+      summary.deleted += 1;
+    }
+  } catch (err) {
+    console.error('[purge] aliases (legacy, by name) failed:', err);
+    summary.failed.push('aliases:legacy');
+  }
+
   // E-transfers matched to them: the club's bookkeeping keeps the amount and
   // which rows it paid (those rows are anonymized, not deleted, for the same
   // reason), but the legal name on the transfer, its memo and the link to the

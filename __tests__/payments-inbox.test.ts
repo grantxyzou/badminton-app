@@ -403,6 +403,51 @@ describe('the soft hold', () => {
   });
 });
 
+describe('review fixes (2026-10-06)', () => {
+  it('a payment never pushes an admin-promoted held player back onto the waitlist', async () => {
+    await setHoldThreshold('bpm', 2);
+    const s = (getStore()['sessions'] as Array<Record<string, unknown>>).find((x) => x.id === ACTIVE)!;
+    s.maxPlayers = 1;
+    const { id } = await (await signup(makeRequest('POST', `${BASE}/players`, { name: 'Lin' }, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }))).json();
+    // The admin promotes Lin by hand into the one spot.
+    await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, sessionId: ACTIVE, waitlisted: false }));
+    expect(rowById(id).heldForUnpaid).toBeUndefined();
+    await post(email('Lin', '12.00'));
+    expect(rowById(id).waitlisted).toBe(false);
+  });
+
+  it('a held row the admin promoted before this fix (flag still set) is left where it is', async () => {
+    const r = seedPlayer(ACTIVE, 'Lin', { memberId: lin.id, waitlisted: false, heldForUnpaid: true });
+    const s = (getStore()['sessions'] as Array<Record<string, unknown>>).find((x) => x.id === ACTIVE)!;
+    s.maxPlayers = 1;
+    await post(email('Lin', '12.00'));
+    expect(rowById(r.id).waitlisted).toBe(false);
+  });
+
+  it('"Remember" stores the member on the alias, so account deletion can find it', async () => {
+    await post(email('MEI LING CHAN', '12.00'));
+    const id = (getStore()['payments'] as Array<{ id: string }>)[0].id;
+    await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: id, action: 'assign', memberId: lin.id, remember: true }));
+    expect(getStore()['aliases']).toEqual([expect.objectContaining({ memberId: lin.id, etransferName: 'MEI LING CHAN' })]);
+  });
+
+  it('resolving a half-applied payment keeps what it already paid and allocates only the rest', async () => {
+    // Shape left by an auto-match whose second line changed under it.
+    rowById(row1.id).paid = true;
+    rowById(row1.id).paymentId = 'etx:partial';
+    seedDoc('payments', {
+      id: 'etx:partial', groupId: 'bpm', source: 'etransfer', senderName: 'Lin', amountCents: 2700, memo: null, subject: '',
+      receivedAt: '2026-10-03T12:00:00Z', authenticated: true, status: 'review', reason: 'changed_while_matching',
+      allocations: [{ kind: 'session', ref: row1.id, pk: S1, amountCents: 1200 }], createdAt: '2026-10-03T12:00:00Z',
+    });
+    const res = await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: 'etx:partial', action: 'assign', memberId: lin.id }));
+    expect(res.status).toBe(200);
+    const doc = await res.json();
+    expect(doc.allocations.map((a: { ref: string }) => a.ref)).toEqual([row1.id, row2.id]);
+    expect(rowById(row2.id).paid).toBe(true);
+  });
+});
+
 describe('the kill-criterion readout', () => {
   it('counts what arrived in the last 28 days by how it was resolved', async () => {
     await post(email('Lin', '12.00', { date: new Date().toISOString() }));
