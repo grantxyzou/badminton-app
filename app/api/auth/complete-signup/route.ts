@@ -105,115 +105,132 @@ export async function POST(req: NextRequest) {
   if (!invited.ok) {
     return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
   }
-  const signupGroupId = invited.groupId;
-  // `null` is the create-a-group case: a real account deliberately on no
-  // roster yet (lib/inviteSignup.ts). Three consequences here.
-  //
-  // 1. NO NAME-TAKEN CHECK. A roster name is unique per CLUB, and this account
-  //    is in none — the reservation happens when `createGroup` mints the owner's
-  //    membership, which is the only place that can know the club.
-  // 2. NO MEMBERSHIP WRITE.
-  // 3. The COOKIE still claims BPM, because `completeSignIn` would fall back to
-  //    it anyway: `groupForMember` tolerates a member with no membership and
-  //    never checks BPM itself. Non-admin, and enough for `POST /api/groups`.
-  const joinsAClub = signupGroupId !== null;
-  const cookieGroupId = signupGroupId ?? BPM_GROUP_ID;
-  const taken = !joinsAClub
-    ? false
-    : isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
-    ? (await rosterNameHolder(signupGroupId, name)) !== null
-    : (await resolveActiveMemberId(signupGroupId, name)) !== null;
-  if (taken) {
-    return NextResponse.json({ error: 'name_taken' }, { status: 409 });
-  }
-
-  const memberId = `member-${randomBytes(8).toString('hex')}`;
-
-  // Reserve the provider identity first, then the email, then write the member
-  // — releasing everything reserved so far if a later step fails. Same ordering
-  // argument as /api/auth/signup: a reservation with no member blocks one key
-  // and belongs to nobody, whereas a member with an unreserved key can have it
-  // stolen by the next signup.
-  const reservedProvider = await reserveIdentity(pending.provider, pending.sub, memberId);
-  if (!reservedProvider.ok) {
-    return NextResponse.json({ error: 'already_linked' }, { status: 409 });
-  }
-
-  // Only claim the address when the provider verified it. An unverified address
-  // must not reserve `email:<addr>`, or a provider account with an arbitrary
-  // unconfirmed address could squat the real owner's future signup.
-  const claimEmail = pending.email && pending.emailVerified ? pending.email : null;
-  if (claimEmail) {
-    const reservedEmail = await reserveIdentity('email', claimEmail, memberId);
-    if (!reservedEmail.ok) {
-      await releaseIdentity(pending.provider, pending.sub);
-      return NextResponse.json({ error: 'email_taken' }, { status: 409 });
+  /**
+   * THE INVITE IS ALREADY CONSUMED (docs/plans/one-time-invites.md). Whatever
+   * `finish` answers, the claim is settled afterwards: an account was created
+   * → the invite is finalized against it; anything else — a taken name, a
+   * database error — → it is released so the person can try again.
+   */
+  const claim = invited.invited ? invited.claim : null;
+  let createdId: string | null = null;
+  const finish = async (): Promise<NextResponse> => {
+    const signupGroupId = invited.groupId;
+    // `null` is the create-a-group case: a real account deliberately on no
+    // roster yet (lib/inviteSignup.ts). Three consequences here.
+    //
+    // 1. NO NAME-TAKEN CHECK. A roster name is unique per CLUB, and this account
+    //    is in none — the reservation happens when `createGroup` mints the owner's
+    //    membership, which is the only place that can know the club.
+    // 2. NO MEMBERSHIP WRITE.
+    // 3. The COOKIE still claims BPM, because `completeSignIn` would fall back to
+    //    it anyway: `groupForMember` tolerates a member with no membership and
+    //    never checks BPM itself. Non-admin, and enough for `POST /api/groups`.
+    const joinsAClub = signupGroupId !== null;
+    const cookieGroupId = signupGroupId ?? BPM_GROUP_ID;
+    const taken = !joinsAClub
+      ? false
+      : isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
+      ? (await rosterNameHolder(signupGroupId, name)) !== null
+      : (await resolveActiveMemberId(signupGroupId, name)) !== null;
+    if (taken) {
+      return NextResponse.json({ error: 'name_taken' }, { status: 409 });
     }
-  }
 
-  try {
-    const member: Member = {
-      id: memberId,
-      name,
-      role: 'member',
-      sessionCount: 0,
-      active: true,
-      createdAt: new Date().toISOString(),
-      linkedProviders: [pending.provider],
-      ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
-    };
-    await getContainer('members').items.create(member);
-    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
-      if (joinsAClub) {
-        await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
-      }
+    const memberId = `member-${randomBytes(8).toString('hex')}`;
+
+    // Reserve the provider identity first, then the email, then write the member
+    // — releasing everything reserved so far if a later step fails. Same ordering
+    // argument as /api/auth/signup: a reservation with no member blocks one key
+    // and belongs to nobody, whereas a member with an unreserved key can have it
+    // stolen by the next signup.
+    const reservedProvider = await reserveIdentity(pending.provider, pending.sub, memberId);
+    if (!reservedProvider.ok) {
+      return NextResponse.json({ error: 'already_linked' }, { status: 409 });
     }
-    // Somebody new is in: tell the club's admins (lib/joinNotify.ts).
-    if (joinsAClub && invited.invited) await notifyAdminsOfJoin(signupGroupId, { id: member.id, name: member.name });
 
-    /* The PWA case: this response's cookies are being issued to Safari, so
-       park the member the app can collect instead. Without this a brand-new
-       Google account signs in everywhere EXCEPT the app that started it —
-       the same jar split as the sign-in path, one step later.
-
-       The callback put a ref in the pending cookie only when the stash was
-       genuinely needed (lib/oauthCallback.ts), so this cannot park an ordinary
-       browser's new account for a link's author. A NATIVE stash hands back a
-       return code, which the name sheet forwards home via bpm://auth/return. */
-    let returnCode: string | null = null;
-    if (pending.handoff) {
-      try {
-        returnCode = (await completeHandoff(pending.handoff, memberId))?.returnCode ?? null;
-      } catch (err) {
-        console.error('handoff complete (signup) failed:', err);
+    // Only claim the address when the provider verified it. An unverified address
+    // must not reserve `email:<addr>`, or a provider account with an arbitrary
+    // unconfirmed address could squat the real owner's future signup.
+    const claimEmail = pending.email && pending.emailVerified ? pending.email : null;
+    if (claimEmail) {
+      const reservedEmail = await reserveIdentity('email', claimEmail, memberId);
+      if (!reservedEmail.ok) {
+        await releaseIdentity(pending.provider, pending.sub);
+        return NextResponse.json({ error: 'email_taken' }, { status: 409 });
       }
     }
 
-    const res = NextResponse.json(
-      {
+    try {
+      const member: Member = {
         id: memberId,
         name,
-        email: claimEmail,
-        provider: pending.provider,
-        ...(returnCode ? { returnCode } : {}),
-      },
-      { status: 201 },
-    );
-    // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its
-    // clearAdminCookie branch APPENDS raw Set-Cookie headers, and a later
-    // `.set()` re-serializes the whole cookie map and silently drops them --
-    // leaving a stale admin_session alive for a non-admin. Verified, and
-    // pinned by __tests__/auth-cookie-order.test.ts.
-    clearPendingSignup(res);
-    /* Only a browser that STARTED the sign-in holds this cookie: a callback
-       that passed its own state cookie, or the hand-off claim (preimage + code)
-       — lib/authHandoff.ts, guarantee 4. So signing it in is honest. */
-    await completeSignIn(res, member, cookieGroupId);
-    return res;
-  } catch (err) {
-    await releaseIdentity(pending.provider, pending.sub);
-    if (claimEmail) await releaseIdentity('email', claimEmail);
-    console.error('POST /api/auth/complete-signup failed after reservation:', err);
-    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
+        role: 'member',
+        sessionCount: 0,
+        active: true,
+        createdAt: new Date().toISOString(),
+        linkedProviders: [pending.provider],
+        ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
+      };
+      await getContainer('members').items.create(member);
+      createdId = member.id;
+      if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+        if (joinsAClub) {
+          await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
+        }
+      }
+      // Somebody new is in: tell the club's admins (lib/joinNotify.ts).
+      if (joinsAClub && invited.invited) await notifyAdminsOfJoin(signupGroupId, { id: member.id, name: member.name });
+
+      /* The PWA case: this response's cookies are being issued to Safari, so
+         park the member the app can collect instead. Without this a brand-new
+         Google account signs in everywhere EXCEPT the app that started it —
+         the same jar split as the sign-in path, one step later.
+
+         The callback put a ref in the pending cookie only when the stash was
+         genuinely needed (lib/oauthCallback.ts), so this cannot park an ordinary
+         browser's new account for a link's author. A NATIVE stash hands back a
+         return code, which the name sheet forwards home via bpm://auth/return. */
+      let returnCode: string | null = null;
+      if (pending.handoff) {
+        try {
+          returnCode = (await completeHandoff(pending.handoff, memberId))?.returnCode ?? null;
+        } catch (err) {
+          console.error('handoff complete (signup) failed:', err);
+        }
+      }
+
+      const res = NextResponse.json(
+        {
+          id: memberId,
+          name,
+          email: claimEmail,
+          provider: pending.provider,
+          ...(returnCode ? { returnCode } : {}),
+        },
+        { status: 201 },
+      );
+      // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its
+      // clearAdminCookie branch APPENDS raw Set-Cookie headers, and a later
+      // `.set()` re-serializes the whole cookie map and silently drops them --
+      // leaving a stale admin_session alive for a non-admin. Verified, and
+      // pinned by __tests__/auth-cookie-order.test.ts.
+      clearPendingSignup(res);
+      /* Only a browser that STARTED the sign-in holds this cookie: a callback
+         that passed its own state cookie, or the hand-off claim (preimage + code)
+         — lib/authHandoff.ts, guarantee 4. So signing it in is honest. */
+      await completeSignIn(res, member, cookieGroupId);
+      return res;
+    } catch (err) {
+      await releaseIdentity(pending.provider, pending.sub);
+      if (claimEmail) await releaseIdentity('email', claimEmail);
+      console.error('POST /api/auth/complete-signup failed after reservation:', err);
+      return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
+    }
+  };
+  const res = await finish();
+  if (claim) {
+    if (createdId) await claim.finalize(createdId);
+    else await claim.release();
   }
+  return res;
 }

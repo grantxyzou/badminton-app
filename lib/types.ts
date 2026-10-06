@@ -238,14 +238,33 @@ export interface Group {
    */
   closedAt?: string;
   /**
-   * Pointers at the group's CURRENT invite docs — `invite:${sha256(token)}` and
-   * `code:${sha256(code)}`, siblings in this same container. The secrets
-   * themselves live on those docs and deliberately not here, so a route that
-   * returns a group verbatim cannot leak a working invite. `lib/invites.ts`
-   * owns both; absent means the group has never minted a pair.
+   * LEGACY (until 2026-10-06): pointers at the club-wide multi-use invite pair.
+   * No longer read — invites are one-time now (`invites` below) — and kept
+   * only so a rollback runs older code against the same documents. Never
+   * write them again.
    */
   inviteId?: string;
   inviteCodeId?: string;
+  /**
+   * The club's LIVE one-time invites (docs/plans/one-time-invites.md). Each
+   * entry points at a pair of sibling docs in this container —
+   * `invite:${sha256(token)}` and `code:${sha256(code)}` — whose plaintext
+   * secrets live there and deliberately not here, so a route that returns a
+   * group verbatim cannot leak a working invite. An invite is live exactly
+   * while it is listed here and unexpired; using it removes the entry under an
+   * etag condition. `lib/invites.ts` owns the list. Additive: absent means none.
+   */
+  invites?: PendingInvite[];
+}
+
+/** One live one-time invite, as listed on its `Group`. */
+export interface PendingInvite {
+  /** The link doc's id, `invite:${sha256(token)}`. */
+  id: string;
+  /** The code doc's id, `code:${sha256(code)}`. */
+  codeId: string;
+  createdAt: string;
+  expiresAt: string;
 }
 
 /** Container `memberships`, PK `/groupId`; id is `${groupId}:${memberId}`. */

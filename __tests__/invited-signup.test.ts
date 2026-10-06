@@ -155,13 +155,29 @@ describe('a token that does not resolve refuses rather than falling back', () =>
     expect(membershipsFor('Carolina')).toEqual([]);
   });
 
-  it('refuses a retired token — regeneration is the revocation', async () => {
-    const first = await mintInvite('riverside', ADMIN_MEMBER_ID);
-    await mintInvite('riverside', ADMIN_MEMBER_ID); // retires `first`
-    const res = await signupRoute(
-      makeRequest('POST', SIGNUP, body({ inviteToken: first!.token })),
+  it('refuses a revoked token, and a USED one — an invite admits one person', async () => {
+    const { revokeInvite } = await import('../lib/invites');
+    const revoked = await mintInvite('riverside', ADMIN_MEMBER_ID);
+    await revokeInvite('riverside', revoked!.id);
+    expect((await signupRoute(makeRequest('POST', SIGNUP, body({ inviteToken: revoked!.token })))).status).toBe(404);
+
+    const once = await mintInvite('riverside', ADMIN_MEMBER_ID);
+    expect((await signupRoute(makeRequest('POST', SIGNUP, body({ inviteToken: once!.token })))).status).toBe(201);
+    const again = await signupRoute(
+      makeRequest('POST', SIGNUP, body({ name: 'Second Person', email: 'second@example.com', inviteToken: once!.token })),
     );
-    expect(res.status).toBe(404);
+    expect(again.status).toBe(404);
+  });
+
+  it('a sign-up refused for a TAKEN NAME gives the invite back', async () => {
+    const { resolveInvite } = await import('../lib/invites');
+    const inv = await mintInvite('riverside', ADMIN_MEMBER_ID);
+    expect((await signupRoute(makeRequest('POST', SIGNUP, body({ inviteToken: inv!.token })))).status).toBe(201);
+    const spare = await mintInvite('riverside', ADMIN_MEMBER_ID);
+    // Same name on the same roster: refused — and the spare invite survives.
+    const clash = await signupRoute(makeRequest('POST', SIGNUP, body({ email: 'other@example.com', inviteToken: spare!.token })));
+    expect(clash.status).toBe(409);
+    expect(await resolveInvite(spare!.token, 'invite')).toBe('riverside');
   });
 
   it('refuses a NON-STRING token instead of reading it as no invite', async () => {
