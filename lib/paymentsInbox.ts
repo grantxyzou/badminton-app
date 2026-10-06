@@ -25,6 +25,7 @@ import { decideMatch, allocateAmount, type MatchCandidate } from './etransferMat
 import { computeOwed, owedLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
 import { rosterMembers } from './roster';
+import { dueReminders } from './paymentReminders';
 import type { Alias, EtransferPayment, PaymentAllocation, Player, StringingJob } from './types';
 
 export const PAYMENTS_SETTINGS_ID = 'payments-inbox';
@@ -49,6 +50,10 @@ export interface PaymentsSettingsDoc {
   keyCreatedAt?: string;
   lastReceivedAt?: string;
   holdAfterUnpaid?: number;
+  /** Payment reminders (Phase 1b). Absent = off. */
+  remindersOn?: boolean;
+  /** The last time the club's script asked for a reminder run — staleness shows on the card. */
+  lastReminderRunAt?: string;
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -410,6 +415,12 @@ export async function inboxSummary(groupId: string) {
       ignored: window.filter((p) => p.status === 'ignored').length,
       waiting: window.filter((p) => p.status === 'review').length,
     },
+    reminders: {
+      on: settings?.remindersOn === true,
+      lastRunAt: settings?.lastReminderRunAt ?? null,
+      // Who the next run would nudge — shown before the switch is pressed.
+      wouldRemind: (await dueReminders(scope, Date.now())).map((d) => d.name),
+    },
     hold: {
       threshold,
       suggested: SUGGESTED_HOLD_AFTER_UNPAID,
@@ -463,13 +474,18 @@ export async function wouldHold(groupId: string, threshold: number): Promise<str
   return out;
 }
 
-export async function setHoldThreshold(groupId: string, holdAfterUnpaid: number): Promise<void> {
+/** Merge fields into the club's payments settings doc (creating it if absent). */
+export async function notePaymentsSettings(groupId: string, patch: Partial<Omit<PaymentsSettingsDoc, 'id'>>): Promise<void> {
   await ensurePayments();
   const existing = await readPaymentsSettings(groupId);
   await groupScope(groupId).upsert<PaymentsSettingsDoc>('clubSettings', {
     ...(existing ?? { id: paymentsSettingsId(groupId) }),
-    holdAfterUnpaid,
+    ...patch,
   });
+}
+
+export async function setHoldThreshold(groupId: string, holdAfterUnpaid: number): Promise<void> {
+  await notePaymentsSettings(groupId, { holdAfterUnpaid });
 }
 
 /**

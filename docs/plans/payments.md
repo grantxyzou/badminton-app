@@ -59,8 +59,7 @@ fix before anything in Phase 2 starts.
   in cash; (2) unsettled sessions (a live estimate) do not count; (3) a line the member marked "I've sent
   it" does not count, so a slow match never holds the people who paid. A payment releases the hold and
   promotes them only into a spot no earlier waitlister is waiting for. Reminders (push, no amount on the
-  lock screen) are Phase 1b, because App Service has nothing that runs on a schedule; they need a GitHub
-  Actions `schedule:` calling a keyed endpoint.
+  lock screen) are Phase 1b — see the Roadmap.
 
 ## What a real notification settled (2026-10-03)
 
@@ -89,7 +88,14 @@ line, with no `Message:` line when the sender typed none. Nothing is left open o
 
 ## Roadmap
 
-**Phase 1b — reminders.** Push at settle +3 and +7 days, no amount in the body.
+**Phase 1b — reminders. SHIPPED 2026-10-05.** Push at settle +3 and +7 days, then silence; no amount in
+the body; only finalized lines, never one the member self-reported, never one settled more than 30 days
+ago (so switching it on cannot wake hand-ticked history); one push per person per run. OFF by default
+with a "today it would nudge…" preview, like the hold. **The trigger is the club's own Gmail script, not
+a GitHub Action** (the earlier plan): the script already holds the club's key and runs on a timer, so a
+daily `POST /api/payments/remind` needs no new secret and is per-club by construction — a GitHub Action
+would have needed a deployment-wide secret and a list of clubs. Cost: admins re-paste the script once.
+The card warns when reminders are on and the script has not called in 2.5 days.
 
 **Phase 2 — the ledger ("one cost system").** Append-only `ledgerEntries` (never upserted, like `events`):
 `charge` (session share, stringing, late fee), `payment` (e-transfer, card, cash), `credit` (top-up, gift
@@ -135,4 +141,5 @@ top-ups ≥ $40 with the payer covering the fee.
 | Script → app | `POST /api/payments/etransfer` |
 | Admin queue, assign, key | `/api/admin/payments`, `/api/admin/payments/assign`, `/api/admin/payments/key` |
 | "I've sent it" | `POST /api/payments/self-report` |
+| Reminders (who, when, send) | `lib/paymentReminders.ts`, `POST /api/payments/remind` |
 | The script admins paste | `public/payments/apps-script.gs` (served at `/bpm/payments/apps-script.gs`, so the setup sheet can copy it) |
