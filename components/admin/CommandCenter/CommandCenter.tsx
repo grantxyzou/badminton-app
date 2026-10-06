@@ -20,7 +20,7 @@ import type { AdminView } from '../types';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
-import CardSkeleton from '@/components/primitives/CardSkeleton';
+import CardSkeleton, { CONSOLE_HEIGHTS } from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -41,12 +41,6 @@ interface CommandCenterProps {
  * across every admin domain (session, payments, birds, roster) so the
  * organizer can confirm "everything looks right" in 30 seconds.
  */
-/** Slot placeholders for the console's cards. */
-// Measured on the running console at 400px, 2026-10-05. AdminTabSkeleton
-// (the auth-check frame shown before this) uses the same numbers and gaps, so
-// the hand-off from it to these placeholders changes nothing on screen.
-export const CONSOLE_HEIGHTS = { nextSession: 274, tile: 109, payments: 351, invite: 343, settings: 391 } as const;
-
 export default function CommandCenter({ refreshKey, setView, onExit }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   // Members only needs the invite card even with one club: a new account can

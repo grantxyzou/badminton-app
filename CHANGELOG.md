@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Screens fill in from the top, and nothing says something untrue while it loads (2026-10-03 – 10-06)
+
+- **Every tab now fills top to bottom.** Cards used to arrive in whatever order the network answered, and a late one would land above or between cards you were already reading and shove them down. Now each card holds its place with a grey outline the size of the real card from the first moment, and shows only once everything above it has — so Home, Stats, Profile, Stringing and the admin console settle once instead of jumping. If it all arrives quickly (switching back to a tab), it simply appears; if it takes a moment, it fades in from the top.
+- **No wrong answers while loading.** Stringing said "Coming soon" while it was still checking (and kept saying it if the check failed); the admin console said "No active players yet" and "No announcements posted" before it had looked; Profile briefly showed the signed-out "Welcome back" card to people who were signed in; the roster showed an empty list when it couldn't load. Each now shows a placeholder while it waits and says plainly when something couldn't be loaded, with a way to try again.
+- **Smaller fixes along the way:** your announcement shows on Home straight away (it was hidden behind a placeholder); saving a skill check-in no longer blanks two Stats cards; the admin page no longer goes blank or changes its header as it loads; and the Notifications row in Profile no longer pops in and pushes the rows below it down.
+
 ### The sign-up count says what it means (2026-10-06)
 
 - **An empty session no longer looks full.** The count on Home read "12/12 spots left", and a slash reads as "taken out of total", so twelve open spots looked like twelve taken. It now reads "12 spots left out of 12", and "1 spot left" when there is one.

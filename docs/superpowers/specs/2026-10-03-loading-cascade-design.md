@@ -2,6 +2,11 @@
 
 Intent: docs/plans/loading-cascade.md
 
+> **Record of the phase-1 design.** What changed after it — readiness meaning an ANSWER, the slot
+> detecting an empty card from the DOM, re-ordering deferred past a commit, placeholder-less slots
+> taking no space, and every phase's specifics — is in the plan's Decisions, which is the current
+> account. The splash rules here were taken over by the launch screen (#511).
+
 ## Goal
 
 Every screen fills top to bottom on skeletons that match its final layout. Phase 1 builds the
