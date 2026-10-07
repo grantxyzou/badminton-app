@@ -12,6 +12,7 @@ import SetupPage from './CommandCenter/SetupPage';
 import PastSessionsPage from './CommandCenter/PastSessionsPage';
 import StringingPage from './CommandCenter/StringingPage';
 import LedgerPage from './LedgerPage';
+import MetricsPage from './MetricsPage';
 import PaymentsCard from './CommandCenter/PaymentsCard';
 import AdminBackHeader from './AdminBackHeader';
 import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
@@ -75,6 +76,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
   if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
   if (view === 'catalog-gaps') return <div className="animate-slideInRight"><CatalogGapsPage onBack={goBack} /></div>;
+  if (view === 'metrics') return <div className="animate-slideInRight"><MetricsPage onBack={goBack} /></div>;
   // Flag-gated at the route level too — every price on this screen is exact,
   // which is precisely what the player API strips.
   if (view === 'stringing' && isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
