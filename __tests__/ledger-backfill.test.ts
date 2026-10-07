@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET as status, POST as backfill } from '@/app/api/admin/ledger-backfill/route';
 import { POST as settle } from '@/app/api/session/settle/route';
+import { PATCH as patchPurchase } from '@/app/api/birds/route';
 import { runLedgerBackfill, ledgerBackfillStatus } from '@/lib/ledgerBackfill';
 import { CLUB_LEDGER_ID, UNLINKED_LEDGER_ID, mirrorStringingChanged } from '@/lib/ledgerMirror';
 import { groupScope } from '@/lib/groupScope';
@@ -154,6 +155,25 @@ describe('what it writes', () => {
     expect(payments[0].id).toBe(`payment:job-2:${Date.parse('2026-09-27T12:00:00Z')}`);
     const owed = ledger().filter((e) => e.ref?.id === 'job-2' && e.account === 'member_owed').reduce((s, e) => s + e.amountCents, 0);
     expect(owed).toBe(0);
+  });
+
+  it('a purchase edited after deploy but before the backfill is counted once, at its current cost', async () => {
+    // Review of #562: the adjustment hook wrote only a DELTA and assumed the
+    // base entry existed; before the backfill it did not, so the backfill's
+    // base (from the current totalCost) plus the delta counted the edit twice.
+    const res = await patchPurchase(makeAdminRequest('PATCH', `${BASE}/birds`, { id: 'p-1', totalCost: 300 }));
+    expect(res.status).toBe(200);
+    const forP1 = () => ledger().filter((e) => e.ref?.id === 'p-1');
+    expect(forP1().map((e) => [e.id, e.amountCents])).toEqual([['shuttles:p-1', 30000]]);
+
+    const r = await runLedgerBackfill('bpm', { dryRun: false });
+    expect(r.existing.birds).toBe(1);
+    expect(forP1().reduce((s, e) => s + e.amountCents, 0)).toBe(30000);
+
+    // Once the base exists, a later edit is a delta on top of it.
+    await patchPurchase(makeAdminRequest('PATCH', `${BASE}/birds`, { id: 'p-1', totalCost: 320 }));
+    expect(forP1().find((e) => e.id === 'shuttles:p-1:adj:0')).toMatchObject({ kind: 'shuttle_adj', amountCents: 2000 });
+    expect(forP1().reduce((s, e) => s + e.amountCents, 0)).toBe(32000);
   });
 
   it('limit and cursor: a page at a time, resumed from `remaining`', async () => {

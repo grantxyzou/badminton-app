@@ -401,7 +401,18 @@ export async function mirrorShuttleAdjusted(scope: GroupScope, prev: BirdPurchas
   try {
     const delta = cents(next.totalCost) - cents(prev.totalCost);
     if (delta === 0) return;
-    const n = (await entriesFor(scope, CLUB_LEDGER_ID, next.id)).filter((e) => e.kind === 'shuttle_adj').length;
+    const existing = await entriesFor(scope, CLUB_LEDGER_ID, next.id);
+    if (!existing.some((e) => e.kind === 'shuttle_purchase')) {
+      // No base entry yet: the purchase predates the mirror and the backfill
+      // has not reached it. A delta alone would be added to the base the
+      // backfill later writes from the CURRENT totalCost, counting the edit
+      // twice (review of #562). Write the base from `next` instead — the
+      // backfill then 409s on `shuttles:<id>` and the books hold one figure.
+      const base = shuttlePurchaseEntry(next);
+      if (base) await appendEntry(scope, base);
+      return;
+    }
+    const n = existing.filter((e) => e.kind === 'shuttle_adj').length;
     await appendEntry(scope, {
       id: `shuttles:${next.id}:adj:${n}`,
       memberId: CLUB_LEDGER_ID,
