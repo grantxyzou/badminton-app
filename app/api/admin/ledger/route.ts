@@ -1,43 +1,38 @@
+/**
+ * GET /api/admin/ledger?range=30d|12w|all — THE ONE MONEY VIEW
+ * (docs/plans/payments.md, Phase 2 stage 3).
+ *
+ * Everything the club's money does, on one page, from two sources that are
+ * never summed together:
+ *
+ *   THE LEDGER (frozen money, `lib/ledgerView.ts`): income, collected by
+ *   method, covered, outlay by category, net, credit liability — all in
+ *   cents, windowed by the money's own date, voids netted.
+ *
+ *   THE ROWS (what people see): `outstanding` is LIVE from
+ *   `computeOwedForRoster` and is NOT range-bound — a debt is owed today
+ *   whenever the bill was; `unfinalized` is the live estimate for unsettled
+ *   in-window sessions, under its OWN key so it can never be mistaken for
+ *   income. `bySession` and `byPlayer` stay for the drill-ins.
+ *
+ * ALL OR NOTHING: any read that throws answers 503 `read_failed`. A page
+ * that rendered six true buckets and one silent zero would be the lying
+ * empty state with a straight face.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import type { Player, Session } from '@/lib/types';
+import { getActiveSessionId } from '@/lib/cosmos';
+import { summarizeLedger, rangeWindow, type RangeKey } from '@/lib/ledgerView';
+import { computeOwedForRoster } from '@/lib/owedBalance';
+import { lastReconcile } from '@/lib/ledgerReconcile';
+import { ensureLedger, listGiftCards } from '@/lib/storeCredit';
+import { costSplit } from '@/lib/sessionCost';
+import type { EtransferPayment, LedgerEntry, Player, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * GET /api/admin/ledger?range=30d|12w|all
- *
- * Admin-only reconciliation read. Aggregates *settled* sessions in the window
- * into the cost ↔ payment ↔ spend triple:
- *
- *   collected (paid + covered) ──┐
- *                                ├─ gap = spent − collected
- *   spent (settled totalCost) ───┘
- *
- * Only sessions with a frozen `session.settled` snapshot are counted — the
- * gap reflects "bills already sent", so an admin reading $40 owing knows it
- * maps to receipts they actually issued, not live-recomputed estimates.
- *
- * Range presets (no custom picker by product decision — 3 chips, narrow→wide):
- *   30d  → last 30 days
- *   12w  → last 12 weeks (default)
- *   all  → everything
- *
- * `?from=/&to=` ISO params from the original spec were dropped: with fixed
- * presets there is no client date math, so the to>from / future / 730-day
- * validation surface disappears with it.
- */
-
-type RangeKey = '30d' | '12w' | 'all';
-
-function resolveFrom(range: RangeKey, now: number): number {
-  if (range === 'all') return 0;
-  if (range === '30d') return now - 30 * 86_400_000;
-  return now - 84 * 86_400_000; // 12w
-}
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -50,195 +45,153 @@ interface ByPlayerAcc {
   owedAmount: number;
 }
 
+/** Settled sessions in the window, newest first, with their rows. The mock ignores the SQL; the JS filter decides. */
+async function settledInWindow(scope: ReturnType<typeof groupScope>, from: number, to: number, bounded: boolean) {
+  const fromBound = bounded ? new Date(from - 24 * 60 * 60 * 1000).toISOString() : null;
+  const all = await scope.query<Session>('sessions', {
+    where: fromBound ? 'IS_DEFINED(c.settled) AND NOT IS_NULL(c.settled) AND c.datetime >= @fromBound' : 'IS_DEFINED(c.settled) AND NOT IS_NULL(c.settled)',
+    params: fromBound ? [{ name: '@fromBound', value: fromBound }] : [],
+  });
+  const sessions = all
+    .filter((s) => {
+      if (!s.settled || !s.datetime) return false;
+      const t = new Date(s.datetime).getTime();
+      return Number.isFinite(t) && t >= from && t <= to;
+    })
+    .sort((a, b) => (a.datetime! < b.datetime! ? 1 : -1));
+  return { sessions, players: await rowsOf(scope, sessions.map((s) => s.id)) };
+}
+
+async function rowsOf(scope: ReturnType<typeof groupScope>, sessionIds: string[]): Promise<Player[]> {
+  if (sessionIds.length === 0) return [];
+  const wanted = new Set(sessionIds);
+  const rows = await scope.query<Player>('players', {
+    where: 'ARRAY_CONTAINS(@sessionIds, c.sessionId)',
+    params: [{ name: '@sessionIds', value: sessionIds }],
+  });
+  return rows.filter((p) => wanted.has(p.sessionId));
+}
+
+/** Unsettled PAST sessions in the window with a cost: the live estimate, never income. */
+async function unfinalizedInWindow(scope: ReturnType<typeof groupScope>, from: number, to: number, activeSessionId: string) {
+  const all = await scope.query<Session>('sessions', { where: 'NOT IS_DEFINED(c.settled) OR IS_NULL(c.settled)' });
+  const sessions = all
+    .filter((s) => {
+      if (s.settled || !s.datetime || s.id === activeSessionId) return false;
+      const t = new Date(s.datetime).getTime();
+      return Number.isFinite(t) && t >= from && t <= to;
+    })
+    .sort((a, b) => (a.datetime! < b.datetime! ? 1 : -1));
+  const rows = await rowsOf(scope, sessions.map((s) => s.id));
+  const out: { sessionId: string; date: string; estimatedTotal: number; players: number }[] = [];
+  for (const s of sessions) {
+    const split = costSplit(s, rows.filter((p) => p.sessionId === s.id));
+    if (split.totalCost > 0) out.push({ sessionId: s.id, date: s.datetime!, estimatedTotal: round2(split.totalCost), players: split.active.length });
+  }
+  return { count: out.length, estimatedTotal: round2(out.reduce((sum, s) => sum + s.estimatedTotal, 0)), sessions: out };
+}
+
 export async function GET(req: NextRequest) {
   // Rate limit before auth so it can't be bypassed (CLAUDE.md security #4).
-  const ip = getClientIp(req);
-  if (!checkRateLimit(`ledger:${ip}`, 30, 60_000)) {
+  if (!checkRateLimit(`ledger:${getClientIp(req)}`, 30, 60_000)) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
   if (!isAdminAuthed(req)) return unauthorized();
 
   const rawRange = req.nextUrl.searchParams.get('range');
-  const range: RangeKey =
-    rawRange === '30d' || rawRange === 'all' ? rawRange : '12w';
+  const range: RangeKey = rawRange === '30d' || rawRange === 'all' ? rawRange : '12w';
 
   try {
     const now = Date.now();
-    const fromMs = resolveFrom(range, now);
-    const fromIso = new Date(fromMs).toISOString();
-    const toIso = new Date(now).toISOString();
+    const { from, to } = rangeWindow(range, now);
+    const groupId = resolveGroupId(req);
+    const scope = groupScope(groupId);
+    await ensureLedger();
 
-    const scope = groupScope(resolveGroupId(req));
+    const [entries, paymentDocs, roster, gifts, reconcile, activeSessionId, settled] = await Promise.all([
+      scope.query<LedgerEntry>('ledger'),
+      scope.query<Pick<EtransferPayment, 'id' | 'matchedBy'>>('payments', { select: 'c.id, c.matchedBy' }),
+      computeOwedForRoster(scope, now),
+      listGiftCards(groupId),
+      lastReconcile(groupId),
+      getActiveSessionId(groupId),
+      settledInWindow(scope, from, to, range !== 'all'),
+    ]);
+    const unfinalized = await unfinalizedInWindow(scope, from, to, activeSessionId ?? '');
 
-    // Settled-only in SQL, and for a bounded range a date floor a day EARLIER
-    // than the window: `datetime` is an ISO string with a local offset, so a
-    // string compare can be up to a day off — the exact filter below decides,
-    // this just stops the whole history coming back for a 30-day view. The
-    // mock ignores `@fromBound` and the settled predicate alike, so the JS
-    // filter is unchanged.
-    const fromBound = range === 'all' ? null : new Date(fromMs - 24 * 60 * 60 * 1000).toISOString();
-    const allSessions = await scope.query<Session>('sessions', {
-      where: fromBound
-        ? 'IS_DEFINED(c.settled) AND NOT IS_NULL(c.settled) AND c.datetime >= @fromBound'
-        : 'IS_DEFINED(c.settled) AND NOT IS_NULL(c.settled)',
-      params: fromBound ? [{ name: '@fromBound', value: fromBound }] : [],
-    });
+    const matchedBy = new Map<string, string | undefined>();
+    for (const p of paymentDocs) if (typeof p.id === 'string') matchedBy.set(p.id, p.matchedBy);
+    const view = summarizeLedger(entries, { from, to }, matchedBy);
 
-    // Settled-only + in-window. Unsettled sessions are deliberately excluded
-    // from spent + bySession so the gap reflects bills already frozen.
-    const windowSessions = allSessions
-      .filter((s) => {
-        if (!s.settled) return false;
-        if (!s.datetime) return false;
-        const t = new Date(s.datetime).getTime();
-        if (!Number.isFinite(t)) return false;
-        return t >= fromMs && t <= now;
-      })
-      .sort((a, b) => (a.datetime! < b.datetime! ? 1 : -1));
-
-    const emptyResponse = {
-      range: { from: fromIso, to: toIso },
-      summary: {
-        spent: 0,
-        paidAmount: 0,
-        coveredAmount: 0,
-        collected: 0,
-        gap: 0,
-        sessionCount: 0,
-        coveredCount: 0,
-      },
-      bySession: [],
-      byPlayer: [],
-    };
-
-    if (windowSessions.length === 0) {
-      return NextResponse.json(emptyResponse);
+    // ── Outstanding: FROZEN lines only, everyone, not range-bound ──
+    const outstanding = { sessions: 0, stringing: 0, total: 0, people: 0 };
+    for (const r of roster) {
+      const sessionsCents = r.balance.sessions.filter((s) => s.settled).reduce((sum, s) => sum + Math.round(s.owedAmount * 100), 0);
+      const stringingCents = r.balance.stringing.reduce((sum, c) => sum + Math.round(c.amount * 100), 0);
+      if (sessionsCents + stringingCents <= 0) continue;
+      outstanding.sessions += sessionsCents;
+      outstanding.stringing += stringingCents;
+      outstanding.people += 1;
     }
+    outstanding.total = outstanding.sessions + outstanding.stringing;
 
-    const sessionIds = windowSessions.map((s) => s.id);
-    const sessionIdSet = new Set(sessionIds);
+    const unredeemed = gifts.filter((g) => !g.redeemedAt);
 
-    // Batch player fetch. Real Cosmos honors IN(); the mock store ignores it
-    // and returns every player row — so we MUST post-filter by sessionIdSet
-    // for the two stores to agree (same contract as stats/attendance).
-    const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
-    const rawPlayers = await scope.query<Player>('players', {
-      where: `c.sessionId IN (${placeholders})`,
-      params: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
-    });
-    const players = rawPlayers.filter((p) => sessionIdSet.has(p.sessionId));
-
-    // ── Summary + bySession ──
-    let spent = 0;
-    let paidAmount = 0;
-    let coveredAmount = 0;
-    let coveredCount = 0;
-
+    // ── bySession / byPlayer: the drill-ins, unchanged in shape ──
     const playersBySession = new Map<string, Player[]>();
-    for (const p of players) {
-      const arr = playersBySession.get(p.sessionId);
-      if (arr) arr.push(p);
-      else playersBySession.set(p.sessionId, [p]);
-    }
-
-    const bySession = windowSessions.map((s) => {
+    for (const p of settled.players) playersBySession.set(p.sessionId, [...(playersBySession.get(p.sessionId) ?? []), p]);
+    const bySession = settled.sessions.map((s) => {
       const snap = s.settled!;
-      spent += snap.totalCost;
-      const roster = playersBySession.get(s.id) ?? [];
-
       let paidCount = 0;
-      let sessionCovered = 0;
+      let coveredCount = 0;
       let unpaidCount = 0;
       let unpaidAmount = 0;
-
-      for (const p of roster) {
+      for (const p of playersBySession.get(s.id) ?? []) {
         const owed = p.owedAmount ?? 0;
-        const isPaid = p.paid === true;
-        const isCovered = p.writtenOff === true;
-        if (isPaid) {
-          paidCount += 1;
-          paidAmount += owed;
-        } else if (isCovered) {
-          // Permissive predicate: if a legacy/race record has both paid AND
-          // writtenOff, it was counted as paid above — never double-counted.
-          sessionCovered += 1;
-          coveredCount += 1;
-          coveredAmount += owed;
-        } else if (owed > 0) {
+        if (p.paid === true) paidCount += 1;
+        else if (p.writtenOff === true) coveredCount += 1;
+        else if (owed > 0) {
           unpaidCount += 1;
           unpaidAmount += owed;
         }
       }
-
-      return {
-        sessionId: s.id,
-        date: s.datetime!,
-        // Frozen denominator — immune to later roster edits, unlike a live
-        // count of player rows.
-        attendanceCount: snap.playerCount,
-        totalCost: round2(snap.totalCost),
-        paidCount,
-        coveredCount: sessionCovered,
-        unpaidAmount: round2(unpaidAmount),
-        unpaidCount,
-      };
+      return { sessionId: s.id, date: s.datetime!, attendanceCount: snap.playerCount, totalCost: round2(snap.totalCost), paidCount, coveredCount, unpaidAmount: round2(unpaidAmount), unpaidCount };
     });
 
-    const collected = paidAmount + coveredAmount;
-
-    // ── byPlayer: only players still owing ──
-    // Keyed by case-insensitive name, NOT memberId. Per spec: a migrated
-    // record (has memberId) and its same-name legacy twin (no memberId) must
-    // collapse into one row. memberId-keying would split them; name-keying
-    // unifies. Same-name-different-person is punted to Stage-2 `orgId` scope.
+    // Keyed by case-insensitive name so a migrated record and its same-name
+    // legacy twin collapse into one row; the first memberId seen opens the profile.
     const byPlayerMap = new Map<string, ByPlayerAcc>();
-    for (const p of players) {
+    for (const p of settled.players) {
       const owed = p.owedAmount ?? 0;
-      const stillOwes = owed > 0 && p.paid !== true && p.writtenOff !== true;
-      if (!stillOwes) continue;
+      if (!(owed > 0 && p.paid !== true && p.writtenOff !== true)) continue;
       const key = p.name.toLowerCase();
       const existing = byPlayerMap.get(key);
       if (existing) {
         existing.sessionCount += 1;
         existing.owedAmount += owed;
-        // Keep the first non-null memberId so the sub-issue D drill-in can
-        // open a profile even when a legacy row sorts first.
-        if (existing.memberId === null && p.memberId) {
-          existing.memberId = p.memberId;
-        }
-      } else {
-        byPlayerMap.set(key, {
-          memberId: p.memberId ?? null,
-          name: p.name,
-          sessionCount: 1,
-          owedAmount: owed,
-        });
-      }
+        if (existing.memberId === null && p.memberId) existing.memberId = p.memberId;
+      } else byPlayerMap.set(key, { memberId: p.memberId ?? null, name: p.name, sessionCount: 1, owedAmount: owed });
     }
-
-    const byPlayer = Array.from(byPlayerMap.values())
-      .map((r) => ({ ...r, owedAmount: round2(r.owedAmount) }))
-      .sort((a, b) => b.owedAmount - a.owedAmount);
+    const byPlayer = [...byPlayerMap.values()].map((r) => ({ ...r, owedAmount: round2(r.owedAmount) })).sort((a, b) => b.owedAmount - a.owedAmount);
 
     return NextResponse.json({
-      range: { from: fromIso, to: toIso },
-      summary: {
-        spent: round2(spent),
-        paidAmount: round2(paidAmount),
-        coveredAmount: round2(coveredAmount),
-        collected: round2(collected),
-        gap: round2(spent - collected),
-        sessionCount: windowSessions.length,
-        coveredCount,
-      },
+      range: { key: range, from: new Date(from).toISOString(), to: new Date(to).toISOString() },
+      generatedAt: new Date(now).toISOString(),
+      income: view.income,
+      collected: view.collected,
+      covered: view.covered,
+      outstanding,
+      credit: view.credit,
+      giftCards: { unredeemed: unredeemed.length, amount: unredeemed.reduce((sum, g) => sum + g.amountCents, 0) },
+      outlay: view.outlay,
+      net: view.net,
+      unfinalized,
+      reconcile: reconcile ? { lastAt: reconcile.at, mismatches: reconcile.mismatches.length, unlisted: reconcile.unlisted, truncated: reconcile.truncated } : null,
       bySession,
       byPlayer,
     });
   } catch (error) {
     console.error('GET /api/admin/ledger error:', error);
-    return NextResponse.json(
-      { error: 'Failed to compute ledger' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'read_failed' }, { status: 503 });
   }
 }

@@ -83,6 +83,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/migrate-groups': admin('isAdminAuthedWithMember'),
   'admin/ledger-backfill': admin('isAdminAuthedWithMember'),
   'admin/ledger/reconcile': admin('isAdminAuthedWithMember'),
+  'admin/expenses': admin(),
   'admin/owed-audit': admin(),
   'admin/payments': admin('isAdminAuthedWithMember'),
   'admin/credit': admin('isAdminAuthedWithMember'),

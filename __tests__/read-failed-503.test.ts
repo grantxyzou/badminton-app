@@ -58,4 +58,20 @@ describe('read failures answer 503, not a lying 200', () => {
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: 'read_failed' });
   });
+
+  // The money view is ALL OR NOTHING: six true buckets and one silent zero
+  // would be the lying empty state with a straight face.
+  it('GET /api/admin/ledger (admin)', async () => {
+    vi.doMock('@/lib/groupScope', async (importOriginal) => {
+      const mod = await importOriginal<typeof import('@/lib/groupScope')>();
+      return {
+        ...mod,
+        groupScope: () => ({ query: async () => { throw new Error('cosmos down'); } }),
+      };
+    });
+    const { GET } = await import('../app/api/admin/ledger/route');
+    const res = await GET(makeGetRequest('http://localhost/api/admin/ledger', true));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: 'read_failed' });
+  });
 });
