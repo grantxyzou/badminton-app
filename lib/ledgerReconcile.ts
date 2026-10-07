@@ -52,8 +52,8 @@ export interface ReconcileResult {
   /** Refs compared: every live frozen line plus every open ledger ref. */
   checked: number;
   mismatches: Mismatch[];
-  /** Live lines whose entries sit under `~unlinked` — matched, but the ledger cannot name the person. */
-  unlinked: number;
+  /** Open lines the ledger is right about that nobody on the roster is shown: an unlinked legacy row, a purged member’s `~anon` charge, a removed member still owing.  */
+  unlisted: number;
   /** The stored list was cut to `STORED_MISMATCH_CAP`. */
   truncated: boolean;
   /** Mirror writes that threw since this process started — a hint, not a count of gaps. */
@@ -114,7 +114,7 @@ export async function runReconcile(groupId: string, now: number = Date.now()): P
   const [roster, open] = await Promise.all([computeOwedForRoster(scope, now), openLedgerRefs(scope)]);
 
   const mismatches: Mismatch[] = [];
-  let unlinked = 0;
+  let unlisted = 0;
   const seen = new Set<string>();
 
   for (const { memberId, balance } of roster) {
@@ -130,7 +130,7 @@ export async function runReconcile(groupId: string, now: number = Date.now()): P
         mismatches.push({ memberId, ref, code: 'missing_charge', ledgerCents: 0, liveCents: line.cents });
         continue;
       }
-      if (entry.memberId === UNLINKED_LEDGER_ID) unlinked += 1;
+      if (entry.memberId === UNLINKED_LEDGER_ID) unlisted += 1;
       if (entry.cents !== line.cents) {
         mismatches.push({ memberId, ref, code: 'amount_mismatch', ledgerCents: entry.cents, liveCents: line.cents });
       }
@@ -151,11 +151,14 @@ export async function runReconcile(groupId: string, now: number = Date.now()): P
       mismatches.push({ memberId: entry.memberId, ref, code: 'missing_payment', ledgerCents: entry.cents, liveCents: 0 });
       continue;
     }
-    // An unlinked legacy row (no memberId, a name no member carries) is shown
-    // to nobody, so the ROW is its live side: still frozen at the same amount
-    // → the ledger is right about it, and only the person is unknown.
-    if (entry.memberId === UNLINKED_LEDGER_ID && row && row.owedCents === entry.cents) {
-      unlinked += 1;
+    // Nobody on the roster is shown this line — an unlinked legacy row (no
+    // memberId, a name no member carries), a purged member's `~anon` charge,
+    // or a member who was REMOVED still owing. The ROW is its live side: still
+    // frozen at the same amount → the ledger is right about the money, and
+    // only the person is missing. Flagging it would turn the card amber every
+    // day over a line with no repair (review of #570).
+    if (row && row.owedCents === entry.cents) {
+      unlisted += 1;
       continue;
     }
     mismatches.push({ memberId: entry.memberId, ref, code: 'stale_charge', ledgerCents: entry.cents, liveCents: row?.owedCents ?? 0 });
@@ -168,7 +171,7 @@ export async function runReconcile(groupId: string, now: number = Date.now()): P
     at: new Date(now).toISOString(),
     checked: compared.size,
     mismatches,
-    unlinked,
+    unlisted,
     truncated: false,
     mirrorFailures: getMirrorFailures(),
   };
@@ -181,7 +184,7 @@ export async function reconcileAndRecord(groupId: string, now: number = Date.now
   await notePaymentsSettings(groupId, {
     lastReconcileAt: result.at,
     lastReconcileChecked: result.checked,
-    lastReconcileUnlinked: result.unlinked,
+    lastReconcileUnlisted: result.unlisted,
     lastReconcileMismatches: result.mismatches.slice(0, STORED_MISMATCH_CAP),
     lastReconcileTruncated: truncated,
   });
@@ -196,7 +199,7 @@ export async function lastReconcile(groupId: string): Promise<Omit<ReconcileResu
     at: s.lastReconcileAt,
     checked: s.lastReconcileChecked ?? 0,
     mismatches: s.lastReconcileMismatches ?? [],
-    unlinked: s.lastReconcileUnlinked ?? 0,
+    unlisted: s.lastReconcileUnlisted ?? 0,
     truncated: s.lastReconcileTruncated === true,
   };
 }

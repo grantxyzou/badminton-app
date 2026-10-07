@@ -25,7 +25,7 @@ async function withNames(groupId: string, r: Omit<ReconcileResult, 'mirrorFailur
   return {
     lastAt: r.at,
     checked: r.checked,
-    unlinked: r.unlinked,
+    unlisted: r.unlisted,
     truncated: r.truncated,
     mirrorFailures: getMirrorFailures(),
     mismatches: r.mismatches.map((m: Mismatch) => ({ ...m, name: names.get(m.memberId) ?? null })),

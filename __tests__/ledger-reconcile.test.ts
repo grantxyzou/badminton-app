@@ -84,13 +84,13 @@ describe('the roster-wide balance', () => {
 });
 
 describe('a backfilled history reconciles clean', () => {
-  it('zero mismatches, every frozen line checked, the unlinked row counted and not flagged', async () => {
+  it('zero mismatches, every frozen line checked, the unlisted row counted and not flagged', async () => {
     await backfill();
     const r = await runReconcile('bpm');
     expect(r.mismatches).toEqual([]);
     // Viktor's 09-17 row, Lin's job-2, and the unlinked Old Row are the open refs; Lin's paid rows net to zero and are not live.
     expect(r.checked).toBe(3);
-    expect(r.unlinked).toBe(1);
+    expect(r.unlisted).toBe(1);
     expect(r.truncated).toBe(false);
   });
 
@@ -147,11 +147,24 @@ describe('each way the two can drift', () => {
     expect(r.mismatches.map((m) => [m.code, m.ledgerCents, m.liveCents])).toEqual([['amount_mismatch', -1200, 0]]);
   });
 
+  it('a REMOVED member still owing is not a mismatch — the row is the live side — but paid-and-not-mirrored still is (review of #570)', async () => {
+    const gone = seedMember('Akane', { active: false });
+    seedPlayer('session-2026-09-17', 'Akane', { memberId: gone.id, owedAmount: 12, settledAt: '2026-09-18T00:00:00Z' });
+    await backfill();
+    expect((await computeOwedForRoster(groupScope('bpm'))).some((r) => r.memberId === gone.id)).toBe(false); // off the roster
+    let r = await runReconcile('bpm');
+    expect(r.mismatches).toEqual([]);
+    expect(r.unlisted).toBe(2); // Old Row and Akane
+    row('Akane', 'session-2026-09-17').paid = true;
+    r = await runReconcile('bpm');
+    expect(r.mismatches.map((m) => [m.code, m.memberId, m.ledgerCents])).toEqual([['missing_payment', gone.id, 1200]]);
+  });
+
   it('an unlinked row that was since paid is a mismatch too — the person is unknown, the money is not', async () => {
     await backfill();
     row('Old Row', 'session-2026-09-17').paid = true;
     const r = await runReconcile('bpm');
-    expect(r.unlinked).toBe(0);
+    expect(r.unlisted).toBe(0);
     expect(r.mismatches.map((m) => [m.code, m.memberId])).toEqual([['missing_payment', '~unlinked']]);
   });
 });

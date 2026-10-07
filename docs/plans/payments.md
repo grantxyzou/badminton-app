@@ -51,8 +51,11 @@ fix before anything in Phase 2 starts.
   again, and a missing void is the admin redoing the action. It rides on the daily `POST /api/payments/remind`
   call BEFORE the reminders switch is read (reminders are a setting; the check is not), stores ids and cents
   on the club's payments settings doc (never names), and the E-transfers card warns on a mismatch or a check
-  older than two and a half days. An unlinked legacy row (no memberId, a name no member carries) is counted,
-  not flagged: the ledger is right about the money and only the person is unknown.
+  older than two and a half days. A line nobody on the roster is shown — an unlinked legacy row, a purged
+  member's `~anon` charge, a REMOVED member still owing — takes the row itself as its live side and is
+  counted (`unlisted`), not flagged: the ledger is right about the money and only the person is missing.
+  The review of #570 caught the removed-member case; flagged, it would have turned the card amber every
+  day over a line with no repair.
 
 - **Apps Script in the admin's Gmail, not a Gmail API connection.** Reading Gmail needs the restricted
   `gmail.readonly` scope. On the OAuth client the app already uses for member sign-in that means Google

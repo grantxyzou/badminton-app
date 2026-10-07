@@ -61,7 +61,7 @@ export interface PaymentsSettingsDoc {
   /** The last ledger reconcile (`lib/ledgerReconcile.ts`): ids and cents only, never names. Absent = never run. */
   lastReconcileAt?: string;
   lastReconcileChecked?: number;
-  lastReconcileUnlinked?: number;
+  lastReconcileUnlisted?: number;
   lastReconcileMismatches?: Mismatch[];
   /** The stored list was cut to `STORED_MISMATCH_CAP`. */
   lastReconcileTruncated?: boolean;
