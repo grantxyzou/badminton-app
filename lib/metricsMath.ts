@@ -57,6 +57,12 @@ export interface MetricsInput {
   stringingJobs: Array<{ memberId: string; createdAt: string }>;
   /** `memberId` of each push subscription doc (any device). */
   pushSubscriptions: Array<{ memberId: string }>;
+  /**
+   * Usage records from the last 28 days (`app_open`, `tab_view`, `sign_in`;
+   * docs/plans/usage-metrics.md). Empty until usage tracking is switched on,
+   * and then every usage figure is null rather than zero.
+   */
+  usageEvents?: Array<{ memberId: string; kind: string; at: string; tab?: string; via?: string }>;
 }
 
 export interface SessionMetrics {
@@ -117,6 +123,31 @@ export interface ClubMetrics {
     medianDaysToPay: number | null;
     paidWithin7dRate: number | null;
   };
+  usage: UsageMetrics;
+}
+
+/**
+ * How members use the app, from the usage records. Every field is null until
+ * there is a record to count — "nobody opened the app" and "nothing is being
+ * recorded" are different answers, and only the first is a zero.
+ */
+export interface UsageMetrics {
+  /** The earliest usage record in the window; null = nothing recorded yet. */
+  firstRecordedAt: string | null;
+  /** Distinct members who opened the app in each of the last 4 rolling weeks, oldest first; null for a week that began before recording did. */
+  weeklyActive: Array<number | null>;
+  /** Distinct members who opened the app in the last 28 days (or since recording began). */
+  activeSoFar: number | null;
+  /** Average distinct members opening the app per day, over the full days recorded. */
+  avgDailyActive: number | null;
+  /** avgDailyActive ÷ activeSoFar — how many of the month's members come back on a given day. Null under a week of records. */
+  stickiness: number | null;
+  /** App opens per member who opened it, last 7 days. */
+  opensPerActive7d: number | null;
+  /** Tab views by tab, last 28 days. */
+  tabViews: Record<string, number> | null;
+  /** Sign-ins by method, last 28 days. */
+  signInMethods: Record<string, number> | null;
 }
 
 const DAY = 86_400_000;
@@ -300,6 +331,8 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
     }
   }
 
+  const usage = computeUsage(input.usageEvents ?? [], rosterIds, now);
+
   return {
     generatedAt: input.now.toISOString(),
     rosterSize,
@@ -328,5 +361,66 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
       medianDaysToPay: median(daysToPay),
       paidWithin7dRate: ratio(daysToPay.filter((d) => d <= 7).length, daysToPay.length),
     },
+    usage,
+  };
+}
+
+function computeUsage(
+  raw: NonNullable<MetricsInput['usageEvents']>,
+  rosterIds: Set<string>,
+  now: number,
+): UsageMetrics {
+  const events = raw
+    .map((e) => ({ ...e, t: ms(e.at) }))
+    .filter((e): e is typeof e & { t: number } => e.t !== null && e.t <= now && now - e.t <= 28 * DAY && rosterIds.has(e.memberId));
+  if (events.length === 0) {
+    return {
+      firstRecordedAt: null, weeklyActive: [null, null, null, null], activeSoFar: null, avgDailyActive: null,
+      stickiness: null, opensPerActive7d: null, tabViews: null, signInMethods: null,
+    };
+  }
+  const first = Math.min(...events.map((e) => e.t));
+  const opens = events.filter((e) => e.kind === 'app_open');
+  const openersIn = (from: number, to: number) =>
+    new Set(opens.filter((e) => e.t >= from && e.t < to).map((e) => e.memberId)).size;
+
+  const weeklyActive = [3, 2, 1, 0].map((k) => {
+    const from = now - 7 * (k + 1) * DAY;
+    return from < first ? null : openersIn(from, now - 7 * k * DAY);
+  });
+  const activeSoFar = new Set(opens.map((e) => e.memberId)).size;
+
+  // Only full days after the first record count, so a half day of records
+  // does not halve the daily average.
+  const fullDays = Math.min(28, Math.floor((now - first) / DAY));
+  let avgDailyActive: number | null = null;
+  if (fullDays >= 1) {
+    let total = 0;
+    for (let d = 0; d < fullDays; d++) total += openersIn(now - (d + 1) * DAY, now - d * DAY);
+    avgDailyActive = total / fullDays;
+  }
+  const stickiness = fullDays >= 7 && avgDailyActive !== null ? ratio(avgDailyActive, activeSoFar) : null;
+
+  const opens7 = opens.filter((e) => now - e.t <= 7 * DAY);
+  const opensPerActive7d = ratio(opens7.length, new Set(opens7.map((e) => e.memberId)).size);
+
+  const countBy = (kind: string, field: 'tab' | 'via') => {
+    const out: Record<string, number> = {};
+    for (const e of events) {
+      const key = e[field];
+      if (e.kind === kind && typeof key === 'string') out[key] = (out[key] ?? 0) + 1;
+    }
+    return Object.keys(out).length ? out : null;
+  };
+
+  return {
+    firstRecordedAt: new Date(first).toISOString(),
+    weeklyActive,
+    activeSoFar,
+    avgDailyActive,
+    stickiness,
+    opensPerActive7d,
+    tabViews: countBy('tab_view', 'tab'),
+    signInMethods: countBy('sign_in', 'via'),
   };
 }

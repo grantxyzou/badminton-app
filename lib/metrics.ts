@@ -1,6 +1,7 @@
 import { getContainer, ensureContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import { rosterMembers } from './roster';
+import { USAGE_KINDS } from './events';
 import { computeClubMetrics, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
 
 /**
@@ -106,6 +107,17 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
   });
   // PERSON scoped: one doc per device, keyed by the person. Narrowed to the
   // roster inside the math, because a person can be in two clubs.
+  // The usage records (docs/plans/usage-metrics.md). Bounded to 28 days and
+  // three kinds; empty until usage tracking is switched on.
+  await ensureContainer('events', '/memberId');
+  const usageRows = await scope.query<{ memberId?: unknown; kind?: unknown; at?: unknown; tab?: unknown; via?: unknown }>('events', {
+    select: 'c.memberId, c.kind, c.at, c.tab, c.via',
+    where: 'c.at >= @since AND ARRAY_CONTAINS(@kinds, c.kind)',
+    params: [
+      { name: '@since', value: since28 },
+      { name: '@kinds', value: [...USAGE_KINDS] },
+    ],
+  });
   const { resources: pushRows } = await getContainer('pushSubscriptions')
     .items.query<{ memberId?: unknown }>({ query: 'SELECT c.memberId FROM c' })
     .fetchAll();
@@ -125,5 +137,18 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
       typeof r.memberId === 'string' && typeof r.createdAt === 'string' ? [{ memberId: r.memberId, createdAt: r.createdAt }] : [],
     ),
     pushSubscriptions: pushRows.flatMap((r) => (typeof r.memberId === 'string' ? [{ memberId: r.memberId }] : [])),
+    // Re-checked in the math (window, roster); the mock store applies no WHERE.
+    usageEvents: usageRows.flatMap((r) =>
+      typeof r.memberId === 'string' && typeof r.kind === 'string' && typeof r.at === 'string' &&
+      (USAGE_KINDS as readonly string[]).includes(r.kind)
+        ? [{
+            memberId: r.memberId,
+            kind: r.kind,
+            at: r.at,
+            ...(typeof r.tab === 'string' ? { tab: r.tab } : {}),
+            ...(typeof r.via === 'string' ? { via: r.via } : {}),
+          }]
+        : [],
+    ),
   });
 }

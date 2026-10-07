@@ -532,6 +532,22 @@ function seedDevMetricsHistory(now: Date) {
       });
     });
   }
+  // Usage records (docs/plans/usage-metrics.md) for the last 20 days, so the
+  // Metrics page's App usage card has something to draw. Regulars open the
+  // app most days; visits fan out across the tabs.
+  mockStore.events ??= [];
+  const tabs = ['home', 'home', 'home', 'skills', 'profile', 'stringing'];
+  for (let d = 0; d < 20; d++) {
+    regulars.forEach((name, r) => {
+      if ((d + r) % 3 === 2) return;
+      const memberId = `dev-member-${name.toLowerCase()}`;
+      const at = (h: number) => new Date(now.getTime() - d * DAY - h * 3_600_000).toISOString();
+      const base = { groupId: BPM_GROUP_ID, memberId, name };
+      mockStore.events!.push({ ...base, id: randomBytes(8).toString('hex'), kind: 'app_open', at: at(r + 1), platform: r % 2 ? 'ios' : 'installed' });
+      mockStore.events!.push({ ...base, id: randomBytes(8).toString('hex'), kind: 'tab_view', at: at(r + 1), tab: tabs[(d + r) % tabs.length] });
+      if (d % 7 === r) mockStore.events!.push({ ...base, id: randomBytes(8).toString('hex'), kind: 'sign_in', at: at(r + 1), via: r % 3 ? 'pin' : 'google' });
+    });
+  }
 }
 
 /** Monotonic across the whole mock store — an etag only has to be unique. */

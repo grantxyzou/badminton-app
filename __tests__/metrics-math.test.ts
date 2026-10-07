@@ -248,3 +248,52 @@ describe('computeClubMetrics', () => {
     expect(out).not.toContain('member-zq81');
   });
 });
+
+describe('computeClubMetrics — app usage', () => {
+  const roster = ['a', 'b', 'c'].map((id) => ({ memberId: id, name: id.toUpperCase() }));
+  const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000).toISOString();
+
+  it('is null throughout before anything is recorded — not zero', () => {
+    const m = computeClubMetrics(base({ roster }));
+    expect(m.usage).toEqual({
+      firstRecordedAt: null, weeklyActive: [null, null, null, null], activeSoFar: null, avgDailyActive: null,
+      stickiness: null, opensPerActive7d: null, tabViews: null, signInMethods: null,
+    });
+  });
+
+  it('counts members who opened the app, by week and by day, roster only', () => {
+    const usageEvents = [
+      // recording began 20 days ago
+      { memberId: 'a', kind: 'app_open', at: daysAgo(20) },
+      { memberId: 'a', kind: 'app_open', at: hoursAgo(2) },
+      { memberId: 'a', kind: 'app_open', at: hoursAgo(3) },
+      { memberId: 'b', kind: 'app_open', at: hoursAgo(30) },
+      { memberId: 'c', kind: 'app_open', at: daysAgo(10) },
+      { memberId: 'stranger', kind: 'app_open', at: hoursAgo(1) },
+      { memberId: 'a', kind: 'app_open', at: daysAgo(40) }, // outside 28 days
+      { memberId: 'a', kind: 'tab_view', at: hoursAgo(2), tab: 'home' },
+      { memberId: 'b', kind: 'tab_view', at: hoursAgo(30), tab: 'skills' },
+      { memberId: 'b', kind: 'tab_view', at: hoursAgo(29), tab: 'home' },
+      { memberId: 'b', kind: 'sign_in', at: hoursAgo(30), via: 'pin' },
+    ];
+    const m = computeClubMetrics(base({ roster, usageEvents }));
+    expect(m.usage.firstRecordedAt).toBe(daysAgo(20));
+    // 4 rolling weeks: the two oldest began 28 and 21 days ago, before
+    // recording did (20 days ago) → null, not a partial count.
+    expect(m.usage.weeklyActive).toEqual([null, null, 1, 2]);
+    expect(m.usage.activeSoFar).toBe(3);
+    // 20 full days; a opened on 2 of them, b on 1, c on 1 → 4 member-days / 20.
+    expect(m.usage.avgDailyActive).toBeCloseTo(4 / 20);
+    expect(m.usage.stickiness).toBeCloseTo(4 / 20 / 3);
+    // last 7 days: a twice, b once → 3 opens / 2 members.
+    expect(m.usage.opensPerActive7d).toBe(1.5);
+    expect(m.usage.tabViews).toEqual({ home: 2, skills: 1 });
+    expect(m.usage.signInMethods).toEqual({ pin: 1 });
+  });
+
+  it('holds back stickiness until a week of records exists', () => {
+    const m = computeClubMetrics(base({ roster, usageEvents: [{ memberId: 'a', kind: 'app_open', at: daysAgo(3) }] }));
+    expect(m.usage.avgDailyActive).not.toBeNull();
+    expect(m.usage.stickiness).toBeNull();
+  });
+});
