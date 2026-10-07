@@ -8,7 +8,7 @@ import ReportsKeyCard from './metrics/ReportsKeyCard';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
-import type { ClubMetrics, SessionMetrics } from '@/lib/metricsMath';
+import type { ClubMetrics, SessionMetrics, UsageMetrics } from '@/lib/metricsMath';
 import { NONE, dayCount, duration, pct, shortDate } from '@/lib/metricsFormat';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -176,13 +176,7 @@ export default function MetricsPage({ onBack }: { onBack: () => void }) {
         </Caption>
       </section>
 
-      <section className="glass-card p-5 flex flex-col gap-3" aria-label="Usage">
-        <CardHeader icon="hourglass_empty" title="App usage" subtitle="Starts when usage tracking is on" />
-        <Caption>
-          Daily and weekly active members, how many people go from opening the app to signing up, and which tabs get
-          used. These need the app to record visits, which is off until the privacy labels are updated.
-        </Caption>
-      </section>
+      <UsageCard usage={data.usage} />
 
       <ReportsKeyCard />
     </div>
@@ -223,5 +217,70 @@ function SessionRow({ s }: { s: SessionMetrics }) {
       <BarRow label={shortDate(s.date)} value={s.fillRate} detail={`${s.confirmed} / ${s.capacity}`} />
       <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{extras}</span>
     </div>
+  );
+}
+
+const TAB_LABELS: Record<string, string> = { home: 'Home', stringing: 'Stringing', skills: 'Stats', profile: 'Profile' };
+const VIA_LABELS: Record<string, string> = {
+  pin: 'PIN', password: 'password', google: 'Google', apple: 'Apple',
+  recovery: 'recovery code', reset: 'password reset', handoff: 'app hand-off', migrate: 'move to the app',
+};
+
+/**
+ * App usage, from the usage records (docs/plans/usage-metrics.md). Before the
+ * first record it says what it will show and why it is empty — never a row of
+ * zeros, which would read as "nobody opens the app".
+ */
+function UsageCard({ usage }: { usage: UsageMetrics | undefined }) {
+  if (!usage?.firstRecordedAt) {
+    return (
+      <section className="glass-card p-5 flex flex-col gap-3" aria-label="Usage">
+        <CardHeader icon="hourglass_empty" title="App usage" subtitle="Starts when usage tracking is on" />
+        <Caption>
+          Daily and weekly active members, how often people come back, which tabs get used and how people sign in.
+          These appear once the app has recorded its first visit.
+        </Caption>
+      </section>
+    );
+  }
+  const latestWeek = usage.weeklyActive[usage.weeklyActive.length - 1];
+  const tabTotal = Object.values(usage.tabViews ?? {}).reduce((a, b) => a + b, 0);
+  const signIns = Object.entries(usage.signInMethods ?? {}).sort((a, b) => b[1] - a[1]);
+  const since = shortDate(usage.firstRecordedAt.slice(0, 10));
+  return (
+    <section className="glass-card p-5 flex flex-col gap-4" aria-label="Usage">
+      <CardHeader icon="trending_up" title="App usage" subtitle={`Recorded since ${since}, last 28 days`} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
+        <Tile
+          value={latestWeek !== null ? String(latestWeek) : String(usage.activeSoFar ?? NONE)}
+          label={latestWeek !== null ? 'This week' : 'So far'}
+        />
+        <Tile
+          value={usage.avgDailyActive === null ? NONE : String(Math.round(usage.avgDailyActive * 10) / 10)}
+          label="A day"
+        />
+        <Tile value={pct(usage.stickiness)} label="Come back" />
+      </div>
+      <Caption>
+        Members who opened the app. &ldquo;Come back&rdquo; is the share of this month&apos;s members who open it on a given
+        day{usage.stickiness === null ? ' — it needs a week of records first' : ''}.
+        {usage.opensPerActive7d !== null
+          ? ` Each opened it ${Math.round(usage.opensPerActive7d * 10) / 10} times in the last week, on average.`
+          : ''}
+      </Caption>
+      {tabTotal > 0 && (
+        <div className="flex flex-col gap-3">
+          <span className="section-label-muted">Tabs viewed</span>
+          {Object.entries(usage.tabViews ?? {})
+            .sort((a, b) => b[1] - a[1])
+            .map(([tab, n]) => (
+              <BarRow key={tab} label={TAB_LABELS[tab] ?? tab} value={n / tabTotal} detail={`${n} · ${pct(n / tabTotal)}`} />
+            ))}
+        </div>
+      )}
+      {signIns.length > 0 && (
+        <Caption>Signed in with: {signIns.map(([via, n]) => `${VIA_LABELS[via] ?? via} ${n}`).join(' · ')}.</Caption>
+      )}
+    </section>
   );
 }

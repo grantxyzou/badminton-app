@@ -57,6 +57,16 @@ const HAPPY: ClubMetrics = {
     medianDaysToPay: 1,
     paidWithin7dRate: 5 / 6,
   },
+  usage: {
+    firstRecordedAt: null,
+    weeklyActive: [null, null, null, null],
+    activeSoFar: null,
+    avgDailyActive: null,
+    stickiness: null,
+    opensPerActive7d: null,
+    tabViews: null,
+    signInMethods: null,
+  },
 };
 
 afterEach(() => {
@@ -113,6 +123,30 @@ describe('<MetricsPage />', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Last 12 sessions' }));
     await waitFor(() => expect(calls.at(-1)).toContain('sessions=12'));
     expect(screen.getByRole('region', { name: 'Sessions' })).toBeTruthy();
+  });
+
+  it('shows app usage once there are records', async () => {
+    mockMetrics({
+      ...HAPPY,
+      usage: {
+        firstRecordedAt: '2026-09-20T10:00:00.000Z',
+        weeklyActive: [null, 14, 17, 19],
+        activeSoFar: 24,
+        avgDailyActive: 6.4,
+        stickiness: 0.27,
+        opensPerActive7d: 3.2,
+        tabViews: { home: 60, skills: 30, profile: 10 },
+        signInMethods: { pin: 9, google: 3 },
+      },
+    });
+    render(<MetricsPage onBack={() => {}} />);
+    const usage = await screen.findByRole('region', { name: 'Usage' });
+    expect(within(usage).getByText('19')).toBeTruthy();
+    expect(within(usage).getByText('6.4')).toBeTruthy();
+    expect(within(usage).getByText('27%')).toBeTruthy();
+    expect(within(usage).getByText('60 · 60%')).toBeTruthy();
+    expect(within(usage).getByText(/PIN 9 · Google 3/)).toBeTruthy();
+    expect(within(usage).getByText(/Recorded since Sep 20/)).toBeTruthy();
   });
 
   it('names the tracking-based numbers without drawing any', async () => {
