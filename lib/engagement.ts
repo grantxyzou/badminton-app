@@ -1,6 +1,6 @@
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-import type { ClientKind, CheckInSource } from './events';
+import type { ClientKind, CheckInSource, USAGE_PLATFORMS, USAGE_TABS } from './events';
 
 /** The kinds a CLIENT may send — server-only kinds (`pick_served`) are not in
  *  this type, and `POST /api/events` refuses them. */
@@ -15,6 +15,10 @@ export interface EngagementMeta {
   category?: 'racket' | 'string';
   /** `checkin_open` only — which door the member used. */
   source?: CheckInSource;
+  /** `tab_view` only. */
+  tab?: (typeof USAGE_TABS)[number];
+  /** `app_open` only. */
+  platform?: (typeof USAGE_PLATFORMS)[number];
 }
 
 /**

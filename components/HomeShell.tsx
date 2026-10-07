@@ -19,6 +19,7 @@ import { StringingFallback, StatsFallback, ProfileFallback, AdminFallback } from
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { useUsageBeacons } from '@/lib/useUsageBeacons';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import { consumeRecentExcursion } from '@/lib/excursion';
@@ -661,6 +662,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     window.addEventListener(IDENTITY_EVENT, read);
     return () => window.removeEventListener(IDENTITY_EVENT, read);
   }, []);
+
+  // App opens and tab views, for Admin → Metrics (docs/plans/usage-metrics.md).
+  // Off with NEXT_PUBLIC_FLAG_USAGE_METRICS off; never for a signed-out visitor.
+  useUsageBeacons(activeTab, hasIdentity === true);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-tab', activeTab);
