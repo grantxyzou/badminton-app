@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import EmptyState from '@/components/primitives/EmptyState';
 import LaunchArt from '@/components/launch/LaunchArt';
@@ -19,7 +20,10 @@ import ForgotPasswordSheet from '@/components/auth/ForgotPasswordSheet';
 import ChooseNameSheet from '@/components/auth/ChooseNameSheet';
 import HandoffCodeSheet from '@/components/auth/HandoffCodeSheet';
 import ResetPasswordSheet from '@/components/auth/ResetPasswordSheet';
-import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { clearIdentity, getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { parseInviteInput } from '@/lib/parseInviteInput';
+import { hardReload } from '@/lib/reload';
+import type { GroupListEntry } from '@/lib/useCurrentGroup';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
 import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
 import { useHandoffCollect } from '@/lib/useHandoffCollect';
@@ -37,12 +41,30 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** The one key this screen writes in sessionStorage. See `reloadIntoApp`. */
 const RELOAD_MARK = 'badminton_signed_out_reload_at';
 
-type View = 'welcome' | 'login' | 'signup';
+// The multi-group doors, split out exactly as HomeShell splits them: a
+// stranger who never taps "Start your own club" never downloads them.
+const CreateGroupPage = dynamic(() => import('./CreateGroupPage'), { ssr: false });
+const JoinGroupPage = dynamic(() => import('./JoinGroupPage'), { ssr: false });
+const GroupsPage = dynamic(() => import('@/components/profile/GroupsPage'), { ssr: false });
+
+/** `create` and `join` are reachable only with multi-group on. */
+type View = 'welcome' | 'login' | 'signup' | 'create' | 'join';
 type Invite = { token?: string; code?: string };
+
+/**
+ * A signed-in, active account with no club in the group its cookie claims —
+ * `decidePage` in `lib/pageGate.ts`. `groups` is every other club they are in.
+ */
+export interface NoClub {
+  memberName: string;
+  groups: GroupListEntry[];
+}
 
 interface Props {
   /** Server-resolved, so the provider buttons are settled on first paint. */
   authProviders?: Provider[];
+  /** Present → the no-club mode below, instead of Welcome. Ignored with groups off. */
+  noClub?: NoClub;
 }
 
 /**
@@ -66,27 +88,72 @@ interface Props {
  *
  * Three views, in the shape of a normal consumer app (Wealthsimple's, chosen by
  * Grant): a Welcome with Sign up and Log in, and a page for each.
+ *
+ * WITH MULTI-GROUP ON, TWO MORE DOORS (`docs/plans/multi-group.md`, 2026-10-07).
+ * The store listing is a public sign on a locked door until a stranger can
+ * make a club: Sign up takes only an invite, and the create flow lived in
+ * HomeShell, which never mounts for anyone the server refused. So:
+ *
+ *   - A stranger's Sign up page offers "No invite? Start your own club" (a
+ *     link, by Grant's choice — Welcome keeps its two buttons). That opens
+ *     `CreateGroupPage` on its ACCOUNT step. The account it makes is on no
+ *     roster, and this screen's rule still holds: signing in reloads. The
+ *     onboarding resume is what survives the reload — `onSignedIn` marks it
+ *     and the page is told not to clear it.
+ *   - The server then renders this shell in `noClub` mode (`decidePage`): a
+ *     signed-in, active member in no club. A brand-new organiser gets three
+ *     doors — Create a club, Join with a link or code, Sign out — and a `create`
+ *     resume skips the doors and lands on the FORM. A member removed from the
+ *     club their cookie names, who belongs to others, gets those as a LIST to
+ *     pick from (Grant's choice over an automatic switch), plus the doors.
+ *
+ * In `noClub` mode there is no reload-on-identity listener. The account exists
+ * (the server said so), and `POST /api/groups` writes an identity BEFORE the
+ * invite-share step — a reload there would eat the one screen an organiser
+ * needs. Every reload in that mode is explicit: Done, Joined, Switched, Sign
+ * out. Club reads still refuse this person; the mode is doors and nothing else.
  */
-export default function SignedOutShell({ authProviders = [] }: Props) {
+export default function SignedOutShell({ authProviders = [], noClub: noClubProp }: Props) {
   const tAuth = useTranslations('profile.auth');
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  // A no-club member cannot exist with groups off (every active member is in
+  // BPM), so the prop is ignored rather than rendering a mode nothing can reach.
+  const noClub = groupsOn ? (noClubProp ?? null) : null;
   const [view, setView] = useState<View>('welcome');
   const [notice, setNotice] = useState<AuthNotice | null>(null);
   const [nativeReturn, setNativeReturn] = useState(false);
   /** The native return code from the landing's `#hc=`, or from the name step. */
   const [returnCode, setReturnCode] = useState<string | null>(null);
   const [resetRequest, setResetRequest] = useState<{ token: string; email: string } | null>(null);
-  const [chooseName, setChooseName] = useState<{ open: boolean; invite: Invite }>({ open: false, invite: {} });
+  const [chooseName, setChooseName] = useState<{ open: boolean; invite: Invite; noGroup: boolean }>({
+    open: false,
+    invite: {},
+    noGroup: false,
+  });
   const [initialInvite, setInitialInvite] = useState<Invite | null>(null);
   const consumed = useRef(false);
+  /** The view as the identity listener sees it — it must not re-subscribe per view. */
+  const viewRef = useRef<View>('welcome');
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
 
   // ── Signing in anywhere reloads into the app ─────────────────────────────
+  //
+  // Two exceptions, both multi-group: the create page's account step hands
+  // over through `onSignedIn` (which marks the resume, then reloads), and the
+  // no-club mode reloads explicitly — see the header.
+  const noClubMode = noClub !== null;
   useEffect(() => {
+    if (noClubMode) return;
     const onChange = () => {
-      if (getIdentity()) reloadIntoApp();
+      if (!getIdentity()) return;
+      if (viewRef.current === 'create') return;
+      reloadIntoApp();
     };
     window.addEventListener(IDENTITY_EVENT, onChange);
     return () => window.removeEventListener(IDENTITY_EVENT, onChange);
-  }, []);
+  }, [noClubMode]);
 
   // The installed-PWA Google return: a sign-in parked in Safari's cookie jar.
   const handoffCollect = useHandoffCollect((name) => setIdentity({ name, sessionId: '' }));
@@ -116,20 +183,33 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
 
     const landedFromAuth =
       params.get('authFlow') === 'name' || params.get('signedIn') === '1' || !!params.get('authError');
+    // The resume is half of an AND (lib/onboardingResume.ts): it acts only on
+    // the far side of a sign-in. In no-club mode the server's own verdict —
+    // "a real account, in no club" — is that other half, so it is consumed
+    // unconditionally there: the account step of "Start your own club" ended
+    // in a reload, and this record is what brings them back to the form.
     const resume =
-      landedFromAuth || pendingHandoffId() !== null ? consumeOnboardingResume() : (pruneStaleOnboardingResume(), null);
+      landedFromAuth || pendingHandoffId() !== null || noClubMode
+        ? consumeOnboardingResume()
+        : (pruneStaleOnboardingResume(), null);
 
     if (params.get('authFlow') === 'name') {
       // A brand-new Google/Apple identity: collect a name. The invite rode the
       // excursion in localStorage — the callback URL carries none of ours.
-      setChooseName({ open: true, invite: { token: resume?.token, code: resume?.code } });
+      // A CREATE resume means "join me to nothing" — and it is re-marked,
+      // because the read above was destructive and the reload after the name
+      // step still needs it to land on the create form.
+      const creating = resume?.intent === 'create';
+      if (creating) markOnboardingResume('create');
+      setChooseName({ open: true, invite: { token: resume?.token, code: resume?.code }, noGroup: creating });
       strip('authFlow');
     }
     if (params.get('signedIn') === '1') {
       // The server rendered THIS screen, so the cookie did not reach this jar.
       // An installed PWA collects it through the handoff; anything else is worth
-      // saying out loud.
-      if (pendingHandoffId() === null) setNotice({ kind: 'signInUnconfirmed' });
+      // saying out loud. Not in no-club mode: there the cookie DID arrive, and
+      // the server read it — this screen is the answer, not a miss.
+      if (pendingHandoffId() === null && !noClubMode) setNotice({ kind: 'signInUnconfirmed' });
       strip('signedIn', 'provider');
     }
     const failure = params.get('authError');
@@ -151,8 +231,18 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
     const join = params.get('join');
     if (join) {
       setInitialInvite({ token: join });
-      setView('signup');
+      // A stranger makes an account with the invite; a no-club member already
+      // has one, so the link goes straight to the join page.
+      setView(noClubMode ? 'join' : 'signup');
       strip('join');
+    } else if (noClubMode && resume) {
+      // Back from the account step (or the name step) of a door, on the far
+      // side of the reload — straight to where they were going.
+      if (resume.intent === 'create') setView('create');
+      else if (resume.token || resume.code) {
+        setInitialInvite({ token: resume.token, code: resume.code });
+        setView('join');
+      }
     }
     if (params.get('native') === '1') {
       setNativeReturn(true);
@@ -178,8 +268,25 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
     }
 
     if (dirty) window.history.replaceState(window.history.state, '', cleaned);
-  }, []);
+    // `noClubMode` is a server prop and never changes under a mounted page; the
+    // `consumed` guard above is what makes a landing read-once regardless.
+  }, [noClubMode]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  /**
+   * Leave the no-club mode the only way out of it: both cookies cleared on the
+   * server (`DELETE /api/admin` drops the member session too and needs no
+   * privilege), the local identity forgotten, and the server asked again.
+   */
+  async function signOut() {
+    clearIdentity();
+    try {
+      await fetch(`${BASE}/api/admin`, { method: 'DELETE' });
+    } catch {
+      /* the reload asks the server either way */
+    }
+    hardReload();
+  }
 
   useEffect(() => {
     if (!notice) return;
@@ -219,6 +326,43 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
               {tAuth('backToApp')}
             </a>
           </div>
+        ) : view === 'create' ? (
+          /* A stranger arrives on the ACCOUNT step and leaves this page by the
+             reload `onSignedIn` triggers; a no-club member already has the
+             account, so the page opens on the form (its own probe confirms the
+             session) and Done reloads into the club it just made. */
+          <CreateGroupPage
+            startAtAuth={!noClub}
+            sessionId=""
+            defaultName={noClub?.memberName}
+            authProviders={authProviders}
+            onBack={() => setView(noClub ? 'welcome' : 'signup')}
+            onDone={hardReload}
+            onSignedIn={
+              noClub
+                ? undefined
+                : () => {
+                    markOnboardingResume('create');
+                    reloadIntoApp();
+                  }
+            }
+          />
+        ) : view === 'join' ? (
+          /* No-club mode only: the person has an account, so a link or code
+             goes to the join page rather than through sign-up. `resolve` there
+             parses either form, which is why a code may ride `initialToken`. */
+          <JoinGroupPage
+            sessionId=""
+            initialToken={initialInvite?.token ?? initialInvite?.code ?? null}
+            defaultName={noClub?.memberName}
+            hasOtherGroup={(noClub?.groups.length ?? 0) > 0}
+            authProviders={authProviders}
+            onBack={() => {
+              setInitialInvite(null);
+              setView('welcome');
+            }}
+            onJoined={hardReload}
+          />
         ) : view === 'login' ? (
           <LogInView authProviders={authProviders} onBack={() => setView('welcome')} onSignUp={() => setView('signup')} />
         ) : view === 'signup' ? (
@@ -230,6 +374,15 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
               setView('welcome');
             }}
             onLogIn={() => setView('login')}
+            onCreate={groupsOn ? () => setView('create') : undefined}
+          />
+        ) : noClub ? (
+          <NoClubView
+            noClub={noClub}
+            onCreate={() => setView('create')}
+            onJoin={() => setView('join')}
+            onSignOut={signOut}
+            onSwitched={hardReload}
           />
         ) : (
           <WelcomeView onSignUp={() => setView('signup')} onLogIn={() => setView('login')} />
@@ -243,10 +396,11 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
       <ChooseNameSheet
         key={chooseName.open ? 'choose-name-open' : 'choose-name-closed'}
         open={chooseName.open}
-        onClose={() => setChooseName({ open: false, invite: {} })}
+        onClose={() => setChooseName({ open: false, invite: {}, noGroup: false })}
         sessionId=""
         inviteToken={chooseName.invite.token}
         inviteCode={chooseName.invite.code}
+        noGroup={chooseName.noGroup}
         onReturnCode={(code) => {
           setReturnCode(code);
           window.location.assign(nativeReturnHref(code));
@@ -324,6 +478,79 @@ function WelcomeView({ onSignUp, onLogIn }: { onSignUp: () => void; onLogIn: () 
           style={{ animationDelay: `${buttonDelayMs(1)}ms` }}
         >
           {t('logIn')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Signed in, in no club ──────────────────────────────────────────────────
+
+function NoClubView({
+  noClub,
+  onCreate,
+  onJoin,
+  onSignOut,
+  onSwitched,
+}: {
+  noClub: NoClub;
+  onCreate: () => void;
+  onJoin: () => void;
+  onSignOut: () => void;
+  onSwitched: () => void;
+}) {
+  const t = useTranslations('signedOut');
+
+  if (noClub.groups.length > 0) {
+    // A member removed from the club their cookie names, who belongs to
+    // others: the same list Profile shows, with nothing behind it to go back
+    // to. A tap switches (the server re-mints the cookies) and reloads.
+    return (
+      <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
+        <GroupsPage
+          groups={noClub.groups}
+          hint={t('noClub.yourClubs')}
+          onSwitched={onSwitched}
+          onJoinAnother={onJoin}
+          onCreateAnother={onCreate}
+        />
+        <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onSignOut}>
+          {t('noClub.signOut')}
+        </button>
+      </div>
+    );
+  }
+
+  /* The same lockup as Welcome — the launch screen hands over to this stage
+     exactly as it does to Welcome (the data attribute is what it looks for) —
+     with the doors a brand-new organiser needs where Sign up and Log in were. */
+  return (
+    <div className="launch-stage launch-stage--welcome">
+      <LaunchArt tagline={t('tagline')} variant="settled" />
+      <div data-signed-out-welcome className="launch-actions">
+        <button
+          type="button"
+          onClick={onCreate}
+          className="btn-primary launch-btn launch-btn--primary"
+          style={{ animationDelay: `${buttonDelayMs(0)}ms` }}
+        >
+          {t('noClub.create')}
+        </button>
+        <button
+          type="button"
+          onClick={onJoin}
+          className="btn-ghost launch-btn launch-btn--ghost"
+          style={{ animationDelay: `${buttonDelayMs(1)}ms` }}
+        >
+          {t('noClub.join')}
+        </button>
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="link-quiet launch-btn"
+          style={{ animationDelay: `${buttonDelayMs(2)}ms`, justifySelf: 'center' }}
+        >
+          {t('noClub.signOut')}
         </button>
       </div>
     </div>
@@ -433,11 +660,14 @@ function SignUpView({
   initialInvite,
   onBack,
   onLogIn,
+  onCreate,
 }: {
   authProviders: Provider[];
   initialInvite: Invite | null;
   onBack: () => void;
   onLogIn: () => void;
+  /** Multi-group on: "No invite? Start your own club". Absent, the line only explains. */
+  onCreate?: () => void;
 }) {
   const t = useTranslations('signedOut');
   const providersOn = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
@@ -455,22 +685,6 @@ function SignUpView({
     void resolve(initialInvite);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialInvite]);
-
-  /** A link or a code out of one box, parsed the way `JoinGroupPage` parses it. */
-  function parse(raw: string): Invite {
-    const trimmed = raw.trim();
-    if (!trimmed) return {};
-    if (/^https?:\/\//i.test(trimmed) || trimmed.includes('?join=')) {
-      try {
-        const token = new URL(trimmed, window.location.origin).searchParams.get('join');
-        if (token) return { token };
-      } catch {
-        /* not a URL after all */
-      }
-    }
-    if (/^[0-9a-f]{32}$/i.test(trimmed)) return { token: trimmed };
-    return { code: trimmed };
-  }
 
   async function resolve(invite: Invite) {
     if (!invite.token && !invite.code) return;
@@ -545,7 +759,8 @@ function SignUpView({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void resolve(parse(entry));
+          // A link or a code out of one box — `lib/parseInviteInput.ts`, shared with `JoinGroupPage`.
+          void resolve(parseInviteInput(entry, window.location.origin));
         }}
         style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}
       >
@@ -578,9 +793,17 @@ function SignUpView({
           {busy ? t('signup.checking') : t('signup.continue')}
         </button>
 
-        <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-          {t('signup.noInvite')}
-        </p>
+        {onCreate ? (
+          // The stranger's door to a club of their own (Grant, 2026-10-07: a
+          // link here, not a third button on Welcome).
+          <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onCreate}>
+            {t('signup.createInstead')}
+          </button>
+        ) : (
+          <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+            {t('signup.noInvite')}
+          </p>
+        )}
         <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onLogIn}>
           {t('signup.haveAccount')}
         </button>

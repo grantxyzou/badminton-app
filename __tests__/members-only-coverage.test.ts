@@ -212,16 +212,25 @@ describe('server-rendered pages do not bypass the gate', () => {
   it('app/page.tsx gates, returns the signed-out screen, and only THEN reads', () => {
     const source = readFileSync(join(process.cwd(), 'app', 'page.tsx'), 'utf8');
     const flag = source.indexOf('membersOnlyOn()');
-    const gate = source.indexOf('requireMember(');
+    // `decidePage` (lib/pageGate.ts) wraps `requireMember` to tell a stranger
+    // from a signed-in member in no club; the pin below holds it to that gate.
+    const gate = source.indexOf('decidePage(');
     const signedOut = source.indexOf('<SignedOutShell');
     const read = source.indexOf('readActiveAnnouncements(');
     expect(read, 'app/page.tsx no longer reads announcements — update this test').toBeGreaterThan(-1);
     expect(flag, 'app/page.tsx never checks the members-only flag').toBeGreaterThan(-1);
-    expect(gate, 'app/page.tsx never calls requireMember').toBeGreaterThan(flag);
+    expect(gate, 'app/page.tsx never calls decidePage').toBeGreaterThan(flag);
     expect(signedOut, 'app/page.tsx never renders SignedOutShell').toBeGreaterThan(gate);
     // The read must come after the early return, or a refused visitor's page
     // would already have serialized the announcement before returning.
     expect(read, 'app/page.tsx reads the announcement before its members-only gate').toBeGreaterThan(signedOut);
+  });
+
+  it('the page gate is requireMember, one level down', () => {
+    const source = readFileSync(join(process.cwd(), 'lib', 'pageGate.ts'), 'utf8');
+    expect(source, 'lib/pageGate.ts no longer calls requireMember — the page would have a second definition of "signed in"').toContain(
+      'requireMember(',
+    );
   });
 });
 

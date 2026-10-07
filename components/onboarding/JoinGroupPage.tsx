@@ -10,6 +10,7 @@ import EmailSignInForm from '@/components/auth/EmailSignInForm';
 import { setIdentity } from '@/lib/identity';
 import { isFlagOn } from '@/lib/flags';
 import { clearOnboardingResume, markOnboardingResume } from '@/lib/onboardingResume';
+import { parseInviteInput } from '@/lib/parseInviteInput';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -94,29 +95,9 @@ export default function JoinGroupPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialToken]);
 
-  /**
-   * A link or a code, out of one box. A link's token is the `?join=` parameter;
-   * anything else is treated as a code, with separators stripped the way the
-   * server strips them.
-   */
-  function parse(raw: string): { token?: string; code?: string } {
-    const trimmed = raw.trim();
-    if (!trimmed) return {};
-    if (/^https?:\/\//i.test(trimmed) || trimmed.includes('?join=')) {
-      try {
-        const url = new URL(trimmed, window.location.origin);
-        const token = url.searchParams.get('join');
-        if (token) return { token };
-      } catch {
-        // Not a URL after all — fall through and try it as a code.
-      }
-    }
-    if (/^[0-9a-f]{32}$/i.test(trimmed)) return { token: trimmed };
-    return { code: trimmed };
-  }
-
   async function resolve(raw: string) {
-    const parsed = parse(raw);
+    // A link or a code, out of one box — `lib/parseInviteInput.ts` tells them apart.
+    const parsed = parseInviteInput(raw, window.location.origin);
     if (!parsed.token && !parsed.code) return;
     setBusy(true);
     setError(null);

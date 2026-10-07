@@ -1681,6 +1681,12 @@
     "needsCheckIn": "Do the check-in and we'll suggest a racket."
   },
   "signedOut": {
+    "noClub": {
+      "yourClubs": "You're not in a club on this device. Pick one of yours, or start another.",
+      "create": "Create a club",
+      "join": "Join with a link or code",
+      "signOut": "Sign out"
+    },
     "tagline": "Weekly badminton with your crew.",
     "signUp": "Sign up",
     "logIn": "Log in",
@@ -1705,6 +1711,7 @@
       "notFound": "That link or code doesn't work. Ask whoever invited you for a fresh one.",
       "failed": "Couldn't check that. Try again.",
       "noInvite": "No invite? Ask someone in the club to send you the link.",
+      "createInstead": "No invite? Start your own club",
       "accountTitle": "Join {name}",
       "accountBody": "Create your account. It takes a second.",
       "or": "or",

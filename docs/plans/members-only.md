@@ -70,7 +70,7 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 | Invite surfaces with one club | `invitesOn()` in `lib/groupRoutes.ts`; `InviteCard` in `CommandCenter` |
 | A sign-up needs an account | `POST` in `app/api/players/route.ts` |
 | Tests for both | `__tests__/members-only-accounts.test.ts` |
-| The page's server decision | `app/page.tsx` |
+| The page's server decision | `app/page.tsx`, through `decidePage` in `lib/pageGate.ts` (signed in / signed out / signed in but in no club) |
 | The signed-out screens | `components/onboarding/SignedOutShell.tsx` |
 | Shared iOS-PWA sign-in collection | `lib/useHandoffCollect.ts` |
 | Home card locked to the member | `components/HomeTab.tsx` (`memberName`) |
