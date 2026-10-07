@@ -32,6 +32,9 @@ import { pkFieldOf, type ContainerName } from './containers';
 import { listMembershipsForMember, reassignOwnership } from './groups';
 import { listIdentitiesForMember } from './authIdentity';
 import { revokeAppleIdentity } from './appleRevoke';
+import { accountOf } from './storeCredit';
+import { ANON_LEDGER_ID, isSentinelLedgerId } from './ledgerMirror';
+import type { LedgerEntry } from './types';
 
 /** What an anonymized row says instead of a name. */
 export const TOMBSTONE_NAME = 'Former member';
@@ -72,10 +75,6 @@ const OWNED: readonly PurgeTarget[] = [
   { container: 'events', by: 'memberId' },
   { container: 'drillCompletions', by: 'memberId' },
   { container: 'stringingJobs', by: 'memberId' },
-  // Store credit: a balance belongs to the person, and closing the account
-  // forfeits it. Deleted, not anonymized — nobody else's arithmetic depends
-  // on it (the session rows a spend paid stay paid; those are anonymized).
-  { container: 'ledger', by: 'memberId' },
   // Kudos RECEIVED are about them. Kudos they GAVE are part of someone else's
   // count and are anonymized instead — see below.
   { container: 'kudos', by: 'recipientMemberId' },
@@ -138,6 +137,7 @@ export const CLASSIFIED_ELSEWHERE: Readonly<Record<string, string>> = {
   players: 'shared cost history — `anonymizePlayerRows`',
   gameResults: 'shared match history — `anonymizeGameResults`',
   feedback: 'reports carry a name and an IP — `anonymizeFeedback`',
+  ledger: "store credit is forfeited (deleted); charges and payments are the club's history and are re-keyed under `~anon` — `relocateLedger`",
   payments: 'club bookkeeping that names a payer — anonymized in `purgeMember` (sender, memo, member link)',
   groups: 'a group names its owner — `reassignOwnership` (lib/groups.ts) runs in `purgeMember` before the owned rows go',
 };
@@ -192,6 +192,11 @@ const sameName = (row: Record<string, unknown>, lower: string) =>
  * is going away, and a container that fails should not strand the rest.
  */
 export async function purgeMember(memberId: string, name: string): Promise<PurgeSummary> {
+  // The ledger's sentinel partitions (`~club`, `~anon`, `~unlinked`) are the
+  // club's, not a person's. A real member id is 24 hex and cannot start with
+  // `~`; refusing here is the belt to that brace, because a purge of `~club`
+  // would delete every court cost the club ever recorded.
+  if (isSentinelLedgerId(memberId)) throw new Error(`purgeMember: ${memberId} is not a member`);
   const summary: PurgeSummary = { deleted: 0, anonymized: 0, groupsReassigned: 0, groupsClosed: 0, failed: [] };
   const lowerName = name.trim().toLowerCase();
 
@@ -286,6 +291,17 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
   } catch (err) {
     console.error('[purge] aliases (legacy, by name) failed:', err);
     summary.failed.push('aliases:legacy');
+  }
+
+  // The ledger: credit is theirs and is forfeited; charges and payments are
+  // the CLUB's history (the money view sums them) and move under `~anon`.
+  try {
+    const r = await relocateLedger(memberId);
+    summary.deleted += r.deleted;
+    summary.anonymized += r.relocated;
+  } catch (err) {
+    console.error('[purge] ledger failed:', err);
+    summary.failed.push('ledger');
   }
 
   // E-transfers matched to them: the club's bookkeeping keeps the amount and
@@ -460,6 +476,44 @@ export async function anonymizeGameResults(name: string): Promise<number> {
     n += 1;
   }
   return n;
+}
+
+/**
+ * A purged member's ledger. `member_credit` entries are deleted — the balance
+ * was theirs, and closing the account forfeits it. `member_owed` entries
+ * (charges, payments, covers, their voids) are COPIED under `~anon` with the
+ * same id prefix, then the originals deleted: the club's income and collected
+ * totals are sums over these, and a deletion request is not a refund. The
+ * copy goes first so a crash in between leaves a duplicate (deterministic
+ * ids make the retry a no-op) rather than a hole in the club's books.
+ */
+export async function relocateLedger(memberId: string): Promise<{ deleted: number; relocated: number }> {
+  await ensureContainer('ledger');
+  const rows = await queryAll(
+    'ledger',
+    'c.memberId = @memberId',
+    [{ name: '@memberId', value: memberId }],
+    (row) => row.memberId === memberId,
+  );
+  let deleted = 0;
+  let relocated = 0;
+  for (const row of rows) {
+    const entry = row as unknown as LedgerEntry;
+    if (accountOf(entry) === 'member_owed') {
+      // Cosmos system fields come back on a read and are refused on a create.
+      const { _rid: _r, _self: _s, _etag: _e, _ts: _t, _attachments: _a, ...plain } = row;
+      const copy = { ...(plain as unknown as LedgerEntry), id: `${ANON_LEDGER_ID}:${entry.id}`, memberId: ANON_LEDGER_ID, createdBy: ANON_LEDGER_ID };
+      try {
+        await getContainer('ledger').items.create(copy);
+      } catch (err) {
+        if ((err as { code?: number })?.code !== 409) throw err;
+      }
+      relocated += 1;
+    }
+    await getContainer('ledger').item(String(entry.id), memberId).delete();
+    deleted += 1;
+  }
+  return { deleted, relocated };
 }
 
 /**

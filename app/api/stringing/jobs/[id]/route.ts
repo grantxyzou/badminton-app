@@ -21,6 +21,7 @@ import { isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isStringingStatus, isValidTension, canTransition } from '@/lib/stringing';
+import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirror';
 import type { StringingJob, PendingEdit } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -329,6 +330,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (!written) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
+    // The ledger mirror: a charge while billable, a payment when paid, voids
+    // on the way back. `job` is the row before the write.
+    await mirrorStringingChanged(scope, job, written);
 
     /* THE NOTIFICATION SEAM'S ONLY CALLER.
        `lib/stringingNotify.ts` and its adapter shipped with nothing on either
@@ -436,6 +440,7 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
 
     const removed = await scope.remove('stringingJobs', id, memberId);
     if (!removed) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    await mirrorStringingDeleted(scope, job);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error(`DELETE /api/stringing/jobs/${id} failed:`, err);

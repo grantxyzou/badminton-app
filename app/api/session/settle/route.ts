@@ -5,6 +5,7 @@ import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { costSplit, isResplitCovered } from '@/lib/sessionCost';
 import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
+import { mirrorSettle, mirrorUnsettle } from '@/lib/ledgerMirror';
 import type { Player, Session, SettledSnapshot } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
     // still loop one-at-a-time for mock-store compatibility. If any single
     // upsert throws, partial state is recoverable via DELETE then POST.
     const stampedPlayers: Array<Pick<Player, 'id' | 'name' | 'owedAmount' | 'settledAt'>> = [];
+    const stampedRows: Player[] = [];
     for (const player of activePlayers) {
       // resplit-covered players owe nothing (their share went to the payers);
       // absorb-covered players carry the per-person figure too so the ledger
@@ -128,7 +130,12 @@ export async function POST(req: NextRequest) {
         owedAmount: owed,
         settledAt: at,
       });
+      stampedRows.push(updated);
     }
+
+    // The ledger mirror (docs/plans/payments.md, Phase 2): a charge per row
+    // and the court cost, after the rows are saved; never fails the settle.
+    await mirrorSettle(scope, session, snapshot, stampedRows);
 
     return NextResponse.json({
       sessionId,
@@ -180,6 +187,9 @@ export async function DELETE(req: NextRequest) {
     const nextSession = { ...session } as Session & { settled?: SettledSnapshot };
     delete nextSession.settled;
     await scope.upsert('sessions', nextSession);
+
+    // Mirror: void every charge, cover and the court cost the settle wrote.
+    await mirrorUnsettle(scope, session, settledPlayers);
 
     return NextResponse.json({ sessionId, unsettled: true });
   } catch (error) {

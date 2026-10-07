@@ -12,6 +12,7 @@ import {
   validateTubeCount,
   type BirdDoc,
 } from '@/lib/birdUsages';
+import { mirrorShuttlePurchase, mirrorShuttleAdjusted, mirrorShuttleDeleted } from '@/lib/ledgerMirror';
 import type { BirdPurchase, Session } from '@/lib/types';
 
 // A single purchase is a bulk buy — allow far more than a session's per-entry
@@ -162,7 +163,9 @@ export async function POST(req: NextRequest) {
       purchase.notes = body.notes.trim().slice(0, 500);
     }
 
+    const scope = groupScope(resolveGroupId(req));
     const resource = await groupScope(resolveGroupId(req)).create('birds', purchase);
+    await mirrorShuttlePurchase(scope, resource as BirdPurchase);
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST birds error:', error);
@@ -210,6 +213,7 @@ export async function DELETE(req: NextRequest) {
 
     const removed = await scope.remove('birds', id);
     if (!removed) return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
+    await mirrorShuttleDeleted(scope, { id });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE birds error:', error);
@@ -277,6 +281,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const resource = await scope.upsert('birds', updated);
+    await mirrorShuttleAdjusted(scope, existing as BirdPurchase, resource as BirdPurchase);
     return NextResponse.json(resource);
   } catch (error) {
     console.error('PATCH birds error:', error);

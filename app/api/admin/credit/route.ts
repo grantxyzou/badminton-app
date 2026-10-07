@@ -11,6 +11,7 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
 import { isFlagOn } from '@/lib/flags';
 import { balanceOf, CreditError, grantCredit, ledgerFor } from '@/lib/storeCredit';
+import { isSentinelLedgerId } from '@/lib/ledgerMirror';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
   const memberId = typeof body.memberId === 'string' ? body.memberId : '';
-  if (!memberId || typeof body.amountCents !== 'number') return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+  // `~club` and friends are the ledger's own partitions, never a person to credit.
+  if (!memberId || isSentinelLedgerId(memberId) || typeof body.amountCents !== 'number') return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   try {
     const entry = await grantCredit(resolveGroupId(req), {
       memberId,

@@ -147,24 +147,70 @@ export interface Player {
 }
 
 /**
- * Container `ledger` (PK `/memberId`, GROUP scoped) — store credit, the first
- * slice of the Phase 2 ledger (docs/plans/payments.md). APPEND-ONLY: an entry
- * is never edited or upserted, a mistake is corrected by a new entry, and a
- * balance is the sum. Phase 2 adds charge and payment kinds to the same rails.
+ * Which balance an entry belongs to (docs/plans/payments.md, Phase 2).
+ * Sums are BY ACCOUNT, never by a list of kinds: a member's partition holds
+ * both what they owe and the credit they hold, and a sum over the partition
+ * would net the two against each other.
+ *   member_owed   — session and stringing charges, and what paid them.
+ *                   Σ = what the member owes (the ledger's view of it).
+ *   member_credit — store credit. Σ = the balance they can spend.
+ *   club_outlay   — what the CLUB spent: courts, shuttles, expenses. Lives
+ *                   under the `~club` sentinel partition. Σ = outlay.
+ */
+export type LedgerAccount = 'member_owed' | 'member_credit' | 'club_outlay';
+
+export type LedgerKind =
+  // member_credit (the first slice, 2026-10-06)
+  | 'credit_grant' | 'gift_redeem' | 'credit_spend' | 'credit_refund'
+  // member_owed
+  | 'charge' | 'payment' | 'cover'
+  // club_outlay
+  | 'court_cost' | 'shuttle_purchase' | 'shuttle_adj' | 'expense'
+  // any account: the exact negation of an earlier entry, id `void:<thatId>`
+  | 'void';
+
+/**
+ * Container `ledger` (PK `/memberId`, GROUP scoped). APPEND-ONLY: an entry
+ * is never edited, upserted or deleted; a mistake or a reversal is a new
+ * `void` entry, and every balance is a sum. Store credit was the first slice;
+ * Phase 2 MIRRORS every charge and payment here beside the fields the app
+ * still reads (`Player.paid` …), so a reconcile can prove the two agree
+ * before the ledger ever becomes the truth.
+ *
+ * Ids are the idempotence: derived from the row they mirror and its own
+ * timestamp, created never upserted, so a retry, the backfill and a repair
+ * compute the same id and the second write 409s. Entries carry ids and cents,
+ * never a name.
  */
 export interface LedgerEntry {
   id: string;
   groupId?: string;
+  /** A member id, or a sentinel: `~club` (outlay), `~unlinked` (a legacy row with no member), `~anon` (a purged member's charges). */
   memberId: string;
-  kind: 'credit_grant' | 'gift_redeem' | 'credit_spend' | 'credit_refund';
-  /** Signed cents: + adds credit, − uses it. */
+  /** Absent on entries from before Phase 2 — all four of those kinds are credit. */
+  account?: LedgerAccount;
+  kind: LedgerKind;
+  /** Signed cents. Credit: + adds, − uses. Owed: a charge is +, a payment or cover −. Outlay: money out is +. */
   amountCents: number;
   /** What the admin wrote ("Birthday", "Bruce prepaid"), or what it paid. */
   note: string;
-  /** What a spend paid — a session row or a stringing job. */
-  ref?: { kind: 'session' | 'stringing'; id: string; pk: string };
+  /** The row this entry is about — a session row, a stringing job, a session (court cost), a purchase. */
+  ref?: { kind: 'session' | 'stringing' | 'court' | 'purchase' | 'expense'; id: string; pk: string };
+  meta?: {
+    /** How a payment arrived. */
+    via?: 'manual' | 'etransfer' | 'credit';
+    /** The `payments` doc, for an e-transfer. */
+    paymentId?: string;
+    coverMode?: 'absorb' | 'resplit';
+    /** An expense's bucket. */
+    category?: 'court' | 'shuttles' | 'strings' | 'other';
+    /** An expense's own date (YYYY-MM-DD), as distinct from when it was entered. */
+    date?: string;
+    /** Why a void was written. */
+    reason?: string;
+  };
   createdAt: string;
-  /** memberId of whoever made it: the admin who granted, the member who spent. */
+  /** memberId of whoever made it: the admin who granted, the member who spent, `system` for a mirror or backfill. */
   createdBy: string;
 }
 

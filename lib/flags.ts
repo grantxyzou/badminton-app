@@ -29,7 +29,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_FIT_VERDICT'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
   | 'NEXT_PUBLIC_FLAG_STORE_CREDIT'
-  | 'NEXT_PUBLIC_FLAG_USAGE_METRICS';
+  | 'NEXT_PUBLIC_FLAG_USAGE_METRICS'
+  | 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR';
 
 interface FlagMeta {
   description: string;
@@ -120,6 +121,13 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-10-19',
     note: 'On in production since 2026-09-14, on Grant\'s sign-off. The state is decided by lib/fitVerdict.ts, never by the model; with ANTHROPIC_API_KEY unset or a reply off the contract the page falls back to the fixed wording.',
   },
+  NEXT_PUBLIC_FLAG_LEDGER_MIRROR: {
+    description:
+      'Phase 2 of docs/plans/payments.md, stage 1: every charge and payment ALSO writes an append-only `ledger` entry beside the fields the app reads (Player.paid, owedAmount, StringingJob.paidAt stay the truth). Read SERVER-side by lib/ledgerMirror.ts; off, the mirror is a no-op and the backfill route 404s. Nothing visible changes either way.',
+    owner: 'grant',
+    plannedRemoval: '2026-12-05',
+    note: 'Retire once the reconcile (stage 2) has run clean for four weeks and stage 4 (ledger as truth) is planned — the off branch is only the no-op.',
+  },
   NEXT_PUBLIC_FLAG_STORE_CREDIT: {
     description:
       'Store credit and gift cards (docs/plans/payments.md, the first slice of the Phase 2 ledger): admins give credit and mint single-use gift codes; members redeem codes and "Pay with credit" from the Home balance. Read SERVER-side by /api/credit/* and /api/admin/credit, /api/admin/giftcards; off, those 404 and the UI hides.',
@@ -171,6 +179,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
     case 'NEXT_PUBLIC_FLAG_STORE_CREDIT':
       return process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
+    case 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR':
+      return process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
     case 'NEXT_PUBLIC_FLAG_USAGE_METRICS':
       return process.env.NEXT_PUBLIC_FLAG_USAGE_METRICS;
     default: {
