@@ -1833,7 +1833,7 @@
         {
           "h": "Who we are",
           "p": [
-            "%APP% is a sign-up sheet for one casual badminton group in Vancouver, BC. It is run by the group's organiser as an individual — not a company. The privacy law that applies is Canada's PIPEDA and BC's Personal Information Protection Act. This app isn't intended for children under 13."
+            "%APP% is a sign-up sheet for casual badminton clubs. One person — the app's operator, in Vancouver, BC — runs the service and the database that every club's records live in. Each club is run by its own organisers, who decide who is on the roster and what each session costs. The operator is an individual, not a company. Canada's PIPEDA and BC's Personal Information Protection Act are the laws this policy follows. This app isn't intended for children under 13."
           ]
         },
         {
@@ -1851,9 +1851,10 @@
           ]
         },
         {
-          "h": "Who admins are",
+          "h": "Your club's organisers, and the operator",
           "p": [
-            "Admins are the organiser and any co-organisers the organiser has appointed to help run sessions and payments. Admins can see payment status and e-transfer names; other members cannot."
+            "• **Your club's organisers** are the person who created the club and anyone they have made an admin. They see payment status and e-transfer names for their club; other members cannot, and organisers see nothing of any club they don't run. When they create a club they agree to add only people who have agreed to join, and to use what they see only to run the club.",
+            "• **The operator** runs the app for every club and can reach any club's records to keep the service working, answer a privacy request, or look into a problem report — never to follow a club's business for its own sake."
           ]
         },
         {
@@ -1865,9 +1866,10 @@
         {
           "h": "Who can see what",
           "p": [
-            "• **Members** see the roster: names, whether each spot is confirmed or waitlisted, and the per-person cost for a session.",
-            "• **Admins** additionally see payment status and e-transfer names.",
-            "• A **kudos note** is shown to the person who received it, signed by the giver."
+            "• **Members of a club** see that club only: names, whether each spot is confirmed or waitlisted, and the per-person cost for a session. If you're in two clubs, each sees only its own roster.",
+            "• **Your club's organisers** additionally see payment status and e-transfer names.",
+            "• A **kudos note** is shown to the person who received it, signed by the giver.",
+            "• **The operator** can see all of the above, for every club, when running or fixing the service."
           ]
         },
         {
@@ -1888,49 +1890,55 @@
         {
           "h": "If something goes wrong",
           "p": [
-            "If a breach happens that puts you at real risk of harm, we'll notify you and report it to the Office of the Privacy Commissioner of Canada, as PIPEDA requires."
+            "If a breach happens that puts you at real risk of harm, we'll notify you and report it to the Office of the Privacy Commissioner of Canada, as PIPEDA requires, and to BC's Information and Privacy Commissioner."
           ]
         },
         {
           "h": "Deleting your account",
           "p": [
-            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, notifications, and the record of how you used the app. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you."
+            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, notifications, and the record of how you used the app. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you. Deleting your account removes you from every club you're in; if you're the only organiser of a club, that club closes with it."
           ]
         },
         {
           "h": "Your rights",
           "p": [
-            "You can ask what we hold about you, ask for it to be corrected, or withdraw consent, using the contact on the support page. If you're not satisfied, you can complain to the Office of the Privacy Commissioner of Canada."
+            "You can ask what we hold about you, ask for it to be corrected, or withdraw consent, using the email on the support page. It reaches the operator, who answers for the service and will bring in your club's organisers when the record is theirs — a payment they marked, for example. If you're not satisfied, you can complain to the Office of the Privacy Commissioner of Canada or to BC's Office of the Information and Privacy Commissioner."
           ]
         },
         {
           "h": "Changes",
           "p": [
-            "If this policy changes in a way that matters, the date above changes and the app will say so on its Home tab."
+            "If this policy changes in a way that matters, the date above changes."
           ]
         }
       ]
     },
     "terms": {
       "title": "Terms of use",
-      "updated": "3 September 2026",
+      "updated": "7 October 2026",
       "sections": [
         {
           "h": "What this is",
           "p": [
-            "%APP% is a free tool one group uses to organise weekly badminton. Using it means you're a member of that group, or were invited by one. It's provided as-is, by a volunteer, and can go down or change without notice."
+            "%APP% is a tool badminton clubs use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free today; if a paid plan is ever introduced it will be announced in the app first, and nothing you've already done becomes payable after the fact. Using it means you're a member of a club on it, were invited by one, or are starting your own."
           ]
         },
         {
           "h": "Signing up",
           "p": [
-            "A sign-up is a commitment to show up, or to cancel before the deadline shown. The organiser may remove or waitlist sign-ups to keep a session playable, and may limit sign-ups to an invite list."
+            "A sign-up is a commitment to show up, or to cancel before the deadline shown. Your club's organisers may remove or waitlist sign-ups to keep a session playable, and may limit sign-ups to an invite list."
+          ]
+        },
+        {
+          "h": "Running a club",
+          "p": [
+            "If you create a club, you're its organiser. You decide who joins, what sessions cost and who has paid, and you're responsible for those decisions and for your club's conduct. Invite only people who've agreed to be in the club. What you see about your members — names, sign-ups, what's owed, e-transfer names — is for running the club and nothing else: don't copy it elsewhere or share it. The operator can close a club that breaks these terms."
           ]
         },
         {
           "h": "Money",
           "p": [
-            "The app records each person's share of a session and whether it has been paid. It does not take payments. Paying is arranged between you and the organiser, usually by e-transfer. Nothing in the app is a bill from anyone but the organiser, and none of it is financial advice or a financial service."
+            "The app records each person's share of a session and whether it has been paid. It does not take payments. Paying is arranged between you and your club's organisers, usually by e-transfer. Nothing in the app is a bill from anyone but your club's organisers, and none of it is financial advice or a financial service."
           ]
         },
         {
@@ -1942,19 +1950,19 @@
         {
           "h": "Content",
           "p": [
-            "Kudos, notes and announcements are for the group. Keep them kind. The organiser can remove anything that isn't."
+            "Kudos, notes and announcements are for your club. Keep them kind. Your club's organisers, or the operator, can remove anything that isn't."
           ]
         },
         {
           "h": "Liability",
           "p": [
-            "Badminton is a sport; you play at your own risk. The app organises sessions and takes no responsibility for what happens on court, for a venue, or for another member's conduct. To the extent the law allows, the organiser isn't liable for losses arising from use of the app."
+            "Badminton is a sport; you play at your own risk. The app organises sessions and takes no responsibility for what happens on court, for a venue, for how a club's organisers run their club, or for another member's conduct. To the extent the law allows, the operator isn't liable for losses arising from use of the app."
           ]
         },
         {
           "h": "Ending",
           "p": [
-            "You can delete your account at any time. The organiser can deactivate accounts that break these terms or that belong to people no longer in the group."
+            "You can delete your account at any time. Your club's organisers can remove people from their club. The operator can deactivate accounts, or close clubs, that break these terms."
           ]
         },
         {
@@ -1967,34 +1975,34 @@
     },
     "support": {
       "title": "Support",
-      "updated": "3 September 2026",
+      "updated": "7 October 2026",
       "sections": [
         {
           "h": "Something not working?",
           "p": [
-            "The fastest route is inside the app: Profile → Report a problem. It sends the organiser the page you were on and what went wrong, so there's nothing to describe."
+            "The fastest route is inside the app: Profile → Report a problem. It sends the operator the page you were on and what went wrong, so there's nothing to describe."
           ]
         },
         {
           "h": "Lost your PIN?",
           "p": [
-            "On the Profile tab, tap “Forgot your PIN?”. If you've set up Google, Apple or email sign-in, those work too. Otherwise ask the organiser for a one-time code."
+            "On the Profile tab, tap “Forgot your PIN?”. If you've set up Google, Apple or email sign-in, those work too. Otherwise ask your club's organiser for a one-time code."
           ]
         },
         {
           "h": "Questions about money",
           "p": [
-            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell the organiser — the app records payments, it doesn't take them."
+            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your club's organiser — the app records payments, it doesn't take them."
           ]
         }
       ],
-      "emailLabel": "Or email the organiser:",
+      "emailLabel": "Or email the operator:",
       "deleteLink": "Deleting your account",
       "privacyLink": "Privacy policy"
     },
     "deleteAccount": {
       "title": "Delete your account",
-      "updated": "3 September 2026",
+      "updated": "7 October 2026",
       "intro": "You can delete your %APP% account yourself, from inside the app. It takes about ten seconds and can't be undone.",
       "stepsTitle": "In the app",
       "steps": [
@@ -2013,10 +2021,11 @@
       "keepsTitle": "What stays",
       "keeps": [
         "Past sessions keep one unnamed line so everyone else's cost split still adds up. It no longer identifies you.",
-        "Deleting your account doesn't cancel anything you still owe for sessions you played."
+        "Deleting your account doesn't cancel anything you still owe for sessions you played.",
+        "You leave every club you're in. If you were a club's only organiser, the club closes."
       ],
       "noAppTitle": "Can't get into the app?",
-      "noApp": "Email the organiser with the name you signed up under, from an address we can reply to, and the account will be deleted for you.",
+      "noApp": "Email the operator with the name you signed up under and the club you're in, from an address we can reply to, and the account will be deleted for you.",
       "emailLabel": "Email:"
     }
   },

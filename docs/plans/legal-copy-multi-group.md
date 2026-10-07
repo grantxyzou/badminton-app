@@ -1,8 +1,8 @@
 # Legal copy once a second club exists
 
 **Track:** Reach (ROADMAP track 4) — multi-group Phase 5 gate item "DECIDE WHAT THE LEGAL COPY SAYS ONCE A SECOND CLUB EXISTS" (`docs/superpowers/plans/2026-09-07-multi-group.md`).
-**Status:** intent — wording PROPOSED 2026-10-07, awaiting Grant (and possibly a lawyer's read)
-**Review on:** 2026-10-21 — has the wording below been confirmed and shipped in both locales? If `NEXT_PUBLIC_FLAG_MULTI_GROUP` flipped first, this is the gate that was skipped.
+**Status:** in-flight — wording PROPOSED and CONFIRMED by Grant 2026-10-07 ("yes" to D1–D9); both locales edited the same day. A lawyer's read of the four items under "Where a lawyer earns their fee" remains open.
+**Review on:** 2026-10-21 — does the Play listing's developer name appear in the privacy policy, and has anyone with a legal eye read the four flagged items? If `NEXT_PUBLIC_FLAG_MULTI_GROUP` flipped first, check both were done.
 
 ## Problem
 
@@ -106,7 +106,7 @@ second club with nobody they can identify to ask about their data.
    agreement" would take if clubs ever pay.
    Source: [OPC draft guidance](https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/appropriate-handling-of-personal-information/gd_third-party_202609/).
 
-## Decisions (PROPOSED — each needs Grant's yes)
+## Decisions (proposed 2026-10-07; Grant: "yes" the same day)
 
 - **D1. Two roles, named plainly, no GDPR words.** "The operator" (one person,
   runs the service and the database every club lives in) and "your club's
@@ -145,7 +145,7 @@ second club with nobody they can identify to ask about their data.
   organiser's account closes the club (`Group.closedAt`). The policy should say
   both; the code already does them.
 
-## Proposed wording — English (Chinese follows once confirmed)
+## Wording — English (shipped; the Chinese is a translation of this, same section count)
 
 Section counts per document must stay equal across locales
 (`__tests__/legal-pages.test.ts`), and the needles `e-transfer`, `push token`,
@@ -279,12 +279,13 @@ low-risk and standard. Worth a professional read before shipping:
       nothing new is collected by this change, so no label edit is expected.
 - [ ] Web deletion URL (`/legal/delete-account`) still linked in Play Console.
 
-## Shape (once confirmed)
+## Shape
 
 | Piece | File |
 |---|---|
-| English copy | `messages/en.json` → `legal.privacy`, `legal.terms`, `legal.support`, `legal.deleteAccount` |
+| English copy (29 line edits, one new terms section) | `messages/en.json` → `legal.privacy`, `legal.terms`, `legal.support`, `legal.deleteAccount` |
 | Chinese copy, same section count | `messages/zh-CN.json` → same keys |
-| Shape + needle test | `__tests__/legal-pages.test.ts` (unchanged unless a needle moves) |
+| Shape + needle test | `__tests__/legal-pages.test.ts` (unchanged; every needle survived) |
 | Phase 5 gate line ticked | `docs/superpowers/plans/2026-09-07-multi-group.md` |
-| Home policy-changed note (D7, if built) | `later` issue, not this change |
+| Home policy-changed note (D7: dropped from the copy; a Home note is a `later` issue) | GitHub issue, not this change |
+| Still open | the Play listing's developer name in the policy (one line, at ship); `PRODUCT.md` / `README.md` / `docs/OWNER-KB.md` still say "one group" |
