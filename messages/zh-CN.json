@@ -529,7 +529,7 @@
       "expiresIn": "{time} 后过期",
       "expiredNewCode": "验证码已过期 — 获取新的",
       "tryAgain": "再试一次",
-      "storesNote": "还没装应用？App Store 和 Google Play 上很快就有。你在这里的账号不会有任何变化。",
+      "storesNote": "还没装应用？先在 App Store 或 Google Play 下载 %APP%。你在这里的账号不会有任何变化。",
       "offline": "当前离线 — 联网后才能获取验证码。",
       "errorAuth": "先登录，再回来操作。",
       "errorRateLimited": "一小时内获取的验证码太多 — 稍后再试。",

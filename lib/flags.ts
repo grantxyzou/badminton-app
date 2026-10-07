@@ -67,7 +67,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   },
   NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: {
     description:
-      'The one-time link that carries a signed-in PWA identity into the native (App Store / Play) shell — docs/plans/native-shell.md WP5. Gates two SERVER-side credential-minting routes (POST /api/auth/migrate/{start,claim}), the "Move to the app" Profile row and the native "Enter code" row. lib/authMigration.ts: link code + 6-digit short code as sibling docs in `authmigration` (PK /id), TTL 5 min, single use, point reads only. The claim re-mints deleteToken because DELETE /api/players never accepts member_session. Ships OFF until the store listing exists — the sheet shows store badges and there is nothing to badge yet.',
+      'The one-time link that carries a signed-in PWA identity into the native (App Store / Play) shell — docs/plans/native-shell.md WP5. Gates two SERVER-side credential-minting routes (POST /api/auth/migrate/{start,claim}), the "Move to the app" Profile row and the native "Enter code" row. lib/authMigration.ts: link code + 6-digit short code as sibling docs in `authmigration` (PK /id), TTL 5 min, single use, point reads only. The claim re-mints deleteToken because DELETE /api/players never accepts member_session. Held off until the store listings existed; ON since 2026-10-07, when both were live.',
     owner: 'grant',
     plannedRemoval: '2026-12-01',
     note: 'Dated ~8 weeks after the intended store launch. Retire once the installed-PWA base has moved: the row and both routes go, the container is dropped.',

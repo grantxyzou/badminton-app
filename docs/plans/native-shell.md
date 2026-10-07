@@ -2,7 +2,7 @@
 
 **Track:** Reach (ROADMAP track 4 — the one Value-Hub track never built)
 **Status:** shipped — live on the App Store and Google Play (Grant, 2026-10-07)
-**Review on:** 2026-10-21 — the "Move to the app" link (`NEXT_PUBLIC_FLAG_NATIVE_MIGRATE`) was held OFF "until a store listing exists", and both listings now do. Has it been turned on, and has anyone used it?
+**Review on:** 2026-10-21 — the "Move to the app" link (`NEXT_PUBLIC_FLAG_NATIVE_MIGRATE`) was held OFF "until a store listing exists"; Grant turned it on 2026-10-07, once both listings were live. Has anyone used it?
 
 ## Problem
 
