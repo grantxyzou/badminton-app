@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import AdminBackHeader from './AdminBackHeader';
 import BarRow from './metrics/BarRow';
 import CohortGrid from './metrics/CohortGrid';
+import ReportsKeyCard from './metrics/ReportsKeyCard';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
@@ -182,6 +183,8 @@ export default function MetricsPage({ onBack }: { onBack: () => void }) {
           used. These need the app to record visits, which is off until the privacy labels are updated.
         </Caption>
       </section>
+
+      <ReportsKeyCard />
     </div>
   );
 }

@@ -15,7 +15,8 @@
  * alone and the allocation is dropped — two paths racing to mark the same row
  * must not let the second one quietly move money onto it.
  */
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { randomBytes } from 'crypto';
+import { groupNamedByKey, keyMatchesHash, newClubKey, sha256Hex as sha256 } from './clubKey';
 import { ensureContainer, getActiveSessionId } from './cosmos';
 import { defaultMaxPlayers } from './defaults';
 import { groupDocId, groupScope, type GroupScope } from './groupScope';
@@ -56,8 +57,6 @@ export interface PaymentsSettingsDoc {
   lastReminderRunAt?: string;
 }
 
-const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
-const GROUP_ID_SHAPE = /^[a-z0-9]{1,64}$/;
 
 let paymentsReady: Promise<void> | null = null;
 export function ensurePayments(): Promise<void> {
@@ -79,11 +78,11 @@ export async function readPaymentsSettings(groupId: string): Promise<PaymentsSet
 
 /** Mint (or rotate) the club's key. The ONLY time the plaintext exists. */
 export async function mintPaymentsKey(groupId: string): Promise<string> {
-  const key = `${groupId}.${randomBytes(24).toString('hex')}`;
+  const { key, keyHash } = newClubKey(groupId);
   const existing = await readPaymentsSettings(groupId);
   await groupScope(groupId).upsert<PaymentsSettingsDoc>('clubSettings', {
     ...(existing ?? { id: paymentsSettingsId(groupId) }),
-    keyHash: sha256(key),
+    keyHash,
     keyCreatedAt: new Date().toISOString(),
   });
   return key;
@@ -95,15 +94,10 @@ export async function mintPaymentsKey(groupId: string): Promise<string> {
  * key are the same `null`.
  */
 export async function groupForPaymentsKey(provided: string | null): Promise<string | null> {
-  if (!provided || provided.length > 200) return null;
-  const dot = provided.indexOf('.');
-  const groupId = dot > 0 ? provided.slice(0, dot) : '';
-  if (!GROUP_ID_SHAPE.test(groupId)) return null;
+  const groupId = groupNamedByKey(provided);
+  if (!groupId || !provided) return null;
   const doc = await readPaymentsSettings(groupId);
-  if (!doc?.keyHash) return null;
-  const a = Buffer.from(sha256(provided), 'hex');
-  const b = Buffer.from(doc.keyHash, 'hex');
-  return a.length === b.length && timingSafeEqual(a, b) ? groupId : null;
+  return keyMatchesHash(provided, doc?.keyHash) ? groupId : null;
 }
 
 /**
