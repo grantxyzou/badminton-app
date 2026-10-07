@@ -5,7 +5,7 @@ against a rule this repo already holds itself to — it adds no user-facing surf
 so ROADMAP's Change Rule (aimed at new surfaces that serve no track) does not apply.
 Naming a track to satisfy the form would be the drift the rule exists to catch.
 **Status:** shipped 2026-09-07
-**Review on:** 2026-10-07 — a fourth `/api/claude` caller, a question about the Stats 503 copy, or a canary edited to pass a build?
+**Reviewed:** 2026-10-07 — all three answered no; see "Review outcome" at the end. No further review scheduled.
 
 ## Problem
 
@@ -103,3 +103,24 @@ is about the fixes rather than their uptake:
 
 The map of how AI operates in the app, drawn during the review that produced this:
 https://claude.ai/code/artifact/87e259ac-984e-4abd-81fe-188ba85dcd78
+
+## Review outcome — 2026-10-07
+
+All three questions on the review line answered **no**. Owner's call: close it.
+
+- **A fourth Claude caller?** No. Three files import `@anthropic-ai/sdk`, the
+  same three as at ship. `__tests__/anthropic-callers-canary.test.ts` (#551)
+  now fails the build on a fourth, so this question no longer needs a date.
+- **A canary edited to pass a build?** No. Every canary change between
+  2026-09-07 and 2026-10-07 was read: 41 file changes across 20 PRs. They add
+  assertions, follow renames (#542, #483, #511), or shrink an offender list as
+  the offenders were fixed (the loading cascade, #510–#515, which ended strict).
+  The one standing exemption — the anomaly toasts in `loading-canary`, an
+  overlay that holds no layout — is written down with its reason.
+- **A question about the Stats 503 copy ("Couldn't load your read.")?** None
+  in any issue, PR or comment since ship. The in-app problem reports and the
+  group chat were not readable from the repo; the owner reported none.
+
+The persona-shape trigger ("if a fourth caller forgets the persona, make the
+field required") stays live through the callers canary, which also records
+that `/api/equipment/fit-verdict` does not use the shared voice.
