@@ -51,7 +51,11 @@ gh workflow run deploy-next.yml --ref <good-sha>
 It has `workflow_dispatch`, so production can be redeployed at any commit. This does not
 depend on the deleted stable service in any way.
 
-For data rollback: Cosmos point-in-time restore, 7-day retention.
+For data rollback: Cosmos point-in-time restore, IF the account is in continuous
+backup mode. **Unverified as of 2026-10-07** — nothing in the repo shows the mode
+was ever switched from the default (periodic) or that a restore was ever tried.
+Check Cosmos → Backup & Restore before relying on this; `docs/plans/infra-baseline.md`
+tracks making it true and recording the answer in `docs/azure.md` §9.
 
 ## Verifying a deploy landed
 
