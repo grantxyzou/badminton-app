@@ -92,6 +92,10 @@ describe('ios/', () => {
     const priv = read('ios', 'App', 'App', 'PrivacyInfo.xcprivacy');
     expect(priv).toMatch(/<key>NSPrivacyTracking<\/key>\s*<false\/>/);
     expect(priv).toContain('NSPrivacyCollectedDataTypeOtherFinancialInfo');
+    // Matches what App Store Connect declares (2026-10-07).
+    for (const t of ['ProductInteraction', 'Health', 'CustomerSupport']) {
+      expect(priv).toContain(`NSPrivacyCollectedDataType${t}`);
+    }
     expect(priv).toContain('CA92.1');
   });
 
