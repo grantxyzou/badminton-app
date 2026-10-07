@@ -1,8 +1,8 @@
 # Native shell — App Store + Google Play
 
 **Track:** Reach (ROADMAP track 4 — the one Value-Hub track never built)
-**Status:** in-flight
-**Review on:** 2026-10-07 — still parked on the same two things, and is it still wanted? A month of no movement means blocked or finished.
+**Status:** shipped — live on the App Store and Google Play (Grant, 2026-10-07)
+**Review on:** 2026-10-21 — the "Move to the app" link (`NEXT_PUBLIC_FLAG_NATIVE_MIGRATE`) was held OFF "until a store listing exists", and both listings now do. Has it been turned on, and has anyone used it?
 
 ## Problem
 
@@ -78,6 +78,13 @@ don't copy.
   its plist and Gradle applies the services plugin only if the JSON exists, so
   a shell AAB can be uploaded to start the Play clock before the Firebase
   project exists. Push is then the one feature that does nothing.
+- **2026-10-07 review: the apps are already live on both stores.** Grant
+  corrected the review question ("they are both on the stores"); this file and
+  the CHANGELOG still described the store side as "still to come", because
+  the listing and review happened on his devices and consoles and nothing in
+  the repo recorded it. The one thing that was waiting on a listing is the
+  "Move to the app" link, still OFF in `deploy-next.yml`; turning it on is a
+  flag flip and Grant's call.
 
 ## Shape
 
