@@ -42,17 +42,27 @@ The app is bilingual (`NEXT_LOCALE` cookie, `messages/en.json` + `zh-CN`). Any n
 user-facing string is incomplete until it exists in both, and any design that assumes
 English-length text is incomplete until it survives the Chinese one.
 
+**A third person, since multi-group** ([`docs/plans/multi-group.md`](docs/plans/multi-group.md)):
+the organiser of *another* casual club, arriving from the store listing with no
+invite. They meet the app once, at its worst — signed in to nothing, asked to name a
+club — and then become an ordinary 20-minute admin. Their one screen is the no-club
+door (`decidePage` in `lib/pageGate.ts`); it is first-run, not a tab, and gets
+first-run weight.
+
 **Not to be confused with:** the ICP personas in
 [`docs/saas-productization-findings.md`](docs/saas-productization-findings.md) §3
-(club captains, rec-league coordinators, corporate wellness organizers). Those belong
-to a *hypothetical* multi-tenant SaaS pivot and are not this product's users. Do not
-design current screens for them.
+(rec-league coordinators, corporate wellness organizers). Multi-group made a second
+*casual club* a real user; it did not make the app a league or wellness platform.
+Those personas were written for a hypothetical SaaS pivot and still are not this
+product's users. Do not design current screens for them.
 
 ## Product Purpose
 
 Run a casual weekly badminton session without it becoming someone's part-time job.
-Sign-ups, waitlist, per-person cost, and payment state, so the group stops
-reconstructing all of it from a group chat every week.
+Sign-ups, waitlist, per-person cost, and payment state, so a club stops
+reconstructing all of it from a group chat every week. Several clubs share one
+deployment now, each the same shape — a club is a roster, a weekly session and a
+cost split, never a league.
 
 Success is that the weekly ritual takes less effort than texting the group chat, and
 that settling up never feels like being invoiced by a company.
@@ -86,7 +96,7 @@ designed before this personality was stated. The delta is work, not error.
   kudos and is the surface most at risk; it must stay a record, not a slot machine.
 - **Activity- and sport-brand professionalism.** The Strava / Nike / performance-
   tracker register — athletic bravado, hero athletes, motivational voice, data as
-  spectacle. This is a group of friends booking a court, not an elite training
+  spectacle. Every club here is friends booking a court, not an elite training
   platform. No posturing about performance.
 - **Generic component-library default.** The stock Material/shadcn look with no point
   of view: uniform cards everywhere, uniform radii, no committed color. This is the

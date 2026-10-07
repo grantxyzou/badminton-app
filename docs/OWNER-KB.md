@@ -64,7 +64,11 @@ initiative, so the next lock edit is a strategy decision for you, not a tidy-up.
 1. **Progression leveling matrix content** — the ACE skills rubric/levels.
    Agent can't author the real content; hand it the rubric when ready.
 2. **Legal/privacy calls** — PIPEDA consent model, affiliate disclosure
-   (see `feedback_legal_compliance`).
+   (see `feedback_legal_compliance`). The multi-club rewrite shipped 2026-10-07
+   (`docs/plans/legal-copy-multi-group.md`); three things there are still
+   yours: the Play listing's developer name has to appear in the privacy
+   policy, four flagged sentences want a lawyer's read, and whether to
+   incorporate before charging.
 3. **Secrets rotation timing** — the Cosmos connection string, `SESSION_SECRET`
    (rotating it signs every member and admin out), the Claude API key, the VAPID
    pair (rotating it breaks every push subscription with no 410 to clean up —
@@ -73,16 +77,17 @@ initiative, so the next lock edit is a strategy decision for you, not a tidy-up.
 4. **Monetization intent** (value-hub Decision D) — affiliate? which retailers?
 5. **Store submission** — the native shell is built and archived locally; the
    App Store and Play listings are yours, on device (`native/README.md`).
-6. **The two Phase 5 decisions for multi-group** — Phase 5 in
-   `docs/superpowers/plans/2026-09-07-multi-group.md` cannot start until you
-   answer: (a) what the privacy policy and terms say once a second club exists
-   (today they claim "one group, run by Grant as an individual, free"); (b)
-   what a person in NO club sees (today a no-club visitor lands on BPM's
-   roster). Both are true today and wrong the day the flag flips. The order
-   itself — multi-group, then pricing — is recorded in `docs/plans/multi-group.md`
-   (2026-10-07) with pricing as intent only in `docs/plans/pricing.md`. The
-   plan reviews that were overdue on 2026-10-06 have all been answered;
-   `scripts/check-plan-reviews.mjs` will say when the next one is due.
+6. **The last Phase 5 decision for multi-group** — Phase 5 in
+   `docs/superpowers/plans/2026-09-07-multi-group.md`. Two of its three gates
+   were answered 2026-10-07: the legal copy now names two roles (the operator
+   and your club's organisers), and with members-only ON a person in no club
+   sees the create/join doors or their own club list and no club data (#563).
+   Still yours: what a no-club person sees with members-only OFF — today a
+   BPM-claiming cookie reads BPM through `resolveGroupId`'s default. Then a
+   clean week of `[group-leak]`, then the flip. The order itself — multi-group,
+   then pricing — is recorded in `docs/plans/multi-group.md` (2026-10-07) with
+   pricing as intent only in `docs/plans/pricing.md`.
+   `scripts/check-plan-reviews.mjs` will say when the next plan review is due.
 
 ## Equipment catalog
 
@@ -101,8 +106,8 @@ Ways to grow it, lowest legal risk first:
 
 Things not derivable from the codebase — provide when relevant:
 - Real ACE progression rubric (levels + criteria).
-- Friend-group size (kill-criteria %s assume a count).
-- Which brands/models your friends actually use.
+- Club size — BPM's and any new club's (kill-criteria %s assume a count).
+- Which brands/models BPM's members actually use.
 - Affiliate/monetization decision + target retailers.
 - PIPEDA/consent posture: OK to store game + gear + AI history? consent UX?
 - Secrets-rotation window (when's a safe time to log everyone out).
