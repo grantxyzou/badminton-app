@@ -27,6 +27,14 @@ interface Props {
   /** The same invite as a typed code; sent only when no token is. */
   inviteCode?: string | null;
   /**
+   * "I am creating my own club — join me to nothing." Sent only when no invite
+   * is, the rule `signupGroupFor` applies (an invite always wins). Without it a
+   * NEW Google/Apple account made from the create flow was refused outright
+   * under members only, in both shells: the terminal saw no invite and no
+   * `noGroup`, and "no invite, no account" is the right answer to that.
+   */
+  noGroup?: boolean;
+  /**
    * The native shell's name step. When the account was created inside the
    * system browser sheet, the server hands back a RETURN CODE the app needs to
    * claim it (lib/authHandoff.ts); the shell forwards it through
@@ -56,7 +64,7 @@ interface Props {
  * signed, HttpOnly cookie the browser cannot read, and both endpoints take it
  * from there — so all that is posted from here is a name and a credential.
  */
-export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken, inviteCode, onReturnCode }: Props) {
+export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken, inviteCode, noGroup, onReturnCode }: Props) {
   const t = useTranslations('profile.auth');
   // `close` lives in the recovery namespace; every sheet reuses it.
   const tClose = useTranslations('recovery');
@@ -129,6 +137,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
           name: name.trim(),
           ...(sentInvite ? { inviteToken } : {}),
           ...(sentCode ? { inviteCode } : {}),
+          ...(noGroup && !sentInvite && !sentCode ? { noGroup: true } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));

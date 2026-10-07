@@ -889,6 +889,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       {chooseNameEver && (
       <ChooseNameSheet
         inviteToken={joinToken}
+        noGroup={onboarding === 'create'}
         key={chooseNameOpen ? 'choose-name-open' : 'choose-name-closed'}
         open={chooseNameOpen}
         onClose={() => setChooseNameOpen(false)}

@@ -33,6 +33,15 @@ interface Props {
    * a client probe answers. Same reason the prop exists on `ProviderButtons`.
    */
   authProviders?: Provider[];
+  /**
+   * The HOST owns the moment after the account step. When given, a sign-in on
+   * this page neither advances to the form nor clears the onboarding resume —
+   * it hands over and stops. `SignedOutShell` needs this: under members only
+   * the server decides who is signed in, so an account made here is followed
+   * by a RELOAD, and the resume this page would have cleared is the only thing
+   * that brings the person back to this form on the far side of it.
+   */
+  onSignedIn?: () => void;
 }
 
 /**
@@ -62,6 +71,7 @@ export default function CreateGroupPage({
   onCreated,
   startAtAuth,
   authProviders = [],
+  onSignedIn,
 }: Props) {
   const t = useTranslations('onboarding.create');
   const tAuth = useTranslations('profile.auth');
@@ -119,12 +129,17 @@ export default function CreateGroupPage({
   useEffect(() => {
     const onIdentity = () => {
       if (getIdentity() === null) return; // a sign-out, not a sign-in
+      if (onSignedIn) {
+        onSignedIn();
+        return;
+      }
       clearOnboardingResume();
       setStep((s) => (s === 'auth' ? 'form' : s));
       seedRosterName();
     };
     window.addEventListener(IDENTITY_EVENT, onIdentity);
     return () => window.removeEventListener(IDENTITY_EVENT, onIdentity);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
@@ -139,6 +154,9 @@ export default function CreateGroupPage({
 
   function signedInHere(name: string, verificationSent = true) {
     setIdentity({ name, sessionId });
+    // `setIdentity` fires IDENTITY_EVENT, so the listener above has already
+    // handed over when a host owns this moment; nothing here may run after it.
+    if (onSignedIn) return;
     clearOnboardingResume();
     if (!verificationSent) setMailNote(tAuth('verifyMailUnsent'));
     setStep('form');

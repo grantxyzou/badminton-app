@@ -11,8 +11,11 @@ import type { GroupListEntry } from '@/lib/useCurrentGroup';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
-  onBack: () => void;
+  /** Absent on the signed-out shell's no-club list: there is nothing behind it. */
+  onBack?: () => void;
   groups: GroupListEntry[];
+  /** Replaces the Profile-flavoured lead line where this is not reached from Profile. */
+  hint?: string;
   /** No answer yet. `groups` is `[]` until then, and rendered as a list it
    *  read as "you are in no clubs" — the lying empty state. */
   loading?: boolean;
@@ -53,6 +56,7 @@ interface Props {
 export default function GroupsPage({
   onBack,
   groups,
+  hint,
   loading = false,
   loadError,
   onRetry,
@@ -96,7 +100,7 @@ export default function GroupsPage({
     <div className="animate-slideInRight space-y-5">
       <TopBar title={t('yourGroups')} crumb={t('crumb')} onBack={onBack} backLabel={t('crumb')} />
 
-      <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('yourGroupsHint')}</p>
+      <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{hint ?? t('yourGroupsHint')}</p>
 
       {loading && !loadError ? (
         <CardSkeleton height={97} />

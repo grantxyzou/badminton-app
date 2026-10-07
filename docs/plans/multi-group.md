@@ -174,6 +174,26 @@ don't copy.
   about 2026-12-02, eight weeks after the listing — and is recorded as intent
   only in `docs/plans/pricing.md`; Decision D in
   `docs/plans/value-hub-slice-0.md` still stands.
+- **2026-10-07: the stranger's door is a LINK on the Sign up page, and a
+  removed member with other clubs gets a LIST** (both Grant's choices). Phase
+  3's screens had been built in September; members-only shipped after them and
+  closed the door: a signed-out visitor gets `SignedOutShell`, which took only
+  an invite, and the create flow lived in `HomeShell`, which never mounts for
+  anyone the server refused — so the live store listing led every stranger to
+  "enter an invite code" for a club they were not in. And even with a door, the
+  account the create flow makes is on no roster, so the reload after it was
+  refused again and the organiser never reached the form. `decidePage`
+  (`lib/pageGate.ts`) now tells a stranger from a signed-in member in no club,
+  and the shell has a `noClub` mode: three doors for a new organiser (a
+  `create` resume skips them and lands on the form), or the person's other
+  clubs as a list, over an automatic switch to the oldest — the list costs a
+  reused `GroupsPage` and lets them see where they are. Welcome keeps its two
+  buttons; "No invite? Start your own club" sits under the invite field. This
+  is the PROPOSED members-only half of the Phase 5 question "what does a person
+  in no club see": the doors or their own club list, and no club data (every
+  club read still refuses them). The members-only-OFF half — a BPM-claiming
+  no-club cookie reads BPM through `resolveGroupId`'s default — is untouched
+  and still wants Grant's call before the flip.
 
 ## Shape
 

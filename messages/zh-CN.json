@@ -1681,6 +1681,12 @@
     "needsCheckIn": "做个自评，就能给你推荐球拍。"
   },
   "signedOut": {
+    "noClub": {
+      "yourClubs": "这台设备上你还没有进入任何俱乐部。选一个你的俱乐部，或者再建一个。",
+      "create": "创建俱乐部",
+      "join": "用链接或邀请码加入",
+      "signOut": "退出登录"
+    },
     "tagline": "但愿无事能打球",
     "signUp": "注册",
     "logIn": "登录",
@@ -1705,6 +1711,7 @@
       "notFound": "这个链接或邀请码无效。找邀请你的人要一个新的。",
       "failed": "检查失败，再试一次。",
       "noInvite": "没有邀请？让俱乐部里的人把链接发给你。",
+      "createInstead": "没有邀请？创建自己的俱乐部",
       "accountTitle": "加入 {name}",
       "accountBody": "创建账号，很快就好。",
       "or": "或",

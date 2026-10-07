@@ -7,7 +7,8 @@ import { readActiveAnnouncements } from '@/lib/announcements';
 import { resolveGroupIdFromCookieHeader } from '@/lib/groupContext';
 import { configuredProviders } from '@/lib/oauthProviders';
 import { isFlagOn } from '@/lib/flags';
-import { membersOnlyOn, requireMember } from '@/lib/auth';
+import { membersOnlyOn } from '@/lib/auth';
+import { decidePage } from '@/lib/pageGate';
 
 // Force dynamic rendering — the announcement read hits Cosmos at request
 // time, which Next.js would otherwise statically cache by default. We want
@@ -52,23 +53,30 @@ export default async function Page() {
    * request built from this page's own cookie header — not a second
    * implementation of "signed in" to drift from the first. It re-reads the
    * member, so a removed person's 30-day cookie gets the signed-out screen.
+   * `decidePage` (lib/pageGate.ts) wraps it to tell a stranger from a signed-in
+   * member who is in no club — with groups on, that person gets the same shell
+   * in its `noClub` mode (create a club, join one, or pick one of their others)
+   * and, exactly like a stranger, nothing is read for them.
    *
    * `__tests__/members-only-coverage.test.ts` pins the order: gate, early
    * return, and only then the read.
    */
   let memberName: string | null = null;
   if (membersOnlyOn()) {
-    const gate = await requireMember(
+    const outcome = await decidePage(
       new NextRequest('http://localhost/bpm', { headers: cookie ? { cookie } : {} }),
     );
-    if (!gate.ok) {
+    if (outcome.kind !== 'app') {
       return (
         <OnlineProvider>
-          <SignedOutShell authProviders={authProviders} />
+          <SignedOutShell
+            authProviders={authProviders}
+            noClub={outcome.kind === 'no-club' ? { memberName: outcome.memberName, groups: outcome.groups } : undefined}
+          />
         </OnlineProvider>
       );
     }
-    memberName = gate.member?.name ?? null;
+    memberName = outcome.memberName;
   }
 
   const initialAnnouncement = (await readActiveAnnouncements(groupId))[0] ?? null;
