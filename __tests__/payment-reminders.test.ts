@@ -92,7 +92,7 @@ describe('POST /api/payments/remind', () => {
 
   it('OFF by default: sends nothing, but records that the script called', async () => {
     seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
-    expect(await (await call()).json()).toEqual({ ok: true, skipped: 'off' });
+    expect(await (await call()).json()).toEqual({ ok: true, skipped: 'off', reconcile: null });
     expect(sendPushToMembers).not.toHaveBeenCalled();
     expect((await readPaymentsSettings('bpm'))?.lastReminderRunAt).toEqual(expect.any(String));
   });
@@ -105,14 +105,14 @@ describe('POST /api/payments/remind', () => {
     it('nudges once per person, stamps every due line, and does not repeat the same day', async () => {
       const a = seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
       const b = seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: ago(3.5) });
-      expect(await (await call()).json()).toEqual({ ok: true, reminded: 1, sent: 1 });
+      expect(await (await call()).json()).toEqual({ ok: true, reminded: 1, sent: 1, reconcile: null });
       expect(sendPushToMembers).toHaveBeenCalledTimes(1);
       expect(sendPushToMembers).toHaveBeenCalledWith([lin.id], expect.objectContaining({ body: expect.stringContaining('couple of sessions') }));
       expect(row(a.id).remindedAt).toHaveLength(1);
       expect(row(b.id).remindedAt).toHaveLength(1);
 
       sendPushToMembers.mockClear();
-      expect(await (await call()).json()).toEqual({ ok: true, reminded: 0, sent: 0 });
+      expect(await (await call()).json()).toEqual({ ok: true, reminded: 0, sent: 0, reconcile: null });
       expect(sendPushToMembers).not.toHaveBeenCalled();
     });
 
@@ -123,7 +123,7 @@ describe('POST /api/payments/remind', () => {
       seedPlayer('session-2026-10-01', 'Viktor', { memberId: v.id, owedAmount: 15, settledAt: ago(1) });
       const k = seedMember('Kento');
       seedPlayer('session-2026-09-24', 'Kento', { memberId: k.id, owedAmount: 12, settledAt: ago(45) });
-      expect(await (await call()).json()).toEqual({ ok: true, reminded: 0, sent: 0 });
+      expect(await (await call()).json()).toEqual({ ok: true, reminded: 0, sent: 0, reconcile: null });
     });
   });
 });

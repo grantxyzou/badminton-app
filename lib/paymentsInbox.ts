@@ -28,6 +28,8 @@ import { resolveIdentity } from './playerIdentity';
 import { rosterMembers } from './roster';
 import { dueReminders } from './paymentReminders';
 import { mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
+import type { Mismatch } from './ledgerReconcile';
+import { isFlagOn } from './flags';
 import type { Alias, EtransferPayment, PaymentAllocation, Player, StringingJob } from './types';
 
 export const PAYMENTS_SETTINGS_ID = 'payments-inbox';
@@ -56,6 +58,13 @@ export interface PaymentsSettingsDoc {
   remindersOn?: boolean;
   /** The last time the club's script asked for a reminder run — staleness shows on the card. */
   lastReminderRunAt?: string;
+  /** The last ledger reconcile (`lib/ledgerReconcile.ts`): ids and cents only, never names. Absent = never run. */
+  lastReconcileAt?: string;
+  lastReconcileChecked?: number;
+  lastReconcileUnlinked?: number;
+  lastReconcileMismatches?: Mismatch[];
+  /** The stored list was cut to `STORED_MISMATCH_CAP`. */
+  lastReconcileTruncated?: boolean;
 }
 
 
@@ -445,6 +454,15 @@ export async function inboxSummary(groupId: string) {
       // Who it holds now, or — while off — who it WOULD hold if switched on.
       names: await wouldHold(groupId, threshold > 0 ? threshold : SUGGESTED_HOLD_AFTER_UNPAID),
     },
+    // The ledger check (Phase 2 stage 2): counts only; the admin route names the rows.
+    // `null` with the mirror off — there is nothing to check against.
+    reconcile: isFlagOn('NEXT_PUBLIC_FLAG_LEDGER_MIRROR')
+      ? {
+          lastAt: settings?.lastReconcileAt ?? null,
+          mismatches: settings?.lastReconcileMismatches?.length ?? 0,
+          truncated: settings?.lastReconcileTruncated === true,
+        }
+      : null,
   };
 }
 
