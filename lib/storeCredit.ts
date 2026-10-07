@@ -68,6 +68,17 @@ export async function ledgerFor(scope: GroupScope, memberId: string): Promise<Le
  */
 export const accountOf = (e: Pick<LedgerEntry, 'account'>): LedgerAccount => e.account ?? 'member_credit';
 
+/**
+ * The member's CREDIT history only — what the admin's credit card and the
+ * member's own credit screen list. `ledgerFor` is the whole partition, and
+ * since the Phase 2 mirror that partition also holds their charges, payments,
+ * covers and voids (`member_owed`); listing those as "recent credit" would
+ * scroll every real grant and spend out of view (review of #562).
+ */
+export async function creditLedgerFor(scope: GroupScope, memberId: string): Promise<LedgerEntry[]> {
+  return (await ledgerFor(scope, memberId)).filter((e) => accountOf(e) === 'member_credit');
+}
+
 /** Σ over ONE account. Never sum a partition: it holds owed and credit both. */
 export const sumAccount = (entries: readonly Pick<LedgerEntry, 'amountCents' | 'account'>[], account: LedgerAccount) =>
   entries.reduce((sum, e) => (accountOf(e) === account ? sum + e.amountCents : sum), 0);

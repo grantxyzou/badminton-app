@@ -98,6 +98,21 @@ describe('giving credit', () => {
     expect(data.balanceCents).toBe(1500);
     expect(data.entries).toHaveLength(2);
   });
+
+  it('the credit history lists credit only — a mirrored charge in the same partition stays out of it', async () => {
+    // Review of #562: the Phase 2 mirror writes member_owed charges, payments
+    // and voids into the member's partition; the balance was already credit-only
+    // but the two listed histories were not.
+    await giveLin(2000, 'Birthday');
+    seedDoc('ledger', { id: `charge:${row1.id}:1`, groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'charge', amountCents: 1200, note: 'Session 2026-09-24', ref: { kind: 'session', id: row1.id, pk: 'session-2026-09-24' }, createdAt: '2026-10-03T00:00:00Z', createdBy: 'system' });
+    seedDoc('ledger', { id: `void:charge:${row1.id}:1`, groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'void', amountCents: -1200, note: 'Reversed: charge', ref: { kind: 'session', id: row1.id, pk: 'session-2026-09-24' }, createdAt: '2026-10-04T00:00:00Z', createdBy: 'system' });
+    const mine = await (await myCredit(makeRequest('GET', `${BASE}/credit`, undefined, asLin()))).json();
+    expect(mine.balanceCents).toBe(2000);
+    expect(mine.entries.map((e: { kind: string }) => e.kind)).toEqual(['credit_grant']);
+    const admin = await (await adminCredit(makeAdminRequest('GET', `${BASE}/admin/credit?memberId=${lin.id}`))).json();
+    expect(admin.balanceCents).toBe(2000);
+    expect(admin.entries.map((e: { kind: string }) => e.kind)).toEqual(['credit_grant']);
+  });
 });
 
 describe('gift cards', () => {

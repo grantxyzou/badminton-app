@@ -10,7 +10,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
 import { isFlagOn } from '@/lib/flags';
-import { balanceOf, CreditError, grantCredit, ledgerFor } from '@/lib/storeCredit';
+import { balanceOf, CreditError, grantCredit, creditLedgerFor } from '@/lib/storeCredit';
 import { isSentinelLedgerId } from '@/lib/ledgerMirror';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const memberId = req.nextUrl.searchParams.get('memberId') ?? '';
   if (!memberId) return NextResponse.json({ error: 'memberId_required' }, { status: 400 });
   try {
-    const entries = await ledgerFor(groupScope(resolveGroupId(req)), memberId);
+    const entries = await creditLedgerFor(groupScope(resolveGroupId(req)), memberId);
     return NextResponse.json({ balanceCents: balanceOf(entries), entries: entries.slice(0, 50) });
   } catch (err) {
     console.error('GET /api/admin/credit failed', err);
