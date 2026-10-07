@@ -81,6 +81,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/catalog-gaps': admin(),
   'admin/ledger': admin(),
   'admin/migrate-groups': admin('isAdminAuthedWithMember'),
+  'admin/ledger-backfill': admin('isAdminAuthedWithMember'),
   'admin/owed-audit': admin(),
   'admin/payments': admin('isAdminAuthedWithMember'),
   'admin/credit': admin('isAdminAuthedWithMember'),

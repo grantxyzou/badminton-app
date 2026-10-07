@@ -11,6 +11,8 @@ import { adminAddToRoster } from '@/lib/roster';
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 import { defaultMaxPlayers } from '@/lib/defaults';
 import { signupHeldForUnpaid, releaseHoldIfSettled } from '@/lib/paymentsInbox';
+import { mirrorPaid, mirrorUnpaid, mirrorCover, mirrorUncover, mirrorRowDeleted } from '@/lib/ledgerMirror';
+import type { Player } from '@/lib/types';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, membersOnlyOn, unauthorized } from '@/lib/auth';
@@ -529,7 +531,9 @@ export async function POST(req: NextRequest) {
         ...removedRecord,
         timestamp: new Date().toISOString(),
         deleteToken,
-        paid: false,
+        // `paid` is NOT reset here. A row that was settled, paid, cancelled
+        // and rejoined kept its `owedAmount`/`settledAt`; resetting `paid`
+        // silently un-paid it (found by the Phase 2 code map, 2026-10-07).
         removed: false,
         removedAt: undefined,
         cancelledBySelf: undefined,
@@ -919,6 +923,14 @@ export async function PATCH(req: NextRequest) {
     if (updates.paid === true && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && typeof existing.memberId === 'string') {
       await releaseHoldIfSettled(scope, existing.memberId);
     }
+    // The ledger mirror, on TRANSITIONS only (docs/plans/payments.md, Phase 2).
+    // `existing` is the row before the write: a void needs the old paidAt.
+    const prev = existing as unknown as Player;
+    const next = updated as unknown as Player;
+    if (updates.paid === true && prev.paid !== true) await mirrorPaid(scope, next);
+    if (updates.paid === false && prev.paid === true) await mirrorUnpaid(scope, prev);
+    if (updates.writtenOff === true && prev.writtenOff !== true) await mirrorCover(scope, next);
+    if (updates.writtenOff === false && prev.writtenOff === true) await mirrorUncover(scope, prev);
     return NextResponse.json(publicPlayer(updated));
   } catch (error) {
     console.error('PATCH player error:', error);
@@ -944,11 +956,14 @@ export async function DELETE(req: NextRequest) {
 
     // Admin hard purge — permanently delete every record for this session
     if (isAdmin && body.purgeAll === true) {
-      const all = await scope.query<{ id: string }>('players', {
+      const all = await scope.query<{ id: string; memberId?: string }>('players', {
         where: 'c.sessionId = @sessionId',
         params: [{ name: '@sessionId', value: sessionId }],
       });
       await Promise.all(all.map((p) => scope.remove('players', p.id, sessionId)));
+      // A hard-deleted settled row's charge is void in the ledger; a received
+      // payment is real money and stays.
+      for (const p of all) await mirrorRowDeleted(scope, p);
       return NextResponse.json({ success: true, count: all.length });
     }
 
@@ -956,8 +971,10 @@ export async function DELETE(req: NextRequest) {
     if (isAdmin && typeof body.purgeOne === 'string') {
       // A miss must say so: the raw delete used to throw a Cosmos 404 here,
       // and a green 200 for a row that was never deleted is worse than that.
+      const victim = await scope.read<{ id: string; memberId?: string }>('players', body.purgeOne, sessionId);
       const removed = await scope.remove('players', body.purgeOne, sessionId);
       if (!removed) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+      if (victim) await mirrorRowDeleted(scope, victim);
       return NextResponse.json({ success: true });
     }
 

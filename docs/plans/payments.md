@@ -33,6 +33,15 @@ fix before anything in Phase 2 starts.
 
 ## Decisions
 
+- **2026-10-07 — Phase 2 started before the 2026-11-07 gate, by Grant's decision** ("then why not just do
+  phase 2?" after asking where the cost of everything is tracked). Scope chosen: **stages 1–3** — mirror,
+  reconcile, one money view — with club outlay INCLUDING admin-entered expenses, and the full history
+  backfilled. Stage 4 (the ledger as the truth) is explicitly deferred until the reconcile has run clean for
+  about four weeks. The mirror never fails a primary write; ids are derived from the rows so the backfill and
+  the live mirror cannot double-write; a purged member's charges move under `~anon` because the club's books
+  are not that person's to take. Two bugs the code map surfaced were fixed on the way: a cancel-and-rejoin
+  un-paid a settled row, and `purgeAll`/`purgeOne` deleted money rows with no record (now a void).
+
 - **Apps Script in the admin's Gmail, not a Gmail API connection.** Reading Gmail needs the restricted
   `gmail.readonly` scope. On the OAuth client the app already uses for member sign-in that means Google
   verification and a security assessment, or a "Testing" app whose refresh token expires every 7 days — a
@@ -153,4 +162,6 @@ top-ups ≥ $40 with the payer covering the fee.
 | "I've sent it" | `POST /api/payments/self-report` |
 | Reminders (who, when, send) | `lib/paymentReminders.ts`, `POST /api/payments/remind` |
 | Store credit, gift cards | `lib/storeCredit.ts`; `/api/credit{,/redeem,/spend}`, `/api/admin/credit`, `/api/admin/giftcards` |
+| The mirror (Phase 2 stage 1) | `lib/ledgerMirror.ts` — hooks in settle, players PATCH/DELETE, stringing `[id]`, birds, the inbox, credit |
+| The history backfill | `lib/ledgerBackfill.ts`, `GET`/`POST /api/admin/ledger-backfill` |
 | The script admins paste | `public/payments/apps-script.gs` (served at `/bpm/payments/apps-script.gs`, so the setup sheet can copy it) |

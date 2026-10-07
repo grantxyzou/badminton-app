@@ -27,6 +27,7 @@ import { computeOwed, owedLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
 import { rosterMembers } from './roster';
 import { dueReminders } from './paymentReminders';
+import { mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
 import type { Alias, EtransferPayment, PaymentAllocation, Player, StringingJob } from './types';
 
 export const PAYMENTS_SETTINGS_ID = 'payments-inbox';
@@ -187,12 +188,18 @@ export async function applyAllocations(
       const row = await scope.read<Player & Record<string, unknown>>('players', a.ref, a.pk);
       if (!row || row.paid === true || row.writtenOff === true) continue;
       const ok = await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: 'etransfer', paymentId }, a.pk);
-      if (ok) landed.push(a);
+      if (ok) {
+        landed.push(a);
+        await mirrorPaid(scope, ok as unknown as Player);
+      }
     } else {
       const job = await scope.read<StringingJob>('stringingJobs', a.ref, a.pk);
       if (!job || job.paidAt !== null) continue;
       const ok = await scope.replace('stringingJobs', { ...job, paidAt: now, updatedAt: now }, a.pk);
-      if (ok) landed.push(a);
+      if (ok) {
+        landed.push(a);
+        await mirrorStringingChanged(scope, job, ok, 'etransfer', paymentId);
+      }
     }
   }
   return landed;

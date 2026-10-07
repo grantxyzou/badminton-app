@@ -77,6 +77,9 @@ jobs:
           NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: 'true'
           # Store credit + gift cards (docs/plans/payments.md). Read server-side.
           NEXT_PUBLIC_FLAG_STORE_CREDIT: 'true'
+          # Phase 2 ledger, stage 1: mirror every charge/payment into `ledger`.
+          # Read server-side; nothing visible changes. See lib/flags.ts.
+          NEXT_PUBLIC_FLAG_LEDGER_MIRROR: 'true'
           # First-party usage records (docs/plans/usage-metrics.md). OFF until
           # the App Store / Play privacy labels and a Home announcement are
           # done. Read server-side; off, nothing is recorded.

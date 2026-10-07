@@ -25,7 +25,8 @@ import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
 import { computeOwed, owedLines } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
-import type { LedgerEntry, Player, StringingJob } from './types';
+import type { LedgerAccount, LedgerEntry, Player, StringingJob } from './types';
+import { mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 export const MAX_GRANT_CENTS = 50_000;
@@ -61,8 +62,30 @@ export async function ledgerFor(scope: GroupScope, memberId: string): Promise<Le
   return rows.filter((e) => e.memberId === memberId).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 }
 
-export const balanceOf = (entries: readonly Pick<LedgerEntry, 'amountCents'>[]) =>
-  entries.reduce((sum, e) => sum + e.amountCents, 0);
+/**
+ * The account an entry belongs to. Entries from before Phase 2 carry none,
+ * and every one of those is store credit.
+ */
+export const accountOf = (e: Pick<LedgerEntry, 'account'>): LedgerAccount => e.account ?? 'member_credit';
+
+/**
+ * The member's CREDIT history only — what the admin's credit card and the
+ * member's own credit screen list. `ledgerFor` is the whole partition, and
+ * since the Phase 2 mirror that partition also holds their charges, payments,
+ * covers and voids (`member_owed`); listing those as "recent credit" would
+ * scroll every real grant and spend out of view (review of #562).
+ */
+export async function creditLedgerFor(scope: GroupScope, memberId: string): Promise<LedgerEntry[]> {
+  return (await ledgerFor(scope, memberId)).filter((e) => accountOf(e) === 'member_credit');
+}
+
+/** Σ over ONE account. Never sum a partition: it holds owed and credit both. */
+export const sumAccount = (entries: readonly Pick<LedgerEntry, 'amountCents' | 'account'>[], account: LedgerAccount) =>
+  entries.reduce((sum, e) => (accountOf(e) === account ? sum + e.amountCents : sum), 0);
+
+/** The member's spendable credit. */
+export const balanceOf = (entries: readonly Pick<LedgerEntry, 'amountCents' | 'account'>[]) =>
+  sumAccount(entries, 'member_credit');
 
 export class CreditError extends Error {
   constructor(readonly code: 'invalid_amount' | 'would_go_negative' | 'gift_not_found' | 'nothing_to_pay') {
@@ -86,6 +109,7 @@ export async function grantCredit(
   return scope.create<LedgerEntry>('ledger', {
     id: `grant:${randomBytes(12).toString('hex')}`,
     memberId: input.memberId,
+    account: 'member_credit',
     kind: 'credit_grant',
     amountCents,
     note: input.note.trim().slice(0, 80),
@@ -202,6 +226,7 @@ export async function redeemGiftCard(groupId: string, rawCode: string, memberId:
     entry = await scope.create<LedgerEntry>('ledger', {
       id: `gift:${sha256(code)}`,
       memberId,
+      account: 'member_credit',
       kind: 'gift_redeem',
       amountCents: card.amountCents,
       note: card.note ? `Gift card · ${card.note}` : 'Gift card',
@@ -255,6 +280,7 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
       await scope.create<LedgerEntry>('ledger', {
         id: `refund:${line.ref}:${n}`,
         memberId,
+        account: 'member_credit',
         kind: 'credit_refund',
         amountCents: line.amountCents,
         note,
@@ -277,16 +303,24 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
       const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
       if (!row || row.writtenOff === true) return 'gone';
       if (row.paid === true) return 'already';
-      return (await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: 'credit' }, line.pk)) ? 'paid' : 'gone';
+      const written = await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: 'credit' }, line.pk);
+      if (!written) return 'gone';
+      await mirrorPaid(scope, written as unknown as Player); // the owed side; the credit side is the spend entry
+      return 'paid';
     }
     const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
     if (!job) return 'gone';
     if (job.paidAt !== null) return 'already';
-    return (await scope.replace('stringingJobs', { ...job, paidAt: now, updatedAt: now }, line.pk)) ? 'paid' : 'gone';
+    const written = await scope.replace('stringingJobs', { ...job, paidAt: now, updatedAt: now }, line.pk);
+    if (!written) return 'gone';
+    await mirrorStringingChanged(scope, job, written, 'credit');
+    return 'paid';
   };
 
   for (const line of lines) {
-    const forLine = ledger.filter((e) => e.ref?.id === line.ref);
+    // Credit entries only: the mirror writes this line's charge and payment
+    // under member_owed in the same partition, and they are not spends.
+    const forLine = ledger.filter((e) => e.ref?.id === line.ref && accountOf(e) === 'member_credit');
     const spends = forLine.filter((e) => e.kind === 'credit_spend').length;
     const net = forLine.reduce((sum, e) => sum + e.amountCents, 0);
 
@@ -311,6 +345,7 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
       await scope.create<LedgerEntry>('ledger', {
         id: `spend:${line.ref}:${n}`,
         memberId,
+        account: 'member_credit',
         kind: 'credit_spend',
         amountCents: -line.amountCents,
         note: line.kind === 'session' ? `Session ${line.at.slice(0, 10)}` : 'Stringing',
