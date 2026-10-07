@@ -207,7 +207,12 @@ describe('signed in with nothing to sign in with next time', () => {
     methods({ hasPin: false, hasPassword: false, linked: [] });
     renderHome('Kento');
     expect(await screen.findByText('Set a PIN so you can get back in')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Set a PIN' })).toBeDefined();
+    // The banner sits in a RevealSlot whose wrapper is `hidden` until its
+    // stagger turn (components/primitives/Reveal.tsx). `findByText` ignores
+    // `hidden`; role queries skip hidden elements, so the button must be
+    // awaited too, or a methods probe landing after the 100 ms grace fails
+    // this line on a slow runner (#540).
+    expect(await screen.findByRole('button', { name: 'Set a PIN' })).toBeDefined();
   });
 
   it.each([
