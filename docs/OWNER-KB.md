@@ -45,6 +45,20 @@ initiative, so the next lock edit is a strategy decision for you, not a tidy-up.
   and historical; verify by DNS, never by name.
 - The PR review bot (`REVIEW.md` policy) and the `verify` check on every PR.
   `main` is PR-only with no bypass, you included.
+- Monthly docs truth audit — routine `trig_018AMzSxX5az1VA4MANtszzp`, the 15th
+  at 15:45 UTC, in a fresh session. Follows `.claude/skills/docs-truth/SKILL.md`:
+  checks every repo-provable claim in `docs/azure.md`, this file, and the
+  Deployment / Flags / Testing sections of `CLAUDE.md`, and opens a DRAFT PR
+  with corrections, or nothing when nothing is stale. It never merges.
+- Weekly infrastructure lesson — routine `trig_01CRLAvnAgL3cGuyNLT86ryk`,
+  Mondays at 12:47 UTC, in a fresh session. Reads the Progress checklist under
+  "Learning" below, teaches the first unticked item from the field guide, and
+  edits nothing. Both routines are created 2026-10-07; change the times from
+  https://claude.ai/code/routines if UTC mornings are wrong for you.
+- Two canaries from the same day: `__tests__/single-instance-registry.test.ts`
+  (every module-level in-memory store is classified by what scale-out does to
+  it) and `__tests__/anthropic-callers-canary.test.ts` (the Claude callers
+  equal the list in `docs/azure.md` §4).
 
 **You own (only you can do):**
 1. **Progression leveling matrix content** — the ACE skills rubric/levels.
@@ -116,6 +130,16 @@ https://claude.ai/artifact/AeLoB1uTqdKcF3zZ156SAo
 
 Done when you can explain each of the nine pieces to a friend without the guide
 open, and predict what breaks before reading the "without it" line.
+
+**Progress** — tick an item when it is done. The weekly lesson routine reads
+this list and teaches the first unticked item; it never ticks one itself.
+
+- [ ] 1. The ten-minute audit: five portal pages read into `docs/azure.md` §9
+- [ ] 2a. Module 11: one HTTP 5xx alert rule and a health-check path exist
+- [ ] 2b. Module 8: continuous backup on, one restore drill done and written up
+- [ ] 3. Three verification drills watched to fail (no cookie, direct push, forged header)
+- [ ] 4. Two request paths narrated: sign-up POST, and `requireMember`
+- [ ] 5. Next layer chosen (module 4 or module 5) and its first experiment done
 
 Considered, not started: managed identity for Cosmos, Key Vault references,
 deployment slots, Redis, a queue + worker, the capstone architecture. Each is a
