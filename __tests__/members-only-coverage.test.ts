@@ -87,6 +87,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/giftcards': admin('isAdminAuthedWithMember'),
   'admin/settings': admin('isAdminAuthedWithMember'),
   'admin/slice0': admin(),
+  'admin/metrics': admin(),
   'admin/sign-in-readiness': admin('isAdminAuthedWithMember'),
   aliases: admin(),
   birds: admin(),
