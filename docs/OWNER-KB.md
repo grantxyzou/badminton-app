@@ -73,9 +73,16 @@ initiative, so the next lock edit is a strategy decision for you, not a tidy-up.
 4. **Monetization intent** (value-hub Decision D) — affiliate? which retailers?
 5. **Store submission** — the native shell is built and archived locally; the
    App Store and Play listings are yours, on device (`native/README.md`).
-6. **The four plan reviews now overdue** — `oauth-handoff-gaps`, `multi-group`,
-   `ai-governance-and-docs-accuracy`, `native-shell`. Each asks one question on
-   its `Review on:` line. Answer it, then move the date or delete the line.
+6. **The two Phase 5 decisions for multi-group** — Phase 5 in
+   `docs/superpowers/plans/2026-09-07-multi-group.md` cannot start until you
+   answer: (a) what the privacy policy and terms say once a second club exists
+   (today they claim "one group, run by Grant as an individual, free"); (b)
+   what a person in NO club sees (today a no-club visitor lands on BPM's
+   roster). Both are true today and wrong the day the flag flips. The order
+   itself — multi-group, then pricing — is recorded in `docs/plans/multi-group.md`
+   (2026-10-07) with pricing as intent only in `docs/plans/pricing.md`. The
+   plan reviews that were overdue on 2026-10-06 have all been answered;
+   `scripts/check-plan-reviews.mjs` will say when the next one is due.
 
 ## Equipment catalog
 
@@ -147,8 +154,9 @@ module in the guide; none is a commitment.
 
 ## Parked — next session first task
 
-**Next:** the four overdue plan reviews (item 6 above), then step 1 of Learning.
+**Next:** the two Phase 5 decisions (item 6 above), then step 1 of Learning.
 Both are decisions or observations only you can make; neither is agent work.
+The agent work that follows your answers is Phase 3's onboarding screens.
 
 ## Key commands
 
