@@ -25,7 +25,7 @@
 
 > **Production:** https://bpm.grantzou.com/bpm (app service `vnext-badminton-app` — the name is inverted; verify by DNS, never by name)
 > **Stack:** Next.js 16 · Azure App Service (single, B1) · Cosmos DB · Anthropic Claude API
-> **Last updated:** 2026-09-02
+> **Last updated:** 2026-10-07 — ranked view and full idea index: [`docs/ROADMAP-RANKED.md`](docs/ROADMAP-RANKED.md)
 >
 > **This file is the index.** Detail lives elsewhere — don't duplicate it here:
 > - **What shipped** → `CHANGELOG.md` (per-version, not chronological by design)
@@ -63,16 +63,9 @@ As of **v1.7 every feature flag was on for everyone** (the two deployments reach
 - **Stats** — Summary redesign (tiles + radar), window/cache alignment (#223), i18n + offline gating (#224).
 - **Design-audit remediation** (P0–P2) — phantom tokens resolved, icon/font-size tokenization, guardrail lint→error on cleared areas. Item #6 deliberately deferred; see `docs/plans/design-audit-remediation.md`.
 
-## 3. Open PRs (6, as of 2026-08-16)
+## 3. Open PRs (4, as of 2026-10-07)
 
-| PR | State | Note |
-|---|---|---|
-| **#241** Web Push, wired to sign-ups-open | draft, CI green, mergeable | Needs owner-only VAPID setup (repo var + Azure App Settings) and a real-device test plan. **Names no track** — parked behind the Slice-0 gate per the LOCKED Change Rule. |
-| **#240** js-yaml (security group) | CI **failing** | `npm ci` rejects the branch lockfile: *"Missing: @swc/helpers@0.5.23"*. `main`'s lock pins 0.5.15 under next 16.2.9. Recreate/rebase — not a code fix. |
-| **#239** production-deps ×7 | no CI run | Open since 2026-07-27. |
-| **#237** development-deps ×5 | no CI run | Open since 2026-07-13. |
-| **#215** `tsc --noEmit` CI gate | open | Still valid — no workflow runs a typecheck today. Base is `fix/tsc-test-typing` (#208); **retarget to `main`** before landing. |
-| **#208** clear 7 tsc errors in tests | open, **dirty** | **Superseded** by #220 (`28167b9`). Close it. |
+The August list (#241, #240, #239, #237, #215, #208) is resolved. Open now, all dependency/housekeeping: **#546** production-deps ×12, **#502** undici security bump, **#491** development-deps ×7, **#489** iOS `Package.resolved`. Ranked backlog and every open issue: [`docs/ROADMAP-RANKED.md`](docs/ROADMAP-RANKED.md).
 
 ## 4. Planned / next initiatives
 
