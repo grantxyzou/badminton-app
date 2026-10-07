@@ -135,7 +135,7 @@ jobs:
           # credential-minting routes SERVER-side and the "Move to the app"
           # row. OFF until the store listing exists: the sheet offers store
           # badges, and there is nothing to badge yet.
-          NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'false'
+          NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'true'
           # OFF. Multi-group (docs/plans/multi-group.md) is read server-side;
           # off means every request resolves to group "bpm" and nothing
           # changes. Flip in Phase 5, after the backfill status shows zeros.

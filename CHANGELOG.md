@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### "Move to the app" is on (2026-10-07)
+
+- **Profile → Move to the app** carries a signed-in web or home-screen account into the App Store / Google Play app with a one-time link or a 6-digit code, so nobody has to sign in again. It was held back until both store listings were live; they are now.
+
 ### Admin → Metrics, and the app starts counting how it is used (2026-10-07)
 
 - **A Metrics page for the organiser** (Admin console → Metrics): active members, how fast each session fills, waitlists and cancels, new members and whether they come back, kudos / stringing / notifications use, and how quickly people pay. Club totals only — never a list of who did what.

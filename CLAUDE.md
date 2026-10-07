@@ -274,8 +274,8 @@ and decisions in `docs/plans/native-shell.md`). Built 2026-09-03 on
   missing channel is dropped silently on Android 8+.
 - **The migration link** (`lib/authMigration.ts`, `POST /api/auth/migrate/{start,claim}`,
   `MigrateSheet` / `MigrateCodeSheet` / `app/migrate`) carries a signed-in PWA
-  identity into the shell. Flag `NEXT_PUBLIC_FLAG_NATIVE_MIGRATE`, **OFF until a
-  store listing exists**. Direction inversion from the OAuth handoff: the link
+  identity into the shell. Flag `NEXT_PUBLIC_FLAG_NATIVE_MIGRATE`, **ON since
+  2026-10-07**, the day both store listings were live. Direction inversion from the OAuth handoff: the link
   IS a bearer credential, so it is contained by a live `member_session` to mint,
   a 5-minute TTL, single use (both sibling docs deleted first) and per-IP rate
   limits; point reads only. **The claim re-mints `deleteToken`**, and the route test asserts the

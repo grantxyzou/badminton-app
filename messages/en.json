@@ -529,7 +529,7 @@
       "expiresIn": "expires in {time}",
       "expiredNewCode": "That code expired — get a new one",
       "tryAgain": "Try again",
-      "storesNote": "Don't have the app yet? It's coming to the App Store and Google Play. Your account stays exactly as it is here.",
+      "storesNote": "Don't have the app yet? Get %APP% from the App Store or Google Play first. Your account stays exactly as it is here.",
       "offline": "You're offline — reconnect to get a code.",
       "errorAuth": "Sign in first, then come back to this.",
       "errorRateLimited": "Too many codes in the last hour — give it a bit.",
