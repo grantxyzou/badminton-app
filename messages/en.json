@@ -1821,7 +1821,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "updated": "14 September 2026",
+      "updated": "7 October 2026",
       "sections": [
         {
           "h": "Who we are",
@@ -1838,7 +1838,8 @@
             "• **E-transfer names**: if the name on your e-transfer differs from your sign-up name, the organiser records that pairing so payments can be matched. Only admins see it.",
             "• **Things you add yourself**: skill self-assessments, kudos you give or receive (including notes), games you log, and rackets or strings you save.",
             "• **A push token**, if you turn on notifications, for that device. It identifies the device to Apple, Google, or your browser — not you.",
-            "• **A short technical note** when something breaks (the page you were on and the error), sent only when you tap \"Report a problem.\"",
+            "• **A problem report**, only when you tap \"Report a problem\": your message, your name if you add it, the screen you were on, and your internet address (used only to stop the form being flooded).",
+            "• **How you use the app**: when you open it, which tab you look at, and when you sign in, sign up for or cancel a session, give kudos, request stringing, or turn notifications on or off. It's linked to your account, it stays in this app's own database, and the organiser sees it only as club totals (for example, \"18 members opened the app this week\") — never as a list of what one person did.",
             "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear any of it at any time from that sheet — it's also deleted with your account."
           ]
         },
@@ -1851,7 +1852,7 @@
         {
           "h": "What we don't do",
           "p": [
-            "No ads. No analytics trackers. No selling or sharing with anyone for their own purposes. No location, contacts, photos, or camera access. We don't build a profile of you for anything beyond running the sessions."
+            "No ads. No third-party analytics or tracking tools. No selling or sharing with anyone for their own purposes. No location, contacts, photos, or camera access. We don't build a profile of you for anything beyond running the sessions."
           ]
         },
         {
@@ -1867,13 +1868,14 @@
           "p": [
             "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies.",
             "Some text in the app is written with the help of an AI service (Anthropic, in the United States) — for example, the summary on your Stats tab. It receives only what that text needs, which can include your name and the names of people you regularly play with. When it writes the verdict on your racket, it receives the racket and what the verdict found from your fit answers — including that something is sore, if you said so — and never your name. These two kinds of requests never mix: a request that includes your name never includes your fit answers, and vice versa. Under our agreement with them, what we send is not used to train their models.",
+            "The organiser also uses that AI service to prepare a weekly summary of club totals and to read problem reports for patterns. It receives the totals, and problem reports with the name and internet address removed — nothing that says who did what.",
             "Because Azure and Anthropic's US operations are outside Canada, some of your data may be accessible to US authorities under US law while it's there."
           ]
         },
         {
           "h": "How long we keep it",
           "p": [
-            "Session and payment records are kept so the group's books add up. If you delete your account, yours are reduced to the anonymized line described under \"Deleting your account.\" Push tokens are removed when you turn off notifications or when the device stops accepting them."
+            "Session and payment records are kept so the group's books add up. If you delete your account, yours are reduced to the anonymized line described under \"Deleting your account.\" Push tokens are removed when you turn off notifications or when the device stops accepting them. The record of how you use the app is deleted automatically after 13 months."
           ]
         },
         {
@@ -1885,7 +1887,7 @@
         {
           "h": "Deleting your account",
           "p": [
-            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, and notifications. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you."
+            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, notifications, and the record of how you used the app. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you."
           ]
         },
         {
