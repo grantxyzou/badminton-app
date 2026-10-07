@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -41,6 +42,8 @@ export default function ClubGearCard({ club, mine, onOpenRacket, racketIds }: Cl
   const own = useClubGear(!club);
   const { entries, status, retry } = club ?? own;
 
+  // The Gear register's RevealSlot holds this place on first load.
+  useRevealReady(status !== 'loading');
   if (status === 'loading') return <CardSkeleton height={180} />;
   // Refused (this device holds no session for the name): the card stays, as
   // its own shape with nothing in it, and Sign in carries the weight.

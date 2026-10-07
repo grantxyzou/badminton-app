@@ -45,7 +45,7 @@
  * sees. The honest claim is "no membership, and no more access than a
  * logged-out visitor" — do not upgrade it to "sees nothing".
  *
- * A TOKEN THAT DOES NOT RESOLVE IS A REFUSAL, NOT A FALLBACK. Falling back to
+ * A TOKEN THAT DOES NOT RESOLVE (or is used, or expired) IS A REFUSAL, NOT A FALLBACK. Falling back to
  * `resolveGroupId(req)` on a bad token would re-create the exact defect above,
  * quietly, for the person least able to notice. And the refusal says only
  * `invite_not_found`, matching `resolveInvite`'s one-null-for-everything rule:
@@ -55,7 +55,7 @@
 import type { NextRequest } from 'next/server';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
-import { resolveInvite } from '@/lib/invites';
+import { claimInvite, type InviteClaim } from '@/lib/invites';
 
 /** The two shapes an invite arrives as, mirroring `POST /api/groups/join`. */
 export interface InviteFields {
@@ -70,10 +70,18 @@ export interface InviteFields {
 
 export type SignupGroup =
   /**
-   * `invited` is false for an ordinary front-door signup. `groupId: null` is
-   * the create-a-group case: a real account, deliberately on no roster yet.
+   * An invited signup holds a CLAIM on a one-time invite
+   * (docs/plans/one-time-invites.md): the invite is already consumed, and the
+   * terminal must `finalize` it once the account exists or `release` it on
+   * any refusal after this point, or a sign-up refused for a taken name would
+   * burn the invite.
    */
-  | { ok: true; groupId: string | null; invited: boolean }
+  | { ok: true; groupId: string; invited: true; claim: InviteClaim }
+  /**
+   * An ordinary front-door signup. `groupId: null` is the create-a-group
+   * case: a real account, deliberately on no roster yet.
+   */
+  | { ok: true; groupId: string | null; invited: false }
   | { ok: false };
 
 /** A trimmed string of a plausible length, or null. Same bounds as join's. */
@@ -146,13 +154,17 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
     return { ok: true, groupId: requestGroup, invited: false };
   }
 
-  const groupId = token
-    ? await resolveInvite(token, 'invite')
-    : await resolveInvite(code!, 'code');
-  if (!groupId) return { ok: false };
+  // CLAIMED, not merely resolved: the invite is consumed here, atomically, so
+  // two sign-ups on one link cannot both get in. Every refusal below and in
+  // the caller must release it.
+  const claim = token ? await claimInvite(token, 'invite') : await claimInvite(code!, 'code');
+  if (!claim) return { ok: false };
   // With groups OFF there is one club, so an invite is either BPM's or it is
   // not a usable invite here. Refusing a foreign group's token keeps a leftover
   // multi-group invite from minting a BPM account.
-  if (!groupsOn && groupId !== requestGroup) return { ok: false };
-  return { ok: true, groupId, invited: true };
+  if (!groupsOn && claim.groupId !== requestGroup) {
+    await claim.release();
+    return { ok: false };
+  }
+  return { ok: true, groupId: claim.groupId, invited: true, claim };
 }

@@ -3,14 +3,15 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { shareTextOrCopy } from '@/lib/shareText';
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+import { inviteUrl } from '@/lib/useInvites';
 
 interface Props {
   token: string;
   code: string;
   /** Names the club in the share sheet's title. */
   groupName?: string;
+  /** When this one-time invite dies unused; shown under the link. */
+  expiresAt?: string;
 }
 
 /**
@@ -27,15 +28,16 @@ interface Props {
  * middle, because eight characters read back to someone across a court is the
  * job it has to do.
  *
- * The URL is built here from `window.location.origin` rather than server-side:
- * behind the Azure proxy, in the installed PWA and in the native WebView the
- * origin differs, and a link pointing at the wrong one is worse than none.
+ * The URL is built from `window.location.origin` (`inviteUrl`) rather than
+ * server-side: behind the Azure proxy, in the installed PWA and in the native
+ * WebView the origin differs, and a link pointing at the wrong one is worse
+ * than none.
  */
-export default function InviteShare({ token, code, groupName }: Props) {
+export default function InviteShare({ token, code, groupName, expiresAt }: Props) {
   const t = useTranslations('groups.invite');
   const [copied, setCopied] = useState(false);
 
-  const url = typeof window !== 'undefined' && token ? `${window.location.origin}${BASE}/?join=${token}` : '';
+  const url = token ? inviteUrl(token) : '';
 
   async function copy() {
     if (!url) return;
@@ -79,6 +81,11 @@ export default function InviteShare({ token, code, groupName }: Props) {
         >
           {url}
         </p>
+        {expiresAt && (
+          <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+            {t('onceUntil', { date: new Date(expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })}
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <button type="button" onClick={copy} className="cc-btn cc-btn-secondary" style={{ flex: 1 }}>
             <span key={copied ? 'copied' : 'copy'} className="motion-fade">{copied ? t('copied') : t('copy')}</span>

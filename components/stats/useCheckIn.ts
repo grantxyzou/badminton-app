@@ -97,10 +97,16 @@ export function useCheckIn(activeName: string | null): UseCheckIn {
   /* The synchronous transitions, adjusted during render: both are conclusions
      about the inputs, not results of the network. */
   const [prevKey, setPrevKey] = useState({ activeName, reloadTick });
-  if (prevKey.activeName !== activeName || prevKey.reloadTick !== reloadTick) {
+  const nameChanged = prevKey.activeName !== activeName;
+  if (nameChanged || prevKey.reloadTick !== reloadTick) {
     setPrevKey({ activeName, reloadTick });
     if (activeName) {
-      setStatus('loading');
+      // A reload of the SAME member keeps what is on screen while it refreshes
+      // (the refetch rule). Saving a check-in reloads, and flipping to
+      // 'loading' here dropped SkillTrendCard and WhereYouSitCard back to their
+      // skeletons right after the save they exist to show. A new name has
+      // nothing of its own to show yet, so it does load.
+      if (nameChanged || status !== 'ready') setStatus('loading');
     } else {
       setSnapshots([]);
       setStatus('ready');

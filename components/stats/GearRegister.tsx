@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 import GearPickRail from './GearPickRail';
 import GearFitSheet from './GearFitSheet';
@@ -123,6 +125,10 @@ function LegacyRegister({ activeName }: GearRegisterProps) {
  * owns on the other branch) and the club tally (`useClubGear`, shared by the
  * card's "N others play it" and `ClubGearCard`, so the two cannot disagree).
  */
+/** Slot placeholders for the Set-up register: each card's own loading
+ *  skeleton, or its measured height at 400px (2026-10-03) where it had none. */
+const GEAR_HEIGHTS = { setup: 226, nextRacket: 226, tension: 257, club: 160 } as const;
+
 function SetupRegister({ activeName }: GearRegisterProps) {
   const gear = useGear(activeName);
   const [openFit, setOpenFit] = useState(false);
@@ -234,6 +240,14 @@ function SetupRegister({ activeName }: GearRegisterProps) {
 
   return (
     <>
+      {/* LOADING CASCADE (docs/plans/loading-cascade.md): the four cards hold
+          their places and show in this order. NextRacket used to insert a
+          skeleton between two cards already on screen, and StringTension to
+          appear and then vanish once the pairing it defers to arrived. Flex
+          gap so a closed slot (no racket, a suppressed tension) leaves none. */}
+      <div className="flex flex-col gap-5">
+      <RevealGroup>
+      <RevealSlot placeholder={<CardSkeleton height={GEAR_HEIGHTS.setup} />}>
       <GearSetupCard
         activeName={activeName}
         gear={gear}
@@ -244,6 +258,8 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         onOpenFit={openFitDoor}
         onAddTension={() => openLine('string')}
       />
+      </RevealSlot>
+      <RevealSlot canBeEmpty placeholder={<CardSkeleton height={GEAR_HEIGHTS.nextRacket} />}>
       <NextRacketCard
         gear={gear}
         picks={picks}
@@ -256,6 +272,8 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         }}
         onOpenFit={openFitDoor}
       />
+      </RevealSlot>
+      <RevealSlot canBeEmpty placeholder={<CardSkeleton height={GEAR_HEIGHTS.tension} />}>
       <StringTensionCard
         activeName={activeName}
         gear={gear}
@@ -264,7 +282,10 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         // recommended frame the card never names, and the register would show
         // no number at all.
         suppressed={!gear.loadError && tensionOnScreen(setupLines(gear.gear), picks.view.string)}
+        suppressionKnown={gear.loaded && (gear.loadError || picks.view.string.status !== 'loading')}
       />
+      </RevealSlot>
+      <RevealSlot placeholder={<CardSkeleton height={GEAR_HEIGHTS.club} />}>
       <ClubGearCard
         club={club}
         mine={gear.loaded && !gear.loadError ? gear.gear : undefined}
@@ -273,6 +294,9 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         onOpenRacket={pagesOn ? openFrame : undefined}
         racketIds={racketIds}
       />
+      </RevealSlot>
+      </RevealGroup>
+      </div>
       <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
       <GearPickSheet
         open={pickOpen}

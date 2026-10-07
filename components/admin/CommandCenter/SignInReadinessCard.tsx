@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import CardHeader from '@/components/primitives/CardHeader';
 import { isFlagOn } from '@/lib/flags';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -36,7 +37,12 @@ export default function SignInReadinessCard({ refreshKey = 0 }: { refreshKey?: n
     try {
       const res = await fetch(`${BASE}/api/admin/sign-in-readiness`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`readiness ${res.status}`);
-      setData((await res.json()) as Readiness);
+      const d = (await res.json()) as Readiness;
+      // A body without the list is a failed read, not a crash: the render below
+      // reads `cannotSignIn.length`, and a TypeError there took down the whole
+      // console (found once the console waited for this card to answer).
+      if (!d || !Array.isArray(d.cannotSignIn)) throw new Error('readiness: malformed');
+      setData(d);
     } catch {
       setData(null);
       setLoadError(true);
@@ -48,6 +54,9 @@ export default function SignInReadinessCard({ refreshKey = 0 }: { refreshKey?: n
   }, [load, refreshKey]);
 
   const title = 'Sign-in readiness';
+  // The console's RevealSlot holds this place until the list has answered,
+  // and closes it when there is nothing to work through.
+  useRevealReady(data !== null || loadError);
   // `flex flex-col gap-3`, NOT `space-y-3`: the paragraphs below carry inline
   // `margin: 0`, and an inline margin beats `space-y`'s `> * + *` rule, which
   // left them flush under the subtitle. The CLAUDE.md gotcha, found on screen.

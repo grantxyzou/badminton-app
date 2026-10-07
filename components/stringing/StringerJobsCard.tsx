@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
@@ -92,6 +93,8 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
     }
   }
 
+  // The Stringing tab's RevealSlot holds this place; with no jobs it closes.
+  useRevealReady(!hasIdentity || refused || loadError || jobs !== null);
   if (!hasIdentity || refused) return null;
   /* `compact`, like Balance and Stringing service beside it: on Home a card
      NAMES its subject in the section-label style with a muted icon. The

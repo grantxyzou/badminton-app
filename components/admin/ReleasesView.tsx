@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import AdminBackHeader from './AdminBackHeader';
 import ReleaseForm from './ReleaseForm';
 import ErrorState from '@/components/primitives/ErrorState';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 import type { Release } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -25,8 +26,9 @@ export default function ReleasesView({ onBack }: Props) {
   // render alike.
   const [loadError, setLoadError] = useState(false);
 
+  // Only the first load shows the skeleton. A reload after a publish or a
+  // delete used to put the loading text back over the whole list (the refetch rule).
   async function load() {
-    setLoading(true);
     try {
       const res = await fetch(`${BASE}/api/releases`, { cache: 'no-store' });
       if (res.ok) {
@@ -85,7 +87,10 @@ export default function ReleasesView({ onBack }: Props) {
 
           {error && <p className="field-error" role="alert">{error}</p>}
           {loading ? (
-            <p className="fs-md text-gray-400">Loading…</p>
+            <div className="space-y-3" role="status" aria-label="Loading">
+              <CardSkeleton height={96} />
+              <CardSkeleton height={96} />
+            </div>
           ) : loadError ? (
             <ErrorState
               message={t('loadError')}

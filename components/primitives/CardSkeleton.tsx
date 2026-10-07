@@ -52,16 +52,22 @@ export default function CardSkeleton({
  * 210). HomeTab renders the real `<PageHeader>` above this, so there is no
  * header strip here — the header slot is the real component, not a shimmer.
  */
-export function TabSkeleton() {
+export function TabSkeleton({ announcement }: { announcement?: React.ReactNode } = {}) {
   return (
     <div className="space-y-5" role="status" aria-label="Loading">
-      {/* tile row: Location | When */}
+      {/* tile row: Location | When. 133, re-measured 2026-10-03 at 400px: the
+          club's address and a long date ("Monday, October 5") both wrap to two
+          lines on a phone, so the old 108 (one line) jumped every week. */}
       <div className="grid grid-cols-2 gap-3">
-        <CardSkeleton height={108} />
-        <CardSkeleton height={108} />
+        <CardSkeleton height={133} />
+        <CardSkeleton height={133} />
       </div>
-      {/* announcement / cost card */}
-      <CardSkeleton height={120} />
+      {/* The announcement. Home passes the SERVER-RENDERED card itself (it is
+          the LCP element, so it is drawn for real, not shimmered), or `null`
+          when the server found none — then no slot is reserved, because a
+          skeleton for a card that will not exist is a jump waiting to happen.
+          Omitted entirely, the old fixed 120px block. */}
+      {announcement === undefined ? <CardSkeleton height={120} /> : announcement}
       {/* sign-up card */}
       <CardSkeleton height={210} />
     </div>
@@ -69,22 +75,39 @@ export function TabSkeleton() {
 }
 
 /**
- * Admin dashboard (Command Center) skeleton — mirrors the console's real stack:
- * the tall status card, the 2-col Birds|Roster tile row, then a card. Heights
- * track the live layout (measured ≈300 / 104 tiles / 176). This is what
- * next/prod shows, so the auth-check skeleton reserves the tiles immediately.
- * The page title is rendered separately by the caller's `<PageHeader>`.
+ * The admin console's card heights, measured on the running console at 400px
+ * (2026-10-05). ONE copy, read by AdminTabSkeleton below and by the console's
+ * RevealSlot placeholders (CommandCenter.tsx), so the auth-check frame and the
+ * console it hands over to cannot drift apart. Here rather than in the admin
+ * code so this file — which everyone downloads — imports nothing from it.
+ */
+export const CONSOLE_HEIGHTS = {
+  nextSession: 274,
+  tile: 109,
+  // The e-transfer inbox in its "Set up" state, which is production's until
+  // the Gmail script is installed; re-measure the configured one-line status
+  // card then. Flag off, the slot closes at once and this is never drawn.
+  inbox: 190,
+  payments: 351,
+  invite: 343,
+  settings: 391,
+} as const;
+
+/**
+ * Admin dashboard (Command Center) skeleton — the console's first three cards
+ * (CONSOLE_HEIGHTS) in the console's own tile grid and gap. It used to be
+ * 300 / 104 / 176 at a 16px gap, which matched none of them, so the console
+ * jumped as it replaced this. The bar above is the caller's.
  */
 export function AdminTabSkeleton() {
   return (
-    <div className="space-y-4" role="status" aria-label="Loading">
-      <CardSkeleton height={300} />
-      {/* Birds | Roster tile row */}
-      <div className="grid grid-cols-2 gap-3">
-        <CardSkeleton height={104} />
-        <CardSkeleton height={104} />
+    <div className="flex flex-col gap-5" role="status" aria-label="Loading">
+      <CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />
+      <div className="cc-dgrid">
+        <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
+        <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
       </div>
-      <CardSkeleton height={176} />
+      <CardSkeleton height={CONSOLE_HEIGHTS.payments} />
     </div>
   );
 }

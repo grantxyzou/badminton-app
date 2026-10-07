@@ -7,8 +7,9 @@ import ErrorState from '@/components/primitives/ErrorState';
 import { recommendTension, formatForToggle, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
 import type { UseGear } from './useGear';
 import LockedCard, { useSignInLink } from './LockedCard';
+import { sharedRead } from '@/lib/sharedRead';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
  * String tension advice, derived from the member's level and format.
@@ -38,9 +39,12 @@ export interface StringTensionCardProps {
    *  actual frame-and-string. This card's number is level-based and frame-
    *  agnostic, so it is the fallback, not a second opinion. */
   suppressed?: boolean;
+  /** Whether `suppressed` is settled yet — the pairing it depends on loads
+   *  after the gear doc. Defaults to true for a caller with no pairing. */
+  suppressionKnown?: boolean;
 }
 
-export default function StringTensionCard({ activeName, gear, suppressed }: StringTensionCardProps) {
+export default function StringTensionCard({ activeName, gear, suppressed, suppressionKnown = true }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
   const signInLink = useSignInLink();
   const tStats = useTranslations('stats');
@@ -66,13 +70,9 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   useEffect(() => {
     if (!activeName) return;
     let live = true;
-    fetch(`${BASE}/api/stats/level?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => {
-        // The route is owner-or-admin gated. 403 means this device does not
-        // own the name — refreshing cannot fix it, signing in can.
-        if (r.status === 403) return Promise.reject(new Error('forbidden'));
-        return r.ok ? r.json() : Promise.reject(new Error(String(r.status)));
-      })
+    // Shared with OverviewStrip, which reads the same URL on this screen: one
+    // request, not two. A failure is never shared, so Retry still re-asks.
+    sharedRead<{ level?: { level?: unknown } }>(`/api/stats/level?name=${encodeURIComponent(activeName)}`)
       .then((d) => {
         if (!live) return;
         const raw = d?.level?.level;
@@ -81,7 +81,9 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
       })
       .catch((e: Error) => {
         if (!live) return;
-        setLevelStatus(e?.message === 'forbidden' ? 'forbidden' : 'error');
+        // The route is owner-or-admin gated. 403 means this device does not
+        // own the name — refreshing cannot fix it, signing in can.
+        setLevelStatus(e?.message === '403' ? 'forbidden' : 'error');
       });
     return () => {
       live = false;
@@ -111,6 +113,11 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   // which beats round(21 + level). Stand down rather than offer the member a
   // second, less specific answer to the same question. MUST stay the first
   // return — a suppressed card renders nothing, errors included.
+  // The Gear register's RevealSlot holds this place. Ready only once BOTH the
+  // level and whether the pairing suppresses this card are known — reading
+  // `suppressed` early is what made the card appear and then vanish.
+  useRevealReady(!activeName || (levelStatus !== 'loading' && suppressionKnown));
+
   if (suppressed) return null;
   if (!activeName) return null;
 

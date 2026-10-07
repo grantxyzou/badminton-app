@@ -43,6 +43,23 @@ describe('<PaymentsCard />', () => {
     });
   });
 
+  // Loading cascade, phase 5: between the sessions answering and the players
+  // answering, `allPlayers` is [] — and the card said "No active players yet"
+  // over a roster nobody had read. A lying empty state on a payments surface.
+  it('does not say "No active players" while the players are still loading', async () => {
+    urlFetch(async (url) => {
+      if (url.includes('/api/players')) return new Promise<Response>(() => {});
+      if (url.includes('/api/session') && !url.includes('/sessions')) {
+        return new Response(JSON.stringify(ACTIVE_SESSION), { status: 200 });
+      }
+      if (url.includes('/api/sessions')) return new Response(JSON.stringify([ACTIVE_SESSION]), { status: 200 });
+      return new Response('not found', { status: 404 });
+    });
+    render(<PaymentsCard />);
+    await waitFor(() => expect(screen.getByLabelText('Payments')).toBeTruthy());
+    expect(screen.queryByText(/No active players/i)).toBeNull();
+  });
+
   it('filters out removed and waitlisted players', async () => {
     fetchPlayers([
       { id: 'p1', name: 'Daisy', paid: true },

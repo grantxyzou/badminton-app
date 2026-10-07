@@ -2,7 +2,7 @@
 
 **Track:** Store launch — Sign in with Apple is required once the native app offers Google, and it rides the same hand-off, so it would open a second door into both gaps below.
 **Status:** shipped 2026-09-15 — #430, #435; pop-up sign-in confirmed on Grant's iPhone
-**Review on:** 2026-10-01 — did any member get stuck on the typed code, or report Google/Apple not signing them in?
+**Review on:** 2026-11-05 — the native app is the path that leans on the return code; once members use it, has anyone been stuck on a code or not signed in?
 
 ## Problem
 
@@ -158,6 +158,12 @@ This failed if either:
   talking a member into reading out their code. The code page says nobody from
   the club will ask for it. Cancelling in a pop-up lands on the app's own error
   notice inside the pop-up rather than closing it.
+- **2026-10-06 review: nothing to act on.** Grant: no member has reported a
+  Google or Apple sign-in failing, and he has never seen the typed-code screen
+  himself. That is the expected result, not a gap: the typed code appears only
+  when the pop-up cannot hand its code back to the app, and on his iPhone it
+  always could. The question moves to the native app, which nobody in the club
+  uses yet, so the next read is a month out.
 
 ## Shape
 

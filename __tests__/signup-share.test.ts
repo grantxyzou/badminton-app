@@ -16,7 +16,7 @@ import { buildSignupShare } from '../lib/signupShare';
  */
 describe('buildSignupShare', () => {
   it('names the club, not the deployment', () => {
-    const { text, title } = buildSignupShare({ groupName: 'Tuesday Smash', inviteUrl: 'https://x/bpm/?join=t' });
+    const { text, title } = buildSignupShare({ groupName: 'Tuesday Smash' });
     expect(title).toBe('Tuesday Smash');
     expect(text).toContain('Tuesday Smash');
     expect(text).not.toContain('BPM Badminton');
@@ -24,24 +24,17 @@ describe('buildSignupShare', () => {
 
   it('falls back to the deployment name when there is no club', () => {
     // Flag off, or a read that has not resolved. Not an error state.
-    expect(buildSignupShare({ inviteUrl: null }).title).toBe('BPM Badminton');
-    expect(buildSignupShare({ groupName: '   ', inviteUrl: null }).title).toBe('BPM Badminton');
+    expect(buildSignupShare({}).title).toBe('BPM Badminton');
+    expect(buildSignupShare({ groupName: '   ' }).title).toBe('BPM Badminton');
   });
 
-  it('SHARES THE INVITE LINK when the club has one', () => {
-    // The whole point: the club chat forwards this to someone who has never
-    // opened the app, and they land on the join step for THAT club rather than
-    // a generic front door.
-    const { url, text } = buildSignupShare({ inviteUrl: 'https://bpm.example/bpm/?join=abc123' });
-    expect(url).toBe('https://bpm.example/bpm/?join=abc123');
-    expect(text).toContain('?join=abc123');
-  });
-
-  it('falls back to the plain app URL with no invite', () => {
-    const { url } = buildSignupShare({ inviteUrl: null });
-    // A non-admin, or the flag off. Still a usable link for someone already in.
+  it('is the PLAIN app address — never an invite', () => {
+    // Invites are one-time (docs/plans/one-time-invites.md): a link in a group
+    // chat would be used up by the first tap. This message reaches members.
+    const { url, text } = buildSignupShare({ groupName: 'Tuesday Smash' });
     expect(url).toContain(window.location.origin);
     expect(url).not.toContain('?join=');
+    expect(text).not.toContain('?join=');
   });
 
   it('adds the date, and survives one it cannot parse', () => {

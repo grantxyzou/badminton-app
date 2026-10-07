@@ -2891,10 +2891,10 @@ textarea {
 }
 
 /* ── Ring spinner ──
-   The single circular loading spinner — shared by the cold-start splash
-   (.splash-shuttle) and the pull-to-refresh indicator. Size and stroke
-   width come from the --ring-size / --ring-width vars so one definition
-   covers the 48px splash and the 16px refresh dot. */
+   The single circular loading spinner — the pull-to-refresh indicator. (The
+   cold-start splash used it too until the launch screen replaced it with the
+   shot loop; see "Launch screen".) Size and stroke width come from the
+   --ring-size / --ring-width vars. */
 .ring-spinner {
   width: var(--ring-size, 16px);
   height: var(--ring-size, 16px);
@@ -3260,7 +3260,6 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   .aurora-blob-3,
   .ring-spinner,
   .shimmer-line,
-  .splash-shuttle,
   .splash {
     animation: none !important;
     will-change: auto !important;
@@ -3710,56 +3709,282 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   opacity: 1;
 }
 
-/* ── Cold-start splash ──
-   Rendered in layout.tsx body before React hydrates. Hidden once
-   HydrationMark sets data-hydrated="true" on <html>. */
-.splash {
+/* ── Launch screen ──
+   The cold-start splash and the signed-out Welcome, one composition (design
+   handoff "BPM launch / loading screen"; components/launch/). A fixed 360×740
+   canvas scaled to fit by `--launch-k` (set before first paint in
+   app/layout.tsx) — scaled, never reflowed, so every number below is the
+   handoff's own, in canvas pixels. The motion lives in lib/launchMotion.ts;
+   the loading loop's CSS is generated from it and rendered by the layout.
+
+   `<html data-launch>` is the screen's state:
+     loading   — server-rendered; the CSS loop plays and the failsafe runs
+     resolving — React has the screen; the failsafe stands down
+     welcome   — handed over to Welcome (signed out); the splash fades
+     done      — left for the app, or a route that is not the app
+     lifted    — JS arrived after the failsafe already lifted it */
+:root {
+  --launch-bg: radial-gradient(circle at 46% 40%, #252322 0%, #100f0f 72%);
+  --launch-tagline: rgba(255, 255, 255, 0.62);
+  --launch-tube: #16a34a;
+  --launch-glint: #4ade80;
+  --launch-shuttle-shadow: none;
+}
+[data-theme="light"] {
+  --launch-bg: #faf8f5;
+  --launch-tagline: rgba(0, 0, 0, 0.62);
+  /* The cutout carries a faint edge halo on a light ground; a soft drop shadow
+     seats it (handoff, light theme). */
+  --launch-shuttle-shadow: drop-shadow(0 10px 14px rgba(26, 35, 50, 0.18));
+}
+
+.launch-stage {
   position: fixed;
   inset: 0;
+  overflow: hidden;
+  background: var(--launch-bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+/* The splash: above everything until it leaves. It TAKES taps, deliberately:
+   the page under it is hydrated and live, and a tap passed through would press
+   a button nobody can see (Home's "I'm in", or Welcome's doors while they are
+   still invisible). Hidden, it takes none — every way out ends in
+   `visibility: hidden` and then an unmount. */
+.splash {
   z-index: 100;
+  touch-action: none;
+}
+/* Welcome sits UNDER the theme/language toggles (60) and toasts (55): it is a
+   page, not an overlay. */
+.launch-stage--welcome {
+  z-index: 1;
+}
+
+.launch-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 360px;
+  height: 740px;
+  transform: translate(-50%, -50%) scale(var(--launch-k, 1));
+}
+.launch-hero {
+  position: absolute;
+  left: -2px;
+  top: 190px;
+  width: 360px;
+  height: 360px;
+  transform: translateY(-20px);
+}
+.launch-arc {
+  display: block;
+  width: 360px;
+  height: 360px;
+  overflow: visible;
+}
+.launch-trail {
+  fill: none;
+  stroke-linecap: round;
+  /* Pushes the dash pattern's zero-length first dash off the start of the path
+     (its round cap would paint a dot there). See lib/launchMotion.ts. */
+  stroke-dashoffset: 0.001;
+}
+.launch-trail--tube {
+  stroke: var(--launch-tube);
+  stroke-width: 64;
+}
+.launch-trail--glint {
+  stroke: var(--launch-glint);
+  stroke-opacity: 0.55;
+  stroke-width: 12;
+}
+/* Rides the arc with CSS Motion Path: the cork tip (50% 86%) on the path, the
+   image's +y along the tangent (`auto -90deg`, written per frame). */
+.launch-shuttle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 77px;
+  height: 72px;
+  offset-anchor: 50% 86%;
+}
+.launch-shuttle img {
+  display: block;
+  width: 77px;
+  height: 72px;
+  filter: var(--launch-shuttle-shadow);
+}
+/* The lockup is positioned TO the hero: `bpm`'s baseline (top + 76 × ascent
+   share ≈ top + 58.8) sits on the landed shuttle's bottom edge, y ≈ 381, with
+   the shuttle ~14px right of the `m`. Re-derive `top` from that rule if the
+   display face ever changes. */
+.launch-lockup {
+  position: absolute;
+  left: 70px;
+  top: 322px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-5);
-  background: var(--page-bg, #100F0F);
-  color: var(--text-primary, #e2e8f0);
-  pointer-events: none;
+  align-items: flex-start;
+  gap: var(--space-4);
 }
-html[data-hydrated="true"] .splash {
-  display: none;
+.launch-wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 76px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
 }
-/* Failsafe: if hydration stalls silently, the splash spinner would loop
-   forever and keep the GPU warm. Force-fade + hide after 5s regardless
-   of React state. Once data-hydrated is set the rule above wins and
-   clears the animation entirely. */
-.splash {
-  animation: splash-failsafe 5.4s linear forwards;
+.launch-tagline {
+  margin: 0;
+  font-size: 17px;
+  color: var(--launch-tagline);
+}
+/* Chinese: the tagline is spaced out to the width of `bpm` above it (Grant,
+   2026-10-03). Stretching it to the lockup column makes it exactly as wide as
+   the wordmark, the column's widest child, and justifying its one line puts
+   the slack between the characters — so it tracks the wordmark at any length
+   rather than carrying a letter-spacing tuned to seven characters. A tagline
+   longer than the wordmark simply widens the column and sets normally, which
+   is what the English one does. */
+.launch-tagline:lang(zh) {
+  align-self: stretch;
+  text-align: justify;
+  text-align-last: justify;
+}
+
+/* The loading shot, before JS, is NOT here: `launchLoopCss()` emits both the
+   keyframes and the `.launch-canvas--loop` rules that run them, so the loop's
+   period has one home (lib/launchMotion.ts → SHOT_MS). */
+
+/* Welcome's two doors, real DOM pinned to the bottom (outside the scaled
+   canvas, so the home indicator is honoured and the text stays crisp), as wide
+   as the canvas. The rise uses `translate`, not `transform`, and fills
+   `backwards` only, so neither the press scale nor the hover lift is held
+   hostage by a finished animation. Held at its first frame while the splash
+   is still deciding. */
+.launch-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin-inline: auto;
+  max-width: calc(360px * var(--launch-k, 1));
+  display: grid;
+  gap: var(--space-4);
+  padding: 0 var(--space-6) calc(26px + env(safe-area-inset-bottom));
+}
+.launch-btn {
+  width: 100%;
+  border-radius: var(--radius-md);
+  padding: 18px;
+  font-size: 17px;
+  animation: launch-rise 700ms var(--ease-glass) backwards;
+}
+.launch-btn--primary {
+  font-weight: 700;
+  color: #fff;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  background: linear-gradient(160deg, rgba(74, 222, 128, 0.55) 0%, rgba(22, 163, 74, 0.4) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 4px 20px rgba(22, 163, 74, 0.2);
+}
+.launch-btn--ghost {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+[data-theme="light"] .launch-btn--primary {
+  border: none;
+  background: linear-gradient(160deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 4px 20px rgba(22, 163, 74, 0.22);
+}
+[data-theme="light"] .launch-btn--ghost {
+  color: var(--text-primary);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.85);
+}
+@media (hover: hover) {
+  .launch-btn:hover {
+    translate: 0 -2px;
+  }
+}
+html[data-launch="loading"] .launch-btn,
+html[data-launch="resolving"] .launch-btn {
+  animation-play-state: paused;
+}
+@keyframes launch-rise {
+  from { opacity: 0; translate: 0 16px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+/* Leaving. An animation, not a transition: the failsafe owns opacity until
+   this replaces it, and a transition would start from wherever that left it. */
+html[data-launch="welcome"] .splash,
+html[data-launch="done"] .splash {
+  animation: splash-out var(--duration-fast) var(--ease-glass) forwards;
+}
+/* JS arrived after the failsafe had already lifted the screen: stay lifted. */
+html[data-launch="lifted"] .splash {
+  visibility: hidden;
+}
+@keyframes splash-out {
+  from { opacity: 1; visibility: visible; }
+  to   { opacity: 0; visibility: hidden; }
+}
+/* Failsafe: if JS never arrives, lift the screen anyway — the server-rendered
+   page is under it. Long enough to keep cycling through a slow network (the
+   handoff: "keep cycling"), and only while nothing has taken the screen. */
+html[data-launch="loading"] .splash {
+  animation: splash-failsafe 10s linear forwards;
 }
 @keyframes splash-failsafe {
   0%, 92% { opacity: 1; visibility: visible; }
   100%    { opacity: 0; visibility: hidden; }
 }
-/* Splash uses the shared .ring-spinner (see layout.tsx) — this only sets its
-   size/stroke. The 48px ring + accent stroke is the cold-start spinner. */
-.splash-shuttle {
-  --ring-size: 48px;
-  --ring-width: 3px;
+@keyframes launch-pulse {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
 }
-.splash-title {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0;
-}
-.splash-tagline {
-  font-size: 0.875rem;
-  opacity: 0.7;
-  margin: 0;
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .splash-shuttle { animation: none; }
+  /* No flights: the finished lockup at once. While still loading, the shuttle
+     breathes (0.6 ↔ 1, 1.2s) — opacity only, the one motion the handoff keeps.
+     The `html` prefix outranks the thermal block's wildcard. */
+  html .launch-canvas--loop .launch-shuttle {
+    offset-distance: 100% !important;
+    offset-rotate: auto -90deg !important;
+    animation: launch-pulse 1.2s ease-in-out infinite alternate !important;
+  }
+  html .launch-canvas--loop .launch-trail {
+    animation: none !important;
+    stroke-dasharray: 0 30 58 300 !important;
+    opacity: 1 !important;
+  }
+  html .launch-canvas--loop .launch-wordmark,
+  html .launch-canvas--loop .launch-tagline {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  /* Buttons appear without travelling. */
+  html .launch-btn {
+    animation: none !important;
+  }
+  /* The thermal block stops `.splash` outright, which would also switch off
+     its failsafe: a stalled hydration would keep the splash up forever, only
+     for these users. `html .splash` outranks it; `steps(1, end)` makes the
+     lift a single cut. */
+  html .splash {
+    animation: splash-failsafe 10s steps(1, end) forwards !important;
+  }
+  html[data-launch="resolving"] .splash {
+    animation: none !important;
+  }
+  html[data-launch="welcome"] .splash,
+  html[data-launch="done"] .splash {
+    animation: splash-out var(--duration-fast) ease-out forwards !important;
+  }
 }
 
 /* ── Release notes terminal sheet ── */

@@ -5,7 +5,10 @@ import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
 import CardHeader from './primitives/CardHeader';
+import { isFlagOn } from '@/lib/flags';
+import { useOnline } from '@/lib/useOnline';
 import Collapse from './primitives/Collapse';
+import { useRevealReady } from './primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
@@ -34,6 +37,8 @@ interface UnpaidData {
   stringing?: StringingCharge[];
   sessionsOwed?: number;
   stringingOwed?: number;
+  /** Where to send it — the club's recipient, only on a response that owes. */
+  payTo?: { name: string; email: string } | null;
 }
 
 function fmtMoney(n: number): string {
@@ -85,7 +90,62 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   const [refreshNonce, setRefreshNonce] = useState(0);
   const isHome = variant === 'home';
 
-  const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
+  const online = useOnline();
+  // "I've sent it" (docs/plans/payments.md): a claim, not a payment — the
+  // e-transfer itself is what the inbox marks paid. Remembered per mount only;
+  // the admin sees the tag on their side.
+  const [sent, setSent] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  const canSayPaid = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
+
+  // Store credit (docs/plans/payments.md): the balance, and "Pay with
+  // credit", which pays the oldest lines it covers IN FULL. Shown only when
+  // there is credit — a "$0 credit" line would be clutter on every Home.
+  const tCredit = useTranslations('home.credit');
+  const creditOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
+  const [creditCents, setCreditCents] = useState<number | null>(null);
+  const [spend, setSpend] = useState<'idle' | 'busy' | 'notEnough' | 'error'>('idle');
+  useEffect(() => {
+    if (!creditOn || !name) return;
+    let cancelled = false;
+    fetch(`${BASE}/api/credit`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { balanceCents?: number } | null) => {
+        // A failed read shows no credit line — the balance card's job is what
+        // is OWED, and that has its own error state above.
+        if (!cancelled) setCreditCents(typeof d?.balanceCents === 'number' ? d.balanceCents : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCreditCents(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [creditOn, name, refreshNonce]);
+  async function payWithCredit() {
+    setSpend('busy');
+    try {
+      const res = await fetch(`${BASE}/api/credit/spend`, { method: 'POST' });
+      if (res.status === 409) {
+        setSpend('notEnough');
+        return;
+      }
+      if (!res.ok) throw new Error(String(res.status));
+      setSpend('idle');
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      setSpend('error');
+    }
+  }
+  const hasCredit = creditOn && (creditCents ?? 0) > 0;
+  async function sayPaid() {
+    setSent('busy');
+    try {
+      const res = await fetch(`${BASE}/api/payments/self-report`, { method: 'POST' });
+      setSent(res.ok ? 'done' : 'error');
+    } catch {
+      setSent('error');
+    }
+  }
 
   useEffect(() => {
     // name is always the signed-in identity (non-empty) when this renders.
@@ -134,6 +194,10 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   }, []);
 
   const owesNothing = !loadError && !forbidden && (!data || data.totalOwed <= 0);
+
+  // On Home a RevealSlot holds this card's place with a skeleton and reveals
+  // it in order (loading cascade). Profile has no slot; this is a no-op there.
+  useRevealReady(loaded || loadError || forbidden);
 
   // Profile: render nothing while loading or when nothing is owed (no clutter).
   if (!isHome && owesNothing) return null;
@@ -241,7 +305,14 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
         }
       />
     ) : showPaidUp ? (
-      <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
+      <>
+        <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
+        {hasCredit && (
+          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)', textAlign: 'center' }}>
+            {tCredit('balance', { amount: fmtMoney((creditCents ?? 0) / 100) })}
+          </p>
+        )}
+      </>
     ) : (
       data && (
         <>
@@ -315,10 +386,51 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
             </span>
           </div>
 
-          {etransferEmail && (
-            <p style={{ margin: '0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-              {tPay('etransfer', { email: etransferEmail })}
-            </p>
+          {(() => {
+            // The server's answer first; the build-time env only for a
+            // response from before `payTo` existed.
+            const email = data.payTo?.email ?? (data.payTo === undefined ? process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null : null);
+            return email ? (
+              <p style={{ margin: '0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                {tPay('etransfer', { email })}
+              </p>
+            ) : null;
+          })()}
+          {hasCredit && data.totalOwed > 0 && (
+            <div className="flex flex-col gap-2">
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>{tCredit('label')}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
+                  {fmtMoney((creditCents ?? 0) / 100)}
+                </span>
+              </div>
+              <button type="button" className="btn-ghost" disabled={!online || spend === 'busy'} onClick={() => void payWithCredit()}>
+                {tCredit('pay')}
+              </button>
+              {spend === 'notEnough' && (
+                <p className="fs-sm" role="status" style={{ margin: '0', color: 'var(--text-muted)' }}>{tCredit('notEnough')}</p>
+              )}
+              {spend === 'error' && <p className="field-error" role="alert">{tCredit('error')}</p>}
+            </div>
+          )}
+          {canSayPaid && data.totalOwed > 0 && (
+            sent === 'done' ? (
+              <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>
+                {tPay('sentItDone')}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={!online || sent === 'busy'}
+                  onClick={() => void sayPaid()}
+                >
+                  {tPay('sentIt')}
+                </button>
+                {sent === 'error' && <p className="field-error" role="alert">{tPay('sentItError')}</p>}
+              </div>
+            )
           )}
         </>
       )
@@ -328,9 +440,9 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
 
   return (
     <div
-      // Fades in: Home renders nothing until the balance lands, so the card
-      // arrives into a page that is already on screen.
-      className={`glass-card motion-fade ${isHome ? "p-4" : "p-5"}`}
+      // Profile renders nothing until the balance lands, so the card fades in
+      // there. On Home the RevealSlot around it does the fade, in order.
+      className={`glass-card ${isHome ? "p-4" : "motion-fade p-5"}`}
       // Collapsible: the gap lives INSIDE the collapse (as its top padding),
       // so a closing body does not leave a gap behind that snaps on unmount.
       style={{ display: 'flex', flexDirection: 'column', gap: collapsible ? undefined : 'var(--space-4)' }}

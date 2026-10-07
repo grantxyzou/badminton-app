@@ -50,24 +50,26 @@ afterEach(() => {
 });
 
 describe('the bench is reachable from the admin screen that actually renders', () => {
-  it('offers a Stringing bench row when the flag is on', () => {
+  // The settings list is the LAST slot of the console's loading cascade: it
+  // shows once the cards above it have answered, so these wait for it.
+  it('offers a Stringing bench row when the flag is on', async () => {
     process.env[FLAG] = 'true';
     renderCenter();
-    expect(screen.getByRole('button', { name: /Stringing bench/i })).toBeDefined();
+    expect(await screen.findByRole('button', { name: /Stringing bench/i })).toBeDefined();
   });
 
-  it('opens the bench view when tapped', () => {
+  it('opens the bench view when tapped', async () => {
     process.env[FLAG] = 'true';
     const setView = renderCenter();
-    screen.getByRole('button', { name: /Stringing bench/i }).click();
+    (await screen.findByRole('button', { name: /Stringing bench/i })).click();
     expect(setView).toHaveBeenCalledWith('stringing');
   });
 
-  it('hides it entirely when the flag is off', () => {
+  it('hides it entirely when the flag is off', async () => {
     process.env[FLAG] = 'false';
     renderCenter();
-    expect(screen.queryByRole('button', { name: /Stringing bench/i })).toBeNull();
     // The rest of the list is untouched — the flag hides one row, not the menu.
-    expect(screen.getByRole('button', { name: /Past sessions/i })).toBeDefined();
+    expect(await screen.findByRole('button', { name: /Past sessions/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Stringing bench/i })).toBeNull();
   });
 });

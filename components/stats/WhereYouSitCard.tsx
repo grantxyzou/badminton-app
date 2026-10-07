@@ -11,6 +11,7 @@ import type { Band } from '@/lib/clubBands';
 import type { UseCheckIn } from './useCheckIn';
 import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 
 /**
@@ -100,6 +101,10 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
       live = false;
     };
   }, [activeName, attempt]);
+
+  // The You register's RevealSlot holds this place; it closes if the card
+  // turns out to have nothing to show (too small a cohort, nothing picked).
+  useRevealReady(!activeName || !(status === 'loading' || historyStatus === 'loading'));
 
   if (!activeName) return null;
   // Refused (this device holds no session for the name): the card stays, as

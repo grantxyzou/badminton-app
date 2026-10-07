@@ -261,6 +261,38 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(block).toContain('will-change: auto !important');
   });
 
+  /* Loading cascade, phase 1, then the launch screen. The splash used to cut
+     away (`display: none`) the instant the app hydrated, and under reduced motion
+     the `animation: none` above also switched off its failsafe — so if hydration
+     stalled, those users kept the splash forever. Since the launch screen,
+     hydration no longer means "leave": the screen leaves when it has played the
+     resolve shot, and says so with `data-launch`. */
+  it('fades the splash out when it leaves, instead of cutting it', () => {
+    const rule = css.slice(css.indexOf('html[data-launch="done"] .splash'));
+    const body = rule.slice(0, rule.indexOf('}'));
+    expect(body).not.toContain('display: none');
+    expect(body).toContain('splash-out');
+  });
+
+  it('the splash takes taps while it covers the page', () => {
+    // It used to leave at hydration, so `pointer-events: none` cost nothing.
+    // It now sits over a live, hydrated page for the length of a shot, and a
+    // tap passed through would press a button nobody can see.
+    const rule = css.slice(css.indexOf('\n.splash {'));
+    expect(rule.slice(0, rule.indexOf('}'))).not.toContain('pointer-events: none');
+  });
+
+  it('runs the failsafe only while nothing has taken the screen', () => {
+    // A failsafe still running after React took over would lift the splash
+    // mid-shot on a slow device, 10s in.
+    expect(css).toMatch(/html\[data-launch="loading"\] \.splash\s*\{[^}]*splash-failsafe/);
+  });
+
+  it('keeps the splash failsafe under reduced motion', () => {
+    const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(block).toMatch(/html \.splash\s*\{[^}]*splash-failsafe[^}]*!important/);
+  });
+
   /* Overshoot easing is rare-surface-only (PRODUCT.md → Design Principles #2).
      `.animate-slideUp` was the one broad surface applying it and is deliberately
      gone; re-adding a general-purpose bounce utility should fail here. */

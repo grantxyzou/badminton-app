@@ -124,8 +124,13 @@ async function get(url, accept = '*/*') {
  * ──────────────────────────────────────────────────────────────────────────── */
 function assertAlive(html) {
   if (!html.includes('data-page-shell')) return 'no page shell — HomeShell did not render';
-  if (!html.includes('aria-label="Primary navigation"')) {
-    return 'no nav — the shell rendered incomplete';
+  // Members-only answers a signed-out request with SignedOutShell, which has
+  // no nav by design; its Sign up / Log in buttons are the equivalent proof
+  // that the shell rendered complete. Either one, never neither.
+  const nav = html.includes('aria-label="Primary navigation"');
+  const welcome = html.includes('data-signed-out-welcome');
+  if (!nav && !welcome) {
+    return 'no nav and no signed-out welcome — the shell rendered incomplete';
   }
   return null;
 }

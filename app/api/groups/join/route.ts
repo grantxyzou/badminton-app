@@ -25,7 +25,8 @@ import { verifyMemberAuth, unauthorized } from '@/lib/auth';
 import { completeSignIn } from '@/lib/authSession';
 import { getContainer } from '@/lib/cosmos';
 import { addMembership, readGroup, readMembership, RosterNameTakenError } from '@/lib/groups';
-import { resolveInvite } from '@/lib/invites';
+import { notifyAdminsOfJoin } from '@/lib/joinNotify';
+import { claimInvite, type InviteClaim } from '@/lib/invites';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import {
   groupsOn,
@@ -63,10 +64,16 @@ export async function POST(req: NextRequest) {
   const code = cleanString(input.code, 1, 64);
   if ((!token && !code) || (token && code)) return noSuchInvite();
 
+  // One-time invite (docs/plans/one-time-invites.md): CLAIMED here, and
+  // settled below — finalized against a FIRST join, released for everything
+  // else, including "welcome back" (a member already on the roster tapping a
+  // link meant for someone else must not burn it).
+  let claim: InviteClaim | null = null;
+  let joinedAs: string | null = null;
   try {
-    const groupId = token ? await resolveInvite(token, 'invite') : await resolveInvite(code!, 'code');
-    if (!groupId) return noSuchInvite();
-    const group = await readGroup(groupId);
+    claim = token ? await claimInvite(token, 'invite') : await claimInvite(code!, 'code');
+    if (!claim) return noSuchInvite();
+    const group = await readGroup(claim.groupId);
     if (!group || group.closedAt) return noSuchInvite();
 
     const { resource: member } = await getContainer('members')
@@ -90,6 +97,10 @@ export async function POST(req: NextRequest) {
       role: 'member',
       joinedVia: token ? 'link' : 'code',
     });
+    if (!wasMember) joinedAs = member.id;
+    // A first join tells the club's admins; a repeat join ("welcome back")
+    // does not. Best-effort, past the write (lib/joinNotify.ts).
+    if (!wasMember) await notifyAdminsOfJoin(group.id, { id: member.id, name: rosterName });
 
     const res = NextResponse.json({
       id: group.id,
@@ -128,5 +139,10 @@ export async function POST(req: NextRequest) {
     }
     console.error('POST /api/groups/join:', error);
     return NextResponse.json({ error: 'join_failed' }, { status: 500 });
+  } finally {
+    if (claim) {
+      if (joinedAs) await claim.finalize(joinedAs);
+      else await claim.release();
+    }
   }
 }

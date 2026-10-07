@@ -19,14 +19,14 @@ import type { GroupSettings } from '@/lib/types';
 export const groupsOn = (): boolean => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
 /**
- * Whether the INVITE surfaces exist: the admin's link and code
- * (`groups/invite`) and the signed-out preview (`groups/preview`). Multi-group
- * needs them, and so does members-only — with that flag on a new account needs
- * an invite even while there is only one club (docs/plans/members-only.md), so
- * the admin has to be able to hand one out. `groups/join` and the rest of the
- * group API stay behind `groupsOn` alone: with one club there is nothing to join.
+ * Whether the INVITE surfaces exist — the admin's link and code
+ * (`groups/invite`) and the signed-out preview (`groups/preview`). Defined in
+ * `lib/invitesOn.ts` and re-exported, because the CLIENT reads the same rule
+ * (`useInvites`) and the two drifted once. `groups/join` and the rest of
+ * the group API stay behind `groupsOn` alone: with one club there is nothing
+ * to join.
  */
-export const invitesOn = (): boolean => groupsOn() || isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
+export { invitesOn } from '@/lib/invitesOn';
 
 /** The flag-off answer: the surface does not exist. */
 export function featureOff(): NextResponse {

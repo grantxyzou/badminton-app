@@ -52,19 +52,30 @@ describe('Coming soon is the default', () => {
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 
-  it('stays Coming soon when the shop answer is UNKNOWN', async () => {
-    // A throttled or failed probe. Offering the button here would send someone
-    // into a 409 — the confident answer is the harmful one.
+  // Unknown is not closed (loading cascade, phase 4). A failed or throttled
+  // probe used to render "Coming soon" — a shop that could not be READ said it
+  // was closed. It now says it could not check, with Retry. The safety half is
+  // unchanged: no request button on a guess, because tapping it would 409.
+  it('says it could not check, not Coming soon, when the shop answer is UNKNOWN', async () => {
     mockApi(null);
     wrap();
-    expect(await screen.findByText('Coming soon')).toBeDefined();
+    expect(await screen.findByText(/Couldn.t check whether the stringing service is open/)).toBeDefined();
+    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 
-  it('stays Coming soon when the probe throws outright', async () => {
+  it('says it could not check when the probe throws outright', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     wrap();
-    expect(await screen.findByText('Coming soon')).toBeDefined();
+    expect(await screen.findByText(/Couldn.t check whether the stringing service is open/)).toBeDefined();
+    expect(screen.queryByText('Coming soon')).toBeNull();
+  });
+
+  it('shows a skeleton, not Coming soon, while the shop has not answered', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    wrap();
+    expect(screen.queryByText('Coming soon')).toBeNull();
   });
 });
 

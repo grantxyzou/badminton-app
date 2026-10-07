@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
+import { useRevealReady } from '@/components/primitives/Reveal';
 import EmptyState from '@/components/primitives/EmptyState';
 import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
 import { useOnline } from '@/lib/useOnline';
@@ -109,6 +110,9 @@ export default function GiveKudosCard() {
     };
   }, [activeName, resolved, attempt]);
 
+  // The Play register's RevealSlot holds this place on first load.
+  useRevealReady(load !== 'loading');
+
   return (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="volunteer_activism" title={t('giveTitle')} subtitle={t('giveHint')} />
@@ -131,7 +135,10 @@ export default function GiveKudosCard() {
            sign-in banner carries the button. */
         <EmptyState>{t('needsSignIn')}</EmptyState>
       ) : load === 'loading' ? (
-        <EmptyState>{t('loading')}</EmptyState>
+        /* A shimmer line where the list's first line will be — never a
+           sentence. On Stats the RevealSlot hides this until the first answer;
+           it shows only on a retry after an error. */
+        <div className="shimmer-line rounded-lg" style={{ height: 12, width: '60%' }} aria-hidden="true" />
       ) : names.length === 0 ? (
         /* The honest empty state. Says WHY there is nobody rather than
            disappearing, which is what made this unfindable. */

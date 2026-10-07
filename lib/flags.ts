@@ -26,7 +26,9 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY'
   | 'NEXT_PUBLIC_FLAG_GEAR_SETUP'
   | 'NEXT_PUBLIC_FLAG_GEAR_PAGES'
-  | 'NEXT_PUBLIC_FLAG_FIT_VERDICT';
+  | 'NEXT_PUBLIC_FLAG_FIT_VERDICT'
+  | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
+  | 'NEXT_PUBLIC_FLAG_STORE_CREDIT';
 
 interface FlagMeta {
   description: string;
@@ -79,8 +81,8 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description:
       'A signed-out visitor sees no club data at all — only Sign up / Log in (docs/plans/members-only.md). Read SERVER-SIDE: on, every group-data read requires a signed-in active member (requireMember in lib/auth.ts), new accounts need an invite, and a session sign-up needs an account. Off, every gate is a pass-through and nothing observable changes. Ships dark; the flip waits until the admin list of members with no way to sign in is short, because turning it on locks those people out until an admin approves them.',
     owner: 'grant',
-    plannedRemoval: '2026-11-01',
-    note: 'Retiring it means deleting the OFF branches, not just the switch: the anonymous and body-PIN paths in POST /api/players, the flag-off branch of signupGroupFor, and the adaptive anon/sign-in/create modes of the Home sign-up card.',
+    plannedRemoval: '2026-10-17',
+    note: 'Turned on in production 2026-10-03. Retiring it means deleting the OFF branches, not just the switch: the anonymous and body-PIN paths in POST /api/players, the flag-off branch of signupGroupFor, and the adaptive anon/sign-in/create modes of the Home sign-up card.',
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
@@ -117,6 +119,20 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-10-19',
     note: 'On in production since 2026-09-14, on Grant\'s sign-off. The state is decided by lib/fitVerdict.ts, never by the model; with ANTHROPIC_API_KEY unset or a reply off the contract the page falls back to the fixed wording.',
   },
+  NEXT_PUBLIC_FLAG_STORE_CREDIT: {
+    description:
+      'Store credit and gift cards (docs/plans/payments.md, the first slice of the Phase 2 ledger): admins give credit and mint single-use gift codes; members redeem codes and "Pay with credit" from the Home balance. Read SERVER-side by /api/credit/* and /api/admin/credit, /api/admin/giftcards; off, those 404 and the UI hides.',
+    owner: 'grant',
+    plannedRemoval: '2026-11-21',
+    note: 'Retire together with NEXT_PUBLIC_FLAG_PAYMENTS_AUTO after the 2026-11-07 review.',
+  },
+  NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: {
+    description:
+      'E-transfer auto-detection (docs/plans/payments.md, Phase 1): the admin\'s Apps Script forwards Interac emails to POST /api/payments/etransfer, which marks matched rows paid and queues the rest; the "I\'ve sent it" button; and the soft hold (2+ unpaid settled sessions → sign-up lands on the waitlist). Read SERVER-side by every payments route and by the hold in POST /api/players; off, those routes 404 and sign-up is unchanged.',
+    owner: 'grant',
+    plannedRemoval: '2026-11-21',
+    note: 'On in production since 2026-10-03 (Grant). Ship date + 2 weeks is not enough here: the kill criterion reads four weeks of matches (Review on 2026-11-07 in the plan). Retiring it deletes the 404 guards and the hold\'s off branch.',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -143,6 +159,10 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_GEAR_PAGES;
     case 'NEXT_PUBLIC_FLAG_FIT_VERDICT':
       return process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT;
+    case 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO':
+      return process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
+    case 'NEXT_PUBLIC_FLAG_STORE_CREDIT':
+      return process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned

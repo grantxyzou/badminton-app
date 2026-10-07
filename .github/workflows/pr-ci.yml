@@ -98,10 +98,12 @@ jobs:
           NEXT_PUBLIC_FLAG_RACKET_FIT: 'true'
           NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'false'
           NEXT_PUBLIC_FLAG_MULTI_GROUP: 'false'
-          NEXT_PUBLIC_FLAG_MEMBERS_ONLY: 'false'
+          NEXT_PUBLIC_FLAG_MEMBERS_ONLY: 'true'
           NEXT_PUBLIC_FLAG_GEAR_SETUP: 'true'
           NEXT_PUBLIC_FLAG_GEAR_PAGES: 'true'
           NEXT_PUBLIC_FLAG_FIT_VERDICT: 'true'
+          NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: 'true'
+          NEXT_PUBLIC_FLAG_STORE_CREDIT: 'true'
           NEXT_PUBLIC_FLAG_STRINGING: 'true'
           NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
 

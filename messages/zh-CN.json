@@ -93,6 +93,7 @@
       "backToKit": "从我的装备里选",
       "noRacketsYet": "直接输入球拍名，会自动加进装备里。",
       "kitUnavailable": "装备加载失败，直接输入球拍名。",
+      "stringsUnavailable": "线的列表加载失败，直接输入你想要的线。",
       "racketPlaceholder": "哪支球拍？",
       "stringPlaceholder": "什么线？例如 BG80 白色",
       "mains": "竖线",
@@ -111,7 +112,8 @@
       },
       "title": "穿线服务",
       "subtitle": "在这里申请穿线，查看球拍进度。",
-      "soon": "敬请期待"
+      "soon": "敬请期待",
+      "shopUnavailable": "暂时无法确认穿线服务是否开放。"
     },
     "skillDiscovery": {
       "title": "想知道自己有没有进步吗？",
@@ -120,7 +122,7 @@
       "dismiss": "关闭"
     },
     "signup": {
-      "spotsLeftSuffix": "个空位",
+      "spotsLeftSuffix": "个空位，共 {total} 个",
       "othersInOne": "{a} 已报名",
       "othersInTwo": "{a} 和 {b} 已报名",
       "othersInMany": "{a}、{b} 和另外 {count} 人已报名",
@@ -146,7 +148,7 @@
       "submitting": "报名中…",
       "cantMakeIt": "去不了？取消报名",
       "leaveWaitlist": "退出候补名单",
-      "spotsRemaining": "还剩 {remaining}/{total} 个名额",
+      "spotsRemaining": "还剩 {remaining} 个名额，共 {total} 个",
       "spotsFull": "已报名 {count} 人 · 满员",
       "allSpotsTaken": "{total} 个名额已满。",
       "closesOn": "报名截止 {date}",
@@ -182,9 +184,10 @@
       "signedUpWhenWhere": "{when}，{place}",
       "waitlistLabel": "候补",
       "waitlistTitle": "你在候补名单中",
+      "heldTitle": "付清欠款即可入场",
+      "heldBody": "你还有几次活动的费用未付。转账到账后，如仍有名额，会自动为你保留位置。",
       "waitlistPositionLabel": "候补第 {position} 位，共 {total} 位"
     },
-    "loading": "场次加载中…",
     "cost": {
       "label": "预估费用",
       "emphasis": "本周费用：<amount>{value}</amount>",
@@ -204,7 +207,17 @@
       "count": "{count, plural, =0 {还没有人报名} one {# 人已报名} other {# 人已报名}}"
     },
     "payment": {
-      "etransfer": "转账至 {email}"
+      "etransfer": "转账至 {email}",
+      "sentIt": "我已转账",
+      "sentItDone": "谢谢！收到转账后会自动标记为已付。",
+      "sentItError": "保存失败，请重试。"
+    },
+    "credit": {
+      "label": "你的余额",
+      "balance": "你有 {amount} 的余额。",
+      "pay": "用余额支付",
+      "notEnough": "余额还不够支付一整次活动，会留到下次使用。",
+      "error": "余额使用失败，请重试。"
     },
     "balance": {
       "groupSessions": "羽毛球",
@@ -468,6 +481,17 @@
       "needYou": "{count} 项待处理",
       "allClear": "没有待办"
     },
+    "redeem": {
+      "title": "兑换礼品卡",
+      "help": "输入礼品卡上的兑换码，金额会存入你的余额，可用于支付活动费用。",
+      "placeholder": "XXXX-XXXX",
+      "submit": "兑换",
+      "success": "已将 {amount} 存入你的余额。",
+      "notFound": "兑换码无效，请检查后重试。",
+      "rateLimited": "先休息一下，稍后再试。",
+      "error": "暂时无法兑换，请重试。",
+      "close": "关闭"
+    },
     "settings": {
       "helpGroup": "帮助",
       "privacyGroup": "隐私",
@@ -476,6 +500,7 @@
       "newPin": "设置 PIN",
       "updatePin": "修改 PIN",
       "recoveryCode": "有恢复码？",
+      "redeemGift": "兑换礼品卡",
       "statsPrivacy": "数据与隐私",
       "statsPrivacyOn": "已开启",
       "statsPrivacyOff": "私密",
@@ -1248,7 +1273,6 @@
       "done": "完成",
       "alreadySent": "这个标签本周已经发过了，换一个。",
       "noCandidates": "打过一场之后，一起打的人会出现在这里。",
-      "loading": "加载中…",
       "candidateCount": "和你一起打过球的 {count} {count, plural, one {人} other {人}}",
       "giveCta": "送出点赞",
       "needsSignIn": "登录已过期，去「我的」重新登录后再点赞。",
@@ -1356,7 +1380,6 @@
     }
   },
   "players": {
-    "loading": "名单加载中…",
     "empty": "还没有人报名，来当第一个！",
     "upcomingSession": "本周场次",
     "waitlistHeader": "候补名单",
@@ -1658,7 +1681,7 @@
     "needsCheckIn": "做个自评，就能给你推荐球拍。"
   },
   "signedOut": {
-    "tagline": "和朋友们每周打羽毛球。",
+    "tagline": "但愿无事能打球",
     "signUp": "注册",
     "logIn": "登录",
     "back": "返回",
@@ -1769,21 +1792,26 @@
     "joinAnother": "加入其他群组",
     "createAnother": "再创建一个群组",
     "invite": {
-      "title": "邀请其他人",
-      "subtitle": "拿到链接的人都能加入，不需要审核。",
+      "title": "邀请新成员",
+      "subtitle": "每个链接只能用一次，7 天内有效。请为每位新成员单独创建并发送。",
       "linkLabel": "邀请链接",
-      "codeLabel": "或输入这个邀请码",
+      "codeLabel": "或输入此邀请码",
+      "onceUntil": "仅可使用一次，{date} 前有效。",
       "copy": "复制链接",
       "copied": "已复制",
       "share": "分享",
-      "regenerate": "换一个新链接",
-      "regenerateConfirm": "要更换链接吗？",
-      "regenerateWarning": "当前的链接和邀请码会立即失效。还没加入的人要用新的。",
-      "regenerateAction": "确认更换",
-      "regenerating": "更换中…",
+      "create": "创建邀请",
+      "creating": "创建中…",
+      "createFailed": "创建邀请失败，请再试一次。",
+      "waiting": "{count, plural, other {还有 # 个邀请待使用}}",
+      "expires": "{date} 到期",
+      "show": "查看",
+      "showAria": "查看邀请 {code}",
+      "revoke": "撤销",
+      "revokeFailed": "撤销失败，该邀请仍然有效。",
+      "none": "暂无待使用的邀请。有人想加入时再创建。",
       "cancel": "取消",
-      "loadFailed": "邀请加载失败。",
-      "regenerateFailed": "更换失败，旧链接仍然有效。"
+      "loadFailed": "无法加载邀请。"
     }
   },
   "legal": {

@@ -93,6 +93,7 @@
         "backToKit": "Pick from my equipment",
         "noRacketsYet": "Type the racket \u2014 we'll add it to your equipment.",
         "kitUnavailable": "Couldn't load your equipment. Type the racket instead.",
+        "stringsUnavailable": "Couldn't load the string list. Type the one you'd like.",
         "racketPlaceholder": "Which racket?",
         "stringPlaceholder": "Which string? e.g. BG80 white",
         "mains": "Mains",
@@ -111,7 +112,8 @@
         },
       "title": "Stringing service",
       "subtitle": "Request and track the progress of your racket here.",
-      "soon": "Coming soon"
+      "soon": "Coming soon",
+      "shopUnavailable": "Couldn\u2019t check whether the stringing service is open."
     },
     "skillDiscovery": {
       "title": "Curious if your game's improving?",
@@ -120,7 +122,7 @@
       "dismiss": "Dismiss"
     },
     "signup": {
-      "spotsLeftSuffix": "spots left",
+      "spotsLeftSuffix": "{remaining, plural, one {spot left} other {spots left}} out of {total}",
       "othersInOne": "{a} is in",
       "othersInTwo": "{a} and {b} are in",
       "othersInMany": "{a}, {b} and {count, plural, one {# other} other {# others}} are in",
@@ -146,7 +148,7 @@
       "submitting": "Signing up…",
       "cantMakeIt": "Can't make it? Cancel my spot",
       "leaveWaitlist": "Leave the waitlist",
-      "spotsRemaining": "{remaining} of {total} spots left",
+      "spotsRemaining": "{remaining, plural, one {# spot left} other {# spots left}} out of {total}",
       "spotsFull": "Signed-up: {count} · Full",
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",
@@ -182,9 +184,10 @@
       "signedUpWhenWhere": "{when} at {place}",
       "waitlistLabel": "Waitlist",
       "waitlistTitle": "You're on the waitlist",
+      "heldTitle": "Settle up to grab your spot",
+      "heldBody": "You owe for a couple of past sessions. You'll move into a spot as soon as your e-transfer lands, if there's still room.",
       "waitlistPositionLabel": "Position #{position} of {total}"
     },
-    "loading": "Loading session...",
     "cost": {
       "label": "Estimated cost",
       "emphasis": "Cost this week: <amount>{value}</amount>",
@@ -204,7 +207,17 @@
       "count": "{count, plural, =0 {No players yet} one {# player signed up} other {# players signed up}}"
     },
     "payment": {
-      "etransfer": "E-transfer to {email}"
+      "etransfer": "E-transfer to {email}",
+      "sentIt": "I\u2019ve sent it",
+      "sentItDone": "Thanks \u2014 it\u2019ll be marked paid when the e-transfer arrives.",
+      "sentItError": "Couldn\u2019t save that \u2014 try again."
+    },
+    "credit": {
+      "label": "Your credit",
+      "balance": "You have {amount} in credit.",
+      "pay": "Pay with credit",
+      "notEnough": "Your credit doesn\u2019t cover a whole session yet \u2014 it stays for next time.",
+      "error": "Couldn\u2019t use your credit \u2014 try again."
     },
     "balance": {
         "groupSessions": "Badminton",
@@ -468,6 +481,17 @@
       "needYou": "{count} need you",
       "allClear": "All clear"
     },
+    "redeem": {
+      "title": "Redeem a gift card",
+      "help": "Enter the code on your gift card. It becomes credit you can use for sessions.",
+      "placeholder": "XXXX-XXXX",
+      "submit": "Redeem",
+      "success": "{amount} added to your credit.",
+      "notFound": "That code didn\u2019t work. Check it and try again.",
+      "rateLimited": "Let's give it a rest for a bit, then try again.",
+      "error": "Couldn\u2019t redeem right now \u2014 try again.",
+      "close": "Close"
+    },
     "settings": {
       "helpGroup": "Help",
       "privacyGroup": "Privacy",
@@ -476,6 +500,7 @@
       "newPin": "New PIN",
       "updatePin": "Update PIN",
       "recoveryCode": "Have a recovery code?",
+      "redeemGift": "Redeem a gift card",
       "statsPrivacy": "Stats & privacy",
       "statsPrivacyOn": "On",
       "statsPrivacyOff": "Private",
@@ -1248,7 +1273,6 @@
       "done": "Done",
       "alreadySent": "You already sent that one this week \u2014 try a different tag.",
       "noCandidates": "Once you\u2019ve played a session, the people you played with show up here.",
-      "loading": "Loading\u2026",
       "candidateCount": "{count} {count, plural, one {person} other {people}} you\u2019ve played with",
       "giveCta": "Give kudos",
       "needsSignIn": "Your session expired \u2014 sign in again from Profile to send kudos.",
@@ -1356,7 +1380,6 @@
     }
   },
   "players": {
-    "loading": "Loading players...",
     "empty": "No one's signed up yet — be the first!",
     "upcomingSession": "UPCOMING SESSION",
     "waitlistHeader": "WAITLIST",
@@ -1769,21 +1792,26 @@
     "joinAnother": "Join another group",
     "createAnother": "Create another group",
     "invite": {
-      "title": "Invite people",
-      "subtitle": "Anyone with the link can join. There's no approval step.",
+      "title": "Invite someone",
+      "subtitle": "Each link works once and for 7 days. Make one per person and send it to them.",
       "linkLabel": "Invite link",
-      "codeLabel": "Or type this code",
+      "codeLabel": "Or they can type this code",
+      "onceUntil": "Works once, until {date}.",
       "copy": "Copy link",
       "copied": "Copied",
       "share": "Share",
-      "regenerate": "Get a new link",
-      "regenerateConfirm": "Replace the link?",
-      "regenerateWarning": "The current link and code stop working straight away. Anyone who still needs to join will need the new one.",
-      "regenerateAction": "Replace it",
-      "regenerating": "Replacing…",
+      "create": "Create an invite",
+      "creating": "Creating…",
+      "createFailed": "Couldn't create an invite. Give it another go.",
+      "waiting": "{count, plural, one {# more waiting to be used} other {# more waiting to be used}}",
+      "expires": "expires {date}",
+      "show": "Show",
+      "showAria": "Show invite {code}",
+      "revoke": "Revoke",
+      "revokeFailed": "Couldn't revoke that one. It still works.",
+      "none": "No invites waiting. Create one when someone wants to join.",
       "cancel": "Cancel",
-      "loadFailed": "Couldn't load the invite.",
-      "regenerateFailed": "Couldn't replace the link. The old one still works."
+      "loadFailed": "Couldn't load the invites."
     }
   },
   "legal": {

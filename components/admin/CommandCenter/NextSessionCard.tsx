@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { fmtSessionLabel as fmtDate, fmtDeadline } from '@/lib/fmt';
 import { shareSignup } from '@/lib/signupShare';
-import { useInviteLink } from '@/lib/useInviteLink';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
@@ -11,6 +10,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { sharedFetch } from '@/lib/sharedRead';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -76,7 +76,6 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // (it used to sit next to "Edit details") shouldn't trigger it.
   const [confirmingAdvance, setConfirmingAdvance] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
-  const { url: inviteUrl } = useInviteLink();
   const { group } = useCurrentGroup();
   const [togglingSignup, setTogglingSignup] = useState(false);
 
@@ -89,18 +88,18 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     // The old version never marked the external excursion, so iOS evicting the
     // PWA while its share sheet was open returned the admin to Home mid-task —
     // CLAUDE.md's rule that any new `navigator.share` must mark, missed here.
-    // It also said the club name out loud, and the link carries the club's
-    // invite now so the chat can forward it to someone with no account.
+    // It also said the club name out loud. The link is the plain app address:
+    // invites are one-time now, so a newcomer gets their own from the Invite
+    // card rather than from this message.
     const outcome = await shareSignup({
       groupName: group?.name,
-      inviteUrl,
       datetime: session?.datetime,
     });
     if (outcome === 'copied') {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 1500);
     }
-  }, [session?.datetime, group?.name, inviteUrl]);
+  }, [session?.datetime, group?.name]);
 
   const load = useCallback(async () => {
     // Skeleton on the first load only: a save or cover used to blink this
@@ -223,6 +222,8 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
+  // The console's RevealSlot holds this place on first load.
+  useRevealReady(!loading);
   if (loading) return <CardSkeleton height={180} />;
   if (loadError) {
     // "We could not ask" and "there is no session" look identical and mean

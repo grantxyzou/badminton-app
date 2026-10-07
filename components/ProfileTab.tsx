@@ -1,9 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
+import RedeemGiftSheet from './RedeemGiftSheet';
 import AskAccessSheet from './AskAccessSheet';
 import MigrateSheet from './MigrateSheet';
 import MigrateCodeSheet from './MigrateCodeSheet';
@@ -25,6 +26,7 @@ import { usePush } from '@/lib/usePush';
 import { isStandalone } from '@/lib/standalone';
 import { isNative } from '@/lib/native';
 import PageHeader from './primitives/PageHeader';
+import { ProfileSkeleton } from './TabFallbacks';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
@@ -34,7 +36,6 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import GroupsPage from './profile/GroupsPage';
 import SettingsList, { type SettingsRow } from './profile/SettingsList';
 import StatusBanner from './primitives/StatusBanner';
-import CardSkeleton from './primitives/CardSkeleton';
 import MemberAvatar from './primitives/MemberAvatar';
 import AvatarSheet from './profile/AvatarSheet';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
@@ -90,8 +91,11 @@ export default function ProfileTab({
   const tGroups = useTranslations('groups');
   // Multi-group: the switcher's data. Resolves to `group: null` with the flag
   // off (the endpoints 404 by design), so the row simply does not render.
-  const { group, groups, error: groupsError, refresh: refreshGroups } = useCurrentGroup();
-  const [identity, setLocalIdentity] = useState<Identity | null>(null);
+  const { group, groups, loading: groupsLoading, error: groupsError, refresh: refreshGroups } = useCurrentGroup();
+  // `undefined` = not read yet. It used to start as `null` — "signed out" — so
+  // a signed-in member's first frame was the anonymous sign-in card, before
+  // the effect below read localStorage. Not read yet renders the loading frame.
+  const [identity, setLocalIdentity] = useState<Identity | null | undefined>(undefined);
   /**
    * Which credential the anonymous card is asking for. One form is visible at a
    * time — a PIN form, an email form and two account-creation buttons stacked
@@ -123,6 +127,7 @@ export default function ProfileTab({
   const [avatar, setAvatar] = useState<MemberAvatarValue | null>(null);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
+  const [redeemOpen, setRedeemOpen] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
@@ -173,7 +178,12 @@ export default function ProfileTab({
   // button share one state and can't disagree after a toggle.
   const push = usePush();
 
-  useEffect(() => {
+  // A layout effect, not an effect: the check is synchronous, and running it
+  // after paint showed the "Add to Home Screen" row for a frame and then
+  // removed it — in the native shell and every installed PWA, i.e. most of
+  // the people who open this screen. ProfileTab is client-only (ssr: false),
+  // so there is no server render for this to disagree with.
+  useLayoutEffect(() => {
     // The native shell IS the installed app; the "Add to Home Screen" row
     // would be telling it to install itself.
     setInstalled(isStandalone() || isNative());
@@ -318,11 +328,12 @@ export default function ProfileTab({
   // and never for an admin, whose sign-in mints only the admin cookie.
   const deviceSignedOut = !!identity && authKnown && pinAuthed === false && !isAdmin;
 
-  if (identity && !authKnown && !isAdmin) {
+  if (identity === undefined || (identity && !authKnown && !isAdmin)) {
+    // The same frame the chunk fallback showed (TabFallbacks), shaped like the
+    // member page it becomes — so nothing changes until the content does.
     return (
-      <div key="profile-loading" className="motion-fade flex flex-col gap-4">
-        <PageHeader>{tNav('profile')}</PageHeader>
-        <CardSkeleton height={220} />
+      <div key="profile-loading">
+        <ProfileSkeleton title={tNav('profile')} />
       </div>
     );
   }
@@ -604,6 +615,7 @@ export default function ProfileTab({
       <GroupsPage
         onBack={() => setView('root')}
         groups={groups}
+        loading={groupsLoading}
         loadError={groupsError}
         onRetry={() => void refreshGroups()}
         // A switch re-mints both cookies, so every tab has to refetch; this
@@ -627,15 +639,19 @@ export default function ProfileTab({
   // This device: every row here can be absent (push still probing, already
   // installed, no migration), so the group hides rather than titling nothing.
   const appRows: SettingsRow[] = [
-    /* Hidden while the probe is unresolved: rendering "Off" before we
-       know would be a confirmed negative from an unknown state
-       (CLAUDE.md, "Unknown ≠ known-false"). */
-    ...(push.state.status !== 'loading'
-      ? [{
+    /* Present from the first frame, with NO status until the probe answers:
+       rendering "Off" before we know would be a confirmed negative from an
+       unknown state (CLAUDE.md, "Unknown ≠ known-false"), and hiding the row
+       instead inserted it later, pushing the rows below it down (loading
+       cascade follow-up). The row is shown for every answer, so it never
+       needed hiding — only its status did. */
+    ...([{
           icon: 'notifications',
           label: tSettings('notifications'),
           meta:
-            push.state.status === 'on'
+            push.state.status === 'loading'
+              ? undefined
+              : push.state.status === 'on'
               ? tPush('metaOn')
               : push.state.status === 'denied'
                 ? tPush('metaBlocked')
@@ -643,8 +659,7 @@ export default function ProfileTab({
                   ? undefined
                   : tPush('metaOff'),
           onClick: () => setPushOpen(true),
-        }]
-      : []),
+        }]),
     ...(!installed
       ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
       : []),
@@ -777,8 +792,14 @@ export default function ProfileTab({
             label: tSettings('recoveryCode'),
             onClick: () => setEnterCodeOpen(true),
           },
+          // Store credit (docs/plans/payments.md): a gift card becomes credit
+          // on the Home balance. Flag-gated; the route 404s with it off.
+          ...(isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')
+            ? [{ icon: 'payments', label: tSettings('redeemGift'), onClick: () => setRedeemOpen(true) }]
+            : []),
         ]}
       />
+      <RedeemGiftSheet open={redeemOpen} onClose={() => setRedeemOpen(false)} />
 
       {/* Four groups, each one question: who am I here (ACCOUNT, above), what
           do others see (PRIVACY), how does this device behave (APP), and where

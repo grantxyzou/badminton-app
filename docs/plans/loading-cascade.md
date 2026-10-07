@@ -1,0 +1,103 @@
+# Loading cascade
+
+**Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); follow-on to `docs/plans/motion-pass.md`; requested directly by the owner on 2026-10-03
+**Status:** shipped 2026-10-05 (phases 1–5)
+**Review on:** 2026-10-24 — the kill criterion, on a PHONE: record a cold and a warm load of Home and Stats. Does any card appear above one already on screen, and does a warm tab switch feel slower than before? (Phases 2–5 all landed: #510, #512, #513, #515, follow-ups #538.)
+
+## Problem
+
+Grant, 2026-10-03: "all of the loading states review them and update the loading and display order." Asked which "order" he meant, he chose **arrival choreography**: cards should arrive in a deliberate top-to-bottom order on skeletons that match the final layout, so nothing jumps.
+
+No player has reported it. A read-only audit of every loading branch (HEAD `09478c9`) found:
+
+- **Cards arrive in network order.** Independent fetches resolve whenever they like, and many cards render `null` until then, so they INSERT above or between cards already on screen. Worst cases: Stats → You (the trend skeleton lands above WhereYouSit's, then the greeting lands at the very top), Gear (a NextRacket skeleton lands mid-stack), Home's account group (three cards in arbitrary order).
+- **Skeletons don't match.** Stringing, Stats and Profile show Home's `TabSkeleton` as their chunk fallback; Admin shows nothing at all. Home's own skeleton reserves an announcement slot that may not exist and renders the full-size header while the loaded page uses the compact one, so the title shrinks at reveal. `AdminTabSkeleton` uses a different header component and heights from the console it stands in for.
+- **Loaders stack.** Cold start cuts from the splash with no fade. A deep link to Stats shows Home's skeleton, the Home-shaped chunk fallback, a blank frame, then card skeletons.
+- **Some loading states lie** (the forbidden "lying empty state"): Stringing says "Coming soon" while (and if it fails) loading; Payments says "No active players yet" before players load; Announcements says "No announcements posted" while loading.
+- **Reduced motion keeps the splash forever if hydration stalls**: the reduced-motion wildcard zeroes the splash's 5.4s failsafe animation.
+
+## Kill criterion
+
+This failed if, after phase 2, a cold load of Home on a phone still shows any card appearing ABOVE one already on screen, or if the reveal makes a warm tab switch feel slower (content that was already cached waits for a stagger). Checked by recording a cold and a warm load on device.
+
+## Non-goals
+
+- Changing what is fetched or when (no prefetching, no fetch reordering, no cache changes). Only how and in what order content is revealed.
+- Keeping tabs mounted across switches. Remount-on-switch is the reason revisits show skeletons; changing it is a separate decision with memory costs.
+- Rearranging which cards sit on which screen.
+
+## Decisions
+
+- **Ordered cascade over one gate per screen.** A per-screen gate is simpler but makes the slowest fetch hold the whole screen; the cascade reveals each card as soon as it AND everything above it are ready, so the top of the screen is never held up by the bottom.
+- **Opacity only, 150ms, 40ms stagger capped at 4 slots.** Tab switches happen tens of times a day; motion has to be near-invisible at that frequency (`emil-design-eng`: frequency decides). Matches the motion-pass rule that content arriving into a surface already on screen does not rise.
+- **Instant data skips the animation.** A slot whose data is ready within 100ms of the screen mounting renders without a fade, so a warm switch is not slowed by choreography.
+- **An empty slot collapses through `<Collapse>`** rather than vanishing, because a skeleton that disappears in one frame is the same jump the cascade exists to remove.
+- **The card stays MOUNTED behind its skeleton** (hidden), and reports readiness itself with `useRevealReady()`. The first cut rendered the placeholder INSTEAD of the card, so a card that fetches inside itself — most of the ones the audit named — would never have mounted, never fetched, and kept its skeleton forever. Lifting every fetch into the screen was the alternative, and is a non-goal.
+- **"Instant" is time-based: ready within 100ms of the screen mounting.** The first cut meant "ready on first render", which never happens in practice (tabs remount on every switch and data always arrives after an async fetch), so every warm switch would have played the stagger — this plan's own kill criterion.
+- **A staggered slot keeps its skeleton until its turn.** Holding the card at opacity 0 for its delay showed a blank gap where the skeleton had just been.
+- **The splash spinner is stopped after load.** Fading the splash to `visibility: hidden` instead of `display: none` left its spinner running invisibly for the whole session (measured: `spin` still "running" after hydration).
+
+### Phase 2 — Home (2026-10-03)
+
+- **The week stays ONE slot.** Its five reads already land together behind one `Promise.all`; splitting it into tiles / announcement / sign-up slots would add choreography to data that has no order to choreograph.
+- **The skeleton draws the server-rendered announcement for real.** `app/page.tsx` reads it on the server precisely because it is the LCP element, and the old skeleton hid it behind a shimmer until the client re-fetched it. When the server found none, no slot is reserved.
+- **The skill prompt and the credential banner reserve NO space** (`placeholder={null}`): both are usually absent, and a skeleton that usually closes is its own jump. They still hold their ORDER — nothing below them shows before they have answered.
+- **Home waits for the starting tab** (`deferFetch`). A child's effects run before its parent's, so Home fired five requests before the shell's post-mount restore moved the screen to another tab.
+- **Tile skeletons 108 → 133.** Re-measured: the club address and a long date both wrap to two lines on a phone, so 108 jumped every week.
+- **The release-notes line still appears with the week**, not before it: it comes from the same gate, and it sat in the loaded branch before too.
+
+### Phase 3 — Stats (2026-10-03)
+
+- **Each register is its own group** (You, Play, Equipment), in a flex column: a closed slot leaves no gap, which `space-y` would not guarantee.
+- **A slot detects an empty card from the DOM.** With `canBeEmpty`, a card that is READY and rendered nothing is empty — no card restates its own "nothing to show" conditions (WhereYouSit alone has five). Before ready, rendering nothing is loading, never emptiness.
+- **Ready means an ANSWER, not `!loading`.** Found by the slow-network check, not by any test: before the active name resolves, `useInsight` reports `loading: false` with nothing asked, so SummaryGreeting reported "ready, empty", let the whole register through, and then landed on top of it 2.5s later. SummaryGreeting and KudosReceivedCard (the two that read the name themselves) now wait for `resolved` and a real answer; `SummaryGreeting.reveal.test.tsx` holds it.
+- **A same-member check-in reload keeps its data** (`useCheckIn`). Saving a check-in used to drop SkillTrendCard and WhereYouSitCard back to skeletons.
+- **StringTensionCard waits for `suppressionKnown`** — whether the string pairing outranks it — instead of appearing and then vanishing; it also reads the level through `sharedRead`, one request shared with OverviewStrip.
+- **GiveKudosCard's "Loading…" is a shimmer line**; the `stats.kudos.loading` copy is deleted in both locales.
+- **Placeholders measured on a data-rich member** (Lin, the seed): You 94 / 320 / 192 / 140, Play 201 / 212 / 112, Equipment 226 / 226 / 257 / 160. The trend card stays 320 — it runs 240 (no check-ins) to 680+ (with data), and the empty case is the first impression.
+
+### Phase 4 — Profile and Stringing (2026-10-04)
+
+- **Profile's identity has a third state, "not read yet".** It started as `null` ("signed out"), so a signed-in member's first frame was the anonymous sign-in card until an effect read localStorage. `ProfileTab.firstFrame.test.tsx` looks at that frame with `renderToString`, the one render that runs no effects.
+- **Profile's skeleton is the page's shape** (`ProfileSkeleton`: identity card 84, then two labelled settings groups 195 and 97), shared by the chunk fallback and the tab's own loading frame. Measured in a browser: every block lands where the real page's does.
+- **GroupsPage takes `loading`.** `groups` is `[]` until the read answers, and the page drew it as a list, with "you're only in one club" under it.
+- **The stringing shop has three states, not two.** `useStringingShop` returned `null` for both "not answered" and "could not read", and the card showed "Coming soon" for both — a shop that could not be read said it was closed, and kept saying so. Now: skeleton, error with Retry, and "Coming soon" only when the server says closed. The safety half is unchanged — no request button on anything but a confirmed open shop.
+- **The pricing disclosure shows a shimmer line while prices load** instead of opening onto nothing.
+- **The Stringing tab is a RevealGroup**: the shop card, then the stringer's queue (`canBeEmpty` — it exists only for the stringer). `StringerJobsCard` leaves the loading-canary backlog.
+- **Done in the follow-up (2026-10-06):** the push row in Profile's settings appeared after its probe (inserting a row); the request sheet treated "strings loading" like "strings failed". See "Follow-ups" below.
+
+### Phase 5 — Admin (2026-10-05)
+
+- **The console is one RevealGroup**, top to bottom: access requests, next session, the tiles, the e-transfer inbox, payments, invite, sign-in readiness, the settings list. The usually-empty cards reserve no space but keep their order; the settings list is static but slotted LAST, so none of them can push it down by arriving.
+- **The anomaly toasts stay outside the group.** They render into a fixed `.toast-stack` and hold no place in the page; they no longer blink off and back on with every refresh (only the first load hides them). They are the loading canary's one exemption, with that reason.
+- **One header, one skeleton.** The auth-check frame, the chunk fallback and the console all use the TopBar (it used to switch from a page title to a back bar as the console loaded), and the admin tab is no longer BLANK while the shell decides who is an admin. `AdminTabSkeleton` and the console's slot placeholders share one set of measured heights (274 / 109 / 351) and gaps: in a browser the frame's blocks sit at 95 / 389 / 518 and the console's at 95 / 389 / 517.
+- **Two bugs in the primitive, both found by the browser trace, not the tests.** (1) React's dev double-mount unregistered the slots one at a time, re-ordering after each; with only the always-ready settings slot left registered, it revealed — latched — above a screen of skeletons. Re-ordering after an unregister now waits a microtask. (2) A slot with no placeholder was still a flex item while pending, so it took a gap and moved the column 20px. It is now hidden until it has something to show. Both have tests.
+- **Lying states:** Payments said "No active players yet" before the players answered (and showed the previous session's rows unmarked during a chip switch — now dimmed with `aria-busy`); Announcements said "No announcements posted" before the list was read. RosterPage and ReleasesView no longer drop back to a skeleton after every save. `SignInReadinessCard` treats a malformed body as a load error instead of crashing the console.
+- **The canary is strict.** Its backlog is empty and gone; "Loading…" copy (`home.loading`, `players.loading`, both unused) is deleted in both locales.
+
+### The kill criterion fired (2026-10-06)
+
+Grant, on his phone: "A little slow." The ordering rule was too strict — a card waited for EVERY card above it, so on Stats the trend, where-you-sit and kudos cards sat behind the AI greeting's live model call (once per member per session) with their own data already in hand; on Admin the static settings menu waited for the payments list; on Home the balance waited for the skill-rating check. None of that was protecting anything: a card whose skeleton already holds its box cannot shove the cards below it when it fills in.
+
+- **Revised rule:** only a SPACE-LESS slot (no placeholder — a card that is usually absent) holds the cards below it, and only for `SPACELESS_WAIT_MS` (300ms). Measured on the local mock: Stats with the greeting 3s late now shows the trend at 0.9s (was 3.7s); Admin with payments 3.5s late has the settings menu tappable at 1.3s (was 3.5s+).
+- **A card that always renders something gets a box.** The admin e-transfer inbox was space-less and, under the old rule, held the payments list; it has a measured 190px placeholder now (its "Set up" state — re-measure the configured card when the Gmail script is installed).
+- **Trade-off accepted:** a usually-absent card that answers after 300ms *and* exists nudges the cards below it. Rare, slow-network only, better than everyone waiting.
+- The Review-on question stands: the same two checks on a phone, now against this rule.
+
+### Follow-ups (2026-10-06)
+
+- **Profile's Notifications row is there from the first frame,** with no status until the push probe answers. It was hidden while probing and inserted afterwards, pushing the rows below it down; only its STATUS ever needed withholding ("Off" before we know is a confirmed negative from an unknown state).
+- **The "Add to Home Screen" row reads the platform before paint** (`useLayoutEffect`). Run after paint, it showed for a frame and then vanished — in the native shell and every installed PWA, which is most of the people who open Profile.
+- **The request sheet's string list has three states.** Loading shows the same disabled placeholder the racket field uses; failing says the list could not load (it said "Grant hasn't listed what he stocks"); only a loaded-and-empty list says that.
+- **RosterPage treats a failed members read as an error** with Try again. It became `[]`, an empty roster, on the screen an admin manages people from.
+
+## Shape
+
+| Piece | File |
+|---|---|
+| Reveal primitive | `components/primitives/Reveal.tsx` |
+| Per-tab chunk fallbacks (`StringingFallback`, `StatsFallback`, `ProfileFallback`, `AdminFallback`) | `components/TabFallbacks.tsx`, wired in `components/HomeShell.tsx` |
+| Splash fade + reduced-motion failsafe | `app/globals.css` — since adopted and extended by the launch screen (#511, `docs/plans/launch-screen.md`) under `html[data-launch]`; the spinner-stop rule left with the spinner |
+| Canaries | `__tests__/components/Reveal.test.tsx`, `__tests__/tab-fallback-canary.test.ts`, `__tests__/design-canary.test.ts`, `__tests__/loading-canary.test.ts` (ratchet — each phase deletes its entries) |
+| The rule | CLAUDE.md → Design System → Motion system → "Loading" |
+| Spec | `docs/superpowers/specs/2026-10-03-loading-cascade-design.md` |

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
+import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import { fmtShortDate } from '@/lib/fmt';
@@ -55,6 +56,9 @@ export default function RosterPage({ onBack }: RosterPageProps) {
   const [lastSessions, setLastSessions] = useState<Map<string, string>>(new Map());
   const [adminName, setAdminName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** The members read failed. It used to become `[]` — an empty roster, which
+   *  is a confident wrong answer on the screen an admin manages people from. */
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
 
@@ -80,8 +84,11 @@ export default function RosterPage({ onBack }: RosterPageProps) {
     open: boolean; playerName: string; code: string; expiresAt: number;
   }>({ open: false, playerName: '', code: '', expiresAt: 0 });
 
+  // Only the FIRST load shows the skeleton. `load()` runs again after every
+  // save and deactivate, and setting `loading` there flipped the whole page
+  // back to a skeleton after each one (the refetch rule). `loading` starts
+  // true, so nothing needs setting here at all.
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const [membersRes, aliasesRes, recentRes, adminRes] = await Promise.all([
         fetch(`${BASE}/api/members`, { cache: 'no-store' }),
@@ -89,11 +96,16 @@ export default function RosterPage({ onBack }: RosterPageProps) {
         fetch(`${BASE}/api/sessions/recent?limit=8`, { cache: 'no-store' }),
         fetch(`${BASE}/api/admin`, { cache: 'no-store' }),
       ]);
-      const m = membersRes.ok ? await membersRes.json() as Member[] : [];
+      // The roster itself must load: a failed read is an error, never "no
+      // members". (Aliases and attendance below stay best-effort — they
+      // decorate rows, and the rows are what this page is for.)
+      if (!membersRes.ok) throw new Error(`members ${membersRes.status}`);
+      const m = await membersRes.json() as Member[];
+      if (!Array.isArray(m)) throw new Error('members: malformed');
       const a = aliasesRes.ok ? await aliasesRes.json() as Alias[] : [];
       const recent = recentRes.ok ? await recentRes.json() as Array<{ sessionId: string; date: string }> : [];
       const adminInfo = adminRes.ok ? await adminRes.json() as { authed?: boolean; name?: string } : null;
-      setMembers(Array.isArray(m) ? m : []);
+      setMembers(m);
       setAliases(Array.isArray(a) ? a : []);
       setAdminName(adminInfo?.authed && typeof adminInfo.name === 'string' ? adminInfo.name : null);
 
@@ -140,6 +152,11 @@ export default function RosterPage({ onBack }: RosterPageProps) {
       }
       setPresence(map);
       setLastSessions(lastMap);
+      setLoadError(false);
+    } catch {
+      // Replaces the page (the refetch rule): stale rows never stand in for a
+      // read that failed.
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -384,6 +401,24 @@ export default function RosterPage({ onBack }: RosterPageProps) {
       <div className="motion-fade space-y-3">
         <AdminBackHeader onBack={onBack} title="Roster" />
         <AdminPageSkeleton />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="motion-fade space-y-3">
+        <AdminBackHeader onBack={onBack} title="Roster" />
+        <div style={{ padding: 'var(--space-9) var(--space-7)' }}>
+          <ErrorState
+            message="Couldn't load the roster."
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+                Try again
+              </button>
+            }
+          />
+        </div>
       </div>
     );
   }

@@ -1,0 +1,156 @@
+# Payments: the system knows who paid
+
+**Track:** admin cost-automation (North Star pillar 3). Phase 1 moves no money: it reads the
+notifications the admin already receives. Phase 3 (cards) WOULD be "payments processing", a locked
+ROADMAP non-goal, and needs that block changed on purpose before it starts.
+**Status:** in-flight
+**Review on:** 2026-11-07 — of the e-transfers received since the flag went on, what share auto-matched, and is the "Needs a look" queue staying short?
+
+## Problem
+
+Grant, 2026-10-03: "Currently we have etransfer which is admin send to a whatsapp group that the session
+costed X then everyone e-transfer me I get an email then manually goes to admin tick them off one by one."
+
+The information the app needs already arrives — as an Interac email in the admin's Gmail. The app just
+never sees it, so a person re-types it, one pill at a time, every week.
+
+Also from the same message: late payers ("access if we want late payment penalization"), and money that
+moves outside an e-transfer ("Bruce paid for my session for sat") having nowhere to be recorded.
+
+## Kill criterion
+
+Four weeks after the flag goes on: **at least 70% of received e-transfers auto-matched** (status
+`matched`, `matchedBy: 'auto'`). Below that, the admin is still ticking most of them by hand — through a
+new queue instead of the old pills — and the matcher (or the alias coverage it leans on) is the thing to
+fix before anything in Phase 2 starts.
+
+## Non-goals (this phase)
+
+- Card payments, Stripe, Apple Pay. (Phase 3, and a ROADMAP change first.)
+- A ledger, account credit, overpayment balances, gift cards. (Phase 2 / 4.)
+- Money late fees. Late payment gets a soft hold, not a charge (decided below).
+- Reading Gmail from the server. The admin's own Google account does the reading.
+
+## Decisions
+
+- **Apps Script in the admin's Gmail, not a Gmail API connection.** Reading Gmail needs the restricted
+  `gmail.readonly` scope. On the OAuth client the app already uses for member sign-in that means Google
+  verification and a security assessment, or a "Testing" app whose refresh token expires every 7 days — a
+  matcher that silently stops weekly. A script runs as the admin, stores no token, costs nothing, and
+  scales per club: each club's admin installs it with their own key.
+- **The script forwards; the app parses.** The script sends the raw subject/body/headers. Interac's
+  wording changes; a parser fix should be a deploy, not "please re-paste the script".
+- **Anti-spoof is DKIM, read from Google's own `Authentication-Results`.** Anyone can mail the admin a
+  forged `From: notify@payments.interac.ca`, and Gmail's `from:` search matches the header. Only a message
+  whose topmost `Authentication-Results` (the one `mx.google.com` adds; anything below it was written by the
+  sender) shows `dkim=pass` for an `interac.ca` domain can auto-match. Everything else waits for a person.
+- **Never guess with money.** Auto-match only on an authenticated email, an unambiguous person, and an
+  amount equal to one owed line, the oldest *k* lines, or the full balance. Over/under-payments, two
+  candidate people, unknown senders → "Needs a look".
+- **Candidates are what Home shows.** Sessions and finished stringing jobs together, from the same function
+  `/api/players/unpaid` uses — a player who owes $12 + $30 sends $42.
+- **`Player.paid` stays the truth every reader uses.** The match writes `paid` plus additive
+  `paidAt` / `paidVia` / `paymentId`. No reader of `paid` changes.
+- **Late payment: a soft hold, no fee — OFF until the admin switches it on.** A member owing for ≥ 2
+  *finalized* (settled) sessions signs up onto the waitlist with a reason, until they settle. Three
+  refinements after review, before anything shipped: (1) it is a separate switch on the admin card, not
+  part of the flag, and the card shows who it WOULD hold today before it is pressed — production carries
+  months of hand-ticked rows, and turning it on with the inbox would have waitlisted people for debts paid
+  in cash; (2) unsettled sessions (a live estimate) do not count; (3) a line the member marked "I've sent
+  it" does not count, so a slow match never holds the people who paid. A payment releases the hold and
+  promotes them only into a spot no earlier waitlister is waiting for. Reminders (push, no amount on the
+  lock screen) are Phase 1b — see the Roadmap.
+
+## What a real notification settled (2026-10-03)
+
+Grant shared a real Autodeposit notification (Wealthsimple). It confirmed the subject wording
+("You've received $15.75 from CHEUK SHAN CHUNG and it has been automatically deposited."), the sender
+address `notify@payments.interac.ca` with the SENDER's name as its display name, and a "Transfer
+Details" block carrying `Message:`, `Reference Number:`, `Sent From:` and `Amount:`. Two decisions
+followed:
+
+- **Dedupe on Interac's Reference Number**, not the Message-ID — two notices about one transfer are
+  one payment. Only an authenticated email may claim a reference, so a forgery cannot squat one.
+- **The memo is a first-class clue.** The memo read "BPM Oct 1 - Gary" — the club's own receipt template
+  (`{group} {date} - {name}`) — from a sender whose legal name was something else. A memo whose tail is
+  EXACTLY a roster name adds that person as a candidate, so a member who uses the template matches on
+  their very first payment, before any alias exists. When the memo names someone other than the
+  sender's known identity ("Bruce paid for Gary"), that is two candidates and the admin decides.
+
+**Headers, confirmed (2026-10-03).** "Show original" on a second real notification:
+`Authentication-Results: mx.google.com; dkim=pass header.i=@payments.interac.ca …; dkim=pass
+header.i=@amazonses.com …; spf=pass …; dmarc=pass (p=REJECT …) header.from=payments.interac.ca`.
+Interac sends through Amazon SES but signs with its own key too, and its DMARC policy is REJECT — so
+the anti-spoof check passes real mail and nothing forged can carry that signature. Raw headers also
+hold an `ARC-Authentication-Results` line ABOVE it; the script matches lines that START with
+`Authentication-Results:`, so it takes the right one. The plain-text part is one `Label: value` per
+line, with no `Message:` line when the sender typed none. Nothing is left open on the email shape.
+
+## Roadmap
+
+**Phase 1b — reminders. SHIPPED 2026-10-05.** Push at settle +3 and +7 days, then silence; no amount in
+the body; only finalized lines, never one the member self-reported, never one settled more than 30 days
+ago (so switching it on cannot wake hand-ticked history); one push per person per run. OFF by default
+with a "today it would nudge…" preview, like the hold. **The trigger is the club's own Gmail script, not
+a GitHub Action** (the earlier plan): the script already holds the club's key and runs on a timer, so a
+daily `POST /api/payments/remind` needs no new secret and is per-club by construction — a GitHub Action
+would have needed a deployment-wide secret and a list of clubs. Cost: admins re-paste the script once.
+The card warns when reminders are on and the script has not called in 2.5 days.
+
+**Phase 2 — the ledger ("one cost system").** Append-only `ledgerEntries` (never upserted, like `events`):
+`charge` (session share, stringing, late fee), `payment` (e-transfer, card, cash), `credit` (top-up, gift
+card, overpayment), `transfer` (payer ≠ beneficiary — "Bruce paid Grant's Saturday"). Balance = Σ entries.
+`Player.paid` and `StringingJob.paidAt` become projections written when allocations cover a charge; settle
+auto-applies available credit. An overpayment stops being a "Needs a look" dead end and becomes credit.
+
+**Store credit + gift cards — SHIPPED 2026-10-06, ahead of the gate, by Grant's decision** ("without
+the match rate can we have the gift card, store credit idea quickly? But not throw away work"). Built as
+the FIRST SLICE of Phase 2, not beside it: an append-only `ledger` container (credit grants, gift
+redemptions, spends, refunds) whose balance is a sum, so the full ledger adds session and payment entry
+kinds to the same rails instead of replacing anything. Scope Grant chose: admin gives (or takes back)
+credit; admin mints single-use gift codes (`BPM-XXXX-XXXX`, only the hash stored); members redeem in
+Profile and "Pay with credit" on Home. NOT included: auto-applying credit at settle, overpayment → credit,
+partial use (credit pays a line only if it covers it in full), Apple Wallet. Idempotence is in the ids:
+`gift:<codeHash>` and `spend:<lineRef>` are created, never upserted, so a double tap collides on insert.
+
+**Phase 3 — cards** (needs the ROADMAP non-goal changed first). Stripe Checkout with Apple/Google Pay;
+webhook → ledger `payment`. In the native app this is a real-world service, so App Store guideline
+3.1.3(e) permits external payment — no in-app purchase. One club: a plain Stripe account. Many clubs:
+Stripe Connect, so one club's money never lands in another's account.
+
+**Phase 4 — store credit and gift cards.** A code redeems to a ledger `credit`; "Bruce gave Grant a
+session" is a `transfer`. Apple Wallet pass (PassKit, Pass Type ID cert on the existing developer account)
+showing the balance — last. Ontario: gift cards may not expire.
+
+### Card cost analysis (for the Phase 3 decision)
+
+$12 share, ~12 players × 50 sessions = 600 payments/yr (~$7,200). Stripe Canada 2.9% + $0.30; Stripe keeps
+the fee on a refund; a dispute costs ~$15.
+
+| Model | Player pays | Club nets | Fee / session | Fees/yr if everyone used cards | Carried by |
+|---|---|---|---|---|---|
+| E-transfer (today) | $12.00 | $12.00 | $0 | $0 | nobody |
+| Per session, club absorbs | $12.00 | $11.35 | $0.65 (5.4%) | ~$389 | club |
+| Per session, payer covers | $12.67 | $12.00 | $0.67 (5.6%) | ~$400 | player |
+| $40 top-up, payer covers | ~$12.45 | $12.00 | $0.45 (3.7%) | ~$270 | player |
+| $100 top-up, payer covers | ~$12.40 | $12.00 | $0.40 (3.3%) | ~$238 | player |
+
+At a realistic 30% card share: absorbing costs the club ~$117/yr; top-ups cost card users ~$70/yr between
+them. Top-ups also create a liability (unspent balance is owed back when someone leaves). Surcharging is
+legal in Canada with disclosure, except Quebec. Leaning: e-transfer stays the free default; cards as
+top-ups ≥ $40 with the payer covering the fee.
+
+## Shape
+
+| Piece | File |
+|---|---|
+| Interac email → `{sender, amount, memo, authenticated}` | `lib/etransferParse.ts` |
+| Who and which lines (pure) | `lib/etransferMatch.ts` |
+| What a person owes (shared with `/api/players/unpaid`) | `lib/owedBalance.ts` |
+| Ingest, key, assign, mark paid | `lib/paymentsInbox.ts` |
+| Script → app | `POST /api/payments/etransfer` |
+| Admin queue, assign, key | `/api/admin/payments`, `/api/admin/payments/assign`, `/api/admin/payments/key` |
+| "I've sent it" | `POST /api/payments/self-report` |
+| Reminders (who, when, send) | `lib/paymentReminders.ts`, `POST /api/payments/remind` |
+| Store credit, gift cards | `lib/storeCredit.ts`; `/api/credit{,/redeem,/spend}`, `/api/admin/credit`, `/api/admin/giftcards` |
+| The script admins paste | `public/payments/apps-script.gs` (served at `/bpm/payments/apps-script.gs`, so the setup sheet can copy it) |

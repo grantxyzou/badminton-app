@@ -10,6 +10,7 @@ import { adminAddToRoster } from '@/lib/roster';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 import { defaultMaxPlayers } from '@/lib/defaults';
+import { signupHeldForUnpaid, releaseHoldIfSettled } from '@/lib/paymentsInbox';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, membersOnlyOn, unauthorized } from '@/lib/auth';
@@ -511,6 +512,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Session is full' }, { status: 409 });
     }
 
+    // The soft hold (docs/plans/payments.md): owing for too many past sessions
+    // puts a sign-up on the waitlist instead of in a spot. Admins adding
+    // someone bypass it; it fails open on a read error.
+    const heldForUnpaid =
+      isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && !admin && !!matchedMember
+        ? await signupHeldForUnpaid(scope, matchedMember.id)
+        : false;
+    const startWaitlisted = (isFull && joinWaitlist) || heldForUnpaid;
+
     const deleteToken = randomBytes(16).toString('hex');
 
     // If a soft-deleted record exists for this name, restore it instead of creating a new one
@@ -523,7 +533,8 @@ export async function POST(req: NextRequest) {
         removed: false,
         removedAt: undefined,
         cancelledBySelf: undefined,
-        waitlisted: isFull && joinWaitlist ? true : false,
+        waitlisted: startWaitlisted,
+        heldForUnpaid: heldForUnpaid ? true : undefined,
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
         ...(pinHash ? { pinHash } : {}),
       };
@@ -556,7 +567,8 @@ export async function POST(req: NextRequest) {
       deleteToken,
       paid: false,
       removed: false,
-      waitlisted: isFull && joinWaitlist ? true : false,
+      waitlisted: startWaitlisted,
+        heldForUnpaid: heldForUnpaid ? true : undefined,
       ...(matchedMember ? { memberId: matchedMember.id } : {}),
       ...(pinHash ? { pinHash } : {}),
     };
@@ -847,6 +859,17 @@ export async function PATCH(req: NextRequest) {
     const updates: Record<string, unknown> = {};
     if (typeof body.paid === 'boolean') {
       updates.paid = body.paid;
+      // How and when (docs/plans/payments.md). Un-paying clears both, and
+      // the e-transfer link with them, so a stale paymentId cannot claim a
+      // row nobody has paid.
+      if (body.paid === true && existing.paid !== true) {
+        updates.paidAt = new Date().toISOString();
+        updates.paidVia = 'manual';
+      } else if (body.paid === false) {
+        updates.paidAt = undefined;
+        updates.paidVia = undefined;
+        updates.paymentId = undefined;
+      }
       // Mutex: setting paid:true clears writtenOff. Existing behavior
       // when only paid is sent.
       if (body.paid === true && typeof body.writtenOff !== 'boolean') {
@@ -856,6 +879,9 @@ export async function PATCH(req: NextRequest) {
     }
     if (typeof body.removed === 'boolean') updates.removed = body.removed;
     if (typeof body.waitlisted === 'boolean') updates.waitlisted = body.waitlisted;
+    // Promoting by hand ends the unpaid hold: the row is no longer held, and a
+    // stale flag would let a later payment treat it as still waiting.
+    if (body.waitlisted === false) updates.heldForUnpaid = undefined;
     if (typeof body.writtenOff === 'boolean') {
       updates.writtenOff = body.writtenOff;
       // Mutual exclusion: writtenOff:true forces paid:false. If the client
@@ -890,6 +916,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await scope.upsert('players', { ...existing, ...updates });
+    if (updates.paid === true && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && typeof existing.memberId === 'string') {
+      await releaseHoldIfSettled(scope, existing.memberId);
+    }
     return NextResponse.json(publicPlayer(updated));
   } catch (error) {
     console.error('PATCH player error:', error);
@@ -956,8 +985,9 @@ export async function DELETE(req: NextRequest) {
     if (trimmedName.length > 50) {
       return NextResponse.json({ error: 'Name too long' }, { status: 400 });
     }
-    // Require either admin cookie or a deleteToken for self-cancellation
-    if (!isAdmin && !deleteToken) {
+    // Self-cancel needs a credential: the admin cookie, the row's deleteToken,
+    // or the member's own `member_session` (checked below, once the row is known).
+    if (!isAdmin && !deleteToken && !verifyMemberAuth(req)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -975,10 +1005,37 @@ export async function DELETE(req: NextRequest) {
 
     const player = resources[0];
 
-    // Non-admin must supply a token that matches the stored token
+    /**
+     * A NON-ADMIN CANCELS WITH THE ROW'S TOKEN OR AS THE ROW'S OWN MEMBER.
+     *
+     * The `deleteToken` lives in ONE browser's localStorage — the one that
+     * signed up. Before this route accepted `member_session`, anybody who
+     * signed up in Chrome and opened the installed app, switched phones,
+     * cleared storage, or was added by an admin was signed in and could not
+     * give their spot back: "Couldn't cancel" on every tap. Admins never saw
+     * it, because their cookie skips this block entirely — which is why the
+     * report was "works for me, not for anyone else".
+     *
+     * The member path re-reads the membership (`requireGroupMember`), so a
+     * removed member's 30-day cookie is not enough, and it matches on the
+     * row's `memberId` when the row carries one — a name is only a fallback
+     * for a row written before memberIds were stamped, and it is the verified
+     * CURRENT name, never the one in the body.
+     */
     if (!isAdmin) {
-      if (!player.deleteToken || !deleteToken || player.deleteToken.length !== deleteToken.length || !timingSafeEqual(Buffer.from(player.deleteToken), Buffer.from(deleteToken))) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const tokenOk = !!player.deleteToken && !!deleteToken
+        && player.deleteToken.length === deleteToken.length
+        && timingSafeEqual(Buffer.from(player.deleteToken), Buffer.from(deleteToken));
+      if (!tokenOk) {
+        const member = await requireGroupMember(req);
+        const owns = !!member && member.groupId === scope.groupId && (
+          typeof player.memberId === 'string' && player.memberId
+            ? player.memberId === member.memberId
+            : member.name.toLowerCase() === trimmedName.toLowerCase()
+        );
+        if (!owns) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
       }
     }
 

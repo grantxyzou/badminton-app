@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import InviteShare from '@/components/onboarding/InviteShare';
-import { useInviteLink } from '@/lib/useInviteLink';
+import ListRow from '@/components/primitives/ListRow';
+import { useInvites, type Invite } from '@/lib/useInvites';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
+import { useRevealReady } from '@/components/primitives/Reveal';
 
 interface Props {
   /** Only rendered for an admin of the current club; the endpoint enforces it too. */
@@ -14,37 +16,42 @@ interface Props {
 }
 
 /**
- * The admin's invite card: the club's link and code, and the one way to replace
- * them.
+ * The admin's invite card (docs/plans/one-time-invites.md): make a link for
+ * one person, send it, and see which links are still waiting to be used.
  *
- * REGENERATE IS DESTRUCTIVE AND ASKS FIRST. It is the club's only revocation —
- * there is no TTL and no per-person invite — so replacing the link is the whole
- * mechanism for "that link got out". It is also irreversible and silent: nobody
- * can be told which old links are still circulating, and anyone mid-join is cut
- * off. A one-tap regenerate next to a copy button would be a rake to step on.
+ * Each invite is a link and a code that work ONCE, for seven days. So the
+ * card is a verb first — "Create an invite" — and the newest one is shown in
+ * full with Copy and Share, because the admin is about to send it. Older
+ * unused ones sit in a short list below with a Revoke, which is no longer a
+ * rake to step on: revoking one link cuts off one person who has not used it
+ * yet, not a season's worth of a group chat.
  *
- * The confirmation is INLINE rather than a nested sheet: this card already lives
- * inside the Command Center, and a sheet over a sheet is the pattern the back
- * button handles worst.
- *
- * A load failure renders `ErrorState`, not an empty card. An invite card
- * showing nothing reads as "your club has no link", which would send an admin
- * looking for a setting that does not exist.
+ * The weekly "Share sign-up link" on the Next session card carries NO invite
+ * any more: a one-time link in a chat is used up by the first tap.
  */
 export default function InviteCard({ enabled = true, groupName }: Props) {
   const t = useTranslations('groups.invite');
   const tGroups = useTranslations('groups');
-  const { invite, loading, error, busy, regenerate, reload } = useInviteLink(enabled);
-  const [confirming, setConfirming] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const { invites, loading, error, busy, create, revoke, reload } = useInvites(enabled);
+  const [latest, setLatest] = useState<Invite | null>(null);
+  const [failed, setFailed] = useState<'create' | 'revoke' | null>(null);
 
+  // The console's RevealSlot holds this place until the list has answered.
+  useRevealReady(!enabled || !loading);
   if (!enabled) return null;
 
-  async function doRegenerate() {
-    setFailed(false);
-    const ok = await regenerate();
-    if (!ok) setFailed(true);
-    setConfirming(false);
+  async function doCreate() {
+    setFailed(null);
+    const made = await create();
+    if (made) setLatest(made);
+    else setFailed('create');
+  }
+
+  async function doRevoke(id: string) {
+    setFailed(null);
+    const ok = await revoke(id);
+    if (!ok) setFailed('revoke');
+    if (ok && latest?.id === id) setLatest(null);
   }
 
   // A failed load tints the whole card (StateCard) and hides its controls, so
@@ -64,67 +71,72 @@ export default function InviteCard({ enabled = true, groupName }: Props) {
     );
   }
 
+  // The one being sent: the newest made in this visit, else the newest live.
+  const showing = latest ?? invites[0] ?? null;
+  const waiting = invites.filter((i) => i.id !== showing?.id);
+
   return (
     // `space-y-3` on the CARD, not a margin on the body: `CardHeader` sets no
-    // bottom margin by design, so the card owns the gap under it. A hand-typed
-    // marginTop here is what `card-spacing-canary` exists to refuse, and the
-    // 2026-08-27 bug it was written for shipped ten cards with the button
-    // jammed against the subtitle.
+    // bottom margin by design, so the card owns the gap under it.
     <div className="glass-card space-y-3" style={{ padding: 'var(--space-5)' }}>
       <CardHeader icon="link" title={t('title')} subtitle={t('subtitle')} />
 
       <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
         {loading ? (
-          // Reserve the shape rather than collapsing the card to nothing — the
-          // skeleton contract the tabs use, so the card does not jump on load.
-          <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>…</p>
-        ) : invite ? (
+          // Reserve the shape with a shimmer line where the link will be — not
+          // a "…" standing in for content (the loading rule). Seen only on a
+          // reload; the first load is held behind the console's skeleton.
+          <div className="shimmer-line rounded-lg" style={{ height: 12, width: '55%' }} aria-hidden="true" />
+        ) : (
           <>
-            <InviteShare token={invite.token} code={invite.code} groupName={groupName} />
+            <button type="button" onClick={doCreate} disabled={busy} className="cc-btn cc-btn-primary" style={{ width: '100%' }}>
+              {busy ? t('creating') : t('create')}
+            </button>
+            {failed === 'create' && <p className="field-error" role="alert">{t('createFailed')}</p>}
 
-            {failed && <p className="field-error">{t('regenerateFailed')}</p>}
+            {showing && (
+              <div key={showing.id} className="motion-fade" style={{ display: 'grid', gap: 'var(--space-4)' }}>
+                <InviteShare token={showing.token} code={showing.code} groupName={groupName} expiresAt={showing.expiresAt} />
+                <button type="button" onClick={() => void doRevoke(showing.id)} disabled={busy} className="cc-btn cc-btn-ghost" style={{ width: '100%' }}>
+                  {t('revoke')}
+                </button>
+              </div>
+            )}
 
-            {confirming ? (
-              <div className="motion-fade" style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-primary)', fontWeight: 600 }}>
-                  {t('regenerateConfirm')}
-                </p>
-                <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                  {t('regenerateWarning')}
-                </p>
-                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                  <button
-                    type="button"
-                    onClick={doRegenerate}
-                    disabled={busy}
-                    className="cc-btn cc-btn-danger"
-                    style={{ flex: 1 }}
-                  >
-                    {busy ? t('regenerating') : t('regenerateAction')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirming(false)}
-                    disabled={busy}
-                    className="cc-btn cc-btn-ghost"
-                    style={{ flex: 1 }}
-                  >
-                    {t('cancel')}
-                  </button>
+            {waiting.length > 0 && (
+              <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                {/* Muted, not accent: the two labels above it name what is
+                    being sent; this one only counts what is still waiting. */}
+                <span className="section-label-muted">{t('waiting', { count: waiting.length })}</span>
+                <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                  {/* A row is one tap target (ListRow's cc-mini-card button,
+                      44px+): tapping shows that invite in full above, where
+                      its Copy, Share and Revoke are. No buttons inside the
+                      row — the first cut had 18px Show/Revoke links there. */}
+                  {waiting.map((i) => (
+                    <ListRow
+                      key={i.id}
+                      onClick={() => setLatest(i)}
+                      ariaLabel={t('showAria', { code: i.code })}
+                      title={
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
+                          {i.code.slice(0, 4)} {i.code.slice(4)}
+                        </span>
+                      }
+                      subtitle={t('expires', { date: new Date(i.expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })}
+                      trailing={<span className="material-icons icon-md" style={{ color: 'var(--text-muted)' }} aria-hidden="true">chevron_right</span>}
+                    />
+                  ))}
                 </div>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirming(true)}
-                className="cc-btn cc-btn-ghost"
-                style={{ width: '100%' }}
-              >
-                {t('regenerate')}
-              </button>
+            )}
+            {failed === 'revoke' && <p className="field-error" role="alert">{t('revokeFailed')}</p>}
+
+            {!showing && waiting.length === 0 && (
+              <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{t('none')}</p>
             )}
           </>
-        ) : null}
+        )}
       </div>
     </div>
   );
