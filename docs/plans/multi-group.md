@@ -160,6 +160,20 @@ don't copy.
   is"). The other half of the question had answered itself: Phases 0–4 landed
   and the production backfill ran, so the sequencing worry about the Stats
   rebuild is moot. The next read is about the Phase 5 flip and its gates.
+- **2026-10-07: the order is multi-group, then pricing — native is already
+  done.** Grant asked whether the native app should come first so he could
+  "start looking into pricing model or earning methods", or multi-group first
+  "so public can use my app then earning". The native app had shipped the same
+  morning (`docs/plans/native-shell.md`, live on both stores), which answers the
+  first half: today the listing is a public sign on a locked door — a stranger
+  who installs reaches Welcome and is asked for an invite code to a club they
+  are not in. So the remaining work is Phase 3's onboarding screens, the two
+  Phase 5 decisions (the legal copy's "one group, run by an individual" claims;
+  what a person in no club sees), the flip, then Phase 6's Demo Club. Pricing
+  waits for an outside club to exist — the kill criterion above reads on or
+  about 2026-12-02, eight weeks after the listing — and is recorded as intent
+  only in `docs/plans/pricing.md`; Decision D in
+  `docs/plans/value-hub-slice-0.md` still stands.
 
 ## Shape
 
