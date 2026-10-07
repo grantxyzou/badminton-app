@@ -130,16 +130,23 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         sharedFetch('/api/session'),
         sharedFetch('/api/sessions'),
       ]);
+      // A club with NO session yet answers 404 `no_active_session` here — a
+      // brand-new club (multi-group) before its first night. That is an
+      // honest "nothing to collect", not a failed read; the body is checked
+      // so a missing route still counts as one.
+      const noSession =
+        sessionRes.status === 404 &&
+        ((await sessionRes.clone().json().catch(() => null)) as { error?: string } | null)?.error === 'no_active_session';
       // If either critical fetch failed, mark load error so we don't render
       // confident "0 of 0 paid" / empty list as if it were truth.
-      if (!sessionRes.ok || !sessionsRes.ok) {
+      if ((!sessionRes.ok && !noSession) || !sessionsRes.ok) {
         loadedRef.current = false;
         setLoadError(true);
         setSessions([]);
         setActiveSessionId(null);
         return;
       }
-      const current = await sessionRes.json() as Session;
+      const current = noSession ? null : ((await sessionRes.json()) as Session | null);
       const archived = await sessionsRes.json() as Session[];
 
       const all = current ? [current, ...archived.filter((s) => s.id !== current.id)] : archived;
@@ -560,6 +567,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             );
           })}
         </div>
+      )}
+
+      {/* No sessions AT ALL — a new club before its first night. Nothing has
+          been owed yet, so there is nothing here, and that is the whole of
+          what the card is saying. */}
+      {sessions.length === 0 && (
+        <EmptyState icon="payments">Nothing to collect yet. Payments appear here after the first session.</EmptyState>
       )}
 
       {/* Empty state — kept distinct from loadError (lying-empty-state
