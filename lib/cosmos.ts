@@ -177,6 +177,11 @@ function seedDevAdminIfRequested(containerName: string) {
  * received-kudos cards, drills, calibration) all render. Sign in as Lin (2468)
  * → Stats. See `scripts/dev-demo.sh`.
  *
+ * Set `SEED_DEV_SCENARIO=metrics-history` for `fresh-thursday` plus twelve
+ * PAST weekly sessions with rosters, waitlists, cancels, sign-up times and
+ * payments, so Admin → Metrics has something to draw
+ * (docs/plans/usage-metrics.md). The extra names are famous players too.
+ *
  * Plays well with SEED_DEV_ADMIN — they seed different docs and both can
  * be active simultaneously. Refuses when real Cosmos is configured.
  */
@@ -184,7 +189,7 @@ function seedDevScenarioIfRequested(containerName: string) {
   if (g._devScenarioSeeded) return;
   if (process.env.COSMOS_CONNECTION_STRING) return;
   const scenario = process.env.SEED_DEV_SCENARIO;
-  if (scenario !== 'fresh-thursday' && scenario !== 'played-thursday') return;
+  if (scenario !== 'fresh-thursday' && scenario !== 'played-thursday' && scenario !== 'metrics-history') return;
   // `played-thursday` is a session that JUST happened (3h ago) so the
   // post-session windows are open — the game logger, the give-kudos card, and
   // calibration all have live data. `fresh-thursday` is the upcoming (+48h)
@@ -455,6 +460,8 @@ function seedDevScenarioIfRequested(containerName: string) {
     }
   }
 
+  if (scenario === 'metrics-history') seedDevMetricsHistory(now);
+
   g._devScenarioSeeded = true;
   console.warn(
     `[dev] SEED_DEV_SCENARIO=${scenario}: seeded session ${sessionId} ` +
@@ -463,6 +470,68 @@ function seedDevScenarioIfRequested(containerName: string) {
       `+ ${equipmentCatalogSeed.items.length}-racket catalog + 1 sample game + 2 skill-assessment snapshots for Lin` +
       `${played ? ' + 4-player roster + 3 kudos received by Lin' : ''}. Mock store only.`,
   );
+}
+
+/**
+ * Twelve past Thursdays for Admin → Metrics. Deterministic (no randomness
+ * beyond ids): attendance swings between 9 and 14 against 12 spots, so some
+ * weeks waitlist; one self-cancel every third week; sign-ups land minutes to
+ * hours after opening; everything but the latest week is settled and mostly
+ * paid. Legacy-shaped rows (no memberId) for the non-member names, as older
+ * production rows are.
+ */
+function seedDevMetricsHistory(now: Date) {
+  const regulars = ['Lin', 'Viktor', 'Carolina', 'Akane', 'Kento', 'Sindhu'];
+  const visitors = ['Chen Long', 'Tai Tzu Ying', 'Lee Chong Wei', 'Ratchanok', 'Ginting', 'Chou Tien Chen', 'Marescia', 'An Se Young'];
+  const DAY = 24 * 60 * 60 * 1000;
+  mockStore.sessions ??= [];
+  mockStore.players ??= [];
+  for (let w = 1; w <= 12; w++) {
+    const at = new Date(now.getTime() - 7 * w * DAY);
+    const datetime = at.toISOString();
+    const sessionId = sessionIdFromDate(datetime, BPM_GROUP_ID);
+    if (mockStore.sessions.find((s) => s.id === sessionId)) continue;
+    const opened = new Date(at.getTime() - 5 * DAY);
+    const settledAt = w >= 2 ? new Date(at.getTime() + DAY).toISOString() : undefined;
+    mockStore.sessions.push({
+      id: sessionId,
+      sessionId,
+      groupId: BPM_GROUP_ID,
+      title: 'Thursday Badminton',
+      datetime,
+      deadline: new Date(at.getTime() - DAY).toISOString(),
+      courts: 2,
+      costPerCourt: 60,
+      maxPlayers: 12,
+      signupOpen: false,
+      signupOpenedAt: opened.toISOString(),
+      ...(settledAt ? { settled: { at: settledAt, costPerPerson: 10, totalCost: 120, courtTotal: 120, birdTotal: 0, playerCount: 12, playerNames: [] } } : {}),
+    });
+    // Visitors arrive over the months: the older the week, the fewer of them.
+    const visitorsThisWeek = visitors.slice(0, Math.max(3, 8 - Math.floor(w / 2)) - (w % 3));
+    const names = [...regulars, ...visitorsThisWeek];
+    names.forEach((name, i) => {
+      const member = regulars.includes(name);
+      const confirmedSlot = i < 12;
+      const minutes = 3 + i * i * (2 + (w % 4));
+      const paid = settledAt !== undefined && (i + w) % 7 !== 0;
+      mockStore.players!.push({
+        id: `dev-history-${w}-${i}-${randomBytes(3).toString('hex')}`,
+        sessionId,
+        groupId: BPM_GROUP_ID,
+        name,
+        ...(member ? { memberId: `dev-member-${name.toLowerCase()}` } : {}),
+        timestamp: new Date(opened.getTime() + minutes * 60 * 1000).toISOString(),
+        waitlisted: !confirmedSlot,
+        removed: w % 3 === 0 && i === 4,
+        ...(w % 3 === 0 && i === 4 ? { cancelledBySelf: true } : {}),
+        paid: paid && confirmedSlot,
+        ...(paid && confirmedSlot && i % 2 === 0 && settledAt
+          ? { paidAt: new Date(Date.parse(settledAt) + (i % 5) * DAY).toISOString(), paidVia: 'manual' }
+          : {}),
+      });
+    });
+  }
 }
 
 /** Monotonic across the whole mock store — an etag only has to be unique. */

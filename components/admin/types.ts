@@ -14,7 +14,8 @@ export type AdminView =
   | 'skip-dates'
   | 'past-sessions'
   | 'stringing'
-  | 'catalog-gaps';
+  | 'catalog-gaps'
+  | 'metrics';
 
 export interface AdminNavProps {
   onBack: () => void;
