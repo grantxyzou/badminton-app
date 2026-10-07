@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET as status, POST as backfill } from '@/app/api/admin/ledger-backfill/route';
 import { POST as settle } from '@/app/api/session/settle/route';
 import { runLedgerBackfill, ledgerBackfillStatus } from '@/lib/ledgerBackfill';
-import { CLUB_LEDGER_ID, UNLINKED_LEDGER_ID } from '@/lib/ledgerMirror';
-import type { LedgerEntry } from '@/lib/types';
+import { CLUB_LEDGER_ID, UNLINKED_LEDGER_ID, mirrorStringingChanged } from '@/lib/ledgerMirror';
+import { groupScope } from '@/lib/groupScope';
+import type { LedgerEntry, StringingJob } from '@/lib/types';
 import {
   resetMockStore,
   getStore,
@@ -131,6 +132,28 @@ describe('what it writes', () => {
     const again = await runLedgerBackfill('bpm', { dryRun: false });
     expect(again.written).toEqual({ sessions: 0, stringingJobs: 0, birds: 0 });
     expect(ledger()).toHaveLength(afterLive);
+  });
+
+  it('a stringing job paid by e-transfer through the live mirror is not paid twice by the backfill', async () => {
+    // Review of #562: a StringingJob has no paidVia/paymentId, so the backfill
+    // cannot know HOW a job was paid. The mirror once keyed an e-transfer
+    // payment on its paymentId and the backfill on ms(paidAt) — two ids, no
+    // 409, the job's owed account ending at price − 2×price.
+    const job = (getStore()['stringingJobs'] as StringingJob[]).find((j) => j.id === 'job-2')!;
+    const paid: StringingJob = { ...job, status: 'picked_up', paidAt: '2026-09-27T12:00:00Z', updatedAt: '2026-09-27T12:00:00Z' };
+    seedDoc('stringingJobs', paid as unknown as Record<string, unknown>);
+    await mirrorStringingChanged(groupScope('bpm'), job, paid, 'etransfer', 'etx:job2');
+    const livePayments = ledger().filter((e) => e.kind === 'payment' && e.ref?.id === 'job-2');
+    expect(livePayments).toHaveLength(1);
+    expect(livePayments[0].meta).toMatchObject({ via: 'etransfer', paymentId: 'etx:job2' });
+
+    const r = await runLedgerBackfill('bpm', { dryRun: false });
+    expect(r.existing.stringingJobs).toBeGreaterThanOrEqual(1);
+    const payments = ledger().filter((e) => e.kind === 'payment' && e.ref?.id === 'job-2');
+    expect(payments).toHaveLength(1);
+    expect(payments[0].id).toBe(`payment:job-2:${Date.parse('2026-09-27T12:00:00Z')}`);
+    const owed = ledger().filter((e) => e.ref?.id === 'job-2' && e.account === 'member_owed').reduce((s, e) => s + e.amountCents, 0);
+    expect(owed).toBe(0);
   });
 
   it('limit and cursor: a page at a time, resumed from `remaining`', async () => {

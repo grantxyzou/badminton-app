@@ -187,9 +187,13 @@ export function stringingChargeEntry(job: Pick<StringingJob, 'id' | 'memberId' |
 
 export function stringingPaymentEntry(job: Pick<StringingJob, 'id' | 'memberId' | 'priceCents' | 'paidAt'>, via: 'manual' | 'etransfer' | 'credit' = 'manual', paymentId?: string): NewEntry | null {
   if (typeof job.priceCents !== 'number' || job.priceCents <= 0 || !job.paidAt) return null;
-  const key = via === 'etransfer' && paymentId ? paymentId : ms(job.paidAt);
+  // Keyed on paidAt for EVERY via. A StringingJob carries no paidVia/paymentId
+  // (a Player does), so the backfill cannot know how a job was paid — if the
+  // live mirror keyed an e-transfer on its paymentId, a job paid through the
+  // inbox between deploy and backfill would be mirrored twice under two ids.
+  // The paymentId rides in meta, where nothing dedupes on it.
   return {
-    id: `payment:${job.id}:${key}`,
+    id: `payment:${job.id}:${ms(job.paidAt)}`,
     memberId: job.memberId,
     account: 'member_owed',
     kind: 'payment',
