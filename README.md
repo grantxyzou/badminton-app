@@ -1,13 +1,8 @@
 # Badminton Session Manager
 
-A Next.js 16 app for managing casual weekly badminton sessions — sign-ups (with invite-list gating), waitlist, payment tracking, session history, AI-polished announcements, and a formalized design system.
+A Next.js 16 app for casual badminton clubs — sign-ups (with invite-list gating), waitlist, payment tracking, session history, AI-polished announcements, and a formalized design system. Several clubs share one deployment: an account is a person, a membership carries their role in each club, and every club-scoped read is filtered by group (`docs/plans/multi-group.md`). Each club is run by its own organisers; one operator runs the service (`app/legal/privacy`).
 
-**Deployed as two App Services from a single `main` branch:**
-
-- `bpm-stable` (friend-facing): https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm
-- `bpm-next` (preview, auto-deploys `main`): https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
-
-See [`docs/deployment-model.md`](docs/deployment-model.md) for the promotion runbook.
+**One deployment**: every push to `main` deploys to production at https://bpm.grantzou.com/bpm via `.github/workflows/deploy-next.yml` (the app service is named `vnext-badminton-app`; the name is historical — verify by DNS, never by name). The second App Service was deleted 2026-08-25. Runbook: the `deploy-promotion` skill; history in [`docs/deployment-model.md`](docs/deployment-model.md).
 
 ---
 
@@ -22,8 +17,8 @@ See [`docs/deployment-model.md`](docs/deployment-model.md) for the promotion run
 
 ### Supporting features
 
-- **Dual-deployment pipeline** — `bpm-next` auto-deploys every push; `bpm-stable` deploys only on tag dispatch
-- **Feature flag registry** (`lib/flags.ts`) — staged rollout between next + stable, typed `FlagName` union, `plannedRemoval` date on every flag
+- **Multi-group** (`NEXT_PUBLIC_FLAG_MULTI_GROUP`) — one account, many clubs; `lib/groupScope.ts` is the only way a route reads a group-scoped container, and a stranger from the store creates their own club from the sign-up page
+- **Feature flag registry** (`lib/flags.ts`) — gates unfinished work inside the single deployment, typed `FlagName` union, `plannedRemoval` date on every flag
 - **i18n** — `next-intl` v4, cookie-based locale (`NEXT_LOCALE`), English + Simplified Chinese, `America/Vancouver` datetime formatting on both server and client
 - **Theme system** — light/dark with system-preference auto-follow; `data-theme` attribute drives CSS custom properties
 - **Persistent member identity** — `members` collection with admin/member roles; consolidated `{ name, token, sessionId }` localStorage
