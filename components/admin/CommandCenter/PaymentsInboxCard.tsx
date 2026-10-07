@@ -21,6 +21,8 @@ interface Inbox {
   last28Days: { received: number; autoMatched: number; adminMatched: number; ignored: number; waiting: number };
   hold: { threshold: number; suggested: number; names: string[] };
   reminders: { on: boolean; lastRunAt: string | null; wouldRemind: string[] };
+  /** The daily ledger check; `null` with the mirror off. */
+  reconcile: { lastAt: string | null; mismatches: number; truncated: boolean } | null;
 }
 
 /** No email for this long while set up reads as "the script may have stopped". */
@@ -178,6 +180,7 @@ export default function PaymentsInboxCard({ refreshKey = 0, onChanged }: { refre
       )}
       <ReminderRow reminders={data.reminders} onDone={done} />
       <HoldRow hold={data.hold} onDone={done} />
+      {data.reconcile && <ReconcileRow reconcile={data.reconcile} onDone={done} />}
       <SetupSheet open={setupOpen} onClose={() => setSetupOpen(false)} onDone={done} configured />
       {assigning && <AssignSheet payment={assigning} onClose={() => setAssigning(null)} onDone={done} />}
     </section>
@@ -232,6 +235,72 @@ function ReminderRow({ reminders, onDone }: { reminders: Inbox['reminders']; onD
       )}
       <button type="button" className="cc-btn cc-btn-secondary" disabled={!online || busy} onClick={() => void set(!on)}>
         {on ? 'Turn off' : 'Turn on'}
+      </button>
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+// ── The ledger check ───────────────────────────────────────────────────────
+
+/** Rides on the same daily call as reminders; two missed days reads the same way. */
+const RECONCILE_STALE_MS = REMINDER_STALE_MS;
+
+/**
+ * Does the ledger still agree with what people see? (Phase 2 stage 2.) A
+ * one-line status; amber when something doesn't match or nothing has checked
+ * in days. The Ledger page gets the row-by-row list in stage 3 — here the
+ * admin only needs to know whether to go and look.
+ */
+function ReconcileRow({ reconcile, onDone }: { reconcile: NonNullable<Inbox['reconcile']>; onDone: () => void }) {
+  const online = useOnline();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const { lastAt, mismatches, truncated } = reconcile;
+  const stale = !lastAt || Date.now() - Date.parse(lastAt) > RECONCILE_STALE_MS;
+
+  async function checkNow() {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch(`${BASE}/api/admin/ledger/reconcile`, { method: 'POST' });
+      if (!res.ok) throw new Error(String(res.status));
+      onDone();
+    } catch {
+      setError("Couldn't run the check — try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const status = !lastAt
+    ? 'not checked yet'
+    : mismatches === 0
+      ? `clean · ${ago(lastAt)}`
+      : `${mismatches}${truncated ? '+' : ''} ${mismatches === 1 ? 'line doesn’t' : 'lines don’t'} match · ${ago(lastAt)}`;
+
+  return (
+    <div className="flex flex-col gap-2" style={{ borderTop: '1px solid var(--inner-card-border)', paddingTop: 'var(--space-4)' }}>
+      <p className="section-label-muted" style={{ margin: 0 }}>
+        Ledger check · {status}
+      </p>
+      <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+        Once a day, every settled line is compared with the ledger behind the money page.
+      </p>
+      {mismatches > 0 && (
+        <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--sev-warn)' }}>
+          The ledger disagrees with what {mismatches === 1 ? 'someone sees' : 'people see'}. Re-run the ledger backfill to
+          fill a gap; a line that should be paid or reversed needs the action redone.
+        </p>
+      )}
+      {mismatches === 0 && stale && (
+        <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--sev-warn)' }}>
+          {lastAt ? 'No check in over two days' : 'Never checked'}. Your Gmail script runs it daily once the latest
+          script is installed — or check now.
+        </p>
+      )}
+      <button type="button" className="cc-btn cc-btn-secondary" disabled={!online || busy} onClick={() => void checkNow()}>
+        {busy ? 'Checking…' : 'Check now'}
       </button>
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>

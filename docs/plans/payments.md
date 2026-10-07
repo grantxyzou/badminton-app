@@ -42,6 +42,21 @@ fix before anything in Phase 2 starts.
   are not that person's to take. Two bugs the code map surfaced were fixed on the way: a cancel-and-rejoin
   un-paid a settled row, and `purgeAll`/`purgeOne` deleted money rows with no record (now a void).
 
+- **2026-10-07 — Stage 1 SHIPPED (#562), history backfilled the same day** (one run: 425 session lines,
+  2 stringing, 8 purchases, nothing failed, status all zeros). **Stage 2, the reconcile, compares only
+  FROZEN money**: a settled row and a billable stringing job are the lines the ledger records; an unsettled
+  session's live estimate is left out, because the ledger has nothing to compare it against until settle
+  freezes the bill. Four reason codes (`missing_charge`, `missing_payment`, `stale_charge`,
+  `amount_mismatch`) and NO auto-repair — ids are deterministic, so the repair for a gap is the backfill
+  again, and a missing void is the admin redoing the action. It rides on the daily `POST /api/payments/remind`
+  call BEFORE the reminders switch is read (reminders are a setting; the check is not), stores ids and cents
+  on the club's payments settings doc (never names), and the E-transfers card warns on a mismatch or a check
+  older than two and a half days. A line nobody on the roster is shown — an unlinked legacy row, a purged
+  member's `~anon` charge, a REMOVED member still owing — takes the row itself as its live side and is
+  counted (`unlisted`), not flagged: the ledger is right about the money and only the person is missing.
+  The review of #570 caught the removed-member case; flagged, it would have turned the card amber every
+  day over a line with no repair.
+
 - **Apps Script in the admin's Gmail, not a Gmail API connection.** Reading Gmail needs the restricted
   `gmail.readonly` scope. On the OAuth client the app already uses for member sign-in that means Google
   verification and a security assessment, or a "Testing" app whose refresh token expires every 7 days — a
@@ -164,4 +179,5 @@ top-ups ≥ $40 with the payer covering the fee.
 | Store credit, gift cards | `lib/storeCredit.ts`; `/api/credit{,/redeem,/spend}`, `/api/admin/credit`, `/api/admin/giftcards` |
 | The mirror (Phase 2 stage 1) | `lib/ledgerMirror.ts` — hooks in settle, players PATCH/DELETE, stringing `[id]`, birds, the inbox, credit |
 | The history backfill | `lib/ledgerBackfill.ts`, `GET`/`POST /api/admin/ledger-backfill` |
+| The reconcile (Phase 2 stage 2) | `lib/ledgerReconcile.ts` over `computeOwedForRoster` (`lib/owedBalance.ts`); daily from `POST /api/payments/remind`; `GET`/`POST /api/admin/ledger/reconcile` |
 | The script admins paste | `public/payments/apps-script.gs` (served at `/bpm/payments/apps-script.gs`, so the setup sheet can copy it) |
