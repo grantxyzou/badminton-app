@@ -137,7 +137,7 @@ describe('resolveGroupId', () => {
 describe('completeSignIn(res, member, groupId)', () => {
   it('flag OFF: the Member doc’s role decides admin, exactly as before', async () => {
     const res = NextResponse.json({});
-    await completeSignIn(res, { id: 'm1', name: 'Grant', role: 'admin' }, BPM_GROUP_ID);
+    await completeSignIn(res, { id: 'm1', name: 'Grant', role: 'admin' }, BPM_GROUP_ID, 'pin');
     const h = cookieHeaders(res);
     expect(payloadOf(h, 'admin_session')?.groupId).toBe(BPM_GROUP_ID);
     expect(payloadOf(h, 'member_session')?.groupId).toBe(BPM_GROUP_ID);
@@ -148,11 +148,11 @@ describe('completeSignIn(res, member, groupId)', () => {
     seedMembership('club-x', 'm1', { name: 'Grant', role: 'admin' });
     seedMembership('club-y', 'm1', { name: 'Grant', role: 'member' });
     const inX = NextResponse.json({});
-    await completeSignIn(inX, { id: 'm1', name: 'Grant', role: 'admin' }, 'club-x');
+    await completeSignIn(inX, { id: 'm1', name: 'Grant', role: 'admin' }, 'club-x', 'pin');
     expect(payloadOf(cookieHeaders(inX), 'admin_session')?.groupId).toBe('club-x');
 
     const inY = NextResponse.json({});
-    await completeSignIn(inY, { id: 'm1', name: 'Grant', role: 'admin' }, 'club-y');
+    await completeSignIn(inY, { id: 'm1', name: 'Grant', role: 'admin' }, 'club-y', 'pin');
     expect(cookieHeaders(inY)).toMatch(/admin_session=;[^\n]*Max-Age=0/);
     expect(payloadOf(cookieHeaders(inY), 'member_session')?.groupId).toBe('club-y');
   });
@@ -160,7 +160,7 @@ describe('completeSignIn(res, member, groupId)', () => {
   it('flag ON: a Member-doc admin with NO membership in the group is not an admin there', async () => {
     on();
     const res = NextResponse.json({});
-    await completeSignIn(res, { id: 'm1', name: 'Grant', role: 'admin' }, 'club-x');
+    await completeSignIn(res, { id: 'm1', name: 'Grant', role: 'admin' }, 'club-x', 'pin');
     expect(cookieHeaders(res)).toMatch(/admin_session=;[^\n]*Max-Age=0/);
   });
 
@@ -168,7 +168,7 @@ describe('completeSignIn(res, member, groupId)', () => {
     on();
     seedMembership('club-x', 'm1', { name: 'Grant', role: 'owner', status: 'removed' });
     const res = NextResponse.json({});
-    await completeSignIn(res, { id: 'm1', name: 'Grant', role: 'admin' }, 'club-x');
+    await completeSignIn(res, { id: 'm1', name: 'Grant', role: 'admin' }, 'club-x', 'pin');
     expect(cookieHeaders(res)).toMatch(/admin_session=;[^\n]*Max-Age=0/);
   });
 });

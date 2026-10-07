@@ -33,6 +33,7 @@ At the 2026-12-09 review: if no weekly metrics report and no UX report has led t
 ## Decisions
 
 - **First-party, server-written where possible.** Sign-up, cancel, sign-in, account creation, kudos, stringing requests, push opt-in/out and problem reports are written by the route that already does the work, after it succeeds. A client beacon can be forged or blocked; the server knows the outcome. Only `app_open` and `tab_view` are client beacons, because only the client knows them.
+- **Only what no record already holds is recorded** (decided building step 5, 2026-10-07). The first cut listed ten server events. Seven of them would have copied a record that already exists — a sign-up or cancel is a `players` row with its own `timestamp` and `removedAt`, a kudos is a `kudos` doc, a stringing request a `stringingJobs` doc, notifications a `pushSubscriptions` doc, a problem report a `feedback` doc — and a copy is a second answer that can drift from the first. So the usage kinds are three: `sign_in` (server, with how), `app_open` and `tab_view` (client beacons). Everything else is read from where it already lives, which is what `clubMetrics()` does.
 - **`completeSignIn` gains a REQUIRED `via` argument** rather than each sign-in route writing its own event, so a new sign-in path cannot forget to count itself — the type checker refuses it.
 - **One flag, server-read: `NEXT_PUBLIC_FLAG_USAGE_METRICS`.** Every merge deploys, and tracking must not begin before the privacy text and the store labels say it happens. Off: no new kinds are written and the beacon hook does nothing. The metrics that need no tracking work regardless.
 - **One metrics owner.** `lib/metrics.ts` `clubMetrics()` is called by both the admin route and the report route, so the page and the weekly report cannot disagree — the `buildReceiptInput` lesson.
@@ -47,8 +48,10 @@ At the 2026-12-09 review: if no weekly metrics report and no UX report has led t
 
 | Piece | File |
 |---|---|
-| Event kinds, payload whitelist, `recordUsage` | `lib/events.ts`, `lib/types.ts` (additive optional fields) |
-| Server writes | `app/api/players/route.ts`, `lib/authSession.ts`, `app/api/auth/*`, kudos, stringing, push and report routes |
+| Event kinds, payload whitelist | `lib/events.ts` (`USAGE_KINDS`), `lib/types.ts` (additive `tab`, `platform`, `via`) |
+| Beacon gate + per-member limit | `app/api/events/route.ts` |
+| Admin readout | `app/api/admin/slice0/route.ts` `usage` (the reader-coverage gate) |
+| Server write (`sign_in`) | `lib/authSession.ts` → `lib/usage.ts`; `via` at all 15 call sites, `null` for the three club re-mints |
 | Client beacons (`app_open`, `tab_view`) | `lib/useUsageBeacons.ts`, mounted once in `HomeShell` |
 | Metrics math (pure) | `lib/metricsMath.ts` |
 | Metrics reads | `lib/metrics.ts` `clubMetrics()` |

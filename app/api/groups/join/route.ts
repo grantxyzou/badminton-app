@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     // their old club. A missing cookie is recoverable on the next sign-in; a
     // lie about which club you are in is not.
     try {
-      await completeSignIn(res, member, group.id);
+      await completeSignIn(res, member, group.id, null);
     } catch (err) {
       console.error('POST /api/groups/join: joined, cookie mint failed (recoverable):', err);
     }

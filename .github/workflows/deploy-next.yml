@@ -77,6 +77,10 @@ jobs:
           NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: 'true'
           # Store credit + gift cards (docs/plans/payments.md). Read server-side.
           NEXT_PUBLIC_FLAG_STORE_CREDIT: 'true'
+          # First-party usage records (docs/plans/usage-metrics.md). OFF until
+          # the App Store / Play privacy labels and a Home announcement are
+          # done. Read server-side; off, nothing is recorded.
+          NEXT_PUBLIC_FLAG_USAGE_METRICS: 'false'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.
           #

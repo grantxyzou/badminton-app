@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, isCheckInSource, CLIENT_PAYLOAD } from '@/lib/events';
+import { writeEvent, isClientKind, isCheckInSource, isUsageKind, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS } from '@/lib/events';
+import { usageOn } from '@/lib/usage';
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -7,8 +8,15 @@ import type { EngagementEvent } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-const RATE_MAX = 120;
+// Per IP, then per member. The IP limit is loose because a whole club can sit
+// behind one gym's wifi and the usage beacons fire on every app open and tab
+// change; the member limit is what stops one account flooding the container.
+const RATE_MAX_IP = 600;
+const RATE_MAX_MEMBER = 120;
 const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T =>
+  typeof v === 'string' && (list as readonly string[]).includes(v);
 
 /**
  * The kinds and their payload schema live in `lib/events.ts`, once. Every
@@ -17,14 +25,18 @@ const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
  * the feedback loop's denominator) is not a client kind at all, so it is
  * refused as unknown.
  */
-function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unknown>): Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source'> {
-  const out: Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source'> = {};
+type Payload = Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform'>;
+
+function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unknown>): Payload {
+  const out: Payload = {};
   for (const field of CLIENT_PAYLOAD[kind]) {
     if (field === 'catalogId' && typeof body.catalogId === 'string' && body.catalogId.length <= 80) out.catalogId = body.catalogId;
     if (field === 'engineVersion' && typeof body.engineVersion === 'string' && body.engineVersion.length <= 20) out.engineVersion = body.engineVersion;
     if (field === 'rating' && (body.rating === 'up' || body.rating === 'down')) out.rating = body.rating;
     if (field === 'category' && (body.category === 'racket' || body.category === 'string')) out.category = body.category;
     if (field === 'source' && isCheckInSource(body.source)) out.source = body.source;
+    if (field === 'tab' && oneOf(USAGE_TABS, body.tab)) out.tab = body.tab;
+    if (field === 'platform' && oneOf(USAGE_PLATFORMS, body.platform)) out.platform = body.platform;
   }
   return out;
 }
@@ -47,7 +59,7 @@ export async function POST(req: NextRequest) {
   // friend tapping a card repeatedly is the behaviour we're trying to measure,
   // not abuse.
   const ip = getClientIp(req);
-  if (!checkRateLimit(`events:${ip}`, RATE_MAX, RATE_WINDOW_MS)) {
+  if (!checkRateLimit(`events:${ip}`, RATE_MAX_IP, RATE_WINDOW_MS)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
@@ -60,6 +72,9 @@ export async function POST(req: NextRequest) {
   // the 401 as a no-op.
   const caller = verifyMemberAuth(req);
   if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!checkRateLimit(`events-member:${caller.memberId}`, RATE_MAX_MEMBER, RATE_WINDOW_MS)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
 
   let body: Record<string, unknown>;
   try {
@@ -85,6 +100,13 @@ export async function POST(req: NextRequest) {
   // Order is load-bearing: rate limit (rule 4) and auth (rule 12) both still
   // run FIRST. Hoisting the kind parse above them to decide the gate earlier
   // would put body parsing in front of authentication.
+  //
+  // The usage kinds (app_open, tab_view) are the one gated family today:
+  // nothing about how members use the app is recorded until the privacy
+  // labels say so (docs/plans/usage-metrics.md).
+  if (isUsageKind(body.kind) && !usageOn()) {
+    return NextResponse.json({ error: 'not_enabled' }, { status: 404 });
+  }
   try {
     const resource = await writeEvent(
       {

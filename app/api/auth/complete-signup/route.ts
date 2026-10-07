@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
       /* Only a browser that STARTED the sign-in holds this cookie: a callback
          that passed its own state cookie, or the hand-off claim (preimage + code)
          — lib/authHandoff.ts, guarantee 4. So signing it in is honest. */
-      await completeSignIn(res, member, cookieGroupId);
+      await completeSignIn(res, member, cookieGroupId, pending.provider);
       return res;
     } catch (err) {
       await releaseIdentity(pending.provider, pending.sub);

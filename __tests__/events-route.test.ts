@@ -134,7 +134,7 @@ describe('POST /api/events', () => {
   });
 
   it('rate limits before checking auth, so the limit cannot be bypassed', async () => {
-    // Same IP for every call; the limit is 120/hr.
+    // Same IP for every call; the per-IP limit is 600/hr.
     const ip = 'events-flood';
     const hammer = () =>
       new NextRequest(new URL('/api/events', 'http://localhost/bpm'), {
@@ -144,7 +144,7 @@ describe('POST /api/events', () => {
       });
 
     let sawRateLimit = false;
-    for (let i = 0; i < 130; i++) {
+    for (let i = 0; i < 610; i++) {
       const res = await POST(hammer());
       if (res.status === 429) { sawRateLimit = true; break; }
       // Until the limit trips these are 401s (anonymous) — never 201.

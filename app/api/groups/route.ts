@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       { status: 201 },
     );
     try {
-      await completeSignIn(res, member, group.id);
+      await completeSignIn(res, member, group.id, null);
     } catch (err) {
       console.error('POST /api/groups: club created, cookie mint failed (recoverable):', err);
     }

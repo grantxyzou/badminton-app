@@ -39,6 +39,10 @@ export const CLIENT_KINDS = [
   'verdict_shown',
   'frame_page_opened',
   'frame_section_expanded',
+  // Usage (docs/plans/usage-metrics.md): recorded only with
+  // NEXT_PUBLIC_FLAG_USAGE_METRICS on. See USAGE_KINDS below.
+  'app_open',
+  'tab_view',
 ] as const;
 /**
  * The Equipment surfaces' own beacons (design "Equipment redesign", Turn 3 §9).
@@ -56,7 +60,33 @@ export const GEAR_SURFACE_KINDS = [
   'frame_page_opened', 'frame_section_expanded',
 ] as const;
 /** Written by the server only; `POST /api/events` refuses them. */
-export const SERVER_KINDS = ['pick_served'] as const;
+export const SERVER_KINDS = ['pick_served', 'sign_in'] as const;
+
+/**
+ * The usage kinds (docs/plans/usage-metrics.md): how often members open the
+ * app, which tabs they use, and how they sign in. Everything else a usage
+ * report wants — sign-ups, cancels, kudos, stringing, notifications — is
+ * already a record in its own container, and is read from there rather than
+ * copied here, so the two can never disagree.
+ *
+ * Gated by NEXT_PUBLIC_FLAG_USAGE_METRICS, read on the server: off, `sign_in`
+ * is not written and `POST /api/events` 404s the two client kinds.
+ */
+export const USAGE_CLIENT_KINDS = ['app_open', 'tab_view'] as const;
+export const USAGE_KINDS = [...USAGE_CLIENT_KINDS, 'sign_in'] as const;
+export type UsageKind = (typeof USAGE_KINDS)[number];
+
+/** Bounded like `source`: which tab, never a URL. Admin is not usage. */
+export const USAGE_TABS = ['home', 'stringing', 'skills', 'profile'] as const;
+/** Where the app was opened: a browser tab, the installed web app, or a store app. */
+export const USAGE_PLATFORMS = ['web', 'installed', 'ios', 'android'] as const;
+/** How a member signed in. `completeSignIn` takes one, so no path can forget it. */
+export const SIGN_IN_VIAS = ['pin', 'password', 'google', 'apple', 'recovery', 'reset', 'handoff', 'migrate'] as const;
+export type SignInVia = (typeof SIGN_IN_VIAS)[number];
+
+export function isUsageKind(v: string): v is UsageKind {
+  return (USAGE_KINDS as readonly string[]).includes(v);
+}
 export const PICK_KINDS = ['pick_served', 'pick_added', 'pick_tried', 'pick_rated'] as const;
 
 /**
@@ -93,7 +123,7 @@ export function isValueHubKind(v: string): boolean {
  *  is dropped: an open payload turns the container into a free-text sink. */
 export const CLIENT_PAYLOAD: Record<
   ClientKind,
-  ReadonlyArray<'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source'>
+  ReadonlyArray<'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform'>
 > = {
   rec_card_tap: [],
   pick_added: ['catalogId', 'engineVersion', 'category'],
@@ -109,6 +139,8 @@ export const CLIENT_PAYLOAD: Record<
   verdict_shown: ['catalogId'],
   frame_page_opened: ['catalogId'],
   frame_section_expanded: ['catalogId'],
+  app_open: ['platform'],
+  tab_view: ['tab'],
 };
 
 export function isClientKind(v: unknown): v is ClientKind {

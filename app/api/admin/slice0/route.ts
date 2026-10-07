@@ -4,7 +4,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { PICK_KINDS, GEAR_SURFACE_KINDS, isCheckInSource } from '@/lib/events';
+import { PICK_KINDS, GEAR_SURFACE_KINDS, USAGE_KINDS, isCheckInSource } from '@/lib/events';
 import { SKILLS } from '@/lib/assessment';
 import { rosterMembers } from '@/lib/roster';
 
@@ -173,6 +173,9 @@ export async function GET(req: NextRequest) {
 
     /** Equipment surface beacons: events per kind, and distinct members. */
     const gearSurfaces: Record<string, { events: number; members: number }> = {};
+    /** Usage records (docs/plans/usage-metrics.md), tallied the same way. */
+    const usage: Record<string, { events: number; members: number }> = {};
+    const usageMembers = new Map<string, Set<string>>();
     const gearSurfaceMembers = new Map<string, Set<string>>();
     const statsOpeners = new Set<string>();
     const checkInOpeners = new Set<string>();
@@ -205,6 +208,17 @@ export async function GET(req: NextRequest) {
             const seen = gearSurfaceMembers.get(e.kind) ?? new Set<string>();
             seen.add(rk);
             gearSurfaceMembers.set(e.kind, seen);
+            row.members = seen.size;
+          }
+        }
+        if ((USAGE_KINDS as readonly string[]).includes(e.kind)) {
+          const rk = rosterKey(e.memberId, e.name);
+          if (rk) {
+            const row = (usage[e.kind] ??= { events: 0, members: 0 });
+            row.events += 1;
+            const seen = usageMembers.get(e.kind) ?? new Set<string>();
+            seen.add(rk);
+            usageMembers.set(e.kind, seen);
             row.members = seen.size;
           }
         }
@@ -402,6 +416,7 @@ export async function GET(req: NextRequest) {
       /** Equipment surface beacons — see GEAR_SURFACE_KINDS in lib/events.ts.
        *  Roster-narrowed like everything above; a kind nobody used is absent. */
       gearSurfaces,
+      usage,
       verdict,
     });
   } catch (error) {

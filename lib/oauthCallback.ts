@@ -279,7 +279,7 @@ export async function finishOAuthCallback(
     if (completed) {
       const res = handoffLanding(origin, claims.provider, stash!, completed, !inApp);
       clearOAuthCookies(res);
-      if (!inApp) await completeSignIn(res, member, resolveGroupId(req));
+      if (!inApp) await completeSignIn(res, member, resolveGroupId(req), claims.provider);
       return res;
     }
     // Parking failed (expired or swept). A native sheet passed its own cookie,
@@ -295,6 +295,6 @@ export async function finishOAuthCallback(
   // leaving a stale admin_session alive for a non-admin. Verified, and
   // pinned by __tests__/auth-cookie-order.test.ts.
   clearOAuthCookies(res);
-  await completeSignIn(res, member, resolveGroupId(req));
+  await completeSignIn(res, member, resolveGroupId(req), claims.provider);
   return res;
 }
