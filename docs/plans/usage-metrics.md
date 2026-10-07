@@ -1,7 +1,7 @@
 # Usage metrics — first-party tracking, an admin Metrics page, weekly reports
 
 **Track:** critical path — "prove engagement (kill-criteria)". The value-hub gate needs a number for "do members come back between sessions?", and today that number can only be read for Stats/Gear beacons.
-**Status:** intent
+**Status:** in-flight — tracking switched on 2026-10-07 (flag retires 2026-10-21)
 **Review on:** 2026-12-09 — has any weekly metrics or UX report changed a decision? If none has, stop the beacons and the two report helpers.
 
 ## Problem

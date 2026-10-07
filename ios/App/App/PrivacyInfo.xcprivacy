@@ -78,6 +78,34 @@
 			</array>
 		</dict>
 		<dict>
+			<!-- The racket-fit questions' optional sore arm or shoulder answer
+			     (privacy policy: "health-related information"). Visible only to
+			     the member. Declared to match App Store Connect. -->
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeHealth</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- Problem reports sent from the app (POST /api/report). -->
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeCustomerSupport</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
 			<!-- The push token. -->
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeDeviceID</string>
@@ -91,8 +119,7 @@
 			</array>
 		</dict>
 		<dict>
-			<!-- App opens, tab views, and sign-in / sign-up / cancel / kudos /
-			     stringing / notification switches, in the app's own `events`
+			<!-- App opens, tab views and sign-ins, in the app's own `events`
 			     container (docs/plans/usage-metrics.md). First-party, seen by the
 			     organiser only as club totals, never shared. -->
 			<key>NSPrivacyCollectedDataType</key>

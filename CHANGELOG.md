@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Admin → Metrics, and the app starts counting how it is used (2026-10-07)
+
+- **A Metrics page for the organiser** (Admin console → Metrics): active members, how fast each session fills, waitlists and cancels, new members and whether they come back, kudos / stringing / notifications use, and how quickly people pay. Club totals only — never a list of who did what.
+- **The app now keeps a simple first-party record of use**: when it is opened, which tab is viewed, and how someone signed in. It stays in BPM's own database, is only ever read as club totals, is deleted after 13 months or at once with the account, and nothing goes to a third-party analytics tool. The privacy policy, the App Store and Play privacy labels and a Home announcement all said so first.
+- **A weekly report and a monthly UX report** are prepared from the same totals with a read-only key the organiser creates on the Metrics page.
+
 ### Screens fill in from the top, and nothing says something untrue while it loads (2026-10-03 – 10-06)
 
 - **Every tab now fills top to bottom.** Cards used to arrive in whatever order the network answered, and a late one would land above or between cards you were already reading and shove them down. Now each card holds its place with a grey outline the size of the real card from the first moment, and shows only once everything above it has — so Home, Stats, Profile, Stringing and the admin console settle once instead of jumping. If it all arrives quickly (switching back to a tab), it simply appears; if it takes a moment, it fades in from the top.

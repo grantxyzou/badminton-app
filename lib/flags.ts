@@ -144,10 +144,10 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   },
   NEXT_PUBLIC_FLAG_USAGE_METRICS: {
     description:
-      'First-party usage records (docs/plans/usage-metrics.md): `sign_in` written by completeSignIn, and the `app_open` / `tab_view` beacons. Read SERVER-side by lib/usage.ts and POST /api/events; off, nothing is recorded and those kinds 404. Must stay off until the App Store and Play privacy labels say "Product Interaction".',
+      'First-party usage records (docs/plans/usage-metrics.md): `sign_in` written by completeSignIn, and the `app_open` / `tab_view` beacons. Read SERVER-side by lib/usage.ts and POST /api/events; off, nothing is recorded and those kinds 404. Turned on 2026-10-07, after the App Store and Play privacy labels, the privacy policy and a Home announcement.',
     owner: 'grant',
-    plannedRemoval: '2026-11-30',
-    note: 'Off until Grant\'s flip checklist is done (store labels, a Home announcement, his approval). Move this date to flip + 14 days when it is turned on.',
+    plannedRemoval: '2026-10-21',
+    note: 'On since 2026-10-07. Retiring it deletes the off branch: the usageOn() checks in lib/usage.ts and POST /api/events.',
   },
 };
 
