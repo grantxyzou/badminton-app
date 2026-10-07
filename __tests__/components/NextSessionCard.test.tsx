@@ -24,12 +24,44 @@ describe('<NextSessionCard />', () => {
     global.fetch = originalFetch;
   });
 
-  it('shows "no active session" when API returns nothing', async () => {
+  it('shows the first-session card when the API returns nothing', async () => {
     mockFetch(makeFetcher(null, []));
     render(<NextSessionCard />);
     await waitFor(() => {
-      expect(screen.getByText(/No active session/i)).toBeTruthy();
+      expect(screen.getByText(/No session yet/i)).toBeTruthy();
     });
+  });
+
+  /**
+   * A brand-new club (multi-group) has no session pointer, so `/api/session`
+   * and `/api/players` both answer 404 `no_active_session`. Its organiser's
+   * first screen after creating the club used to be a red "Couldn't load this
+   * week" — a lying ERROR state. It is an empty club with one thing to do.
+   */
+  it('a 404 no_active_session is "no session yet" with a Set-your-first-session action, never a load error', async () => {
+    const onAdvance = vi.fn();
+    mockFetch((async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.includes('/api/session') || url.includes('/api/players')) {
+        return new Response(JSON.stringify({ error: 'no_active_session' }), { status: 404 });
+      }
+      return new Response('not found', { status: 404 });
+    }) as typeof fetch);
+    render(<NextSessionCard onAdvance={onAdvance} />);
+    const cta = await screen.findByRole('button', { name: /Set your first session/i });
+    expect(screen.getByText(/No session yet/i)).toBeTruthy();
+    expect(screen.queryByText(/Couldn.t load/i)).toBeNull();
+    fireEvent.click(cta);
+    expect(onAdvance).toHaveBeenCalledTimes(1);
+  });
+
+  it('a bare 404 with no no_active_session body is still a load failure', async () => {
+    mockFetch((async () => new Response('gone', { status: 404 })) as typeof fetch);
+    render(<NextSessionCard />);
+    await waitFor(() => {
+      expect(screen.getByText(/Couldn.t load this week/i)).toBeTruthy();
+    });
+    expect(screen.queryByText(/No session yet/i)).toBeNull();
   });
 
   it('shows capacity, signup state, and deadline', async () => {

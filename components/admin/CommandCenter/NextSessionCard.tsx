@@ -7,6 +7,7 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import CardHeader from '@/components/primitives/CardHeader';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { sharedFetch } from '@/lib/sharedRead';
@@ -122,6 +123,23 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
        * fact. An admin reading that on a Thursday would reasonably conclude
        * nobody is coming.
        */
+      // A club with NO session yet is not a failed read. A brand-new club
+      // (multi-group) has no pointer, so `GET /api/session` answers 404
+      // `no_active_session` and `/api/players` the same — the first thing
+      // its organiser saw after "Done" was two red "Couldn't load" cards for
+      // a club that was simply empty. The body is checked, not just the
+      // status, so a missing route is still a failure.
+      if (sessionRes.status === 404) {
+        const body = (await sessionRes.json().catch(() => null)) as { error?: string } | null;
+        if (body?.error === 'no_active_session') {
+          setSession(null);
+          setActiveCount(0);
+          setWaitlistCount(0);
+          setLoadError(false);
+          loadedRef.current = true;
+          return;
+        }
+      }
       if (!sessionRes.ok || !playersRes.ok) throw new Error('next session load failed');
       const s = (await sessionRes.json()) as Session;
       const players = (await playersRes.json()) as Player[];
@@ -247,10 +265,20 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     );
   }
   if (!session) {
+    // No session yet — a new club's first screen. Same words as Home's
+    // `firstSession` card, and the one action that gets them out of it, not a
+    // dimmed "No active session." that reads as something being wrong.
     return (
-      <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Next session">
-        <h3 className="bpm-h3">Next session</h3>
-        <p className="fs-sm text-gray-400">No active session.</p>
+      <section className="glass-card p-4 space-y-3" aria-label="Next session">
+        <CardHeader icon="event" title="Next session" subtitle="No session yet" />
+        <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>
+          Set your first night and people can start signing up.
+        </p>
+        {onAdvance && (
+          <button type="button" onClick={onAdvance} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+            Set your first session
+          </button>
+        )}
       </section>
     );
   }
