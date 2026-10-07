@@ -34,17 +34,26 @@
  * `res.cookies.set` re-serializes the entire cookie map and would drop those
  * appended headers. So never call a `set*` helper AFTER a `clear*` on the same
  * response — the member cookie is set FIRST here for exactly that reason.
+ *
+ * HOW THEY SIGNED IN (docs/plans/usage-metrics.md): `via` is REQUIRED, so a new
+ * sign-in path cannot forget to be counted — the type checker refuses the call.
+ * `null` means a re-mint that is not a sign-in (creating, joining or switching
+ * a club), which records nothing. Recorded for the group actually minted, and
+ * only with NEXT_PUBLIC_FLAG_USAGE_METRICS on; it never fails the sign-in.
  */
 import { NextResponse } from 'next/server';
 import { setMemberCookie, setAdminCookie, clearAdminCookie } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { readGroupAdmin, readMembership } from '@/lib/groups';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
+import type { SignInVia } from '@/lib/events';
+import { recordSignIn } from '@/lib/usage';
 
 export async function completeSignIn(
   res: NextResponse,
   member: { id: string; name: string; role?: string },
   groupId: string,
+  via: SignInVia | null,
 ): Promise<void> {
   const group = await groupForMember(member.id, groupId);
   setMemberCookie(res, member.id, member.name, group);
@@ -53,6 +62,7 @@ export async function completeSignIn(
   } else {
     clearAdminCookie(res);
   }
+  if (via) await recordSignIn(member, group, via);
 }
 
 /** The group we are willing to mint for: the asked-for one, or BPM. */

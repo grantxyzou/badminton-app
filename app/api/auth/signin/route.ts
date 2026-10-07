@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       email: member.email ?? null,
       emailVerified: member.emailVerified === true,
     });
-    await completeSignIn(res, member, resolveGroupId(req));
+    await completeSignIn(res, member, resolveGroupId(req), 'password');
     return res;
   } catch (err) {
     // A Cosmos throttle or misconfig must be distinguishable from bad

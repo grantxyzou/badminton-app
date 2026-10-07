@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    await completeSignIn(res, updated, resolveGroupId(req));
+    await completeSignIn(res, updated, resolveGroupId(req), pending.provider);
     return res;
   } catch (err) {
     // A Cosmos throttle must be distinguishable from a wrong PIN, or the

@@ -28,7 +28,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_GEAR_PAGES'
   | 'NEXT_PUBLIC_FLAG_FIT_VERDICT'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
-  | 'NEXT_PUBLIC_FLAG_STORE_CREDIT';
+  | 'NEXT_PUBLIC_FLAG_STORE_CREDIT'
+  | 'NEXT_PUBLIC_FLAG_USAGE_METRICS';
 
 interface FlagMeta {
   description: string;
@@ -133,6 +134,13 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-11-21',
     note: 'On in production since 2026-10-03 (Grant). Ship date + 2 weeks is not enough here: the kill criterion reads four weeks of matches (Review on 2026-11-07 in the plan). Retiring it deletes the 404 guards and the hold\'s off branch.',
   },
+  NEXT_PUBLIC_FLAG_USAGE_METRICS: {
+    description:
+      'First-party usage records (docs/plans/usage-metrics.md): `sign_in` written by completeSignIn, and the `app_open` / `tab_view` beacons. Read SERVER-side by lib/usage.ts and POST /api/events; off, nothing is recorded and those kinds 404. Must stay off until the App Store and Play privacy labels say "Product Interaction".',
+    owner: 'grant',
+    plannedRemoval: '2026-11-30',
+    note: 'Off until Grant\'s flip checklist is done (store labels, a Home announcement, his approval). Move this date to flip + 14 days when it is turned on.',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -163,6 +171,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
     case 'NEXT_PUBLIC_FLAG_STORE_CREDIT':
       return process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
+    case 'NEXT_PUBLIC_FLAG_USAGE_METRICS':
+      return process.env.NEXT_PUBLIC_FLAG_USAGE_METRICS;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned

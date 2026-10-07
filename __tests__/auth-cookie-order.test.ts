@@ -31,7 +31,7 @@ describe('cookie ordering — behaviour', () => {
   it('a cookies.set after completeSignIn DOES drop the admin clears', async () => {
     // Pinning the hazard itself, so the reason for the rule stays visible.
     const res = NextResponse.json({ ok: true });
-    await completeSignIn(res, { id: 'm1', name: 'Lin', role: 'member' }, 'bpm');
+    await completeSignIn(res, { id: 'm1', name: 'Lin', role: 'member' }, 'bpm', 'pin');
     expect(res.headers.getSetCookie().filter((h) => h.startsWith('admin_session=;'))).toHaveLength(2);
 
     clearOAuthCookies(res); // the mistake
@@ -41,7 +41,7 @@ describe('cookie ordering — behaviour', () => {
   it('clearing BEFORE completeSignIn keeps them', async () => {
     const res = NextResponse.json({ ok: true });
     clearOAuthCookies(res);
-    await completeSignIn(res, { id: 'm1', name: 'Lin', role: 'member' }, 'bpm');
+    await completeSignIn(res, { id: 'm1', name: 'Lin', role: 'member' }, 'bpm', 'pin');
 
     const headers = res.headers.getSetCookie();
     expect(headers.filter((h) => h.startsWith('admin_session=;'))).toHaveLength(2);

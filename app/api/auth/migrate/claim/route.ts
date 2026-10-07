@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         secure: process.env.NODE_ENV === 'production',
       });
     }
-    await completeSignIn(res, { id: member.id, name: member.name, role: member.role }, explicitGroupId(req) ?? claim.groupId ?? resolveGroupId(req));
+    await completeSignIn(res, { id: member.id, name: member.name, role: member.role }, explicitGroupId(req) ?? claim.groupId ?? resolveGroupId(req), 'migrate');
     return res;
   } catch (err) {
     console.error('POST /api/auth/migrate/claim failed:', err);

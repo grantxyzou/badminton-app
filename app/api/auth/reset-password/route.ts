@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     await container.items.upsert(updated);
 
     const res = NextResponse.json({ ok: true, id: member.id, name: member.name });
-    await completeSignIn(res, updated, resolveGroupId(req));
+    await completeSignIn(res, updated, resolveGroupId(req), 'reset');
     return res;
   } catch (err) {
     console.error('POST /api/auth/reset-password unhandled:', err);

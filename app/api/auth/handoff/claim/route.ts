@@ -145,6 +145,6 @@ export async function POST(req: NextRequest) {
   // PWA path `/start` runs inside the app — the measured `count=1` log in
   // lib/authHandoff.ts is what proves that — so both sources agree there.)
   // `completeSignIn` refuses either one it cannot find a membership for.
-  await completeSignIn(res, member, explicitGroupId(req) ?? claim.groupId ?? resolveGroupId(req));
+  await completeSignIn(res, member, explicitGroupId(req) ?? claim.groupId ?? resolveGroupId(req), 'handoff');
   return res;
 }

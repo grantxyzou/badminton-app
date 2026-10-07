@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       role: membership.role,
       rosterName: membership.name,
     });
-    await completeSignIn(res, member, group.id);
+    await completeSignIn(res, member, group.id, null);
     return res;
   } catch (error) {
     console.error('POST /api/groups/switch:', error);

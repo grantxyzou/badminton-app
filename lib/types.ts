@@ -746,6 +746,12 @@ export interface EngagementEvent {
    *  none, and the Slice-0 reader counts those under 'unknown' rather than
    *  dropping them. */
   source?: string;
+  /** `tab_view` only — one of USAGE_TABS. Additive. */
+  tab?: string;
+  /** `app_open` only — one of USAGE_PLATFORMS. Additive. */
+  platform?: string;
+  /** `sign_in` only — one of SIGN_IN_VIAS. Additive. */
+  via?: string;
 }
 
 /** One source of truth for the kinds is `lib/events.ts`; this union is

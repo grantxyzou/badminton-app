@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
         { id: memberId, name, email, emailVerified: false, verificationSent: sent },
         { status: 201 },
       );
-      await completeSignIn(res, member, cookieGroupId);
+      await completeSignIn(res, member, cookieGroupId, 'password');
       return res;
     } catch (err) {
       // Free the address so this person can try again, and so it is not blocked

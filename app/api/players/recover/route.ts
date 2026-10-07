@@ -190,7 +190,7 @@ async function handlePost(req: NextRequest) {
         pinHash: member.pinHash,
       });
       const res = NextResponse.json({ deleteToken: newDeleteToken });
-      await completeSignIn(res, member, signInGroupId);
+      await completeSignIn(res, member, signInGroupId, 'pin');
       return res;
     }
 
@@ -203,7 +203,7 @@ async function handlePost(req: NextRequest) {
     // admin cookie still syncs because admin status is a property of
     // the member, independent of session participation.
     const res = NextResponse.json({ deleteToken: null });
-    await completeSignIn(res, member, signInGroupId);
+    await completeSignIn(res, member, signInGroupId, 'pin');
     return res;
   }
 
@@ -282,6 +282,6 @@ async function handlePost(req: NextRequest) {
   // what lets the user — who just cleared their PIN — pass the members/me
   // first-set guard when they pick a new PIN in the next sheet.
   // One line on purpose: `auth-cookie-order.test.ts` scans for `completeSignIn(res`.
-  await completeSignIn(res, { id: String(member.id), name: String(member.name), role: typeof member.role === 'string' ? member.role : undefined }, codeGroupId);
+  await completeSignIn(res, { id: String(member.id), name: String(member.name), role: typeof member.role === 'string' ? member.role : undefined }, codeGroupId, 'recovery');
   return res;
 }
