@@ -49,14 +49,34 @@ const empty = (): MoneyView => ({
 
 type Entry = Pick<LedgerEntry, 'id' | 'memberId' | 'account' | 'kind' | 'amountCents' | 'ref' | 'meta' | 'createdAt'>;
 
-/** The date the money belongs to (ISO), with a void borrowing its original's. */
+/** The date the money belongs to (ISO), with a void borrowing its original's. A day-only date is anchored at 00:00Z. */
 export function effectiveDate(e: Entry, byId: Map<string, Entry>): string {
   if (e.kind === 'void') {
     const original = byId.get(e.id.slice('void:'.length));
     if (original) return effectiveDate(original, byId);
   }
-  return e.meta?.date ? `${e.meta.date}T12:00:00.000Z` : e.createdAt;
+  return e.meta?.date ? `${e.meta.date}T00:00:00.000Z` : e.createdAt;
 }
+
+/** Does the money carry only a calendar day (an expense's `meta.date`), with no clock? */
+function isDayOnly(e: Entry, byId: Map<string, Entry>): boolean {
+  if (e.kind === 'void') {
+    const original = byId.get(e.id.slice('void:'.length));
+    if (original) return isDayOnly(original, byId);
+  }
+  return !!e.meta?.date;
+}
+
+/**
+ * A DAY-ONLY DATE GETS A DAY OF SLACK AT THE TOP OF THE WINDOW. The admin
+ * types the day they spent it, in their own calendar; the window ends at
+ * `now`, a UTC instant. Anchored anywhere inside that day, "today" can sit
+ * in the FUTURE of a `now` that is earlier in UTC (an admin east of
+ * Greenwich, before noon — review of #572), and the expense would show in
+ * the list and be missing from the totals it sits under. So a day counts
+ * once it has begun anywhere on Earth.
+ */
+const DAY_SLACK_MS = 24 * 60 * 60 * 1000;
 
 /** The kind a void counts against: its original's. */
 function effectiveKind(e: Entry, byId: Map<string, Entry>): Entry['kind'] {
@@ -92,7 +112,8 @@ export function summarizeLedger(
       continue;
     }
     const t = Date.parse(effectiveDate(e, byId));
-    if (!Number.isFinite(t) || t < window.from || t > window.to) continue;
+    const top = window.to + (isDayOnly(e, byId) ? DAY_SLACK_MS : 0);
+    if (!Number.isFinite(t) || t < window.from || t > top) continue;
     const kind = effectiveKind(e, byId);
     const meta = effectiveMeta(e, byId);
     const cents = e.amountCents;

@@ -77,6 +77,20 @@ describe('summarizeLedger', () => {
     expect(summarizeLedger([e], { from: Date.parse('2026-08-25T00:00:00Z'), to: Date.parse('2026-09-05T00:00:00Z') }).outlay.other).toBe(500);
   });
 
+  it('an expense dated TODAY counts even when "now" is earlier in UTC than the admin’s day (review of #572)', () => {
+    // 01:00Z on the 7th: an admin at UTC+8 is already into the 7th and has dated the expense so.
+    const now = Date.parse('2026-10-07T01:00:00Z');
+    const e = entry({ kind: 'expense', amountCents: 1250, memberId: '~club', account: 'club_outlay', createdAt: new Date(now).toISOString(), meta: { category: 'court', date: '2026-10-07' } });
+    const v = summarizeLedger([e], rangeWindow('30d', now));
+    expect(v.outlay.courts).toBe(1250);
+    // And its void, dated by the expense, nets it out in the same window.
+    const voided = summarizeLedger([e, entry({ id: `void:${e.id}`, kind: 'void', amountCents: -1250, memberId: '~club', account: 'club_outlay', createdAt: new Date(now).toISOString() })], rangeWindow('30d', now));
+    expect(voided.outlay.courts).toBe(0);
+    // A clocked entry gets no slack: a payment stamped after `now` is not in the window.
+    const future = entry({ kind: 'payment', amountCents: -500, createdAt: new Date(now + 60_000).toISOString(), meta: { via: 'manual' } });
+    expect(summarizeLedger([future], rangeWindow('30d', now)).collected.manual).toBe(0);
+  });
+
   it('out-of-window entries stay out, and the credit liability ignores the window', () => {
     const v = summarizeLedger(
       [
