@@ -57,6 +57,19 @@ fix before anything in Phase 2 starts.
   The review of #570 caught the removed-member case; flagged, it would have turned the card amber every
   day over a line with no repair.
 
+- **2026-10-07 — Stage 3, the one money view.** `GET /api/admin/ledger` is rebuilt over the ledger
+  (`lib/ledgerView.ts`): income, collected by method, covered, outlay by category, net, credit liability
+  and unredeemed gift cards, all in cents, windowed by the money's own date, voids netted against the
+  entry they reverse. Two things are deliberately NOT summed into it: `outstanding` (live, frozen lines,
+  everyone, not range-bound — a debt is owed today whenever the bill was) and `unfinalized` (the live
+  split estimate for unsettled sessions, under its own key and LAST on the page). The page is all or
+  nothing — a read that throws is a 503, never a tile at zero. Admin-entered expenses
+  (`/api/admin/expenses`) are the outlay the app cannot see; delete is a void. The 30-second server cache
+  the plan sketched was left out: one projected scan per admin load is cheap on B1, and a cache is a second
+  thing to invalidate. **Stage 4 (the ledger as the truth: partial credit, overpayment → credit, "Bruce
+  paid for Grant") is a separate plan**, gated on the daily reconcile running clean for four weeks —
+  read it with the kill criterion on the review date above.
+
 - **Apps Script in the admin's Gmail, not a Gmail API connection.** Reading Gmail needs the restricted
   `gmail.readonly` scope. On the OAuth client the app already uses for member sign-in that means Google
   verification and a security assessment, or a "Testing" app whose refresh token expires every 7 days — a
@@ -180,4 +193,6 @@ top-ups ≥ $40 with the payer covering the fee.
 | The mirror (Phase 2 stage 1) | `lib/ledgerMirror.ts` — hooks in settle, players PATCH/DELETE, stringing `[id]`, birds, the inbox, credit |
 | The history backfill | `lib/ledgerBackfill.ts`, `GET`/`POST /api/admin/ledger-backfill` |
 | The reconcile (Phase 2 stage 2) | `lib/ledgerReconcile.ts` over `computeOwedForRoster` (`lib/owedBalance.ts`); daily from `POST /api/payments/remind`; `GET`/`POST /api/admin/ledger/reconcile` |
+| The money view (Phase 2 stage 3) | `lib/ledgerView.ts` (pure buckets), `GET /api/admin/ledger`, `components/admin/LedgerPage.tsx` with `components/admin/ledger/{AddExpenseSheet,ReconcileSheet}.tsx` |
+| Admin-entered expenses | `POST`/`GET`/`DELETE /api/admin/expenses` (a `club_outlay` `expense` entry; delete is a void) |
 | The script admins paste | `public/payments/apps-script.gs` (served at `/bpm/payments/apps-script.gs`, so the setup sheet can copy it) |
