@@ -59,7 +59,7 @@ describe('SetupShareSheet', () => {
       'Tension: 26 lb',
       'Grip: G4',
       '4 restrings since March 2025',
-      "+2 lb on the club's average",
+      "+2 lb on the group's average",
       'At BPM: 1 of 4',
       'via %APP%',
     ]);

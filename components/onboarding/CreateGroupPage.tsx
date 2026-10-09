@@ -253,7 +253,7 @@ export default function CreateGroupPage({
         backLabel={t('backLabel')}
       />
 
-      <div style={{ display: 'grid', gap: 'var(--space-5)', padding: '0 var(--space-5) var(--space-9)' }}>
+      <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
         {!created && step === 'auth' ? (
           <div key="auth" className="motion-fade" style={{ display: 'grid', gap: 'var(--space-5)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>

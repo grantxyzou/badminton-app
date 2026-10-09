@@ -373,7 +373,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
       </Section>
 
       {/* ── Credit & gift cards ── */}
-      <Section title="Credit & gift cards" subtitle="Money the club owes back">
+      <Section title="Credit & gift cards" subtitle="Money the group owes back">
         <div className="flex flex-col" style={{ gap: 'var(--space-2)' }}>
           <div className="flex items-baseline justify-between" style={{ gap: 'var(--space-3)' }}>
             <span className="fs-base" style={{ color: 'var(--text-primary)' }}>
@@ -392,7 +392,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
 
       {/* ── Club outlay ── */}
       <Section
-        title="Club outlay"
+        title="Group outlay"
         subtitle="Courts, shuttles, and anything you add"
         action={
           <button type="button" className="cc-btn cc-btn-ghost" style={{ whiteSpace: 'nowrap' }} disabled={!online} onClick={() => { setExpenseKey((k) => k + 1); setExpenseOpen(true); }}>

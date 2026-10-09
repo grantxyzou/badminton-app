@@ -86,7 +86,7 @@ describe('FrameDetailPage', () => {
 
   it('says the club band is not there yet rather than drawing one', async () => {
     renderPage(OWNED);
-    await waitFor(() => expect(screen.getByText(/You're at 25 · not enough of the club plays it yet/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/You're at 25 · not enough of the group plays it yet/)).toBeTruthy());
   });
 });
 

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             error:
-              'Someone on this roster already goes by that name. Roster names have to be unique inside a club — give this person a distinct one, such as adding a last initial.',
+              'Someone on this roster already goes by that name. Roster names have to be unique inside a group — give this person a distinct one, such as adding a last initial.',
             code: 'roster_name_taken',
           },
           { status: 409 },
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             error:
-              'Someone on this roster already goes by that name. Roster names have to be unique inside a club — give this person a distinct one, such as adding a last initial.',
+              'Someone on this roster already goes by that name. Roster names have to be unique inside a group — give this person a distinct one, such as adding a last initial.',
             code: 'roster_name_taken',
           },
           { status: 409 },

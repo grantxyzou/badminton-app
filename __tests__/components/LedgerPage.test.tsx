@@ -90,7 +90,7 @@ describe('<LedgerPage />', () => {
     expect(within(creditCard).getByText('$25.00')).toBeTruthy();
     expect(within(creditCard).getByText(/2 gift cards not yet redeemed/)).toBeTruthy();
 
-    const outlay = screen.getByRole('region', { name: 'Club outlay' });
+    const outlay = screen.getByRole('region', { name: 'Group outlay' });
     expect(within(outlay).getByText('$250.00')).toBeTruthy(); // shuttles
   });
 

@@ -57,7 +57,7 @@ export default function CatalogGapsPage({ onBack }: { onBack: () => void }) {
         ) : !gaps ? (
           <AdminPageSkeleton />
         ) : gaps.length === 0 ? (
-          <EmptyState>Every racket in the club is in the catalog.</EmptyState>
+          <EmptyState>Every racket in the group is in the catalog.</EmptyState>
         ) : (
           <ul className="glass-card is-flush catalog-gaps" style={{ listStyle: 'none', margin: 0, padding: 0, overflow: 'hidden' }}>
             {gaps.map((g) => {

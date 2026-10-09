@@ -43,7 +43,7 @@ describe('TensionField', () => {
   it('a typed figure outside the rated range warns and is still the value', () => {
     const spy = vi.fn();
     render(<Harness rated={[22, 28]} spy={spy} club={{ sampleSize: 4, low: 24, high: 27, mean: 25.5 }} clubStatus="ready" />);
-    expect(screen.getByText('The club strings this frame 24–27 lb.')).toBeTruthy();
+    expect(screen.getByText('The group strings this frame 24–27 lb.')).toBeTruthy();
     fireEvent.change(field(), { target: { value: '31' } });
     expect(spy).toHaveBeenLastCalledWith(31);
     expect(screen.getByText("That's outside what this frame is rated for — 22 to 28 lb.")).toBeTruthy();
@@ -51,7 +51,7 @@ describe('TensionField', () => {
 
   it('with no frame to ask about, draws no ruler and says nothing about the club', () => {
     render(<Harness rated={[22, 28]} />);
-    expect(screen.queryByText(/club/i)).toBeNull();
+    expect(screen.queryByText(/group/i)).toBeNull();
     expect(screen.queryByRole('img')).toBeNull();
   });
 
@@ -62,10 +62,10 @@ describe('TensionField', () => {
     expect(container.querySelector('.tension-field-shimmer')).toBeTruthy();
     cleanup();
     render(<Harness clubStatus="ready" club={null} />);
-    expect(screen.getByText('Not enough of the club has logged this frame yet.')).toBeTruthy();
+    expect(screen.getByText('Not enough of the group has logged this frame yet.')).toBeTruthy();
     cleanup();
     render(<Harness clubStatus="error" />);
-    expect(screen.getByText("We couldn't reach the club data just now.")).toBeTruthy();
+    expect(screen.getByText("We couldn't reach the group data just now.")).toBeTruthy();
     void rerender;
   });
 

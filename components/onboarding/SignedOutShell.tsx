@@ -548,7 +548,7 @@ function NoClubView({
           type="button"
           onClick={onSignOut}
           className="link-quiet launch-btn"
-          style={{ animationDelay: `${buttonDelayMs(2)}ms`, justifySelf: 'center' }}
+          style={{ animationDelay: `${buttonDelayMs(2)}ms`, justifyContent: 'center' }}
         >
           {t('noClub.signOut')}
         </button>

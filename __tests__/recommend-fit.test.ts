@@ -159,7 +159,7 @@ describe('GET /api/recommend — the fit engine', () => {
     expect(keys.length).toBeLessThanOrEqual(3);
     expect(keys[keys.length - 1]).toBe('reason.clubPlays');
     expect(body.reasonKeys[keys.length - 1].params).toEqual({ count: 3 });
-    expect(body.reasons[keys.length - 1]).toBe('3 people in the club already play it.');
+    expect(body.reasons[keys.length - 1]).toBe('3 people in the group already play it.');
   });
 
   it('with the fit flag OFF the racket branch is the old shape — no fitState, no alternatives', async () => {
