@@ -95,6 +95,17 @@ describe('computeFitFacts', () => {
     expect(faster.state).toBe('suits');
   });
 
+  it('a slow swing wanting more power is not asking for a heavier head — the verdict reads the goal with the swing (fit-3)', () => {
+    // Medium swing: the engine's power step is head-heavy, so an even frame
+    // is one step off the goal. Slow swing: the same frame IS the goal.
+    const medium = computeFitFacts({ gear: gear({ fitGoal: 'more_power', fitSwing: 'medium' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    expect(medium.reasons.map((r) => r.key)).toContain('goalAgainstBalance');
+    const slow = computeFitFacts({ gear: gear({ fitGoal: 'more_power', fitSwing: 'slow' }, 21), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    expect(slow.reasons.map((r) => r.key)).toContain('goalWithBalance');
+    expect(slow.reasons.map((r) => r.key)).not.toContain('goalAgainstBalance');
+    expect(slow.state).toBe('suits');
+  });
+
   it('names the same tension the string pick does when frame, string and check-in are known', async () => {
     const { pairTension } = await import('../lib/stringPair');
     const { buildProfile } = await import('../lib/racketProfile');

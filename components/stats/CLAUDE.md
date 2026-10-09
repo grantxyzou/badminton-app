@@ -294,7 +294,12 @@ each owns different hooks and a hook cannot be conditional.
   the member's ACTIVE racket's axes (balance 1–3, flex 1–5, weight midpoint,
   tier 1–3) plus the goal delta (`GOAL_DELTA` — the one table of badminton
   judgment in the file; tune it there and let the golden set say whether it
-  was right), then swing sets the flex CEILING (the ONLY input that speaks to
+  was right — read through `goalDelta(goal, swing)`, because since `fit-3`
+  (2026-10-09) a SLOW swing's `more_power` is `SLOW_SWING_POWER_DELTA`: no
+  head-heavy step, no extra grams, a one-line `reason.slowSwingPower` on the
+  even frames it picks instead. A heavier head adds power only to a swing
+  fast enough to accelerate it; the stringer rated golden case g01 that way.
+  `lib/fitVerdict.ts` reads the same function with the same swing), then swing sets the flex CEILING (the ONLY input that speaks to
   flex since `fit-2`, 2026-09-10 — an unanswered swing caps nothing, widens
   the tolerance and asks) and comfort sets weight/balance ceilings and hands
   the string engine a 1–2 lb tension reduction, never a flex cap. Ceilings
@@ -359,8 +364,9 @@ each owns different hooks and a hook cannot be conditional.
   `scripts/dump-fit-cases.mjs` fetches for the owner and the stringer to rate.
 - **The golden set** (`__tests__/fixtures/fit-golden.json`, run by
   `__tests__/fit-golden.test.ts`) is the expert ground truth: raw ratings +
-  a gear shape per case, an ACCEPTABLE set, never a derived level. Empty
-  today and skipping loudly; Phase 4 raises the guard to five cases.
+  a gear shape per case, an ACCEPTABLE set, never a derived level. One rated
+  case (g01, 2026-10-09) and two `pending` drafts the harness reports without
+  asserting; Phase 4 raises the guard to five rated cases.
 - `canon`, `isScorable`, `overall`, `skillLevel` and the derived-profile
   helpers MOVED here; `lib/racketRecommend.ts` re-exports them until it
   retires. `maxFlexDemand` is still exported for that legacy path only — the

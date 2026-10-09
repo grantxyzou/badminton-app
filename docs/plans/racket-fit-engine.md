@@ -5,7 +5,7 @@ equipment purchases"; Value-Hub Track 2 (Equipment). ROADMAP §4 still says trac
 1–4 stay blocked until the Slice-0 readout; the `VALUE_HUB_SLICE` note in
 `lib/flags.ts` records that the fan-out was made by shipping, not by reading the
 gate. This file says so rather than pretending the readout happened.
-**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; Phase 4 waits on ≥5 golden ratings
+**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; `fit-3` 2026-10-09 (a slow swing's "more power" leaves the head alone, from the first stringer-rated case); Phase 4 waits on ≥5 golden ratings (1 rated, 2 drafts pending)
 **Review on:** 2026-10-19 — ≥5 golden cases rated, and `picks.engagedMembers` ≥ 2 in `GET /api/admin/slice0` (members who ADDED, TRIED or RATED a pick — `pick_served` is the denominator, not engagement)? If not, drop the fit questionnaire.
 
 ## Problem
@@ -137,6 +137,21 @@ because they are correct regardless of uptake.
   player types) that the harness reports and never asserts; they do not count
   toward the five this plan's kill criterion reads until the owner or the
   stringer confirms them.
+- **`fit-3`: a slow swing asking for more power is not sent a head-heavy
+  frame** (2026-10-09). The first of those drafts, g01 (a slow-swing beginner
+  wanting more power), was where the engine and the deck disagreed: the
+  `more_power` delta stepped every member one balance step toward head-heavy,
+  and the engine picked the Astrox 88 Play. The published buying guides all
+  say even balance, flexible-to-medium shaft, light — a heavier head adds
+  smash power only to a swing fast enough to accelerate it — and Grant, as
+  the stringer, rated the case that way ("I agree with online"). So
+  `goalDelta(goal, swing)` answers `more_power` + `slow` with no balance or
+  gram step; flex is left to the slow ceiling. Beat stepping flex down to
+  Flexible as well: the engine then led with three Flexible entry rows none
+  of which were on the stringer's list, and the rated list is Medium rows —
+  whether Flexible should be preferred is the next question for the golden
+  set, not a claim to make ahead of it. g01 is the first RATED case; g02 and
+  g03 stay drafts.
 
 ## Shape
 

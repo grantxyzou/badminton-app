@@ -76,7 +76,7 @@ gone after purge.
 ## Engine — `lib/racketFit.ts` (pure)
 
 ```ts
-export const FIT_ENGINE_VERSION = 'fit-2';   // fit-1 = 2026-09-09 launch; fit-2 = the research re-weighting, 2026-09-10
+export const FIT_ENGINE_VERSION = 'fit-3';   // fit-1 = 2026-09-09 launch; fit-2 = the research re-weighting, 2026-09-10; fit-3 = a slow swing's "more power" leaves the head alone, 2026-10-09
 export interface FitInput {
   anchor: CatalogItem | null;      // active racket, only if its catalogId is a scorable row
   ownedIds: ReadonlySet<string>;   // every non-retired racket catalogId — excluded
@@ -127,6 +127,15 @@ export function recommendFit(input: FitInput, catalog: CatalogItem[]): FitResult
 | more_control | toward2 | +1 | 0 | Control |
 | faster | −1 | 0 | −2 | Speed |
 | less_fatigue | −1 | 0 | −3 | — |
+| more_power, swing = slow (**fit-3**) | 0 | 0 | 0 | — |
+
+The table is read through `goalDelta(goal, swing)`; the one swing-dependent
+row is `SLOW_SWING_POWER_DELTA`. A head-heavy frame adds smash power only to
+a swing fast enough to accelerate it; a slow swing gets its power from the
+shaft (held at Medium by the ceiling below) and the string bed (the slow
+tension band). Golden case g01, rated by the stringer 2026-10-09, is the
+evidence. `lib/fitVerdict.ts` reads the same function with the same swing, so
+the verdict never calls an even frame "against" a slow swing's power goal.
 
 Clamp balance [1, 3], flex [1, 5], weight [75, 89].
 

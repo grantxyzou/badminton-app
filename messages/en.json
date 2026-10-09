@@ -906,6 +906,7 @@
          "levelOnly": "From your check-in only — answer the fit questions for a sharper pick.",
          "swingUnanswered": "Tell us your swing speed and we'll get the shaft right.",
          "anchorStifferThanSwing": "Your {model} is stiffer than your swing wants — these are softer on purpose.",
+         "slowSwingPower": "At your swing speed, power comes from a shaft and string bed that do the work — not a heavier head.",
          "clubPlays": "{count} people in the group already play it."
        },
        "warn": {
