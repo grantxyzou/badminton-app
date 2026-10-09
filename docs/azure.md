@@ -21,7 +21,7 @@ where a fresh look gets recorded.
         │  Azure Cosmos DB      │    │  Anthropic Claude API   │
         │  account cosmos-bd †  │    │  (external, pay-per-use)│
         │  database `badminton` │    │  two model ids, below   │
-        │  25 containers        │    │                         │
+        │  27 containers        │    │                         │
         └───────────────────────┘    └─────────────────────────┘
 ```
 
@@ -172,7 +172,7 @@ virtual network. Neither has been done. †
 | Account name † | `cosmos-bd` |
 | API | NoSQL |
 | Database name | `badminton` (env var `COSMOS_DB_NAME`) |
-| Throughput † | 400 RU/s shared across containers — the minimum for a shared database, which covers the first 25 containers. There are exactly 25 |
+| Throughput † | 400 RU/s shared across containers, the minimum for a shared database. **The code now defines 27 containers**, and Microsoft caps a shared-throughput database at 25: past that, a new container can only be added with its own dedicated throughput (400 RU/s minimum each), unless the account already held 25 or more before the cap was introduced. Payments and the ledger work in production, so either the account is exempt or the extra containers carry their own throughput. Which one is a portal fact; see §10 |
 | Backup mode † | Not recorded. The `deploy-promotion` skill claims 7-day point-in-time restore; nothing in the repo shows it was set or exercised |
 | Access † | Primary/secondary keys via connection string; no RBAC role assignments, no managed identity |
 
@@ -180,13 +180,13 @@ virtual network. Neither has been done. †
 
 **`lib/containers.ts` is the registry** (partition key, scope, provisioning per
 container) and `__tests__/containers-registry.test.ts` pins it to the source.
-`CLAUDE.md` groups them by key. The 25, by partition key:
+`CLAUDE.md` groups them by key. The 27, by partition key:
 
 | Partition key | Containers |
 |---|---|
 | `/sessionId` | `sessions`, `players`, `announcements`, `skills`, `gameResults` |
-| `/memberId` | `events`, `assessments`, `insights`, `playerGear`, `pushSubscriptions`, `drillCompletions`, `stringingJobs` |
-| `/id` | `members`, `aliases`, `birds`, `identities`, `authhandoff`, `authmigration`, `feedback`, `releases`, `clubSettings`, `groups` |
+| `/memberId` | `events`, `assessments`, `insights`, `playerGear`, `pushSubscriptions`, `drillCompletions`, `stringingJobs`, `ledger` |
+| `/id` | `members`, `aliases`, `birds`, `identities`, `authhandoff`, `authmigration`, `feedback`, `releases`, `clubSettings`, `groups`, `payments` |
 | `/groupId` | `memberships` |
 | `/recipientMemberId` | `kudos` |
 | `/category` | `equipmentCatalog` |
@@ -196,8 +196,10 @@ container) and `__tests__/containers-registry.test.ts` pins it to the source.
 portal before `ensureContainer()` existed. The registry records what every call
 site assumes. The portal is ground truth; see "Observed in the portal". †
 
-The other 19 are created on first touch by `ensureContainer(name, pk)` in
-`lib/cosmos.ts`, memoized per process.
+The other 21 are created on first touch by `ensureContainer(name, pk)` in
+`lib/cosmos.ts`, memoized per process. `ensureContainer` passes no throughput,
+so a container created past the shared database's 25th would be refused unless
+the account is exempt (see the Throughput row above).
 
 ### Session pointer architecture
 
@@ -409,3 +411,48 @@ pages, and what to read on each, are in `docs/plans/infra-baseline.md`.
 | App Service → Identity; Cosmos → Keys | system-assigned identity on/off; when keys were last regenerated | — |
 | Cosmos → Networking | which access switch is on | — |
 | Cosmos → Backup & Restore; App Service → Alerts | Periodic or Continuous; number of alert rules | — |
+
+---
+
+## 10. Multi-group readiness (assessed 2026-10-09)
+
+Grant asked whether the Azure setup suits multi-group. The short answer, from
+the repo plus Microsoft's published Cosmos limits: **good enough for the launch
+scale of a handful of small clubs, not built for many.** No Azure change is
+needed to turn the flag on. Three portal checks are, because hosting other
+clubs' data makes the operator responsible for it (`app/legal/privacy`).
+
+**Why multi-group costs nothing in Azure.** A club is a `groupId` field on each
+row, not a database or container per club (`docs/plans/multi-group.md`). One
+kitchen, one pantry, a club label on every jar. Adding a club adds no
+resources, and rollback stays safe because older code reads the field as
+unknown.
+
+| Piece | Today | As clubs are added |
+|---|---|---|
+| App Service, B1, 1 instance † | always on, one small server | Fine for a few clubs. It cannot scale out: the rate limiter (`lib/rateLimit.ts`) and the session-pointer memo live in one process's memory, so a second instance needs a shared store first. |
+| Cosmos, 400 RU/s shared † | one throughput budget for every container | Fine at low traffic. Every club's sign-up night draws on the same budget; throttling shows as HTTP 429 from Cosmos. |
+| Data shape | club label on each row | Correct for this size. Club-wide aggregates (Metrics, Stats bands) read across partitions and get dearer as clubs grow, but not at tens of clubs. |
+| One origin | `bpm.grantzou.com` | Every club shares it, so the link preview (`app/opengraph-image.tsx`) always shows BPM. A per-club card needs a per-club address first. |
+
+**Before the flip — three portal reads** (they extend the walkthrough in
+`docs/plans/infra-baseline.md`):
+
+1. **Container count vs the 25 cap.** Cosmos → Data Explorer: count the
+   containers in `badminton`, and on any past 25 check whether it carries its
+   own throughput (billed separately) or the account is exempt. Record the
+   answer here, so the next container added is a known cost rather than a
+   refused create in production.
+2. **Backup.** Cosmos → Backup & Restore: periodic or continuous. Nothing in
+   the repo shows a restore has ever been tried.
+3. **Alerts.** App Service → Alerts: at least one rule on HTTP 5xx. There are
+   none known today.
+
+**After the flip — one week of watching:** the `[group-leak]` log line (the
+flip's own gate) and Cosmos 429s (Cosmos → Metrics → Total Requests, split by
+status code).
+
+**Only later, if clubs grow into the dozens:** a shared rate-limit store before
+a second instance; per-club addresses for per-club previews; a cost review of
+provisioned versus serverless Cosmos (a serverless account is a new account and
+a data move, not a setting).
