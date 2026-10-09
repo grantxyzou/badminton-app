@@ -74,6 +74,7 @@ conditions are about whether they get done and whether they earn their keep:
 | Piece | Where |
 |---|---|
 | The five portal pages and what to read on each | `docs/azure.md` §9 (table), and the field guide's "judge's checklist" |
+| Container count against the shared-throughput cap of 25 (added 2026-10-09; the code defines 27) | `docs/azure.md` §10, read on the same Cosmos Data Explorer visit |
 | Observed facts, dated | `docs/azure.md` §9, one sub-heading per look |
 | Alert rule: HTTP 5xx count > 0 over 5 minutes, email to owner | Azure portal, App Service → Alerts (not in repo; record the rule name in §9) |
 | Health check path | `/bpm/api/releases` — public, Cosmos-backed, answers 503 on a read failure rather than lying; set under App Service → Health check |
