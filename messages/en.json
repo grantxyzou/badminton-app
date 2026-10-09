@@ -690,13 +690,13 @@
         "shareSince": "Member since {year}",
         "shareSinceClub": "At {club} since {year}",
         "statRestrings": "{count, plural, one {restring} other {restrings}} since {since}",
-        "statVsClub": "lb on the club's average",
+        "statVsClub": "lb on the group's average",
         "factRacket": "Racket",
         "factStrings": "Strings",
         "factTension": "Tension",
         "factGrip": "Grip",
         "factAtClub": "At {club}",
-        "factInClub": "In the club",
+        "factInClub": "In the group",
         "factOneOf": "1 of {count}",
         "specBalance": "{balance} balance",
         "filters": "Filters",
@@ -714,10 +714,10 @@
         "resultCountString": "{shown} of {total} strings",
         "groupMatch": "{brand} · {count} match",
         "noFilterMatches": "Nothing matches those filters.",
-        "tensionClubHint": "The club strings this frame {low}–{high} lb.",
-        "tensionClubNone": "Not enough of the club has logged this frame yet.",
-        "tensionClubError": "We couldn't reach the club data just now.",
-        "tensionRulerLabel": "Tension from {low} to {high} lb: your figure, the club's range and the frame's rated window",
+        "tensionClubHint": "The group strings this frame {low}–{high} lb.",
+        "tensionClubNone": "Not enough of the group has logged this frame yet.",
+        "tensionClubError": "We couldn't reach the group data just now.",
+        "tensionRulerLabel": "Tension from {low} to {high} lb: your figure, the group's range and the frame's rated window",
         "tensionOutOfRange": "That's outside what this frame is rated for — {low} to {high} lb.",
         "lbUnit": "lb",
         "addTyped": "Add “{label}”",
@@ -767,7 +767,7 @@
         "inPlay": "In play",
         "spare": "Spare",
         "swapIn": "Swap in",
-        "arriveHint": "Two lines is the whole card. Fill them and the club tally starts working — and we can size your tension to the frame instead of your level.",
+        "arriveHint": "Two lines is the whole card. Fill them and the group tally starts working — and we can size your tension to the frame instead of your level.",
         "othersPlay": "{count} others play it",
         "pairSuggestion": "For this frame we'd pair {string} at {lb} lb",
         "pairSuggestionNoLb": "For this frame we'd pair {string}",
@@ -780,10 +780,10 @@
         "typeAllRound": "all-round"
       },
       "picksLocked": "<link>Sign in</link> for gear picked for how you play.",
-      "clubLocked": "<link>Sign in</link> to see what the club plays with.",
+      "clubLocked": "<link>Sign in</link> to see what the group plays with.",
       "tensionLocked": "<link>Sign in</link> for a string tension that fits your level.",
       "kitTitle": "Your equipment",
-      "kitSubtitle": "What you play with. Logging it is what makes the club tally useful.",
+      "kitSubtitle": "What you play with. Logging it is what makes the group tally useful.",
       "notSet": "Not set",
       "change": "Change",
       "add": "Add",
@@ -807,10 +807,10 @@
       "tensionHighLevel": "At your level the bed is about control and feel, so a tighter string makes placement more repeatable.",
       "tensionAdvisory": "A starting point, not a spec — talk to whoever strings your racket.",
       "tensionError": "Couldn't work out your tension.",
-      "clubTitle": "What the club plays",
+      "clubTitle": "What the group plays",
       "clubSubtitle": "Aggregated from everyone's equipment.",
       "clubEmpty": "Not enough equipment logged yet. Add yours and this fills in.",
-      "clubError": "Couldn't load what the club uses.",
+      "clubError": "Couldn't load what the group uses.",
       "catalogGap": "Recommendations beyond rackets are coming — the catalog only has rackets so far.",
       "pickString": "Add a string",
       "pickStringHint": "Search by name, or pick a brand. One tap adds it to your equipment.",
@@ -856,7 +856,7 @@
       "pickSheetTension": "Suggested tension",
       "pickSheetWhyThis": "Why this",
       "pickSheetAdd": "Add to my equipment",
-      "pickSheetFootnote": "A suggestion from your check-in and what the club plays — not a verdict. Borrow one for a game before you buy.",
+      "pickSheetFootnote": "A suggestion from your check-in and what the group plays — not a verdict. Borrow one for a game before you buy.",
       "pickSheetAddError": "Couldn't save that — try again",
       "pickSheetLoadError": "Couldn't load that pick — close and try again",
       "pickSheetBagFull": "That's all we can hold — remove one first.",
@@ -903,7 +903,7 @@
          "levelOnly": "From your check-in only — answer the fit questions for a sharper pick.",
          "swingUnanswered": "Tell us your swing speed and we'll get the shaft right.",
          "anchorStifferThanSwing": "Your {model} is stiffer than your swing wants — these are softer on purpose.",
-         "clubPlays": "{count} people in the club already play it."
+         "clubPlays": "{count} people in the group already play it."
        },
        "warn": {
          "flexAboveCeiling": "{flex} is stiffer than your swing wants — mishits will feel harsh.",
@@ -996,15 +996,15 @@
          "verdictLoading": "Reading your fit…",
          "verdictError": "Couldn't load the verdict just now.",
          "openFit": "Open your fit",
-         "tension_bandYou": "Club strings it {low}–{high} · you're at {you}",
-         "tension_band": "Club strings it {low}–{high}",
-         "tension_you": "You're at {you} · not enough of the club plays it yet",
-         "tension_none": "Not enough of the club plays this yet",
-         "tensionError": "We couldn't reach the club data just now.",
+         "tension_bandYou": "Group strings it {low}–{high} · you're at {you}",
+         "tension_band": "Group strings it {low}–{high}",
+         "tension_you": "You're at {you} · not enough of the group plays it yet",
+         "tension_none": "Not enough of the group plays this yet",
+         "tensionError": "We couldn't reach the group data just now.",
          "chartYou": "you · {you}",
          "chartLabel": "Tension from 20 to 30 lb",
-         "bandExplainer": "The green band is the {n} club members who play this frame.",
-         "bandExplainerNone": "The club's band shows once three members have logged a tension for this frame.",
+         "bandExplainer": "The green band is the {n} group members who play this frame.",
+         "bandExplainerNone": "The group's band shows once three members have logged a tension for this frame.",
          "lastFour": "Your recent tensions",
          "seeFullLog": "See the full log",
          "strings_summary": "{string} · {n, plural, =0 {nothing logged yet} one {# restring logged} other {# restrings logged}}",
@@ -1084,7 +1084,7 @@
          "rankedNeeds": "Answer swing speed and grip size to see frames that would suit you.",
          "rankedLoading": "Finding frames for you…",
          "rankedNone": "Nothing to rank yet.",
-         "privacy": "Your answers stay on your account. The club tally only ever sees the frame, never your arm history.",
+         "privacy": "Your answers stay on your account. The group tally only ever sees the frame, never your arm history.",
          "saveError": "Couldn't save that. Tap to try again.",
          "loadError": "Couldn't load your verdict just now.",
          "retry": "Try again"
@@ -1184,7 +1184,7 @@
     },
     "consent": {
       "title": "See how you compare?",
-      "body": "We can show where each of your skills sits against the rest of the club — top, middle or bottom third.",
+      "body": "We can show where each of your skills sits against the rest of the group — top, middle or bottom third.",
       "bands": "Bands only — never a number, a name or a leaderboard.",
       "private": "Your ratings stay yours either way. Nobody else sees them.",
       "yes": "Show me where I sit",
@@ -1195,22 +1195,22 @@
     "privacy": {
       "crumb": "Profile",
       "title": "Stats & privacy",
-      "comparisonTitle": "Club comparison",
-      "comparisonSubtitle": "Show where your skills sit against the rest of the club.",
+      "comparisonTitle": "Group comparison",
+      "comparisonSubtitle": "Show where your skills sit against the rest of the group.",
       "stateOn": "On — you'll see your band on every compared skill.",
-      "stateOff": "Off — you'll still see the club spread, just not your own place in it.",
+      "stateOff": "Off — you'll still see the group spread, just not your own place in it.",
       "othersEyebrow": "What others can see",
       "kudosLabel": "Kudos you send",
       "kudosBody": "Kudos are anonymous. The player you send one to sees the tag, never who sent it.",
       "ratingsLabel": "Your skill ratings",
       "ratingsBody": "Only ever used to build your own bands and drills.",
       "levelLabel": "Your level or band",
-      "levelBody": "There is no club leaderboard, and no plan for one.",
+      "levelBody": "There is no group leaderboard, and no plan for one.",
       "kitLabel": "Your equipment, counted only",
       "kitBody": "\"Nine players use BG65\" — a tally, never who.",
       "verdictNever": "Never",
       "verdictCounted": "Counted",
-      "closing": "Turning comparison off doesn't hide anything from other players — nothing about your skills was ever shown to them. It only changes what <you>you</you> see. The club spread stays visible either way.",
+      "closing": "Turning comparison off doesn't hide anything from other players — nothing about your skills was ever shown to them. It only changes what <you>you</you> see. The group spread stays visible either way.",
       "saveError": "Couldn't save that — try again.",
       "loadError": "Couldn't load this setting.",
       "unknown": "We couldn't confirm this setting, so we're not showing one either way.",
@@ -1218,10 +1218,10 @@
       "offline": "You're offline — this needs a connection."
     },
     "club": {
-      "locked": "<link>Sign in</link> to see where you sit in the club.",
+      "locked": "<link>Sign in</link> to see where you sit in the group.",
       "title": "Where you sit",
-      "ledeOne": "You're in the <hi>{band}</hi> of the club at {skill}.",
-      "ledeTwo": "You're in the <hi>{band1}</hi> of the club at {skill1}, and the {band2} at {skill2}.",
+      "ledeOne": "You're in the <hi>{band}</hi> of the group at {skill}.",
+      "ledeTwo": "You're in the <hi>{band1}</hi> of the group at {skill1}, and the {band2} at {skill2}.",
       "bandTop": "top third",
       "bandMiddle": "middle third",
       "bandBottom": "bottom third",
@@ -1325,7 +1325,7 @@
       "notRated": "Not rated yet",
       "empty": "No data yet — rate your skills weekly to keep track of your progress.",
       "baseline": "Baseline saved — check in again after a few sessions to watch it move.",
-      "medianLegend": "tick marks are the club median",
+      "medianLegend": "tick marks are the group median",
       "review": "Review",
       "stopHere": "Stop here and review",
       "startOver": "Start over",
@@ -1682,8 +1682,8 @@
   },
   "signedOut": {
     "noClub": {
-      "yourClubs": "You're not in a club on this device. Pick one of yours, or start another.",
-      "create": "Create a club",
+      "yourClubs": "You're not in a group on this device. Pick one of yours, or start another.",
+      "create": "Create a group",
       "join": "Join with a link or code",
       "signOut": "Sign out"
     },
@@ -1703,15 +1703,15 @@
     },
     "signup": {
       "title": "Sign up",
-      "body": "%APP_SHORT% is invite-only. Paste the link you were sent, or type your code.",
+      "body": "%APP_SHORT% is a badminton group management app, currently in testing and invite-only. Paste the link you were sent, or type your code.",
       "codeLabel": "Invite link or code",
       "codePlaceholder": "Link or 8-character code",
       "continue": "Continue",
       "checking": "Checking…",
       "notFound": "That link or code doesn't work. Ask whoever invited you for a fresh one.",
       "failed": "Couldn't check that. Try again.",
-      "noInvite": "No invite? Ask someone in the club to send you the link.",
-      "createInstead": "No invite? Start your own club",
+      "noInvite": "No invite? Ask someone in the group to send you the link.",
+      "createInstead": "No invite? Start your own group",
       "accountTitle": "Join {name}",
       "accountBody": "Create your account. It takes a second.",
       "or": "or",
@@ -1785,7 +1785,7 @@
     "retry": "Try again",
     "crumb": "Profile",
     "yourGroups": "Your groups",
-    "yourGroupsHint": "Switch between the clubs you play with.",
+    "yourGroupsHint": "Switch between the groups you play with.",
     "current": "Current",
     "switchTo": "Switch to {name}",
     "switching": "Switching…",
@@ -1833,7 +1833,7 @@
         {
           "h": "Who we are",
           "p": [
-            "%APP% is a sign-up sheet for casual badminton clubs. One person — the app's operator, in Vancouver, BC — runs the service and the database that every club's records live in. Each club is run by its own organisers, who decide who is on the roster and what each session costs. The operator is an individual, not a company. Canada's PIPEDA and BC's Personal Information Protection Act are the laws this policy follows. This app isn't intended for children under 13."
+            "%APP% is a sign-up sheet for casual badminton groups. One person — the app's operator, in Vancouver, BC — runs the service and the database that every group's records live in. Each group is run by its own organisers, who decide who is on the roster and what each session costs. The operator is an individual, not a company. Canada's PIPEDA and BC's Personal Information Protection Act are the laws this policy follows. This app isn't intended for children under 13."
           ]
         },
         {
@@ -1846,15 +1846,15 @@
             "• **Things you add yourself**: skill self-assessments, kudos you give or receive (including notes), games you log, and rackets or strings you save.",
             "• **A push token**, if you turn on notifications, for that device. It identifies the device to Apple, Google, or your browser — not you.",
             "• **A problem report**, only when you tap \"Report a problem\": your message, your name if you add it, the screen you were on, and your internet address (used only to stop the form being flooded).",
-            "• **How you use the app**: when you open it, which tab you look at, and when you sign in, sign up for or cancel a session, give kudos, request stringing, or turn notifications on or off. It's linked to your account, it stays in this app's own database, and the organiser sees it only as club totals (for example, \"18 members opened the app this week\") — never as a list of what one person did.",
+            "• **How you use the app**: when you open it, which tab you look at, and when you sign in, sign up for or cancel a session, give kudos, request stringing, or turn notifications on or off. It's linked to your account, it stays in this app's own database, and the organiser sees it only as group totals (for example, \"18 members opened the app this week\") — never as a list of what one person did.",
             "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear any of it at any time from that sheet — it's also deleted with your account."
           ]
         },
         {
-          "h": "Your club's organisers, and the operator",
+          "h": "Your group's organisers, and the operator",
           "p": [
-            "• **Your club's organisers** are the person who created the club and anyone they have made an admin. They see payment status and e-transfer names for their club; other members cannot, and organisers see nothing of any club they don't run. When they create a club they agree to add only people who have agreed to join, and to use what they see only to run the club.",
-            "• **The operator** runs the app for every club and can reach any club's records to keep the service working, answer a privacy request, or look into a problem report — never to follow a club's business for its own sake."
+            "• **Your group's organisers** are the person who created the group and anyone they have made an admin. They see payment status and e-transfer names for their group; other members cannot, and organisers see nothing of any group they don't run. When they create a group they agree to add only people who have agreed to join, and to use what they see only to run the group.",
+            "• **The operator** runs the app for every group and can reach any group's records to keep the service working, answer a privacy request, or look into a problem report — never to follow a group's business for its own sake."
           ]
         },
         {
@@ -1866,10 +1866,10 @@
         {
           "h": "Who can see what",
           "p": [
-            "• **Members of a club** see that club only: names, whether each spot is confirmed or waitlisted, and the per-person cost for a session. If you're in two clubs, each sees only its own roster.",
-            "• **Your club's organisers** additionally see payment status and e-transfer names.",
+            "• **Members of a group** see that group only: names, whether each spot is confirmed or waitlisted, and the per-person cost for a session. If you're in two groups, each sees only its own roster.",
+            "• **Your group's organisers** additionally see payment status and e-transfer names.",
             "• A **kudos note** is shown to the person who received it, signed by the giver.",
-            "• **The operator** can see all of the above, for every club, when running or fixing the service."
+            "• **The operator** can see all of the above, for every group, when running or fixing the service."
           ]
         },
         {
@@ -1877,7 +1877,7 @@
           "p": [
             "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies.",
             "Some text in the app is written with the help of an AI service (Anthropic, in the United States) — for example, the summary on your Stats tab. It receives only what that text needs, which can include your name and the names of people you regularly play with. When it writes the verdict on your racket, it receives the racket and what the verdict found from your fit answers — including that something is sore, if you said so — and never your name. These two kinds of requests never mix: a request that includes your name never includes your fit answers, and vice versa. Under our agreement with them, what we send is not used to train their models.",
-            "The organiser also uses that AI service to prepare a weekly summary of club totals and to read problem reports for patterns. It receives the totals, and problem reports with the name and internet address removed — nothing that says who did what.",
+            "The organiser also uses that AI service to prepare a weekly summary of group totals and to read problem reports for patterns. It receives the totals, and problem reports with the name and internet address removed — nothing that says who did what.",
             "Because Azure and Anthropic's US operations are outside Canada, some of your data may be accessible to US authorities under US law while it's there."
           ]
         },
@@ -1896,13 +1896,13 @@
         {
           "h": "Deleting your account",
           "p": [
-            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, notifications, and the record of how you used the app. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you. Deleting your account removes you from every club you're in; if you're the only organiser of a club, that club closes with it."
+            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, notifications, and the record of how you used the app. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you. Deleting your account removes you from every group you're in; if you're the only organiser of a group, that group closes with it."
           ]
         },
         {
           "h": "Your rights",
           "p": [
-            "You can ask what we hold about you, ask for it to be corrected, or withdraw consent, using the email on the support page. It reaches the operator, who answers for the service and will bring in your club's organisers when the record is theirs — a payment they marked, for example. If you're not satisfied, you can complain to the Office of the Privacy Commissioner of Canada or to BC's Office of the Information and Privacy Commissioner."
+            "You can ask what we hold about you, ask for it to be corrected, or withdraw consent, using the email on the support page. It reaches the operator, who answers for the service and will bring in your group's organisers when the record is theirs — a payment they marked, for example. If you're not satisfied, you can complain to the Office of the Privacy Commissioner of Canada or to BC's Office of the Information and Privacy Commissioner."
           ]
         },
         {
@@ -1920,25 +1920,25 @@
         {
           "h": "What this is",
           "p": [
-            "%APP% is a tool badminton clubs use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free today; if a paid plan is ever introduced it will be announced in the app first, and nothing you've already done becomes payable after the fact. Using it means you're a member of a club on it, were invited by one, or are starting your own."
+            "%APP% is a tool badminton groups use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free today; if a paid plan is ever introduced it will be announced in the app first, and nothing you've already done becomes payable after the fact. Using it means you're a member of a group on it, were invited by one, or are starting your own."
           ]
         },
         {
           "h": "Signing up",
           "p": [
-            "A sign-up is a commitment to show up, or to cancel before the deadline shown. Your club's organisers may remove or waitlist sign-ups to keep a session playable, and may limit sign-ups to an invite list."
+            "A sign-up is a commitment to show up, or to cancel before the deadline shown. Your group's organisers may remove or waitlist sign-ups to keep a session playable, and may limit sign-ups to an invite list."
           ]
         },
         {
-          "h": "Running a club",
+          "h": "Running a group",
           "p": [
-            "If you create a club, you're its organiser. You decide who joins, what sessions cost and who has paid, and you're responsible for those decisions and for your club's conduct. Invite only people who've agreed to be in the club. What you see about your members — names, sign-ups, what's owed, e-transfer names — is for running the club and nothing else: don't copy it elsewhere or share it. The operator can close a club that breaks these terms."
+            "If you create a group, you're its organiser. You decide who joins, what sessions cost and who has paid, and you're responsible for those decisions and for your group's conduct. Invite only people who've agreed to be in the group. What you see about your members — names, sign-ups, what's owed, e-transfer names — is for running the group and nothing else: don't copy it elsewhere or share it. The operator can close a group that breaks these terms."
           ]
         },
         {
           "h": "Money",
           "p": [
-            "The app records each person's share of a session and whether it has been paid. It does not take payments. Paying is arranged between you and your club's organisers, usually by e-transfer. Nothing in the app is a bill from anyone but your club's organisers, and none of it is financial advice or a financial service."
+            "The app records each person's share of a session and whether it has been paid. It does not take payments. Paying is arranged between you and your group's organisers, usually by e-transfer. Nothing in the app is a bill from anyone but your group's organisers, and none of it is financial advice or a financial service."
           ]
         },
         {
@@ -1950,19 +1950,19 @@
         {
           "h": "Content",
           "p": [
-            "Kudos, notes and announcements are for your club. Keep them kind. Your club's organisers, or the operator, can remove anything that isn't."
+            "Kudos, notes and announcements are for your group. Keep them kind. Your group's organisers, or the operator, can remove anything that isn't."
           ]
         },
         {
           "h": "Liability",
           "p": [
-            "Badminton is a sport; you play at your own risk. The app organises sessions and takes no responsibility for what happens on court, for a venue, for how a club's organisers run their club, or for another member's conduct. To the extent the law allows, the operator isn't liable for losses arising from use of the app."
+            "Badminton is a sport; you play at your own risk. The app organises sessions and takes no responsibility for what happens on court, for a venue, for how a group's organisers run their group, or for another member's conduct. To the extent the law allows, the operator isn't liable for losses arising from use of the app."
           ]
         },
         {
           "h": "Ending",
           "p": [
-            "You can delete your account at any time. Your club's organisers can remove people from their club. The operator can deactivate accounts, or close clubs, that break these terms."
+            "You can delete your account at any time. Your group's organisers can remove people from their group. The operator can deactivate accounts, or close groups, that break these terms."
           ]
         },
         {
@@ -1986,13 +1986,13 @@
         {
           "h": "Lost your PIN?",
           "p": [
-            "On the Profile tab, tap “Forgot your PIN?”. If you've set up Google, Apple or email sign-in, those work too. Otherwise ask your club's organiser for a one-time code."
+            "On the Profile tab, tap “Forgot your PIN?”. If you've set up Google, Apple or email sign-in, those work too. Otherwise ask your group's organiser for a one-time code."
           ]
         },
         {
           "h": "Questions about money",
           "p": [
-            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your club's organiser — the app records payments, it doesn't take them."
+            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your group's organiser — the app records payments, it doesn't take them."
           ]
         }
       ],
@@ -2022,10 +2022,10 @@
       "keeps": [
         "Past sessions keep one unnamed line so everyone else's cost split still adds up. It no longer identifies you.",
         "Deleting your account doesn't cancel anything you still owe for sessions you played.",
-        "You leave every club you're in. If you were a club's only organiser, the club closes."
+        "You leave every group you're in. If you were a group's only organiser, the group closes."
       ],
       "noAppTitle": "Can't get into the app?",
-      "noApp": "Email the operator with the name you signed up under and the club you're in, from an address we can reply to, and the account will be deleted for you.",
+      "noApp": "Email the operator with the name you signed up under and the group you're in, from an address we can reply to, and the account will be deleted for you.",
       "emailLabel": "Email:"
     }
   },

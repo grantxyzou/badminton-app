@@ -410,7 +410,7 @@ function SetupSheet({ open, onClose, onDone, configured = false }: { open: boole
       <BottomSheetBody>
         <div className="flex flex-col gap-4">
           <p className="fs-sm" style={step}>
-            <strong>1.</strong> {configured ? 'Your key is set. Create a new one only if you need to reinstall or think it leaked.' : 'Create your club’s key. It is shown once.'}
+            <strong>1.</strong> {configured ? 'Your key is set. Create a new one only if you need to reinstall or think it leaked.' : 'Create your group’s key. It is shown once.'}
           </p>
           {key ? (
             <div className="flex flex-col gap-2">

@@ -76,7 +76,7 @@ describe('StatsPrivacyScreen', () => {
   it('reflects the OFF state', () => {
     renderScreen(state({ privacy: { clubComparison: false, promptedAt: '2026-08-01T00:00:00.000Z' } }));
     expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByText(/you'll still see the club spread/)).toBeTruthy();
+    expect(screen.getByText(/you'll still see the group spread/)).toBeTruthy();
   });
 
   it('saves the new value when toggled', () => {
@@ -114,7 +114,7 @@ describe('StatsPrivacyScreen', () => {
     expect(screen.getByText(enMessages.stats.privacy.unknown)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/you'll see your band on every compared skill/)).toBeNull();
-    expect(screen.queryByText(/you'll still see the club spread/)).toBeNull();
+    expect(screen.queryByText(/you'll still see the group spread/)).toBeNull();
   });
 
   it('offers a re-read rather than a refresh for the unknown state', () => {
@@ -164,6 +164,6 @@ describe('StatsPrivacyScreen', () => {
   it('closes with the note that opting out changes only what YOU see', () => {
     renderScreen();
     expect(screen.getByText(/nothing about your skills was ever shown to them/)).toBeTruthy();
-    expect(screen.getByText(/The club spread stays visible either way/)).toBeTruthy();
+    expect(screen.getByText(/The group spread stays visible either way/)).toBeTruthy();
   });
 });

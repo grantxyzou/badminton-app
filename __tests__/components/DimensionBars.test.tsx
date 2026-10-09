@@ -39,12 +39,12 @@ describe('DimensionBars', () => {
     renderBars({ scores: SCORES, medians: MEDIANS, showTicks: false });
     // No ghost tick and no apology line — an absent comparison should look
     // like plain bars, not like something failed.
-    expect(screen.queryByText('tick marks are the club median')).toBeNull();
+    expect(screen.queryByText('tick marks are the group median')).toBeNull();
   });
 
   it('renders the legend once ticks are shown', () => {
     renderBars({ scores: SCORES, medians: MEDIANS, showTicks: true });
-    expect(screen.getByText('tick marks are the club median')).toBeTruthy();
+    expect(screen.getByText('tick marks are the group median')).toBeTruthy();
   });
 
   it('renders no legend when showTicks is true but no dimension has a median', () => {
@@ -53,13 +53,13 @@ describe('DimensionBars', () => {
       medians: { technical: null, physical: null, mental: null },
       showTicks: true,
     });
-    expect(screen.queryByText('tick marks are the club median')).toBeNull();
+    expect(screen.queryByText('tick marks are the group median')).toBeNull();
   });
 
   it('tolerates a null medians object', () => {
     renderBars({ scores: SCORES, medians: null, showTicks: true });
     expect(screen.getByText('2.6')).toBeTruthy();
-    expect(screen.queryByText('tick marks are the club median')).toBeNull();
+    expect(screen.queryByText('tick marks are the group median')).toBeNull();
   });
 
   // ── Deltas ──────────────────────────────────────────────────────────────
