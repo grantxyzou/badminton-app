@@ -27,23 +27,85 @@ export interface TensionAdvice {
   lb: number;
   /** 0-1 position along the MIN_LB..MAX_LB scale, for the knob. */
   position: number;
-  /** i18n key suffix for the explanatory sentence. */
-  reasonKey: 'lowLevel' | 'midLevel' | 'highLevel';
+  /** i18n key suffix for the explanatory sentence. The `*Swing` keys say the
+   *  number came from the swing answer; the `*Level` keys that it did not. */
+  reasonKey: 'lowLevel' | 'midLevel' | 'highLevel' | 'slowSwing' | 'mediumSwing' | 'fastSwing';
+}
+
+/** The fit page's swing-speed answer (`PlayerGear.fitSwing`), the one input
+ *  that says how hard the string bed will actually be loaded. */
+export type SwingSpeed = 'slow' | 'medium' | 'fast';
+
+/**
+ * Where a swing speed puts the tension, in lbs (docs/plans/tension-follows-swing.md).
+ *
+ * The bed is a trampoline: at a relaxed swing a LOOSER bed does the work and
+ * gives more power, with a bigger sweet spot and less shock to the arm; a
+ * tight bed only pays off for a swing fast enough to load it, and until then
+ * it feels dead and costs power. So the swing picks the band and the level
+ * only places the number inside it — higher level, a touch tighter, for the
+ * control a more repeatable contact can use.
+ *
+ * Bands overlap by a pound on purpose: "medium" and "fast" are the member's
+ * own reading of their swing, not a measurement, and a hard step between them
+ * would turn one tap into a three-pound jump.
+ */
+export const SWING_TENSION_BAND: Record<SwingSpeed, [number, number]> = {
+  slow: [20, 23],
+  medium: [23, 26],
+  fast: [25, 28],
+};
+
+/** Below this level, no swing answer takes the target past `NOVICE_CAP_LB`: a
+ *  fast-but-new swing is still finding the sweet spot a tight bed shrinks. */
+export const NOVICE_LEVEL = 2.5;
+export const NOVICE_CAP_LB = 24;
+
+/** The level that sits at the band's floor and the one at its ceiling. */
+const BAND_LEVEL_FLOOR = 2;
+const BAND_LEVEL_SPAN = 2.5;
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/**
+ * The whole-pound target for a known swing: the band for the swing, the level
+ * placing it inside the band (floor at 2.0, ceiling at 4.5; unknown level sits
+ * mid-band), a pound more for singles — inside the band, never past it — and
+ * the novice cap last. Pure.
+ */
+export function swingTensionTarget(swing: SwingSpeed, level: number | null, format: PlayFormat): number {
+  const [lo, hi] = SWING_TENSION_BAND[swing];
+  const known = level !== null && Number.isFinite(level);
+  const pos = known ? clamp((level - BAND_LEVEL_FLOOR) / BAND_LEVEL_SPAN, 0, 1) : 0.5;
+  let lb = clamp(lo + (hi - lo) * pos + (format === 'singles' ? 1 : 0), lo, hi);
+  if (known && level < NOVICE_LEVEL) lb = Math.min(lb, NOVICE_CAP_LB);
+  return Math.round(lb);
 }
 
 /**
- * `round(21 + level)`, plus 2 for singles, clamped to [20, 30].
+ * With a swing answer: `swingTensionTarget`. Without one — the page's question
+ * unanswered — the older level-only rule, `round(21 + level)`, plus 2 for
+ * singles, clamped to [20, 30], exactly as before the swing was read at all.
  *
  * Higher level → higher tension because control matters more than the power a
- * loose bed gives you for free; singles adds a couple of pounds because the
- * shot that decides a singles rally is usually a precise one. `both` is
- * treated as doubles: it is the default this club actually plays, and the
- * lower number is the safer thing to hand someone who has not chosen.
+ * loose bed gives you for free; singles adds a pound or two because the shot
+ * that decides a singles rally is usually a precise one. `both` is treated as
+ * doubles: it is the default this club actually plays, and the lower number is
+ * the safer thing to hand someone who has not chosen.
  */
-export function recommendTension(level: number | null, format: PlayFormat): TensionAdvice | null {
+export function recommendTension(level: number | null, format: PlayFormat, swing?: SwingSpeed | null): TensionAdvice | null {
   // No level yet means no advice. Defaulting to a mid number would be
   // inventing a recommendation out of nothing.
   if (level === null || !Number.isFinite(level)) return null;
+
+  if (swing) {
+    const lb = clamp(swingTensionTarget(swing, level, format), MIN_LB, MAX_LB);
+    return {
+      lb,
+      position: (lb - MIN_LB) / (MAX_LB - MIN_LB),
+      reasonKey: swing === 'slow' ? 'slowSwing' : swing === 'fast' ? 'fastSwing' : 'mediumSwing',
+    };
+  }
 
   const singles = format === 'singles';
   const raw = Math.round(21 + level) + (singles ? 2 : 0);

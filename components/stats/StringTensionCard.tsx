@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
-import { recommendTension, formatForToggle, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
+import { recommendTension, formatForToggle, MIN_LB, MAX_LB, type PlayFormat, type TensionAdvice } from '@/lib/tension';
 import type { UseGear } from './useGear';
 import LockedCard, { useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
@@ -43,6 +43,17 @@ export interface StringTensionCardProps {
    *  after the gear doc. Defaults to true for a caller with no pairing. */
   suppressionKnown?: boolean;
 }
+
+/** The sentence under the number, by what decided it. Every key the advice
+ *  can return has a line, so a new reason cannot fall through to the wrong one. */
+const TENSION_REASON_COPY: Record<TensionAdvice['reasonKey'], string> = {
+  lowLevel: 'tensionLowLevel',
+  midLevel: 'tensionMidLevel',
+  highLevel: 'tensionHighLevel',
+  slowSwing: 'tensionSlowSwing',
+  mediumSwing: 'tensionMediumSwing',
+  fastSwing: 'tensionFastSwing',
+};
 
 export default function StringTensionCard({ activeName, gear, suppressed, suppressionKnown = true }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
@@ -91,7 +102,10 @@ export default function StringTensionCard({ activeName, gear, suppressed, suppre
   }, [activeName, attempt]);
 
   const format = (gear.gear?.playFormat ?? 'doubles') as PlayFormat;
-  const advice = recommendTension(level, format);
+  // The fit page's swing answer picks the band when it is known
+  // (docs/plans/tension-follows-swing.md); the same `useGear` doc the format
+  // comes from, so the two cannot disagree about whose answer this is.
+  const advice = recommendTension(level, format, gear.gear?.fitSwing);
 
   /** Card shell carrying one legible-fail line instead of a number. */
   const failed = (message: string, retry: () => void) => (
@@ -254,13 +268,7 @@ export default function StringTensionCard({ activeName, gear, suppressed, suppre
       </div>
 
       <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-        {t(
-          advice.reasonKey === 'lowLevel'
-            ? 'tensionLowLevel'
-            : advice.reasonKey === 'midLevel'
-              ? 'tensionMidLevel'
-              : 'tensionHighLevel',
-        )}
+        {t(TENSION_REASON_COPY[advice.reasonKey])}
       </p>
       <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tensionAdvisory')}</p>
     </div>

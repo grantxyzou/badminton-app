@@ -129,6 +129,14 @@ because they are correct regardless of uptake.
   against the golden set once the stringer has rated.
 - **Sequenced ahead of multi-group** (owner, 2026-09-07). Phases 0–3 are what
   unblock that plan's call-site sweep; Phase 4 lands after it.
+- **The tension number now reads the swing answer** (2026-10-09,
+  `docs/plans/tension-follows-swing.md`). This supersedes two non-goals above
+  ("Changing `lib/tension.ts`", "Rewriting … `pairTension`"): both gained an
+  optional swing argument and are unchanged without it. The same change added
+  three DRAFT golden cases (`pending: true`, drawn from an AI-generated deck's
+  player types) that the harness reports and never asserts; they do not count
+  toward the five this plan's kill criterion reads until the owner or the
+  stringer confirms them.
 
 ## Shape
 

@@ -1,9 +1,201 @@
 {
   "_meta": {
     "purpose": "Expert-rated ground truth for lib/racketFit.ts. Each case is a real (anonymised) or stringer-hypothetical member: their gear doc shape, their raw check-in ratings, and the set of rackets the owner and the club stringer agreed are ACCEPTABLE picks (a set, not one) plus any that would be plainly wrong. The test asserts the engine's top three intersects `acceptable` and avoids `unacceptable`. Populated by hand from `scripts/dump-fit-cases.mjs` skeletons (Phase 3); ids are gNN and carry no names. `ratedBy` says who rated it — mark hypotheticals honestly.",
-    "howToAdd": "Copy a case, set gear.items[].catalogId to real catalog ids (the test refuses an id the catalog does not have), fill acceptable/unacceptable, set ratedBy and ratedAt."
+    "howToAdd": "Copy a case, set gear.items[].catalogId to real catalog ids (the test refuses an id the catalog does not have), fill acceptable/unacceptable, set ratedBy and ratedAt.",
+    "pending": "A case with `pending: true` is a DRAFT nobody has rated: the harness prints the engine's current top three beside its `acceptable` list for the owner and the stringer to confirm or correct, and asserts nothing about agreement. It does not count toward the kill criterion's five. Flip `pending` off and set `ratedBy` / `ratedAt` once a person has confirmed it."
   },
   "engineVersion": "fit-2",
   "catalog": "scripts/data/equipment-catalog.json",
-  "cases": []
+  "cases": [
+    {
+      "id": "g01",
+      "pending": true,
+      "source": "Badminton Performance Science deck (AI-generated, 2026-10-09), 'The developing player'",
+      "note": "Slow swing, beginner, doubles, wants deeper clears and forgiveness. The deck prescribes a MEDIUM (even) balance, a softer shaft and a thick string at low tension. The engine's `more_power` delta moves balance toward head-heavy; which is right for a slow swing is the question for the stringer.",
+      "ratedBy": "unrated — drafted from the deck",
+      "ratedAt": null,
+      "gear": {
+        "fitGoal": "more_power",
+        "fitSwing": "slow",
+        "fitArmComfort": "fine",
+        "fitGrip": "G5",
+        "playFormat": "doubles",
+        "budgetMaxCad": 150,
+        "items": []
+      },
+      "ratings": [
+        {
+          "skillKey": "clears_lifts",
+          "value": 2,
+          "source": "self"
+        },
+        {
+          "skillKey": "smashes",
+          "value": 2,
+          "source": "self"
+        },
+        {
+          "skillKey": "grip_deception",
+          "value": 2,
+          "source": "self"
+        },
+        {
+          "skillKey": "footwork_split_step",
+          "value": 2,
+          "source": "self"
+        },
+        {
+          "skillKey": "consistency",
+          "value": 2,
+          "source": "self"
+        }
+      ],
+      "acceptable": [
+        "racket-victor-brave-sword-1500",
+        "racket-yonex-arcsaber-11-play",
+        "racket-li-ning-halbertec-5000",
+        "racket-victor-drivex-9x",
+        "racket-yonex-arcsaber-71-light"
+      ],
+      "unacceptable": [
+        "racket-yonex-astrox-88d-pro",
+        "racket-yonex-astrox-99-pro",
+        "racket-victor-auraspeed-90k"
+      ]
+    },
+    {
+      "id": "g02",
+      "pending": true,
+      "source": "Badminton Performance Science deck (AI-generated, 2026-10-09), 'The fast-twitch tactician'",
+      "note": "Doubles front-court player, medium swing, plays an even mid-range frame and wants it faster in hand. The deck prescribes a head-light (low MOI) frame, a thin string and a medium tension.",
+      "ratedBy": "unrated — drafted from the deck",
+      "ratedAt": null,
+      "gear": {
+        "fitGoal": "faster",
+        "fitSwing": "medium",
+        "fitArmComfort": "fine",
+        "fitGrip": "G5",
+        "playFormat": "doubles",
+        "items": [
+          {
+            "catalogId": "racket-yonex-arcsaber-11-play",
+            "category": "racket",
+            "label": "Yonex ArcSaber 11 Play"
+          }
+        ],
+        "activeCatalogId": "racket-yonex-arcsaber-11-play"
+      },
+      "ratings": [
+        {
+          "skillKey": "net_play",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "drives",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "footwork_split_step",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "smashes",
+          "value": 3,
+          "source": "self"
+        },
+        {
+          "skillKey": "clears_lifts",
+          "value": 3,
+          "source": "self"
+        },
+        {
+          "skillKey": "grip_deception",
+          "value": 3,
+          "source": "self"
+        }
+      ],
+      "acceptable": [
+        "racket-yonex-nanoflare-nextage",
+        "racket-yonex-nanoflare-1000-play",
+        "racket-yonex-nanoflare-700-tour",
+        "racket-yonex-nanoflare-700-pro",
+        "racket-victor-auraspeed-90k",
+        "racket-li-ning-bladex-700"
+      ],
+      "unacceptable": [
+        "racket-yonex-astrox-99-pro",
+        "racket-yonex-astrox-88d-pro"
+      ]
+    },
+    {
+      "id": "g03",
+      "pending": true,
+      "source": "Badminton Performance Science deck (AI-generated, 2026-10-09), 'The power smasher'",
+      "note": "Fast swing, advanced, plays an Astrox 88D Pro and wants more power still. The deck prescribes a head-heavy (high MOI) stiff frame, a hybrid string and a high tension.",
+      "ratedBy": "unrated — drafted from the deck",
+      "ratedAt": null,
+      "gear": {
+        "fitGoal": "more_power",
+        "fitSwing": "fast",
+        "fitArmComfort": "fine",
+        "fitGrip": "G4",
+        "playFormat": "doubles",
+        "items": [
+          {
+            "catalogId": "racket-yonex-astrox-88d-pro",
+            "category": "racket",
+            "label": "Yonex Astrox 88D Pro"
+          }
+        ],
+        "activeCatalogId": "racket-yonex-astrox-88d-pro"
+      },
+      "ratings": [
+        {
+          "skillKey": "smashes",
+          "value": 5,
+          "source": "self"
+        },
+        {
+          "skillKey": "clears_lifts",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "grip_deception",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "footwork_split_step",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "drives",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "consistency",
+          "value": 4,
+          "source": "self"
+        }
+      ],
+      "acceptable": [
+        "racket-yonex-astrox-99-pro",
+        "racket-yonex-astrox-99-pro-3rd-gen",
+        "racket-yonex-astrox-88s-pro",
+        "racket-yonex-astrox-88s-pro-3rd-gen",
+        "racket-victor-thruster-ryuga-ii",
+        "racket-li-ning-3d-calibar-900"
+      ],
+      "unacceptable": [
+        "racket-yonex-nanoflare-700-pro",
+        "racket-victor-brave-sword-1500"
+      ]
+    }
+  ]
 }

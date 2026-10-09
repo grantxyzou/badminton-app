@@ -69,6 +69,42 @@ describe('lib/tension', () => {
     expect(recommendTension(4.5, 'doubles')!.reasonKey).toBe('highLevel');
   });
 
+  describe('with the swing answered (docs/plans/tension-follows-swing.md)', () => {
+    it('a slow swing is looser and a fast one firmer than the level alone, at every level', () => {
+      for (const lvl of [2, 2.5, 3, 3.2, 3.5, 4, 4.5]) {
+        const plain = recommendTension(lvl, 'doubles')!.lb;
+        expect(recommendTension(lvl, 'doubles', 'slow')!.lb).toBeLessThanOrEqual(plain);
+        expect(recommendTension(lvl, 'doubles', 'fast')!.lb).toBeGreaterThanOrEqual(plain);
+      }
+    });
+
+    it('stays inside the swing’s band, and the level places it there', () => {
+      expect(recommendTension(2, 'doubles', 'slow')!.lb).toBe(20);
+      expect(recommendTension(4.5, 'doubles', 'slow')!.lb).toBe(23);
+      expect(recommendTension(3.2, 'doubles', 'medium')!.lb).toBe(24); // where the level rule sat
+      expect(recommendTension(3.5, 'doubles', 'fast')!.lb).toBe(27);
+    });
+
+    it('a new player’s fast swing is capped at 24', () => {
+      expect(recommendTension(2, 'doubles', 'fast')!.lb).toBe(24);
+      expect(recommendTension(2.4, 'singles', 'fast')!.lb).toBe(24);
+      expect(recommendTension(2.5, 'doubles', 'fast')!.lb).toBeGreaterThan(24);
+    });
+
+    it('singles adds a pound inside the band, never past it', () => {
+      expect(recommendTension(3, 'singles', 'medium')!.lb - recommendTension(3, 'doubles', 'medium')!.lb).toBe(1);
+      expect(recommendTension(4.5, 'singles', 'medium')!.lb).toBe(26);
+    });
+
+    it('names the swing as the reason, and no level without one', () => {
+      expect(recommendTension(3, 'doubles', 'slow')!.reasonKey).toBe('slowSwing');
+      expect(recommendTension(3, 'doubles', 'medium')!.reasonKey).toBe('mediumSwing');
+      expect(recommendTension(3, 'doubles', 'fast')!.reasonKey).toBe('fastSwing');
+      expect(recommendTension(null, 'doubles', 'fast')).toBeNull();
+      expect(recommendTension(3, 'doubles', null)!.reasonKey).toBe('midLevel');
+    });
+  });
+
   it('maps "both" to the Doubles toggle position', () => {
     expect(formatForToggle('both')).toBe('doubles');
     expect(formatForToggle(undefined)).toBe('doubles');

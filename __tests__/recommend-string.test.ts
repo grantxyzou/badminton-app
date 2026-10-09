@@ -58,12 +58,13 @@ async function seedCatalog(frame: unknown = FRAME) {
   await catalog.items.upsert(STRING);
 }
 
-async function seedGear(catalogId: string | null) {
+async function seedGear(catalogId: string | null, extra: Record<string, unknown> = {}) {
   await getContainer('playerGear').items.upsert({
     id: 'gear-m-lin', memberId: 'm-lin',
     items: [{ id: 'g1', catalogId, category: 'racket', label: 'Astrox Test' }],
     activeRacketId: 'g1', playFormat: 'doubles',
     updatedAt: new Date().toISOString(),
+    ...extra,
   });
 }
 
@@ -91,6 +92,29 @@ describe('GET /api/recommend?category=string', () => {
     expect(body.item?.category).toBe('string');
     expect(body.pairedWith).toEqual({ label: 'Yonex Astrox Test', source: 'owned' });
     expect(typeof body.tensionLbs).toBe('number');
+  });
+
+  it('names a looser tension for a slow swing and a firmer one for a fast swing (docs/plans/tension-follows-swing.md)', async () => {
+    seedMember();
+    await seedCatalog();
+    const read = async (extra: Record<string, unknown>) => {
+      await seedGear('frame-hh', extra);
+      return (await ask()).json();
+    };
+    // The seeded catalog has 46 strings and a different one can win at a
+    // different tension, so this reads the BAND each answer lands in, not a
+    // difference between two picks (`string-pair.test.ts` pins that per string).
+    const plain = await read({});
+    const slow = await read({ fitSwing: 'slow' });
+    const fast = await read({ fitSwing: 'fast' });
+    expect(typeof plain.tensionLbs).toBe('number');
+    expect(slow.tensionLbs).toBeLessThanOrEqual(23);
+    expect(fast.tensionLbs).toBeGreaterThanOrEqual(25);
+    expect(slow.tensionLbs).toBeLessThan(fast.tensionLbs);
+    expect(plain.reasons.some((r: string) => /swing/i.test(r))).toBe(false);
+    // The one line that says why sits in the reasons; the headline stays the string's.
+    expect(slow.reasons.some((r: string) => /relaxed swing/i.test(r))).toBe(true);
+    expect(/swing/i.test(slow.reason)).toBe(false);
   });
 
   it('falls back to the recommended racket, and says so', async () => {

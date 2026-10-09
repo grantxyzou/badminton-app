@@ -261,7 +261,9 @@ export async function GET(req: NextRequest) {
         // the card would name a string that won at a tension it then tells
         // the member not to use.
         const tensionDelta = comfortTensionDeltaLb(effectiveArmComfort(gear));
-        const pairing = pairString(frame, catalogItems as CatalogItem[], profile, tensionDelta);
+        // The swing answer picks the tension band (docs/plans/tension-follows-swing.md);
+        // same rule as the delta: scored and named at one tension.
+        const pairing = pairString(frame, catalogItems as CatalogItem[], profile, tensionDelta, gear?.fitSwing);
         // Every candidate rejected by the tension gate. Not a failure and not
         // a catalog gap: this frame genuinely has no compatible string here.
         if (!pairing) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });

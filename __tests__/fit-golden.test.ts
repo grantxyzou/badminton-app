@@ -20,7 +20,10 @@ interface GoldenCase {
   id: string;
   note: string;
   ratedBy: string;
-  ratedAt: string;
+  ratedAt: string | null;
+  /** A draft nobody has rated (see `_meta.pending`): reported, never asserted,
+   *  never counted. */
+  pending?: boolean;
   gear: Partial<PlayerGear> & { activeCatalogId?: string };
   ratings: Rating[];
   acceptable: string[];
@@ -53,20 +56,39 @@ function toInput(c: GoldenCase): FitInput {
   };
 }
 
+const rated = golden.cases.filter((c) => !c.pending);
+const pending = golden.cases.filter((c) => c.pending);
+
 describe('golden set — the engine version matches the fixture', () => {
   it('fixture was rated against the engine that is running', () => {
     expect(golden.engineVersion).toBe(FIT_ENGINE_VERSION);
   });
   it('is populated (Phase 4 raises this to >= 5; until then it only reports)', () => {
-    if (golden.cases.length === 0) {
-      console.warn('[fit-golden] no cases yet — the expert golden set is empty. See docs/plans/racket-fit-engine.md.');
+    if (rated.length === 0) {
+      console.warn(`[fit-golden] no RATED cases yet (${pending.length} pending drafts) — the expert golden set is empty. See docs/plans/racket-fit-engine.md.`);
     }
-    expect(golden.cases.length).toBeGreaterThanOrEqual(0);
+    expect(rated.length).toBeGreaterThanOrEqual(0);
   });
 });
 
-describe.skipIf(golden.cases.length === 0)('golden set — every expert-rated case', () => {
-  it.each(golden.cases.map((c) => [c.id, c] as const))('%s: top three intersects acceptable, avoids unacceptable', (_id, c) => {
+describe.skipIf(pending.length === 0)('golden set — pending drafts (reported for the owner and the stringer, never asserted)', () => {
+  it.each(pending.map((c) => [c.id, c] as const))('%s: names real rows and gets a pick', (_id, c) => {
+    for (const id of [...c.acceptable, ...(c.unacceptable ?? [])]) {
+      expect(ids.has(id), `${c.id} names an id the catalog does not have: ${id}`).toBe(true);
+    }
+    for (const i of c.gear.items ?? []) {
+      if (i.catalogId) expect(ids.has(i.catalogId), `${c.id} owns an id the catalog does not have: ${i.catalogId}`).toBe(true);
+    }
+    const r = recommendFit(toInput(c), catalog);
+    expect(r.top, `${c.id} produced no pick (${r.fitState})`).not.toBeNull();
+    const top3 = [r.top!.item.id, ...r.alternatives.map((a) => a.item.id)];
+    const agrees = top3.some((id) => c.acceptable.includes(id)) && !top3.some((id) => (c.unacceptable ?? []).includes(id));
+    console.info(`[fit-golden] ${c.id} (pending): engine says ${top3.join(', ')} — ${agrees ? 'agrees with' : 'DISAGREES with'} the draft acceptable set`);
+  });
+});
+
+describe.skipIf(rated.length === 0)('golden set — every expert-rated case', () => {
+  it.each(rated.map((c) => [c.id, c] as const))('%s: top three intersects acceptable, avoids unacceptable', (_id, c) => {
     for (const id of [...c.acceptable, ...(c.unacceptable ?? [])]) {
       expect(ids.has(id), `${c.id} names an id the catalog does not have: ${id}`).toBe(true);
     }
