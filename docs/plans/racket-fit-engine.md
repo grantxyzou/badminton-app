@@ -5,7 +5,7 @@ equipment purchases"; Value-Hub Track 2 (Equipment). ROADMAP §4 still says trac
 1–4 stay blocked until the Slice-0 readout; the `VALUE_HUB_SLICE` note in
 `lib/flags.ts` records that the fan-out was made by shipping, not by reading the
 gate. This file says so rather than pretending the readout happened.
-**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; `fit-3` 2026-10-09 (a slow swing's "more power" leaves the head alone, from the first stringer-rated case); Phase 4 waits on ≥5 golden ratings (1 rated, 2 drafts pending)
+**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; `fit-3` 2026-10-09 (a slow swing's "more power" leaves the head alone, from the first stringer-rated case); Phase 4 waits on ≥5 golden ratings (3 rated 2026-10-09: g01–g03; the owner owes two of his own)
 **Review on:** 2026-10-19 — ≥5 golden cases rated, and `picks.engagedMembers` ≥ 2 in `GET /api/admin/slice0` (members who ADDED, TRIED or RATED a pick — `pick_served` is the denominator, not engagement)? If not, drop the fit questionnaire.
 
 ## Problem
@@ -152,6 +152,21 @@ because they are correct regardless of uptake.
   whether Flexible should be preferred is the next question for the golden
   set, not a claim to make ahead of it. g01 is the first RATED case; g02 and
   g03 stay drafts.
+- **g02 and g03 rated, and the 88S rows relabelled Even** (2026-10-09). The
+  two drafts were checked against published reviews before the stringer
+  confirmed them ("02 and 03 looks good for now"). The check exposed a
+  catalog problem rather than an engine one: the catalog labelled every
+  Astrox 88S row head-heavy / Stiff / Premium / doubles, which is the 99
+  Pro's triple with the doubles bonus on top, so the engine served the
+  front-court 88S Pro to a rear-court smasher asking for more power and
+  could not have done otherwise. Yonex's own chart does call the 88S
+  head-heavy, just less so than the 88D; the vocabulary has no "slightly
+  head-heavy". Two fixes were offered — relabel the 88S rows Even, or add a
+  fourth balance rung — and the stringer chose the relabel ("option 1").
+  All four 88S rows (Pro 2nd and 3rd gen, Tour, Game) are Even now, the
+  reason is in each row's `notes`, and the 3rd-gen Pro's `playStyle` is
+  Control, as its own note already said. A fourth rung stays the honest fix
+  if a second family hits the same wall.
 
 ## Shape
 

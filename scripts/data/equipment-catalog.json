@@ -57,15 +57,15 @@
       ],
       "attributes": {
         "weight": "3U/4U",
-        "balance": "Head-heavy",
+        "balance": "Even",
         "flex": "Stiff",
         "playStyle": "Control",
-        "notes": "doubles front-court control",
+        "notes": "doubles front-court control Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step.",
         "subType": "doubles",
         "tier": "Premium",
         "weightMinG": 80,
         "weightMaxG": 89,
-        "lastVerified": "2026-09-14",
+        "lastVerified": "2026-10-09",
         "tensionMinLbs": 20,
         "tensionMaxLbs": 29,
         "priceMinUSD": 290,
@@ -1693,9 +1693,9 @@
       ],
       "attributes": {
         "series": "Astrox",
-        "playStyle": "Power",
+        "playStyle": "Control",
         "subType": "doubles",
-        "balance": "Head-heavy",
+        "balance": "Even",
         "flex": "Stiff",
         "weight": "3U/4U",
         "weightMinG": 80,
@@ -1707,8 +1707,8 @@
         "gripSize": "G4/G5",
         "priceMinUSD": 290,
         "priceMaxUSD": 290,
-        "lastVerified": "2026-09-14",
-        "notes": "Control-oriented sibling to 88D Pro; sharper placement, less raw power"
+        "lastVerified": "2026-10-09",
+        "notes": "Control-oriented sibling to 88D Pro; sharper placement, less raw power Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step."
       },
       "seeded": true,
       "msrp": 400
@@ -4405,7 +4405,7 @@
       "attributes": {
         "series": "Astrox",
         "playStyle": "Power",
-        "balance": "Head-heavy",
+        "balance": "Even",
         "flex": "Stiff",
         "weight": "3U/4U",
         "weightMinG": 80,
@@ -4416,8 +4416,8 @@
         "tensionMaxLbs": 29,
         "priceMinUSD": 200,
         "priceMaxUSD": 200,
-        "lastVerified": "2026-09-14",
-        "notes": "Front-court doubles frame, stiff and head-heavy."
+        "lastVerified": "2026-10-09",
+        "notes": "Front-court doubles frame Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step."
       },
       "seeded": true,
       "msrp": 276
@@ -4434,7 +4434,7 @@
       "attributes": {
         "series": "Astrox",
         "playStyle": "Power",
-        "balance": "Head-heavy",
+        "balance": "Even",
         "flex": "Medium",
         "weight": "4U",
         "weightMinG": 80,
@@ -4446,8 +4446,8 @@
         "gripSize": "G5/G6",
         "priceMinUSD": 135,
         "priceMaxUSD": 135,
-        "lastVerified": "2026-09-14",
-        "notes": "Front-court doubles frame with an easier medium shaft."
+        "lastVerified": "2026-10-09",
+        "notes": "Front-court doubles frame with an easier medium shaft. Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step."
       },
       "seeded": true,
       "msrp": 186
