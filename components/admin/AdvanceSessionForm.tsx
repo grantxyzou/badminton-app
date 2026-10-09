@@ -5,6 +5,7 @@ import type { Session, BirdPurchase } from '@/lib/types';
 import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
 import { shareSignup } from '@/lib/signupShare';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { isNoActiveSession } from '@/lib/apiFetch';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
 import StatusBanner from '../primitives/StatusBanner';
@@ -58,6 +59,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   const [skipDates, setSkipDates] = useState<string[]>([]);
   const [showSkipBlock, setShowSkipBlock] = useState(false);
   const [prefillFailed, setPrefillFailed] = useState(false);
+  // True when the group has no session yet, so there is nothing to archive.
+  const [firstSession, setFirstSession] = useState(false);
   // Bumped by "Try again" on the prefill error; re-runs ONLY the session
   // prefill below, not the four suggestion fetches.
   const [prefillAttempt, setPrefillAttempt] = useState(0);
@@ -65,13 +68,18 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   useEffect(() => {
     let cancelled = false;
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
-      .then(r => {
+      .then(async r => {
+        // A new group's first session: nothing to carry forward, and nothing
+        // went wrong. The form keeps its defaults with no error banner.
+        if (await isNoActiveSession(r)) return null;
         if (!r.ok) throw new Error(`session fetch ${r.status}`);
         return r.json();
       })
-      .then((data: Session) => {
+      .then((data: Session | null) => {
         if (cancelled) return;
         setPrefillFailed(false);
+        setFirstSession(data === null);
+        if (data === null) return;
         setTime(data.datetime ? data.datetime.slice(11, 16) : '');
         setEndTime(data.endDatetime ? data.endDatetime.slice(11, 16) : '');
         setDeadlineTime(data.deadline ? data.deadline.slice(11, 16) : '');
@@ -253,7 +261,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
       <form onSubmit={handleAdvance}>
         <div className="glass-card p-5 space-y-3">
-          <p className="fs-sm text-gray-400">Creates a new session. The current session will be archived.</p>
+          <p className="fs-sm text-gray-400">{firstSession ? "Creates your group's first session." : 'Creates a new session. The current session will be archived.'}</p>
 
           <Label text="Session Name">
             <input
@@ -481,7 +489,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 icon="check_circle"
                 celebrate
                 title="Session created!"
-                body="Previous session archived. Sign-up is closed by default — open it, then share the link."
+                body={`${firstSession ? '' : 'Previous session archived. '}Sign-up is closed by default — open it, then share the link.`}
               />
               <button
                 type="button"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { isNoActiveSession } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -50,12 +51,18 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
           fetch(`${BASE}/api/members`, { cache: 'no-store' }),
         ]);
         if (cancelled) return;
-        if (!playersRes.ok || !birdsRes.ok || !membersRes.ok) {
+        // A new group has no session yet: nobody can be unpaid, and that is
+        // an answer, not a failed check.
+        const noSession = await isNoActiveSession(playersRes);
+        if (cancelled) return;
+        if ((!playersRes.ok && !noSession) || !birdsRes.ok || !membersRes.ok) {
           setLoadError(true);
           setNeedsYou(null);
           return;
         }
-        const players = (await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }>;
+        const players = noSession
+          ? []
+          : ((await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }>);
         const birds = (await birdsRes.json()) as { currentStock?: number; burnPerSession?: number };
         const members = (await membersRes.json()) as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }>;
         if (cancelled) return;

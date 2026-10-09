@@ -11,3 +11,20 @@
 export function isRefused(res: Pick<Response, 'status'>): boolean {
   return res.status === 401 || res.status === 403;
 }
+
+/**
+ * The one reading of "this group has no session yet".
+ *
+ * A brand-new group has no active session until its organiser makes one, and
+ * every read that needs a session answers 404 `no_active_session`
+ * (`noActiveSession()` in `lib/groupContext.ts`). That is a STATE, not a
+ * failure: a client that reads it as `!res.ok` tells a new organiser
+ * "Couldn't check" / "Couldn't load the current session" on their very first
+ * visit. Found walking the create-a-group journey on 2026-10-09. Reads the
+ * body from a clone, so the caller can still consume the original.
+ */
+export async function isNoActiveSession(res: Response): Promise<boolean> {
+  if (res.status !== 404) return false;
+  const body = (await res.clone().json().catch(() => null)) as { error?: string } | null;
+  return body?.error === 'no_active_session';
+}
