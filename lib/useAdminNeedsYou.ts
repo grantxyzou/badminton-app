@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { isNoActiveSession } from '@/lib/apiFetch';
+import { isDormant, type DormantInput } from '@/lib/dormant';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -64,7 +65,7 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
           ? []
           : ((await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }>);
         const birds = (await birdsRes.json()) as { currentStock?: number; burnPerSession?: number };
-        const members = (await membersRes.json()) as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }>;
+        const members = (await membersRes.json()) as DormantInput[];
         if (cancelled) return;
 
         const active = players.filter((p) => !p.removed && !p.waitlisted);
@@ -80,18 +81,7 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
         // with room for two words cannot, and a wrong count is worse than none.
         const birdsLow = weeksLeft !== null && weeksLeft <= 4;
 
-        const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
-        const dormant = Array.isArray(members)
-          ? members.filter((m) => {
-              if (m.active === false) return false;
-              if (!m.sessionCount || m.sessionCount === 0) return true;
-              if (m.lastSeen) {
-                const t = new Date(m.lastSeen).getTime();
-                if (Number.isFinite(t) && t < sixtyDaysAgo) return true;
-              }
-              return false;
-            }).length
-          : 0;
+        const dormant = Array.isArray(members) ? members.filter((m) => isDormant(m)).length : 0;
 
         setNeedsYou([unpaid > 0, birdsLow, dormant > 0].filter(Boolean).length);
         // Profile now shows a failure, so a success on a later run (the row
