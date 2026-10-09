@@ -27,6 +27,7 @@ import { computeOwed, owedLines } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
 import type { LedgerAccount, LedgerEntry, Player, StringingJob } from './types';
 import { mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
+import { sourceRecord, type CreditUse } from './creditAttribution';
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 export const MAX_GRANT_CENTS = 50_000;
@@ -161,8 +162,13 @@ export interface GiftCardDoc {
   /** The last four characters, so the admin can tell their cards apart. */
   hint: string;
   createdAt: string;
+  /** The member who minted it — an admin, or a member with `canGift`. */
   createdBy: string;
   redeemedAt?: string;
+  /** The member it became credit for. Written at redemption since
+   *  2026-10-09 (docs/plans/gift-card-ledger.md); an older card's redeemer is
+   *  found from its `gift:<hash>` ledger entry by `giftCardRecords`. Additive. */
+  redeemedBy?: string;
 }
 
 export async function mintGiftCard(
@@ -240,8 +246,52 @@ export async function redeemGiftCard(groupId: string, rawCode: string, memberId:
     await scope.remove('clubSettings', `${card.id}:claim`).catch((e) => console.error('gift: claim not released', e));
     throw err;
   }
-  await scope.replace<GiftCardDoc>('clubSettings', { ...card, redeemedAt: at });
+  await scope.replace<GiftCardDoc>('clubSettings', { ...card, redeemedAt: at, redeemedBy: memberId });
   return entry;
+}
+
+/** The hash a card's doc id carries, so its ledger entry (`gift:<hash>`) can be named. */
+export function giftHashOf(card: Pick<GiftCardDoc, 'id'>): string {
+  return card.id.slice(card.id.lastIndexOf('giftcard:') + 'giftcard:'.length);
+}
+
+export interface GiftCardRecord extends GiftCardDoc {
+  /** How much of THIS card has been drawn, by the oldest-source-first reading
+   *  of the redeemer's credit (`lib/creditAttribution.ts`); null until
+   *  redeemed, and null again when the redeemer's history no longer holds it
+   *  (an account deleted since). */
+  usedCents: number | null;
+  remainingCents: number | null;
+  uses: CreditUse[];
+}
+
+/**
+ * The club's cards with each one's record: who redeemed it, and how much of
+ * it has gone where. One ledger read per redeemer, not per card.
+ */
+export async function giftCardRecords(groupId: string): Promise<GiftCardRecord[]> {
+  const cards = await listGiftCards(groupId);
+  const scope = groupScope(groupId);
+  // Older cards carry no `redeemedBy`: their ledger entry does.
+  const resolved = await Promise.all(cards.map(async (card) => {
+    if (!card.redeemedAt || card.redeemedBy) return card;
+    const rows = await scope.query<LedgerEntry>('ledger', { where: 'c.id = @id', params: [{ name: '@id', value: `gift:${giftHashOf(card)}` }] });
+    const entry = rows.find((r) => r.id === `gift:${giftHashOf(card)}`);
+    return entry ? { ...card, redeemedBy: entry.memberId } : card;
+  }));
+  const histories = new Map<string, Promise<LedgerEntry[]>>();
+  const historyOf = (memberId: string) => {
+    let p = histories.get(memberId);
+    if (!p) { p = creditLedgerFor(scope, memberId); histories.set(memberId, p); }
+    return p;
+  };
+  return Promise.all(resolved.map(async (card): Promise<GiftCardRecord> => {
+    if (!card.redeemedBy) return { ...card, usedCents: null, remainingCents: null, uses: [] };
+    const source = sourceRecord(await historyOf(card.redeemedBy), `gift:${giftHashOf(card)}`);
+    return source
+      ? { ...card, usedCents: source.usedCents, remainingCents: source.remainingCents, uses: source.uses }
+      : { ...card, usedCents: null, remainingCents: null, uses: [] };
+  }));
 }
 
 // ── Spending ───────────────────────────────────────────────────────────────

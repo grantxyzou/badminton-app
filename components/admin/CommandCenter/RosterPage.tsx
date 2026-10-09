@@ -74,6 +74,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
   const [formName, setFormName] = useState('');
   const [formRole, setFormRole] = useState<'member' | 'admin'>('member');
   const [formCanString, setFormCanString] = useState(false);
+  const [formCanGift, setFormCanGift] = useState(false);
   const [formActive, setFormActive] = useState(true);
   const [formAlias, setFormAlias] = useState('');
   const [savingForm, setSavingForm] = useState(false);
@@ -245,6 +246,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
     setFormRole(r.member.role === 'admin' ? 'admin' : 'member');
     setFormActive(r.member.active !== false);
     setFormCanString(r.member.canString === true);
+    setFormCanGift(r.member.canGift === true);
     const alias = aliases.find((a) => a.appName.toLowerCase() === r.member.name.toLowerCase());
     setFormAlias(alias?.etransferName ?? '');
     setFormError('');
@@ -269,6 +271,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
             role: formRole,
             active: formActive,
             canString: formCanString,
+            canGift: formCanGift,
           }),
         });
         if (!res.ok) {
@@ -756,6 +759,19 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     onChange={(e) => setFormCanString(e.target.checked)}
                   />
                   <span>Can string rackets</span>
+                </label>
+
+                {/* The third switch (docs/plans/gift-card-ledger.md): this
+                    person may mint gift cards from their own Profile — a
+                    raffle, a thank-you — without the console. Every card
+                    records who made it; the admin's list says so. */}
+                <label className="cc-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={formCanGift}
+                    onChange={(e) => setFormCanGift(e.target.checked)}
+                  />
+                  <span>Can give out gift cards</span>
                 </label>
 
                 <Field label="PIN reset">

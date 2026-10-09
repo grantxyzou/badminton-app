@@ -5,6 +5,7 @@ import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
 import RedeemGiftSheet from './RedeemGiftSheet';
+import GiveGiftSheet from './GiveGiftSheet';
 import AskAccessSheet from './AskAccessSheet';
 import MigrateSheet from './MigrateSheet';
 import MigrateCodeSheet from './MigrateCodeSheet';
@@ -128,6 +129,10 @@ export default function ProfileTab({
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
+  const [giveOpen, setGiveOpen] = useState(false);
+  // Whether this member may give out gift cards (`Member.canGift`), asked of
+  // the server once an identity exists; unknown and no both hide the row.
+  const [canGift, setCanGift] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
@@ -220,6 +225,22 @@ export default function ProfileTab({
     setDeleteAccountOpen(true);
     onDeleteIntentConsumed?.();
   }, [deleteIntent, identity, onDeleteIntentConsumed]);
+
+  // The gift-card switch (docs/plans/gift-card-ledger.md): the route answers
+  // `{ canGift: false }` for everyone else, so a 'no' and a failed read both
+  // leave the row hidden — there is nothing to act on either way.
+  useEffect(() => {
+    if (!identity || !isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) {
+      setCanGift(false);
+      return;
+    }
+    let live = true;
+    fetch(`${BASE}/api/giftcards`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { canGift?: boolean } | null) => { if (live) setCanGift(d?.canGift === true); })
+      .catch(() => { if (live) setCanGift(false); });
+    return () => { live = false; };
+  }, [identity]);
 
   // Reflect server-side pin status whenever identity changes (mount, sign-in,
   // logout). Source of truth is `members.pinHash` mirrored from the player
@@ -797,9 +818,13 @@ export default function ProfileTab({
           ...(isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')
             ? [{ icon: 'payments', label: tSettings('redeemGift'), onClick: () => setRedeemOpen(true) }]
             : []),
+          // Only for a member an admin marked `canGift`; the sheet is the
+          // gifter's half of the admin's gift-card console.
+          ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setGiveOpen(true) }] : []),
         ]}
       />
       <RedeemGiftSheet open={redeemOpen} onClose={() => setRedeemOpen(false)} />
+      <GiveGiftSheet open={giveOpen} onClose={() => setGiveOpen(false)} />
 
       {/* Four groups, each one question: who am I here (ACCOUNT, above), what
           do others see (PRIVACY), how does this device behave (APP), and where

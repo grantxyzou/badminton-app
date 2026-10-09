@@ -415,6 +415,14 @@ export interface Member {
    * required full admin.
    */
   canString?: boolean;
+  /**
+   * This person may give out gift cards (docs/plans/gift-card-ledger.md).
+   * The third independent switch beside `role` and `canString`: a helper who
+   * runs a raffle or wants to thank someone can mint a card from Profile
+   * without being handed the console. Set by an admin on the roster sheet;
+   * re-read on every mint. Additive; absent = no.
+   */
+  canGift?: boolean;
   /** Audit trail of recovery-related events (issue / redeem / fail). */
   recoveryEvents?: RecoveryEvent[];
   /** Per-account wrong-PIN counter and lock (lib/pinLockout.ts). Additive;

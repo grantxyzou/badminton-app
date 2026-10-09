@@ -56,7 +56,6 @@ const UNSWEPT: readonly string[] = [
   'app/api/admin/catalog-gaps/route.ts',
   'app/api/admin/credit/route.ts',
   'app/api/admin/expenses/route.ts',
-  'app/api/admin/giftcards/route.ts',
   'app/api/admin/ledger-backfill/route.ts',
   'app/api/admin/ledger/reconcile/route.ts',
   'app/api/admin/ledger/route.ts',

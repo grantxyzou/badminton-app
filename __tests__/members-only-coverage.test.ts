@@ -119,6 +119,8 @@ const ROUTES: Record<string, Entry> = {
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
   credit: { kind: 'authed', helper: 'requireGroupMember' },
+  // A gifter's own cards (docs/plans/gift-card-ledger.md): the member cookie, then the switch.
+  giftcards: { kind: 'authed', helper: 'requireGroupMember' },
   'stringing/jobs': { kind: 'authed', helper: 'verifyMemberAuth' },
 
   // ── Public by design: nothing about the club ─────────────────────────────
