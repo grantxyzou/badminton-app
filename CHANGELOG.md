@@ -58,6 +58,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Before a group's first session**, Profile's admin row and the Next Session form no longer say "Couldn't check" or "Couldn't load the current session" in red, and the form no longer promises to archive a session that doesn't exist. Having no session yet is a normal state, not an error.
 - **Nobody counts as inactive in their first 60 days in a group.** A new organiser used to open their group to "1 need you" — themselves — and every fresh invite counted as dormant until their first session.
 
+### The Astrox 88S is no longer offered as a power step up from the 88D (2026-10-09)
+
+- **The four Astrox 88S rows (Pro 2nd and 3rd gen, Tour, Game) now read as even-balanced in the catalog.** They are the front-court sibling of the 88D, lighter at the top, and the catalog had them labelled the same as a 99 Pro, so a rear-court smasher asking for more power was being shown an 88S Pro. The stringer confirmed the relabel against the published reviews.
+- Two more sample players (the quick doubles tactician and the hard smasher) are now rated in the racket-fit test set, three of the five it needs.
+
 ### A slow swing is not sent a head-heavy racket for "more power" (2026-10-09)
 
 - **Ask for more power with a relaxed swing and the racket pick now stays even-balanced and no stiffer than Medium**, instead of stepping to a head-heavy frame. A heavier head adds smash power only to a swing fast enough to accelerate it; at a relaxed pace the power comes from the shaft bending and the string bed launching, which is what every buying guide says and what the club's stringer confirmed. The pick says so in one line. Medium and fast swings are unchanged.

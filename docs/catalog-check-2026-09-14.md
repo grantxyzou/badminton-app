@@ -66,6 +66,9 @@ Both 2nd-generation Yonex rows took their corrected specs and current US price f
 - Li-Ning Aeronaut 9000: C$249 against current US retail.
 - Yonex Astrox 99 Pro, 88D Pro, 88S Pro, ArcSaber 11 Pro: C$309–329 against US$255–325.
 
+### Relabelled after the check (2026-10-09)
+- **All four Yonex Astrox 88S rows are `Even`** (Pro 2nd Gen, Pro 3rd Gen, Tour, Game), by the stringer's call. Yonex's chart puts the 88S in the head-heavy zone, below the 88D; the catalog's three-rung balance has no "slightly head-heavy", and labelled head-heavy the 88S Pro was indistinguishable from a 99 Pro to the fit engine, which served the front-court racket as a rear-court power upgrade (golden case g03). The reason is repeated in each row's `notes`. The 3rd-gen Pro's `playStyle` moved from Power to Control to match its own note.
+
 ## Judgement calls in the data
 - **Yonex "Hi-Flex"** was treated as Flexible, on about 10 rows.
 - **Tier** comes from list price, which puts some Yonex Play models in Mid-range.
