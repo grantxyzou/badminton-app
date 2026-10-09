@@ -15,7 +15,7 @@ function mount(page?: 'welcome' | 'app') {
   if (page === 'welcome') el.setAttribute('data-signed-out-welcome', '');
   if (page === 'app') el.setAttribute('data-page-shell', '');
   document.body.appendChild(el);
-  return render(<LaunchScreen tagline="Weekly badminton with your crew." />);
+  return render(<LaunchScreen tagline="Weekly badminton with your group." />);
 }
 
 const launch = () => document.documentElement.getAttribute('data-launch');
@@ -58,7 +58,7 @@ describe('LaunchScreen', () => {
   it('renders the shot artwork on the server-rendered splash', () => {
     const { container } = mount('welcome');
     expect(container.querySelector('.splash .launch-canvas .launch-shuttle img')).not.toBeNull();
-    expect(container.textContent).toContain('Weekly badminton with your crew.');
+    expect(container.textContent).toContain('Weekly badminton with your group.');
   });
 
   it('gets straight out of the way on a route that is not the app', () => {
