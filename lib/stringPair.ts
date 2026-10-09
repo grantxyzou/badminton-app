@@ -2,6 +2,7 @@ import type { CatalogItem } from './types';
 import type { PlayerProfile } from './racketProfile';
 import { overall, skillLevel } from './racketRecommend';
 import { USD_TO_CAD } from './catalogPrice';
+import { SWING_TENSION_BAND, type SwingSpeed } from './tension';
 
 /**
  * Pairs a string to a RACKET, not to a player.
@@ -545,11 +546,17 @@ function skillMultiplier(s: CatalogItem, rank: number): ScoreResult {
  *
  * D2: this is the app's tension answer wherever it can be given, and
  * `lib/tension.ts` (level-based, frame-agnostic) is the fallback for the two
- * cases it cannot cover — no catalog racket on file, and the 11 of 71 frames
- * with no published ceiling, which return null here.
+ * cases it cannot cover — no catalog racket on file, and a frame with no
+ * published ceiling (42 of the 151 offered rows, 2026-10-09), which returns
+ * null here.
  *
- * Consistency of contact — grip mechanics plus movement — is what earns higher
- * tension, because high tension shrinks the sweet spot.
+ * `swing` is the fit page's swing-speed answer (docs/plans/tension-follows-swing.md).
+ * When it is known the swing picks the BAND (`SWING_TENSION_BAND`: a relaxed
+ * swing wants a looser bed, which at that pace gives more power, not less) and
+ * consistency of contact — grip mechanics plus movement — places the number
+ * inside the band's overlap with what the frame and the string allow, because
+ * high tension shrinks the sweet spot. Unanswered, consistency places it in the
+ * whole overlap, exactly as before the swing was read at all.
  *
  * `deltaLb` is the fit engine's comfort adjustment (`comfortTensionDeltaLb`):
  * a sore arm asks for a pound or two less, the one equipment change the
@@ -561,6 +568,7 @@ export function pairTension(
   s: CatalogItem,
   profile: PlayerProfile,
   deltaLb = 0,
+  swing?: SwingSpeed | null,
 ): number | null {
   const rHi = racket.attributes?.tensionMaxLbs;
   if (typeof rHi !== 'number') return null;
@@ -571,10 +579,28 @@ export function pairTension(
 
   const a = aceDims(profile);
   const consistency = ((a.grip + a.movement) / 2.0 - 1) / 5.0;
-  const placed = lo + (hi - lo) * Math.min(1.0, consistency * 0.9 + 0.1);
+  const fill = Math.min(1.0, consistency * 0.9 + 0.1);
+  let placed: number;
+  if (swing) {
+    const [bandLo, bandHi] = SWING_TENSION_BAND[swing];
+    const wLo = Math.max(lo, bandLo);
+    const wHi = Math.min(hi, bandHi);
+    // A band wholly outside the overlap (a frame rated 26–30 for a slow
+    // swing) takes the nearest end of what the frame allows.
+    placed = wLo <= wHi ? wLo + (wHi - wLo) * fill : Math.max(lo, Math.min(hi, (bandLo + bandHi) / 2));
+  } else {
+    placed = lo + (hi - lo) * fill;
+  }
   const eased = Math.max(lo, Math.min(hi, placed + deltaLb));
   return Math.round(eased * 2) / 2;
 }
+
+/** The one line the string card says about the swing, when it moved the
+ *  number. Medium says nothing: it is where the level rule already sat. */
+const SWING_REASON: Partial<Record<SwingSpeed, string>> = {
+  slow: 'Strung a touch looser for a relaxed swing — at that pace a softer bed does the work and gives more power, not less.',
+  fast: 'Strung on the firm side: a fast swing can load a tighter bed, and gets control back for it.',
+};
 
 /**
  * Rank the catalog's strings for one frame and return the best pair, or null
@@ -591,6 +617,8 @@ export function pairString(
   /** The fit engine's comfort delta (`comfortTensionDeltaLb`). Scored AND
    *  displayed at the same eased tension — the 2026-08-21 lesson below. */
   deltaLb = 0,
+  /** The fit page's swing answer; same rule — scored and named at one tension. */
+  swing?: SwingSpeed | null,
 ): StringPairing | null {
   const dims = aceDims(profile);
   // V2: one definition of Advanced, shared with the racket engine.
@@ -617,7 +645,7 @@ export function pairString(
        `pairTension` returns null for the 11 ceiling-less frames, which is the
        old behaviour exactly — so this degrades to the previous result
        precisely where it has no better answer. */
-    const recommendedTension = pairTension(racket, s, profile, deltaLb);
+    const recommendedTension = pairTension(racket, s, profile, deltaLb, swing);
 
     // A tension CAVEAT keeps its front slot; only the generic window-width
     // description is demoted (below). Demoting both pushed "ceiling
@@ -645,6 +673,16 @@ export function pairString(
        above); the window-width description was demoted out of the reason list
        entirely — see scoreTension. Its warning still lands here. */
     if (tension.warning) warnings.push(tension.warning);
+
+    // Second, never first: the headline stays about the STRING. This only
+    // says why the number under it is looser or firmer than the member may
+    // expect, and only when a tension was named at all. Second rather than
+    // last because the route keeps three lines and the club line takes the
+    // last — pushed last, the one line that explains the number was the one
+    // cut.
+    if (swing && recommendedTension !== null && SWING_REASON[swing]) {
+      reasons.splice(Math.min(1, reasons.length), 0, SWING_REASON[swing]!);
+    }
 
     const skill = skillMultiplier(s, rank);
     if (skill.warning) warnings.push(skill.warning);

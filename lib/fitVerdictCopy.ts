@@ -18,7 +18,7 @@ import type { FitFacts } from './fitVerdict';
  *     none.
  */
 
-export const FIT_COPY_VERSION = 2;
+export const FIT_COPY_VERSION = 3;
 
 export const COPY_LIMITS = { headline: 70, body: 220, reason: 90 } as const;
 
@@ -61,6 +61,13 @@ export function buildCopyPrompt(facts: FitFacts, locale: CopyLocale): string {
   const language = locale === 'zh-CN'
     ? 'Write in Simplified Chinese, in the same warm, plain voice.'
     : 'Write in plain modern English.';
+  // A fact, not a judgement: the tension range beside the words sits lower or
+  // higher than the level alone would put it BECAUSE of the swing they named.
+  const swingNote = facts.swingMovedRange === 'lower'
+    ? '\nTension note: the range shown is a little looser than their level alone would suggest, because of their relaxed swing — at that pace a looser bed does the work and gives more power, not less. The body may say so in a few words if it fits.'
+    : facts.swingMovedRange === 'higher'
+      ? '\nTension note: the range shown is a little firmer than their level alone would suggest, because of their fast swing — a fast swing can load a tighter bed and gets control back for it. The body may say so in a few words if it fits.'
+      : '';
   return `${VOICE_PERSONA}
 
 You are putting a racket-fit verdict into words for a casual club player, on a small card in the app. The verdict is already decided; you only phrase it. Never soften it, strengthen it, or add a judgement of your own.
@@ -68,7 +75,7 @@ You are putting a racket-fit verdict into words for a casual club player, on a s
 Verdict: ${STATE_MEANING[facts.state]}
 Racket: ${facts.frame?.name ?? 'unknown'} (${facts.prospective ? 'a racket they are looking at, not one they own' : 'the racket they already play'})
 Reasons, in order:
-${reasons || '(none)'}
+${reasons || '(none)'}${swingNote}
 
 Rules:
 - The headline says the verdict plainly and names the racket, the way a friend would ("Your … suits you", "Your … is fighting you slightly").

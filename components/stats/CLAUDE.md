@@ -107,8 +107,9 @@ state of its own except the one thing it exists to own (below).
   docs carry `activeRacketId`, legacy docs fall back to `items[0]`. No
   migration.
 - **`StringTensionCard`** and **`ClubGearCard`** round out the register:
-  tension advice from level + format (never rendered without a resolved
-  level — an unattributed number reads as a spec, not advice), and the
+  tension advice from level + format, and the swing answer when there is one
+  (never rendered without a resolved level — an unattributed number reads as a
+  spec, not advice; its sentence names the swing when the swing decided it), and the
   aggregated "what the club plays" tally (`lib/clubGear.ts`, cohort-guarded
   at `CLUB_GEAR_MIN_COHORT` before any label can identify fewer than that
   many people).
@@ -246,6 +247,17 @@ each owns different hooks and a hook cannot be conditional.
     reasons, range, all deterministic. It borrows the engines' opinions rather
     than holding its own — `GOAL_DELTA`'s balance axis, `pairTension` when frame,
     string and check-in are known (else `recommendTension`), one `ratedRange`.
+  - **The swing answer picks the tension BAND** (2026-10-09,
+    `docs/plans/tension-follows-swing.md`): `SWING_TENSION_BAND` in
+    `lib/tension.ts` — slow 20–23, medium 23–26, fast 25–28 — and the level (or,
+    in `pairTension`, consistency of contact) places the number inside it. At a
+    relaxed swing a looser bed gives MORE power, not less; a tight bed only
+    pays off for a swing fast enough to load it. Unanswered, every path is the
+    old level-only rule exactly. The verdict, the string pick and the fallback
+    `StringTensionCard` all read `PlayerGear.fitSwing` from the one gear doc,
+    and the verdict hands the SAME swing to both tension paths.
+    `FitFacts.swingMovedRange` says which way it moved the range, and the page
+    explains only when it did (the `sorenessMovedRange` rule).
   - **`GET /api/equipment/fit-verdict` is OWNER ONLY** — no admin-on-behalf,
     because the facts carry soreness; an admin cookie counts only as that admin.
     With `NEXT_PUBLIC_FLAG_FIT_VERDICT` on, Claude words the decided facts

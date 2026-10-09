@@ -190,6 +190,13 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
             </div>
             <SwingSpeedPicker value={value('fitSwing') ?? null} onChange={(v) => answer({ fitSwing: v })} disabled={disabled} label={t('swing')} />
             <p className="fit-caption">{t('swingCaption')}</p>
+            {/* Same rule as the soreness line below: only when the answer
+                actually moved the range, and it says which way. */}
+            {value('fitSwing') && verdict.data?.facts.swingMovedRange && (
+              <p className="fit-consequence motion-fade">
+                {t(verdict.data.facts.swingMovedRange === 'lower' ? 'swingConsequenceLower' : 'swingConsequenceHigher')}
+              </p>
+            )}
           </section>
 
           <section className="fit-group">

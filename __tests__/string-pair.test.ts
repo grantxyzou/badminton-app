@@ -157,6 +157,68 @@ describe('pairTension — placement inside the overlap window', () => {
   });
 });
 
+describe('pairTension — the swing answer picks the band (docs/plans/tension-follows-swing.md)', () => {
+  // Frame 20–28, string 19–30: the overlap is 20–28, wide enough for every band.
+  const frame = racket('f', { tensionMinLbs: 20, tensionMaxLbs: 28 });
+  const s = str('s', { tensionMinLbs: 19, tensionMaxLbs: 30 });
+  const mid = profile();
+
+  it('slow lands in 20–23, medium in 23–26, fast in 25–28', () => {
+    const slow = pairTension(frame, s, mid, 0, 'slow')!;
+    const medium = pairTension(frame, s, mid, 0, 'medium')!;
+    const fast = pairTension(frame, s, mid, 0, 'fast')!;
+    expect(slow).toBeGreaterThanOrEqual(20); expect(slow).toBeLessThanOrEqual(23);
+    expect(medium).toBeGreaterThanOrEqual(23); expect(medium).toBeLessThanOrEqual(26);
+    expect(fast).toBeGreaterThanOrEqual(25); expect(fast).toBeLessThanOrEqual(28);
+    expect(slow).toBeLessThan(medium);
+    expect(medium).toBeLessThan(fast);
+  });
+
+  it('unanswered is exactly the number it always was', () => {
+    expect(pairTension(frame, s, mid, 0, undefined)).toBe(pairTension(frame, s, mid));
+    expect(pairTension(frame, s, mid, 0, null)).toBe(pairTension(frame, s, mid));
+  });
+
+  it('consistency still places the number inside the band, never outside it', () => {
+    const loose = pairTension(frame, s, profile({ grip: 1, footwork: 1, court_coverage: 1 }), 0, 'slow')!;
+    const tight = pairTension(frame, s, profile({ grip: 5, footwork: 5, court_coverage: 5 }), 0, 'slow')!;
+    expect(tight).toBeGreaterThan(loose);
+    expect(tight).toBeLessThanOrEqual(23);
+    expect(loose).toBeGreaterThanOrEqual(20);
+  });
+
+  it('a sore arm still takes its pound off, and never below what the frame allows', () => {
+    const base = pairTension(frame, s, mid, 0, 'fast')!;
+    expect(pairTension(frame, s, mid, -2, 'fast')).toBe(base - 2);
+    const floor = racket('hi', { tensionMinLbs: 26, tensionMaxLbs: 30 });
+    expect(pairTension(floor, s, mid, -40, 'slow')).toBe(26);
+  });
+
+  it('a frame rated above the band takes the nearest end of what it allows', () => {
+    const stiff = racket('hi', { tensionMinLbs: 26, tensionMaxLbs: 30 });
+    expect(pairTension(stiff, s, mid, 0, 'slow')).toBe(26);
+  });
+
+  it('a frame with no ceiling still has no answer, swing or not', () => {
+    const noCeiling = racket('nc');
+    delete noCeiling.attributes!.tensionMaxLbs;
+    expect(pairTension(noCeiling, s, mid, 0, 'slow')).toBeNull();
+  });
+
+  it('pairString names the string at the swing’s tension and says why, once', () => {
+    const slow = pairString(frame, [s], mid, 0, 'slow')!;
+    const fast = pairString(frame, [s], mid, 0, 'fast')!;
+    const plain = pairString(frame, [s], mid)!;
+    expect(slow.tensionLbs).toBe(pairTension(frame, s, mid, 0, 'slow'));
+    expect(fast.tensionLbs).toBe(pairTension(frame, s, mid, 0, 'fast'));
+    expect(slow.reasons.filter((r) => /relaxed swing/i.test(r))).toHaveLength(1);
+    expect(fast.reasons.filter((r) => /fast swing/i.test(r))).toHaveLength(1);
+    expect(plain.reasons.some((r) => /swing/i.test(r))).toBe(false);
+    // The swing line never takes the headline slot.
+    expect(/swing/i.test(slow.reasons[0])).toBe(false);
+  });
+});
+
 /* ── Regressions from the 2026-08-21 code review ──────────────────────────
    Six divergences from docs/superpowers/reference/pair_racket_string.py that
    the original port introduced and the spec's V1-V6 list did not document. */

@@ -22,7 +22,8 @@ import type { CatalogItem, GearItem, PlayerGear } from './types';
  *   - the tension is `pairTension` — the figure the Set-up card's string pick
  *     quotes — whenever the frame, the string and a check-in are all known,
  *     and otherwise the level's starting point (`recommendTension`). Both take
- *     the same comfort delta and sit inside the same `ratedRange`.
+ *     the same comfort delta and the same swing answer, and sit inside the
+ *     same `ratedRange`.
  *
  * Tune the weights below and the tests that pin them; nothing else decides
  * whether a racket "suits" someone.
@@ -57,6 +58,10 @@ export interface FitFacts {
   /** Whether the soreness answer moved the range at all — the page says why
    *  only when it did. */
   sorenessMovedRange: boolean;
+  /** Which way the swing answer moved the range against the level-only rule,
+   *  or null when it did not (or was not answered). Same contract as above:
+   *  the page explains a change only when one happened. Additive. */
+  swingMovedRange: 'lower' | 'higher' | null;
   goal: PlayerGear['fitGoal'] | null;
   /** A frame the member might play, not the one they do. */
   prospective: boolean;
@@ -131,16 +136,24 @@ export function computeFitFacts(input: FitFactsInput): FitFacts {
   // The member's own level wins; otherwise the real check-in number, not the
   // option it rounds to on the page.
   const level = gear?.fitLevelOverride ? levelOptionValue(gear.fitLevelOverride) : checkInLevel;
-  const target = (delta: number): number | null => {
-    const paired = frameRow && stringRow && profile ? pairTension(frameRow, stringRow, profile, delta) : null;
+  // The swing answer picks the band on both paths (docs/plans/tension-follows-swing.md);
+  // unanswered, both paths are the level-only rule they always were.
+  const swing = answers.swing ?? null;
+  const target = (delta: number, withSwing: typeof swing): number | null => {
+    const paired = frameRow && stringRow && profile ? pairTension(frameRow, stringRow, profile, delta, withSwing) : null;
     if (paired !== null) return paired;
-    const base = recommendTension(level ?? null, formatOf(gear));
+    const base = recommendTension(level ?? null, formatOf(gear), withSwing);
     return base ? base.lb + delta : null;
   };
-  const withSore = target(soreDelta);
-  const withoutSore = target(0);
+  const withSore = target(soreDelta, swing);
+  const withoutSore = target(0, swing);
+  const withoutSwing = target(soreDelta, null);
   const tensionRange = withSore === null ? null : rangeAround(withSore, window);
   const sorenessMovedRange = !!tensionRange && withoutSore !== null && rangeAround(withoutSore, window)[0] !== tensionRange[0];
+  const levelOnlyLow = tensionRange && withoutSwing !== null ? rangeAround(withoutSwing, window)[0] : null;
+  const swingMovedRange: FitFacts['swingMovedRange'] = !tensionRange || levelOnlyLow === null || levelOnlyLow === tensionRange[0]
+    ? null
+    : tensionRange[0] < levelOnlyLow ? 'lower' : 'higher';
 
   const reasons: VerdictReason[] = [];
   let weight = 0;
@@ -211,6 +224,7 @@ export function computeFitFacts(input: FitFactsInput): FitFacts {
     currentTensionLbs,
     tensionRange,
     sorenessMovedRange,
+    swingMovedRange,
     goal,
     prospective,
     // Minus first — what is fighting the member is the point of the card.

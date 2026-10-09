@@ -76,9 +76,11 @@ describe('computeFitFacts', () => {
       checkInLevel: null,
     });
     expect(f.state).toBe('fighting');
-    // round(21 + 3.2) − 1 (sore arm); swing never moves tension
-    expect(f.tensionRange).toEqual([23, 24]);
+    // Slow swing picks the 20–23 band, level 3.2 places it at 21, the sore
+    // arm takes a pound off: 20. (Level alone would have said 23–24.)
+    expect(f.tensionRange).toEqual([20, 21]);
     expect(f.sorenessMovedRange).toBe(true);
+    expect(f.swingMovedRange).toBe('lower');
     expect(f.reasons).toHaveLength(3);
     expect(f.reasons.every((r) => r.polarity === 'minus')).toBe(true);
   });
@@ -100,9 +102,11 @@ describe('computeFitFacts', () => {
     const stringRow = { id: 'bg65', category: 'string', brand: 'Yonex', model: 'BG65', attributes: { tensionMinLbs: 20, tensionMaxLbs: 28 } } as unknown as CatalogItem;
     const g = gear({ fitSoreness: 'elbow' }, 24);
     const profile = buildProfile({ ratings: [{ skillKey: 'grip_deception', value: 5 }, { skillKey: 'footwork_split_step', value: 5 }, { skillKey: 'court_coverage', value: 5 }] as never, gear: g });
+    // The fixture's swing is medium; the facts hand the SAME answer to the
+    // pairing, so the verdict names the number the string card would.
     // Not a coincidence with the level fallback (23–24): the pairing places this higher.
-    expect(Math.floor(pairTension(frameRow, stringRow, profile!, -1)!)).not.toBe(23);
-    const paired = pairTension(frameRow, stringRow, profile!, -1)!;
+    expect(Math.floor(pairTension(frameRow, stringRow, profile!, -1, 'medium')!)).not.toBe(23);
+    const paired = pairTension(frameRow, stringRow, profile!, -1, 'medium')!;
     const f = computeFitFacts({ gear: g, frameRow, stringRow, profile, checkInLevel: null });
     expect(f.tensionRange![0]).toBe(Math.floor(paired));
   });
@@ -160,6 +164,41 @@ describe('computeFitFacts', () => {
     });
     expect(f.state).toBe('suits');
     expect(f.frame?.name).toBe('Old Carlton');
+  });
+});
+
+describe('computeFitFacts — the swing answer and the tension range', () => {
+  // Level 3.2 alone says 24 (round(21 + 3.2)); the bands are 20–23 / 23–26 / 25–28.
+  it('a slow swing lowers the range and says so; a fast one raises it', () => {
+    const slow = computeFitFacts({ gear: gear({ fitSwing: 'slow' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    expect(slow.tensionRange).toEqual([21, 22]);
+    expect(slow.swingMovedRange).toBe('lower');
+    const fast = computeFitFacts({ gear: gear({ fitSwing: 'fast' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    expect(fast.tensionRange).toEqual([26, 27]);
+    expect(fast.swingMovedRange).toBe('higher');
+  });
+
+  it('a medium swing at this level lands where the level rule did, and says nothing', () => {
+    const f = computeFitFacts({ gear: gear({ fitSwing: 'medium' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    expect(f.tensionRange).toEqual([24, 25]);
+    expect(f.swingMovedRange).toBeNull();
+  });
+
+  it('with the swing unanswered the range is exactly the level rule, and nothing claims a move', () => {
+    const f = computeFitFacts({ gear: gear({ fitSwing: undefined }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    expect(f.tensionRange).toEqual([24, 25]);
+    expect(f.swingMovedRange).toBeNull();
+    // Four answers: the verdict still declines, as before.
+    expect(f.state).toBe('insufficient');
+  });
+
+  it('the slow-swing range still sits inside the frame’s rated window', () => {
+    const f = computeFitFacts({
+      gear: gear({ fitSwing: 'slow' }, 24),
+      frameRow: row({ balance: 'Even', flex: 'Medium', weight: '4U', tensionMinLbs: 22, tensionMaxLbs: 30 }),
+      checkInLevel: null,
+    });
+    expect(f.tensionRange![0]).toBeGreaterThanOrEqual(22);
   });
 });
 
