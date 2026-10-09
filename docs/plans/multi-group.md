@@ -188,12 +188,19 @@ don't copy.
   `create` resume skips them and lands on the form), or the person's other
   clubs as a list, over an automatic switch to the oldest — the list costs a
   reused `GroupsPage` and lets them see where they are. Welcome keeps its two
-  buttons; "No invite? Start your own club" sits under the invite field. This
-  is the PROPOSED members-only half of the Phase 5 question "what does a person
+  buttons; "No invite? Start your own group" sits under the invite field. This
+  is the members-only half of the Phase 5 question "what does a person
   in no club see": the doors or their own club list, and no club data (every
   club read still refuses them). The members-only-OFF half — a BPM-claiming
   no-club cookie reads BPM through `resolveGroupId`'s default — is untouched
   and still wants Grant's call before the flip.
+- **2026-10-09 — Grant confirmed the members-only half.** Asked "if they have
+  no group how do they have other groups?", the answer was that "no group" means
+  no membership in the group THIS DEVICE's cookie names: a member removed from
+  one group who is still in another. Offered the automatic switch to their
+  oldest group instead, he kept the list ("Yes"). The doors for a person in no
+  group at all were his choice on 2026-10-07. Both are now decided, not
+  proposed; the members-only-OFF half above is still open.
 
 ## Shape
 
