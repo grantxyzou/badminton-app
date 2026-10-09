@@ -57,6 +57,7 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
     - *The access sheet said "Grant … his phone".* The sign-in and access copy now says "an admin" in both languages. Stringing copy still names Grant, because he is the stringer; the privacy page names him because it is legally accurate.
     - *The scrolled header was see-through.* Its background is dense enough (0.96 dark / 0.97 light, 22px blur) that text passing under it cannot be read, even where the blur is not rendered.
 19. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
+20. **Members-only is permanent (Grant, 2026-10-09).** When the flag retires on 2026-10-17, the ON branch is kept and the OFF branches are deleted (the flag's `note` in `lib/flags.ts` lists them). This also closes the members-only-OFF half of multi-group Phase 5's "what does a person in no group see": with no unlocked app left, a no-group cookie never falls back to reading BPM's roster.
 
 ## Shape
 

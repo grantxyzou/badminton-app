@@ -5,6 +5,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { StateLink } from '@/components/primitives/StateCard';
 import { isRefused } from '@/lib/apiFetch';
 import { useRevealReady } from '@/components/primitives/Reveal';
+import { isDormant, type DormantInput } from '@/lib/dormant';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -79,17 +80,9 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
         if (!membersRes.value.ok) {
           setRoster({ data: null, problem: problemOf(membersRes.value) });
         } else {
-          const members = (await membersRes.value.json()) as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }>;
+          const members = (await membersRes.value.json()) as DormantInput[];
           const activeList = Array.isArray(members) ? members.filter((m) => m.active !== false) : [];
-          const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
-          const dormant = activeList.filter((m) => {
-            if (!m.sessionCount || m.sessionCount === 0) return true;
-            if (m.lastSeen) {
-              const t = new Date(m.lastSeen).getTime();
-              if (Number.isFinite(t) && t < sixtyDaysAgo) return true;
-            }
-            return false;
-          }).length;
+          const dormant = activeList.filter((m) => isDormant(m)).length;
           if (!cancelled) {
             setRoster({
               data: { activeMembers: activeList.length - dormant, totalMembers: activeList.length, dormantMembers: dormant },

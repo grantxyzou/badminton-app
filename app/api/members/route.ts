@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
     // the name the group knows them by.
     const entries = await rosterMembers(resolveGroupId(req), { includeInactive });
     const resources = entries.map((e) =>
-      e.membership ? { ...e.member, active: e.membership.status === 'active' } : e.member,
+      // `joinedAt` is when they joined THIS group: the dormant grace period
+      // (lib/dormant.ts) runs from it. Admin-only — the non-admin map below
+      // picks name, active and avatar alone.
+      e.membership ? { ...e.member, active: e.membership.status === 'active', joinedAt: e.membership.joinedAt } : e.member,
     );
     // Non-admin: only names and the picture a member chose to show beside
     // theirs (no stats or IDs). The avatar is picked by its owner, never set

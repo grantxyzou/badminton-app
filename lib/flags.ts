@@ -84,7 +84,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
       'A signed-out visitor sees no club data at all — only Sign up / Log in (docs/plans/members-only.md). Read SERVER-SIDE: on, every group-data read requires a signed-in active member (requireMember in lib/auth.ts), new accounts need an invite, and a session sign-up needs an account. Off, every gate is a pass-through and nothing observable changes. Ships dark; the flip waits until the admin list of members with no way to sign in is short, because turning it on locks those people out until an admin approves them.',
     owner: 'grant',
     plannedRemoval: '2026-10-17',
-    note: 'Turned on in production 2026-10-03. Retiring it means deleting the OFF branches, not just the switch: the anonymous and body-PIN paths in POST /api/players, the flag-off branch of signupGroupFor, and the adaptive anon/sign-in/create modes of the Home sign-up card.',
+    note: 'Turned on in production 2026-10-03. Retiring it means deleting the OFF branches, not just the switch: the anonymous and body-PIN paths in POST /api/players, the flag-off branch of signupGroupFor, and the adaptive anon/sign-in/create modes of the Home sign-up card. Grant, 2026-10-09: members-only is PERMANENT — retire by keeping the ON branch.',
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
