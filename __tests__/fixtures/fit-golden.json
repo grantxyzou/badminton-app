@@ -66,8 +66,8 @@
       "id": "g02",
       "pending": true,
       "source": "Badminton Performance Science deck (AI-generated, 2026-10-09), 'The fast-twitch tactician'",
-      "note": "Doubles front-court player, medium swing, plays an even mid-range frame and wants it faster in hand. The deck prescribes a head-light (low MOI) frame, a thin string and a medium tension.",
-      "ratedBy": "unrated — drafted from the deck",
+      "note": "Doubles front-court player, medium swing, plays an even mid-range frame (ArcSaber 11 Play, Medium flex) and wants it faster in hand. The deck prescribes a head-light (low MOI) frame, a thin string and a medium tension. VERIFIED ONLINE 2026-10-09 (Grant: \"use researching online to verify\"): the Nanoflare 700 Pro / 700 Tour are head-light, Medium, sold for doubles front-court and flat exchanges; the Nextage is head-light, medium-ish, for intermediates; the 1000 Play is the same shape at an entry price. Two rows were DROPPED from the draft: the Auraspeed 90K is head-light but STIFF and sold for experienced/top players, a big step from a Medium beginner frame on a medium swing; the Bladex 700 is head-light Medium in 4U and head-heavy Stiff in 5U (retailers disagree), so it cannot be rated by name. Tension 24-25 lb matches the published intermediate ranges (23-25, 24-26).",
+      "ratedBy": "unrated — drafted from the deck, racket list verified against published reviews 2026-10-09; the stringer has not confirmed",
       "ratedAt": null,
       "gear": {
         "fitGoal": "faster",
@@ -117,24 +117,23 @@
         }
       ],
       "acceptable": [
-        "racket-yonex-nanoflare-nextage",
-        "racket-yonex-nanoflare-1000-play",
-        "racket-yonex-nanoflare-700-tour",
         "racket-yonex-nanoflare-700-pro",
-        "racket-victor-auraspeed-90k",
-        "racket-li-ning-bladex-700"
+        "racket-yonex-nanoflare-700-tour",
+        "racket-yonex-nanoflare-nextage",
+        "racket-yonex-nanoflare-1000-play"
       ],
       "unacceptable": [
         "racket-yonex-astrox-99-pro",
-        "racket-yonex-astrox-88d-pro"
+        "racket-yonex-astrox-88d-pro",
+        "racket-li-ning-bladex-700"
       ]
     },
     {
       "id": "g03",
       "pending": true,
       "source": "Badminton Performance Science deck (AI-generated, 2026-10-09), 'The power smasher'",
-      "note": "Fast swing, advanced, plays an Astrox 88D Pro and wants more power still. The deck prescribes a head-heavy (high MOI) stiff frame, a hybrid string and a high tension.",
-      "ratedBy": "unrated — drafted from the deck",
+      "note": "Fast swing, advanced, doubles rear court, plays an Astrox 88D Pro and wants more power still. The deck prescribes a head-heavy (high MOI) stiff frame, a hybrid string and a high tension. VERIFIED ONLINE 2026-10-09: the Astrox 99 Pro (both generations) is the documented power upgrade from the 88D Pro (stiff, head-heavy, 2G-Namd in frame and shaft, needs a fast arm); the Thruster Ryuga II and Ryuga II Pro are head-heavy stiff smash frames (~295 mm); the Astrox 100ZZ is head-heavy extra-stiff for players who already swing fast. DROPPED from the draft: the 88S Pro and 88S Pro 3rd gen are the FRONT-COURT sibling of the 88D (lighter at the top, built for drives and interceptions), not a rear-court power step; the 3D Calibar 900 (non-Combat) is the milder 303 mm version and the catalog labels it Speed — the Combat is the power one and is not in the catalog. Tension 26-27 lb matches the published advanced/fast-swing ranges (26-28, 26-29).",
+      "ratedBy": "unrated — drafted from the deck, racket list verified against published reviews 2026-10-09; the stringer has not confirmed",
       "ratedAt": null,
       "gear": {
         "fitGoal": "more_power",
@@ -186,14 +185,14 @@
       "acceptable": [
         "racket-yonex-astrox-99-pro",
         "racket-yonex-astrox-99-pro-3rd-gen",
-        "racket-yonex-astrox-88s-pro",
-        "racket-yonex-astrox-88s-pro-3rd-gen",
         "racket-victor-thruster-ryuga-ii",
-        "racket-li-ning-3d-calibar-900"
+        "racket-victor-thruster-ryuga-ii-pro",
+        "racket-yonex-astrox-100zz"
       ],
       "unacceptable": [
         "racket-yonex-nanoflare-700-pro",
-        "racket-victor-brave-sword-1500"
+        "racket-victor-brave-sword-1500",
+        "racket-yonex-astrox-88s-pro"
       ]
     }
   ]
