@@ -48,6 +48,16 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### It's a "group" everywhere, and Sign up says what BPM is (2026-10-09)
+
+- **Every "club" the app shows is now "group"**, in English and Chinese (群组), from Stats and Gear to the privacy pages, plus the launch line ("Weekly badminton with your group."). Two lines that mean real-world badminton clubs keep the word.
+- **Sign up opens with what the app is**: "BPM is a badminton group management app, currently in testing and invite-only."
+
+### A brand-new group's organiser sees no false alarms (2026-10-09)
+
+- **Before a group's first session**, Profile's admin row and the Next Session form no longer say "Couldn't check" or "Couldn't load the current session" in red, and the form no longer promises to archive a session that doesn't exist. Having no session yet is a normal state, not an error.
+- **Nobody counts as inactive in their first 60 days in a group.** A new organiser used to open their group to "1 need you" — themselves — and every fresh invite counted as dormant until their first session.
+
 ### The Astrox 88S is no longer offered as a power step up from the 88D (2026-10-09)
 
 - **The four Astrox 88S rows (Pro 2nd and 3rd gen, Tour, Game) now read as even-balanced in the catalog.** They are the front-court sibling of the 88D, lighter at the top, and the catalog had them labelled the same as a 99 Pro, so a rear-court smasher asking for more power was being shown an 88S Pro. The stringer confirmed the relabel against the published reviews.
@@ -62,6 +72,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 - **Tell the app your swing speed on Your fit and the tension it suggests follows it.** A relaxed swing is strung looser — at that pace a softer bed does the work and gives more power, not less, with a bigger sweet spot — and a fast swing a touch firmer. The string pick, the fit verdict and the tension card all say the same number, and the page says why the range moved when it did. Nobody who hasn't answered the swing question sees a change.
 - Three draft sample players (a developing player, a quick doubles tactician, a hard smasher) are in the racket-fit test set for the club's stringer to confirm or correct.
+
+### The privacy policy and terms name who looks after your data (2026-10-07)
+
+- **Two roles, said plainly**: the operator, who runs the app for every group, and your group's organisers, who run your group. The terms gain a "Running a group" section, the British Columbia privacy commissioner is named, and the pages say the app is free today and what would happen before that ever changed. Both languages.
 
 ### "Move to the app" is on (2026-10-07)
 
