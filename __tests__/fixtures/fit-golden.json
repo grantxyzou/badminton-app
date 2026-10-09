@@ -4,16 +4,15 @@
     "howToAdd": "Copy a case, set gear.items[].catalogId to real catalog ids (the test refuses an id the catalog does not have), fill acceptable/unacceptable, set ratedBy and ratedAt.",
     "pending": "A case with `pending: true` is a DRAFT nobody has rated: the harness prints the engine's current top three beside its `acceptable` list for the owner and the stringer to confirm or correct, and asserts nothing about agreement. It does not count toward the kill criterion's five. Flip `pending` off and set `ratedBy` / `ratedAt` once a person has confirmed it."
   },
-  "engineVersion": "fit-2",
+  "engineVersion": "fit-3",
   "catalog": "scripts/data/equipment-catalog.json",
   "cases": [
     {
       "id": "g01",
-      "pending": true,
       "source": "Badminton Performance Science deck (AI-generated, 2026-10-09), 'The developing player'",
-      "note": "Slow swing, beginner, doubles, wants deeper clears and forgiveness. The deck prescribes a MEDIUM (even) balance, a softer shaft and a thick string at low tension. The engine's `more_power` delta moves balance toward head-heavy; which is right for a slow swing is the question for the stringer.",
-      "ratedBy": "unrated — drafted from the deck",
-      "ratedAt": null,
+      "note": "Slow swing, beginner, doubles, wants deeper clears and forgiveness. Even balance and a flexible-to-medium shaft, light, at the slow tension band. Head-heavy frames are wrong for this swing: they add smash power only to a swing fast enough to accelerate them, and at this pace the power comes from the shaft and the string bed. The engine (fit-2) answered more_power with a head-heavy step and picked the Astrox 88 Play; fit-3 takes that step off for a slow swing because of this case.",
+      "ratedBy": "Grant (owner and club stringer), confirming the deck's prescription against the published buying guides (\"I agree with online\")",
+      "ratedAt": "2026-10-09",
       "gear": {
         "fitGoal": "more_power",
         "fitSwing": "slow",

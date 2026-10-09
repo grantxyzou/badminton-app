@@ -906,6 +906,7 @@
         "levelOnly": "只根据你的自评，回答适配问题推荐会更准。",
         "swingUnanswered": "告诉我们你的挥拍速度，中杆软硬就能配准。",
         "anchorStifferThanSwing": "你的 {model} 比你的挥拍需要的偏硬，这几支特意选得更软。",
+        "slowSwingPower": "以你的挥速，力量来自会帮你发力的中杆和线床，而不是更重的拍头。",
         "clubPlays": "群组已有 {count} 人在用。"
       },
       "warn": {

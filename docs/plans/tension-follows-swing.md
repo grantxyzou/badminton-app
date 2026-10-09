@@ -42,6 +42,8 @@ shaft.
   recommendation.
 - Bumping `FIT_ENGINE_VERSION`. The racket engine's arithmetic is untouched;
   a bump would tell the golden set its ratings are stale when they are not.
+  (Held for this change; the same day's follow-up, `fit-3`, DID change the
+  racket arithmetic and bumped it — see the Decisions below.)
 
 ## Decisions
 
@@ -87,6 +89,12 @@ shaft.
   and the deck disagree today (the engine's `more_power` delta leans
   head-heavy; the deck says even balance for a slow swing) — that is the first
   question for the stringer, not something to settle in code.
+- **Settled the same day: the stringer agreed with the deck, and the engine
+  changed** (`fit-3`, recorded in `docs/plans/racket-fit-engine.md`). Grant
+  asked what the buying guides say about power for a beginner; they all say
+  even balance and a flexible-to-medium shaft, and he rated g01 that way. A
+  slow swing's `more_power` no longer steps the balance toward head-heavy.
+  g01 is rated; g02 and g03 are still drafts for him to confirm.
 
 ## Shape
 

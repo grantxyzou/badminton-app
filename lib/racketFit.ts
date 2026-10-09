@@ -38,6 +38,22 @@ import type { PlayerProfile } from './racketProfile';
  *    Beginner reaching UP, so the Entry and Mid rows that fit as well rank
  *    first (owner, 2026-09-10).
  *
+ * fit-3 (2026-10-09) — A SLOW SWING TAKES "MORE POWER" OFF THE HEAD. The
+ * `more_power` delta moved every member one balance step toward head-heavy;
+ * for a slow swing that is the wrong axis. A head-heavy frame adds smash
+ * power only to a swing fast enough to accelerate it, and a beginner swings
+ * it slower, not harder; at that pace the power comes from the shaft bending
+ * and the string bed launching (the same physics behind the slow tension
+ * band in `lib/tension.ts`). Every buying guide checked says the same —
+ * even balance, flexible-to-medium shaft, light — and the club's stringer
+ * confirmed it against golden case g01. So `goalDelta()` answers a slow
+ * swing wanting more power with `SLOW_SWING_POWER_DELTA`: balance stays,
+ * grams stay, and flex is left to the slow ceiling (Medium), which already
+ * holds it. Medium and fast swings keep the head-heavy step. Whether the
+ * target should step on down to Flexible is the next question for the
+ * golden set — the stringer's rated list is Medium rows, so the engine does
+ * not claim more than that yet.
+ *
  * Pure: no fetch, no DB, no clock, no randomness. Every reason is an i18n KEY
  * with params, never a sentence — English-only reasons were one of the
  * defects. `FIT_REASON_KEYS` is exported so a test can assert every key the
@@ -45,7 +61,7 @@ import type { PlayerProfile } from './racketProfile';
  * dynamic `t(reason.key)`.
  */
 
-export const FIT_ENGINE_VERSION = 'fit-2';
+export const FIT_ENGINE_VERSION = 'fit-3';
 
 export type FitState = 'anchored' | 'anchored_default' | 'unanchored' | 'level_only' | 'needsFit';
 export type FitLevel = 'Beginner' | 'Intermediate' | 'Advanced';
@@ -250,13 +266,33 @@ export function levelTierLabel(level: FitLevel | null): string {
  * swing speed tracks swing-weight, not mass (Cross 2006) — and neither
  * touches flex, which follows the swing answer alone.
  */
-export const GOAL_DELTA: Record<FitGoal, { balance: number | 'toward2'; flex: number; weight: number; style: string | null }> = {
+export interface GoalDelta { balance: number | 'toward2'; flex: number; weight: number; style: string | null }
+
+export const GOAL_DELTA: Record<FitGoal, GoalDelta> = {
   happy: { balance: 0, flex: 0, weight: 0, style: null },
   more_power: { balance: +1, flex: 0, weight: +2, style: 'Power' },
   more_control: { balance: 'toward2', flex: +1, weight: 0, style: 'Control' },
   faster: { balance: -1, flex: 0, weight: -2, style: 'Speed' },
   less_fatigue: { balance: -1, flex: 0, weight: -3, style: null },
 };
+
+/**
+ * fit-3: what "more power" means for a SLOW swing — the one goal whose axis
+ * depends on the swing. The head stays where it is and so do the grams: a
+ * frame this member can accelerate. Flex is not moved here; the slow
+ * ceiling in `buildTarget` already holds it at Medium. No preferred style —
+ * in this catalog "Power" labels the head-heavy frames the rule is steering
+ * away from.
+ */
+export const SLOW_SWING_POWER_DELTA: GoalDelta = { balance: 0, flex: 0, weight: 0, style: null };
+
+/** THE delta for a goal, given the swing. The only place that pairing is
+ *  read, so the target and the verdict (`lib/fitVerdict.ts`) cannot disagree
+ *  about what a goal wants from a frame. */
+export function goalDelta(goal: FitGoal, swing: FitSwing | undefined): GoalDelta {
+  if (goal === 'more_power' && swing === 'slow') return SLOW_SWING_POWER_DELTA;
+  return GOAL_DELTA[goal];
+}
 
 /** What a sore arm asks of the string engine, in lbs. The one comfort effect
  *  the literature supports directly: lower tension lowers elbow load. Not
@@ -279,7 +315,7 @@ export function buildTarget(input: FitInput, anchorAxes: Axes | null): TargetSpe
     : LEVEL_BASE[input.level ?? 'null'];
 
   const goal: FitGoal = input.goal ?? 'happy';
-  const delta = GOAL_DELTA[goal];
+  const delta = goalDelta(goal, input.swing);
   let balance = delta.balance === 'toward2'
     ? base.balance + Math.sign(2 - base.balance)
     : base.balance + delta.balance;
@@ -396,6 +432,15 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   const score = Math.round(clamp(100 - penalty - caps + secondary, 0, 100) * 10) / 10;
 
   // Reasons — fixed order, only when true, at most four.
+  // fit-3: a slow swing asked for more power and this frame answers it the
+  // way the engine now means it — not head-heavy, and no stiffer than what
+  // they play. Said whether or not there is an anchor; the anchored
+  // `powerStep` ("a step up in power") is about the head and is not made for
+  // a slow swing at all.
+  const slowPower = (input.goal ?? 'happy') === 'more_power' && input.swing === 'slow';
+  if (slowPower && axes.balance <= 2 && (!anchorAxes || axes.flex <= anchorAxes.flex)) {
+    reasons.push({ key: 'reason.slowSwingPower' });
+  }
   if (target.anchored && anchorAxes) {
     const goal = input.goal ?? 'happy';
     // "Like yours" is a claim about the ANCHOR on every axis — the target's
@@ -415,7 +460,7 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
       || (goal === 'less_fatigue' && (axes.balance < anchorAxes.balance || lighter));
     const model = anchorLabel(input.anchor!);
     if (goal === 'happy' && closeOnEveryAxis) reasons.push({ key: 'reason.likeYours', params: { model } });
-    else if (goal === 'more_power' && movesGoalAxis) reasons.push({ key: 'reason.powerStep', params: { model } });
+    else if (goal === 'more_power' && !slowPower && movesGoalAxis) reasons.push({ key: 'reason.powerStep', params: { model } });
     else if (goal === 'more_control' && movesGoalAxis) reasons.push({ key: 'reason.controlStep', params: { model } });
     else if (goal === 'faster' && movesGoalAxis) reasons.push({ key: 'reason.speedStep', params: { model } });
     else if (goal === 'less_fatigue' && movesGoalAxis) reasons.push({ key: 'reason.fatigueStep', params: { model } });
@@ -581,7 +626,7 @@ export const FIT_REASON_KEYS = [
   'reason.doublesBuilt', 'reason.singlesRear', 'reason.evenVersatile',
   'reason.withinBudget', 'reason.gripMatch', 'reason.weightUnknown',
   'reason.anchoredDefault', 'reason.unanchored', 'reason.levelOnly', 'reason.clubPlays',
-  'reason.swingUnanswered', 'reason.anchorStifferThanSwing',
+  'reason.swingUnanswered', 'reason.anchorStifferThanSwing', 'reason.slowSwingPower',
   'warn.flexAboveCeiling', 'warn.weightAboveCeiling', 'warn.headHeavyWithSoreArm',
   'diff.stiffer', 'diff.softer', 'diff.headHeavier', 'diff.headLighter', 'diff.lighter', 'diff.heavier',
   'diff.cheaper', 'diff.pricier', 'diff.tierUp', 'diff.tierDown', 'diff.sameSpecOtherBrand',

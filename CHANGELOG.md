@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A slow swing is not sent a head-heavy racket for "more power" (2026-10-09)
+
+- **Ask for more power with a relaxed swing and the racket pick now stays even-balanced and no stiffer than Medium**, instead of stepping to a head-heavy frame. A heavier head adds smash power only to a swing fast enough to accelerate it; at a relaxed pace the power comes from the shaft bending and the string bed launching, which is what every buying guide says and what the club's stringer confirmed. The pick says so in one line. Medium and fast swings are unchanged.
+- The first expert-rated sample player (the developing player) is now in the racket-fit test set; the engine is `fit-3`.
+
 ### The string tension follows your swing (2026-10-09)
 
 - **Tell the app your swing speed on Your fit and the tension it suggests follows it.** A relaxed swing is strung looser — at that pace a softer bed does the work and gives more power, not less, with a bigger sweet spot — and a fast swing a touch firmer. The string pick, the fit verdict and the tension card all say the same number, and the page says why the range moved when it did. Nobody who hasn't answered the swing question sees a change.

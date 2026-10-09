@@ -1,6 +1,6 @@
 import { activeRacket } from './activeRacket';
 import { effectiveArmComfort, fitAnswers, levelOptionValue } from './fitProfile';
-import { BALANCE_AXIS, GOAL_DELTA, comfortTensionDeltaLb } from './racketFit';
+import { BALANCE_AXIS, goalDelta, comfortTensionDeltaLb } from './racketFit';
 import type { PlayerProfile } from './racketProfile';
 import { pairTension } from './stringPair';
 import { MAX_LB, MIN_LB, ratedRange, recommendTension, type PlayFormat } from './tension';
@@ -16,9 +16,10 @@ import type { CatalogItem, GearItem, PlayerGear } from './types';
  * change them, and with no AI the page words them itself.
  *
  * It invents no opinion of its own where the engines already hold one:
- *   - what a goal wants from a frame's balance is `GOAL_DELTA`, the racket fit
- *     engine's table, so the verdict and the ranked frames beside it cannot
- *     disagree about the same racket;
+ *   - what a goal wants from a frame's balance is `goalDelta()`, the racket
+ *     fit engine's table read with the SAME swing answer (fit-3: a slow swing
+ *     wanting more power is not asking for a heavier head), so the verdict
+ *     and the ranked frames beside it cannot disagree about the same racket;
  *   - the tension is `pairTension` — the figure the Set-up card's string pick
  *     quotes — whenever the frame, the string and a check-in are all known,
  *     and otherwise the level's starting point (`recommendTension`). Both take
@@ -161,10 +162,11 @@ export function computeFitFacts(input: FitFactsInput): FitFacts {
   const flex = canon(frame?.flex);
 
   // What the member asked for, against the frame's balance — on the fit
-  // engine's own axis: every level starts even (2) and the goal moves it.
+  // engine's own axis: every level starts even (2) and the goal moves it,
+  // read with the swing the engine reads it with.
   const axis = BALANCE_AXIS[balance];
   if (goal && goal !== 'happy' && axis !== undefined) {
-    const delta = GOAL_DELTA[goal].balance;
+    const delta = goalDelta(goal, answers.swing ?? undefined).balance;
     const wanted = delta === 'toward2' ? 2 : 2 + delta;
     const off = Math.abs(axis - wanted);
     if (off === 0) reasons.push({ key: 'goalWithBalance', polarity: 'plus' });

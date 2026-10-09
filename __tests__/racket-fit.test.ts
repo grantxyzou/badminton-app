@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   recommendFit, buildTarget, axesOf, scoreFit, compareFit, pickAlternatives, differsBy,
-  resolveFitState, fitLevel, GOAL_DELTA, FIT_REASON_KEYS, canon, comfortTensionDeltaLb, anchorStifferThanSwing,
+  resolveFitState, fitLevel, GOAL_DELTA, goalDelta, FIT_REASON_KEYS, canon, comfortTensionDeltaLb, anchorStifferThanSwing,
   type FitInput,
 } from '../lib/racketFit';
 import { pairTension, pairString } from '../lib/stringPair';
@@ -354,6 +354,66 @@ describe('ranking, exclusion and alternatives', () => {
     expect(recommendFit(input({}), catalog).top!.reasons[0].key).toBe('reason.levelOnly');
     expect(recommendFit(input({ anchor: ANCHOR, ownedIds: new Set(['anchor']) }), catalog).top!.reasons[0])
       .toEqual({ key: 'reason.anchoredDefault', params: { model: 'Astrox 88D Pro' } });
+  });
+});
+
+describe('fit-3 — a slow swing takes "more power" off the head', () => {
+  // Golden case g01 (the club's stringer, 2026-10-09): a beginner with a slow
+  // swing asking for more power wants an even, flexible-to-medium, light
+  // frame. The head-heavy step adds smash power only to a swing fast enough
+  // to accelerate it; at a slow pace the power comes from the shaft and the
+  // string bed.
+  it('the delta for a slow swing keeps the balance and the grams; every other swing keeps the head-heavy step', () => {
+    expect(goalDelta('more_power', 'slow')).toEqual({ balance: 0, flex: 0, weight: 0, style: null });
+    expect(goalDelta('more_power', 'medium')).toBe(GOAL_DELTA.more_power);
+    expect(goalDelta('more_power', 'fast')).toBe(GOAL_DELTA.more_power);
+    expect(goalDelta('more_power', undefined)).toBe(GOAL_DELTA.more_power);
+    // Only that one pairing is special.
+    expect(goalDelta('faster', 'slow')).toBe(GOAL_DELTA.faster);
+    expect(goalDelta('more_control', 'slow')).toBe(GOAL_DELTA.more_control);
+  });
+
+  it('an unanchored Beginner wanting power with a slow swing targets an even, Medium, 82 g frame — not head-heavy', () => {
+    const slow = buildTarget(input({ level: 'Beginner', goal: 'more_power', swing: 'slow' }), null);
+    expect(slow).toMatchObject({ balance: 2, flex: 2, weight: 82, tier: 1, style: null, flexCeil: 2 });
+    const medium = buildTarget(input({ level: 'Beginner', goal: 'more_power', swing: 'medium' }), null);
+    expect(medium).toMatchObject({ balance: 3, flex: 2, weight: 84, style: 'Power' });
+  });
+
+  it('anchored on an even Medium frame, a slow swing wanting power stays even and no stiffer', () => {
+    const even = racket('ev', { model: 'ArcSaber 11 Play', balance: 'Even', flex: 'Medium', tier: 'Mid-range', weightMinG: 80, weightMaxG: 84 });
+    const t = buildTarget(input({ anchor: even, goal: 'more_power', swing: 'slow' }), axesOf(even)!);
+    expect(t).toMatchObject({ balance: 2, flex: 2, weight: 82 });
+  });
+
+  it('ranks the even frames above the head-heavy ones for that member, and says why', () => {
+    const inp = input({ level: 'Beginner', goal: 'more_power', swing: 'slow', format: 'doubles' });
+    const cat = [
+      racket('hh', { balance: 'Head-heavy', flex: 'Medium', tier: 'Entry-level', playStyle: 'Power', weightMinG: 80, weightMaxG: 84 }, 117),
+      racket('ev', { balance: 'Even', flex: 'Medium', tier: 'Entry-level', playStyle: 'Control', weightMinG: 80, weightMaxG: 84 }, 103),
+    ];
+    const r = recommendFit(inp, cat);
+    expect(r.top!.item.id).toBe('ev');
+    expect(r.top!.reasons.map((x) => x.key)).toContain('reason.slowSwingPower');
+    // The head-heavy row does not get the sentence: it is not the answer the sentence describes.
+    expect(r.alternatives[0].reasons.map((x) => x.key)).not.toContain('reason.slowSwingPower');
+    // A medium swing is the old rule: head-heavy wins and the sentence is not made.
+    const m = recommendFit(input({ level: 'Beginner', goal: 'more_power', swing: 'medium', format: 'doubles' }), cat);
+    expect(m.top!.item.id).toBe('hh');
+    expect(m.top!.reasons.map((x) => x.key)).not.toContain('reason.slowSwingPower');
+  });
+
+  it('anchored, "a step up in power" (about the head) is never said to a slow swing; the slow-swing line replaces it', () => {
+    const even = racket('ev', { model: 'ArcSaber 11 Play', balance: 'Even', flex: 'Medium', tier: 'Mid-range', weightMinG: 80, weightMaxG: 84 });
+    const inp = input({ anchor: even, goal: 'more_power', swing: 'slow', ownedIds: new Set(['ev']) });
+    const t = buildTarget(inp, axesOf(even)!);
+    const heavier = racket('hh', { balance: 'Head-heavy', flex: 'Medium', tier: 'Mid-range', weightMinG: 83, weightMaxG: 87 });
+    const softer = racket('sf', { balance: 'Even', flex: 'Flexible', tier: 'Mid-range', weightMinG: 80, weightMaxG: 84 });
+    expect(scoreFit(heavier, axesOf(heavier)!, t, inp, axesOf(even)).reasons.map((x) => x.key)).not.toContain('reason.powerStep');
+    expect(scoreFit(softer, axesOf(softer)!, t, inp, axesOf(even)).reasons.map((x) => x.key)).toContain('reason.slowSwingPower');
+    // A fast swing on the same anchor keeps the head-heavy step and its sentence.
+    const fast = input({ anchor: even, goal: 'more_power', swing: 'fast', ownedIds: new Set(['ev']) });
+    expect(scoreFit(heavier, axesOf(heavier)!, buildTarget(fast, axesOf(even)!), fast, axesOf(even)).reasons.map((x) => x.key)).toContain('reason.powerStep');
   });
 });
 
