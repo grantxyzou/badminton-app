@@ -100,7 +100,7 @@ export default function StringStockCard({ refreshKey = 0 }: { refreshKey?: numbe
       {stock && stock.lines.length > 0 && (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="flex flex-col gap-2">
           {stock.lines.map((l) => (
-            <li key={l.label} className="cc-mini-card" style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)' }}>
+            <li key={l.label} className="cc-mini-card" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', alignItems: 'baseline' }}>
                 <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{l.label}</span>
                 <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', color: l.purchasedMetres > 0 && l.remainingSets <= 3 ? 'var(--sev-warn)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>

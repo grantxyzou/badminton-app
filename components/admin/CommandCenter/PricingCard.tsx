@@ -10,6 +10,10 @@ import { MAX_SERVICES, formatServicePrice, type ServicePrice } from '@/lib/strin
 import { moveItem, canMove } from '@/lib/reorder';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 
+// 44px is the tap-target floor, not a spacing value: the glyph buttons on a
+// price row (two arrows and an ×) are icon-only, so the box IS the target.
+const TAP_TARGET = { minWidth: 44, minHeight: 44, flex: '0 0 auto' } as const;
+
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
@@ -263,8 +267,10 @@ export default function PricingCard() {
               >
                 {/* Up/down rather than a drag handle. Disabled at the ends,
                     because a control that is present but does nothing is worse
-                    than one that says it cannot. */}
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    than one that says it cannot. Side by side, not stacked:
+                    each is a 44px target (the tap floor — they were 18px tall),
+                    and two of those stacked would make every row 88px. */}
+                <div style={{ display: 'flex', flex: '0 0 auto' }}>
                   {([-1, 1] as const).map((delta) => (
                     <button
                       key={delta}
@@ -275,7 +281,7 @@ export default function PricingCard() {
                         name: svc.label,
                       })}
                       className="cc-btn cc-btn-ghost"
-                      style={{ padding: '0 var(--space-1)', minHeight: 18, lineHeight: 1 }}
+                      style={{ ...TAP_TARGET, padding: 0 }}
                     >
                       <span className="material-icons icon-sm" style={{ color: 'var(--text-muted)' }}>
                         {delta === -1 ? 'expand_less' : 'expand_more'}
@@ -319,7 +325,7 @@ export default function PricingCard() {
                   onClick={() => void save(services.filter((s) => s.label !== svc.label))}
                   aria-label={t('pricing.remove', { name: svc.label })}
                   className="cc-btn cc-btn-ghost"
-                  style={{ padding: 'var(--space-2)' }}
+                  style={{ ...TAP_TARGET, padding: 0 }}
                 >
                   <span className="material-icons icon-sm" style={{ color: 'var(--text-muted)' }}>
                     close

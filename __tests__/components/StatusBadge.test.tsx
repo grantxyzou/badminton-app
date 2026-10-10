@@ -34,4 +34,15 @@ describe('StatusBadge', () => {
     render(<StatusBadge variant="phase" tone="accent">Refine</StatusBadge>);
     expect(screen.getByText('Refine').getAttribute('style') ?? '').toContain('var(--accent)');
   });
+
+  it('state variant wears the canonical .pill-* class (shape, padding and colour from CSS, no inline style)', () => {
+    render(<StatusBadge variant="state" tone="paid">Ready</StatusBadge>);
+    const el = screen.getByText('Ready');
+    expect(el.className).toBe('pill-paid');
+    expect(el.getAttribute('style')).toBeNull();
+    cleanup();
+    // A tone from the other family cannot leak in; it falls to the neutral pill.
+    render(<StatusBadge variant="state" tone="amber">Odd</StatusBadge>);
+    expect(screen.getByText('Odd').className).toBe('pill-waitlist');
+  });
 });

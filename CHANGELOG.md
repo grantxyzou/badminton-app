@@ -58,6 +58,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Before a group's first session**, Profile's admin row and the Next Session form no longer say "Couldn't check" or "Couldn't load the current session" in red, and the form no longer promises to archive a session that doesn't exist. Having no session yet is a normal state, not an error.
 - **Nobody counts as inactive in their first 60 days in a group.** A new organiser used to open their group to "1 need you" — themselves — and every fresh invite counted as dormant until their first session.
 
+### Stringing screens on the design system (2026-10-10)
+
+- **Stringing tab**: each string on "Strings we offer" is a standard list row, and one the catalog doesn't know yet is shown dimmed rather than as a look-alike card. The request sheet's ✕ is the shared one every sheet has.
+- **Admin bench**: job-status chips are the app's standard pills; the price list's reorder arrows and remove × are full-size tap targets (they were 18px tall); the member picker on "New job" and the string-stock rows use the standard row layout and padding; the Lin/Viktor action sheet's ✕ is the shared one.
+
 ### The string stock card loads (2026-10-10)
 
 - **Admin bench → "String stock" said "Couldn't load the string stock" from the moment it shipped.** Its purchases were stored in a database container of their own, and the one new thing that card did in production was create it — which a shared-throughput Cosmos database refuses past its 25th container. Purchases now live beside the gift cards in a container that already exists; nothing had been saved, so nothing was lost. The error, if it ever returns, now says which read failed.

@@ -20,6 +20,7 @@ import OfferedStringsCard from './OfferedStringsCard';
 import StringStockCard from './StringStockCard';
 import PricingCard from './PricingCard';
 import { StateLink } from '@/components/primitives/StateCard';
+import StatusBadge, { type StateTone } from '@/components/primitives/StatusBadge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -49,12 +50,13 @@ const DUE_FG: Record<DueTone, string> = {
   done: 'var(--text-muted)',
 };
 
-const TONE: Record<StringingStatus, { bg: string; fg: string }> = {
-  requested: { bg: 'var(--pill-unpaid-bg)', fg: 'var(--pill-unpaid-text)' },
-  received: { bg: 'var(--pill-waitlist-bg)', fg: 'var(--pill-waitlist-text)' },
-  strung: { bg: 'var(--pill-waitlist-bg)', fg: 'var(--pill-waitlist-text)' },
-  ready: { bg: 'var(--pill-paid-bg)', fg: 'var(--pill-paid-text)' },
-  picked_up: { bg: 'var(--pill-unpaid-bg)', fg: 'var(--pill-unpaid-text)' },
+/** Each job status in one of the canonical pill tones (`StatusBadge variant="state"`). */
+const TONE: Record<StringingStatus, StateTone> = {
+  requested: 'unpaid',
+  received: 'waitlist',
+  strung: 'waitlist',
+  ready: 'paid',
+  picked_up: 'unpaid',
 };
 
 interface Props {
@@ -312,18 +314,8 @@ export default function StringingPage({ onBack }: Props) {
                   {job.jobNo}
                 </span>
               </span>
-              <span
-                className="fs-2xs"
-                style={{
-                  flex: '0 0 auto',
-                  fontWeight: 600,
-                  padding: 'var(--space-2) var(--space-4)',
-                  borderRadius: 'var(--radius-pill)',
-                  background: tone.bg,
-                  color: tone.fg,
-                }}
-              >
-                {t(`status.${job.status}`)}
+              <span style={{ flex: '0 0 auto' }}>
+                <StatusBadge variant="state" tone={tone}>{t(`status.${job.status}`)}</StatusBadge>
               </span>
               <button
                 type="button"
@@ -398,34 +390,18 @@ export default function StringingPage({ onBack }: Props) {
      path; this is the findable one. A swipe nobody discovers is how kudos
      became unfindable — a player asked how to give one and the owner's own
      answer was wrong. */
+  const closeActions = () => {
+    setActionTarget(null);
+    setActionError(false);
+    setConfirmingDelete(false);
+    setDeleteError(false);
+  };
   const actionSheet = (
-    <BottomSheet
-      open={actionTarget !== null}
-      onClose={() => {
-        setActionTarget(null);
-        setActionError(false);
-        setConfirmingDelete(false);
-        setDeleteError(false);
-      }}
-      ariaLabel={t('actions.title')}
-    >
-      <BottomSheetHeader>
+    <BottomSheet open={actionTarget !== null} onClose={closeActions} ariaLabel={t('actions.title')}>
+      <BottomSheetHeader onClose={closeActions} closeLabel={t('actions.close')}>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
           {actionTarget?.memberName ?? ''}
         </span>
-        <button
-          type="button"
-          onClick={() => {
-            setActionTarget(null);
-            setActionError(false);
-            setConfirmingDelete(false);
-            setDeleteError(false);
-          }}
-          aria-label={t('actions.close')}
-          style={{ minWidth: 44, minHeight: 44 }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
       </BottomSheetHeader>
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

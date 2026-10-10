@@ -234,33 +234,12 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('requestTitle')}>
-      {/* BottomSheetHeader is a title-and-close ROW, but the close button is
-          the consumer's to supply — it renders whatever children it is given.
-          Passing a bare string, as this did, produces a sheet with no visible
-          way out. Escape and the backdrop still worked; nothing on screen said
-          so. Matches the pattern in EnterCodeSheet / RecoveryPinSheet. */}
-      <BottomSheetHeader>
+      {/* `onClose` on the header renders the shared ✕ (SheetCloseButton):
+          this sheet once passed a bare string and shipped with no visible way
+          out, then hand-rolled its own button; the primitive is the one
+          44px target every sheet shares. */}
+      <BottomSheetHeader onClose={onClose} closeLabel={tCommon('close')}>
         <span className="fs-lg" style={{ fontWeight: 600 }}>{t('requestTitle')}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={tCommon('close')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            // 44px is the tap-target floor, not a spacing value.
-            minWidth: 44,
-            minHeight: 44,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>
-            close
-          </span>
-        </button>
       </BottomSheetHeader>
       <BottomSheetBody>
         {done ? (

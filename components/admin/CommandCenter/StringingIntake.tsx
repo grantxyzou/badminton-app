@@ -6,6 +6,7 @@ import AdminBackHeader from '../AdminBackHeader';
 import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
+import ListRow from '@/components/primitives/ListRow';
 import { useOnline } from '@/lib/useOnline';
 import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import {
@@ -175,24 +176,12 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
             />
           )}
           {picked ? (
-            <button
-              type="button"
+            <ListRow
               onClick={() => setPicked(null)}
-              className="cc-mini-card"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                width: '100%',
-                padding: 'var(--space-4)',
-                borderRadius: 'var(--radius-lg)',
-                textAlign: 'left',
-              }}
-            >
-              <span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>check_circle</span>
-              <span className="fs-md" style={{ flex: 1, fontWeight: 600 }}>{picked.name}</span>
-              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('change')}</span>
-            </button>
+              leading={<span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>check_circle</span>}
+              title={<span className="fs-md" style={{ fontWeight: 600 }}>{picked.name}</span>}
+              trailing={<span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('change')}</span>}
+            />
           ) : (
             <>
               <input
@@ -205,19 +194,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
               />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
                 {matches.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setPicked(m)}
-                    className="cc-mini-card"
-                    style={{
-                      padding: 'var(--space-4)',
-                      borderRadius: 'var(--radius-lg)',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span className="fs-md">{m.name}</span>
-                  </button>
+                  <ListRow key={m.id} onClick={() => setPicked(m)} title={<span className="fs-md">{m.name}</span>} />
                 ))}
               </div>
             </>
