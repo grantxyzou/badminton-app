@@ -37,15 +37,15 @@ describe('who can read and who can write', () => {
     // keeps on the shelf is not a secret.
     const res = await GET(makeRequest('GET', 'http://x/api/stringing/strings'));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ strings: [] });
+    expect(await res.json()).toEqual({ strings: [], links: {} });
   });
 
-  it('returns only the list — no author, no timestamps', async () => {
+  it('returns only the list and its catalog links — no author, no timestamps', async () => {
     await PATCH(
       makeAdminRequest('PATCH', 'http://x/api/stringing/strings', { strings: ['BG80'] }),
     );
     const body = await (await GET(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
-    expect(Object.keys(body)).toEqual(['strings']);
+    expect(Object.keys(body)).toEqual(['strings', 'links']);
   });
 
   it('refuses a player trying to set it', async () => {

@@ -5,6 +5,8 @@ import { POST as redeem } from '@/app/api/credit/redeem/route';
 import { POST as spend } from '@/app/api/credit/spend/route';
 import { GET as adminCredit, POST as grant } from '@/app/api/admin/credit/route';
 import { GET as listCards, POST as mint } from '@/app/api/admin/giftcards/route';
+import { GET as myCards, POST as mintAsMember } from '@/app/api/giftcards/route';
+import { PATCH as patchMember } from '@/app/api/members/route';
 import { normalizeGiftCode, newGiftCode } from '@/lib/storeCredit';
 import { purgeMember } from '@/lib/memberPurge';
 import {
@@ -166,6 +168,66 @@ describe('gift cards', () => {
     const { cards } = await (await listCards(makeAdminRequest('GET', `${BASE}/admin/giftcards`))).json();
     expect(cards).toEqual([expect.objectContaining({ amountCents: 2500, note: 'Raffle', hint: code.slice(-4), redeemedAt: null })]);
     expect(JSON.stringify(cards)).not.toContain(code);
+  });
+
+  it("the admin's record names who redeemed it, when, and how much of it has gone where (docs/plans/gift-card-ledger.md)", async () => {
+    const { code } = await mintOne(2500, 'Raffle');
+    await redeemAs(code);
+    const stored = (getStore()['clubSettings'] as Array<{ kind?: string; redeemedBy?: string }>).find((d) => d.kind === 'giftcard')!;
+    expect(stored.redeemedBy).toBe(lin.id);
+    // $12 of it pays the oldest owed line; $13 is left ON THIS CARD.
+    await spend(makeRequest('POST', `${BASE}/credit/spend`, {}, asLin()));
+    const { cards } = await (await listCards(makeAdminRequest('GET', `${BASE}/admin/giftcards`))).json();
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({
+      amountCents: 2500, note: 'Raffle', hint: code.slice(-4),
+      createdBy: { name: expect.any(String) },
+      redeemedBy: { memberId: lin.id, name: 'Lin' },
+      usedCents: 1200, remainingCents: 1300,
+    });
+    expect(cards[0].redeemedAt).toEqual(expect.any(String));
+    expect(cards[0].uses).toEqual([expect.objectContaining({ amountCents: 1200, note: 'Session 2026-09-24', reversed: false })]);
+    expect(JSON.stringify(cards)).not.toContain(code);
+  });
+
+  it('an older card with no redeemedBy is still attributed through its ledger entry', async () => {
+    const { code } = await mintOne(1000);
+    await redeemAs(code);
+    const store = getStore()['clubSettings'] as Array<Record<string, unknown>>;
+    const stored = store.find((d) => d.kind === 'giftcard')!;
+    delete stored.redeemedBy; // what a card redeemed before 2026-10-09 looks like
+    const { cards } = await (await listCards(makeAdminRequest('GET', `${BASE}/admin/giftcards`))).json();
+    expect(cards[0]).toMatchObject({ redeemedBy: { memberId: lin.id, name: 'Lin' }, usedCents: 0, remainingCents: 1000 });
+  });
+
+  it('a member may give out cards only once an admin ticks canGift, and their list shows redeemed-or-not, never who', async () => {
+    const zach = seedMember('Zach');
+    const asZach = { Cookie: `member_session=${memberCookieValue('Zach', zach.id)}` };
+    // Not a gifter: the row is hidden and a mint is refused.
+    expect(await (await myCards(makeRequest('GET', `${BASE}/giftcards`, undefined, asZach))).json()).toEqual({ canGift: false, cards: [] });
+    expect((await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500 }, asZach))).status).toBe(403);
+    // The roster switch, re-read fresh on every call — no new cookie needed.
+    expect((await patchMember(makeAdminRequest('PATCH', `${BASE}/members`, { id: zach.id, canGift: true }))).status).toBe(200);
+    const minted = await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500, note: 'Thanks' }, asZach));
+    expect(minted.status).toBe(200);
+    const { code } = (await minted.json()) as { code: string };
+    expect(code).toMatch(/^BPM-/);
+    await redeemAs(code);
+    const mine = await (await myCards(makeRequest('GET', `${BASE}/giftcards`, undefined, asZach))).json();
+    expect(mine.canGift).toBe(true);
+    expect(mine.cards).toEqual([expect.objectContaining({ amountCents: 500, note: 'Thanks', redeemedAt: expect.any(String) })]);
+    expect(JSON.stringify(mine)).not.toContain(lin.id);
+    expect(JSON.stringify(mine)).not.toContain(code);
+    // The admin's record says who made it.
+    const { cards } = await (await listCards(makeAdminRequest('GET', `${BASE}/admin/giftcards`))).json();
+    expect(cards[0].createdBy).toEqual({ memberId: zach.id, name: 'Zach' });
+    // Taking the switch away takes the ability with it, at once.
+    await patchMember(makeAdminRequest('PATCH', `${BASE}/members`, { id: zach.id, canGift: false }));
+    expect((await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500 }, asZach))).status).toBe(403);
+    // Signed out, or the flag off: nothing.
+    expect((await myCards(makeRequest('GET', `${BASE}/giftcards`))).status).toBe(401);
+    process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'false';
+    expect((await myCards(makeRequest('GET', `${BASE}/giftcards`, undefined, asZach))).status).toBe(404);
   });
 
   it('normalizeGiftCode / newGiftCode', () => {

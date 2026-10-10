@@ -58,6 +58,17 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Before a group's first session**, Profile's admin row and the Next Session form no longer say "Couldn't check" or "Couldn't load the current session" in red, and the form no longer promises to archive a session that doesn't exist. Having no session yet is a normal state, not an error.
 - **Nobody counts as inactive in their first 60 days in a group.** A new organiser used to open their group to "1 need you" — themselves — and every fresh invite counted as dormant until their first session.
 
+### String inventory, and the strings the club offers explained (2026-10-10)
+
+- **Stringing tab → "Strings we offer"**: every string on the club's shelf with what it is like, and a page per string the catalog knows: what it is best for, its repulsion / durability / control ratings, what the gauge, type and feel mean for how it plays, the spec sheet, and a typical shop price (the club's price stays on the rate card). "How to choose a string" underneath is the short version of the whole subject.
+- **Admin bench → "String stock"**: log a reel or a pack of sets, and the card counts what went onto rackets from the jobs themselves (a job moved to "strung" is one set), what is left, and what the string on each racket cost. Purchases land in the ledger as string outlay.
+- **Matching a string to the catalog**: on the bench's "Strings you stock", pick the catalog's match while typing a string, or tap the link glyph on one already listed. A matched string gets its page for members and its reel length for the inventory.
+
+### Gift cards keep a record, and helpers can give them out (2026-10-09)
+
+- **Tap a gift card in the admin console and it opens into its record**: who made it, who redeemed it and when, how much of it has been spent on what, and what is left. "What is left" is worked out from the member's credit history, oldest card first, so it always matches the entries you can see.
+- **"Can give out gift cards" on a member's roster entry** lets them make cards from Profile → Give a gift card, up to ten a day, and see which of theirs have been redeemed. Who redeemed one stays on the admin's record.
+
 ### The Astrox 88S is no longer offered as a power step up from the 88D (2026-10-09)
 
 - **The four Astrox 88S rows (Pro 2nd and 3rd gen, Tour, Game) now read as even-balanced in the catalog.** They are the front-court sibling of the 88D, lighter at the top, and the catalog had them labelled the same as a 99 Pro, so a rear-court smasher asking for more power was being shown an 88S Pro. The stringer confirmed the relabel against the published reviews.

@@ -415,6 +415,14 @@ export interface Member {
    * required full admin.
    */
   canString?: boolean;
+  /**
+   * This person may give out gift cards (docs/plans/gift-card-ledger.md).
+   * The third independent switch beside `role` and `canString`: a helper who
+   * runs a raffle or wants to thank someone can mint a card from Profile
+   * without being handed the console. Set by an admin on the roster sheet;
+   * re-read on every mint. Additive; absent = no.
+   */
+  canGift?: boolean;
   /** Audit trail of recovery-related events (issue / redeem / fail). */
   recoveryEvents?: RecoveryEvent[];
   /** Per-account wrong-PIN counter and lock (lib/pinLockout.ts). Additive;
@@ -492,6 +500,33 @@ export interface BirdPurchase {
   qualityRating?: number;    // 1-5, shuttle quality rating
   notes?: string;
   createdAt: string;
+}
+
+/**
+ * A reel or a pack of sets of string bought for the club's stringing service
+ * (docs/plans/string-inventory.md). Container `stringStock`, one club's
+ * inventory. Metres are the unit everything is counted in: a reel is 200 m,
+ * a set 10 m, and a job uses one set — `metresPerUnit` is what the admin
+ * said the thing they bought holds, prefilled from the catalog when the
+ * string is linked to it.
+ */
+export interface StringPurchase {
+  id: string;
+  groupId?: string;
+  kind: 'purchase';
+  /** The offered-string label this stock is for, as the admin spelled it. */
+  label: string;
+  /** The catalog row, when the offered string is linked to one. */
+  catalogId?: string;
+  unit: 'reel' | 'set';
+  units: number;
+  metresPerUnit: number;
+  totalCostCents: number;
+  /** YYYY-MM-DD, the admin's date. */
+  date: string;
+  notes?: string;
+  createdAt: string;
+  createdBy: string;
 }
 
 /**

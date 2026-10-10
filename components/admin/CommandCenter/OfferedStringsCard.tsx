@@ -8,8 +8,18 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { MAX_OFFERED } from '@/lib/stringingLimits';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import { useCatalog } from '@/components/stats/useCatalog';
+import type { CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+const catalogLabel = (i: CatalogItem) => `${i.brand} ${i.model}`;
+/** Catalog strings whose brand or model carries every word typed. */
+function matches(items: CatalogItem[], query: string, limit = 5): CatalogItem[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  return items.filter((i) => { const hay = catalogLabel(i).toLowerCase(); return words.every((w) => hay.includes(w)); }).slice(0, limit);
+}
 
 /**
  * What the club stocks — the list behind the request form's dropdown.
@@ -30,6 +40,13 @@ export default function OfferedStringsCard() {
   // null = unknown (never loaded, or the read failed). Distinct from [], which
   // means "nothing stocked" — the request form treats them differently too.
   const [strings, setStrings] = useState<string[] | null>(null);
+  // Offered label → catalog id (docs/plans/string-inventory.md): a linked
+  // string gets its page on the member's Stringing tab and its reel length
+  // in the inventory; an unlinked one is still offered, just unexplained.
+  const [links, setLinks] = useState<Record<string, string>>({});
+  // The chip whose catalog match is being picked, or null.
+  const [linking, setLinking] = useState<string | null>(null);
+  const catalog = useCatalog('string');
   const [loadError, setLoadError] = useState(false);
   // Bumped by "Try again" to re-run the load effect.
   const [attempt, setAttempt] = useState(0);
@@ -44,8 +61,10 @@ export default function OfferedStringsCard() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (cancelled) return;
-        if (Array.isArray(d.strings)) setStrings(d.strings);
-        else setLoadError(true);
+        if (Array.isArray(d.strings)) {
+          setStrings(d.strings);
+          setLinks(d.links && typeof d.links === 'object' ? d.links : {});
+        } else setLoadError(true);
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -55,43 +74,67 @@ export default function OfferedStringsCard() {
     };
   }, [attempt]);
 
-  async function save(next: string[]) {
+  async function save(next: string[], nextLinks: Record<string, string> = links) {
     if (busy || !online) return;
     // Optimistic, with a rollback: the previous list is captured before the
     // write so a failure restores exactly what was on screen rather than
     // leaving a chip that was never actually saved.
     const previous = strings;
+    const previousLinks = links;
+    // A link for a label that left the list goes with it.
+    const kept = Object.fromEntries(Object.entries(nextLinks).filter(([label]) => next.includes(label)));
     setStrings(next);
+    setLinks(kept);
     setBusy(true);
     setSaveError(false);
     try {
       const res = await fetch(`${BASE}/api/stringing/strings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ strings: next }),
+        body: JSON.stringify({ strings: next, links: kept }),
       });
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
-      if (Array.isArray(d.strings)) setStrings(d.strings);
+      if (Array.isArray(d.strings)) {
+        setStrings(d.strings);
+        setLinks(d.links && typeof d.links === 'object' ? d.links : {});
+      }
     } catch {
       setStrings(previous);
+      setLinks(previousLinks);
       setSaveError(true);
     } finally {
       setBusy(false);
     }
   }
 
-  function add() {
-    const label = draft.trim();
+  /** Add a label, linked to a catalog row when one was picked. */
+  function add(label = draft.trim(), item: CatalogItem | null = null) {
     if (!label || !strings) return;
-    if (strings.some((s) => s.toLowerCase() === label.toLowerCase())) {
-      setDraft('');
+    setDraft('');
+    setLinking(null);
+    const existing = strings.find((s) => s.toLowerCase() === label.toLowerCase());
+    if (existing) {
+      // Already listed: picking its catalog row links it.
+      if (item && links[existing] !== item.id) void save(strings, { ...links, [existing]: item.id });
       return;
     }
     if (strings.length >= MAX_OFFERED) return;
-    setDraft('');
-    void save([...strings, label]);
+    void save([...strings, label], item ? { ...links, [label]: item.id } : links);
   }
+
+  function link(label: string, item: CatalogItem) {
+    setLinking(null);
+    setDraft('');
+    if (!strings) return;
+    void save(strings, { ...links, [label]: item.id });
+  }
+
+  // While a chip is being linked, the search box searches the catalog for
+  // it: its own label first ("Yonex BG80" finds itself), and whatever the
+  // admin types instead when the label is the club's own word for it
+  // ("House string" matches nothing until they type "BG65").
+  const suggestions = strings === null ? [] : matches(catalog.items, draft.trim() || linking || '');
 
   // A failed load tints the whole card (StateCard) and hides its controls, so
   // nothing is written against data that did not load.
@@ -126,22 +169,58 @@ export default function OfferedStringsCard() {
       {strings !== null && strings.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
           {strings.map((s) => (
-            <button
-              key={s}
-              type="button"
-              disabled={busy || !online}
-              onClick={() => void save(strings.filter((x) => x !== s))}
-              aria-label={t('strings.remove', { name: s })}
-              // `.bpm-chip` in globals.css — a value someone added and can take
-              // away. Not one of the `.pill-*` classes: those are read-only
-              // status badges with a fixed semantic colour, and wearing one
-              // here would say "waitlisted" about a spool of string.
-              className="bpm-chip"
-            >
+            // One chip, two controls: the body removes it (as before); the
+            // leading glyph says whether the catalog knows it, and for an
+            // unlinked string opens the picker so it can.
+            <span key={s} className="bpm-chip" style={{ cursor: 'default' }}>
+              {links[s] ? (
+                <span className="material-icons icon-xs" aria-label={t('strings.linked')} title={t('strings.linked')} style={{ color: 'var(--accent)' }}>check</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy || !online || !catalog.loaded}
+                  onClick={() => setLinking(linking === s ? null : s)}
+                  aria-label={t('strings.link', { name: s })}
+                  aria-expanded={linking === s}
+                  style={{ background: 'transparent', border: 'none', padding: 0, display: 'inline-flex', cursor: 'pointer' }}
+                >
+                  <span className="material-icons icon-xs" style={{ color: 'var(--text-muted)' }}>link</span>
+                </button>
+              )}
               <span className="fs-sm">{s}</span>
-              <span className="material-icons icon-xs" style={{ color: 'var(--text-muted)' }}>
-                close
-              </span>
+              <button
+                type="button"
+                disabled={busy || !online}
+                onClick={() => void save(strings.filter((x) => x !== s))}
+                aria-label={t('strings.remove', { name: s })}
+                style={{ background: 'transparent', border: 'none', padding: 0, display: 'inline-flex', cursor: 'pointer' }}
+              >
+                <span className="material-icons icon-xs" style={{ color: 'var(--text-muted)' }}>close</span>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* The catalog's matches for what is being typed, or for the chip being
+          linked. Picking one stores the label AND the link; a label the
+          catalog does not know is added as typed with Enter. */}
+      {(suggestions.length > 0 || linking) && (
+        <div role="listbox" aria-label={t('strings.matches')} className="flex flex-col gap-1">
+          {linking && <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('strings.linkHint', { name: linking })}</p>}
+          {suggestions.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              role="option"
+              aria-selected={false}
+              className="cc-mini-card fs-sm"
+              style={{ textAlign: 'left', padding: 'var(--space-2) var(--space-3)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)' }}
+              disabled={busy || !online}
+              onClick={() => (linking ? link(linking, i) : add(catalogLabel(i), i))}
+            >
+              {catalogLabel(i)}
+              {typeof i.attributes?.gaugeMm === 'number' && <span style={{ color: 'var(--text-muted)' }}>{` · ${i.attributes.gaugeMm.toFixed(2)}mm`}</span>}
             </button>
           ))}
         </div>
@@ -166,7 +245,7 @@ export default function OfferedStringsCard() {
         />
         <button
           type="button"
-          onClick={add}
+          onClick={() => add()}
           disabled={busy || !online || !draft.trim() || strings === null}
           className="cc-btn cc-btn-secondary"
         >

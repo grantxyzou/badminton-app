@@ -1,8 +1,10 @@
 # Roles and what each can do
 
 There are three kinds of people in the app, and they are not a ladder.
-**Admin** and **stringer** are separate switches on the same account. A
-member can be either one, both, or neither.
+**Admin** and **stringer** are separate switches on the same account, and
+since 2026-10-09 so is **gifter** (`Member.canGift`, "Can give out gift
+cards" on the roster sheet). A member can be any of them, all of them, or
+none.
 
 | | Player (member) | Stringer | Admin |
 |---|---|---|---|
@@ -13,6 +15,7 @@ member can be either one, both, or neither.
 | See the roster, announcements, costs | Yes (members-only: signed in) | Yes | Yes, including removed rows and `recoveryEvents` |
 | Pay | Self-report "I paid" on their own row | Same | Mark anyone paid, cover (absorb / resplit), settle |
 | Stringing | Request a job, accept/decline a price change, see their own job and what they owe | See **only jobs assigned to them**, with no prices; move a job's **status** along | The whole bench: claim, assign (only to a `canString` member), price, propose, mark paid, archive |
+| Gift cards | Redeem one into their own credit | — (a stringer is not a gifter) | Mint from the console; every card's record: who made it, who redeemed it, when, how much is used and left. A member with `canGift` mints from Profile → "Give a gift card" (10 a day), sees their own cards redeemed-or-not and never who. |
 | Sessions, birds, settings, members | — | — | Everything under `/api/admin/*`, `session/*`, `birds*`, `members` writes |
 
 ## Player

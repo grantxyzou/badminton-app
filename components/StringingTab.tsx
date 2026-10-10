@@ -7,6 +7,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import StringingCard from '@/components/stringing/StringingCard';
 import StringerJobsCard from '@/components/stringing/StringerJobsCard';
+import StringsWeOfferCard from '@/components/stringing/StringsWeOfferCard';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 
 /**
@@ -46,6 +47,11 @@ export default function StringingTab() {
           </RevealSlot>
           <RevealSlot canBeEmpty placeholder={null}>
             <StringerJobsCard hasIdentity={hasIdentity} />
+          </RevealSlot>
+          {/* The strings on the shelf, explained (docs/plans/string-inventory.md).
+              Absent until the club lists some, so it holds its order and no space. */}
+          <RevealSlot canBeEmpty placeholder={null}>
+            <StringsWeOfferCard />
           </RevealSlot>
         </RevealGroup>
       </div>

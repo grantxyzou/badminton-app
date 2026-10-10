@@ -215,6 +215,8 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.role === 'string' && ['admin', 'member'].includes(body.role)) updates.role = body.role;
     // Orthogonal to `role` on purpose — see Member.canString.
     if (typeof body.canString === 'boolean') updates.canString = body.canString;
+    // The third switch: may give out gift cards (docs/plans/gift-card-ledger.md).
+    if (typeof body.canGift === 'boolean') updates.canGift = body.canGift;
 
     // Admin can clear a member's PIN — deletes both the canonical
     // members.pinHash AND the legacy mirror on the active session's

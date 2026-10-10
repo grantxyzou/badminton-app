@@ -67,6 +67,8 @@ const ROUTES: Record<string, Entry> = {
   'equipment/gear': GATED,
   'stringing/shop': GATED,
   'stringing/strings': GATED,
+  // The string inventory (docs/plans/string-inventory.md): read-only admin summary.
+  'stringing/stock': admin('isAdminAuthed'),
   'stringing/pricing': GATED,
   'stats/club/gear': GATED,
   'stats/club/tension': GATED,
@@ -119,6 +121,8 @@ const ROUTES: Record<string, Entry> = {
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
   credit: { kind: 'authed', helper: 'requireGroupMember' },
+  // A gifter's own cards (docs/plans/gift-card-ledger.md): the member cookie, then the switch.
+  giftcards: { kind: 'authed', helper: 'requireGroupMember' },
   'stringing/jobs': { kind: 'authed', helper: 'verifyMemberAuth' },
 
   // ── Public by design: nothing about the club ─────────────────────────────
