@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import Collapse from '@/components/primitives/Collapse';
+import ListRow from '@/components/primitives/ListRow';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import { useCatalog } from '@/components/stats/useCatalog';
 import { stringSpecLine } from '@/lib/gearSetup';
@@ -70,26 +71,19 @@ export default function StringsWeOfferCard() {
           {offered!.strings.map((label) => {
             const item = itemFor(label);
             const line = item ? stringSpecLine(item, (k) => tSetup(k)) : null;
-            const body = (
-              <>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{item ? `${item.brand} ${item.model}` : label}</span>
-                  <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
-                    {item ? [line, typeof item.attributes?.bestFor === 'string' ? item.attributes.bestFor : null].filter(Boolean).join(' · ') : t('unknown')}
-                  </span>
-                </span>
-                {item && <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>}
-              </>
-            );
             return (
               <li key={label}>
-                {item ? (
-                  <button type="button" className="cc-mini-card" onClick={() => setOpen(item)} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)' }}>
-                    {body}
-                  </button>
-                ) : (
-                  <div className="cc-mini-card" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)' }}>{body}</div>
-                )}
+                {/* A string the catalog does not know has no page to open, so
+                    its row is the DISABLED row — the same chrome at half
+                    opacity, which is how every row in the app says "not
+                    tappable" — rather than a look-alike div. */}
+                <ListRow
+                  onClick={item ? () => setOpen(item) : () => {}}
+                  disabled={!item}
+                  title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{item ? `${item.brand} ${item.model}` : label}</span>}
+                  subtitle={item ? [line, typeof item.attributes?.bestFor === 'string' ? item.attributes.bestFor : null].filter(Boolean).join(' · ') : t('unknown')}
+                  trailing={item ? <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span> : undefined}
+                />
               </li>
             );
           })}

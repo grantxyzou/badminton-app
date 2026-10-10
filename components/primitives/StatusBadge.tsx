@@ -11,6 +11,13 @@ import type { CSSProperties, ReactNode } from 'react';
  *   - `muted`            — the compact "Coming soon" tag (muted border/text, 9px)
  *   - `phase`            — the larger skill-phase tag; pass `tone="amber"` for
  *                          the "switch" phase, else accent
+ *   - `state`            — a FILLED pill in one of the canonical `.pill-*`
+ *                          tones (`paid` / `unpaid` / `waitlist` / `admin`,
+ *                          globals.css): the sign-up roster's paid/unpaid chips
+ *                          and the stringing bench's job status. Shape, padding
+ *                          and colour all come from the class, so a status chip
+ *                          cannot be typed from memory again (the bench's was,
+ *                          at a --fs-sm padding on --fs-2xs text).
  *
  * Every variant here describes the STATE of a thing. The AI provenance marker
  * used to live here as `variant="ai"` and never fitted — it answers "where did
@@ -21,13 +28,16 @@ import type { CSSProperties, ReactNode } from 'react';
  * Colors come from tokens (`--accent` / `--accent-amber` / `--inner-card-border`
  * / `--text-muted`); radius from `--radius-pill`. Text is the children.
  */
-export type StatusBadgeVariant = 'accent' | 'muted' | 'phase';
+export type StatusBadgeVariant = 'accent' | 'muted' | 'phase' | 'state';
+export type StateTone = 'paid' | 'unpaid' | 'waitlist' | 'admin';
 
 export interface StatusBadgeProps {
   children: ReactNode;
   variant?: StatusBadgeVariant;
-  /** Only meaningful for `variant="phase"`. */
-  tone?: 'accent' | 'amber';
+  /** `phase`: `accent` | `amber`. `state`: one of the `.pill-*` tones. */
+  tone?: 'accent' | 'amber' | StateTone;
+  /** For `variant="state"`: a label for assistive tech when the text alone is terse. */
+  ariaLabel?: string;
 }
 
 /**
@@ -53,7 +63,11 @@ const BASE: CSSProperties = {
   textTransform: 'uppercase',
 };
 
-export default function StatusBadge({ children, variant = 'accent', tone = 'accent' }: StatusBadgeProps) {
+export default function StatusBadge({ children, variant = 'accent', tone = 'accent', ariaLabel }: StatusBadgeProps) {
+  if (variant === 'state') {
+    const t: StateTone = tone === 'paid' || tone === 'unpaid' || tone === 'waitlist' || tone === 'admin' ? tone : 'waitlist';
+    return <span className={`pill-${t}`} aria-label={ariaLabel}>{children}</span>;
+  }
   let style: CSSProperties;
   if (variant === 'muted') {
     style = { ...BASE, fontSize: 'var(--fs-2xs)', padding: 'var(--space-1) var(--space-3)', border: '1px solid var(--inner-card-border)', color: 'var(--text-muted)' };

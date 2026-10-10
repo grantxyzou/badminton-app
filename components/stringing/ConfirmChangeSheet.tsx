@@ -100,16 +100,8 @@ export default function ConfirmChangeSheet({
       onClose={onClose}
       ariaLabel={t('confirm.title')}
     >
-      <BottomSheetHeader>
+      <BottomSheetHeader onClose={onClose} closeLabel={t('confirm.close')}>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('confirm.title')}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('confirm.close')}
-          style={{ minWidth: 44, minHeight: 44 }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
       </BottomSheetHeader>
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
