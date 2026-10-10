@@ -33,22 +33,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
   if (!isAdminAuthed(req)) return unauthorized();
+  // Each read is labelled so a failure names the read, in the log and in
+  // the 503 body: four reads behind one `Promise.all` answered production
+  // with a bare "read_failed" on 2026-10-10 and nothing said which.
+  let step = 'start';
+  const at = <T,>(name: string, p: Promise<T>): Promise<T> => p.catch((err) => { step = name; throw err; });
   try {
     const groupId = resolveGroupId(req);
     const scope = groupScope(groupId);
     const [offered, purchases, catalog, jobs] = await Promise.all([
-      readOfferedStringsWithLinks(groupId),
-      readStringPurchases(scope),
-      readStringCatalog(),
+      at('offered', readOfferedStringsWithLinks(groupId)),
+      at('purchases', readStringPurchases(scope)),
+      at('catalog', readStringCatalog()),
       // Every job, archived included: a racket strung last winter still used a set.
-      scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt' }),
+      at('jobs', scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt' })),
     ]);
-    if (!offered) throw new Error('offered strings unreadable');
+    if (!offered) { step = 'offered'; throw new Error('offered strings unreadable'); }
     const summary = summarizeStringStock({ offered: offered.strings, links: offered.links, purchases, jobs, catalog });
     return NextResponse.json({ ...summary, purchases });
   } catch (err) {
-    console.error('GET /api/stringing/stock failed', err);
-    return NextResponse.json({ error: 'read_failed' }, { status: 503 });
+    console.error('GET /api/stringing/stock failed', { step }, err);
+    return NextResponse.json({ error: 'read_failed', step }, { status: 503 });
   }
 }
 

@@ -26,7 +26,7 @@ afterEach(() => {
 describe('string stock group isolation', () => {
   it("another club's purchases, jobs and offered list are invisible to BPM", async () => {
     const lin = seedMember('Lin');
-    seedDoc('stringStock', { id: 'sp-0000000000000aaa', groupId: 'other', kind: 'purchase', label: 'BG65', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 9000, date: '2026-10-01', createdAt: '2026-10-01T00:00:00Z', createdBy: 'x' });
+    seedDoc('clubSettings', { id: 'sp-0000000000000aaa', groupId: 'other', kind: 'stringPurchase', label: 'BG65', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 9000, date: '2026-10-01', createdAt: '2026-10-01T00:00:00Z', createdBy: 'x' });
     seedDoc('stringingJobs', { id: 'job-other', groupId: 'other', memberId: lin.id, stringLabel: 'BG65', status: 'picked_up' });
     seedDoc('clubSettings', { id: 'other:stringing-strings', groupId: 'other', strings: ['Elsewhere string'], links: {}, updatedAt: '', updatedBy: null });
 
@@ -40,6 +40,6 @@ describe('string stock group isolation', () => {
 
     const read = await (await stringsGET(makeRequest('GET', `${BASE}/stringing/strings`, undefined, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }))).json();
     expect(read.strings).toEqual(['BG65']);
-    expect((getStore()['stringStock'] as Array<{ groupId?: string }>).map((d) => d.groupId).sort()).toEqual(['bpm', 'other']);
+    expect((getStore()['clubSettings'] as Array<{ groupId?: string; kind?: string }>).filter((d) => d.kind === 'stringPurchase').map((d) => d.groupId).sort()).toEqual(['bpm', 'other']);
   });
 });

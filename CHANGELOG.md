@@ -58,6 +58,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Before a group's first session**, Profile's admin row and the Next Session form no longer say "Couldn't check" or "Couldn't load the current session" in red, and the form no longer promises to archive a session that doesn't exist. Having no session yet is a normal state, not an error.
 - **Nobody counts as inactive in their first 60 days in a group.** A new organiser used to open their group to "1 need you" — themselves — and every fresh invite counted as dormant until their first session.
 
+### The string stock card loads (2026-10-10)
+
+- **Admin bench → "String stock" said "Couldn't load the string stock" from the moment it shipped.** Its purchases were stored in a database container of their own, and the one new thing that card did in production was create it — which a shared-throughput Cosmos database refuses past its 25th container. Purchases now live beside the gift cards in a container that already exists; nothing had been saved, so nothing was lost. The error, if it ever returns, now says which read failed.
+
 ### String inventory, and the strings the club offers explained (2026-10-10)
 
 - **Stringing tab → "Strings we offer"**: every string on the club's shelf with what it is like, and a page per string the catalog knows: what it is best for, its repulsion / durability / control ratings, what the gauge, type and feel mean for how it plays, the spec sheet, and a typical shop price (the club's price stays on the rate card). "How to choose a string" underneath is the short version of the whole subject.

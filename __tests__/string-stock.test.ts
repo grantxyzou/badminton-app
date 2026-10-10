@@ -4,6 +4,7 @@ import { GET as stockGET, POST as stockPOST, DELETE as stockDELETE } from '@/app
 import { GET as stringsGET, PATCH as stringsPATCH } from '@/app/api/stringing/strings/route';
 import type { CatalogItem, LedgerEntry, StringPurchase } from '@/lib/types';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
+import { listGiftCards } from '@/lib/storeCredit';
 import { resetMockStore, getStore, seedDoc, seedMember, makeRequest, makeAdminRequest, setupAdminPin, seedTestAdminMember, memberCookieValue } from './helpers';
 
 /**
@@ -14,7 +15,7 @@ import { resetMockStore, getStore, seedDoc, seedMember, makeRequest, makeAdminRe
 const BASE = 'http://localhost:3000/api';
 const bg65: CatalogItem = { id: 'string-yx-bg65', category: 'string', brand: 'Yonex', model: 'BG65', skillRange: [1, 3], attributes: { gaugeMm: 0.7, setLengthM: 10, reelLengthM: 200 } } as CatalogItem;
 const purchase = (over: Partial<StringPurchase>): StringPurchase => ({
-  id: 'sp-0000000000000001', kind: 'purchase', label: 'BG65', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 9000, date: '2026-09-01', createdAt: '2026-09-01T00:00:00Z', createdBy: 'a', ...over,
+  id: 'sp-0000000000000001', kind: 'stringPurchase', label: 'BG65', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 9000, date: '2026-09-01', createdAt: '2026-09-01T00:00:00Z', createdBy: 'a', ...over,
 });
 const job = (stringLabel: string, status: 'requested' | 'received' | 'strung' | 'ready' | 'picked_up') => ({ stringLabel, status, archivedAt: undefined });
 
@@ -81,7 +82,7 @@ describe('the stock routes', () => {
     const posted = await stockPOST(makeAdminRequest('POST', `${BASE}/stringing/stock`, { label: 'BG65', catalogId: 'string-yx-bg65', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 9000, date: '2026-10-01' }));
     expect(posted.status).toBe(201);
     const { purchase } = await posted.json();
-    expect(purchase).toMatchObject({ kind: 'purchase', label: 'BG65', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 9000, groupId: 'bpm' });
+    expect(purchase).toMatchObject({ kind: 'stringPurchase', label: 'BG65', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 9000, groupId: 'bpm' });
 
     const summary = await (await stockGET(makeAdminRequest('GET', `${BASE}/stringing/stock`))).json();
     expect(summary.lines).toEqual([expect.objectContaining({ label: 'BG65', catalogId: 'string-yx-bg65', purchasedMetres: 200, usedSets: 1, remainingSets: 19, costPerSetCents: 450, usedCostCents: 450 })]);
@@ -89,6 +90,11 @@ describe('the stock routes', () => {
     // The ledger holds it as strings outlay, keyed on the purchase.
     const ledger = (getStore()['ledger'] ?? []) as LedgerEntry[];
     expect(ledger).toEqual([expect.objectContaining({ id: `strings:${purchase.id}`, kind: 'expense', account: 'club_outlay', amountCents: 9000, meta: expect.objectContaining({ category: 'strings' }) })]);
+
+    // The purchase shares `clubSettings` with the gift cards and the offered
+    // list; neither reader sees it (docs/plans/string-inventory.md, 2026-10-10).
+    expect(await listGiftCards('bpm')).toEqual([]);
+    expect((await (await stringsGET(makeAdminRequest('GET', `${BASE}/stringing/strings`))).json()).strings).toEqual(['BG65']);
 
     expect((await stockDELETE(makeAdminRequest('DELETE', `${BASE}/stringing/stock?id=${purchase.id}`))).status).toBe(200);
     expect((await (await stockGET(makeAdminRequest('GET', `${BASE}/stringing/stock`))).json()).purchases).toEqual([]);

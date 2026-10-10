@@ -61,12 +61,22 @@ shrinks to the plain list it replaces.
   per set is the LATEST purchase's cost per metre × the set length — the
   `currentPricePerTube` rule, so "what the string on that racket cost" is
   its replacement cost, not an average over years of reels.
-- **A new container, `stringStock`, not rows in `birds`.** Every sum over
-  `birds` filters adjustments by `type`; a third kind there would be one
-  more thing each sum has to know. PK `/id`, group-scoped, `provisioned:
-  false` and ensured on first touch. Purchases only — no reconcile
-  adjustment yet; "what is left" is purchases minus counted sets, clamped
-  at zero, and the review date asks whether that matches the shelf.
+- **Rows in `clubSettings` (`kind: 'stringPurchase'`), not in `birds` and
+  not a container of their own (reversed 2026-10-10, the day it shipped).**
+  Every sum over `birds` filters adjustments by `type`; a third kind there
+  would be one more thing each sum has to know. The first cut ensured a
+  `stringStock` container on first touch, and production answered the Bench
+  with "Couldn't load the string stock" (Grant: "Error?"). Creating a
+  container was the one thing the route did that nothing else in production
+  does, and a shared-throughput Cosmos database refuses a 26th container
+  (`docs/azure.md` §3; the code defined 27, and the portal count §10 asks for
+  was never read) — the likeliest cause, so the fix stops needing one.
+  `clubSettings` already holds the gift cards and their claims; every reader
+  of it is a point read by id or a query filtered on `kind`, so the new kind
+  is invisible to all of them. Nothing had been written, so nothing moved.
+  Purchases only — no reconcile adjustment yet; "what is left" is purchases
+  minus counted sets, clamped at zero, and the review date asks whether
+  that matches the shelf.
 - **A purchase is `strings` outlay in the ledger, as kind `expense`.** The
   view already buckets `meta.category: 'strings'`; a new kind would have
   needed the view, the backfill's charged-refs scan and the reconcile
@@ -100,11 +110,11 @@ shrinks to the plain list it replaces.
 
 | Piece | Where |
 |---|---|
-| Purchase type, container, purge entry | `StringPurchase` in `lib/types.ts`; `stringStock` in `lib/containers.ts`, `lib/memberPurge.ts` (NOT_MEMBER_SCOPED), CLAUDE.md's container list |
+| Purchase type, storage | `StringPurchase` in `lib/types.ts`; `STRING_PURCHASE_KIND` rows in `clubSettings` (`lib/stringStock.ts`) — no container of its own |
 | Stock arithmetic, validation, storage | `lib/stringStock.ts` (`summarizeStringStock`, `validatePurchase`, `readStringCatalog`) |
 | Ledger hooks | `stringPurchaseEntry`, `mirrorStringPurchase`, `mirrorStringPurchaseDeleted` in `lib/ledgerMirror.ts` |
 | Catalog links on the offered list | `OfferedStringsDoc.links`, `readOfferedStringsWithLinks`, `normaliseLinks` in `lib/stringingStrings.ts`; `GET`/`PATCH /api/stringing/strings` |
 | Admin routes | `GET`/`POST`/`DELETE /api/stringing/stock` |
 | Admin UI | `StringStockCard`, `StringPurchaseSheet`, linking in `OfferedStringsCard` (all `components/admin/CommandCenter/`), on `StringingPage` |
 | Member UI | `components/stringing/StringsWeOfferCard.tsx`, `StringDetailSheet.tsx`, slot in `components/StringingTab.tsx`; copy `home.stringing.offer.*`, `admin.stringing.strings.{linked,link,matches,linkHint}` |
-| Tests | `__tests__/string-stock.test.ts`, `__tests__/group-string-stock.test.ts`; registry, purge, members-only and sweep canaries updated |
+| Tests | `__tests__/string-stock.test.ts`, `__tests__/group-string-stock.test.ts`, `__tests__/string-stock-read-failed.test.ts` (the 503 names its step); members-only and sweep canaries updated |

@@ -117,8 +117,7 @@ export const NOT_MEMBER_SCOPED: Readonly<Record<string, string>> = {
   sessions: 'club-wide session records; player identity lives in `players`',
   announcements: 'written by an admin to the whole club',
   birds: 'shuttle purchases and stock adjustments — club inventory',
-  stringStock: 'string reels and sets bought for the club — club inventory (docs/plans/string-inventory.md)',
-  clubSettings: 'shop sign, stocked strings, rate card — club-wide',
+  clubSettings: 'shop sign, stocked strings, rate card, string purchases (docs/plans/string-inventory.md) — club-wide',
   equipmentCatalog: 'the racket/string catalog; seeded, not user data',
   releases: 'changelog entries',
 };

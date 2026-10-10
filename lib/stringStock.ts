@@ -1,7 +1,8 @@
 import { randomBytes } from 'crypto';
-import { ensureContainer, getContainer } from './cosmos';
+import { getContainer } from './cosmos';
 import { ensureCatalogSeeded } from './catalogSeed';
 import { groupScope, type GroupScope } from './groupScope';
+import { ensureClubSettings } from './stringingShop';
 import type { CatalogItem, StringPurchase } from './types';
 
 export * from './stringStockMath';
@@ -35,22 +36,28 @@ export async function readStringCatalog(): Promise<Map<string, CatalogItem>> {
 }
 
 // ── Storage ────────────────────────────────────────────────────────────────
+//
+// A purchase is a `kind: 'stringPurchase'` row in `clubSettings` (PK `/id`,
+// group-scoped), beside the shop sign, the offered list and the gift cards —
+// NOT a container of its own. The first cut (2026-10-10) ensured a
+// `stringStock` container on first touch, and production answered the Bench
+// with "Couldn't load the string stock" the day it shipped. Creating a
+// container is the one thing that route did that nothing else in production
+// does, and a shared-throughput Cosmos database refuses a 26th container
+// (`docs/azure.md` §3; the code already defined 27 and the portal count was
+// never read, §10) — the likeliest cause, so the fix stops needing one at all.
+// Nothing had been written, so nothing moves. Every reader of `clubSettings`
+// is a point read by id or a query filtered on `kind`, so a new kind is
+// invisible to all of them; ids stay `sp-<16 hex>` (random, no club collides).
 
-let ready: Promise<void> | null = null;
-export function ensureStringStock(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('stringStock', '/id').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
-}
+export const STRING_PURCHASE_KIND = 'stringPurchase';
 
 export async function readStringPurchases(scope: GroupScope): Promise<StringPurchase[]> {
-  await ensureStringStock();
-  const rows = await scope.query<StringPurchase & { kind?: string }>('stringStock', { where: "c.kind = 'purchase'" });
-  return rows.filter((r) => r.kind === 'purchase').sort((a, b) => (a.date + a.createdAt < b.date + b.createdAt ? 1 : -1));
+  await ensureClubSettings();
+  // A literal, like `listGiftCards`: the mock store filters by parameter NAME
+  // and knows no `@kind`, so a parameter would read as "no filter" there.
+  const rows = await scope.query<StringPurchase & { kind?: string }>('clubSettings', { where: `c.kind = '${STRING_PURCHASE_KIND}'` });
+  return rows.filter((r) => r.kind === STRING_PURCHASE_KIND).sort((a, b) => (a.date + a.createdAt < b.date + b.createdAt ? 1 : -1));
 }
 
 export class StringStockError extends Error {
@@ -88,10 +95,10 @@ export function validatePurchase(input: Record<string, unknown>): NewStringPurch
 }
 
 export async function logStringPurchase(groupId: string, input: NewStringPurchase, adminId: string): Promise<StringPurchase> {
-  await ensureStringStock();
+  await ensureClubSettings();
   const doc: StringPurchase = {
     id: `sp-${randomBytes(8).toString('hex')}`,
-    kind: 'purchase',
+    kind: STRING_PURCHASE_KIND,
     label: input.label,
     ...(input.catalogId ? { catalogId: input.catalogId } : {}),
     unit: input.unit,
@@ -103,14 +110,14 @@ export async function logStringPurchase(groupId: string, input: NewStringPurchas
     createdAt: new Date().toISOString(),
     createdBy: adminId,
   };
-  return groupScope(groupId).create<StringPurchase>('stringStock', doc);
+  return groupScope(groupId).create<StringPurchase>('clubSettings', doc);
 }
 
 export async function deleteStringPurchase(groupId: string, id: string): Promise<StringPurchase> {
-  await ensureStringStock();
+  await ensureClubSettings();
   const scope = groupScope(groupId);
-  const existing = await scope.read<StringPurchase>('stringStock', id);
-  if (!existing || existing.kind !== 'purchase') throw new StringStockError('not_found');
-  await scope.remove('stringStock', id);
+  const existing = await scope.read<StringPurchase>('clubSettings', id);
+  if (!existing || existing.kind !== STRING_PURCHASE_KIND) throw new StringStockError('not_found');
+  await scope.remove('clubSettings', id);
   return existing;
 }
