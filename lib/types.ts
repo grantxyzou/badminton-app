@@ -504,8 +504,11 @@ export interface BirdPurchase {
 
 /**
  * A reel or a pack of sets of string bought for the club's stringing service
- * (docs/plans/string-inventory.md). Container `stringStock`, one club's
- * inventory. Metres are the unit everything is counted in: a reel is 200 m,
+ * (docs/plans/string-inventory.md). A `kind: 'stringPurchase'` row in
+ * `clubSettings` (PK `/id`, group-scoped) beside the gift cards — NOT its
+ * own container: a shared-throughput Cosmos database refuses a 26th, and
+ * the first cut's `stringStock` container was refused in production on
+ * 2026-10-10. Metres are the unit everything is counted in: a reel is 200 m,
  * a set 10 m, and a job uses one set — `metresPerUnit` is what the admin
  * said the thing they bought holds, prefilled from the catalog when the
  * string is linked to it.
@@ -513,7 +516,7 @@ export interface BirdPurchase {
 export interface StringPurchase {
   id: string;
   groupId?: string;
-  kind: 'purchase';
+  kind: 'stringPurchase';
   /** The offered-string label this stock is for, as the admin spelled it. */
   label: string;
   /** The catalog row, when the offered string is linked to one. */

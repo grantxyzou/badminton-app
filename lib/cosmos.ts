@@ -846,6 +846,15 @@ export async function ensureContainer(
       .then(() => undefined)
       .catch((err) => {
         ensured.delete(key);
+        // The only place a container is created, so the only place a refused
+        // create can be named. A shared-throughput database caps at 25
+        // containers (docs/azure.md §3); past it this is the line to look for.
+        console.error('[ensure-container] createIfNotExists failed', {
+          name,
+          partitionKeyPath,
+          code: (err as { code?: unknown })?.code,
+          message: (err as { message?: unknown })?.message,
+        });
         throw err;
       });
     ensured.set(key, pending);

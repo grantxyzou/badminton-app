@@ -57,7 +57,6 @@ export const CONTAINERS = {
   ledger: { pk: '/memberId', scope: 'group', provisioned: false, reason: "store credit a club gave one of its members, and what it paid; a person's balance in one club is that club's to give" },
   payments: { pk: '/id', scope: 'group', provisioned: false, reason: "Interac notifications forwarded by one club's admin, matched against that club's owed rows" },
   memberships: { pk: '/groupId', scope: 'group', provisioned: false, reason: "a person's role and roster name IN ONE GROUP, plus that group's name reservations; the group is the partition" },
-  stringStock: { pk: '/id', scope: 'group', provisioned: false, reason: "reels and sets of string one club bought for its stringing service — club inventory, like `birds`" },
   // ── person-scoped ───────────────────────────────────────────────────────
   members: { pk: '/id', scope: 'person', provisioned: true, reason: 'the person: one account, one PIN, one email — many groups' },
   identities: { pk: '/id', scope: 'person', provisioned: true, reason: 'one email maps to one member DB-wide, atomically; that fits one-account-many-groups' },
