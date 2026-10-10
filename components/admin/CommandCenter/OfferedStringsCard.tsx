@@ -112,6 +112,7 @@ export default function OfferedStringsCard() {
   function add(label = draft.trim(), item: CatalogItem | null = null) {
     if (!label || !strings) return;
     setDraft('');
+    setLinking(null);
     const existing = strings.find((s) => s.toLowerCase() === label.toLowerCase());
     if (existing) {
       // Already listed: picking its catalog row links it.
@@ -124,11 +125,16 @@ export default function OfferedStringsCard() {
 
   function link(label: string, item: CatalogItem) {
     setLinking(null);
+    setDraft('');
     if (!strings) return;
     void save(strings, { ...links, [label]: item.id });
   }
 
-  const suggestions = strings === null ? [] : matches(catalog.items, linking ?? draft);
+  // While a chip is being linked, the search box searches the catalog for
+  // it: its own label first ("Yonex BG80" finds itself), and whatever the
+  // admin types instead when the label is the club's own word for it
+  // ("House string" matches nothing until they type "BG65").
+  const suggestions = strings === null ? [] : matches(catalog.items, draft.trim() || linking || '');
 
   // A failed load tints the whole card (StateCard) and hides its controls, so
   // nothing is written against data that did not load.
@@ -199,7 +205,7 @@ export default function OfferedStringsCard() {
       {/* The catalog's matches for what is being typed, or for the chip being
           linked. Picking one stores the label AND the link; a label the
           catalog does not know is added as typed with Enter. */}
-      {suggestions.length > 0 && (
+      {(suggestions.length > 0 || linking) && (
         <div role="listbox" aria-label={t('strings.matches')} className="flex flex-col gap-1">
           {linking && <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('strings.linkHint', { name: linking })}</p>}
           {suggestions.map((i) => (
@@ -224,7 +230,7 @@ export default function OfferedStringsCard() {
         <input
           type="text"
           value={draft}
-          onChange={(e) => { setLinking(null); setDraft(e.target.value); }}
+          onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();

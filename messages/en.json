@@ -1493,7 +1493,7 @@
           "linked": "In the catalog — players can read about it",
           "link": "Match {name} to the catalog",
           "matches": "Catalog matches",
-          "linkHint": "Pick the catalog row for “{name}”:"
+          "linkHint": "Pick the catalog row for “{name}” — type its maker or model below to search."
         },
         "lb": "lb",
         "assignTitle": "Who's stringing it",

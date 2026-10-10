@@ -73,7 +73,8 @@ export default function StringDetailSheet({ item, open, onClose }: { item: Catal
             <section aria-label={t('specs')} className="flex flex-col gap-1">
               <span className="section-label">{t('specs')}</span>
               <dl className="fs-sm" style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 'var(--space-4)', rowGap: 'var(--space-1)' }}>
-                {catalogSpecRows(item).map((r) => (
+                {/* The two ratings drawn as bars above are not repeated as rows. */}
+                {catalogSpecRows(item).filter((r) => r.labelKey !== 'specRepulsion' && r.labelKey !== 'specDurability').map((r) => (
                   <div key={r.labelKey} style={{ display: 'contents' }}>
                     <dt style={{ color: 'var(--text-muted)' }}>{tSpec(r.labelKey)}</dt>
                     <dd style={{ margin: 0, color: 'var(--text-primary)' }}>{r.value}</dd>
