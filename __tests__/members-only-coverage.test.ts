@@ -67,6 +67,8 @@ const ROUTES: Record<string, Entry> = {
   'equipment/gear': GATED,
   'stringing/shop': GATED,
   'stringing/strings': GATED,
+  // The string inventory (docs/plans/string-inventory.md): read-only admin summary.
+  'stringing/stock': admin('isAdminAuthed'),
   'stringing/pricing': GATED,
   'stats/club/gear': GATED,
   'stats/club/tension': GATED,

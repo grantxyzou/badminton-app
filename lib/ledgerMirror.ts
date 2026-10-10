@@ -36,7 +36,7 @@ import { randomBytes } from 'crypto';
 import { isFlagOn } from './flags';
 import { ensureLedger } from './storeCredit';
 import type { GroupScope } from './groupScope';
-import type { BirdPurchase, LedgerEntry, Player, Session, SettledSnapshot, StringingJob } from './types';
+import type { BirdPurchase, LedgerEntry, Player, Session, SettledSnapshot, StringingJob, StringPurchase } from './types';
 
 export const CLUB_LEDGER_ID = '~club';
 export const UNLINKED_LEDGER_ID = '~unlinked';
@@ -217,6 +217,27 @@ export function shuttlePurchaseEntry(p: Pick<BirdPurchase, 'id' | 'totalCost' | 
     note: `Shuttles · ${p.name ?? ''}`.trim(),
     ref: { kind: 'purchase', id: p.id, pk: p.id },
     meta: { date: p.date },
+  };
+}
+
+/**
+ * A string purchase (docs/plans/string-inventory.md) is club outlay under the
+ * `strings` category the ledger view already buckets, keyed `strings:<id>`
+ * so a repeat write 409s. Kind `expense`, not a new kind: the view, the
+ * backfill's charged-refs scan and the reconcile all read kinds, and a new
+ * one would need all three taught; the category is what the view reads.
+ */
+export function stringPurchaseEntry(p: Pick<StringPurchase, 'id' | 'totalCostCents' | 'date' | 'label' | 'units' | 'unit'>): NewEntry | null {
+  if (p.totalCostCents <= 0) return null;
+  return {
+    id: `strings:${p.id}`,
+    memberId: CLUB_LEDGER_ID,
+    account: 'club_outlay',
+    kind: 'expense',
+    amountCents: p.totalCostCents,
+    note: `String · ${p.label} · ${p.units} ${p.unit}${p.units === 1 ? '' : 's'}`,
+    ref: { kind: 'purchase', id: p.id, pk: p.id },
+    meta: { category: 'strings', date: p.date },
   };
 }
 
@@ -425,6 +446,22 @@ export async function mirrorShuttleAdjusted(scope: GroupScope, prev: BirdPurchas
   } catch (err) {
     mirrorFailures += 1;
     console.error('[ledger-mirror] mirrorShuttleAdjusted failed', { purchaseId: next.id, err });
+  }
+}
+
+export async function mirrorStringPurchase(scope: GroupScope, p: StringPurchase): Promise<void> {
+  if (!on()) return;
+  const e = stringPurchaseEntry(p);
+  if (e) await appendEntry(scope, e);
+}
+
+export async function mirrorStringPurchaseDeleted(scope: GroupScope, p: Pick<StringPurchase, 'id'>): Promise<void> {
+  if (!on()) return;
+  try {
+    await voidLive(scope, CLUB_LEDGER_ID, p.id, 'expense', 'purchase_deleted');
+  } catch (err) {
+    mirrorFailures += 1;
+    console.error('[ledger-mirror] mirrorStringPurchaseDeleted failed', { purchaseId: p.id, err });
   }
 }
 

@@ -1,7 +1,7 @@
 # String inventory, and the strings the club offers explained
 
 **Track:** ROADMAP North Star — admin cost-automation (what the club spends on string, next to what it spends on shuttles) and enabled learning (a member choosing a string understands what they are choosing). Extends the stringing service (`home.stringing`, `admin.stringing`).
-**Status:** in-flight
+**Status:** shipped 2026-10-10
 **Review on:** 2026-11-20 — has Grant logged at least one string purchase, and does the usage-and-cost figure match what he counts on the shelf? Have members opened a string's page from the Stringing tab? If stock was never logged, drop the inventory and keep the education card.
 
 ## Problem
@@ -46,4 +46,65 @@ shrinks to the plain list it replaces.
 
 ## Decisions
 
+- **Usage is counted, never logged.** A job whose string has gone in
+  (`strung`, `ready`, `picked_up`) is one set of the string its
+  `stringLabel` names, matched to the offered list case-insensitively. The
+  bench moving a job along IS the usage event, so there is no second thing
+  for the stringer to remember. Beat a "metres used" field on the job (a
+  stringer who cuts short will not log it) and beat a usage doc per job (a
+  copy of the job list that drifts from it). A job whose label matches
+  nothing is shown as "not on your list" with its count, so a misspelling
+  is a visible gap rather than a silent one.
+- **Metres are the unit; the set is the job.** A reel is 200 m, a set 10 m
+  (`REEL_M`, `SET_M`), prefilled from the catalog's `reelLengthM` /
+  `setLengthM` when the string is linked, editable on the purchase. Cost
+  per set is the LATEST purchase's cost per metre × the set length — the
+  `currentPricePerTube` rule, so "what the string on that racket cost" is
+  its replacement cost, not an average over years of reels.
+- **A new container, `stringStock`, not rows in `birds`.** Every sum over
+  `birds` filters adjustments by `type`; a third kind there would be one
+  more thing each sum has to know. PK `/id`, group-scoped, `provisioned:
+  false` and ensured on first touch. Purchases only — no reconcile
+  adjustment yet; "what is left" is purchases minus counted sets, clamped
+  at zero, and the review date asks whether that matches the shelf.
+- **A purchase is `strings` outlay in the ledger, as kind `expense`.** The
+  view already buckets `meta.category: 'strings'`; a new kind would have
+  needed the view, the backfill's charged-refs scan and the reconcile
+  taught. Id `strings:<purchaseId>` (a repeat 409s), voided on delete,
+  `mirrorStringPurchase` never throws. Not in the backfill: the mirror has
+  been on since before the first purchase could exist.
+- **The offered list grows a link map, additively.** `OfferedStringsDoc.links`
+  (label → catalog id) rides beside `strings`; every reader of the list is
+  untouched, `GET /api/stringing/strings` carries both, and a PATCH without
+  `links` keeps the ones already stored for the labels that survive, so an
+  older client cannot wipe them. A link to a label not listed or an id the
+  catalog lacks is dropped, not refused — the list is what is being saved.
+  The admin links a string by picking a catalog match while typing it, or
+  by the link glyph on an unlinked chip. Beat a catalog id on the JOB
+  (`stringLabel` is a snapshot by design, and old jobs have none).
+- **The member card explains, it does not sell.** "Strings we offer" lists
+  the club's strings with the catalog's one-line character and `bestFor`;
+  a linked one opens a sheet with ratings, a "what this means" paragraph
+  per attribute (gauge class, type, feel), the spec rows every other
+  catalog sheet uses, and the catalog's USD-derived price captioned as a
+  shop's, with the club's price left to the rate card. Four short
+  paragraphs under "How to choose a string" are the lesson. All of it is
+  `home.stringing.offer.*` in both locales; the admin inventory is English
+  by decision.
+- **The card holds its order, not its space.** It sits after the stringer's
+  queue in a `canBeEmpty` slot with no placeholder, like that queue: most
+  members will see it, but a club with nothing listed shows nothing and the
+  request form already explains that case.
+
 ## Shape
+
+| Piece | Where |
+|---|---|
+| Purchase type, container, purge entry | `StringPurchase` in `lib/types.ts`; `stringStock` in `lib/containers.ts`, `lib/memberPurge.ts` (NOT_MEMBER_SCOPED), CLAUDE.md's container list |
+| Stock arithmetic, validation, storage | `lib/stringStock.ts` (`summarizeStringStock`, `validatePurchase`, `readStringCatalog`) |
+| Ledger hooks | `stringPurchaseEntry`, `mirrorStringPurchase`, `mirrorStringPurchaseDeleted` in `lib/ledgerMirror.ts` |
+| Catalog links on the offered list | `OfferedStringsDoc.links`, `readOfferedStringsWithLinks`, `normaliseLinks` in `lib/stringingStrings.ts`; `GET`/`PATCH /api/stringing/strings` |
+| Admin routes | `GET`/`POST`/`DELETE /api/stringing/stock` |
+| Admin UI | `StringStockCard`, `StringPurchaseSheet`, linking in `OfferedStringsCard` (all `components/admin/CommandCenter/`), on `StringingPage` |
+| Member UI | `components/stringing/StringsWeOfferCard.tsx`, `StringDetailSheet.tsx`, slot in `components/StringingTab.tsx`; copy `home.stringing.offer.*`, `admin.stringing.strings.{linked,link,matches,linkHint}` |
+| Tests | `__tests__/string-stock.test.ts`, `__tests__/group-string-stock.test.ts`; registry, purge, members-only and sweep canaries updated |

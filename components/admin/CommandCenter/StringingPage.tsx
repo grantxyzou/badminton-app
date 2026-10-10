@@ -17,6 +17,7 @@ import { isBillable } from '@/lib/stringingBilling';
 import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
 import OfferedStringsCard from './OfferedStringsCard';
+import StringStockCard from './StringStockCard';
 import PricingCard from './PricingCard';
 import { StateLink } from '@/components/primitives/StateCard';
 
@@ -636,6 +637,10 @@ export default function StringingPage({ onBack }: Props) {
             Sits with the shop sign because both are "how the service is set
             up" rather than "what is on the bench right now". */}
         <OfferedStringsCard />
+
+        {/* The inventory for those strings — reels bought, sets used (counted
+            from jobs), what it cost (docs/plans/string-inventory.md). */}
+        <StringStockCard />
 
         {/* The rate card players read behind "View pricing" on Home. */}
         <PricingCard />

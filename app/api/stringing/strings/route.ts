@@ -5,7 +5,8 @@
  * The GET is deliberately open, for the same reason the shop sign is: the
  * request form is the whole audience, and which strings a badminton club keeps
  * on the shelf is not a secret. Nothing else is returned — no timestamps, no
- * author.
+ * author. Since 2026-10-10 it also carries `links`, label → catalog id, for
+ * the Stringing tab's "Strings we offer" card (docs/plans/string-inventory.md).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
@@ -15,11 +16,13 @@ import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ensureClubSettings } from '@/lib/stringingShop';
 import {
-  readOfferedStrings,
+  readOfferedStringsWithLinks,
   normaliseOfferedStrings,
+  normaliseLinks,
   stringsDocId,
   type OfferedStringsDoc,
 } from '@/lib/stringingStrings';
+import { readStringCatalog } from '@/lib/stringStock';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +40,11 @@ export async function GET(req: NextRequest) {
   }
   const gate = await requireMember(req);
   if (!gate.ok) return gate.response;
-  return NextResponse.json({ strings: await readOfferedStrings(resolveGroupId(req)) });
+  // `links` (label → catalog id) rides beside `strings` since 2026-10-10
+  // (docs/plans/string-inventory.md); a reader that wants only the list is
+  // untouched. Unknown is unknown for both.
+  const read = await readOfferedStringsWithLinks(resolveGroupId(req));
+  return NextResponse.json(read ? { strings: read.strings, links: read.links } : { strings: null, links: null });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -62,9 +69,17 @@ export async function PATCH(req: NextRequest) {
   try {
     await ensureClubSettings();
     const groupId = resolveGroupId(req);
+    // A link to a catalog row the catalog does not have is dropped, not
+    // refused — the list is what is being saved. Absent `links` keeps the
+    // ones already stored for labels that survive, so an older client that
+    // sends only `strings` does not wipe them.
+    const prior = (await readOfferedStringsWithLinks(groupId))?.links ?? {};
+    const validIds = new Set((await readStringCatalog()).keys());
+    const links = normaliseLinks(body?.links === undefined ? prior : body.links, strings, validIds);
     const doc: OfferedStringsDoc = {
       id: stringsDocId(groupId),
       strings,
+      links,
       updatedAt: new Date().toISOString(),
       updatedBy: admin.memberId,
     };
@@ -72,7 +87,7 @@ export async function PATCH(req: NextRequest) {
     // to merge and nothing a concurrent write could clobber except the list
     // itself — which is what the caller means to replace.
     await groupScope(groupId).upsert('clubSettings', doc);
-    return NextResponse.json({ strings: doc.strings });
+    return NextResponse.json({ strings: doc.strings, links: doc.links });
   } catch (err) {
     console.error('PATCH /api/stringing/strings failed:', err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });

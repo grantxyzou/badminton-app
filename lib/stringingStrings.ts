@@ -28,8 +28,50 @@ import { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
 export interface OfferedStringsDoc {
   id: string;
   strings: string[];
+  /**
+   * Offered label → catalog id (`string-…`), for the labels the admin matched
+   * to a catalog row (docs/plans/string-inventory.md). ADDITIVE: every reader
+   * of `strings` is untouched, and a label with no link is a string the
+   * catalog does not know — still offered, just not explained. Keys are
+   * exactly the spelling in `strings`.
+   */
+  links?: Record<string, string>;
   updatedAt: string;
   updatedBy: string | null;
+}
+
+/** The offered strings with their catalog links; `null` when the read threw. */
+export async function readOfferedStringsWithLinks(groupId: string): Promise<{ strings: string[]; links: Record<string, string> } | null> {
+  try {
+    await ensureClubSettings();
+    const resource = await groupScope(groupId).read<OfferedStringsDoc>('clubSettings', stringsDocId(groupId));
+    const strings = Array.isArray(resource?.strings) ? resource!.strings : [];
+    const raw = resource?.links && typeof resource.links === 'object' ? resource.links : {};
+    const known = new Set(strings);
+    const links: Record<string, string> = {};
+    for (const [label, id] of Object.entries(raw)) if (known.has(label) && typeof id === 'string') links[label] = id;
+    return { strings, links };
+  } catch (err) {
+    console.error('readOfferedStringsWithLinks failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Clean a submitted link map against the (already normalised) list and the
+ * catalog's string ids. A link for a label not in the list, or to an id the
+ * catalog does not have, is DROPPED rather than refused: the list is what the
+ * admin is saving, the link is a detail on it.
+ */
+export function normaliseLinks(value: unknown, strings: readonly string[], validIds: ReadonlySet<string>): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const known = new Set(strings);
+  const out: Record<string, string> = {};
+  for (const [label, id] of Object.entries(value as Record<string, unknown>)) {
+    if (!known.has(label) || typeof id !== 'string' || !validIds.has(id)) continue;
+    out[label] = id;
+  }
+  return out;
 }
 
 /**
