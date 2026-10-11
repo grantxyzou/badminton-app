@@ -1280,7 +1280,7 @@ html[data-swiping]::before {
   opacity: var(--swipe-back, 0);
 }
 html[data-swiping="release"]::before {
-  transition: opacity 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity var(--duration-normal) var(--ease-out-quart);
 }
 
 /* Back chevron tracks the finger up to ~10px and tints toward accent
@@ -1296,7 +1296,7 @@ html[data-swiping] .bpm-topbar__back .material-icons {
   );
 }
 html[data-swiping="release"] .bpm-topbar__back {
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+  transition: transform var(--duration-normal) var(--ease-out-quart),
               color 0.15s ease;
 }
 
@@ -1307,8 +1307,8 @@ html[data-swiping] [data-page-shell] {
   opacity: calc(1 - var(--swipe-back, 0) * 0.18);
 }
 html[data-swiping="release"] [data-page-shell] {
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
-              opacity 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform var(--duration-normal) var(--ease-out-quart),
+              opacity var(--duration-normal) var(--ease-out-quart);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2435,7 +2435,7 @@ html:root .ink-button {
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: opacity 0.15s var(--ease-glass), transform 0.1s var(--ease-glass);
+  transition: opacity var(--duration-fast) var(--ease-glass), transform var(--duration-press) var(--ease-glass);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2485,8 +2485,12 @@ html:root .ink-button {
   align-items: center;
 }
 
-.link-quiet:hover {
-  color: var(--text-primary);
+/* Gated like every other hover: on a touch screen :hover latches after the
+   tap and the link would stay lit. */
+@media (hover: hover) {
+  .link-quiet:hover {
+    color: var(--text-primary);
+  }
 }
 
 .btn-ghost {
@@ -2503,7 +2507,7 @@ html:root .ink-button {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: background var(--duration-fast) var(--ease-glass), transform var(--duration-press) var(--ease-glass);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2812,7 +2816,10 @@ textarea {
   width: 100%;
   min-width: 0;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  transition:
+    border-color var(--duration-fast) var(--ease-glass),
+    box-shadow var(--duration-fast) var(--ease-glass),
+    background var(--duration-fast) var(--ease-glass);
   font-size: 0.875rem;
   box-shadow: inset 0 1px 0 var(--input-inset);
 }
@@ -3358,6 +3365,18 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   transition: transform var(--duration-slow) var(--ease-out-quart);
 }
 
+/* A pressable row whose fill and edge change with selection (a level in the
+   check-in sheet). Fill and edge at `--duration-fast`, press at
+   `--duration-press`. This is what Tailwind's `transition-all` was standing
+   in for: `all` also animates layout properties and runs the weak built-in
+   curve, so the press started slow. */
+.motion-surface {
+  transition:
+    background-color var(--duration-fast) var(--ease-glass),
+    border-color var(--duration-fast) var(--ease-glass),
+    transform var(--duration-press) var(--ease-glass);
+}
+
 /* A page refreshing in place: the old content stays, dimmed, while the new
    loads. Opacity only, so it survives reduced motion. */
 .motion-busy { transition: opacity var(--duration-fast) var(--ease-glass); }
@@ -3678,7 +3697,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform var(--duration-fast) var(--ease-glass), box-shadow var(--duration-fast) var(--ease-glass);
   box-shadow: var(--glass-shadow);
 }
 
@@ -5323,7 +5342,21 @@ html:root[data-theme="light"] {
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   backdrop-filter: blur(18px) saturate(180%);
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.32);
-  animation: toast-in 200ms var(--ease-out-quart) both;
+  /* `backwards`, not `both`: a `both` fill keeps holding the keyframe's final
+     opacity/transform after it ends, and an animation outranks a transition,
+     so the exit below could never move the card. */
+  animation: toast-in 200ms var(--ease-out-quart) backwards;
+  transition:
+    opacity var(--duration-fast) var(--ease-glass),
+    transform var(--duration-fast) var(--ease-glass);
+}
+/* Leaving: the reverse of `toast-in`, and faster. A notice that is simply
+   unmounted vanishes between frames, which reads as a glitch, not a close. The
+   card stays mounted for `TOAST_EXIT_MS` (AnomalyFeed) while this plays. */
+.toast[data-leaving='true'] {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
 }
 
 /* Severity is carried by a tinted left edge and the icon, not by
@@ -5380,9 +5413,11 @@ html:root[data-theme="light"] {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
-  /* A small overshoot on the way in so it lands rather than stops. */
+  /* A small overshoot on the way in so it lands rather than stops. Kept
+     under 300ms and the bounce subtle (was 420ms at 1.4): it is a notice, not
+     a celebration, and the 220ms exit stays faster than the entrance. */
   transition:
-    transform 420ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    transform 280ms cubic-bezier(0.34, 1.2, 0.64, 1),
     opacity 200ms ease,
     visibility 0s;
 }

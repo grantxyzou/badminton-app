@@ -298,7 +298,7 @@ export default function CheckInSheet({
                     type="button"
                     aria-pressed={isActive}
                     onClick={() => select(level)}
-                    className="w-full text-left rounded-xl transition-all active:scale-[0.98]"
+                    className="w-full text-left rounded-xl motion-surface active:scale-[0.98]"
                     style={{
                       padding: 'var(--space-4)',
                       minHeight: 44,

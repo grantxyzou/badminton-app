@@ -48,6 +48,15 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Motion hygiene from the design-engineering review (2026-10-11)
+
+- **Admin notices leave instead of vanishing.** A toast that timed out or was dismissed used to disappear between frames; it now fades and drops the 8px it rose by, in 150ms.
+- **The sign-in / offline banner lands in 280ms** (was 420ms with a visible bounce) and still leaves faster than it arrives.
+- **The sheet rubber-bands progressively** when dragged upward: it follows a third of the first pixel, less and less after, and never travels more than 36px, instead of a flat 18% everywhere.
+- **The Next Session capacity bar is now the Fill recipe** (a scaleX transform, not an animated width), and the segment tabs and check-in rows no longer use Tailwind's `transition-all`.
+- **The quiet text link's hover is gated** like every other hover, so on a phone it no longer stays lit after a tap.
+- **Buttons, inputs and the theme/language toggles read their durations and curves from the motion ladder**; three of them had been running the weak built-in `ease`, so a press started slow. The swipe-back release uses the ladder's tokens too.
+
 ### It's a "group" everywhere, and Sign up says what BPM is (2026-10-09)
 
 - **Every "club" the app shows is now "group"**, in English and Chinese (群组), from Stats and Gear to the privacy pages, plus the launch line ("Weekly badminton with your group."). Two lines that mean real-world badminton clubs keep the word.

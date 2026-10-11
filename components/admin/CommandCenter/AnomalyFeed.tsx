@@ -7,6 +7,10 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** How long a dismissable notice stays on screen before it hides itself. */
 const AUTO_HIDE_MS = 6000;
+/** How long a leaving toast stays mounted so `.toast[data-leaving]` can play its
+ *  exit (globals.css). Unmounting straight away vanished the card between
+ *  frames, which reads as a glitch rather than a close. */
+const TOAST_EXIT_MS = 150;
 
 interface Anomaly {
   code: string;
@@ -53,6 +57,21 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   /** Hidden by the timer but still live on the server — see the docblock. */
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [paused, setPaused] = useState(false);
+  /** Mid-exit: still rendered, fading, about to be hidden or removed. */
+  const [leaving, setLeaving] = useState<Set<string>>(new Set());
+  const exitTimers = useRef<Set<number>>(new Set());
+  useEffect(() => () => { for (const t of exitTimers.current) window.clearTimeout(t); }, []);
+  /** Play the exit for `codes`, then apply `then` (hide or remove them). */
+  const leave = useCallback((codes: string[], then: () => void) => {
+    if (codes.length === 0) return;
+    setLeaving((prev) => { const next = new Set(prev); for (const c of codes) next.add(c); return next; });
+    const t = window.setTimeout(() => {
+      exitTimers.current.delete(t);
+      then();
+      setLeaving((prev) => { const next = new Set(prev); for (const c of codes) next.delete(c); return next; });
+    }, TOAST_EXIT_MS);
+    exitTimers.current.add(t);
+  }, []);
 
   const load = useCallback(async () => {
     // Only the FIRST load hides the stack. Every refresh (NextSessionCard's
@@ -97,17 +116,20 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   itemsRef.current = items;
   useEffect(() => {
     if (paused) return;
-    const pending = items.filter((a) => a.dismissable && !hidden.has(a.code));
+    const pending = items.filter((a) => a.dismissable && !hidden.has(a.code) && !leaving.has(a.code));
     if (pending.length === 0) return;
     const timer = setTimeout(() => {
-      setHidden((prev) => {
-        const next = new Set(prev);
-        for (const a of itemsRef.current) if (a.dismissable) next.add(a.code);
-        return next;
+      const codes = itemsRef.current.filter((a) => a.dismissable && !hidden.has(a.code)).map((a) => a.code);
+      leave(codes, () => {
+        setHidden((prev) => {
+          const next = new Set(prev);
+          for (const c of codes) next.add(c);
+          return next;
+        });
       });
     }, AUTO_HIDE_MS);
     return () => clearTimeout(timer);
-  }, [items, hidden, paused]);
+  }, [items, hidden, leaving, paused, leave]);
 
   async function dismiss(code: string) {
     if (dismissing.has(code)) return;
@@ -124,7 +146,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
         setDismissError(code);
         return;
       }
-      setItems((prev) => prev.filter((a) => a.code !== code));
+      leave([code], () => setItems((prev) => prev.filter((a) => a.code !== code)));
     } catch {
       setDismissError(code);
     } finally {
@@ -197,6 +219,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
           key={anomaly.code}
           className={`toast ${anomaly.severity === 'blocking' ? 'toast-blocking' : 'toast-warning'}`}
           role={anomaly.severity === 'blocking' ? 'alert' : 'status'}
+          data-leaving={leaving.has(anomaly.code) ? 'true' : undefined}
         >
           <span
             className="material-icons fs-lg"
