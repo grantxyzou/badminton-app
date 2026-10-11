@@ -38,6 +38,7 @@
         "picked_up": "已取走"
       },
       "stringerSaveError": "保存失败，再试一次。",
+      "stringerUndo": "撤销",
       "confirm": {
         "banner": "有改动，请确认",
         "title": "待确认的修改",

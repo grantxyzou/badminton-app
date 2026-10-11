@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
+import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
 import Collapse from '@/components/primitives/Collapse';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -461,6 +462,16 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {t('readyBy', { date: formatReadyBy(local.readyBy) ?? local.readyBy })}
             </div>
           )}
+          {/* The date is SET here too, not only at intake. A player-made
+              request arrives with no date, and until now nothing on this
+              screen could give it one — so "N days late" only ever applied to
+              admin-logged jobs (audit 2026-10-11, finding 06). A bench fact,
+              not a proposal: a direct PATCH, nobody is asked. */}
+          <DatePicker
+            value={local.readyBy && /^\d{4}-\d{2}-\d{2}$/.test(local.readyBy) ? local.readyBy : ''}
+            onChange={(d) => patch({ readyBy: d || null })}
+            placeholder={t('readyByPlaceholder')}
+          />
 
           {/* What the other side is reading, right now. Still attached to the
               price above it rather than to the form below — it describes the

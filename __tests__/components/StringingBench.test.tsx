@@ -616,6 +616,23 @@ describe('the price card and the change form are one card', () => {
   });
 });
 
+describe('the detail screen can set the ready-by date', () => {
+  // Audit 2026-10-11, finding 06: intake had a date picker and the detail
+  // screen had none, so a player-made request (readyBy null) could never be
+  // given a date and "N days late" only ever applied to admin-logged jobs.
+  it('offers the date picker on a job with no date', () => {
+    wrap(<StringingJobDetail job={{ ...job, readyBy: null }} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getByText(enMessages.admin.stringing.readyByPlaceholder)).toBeDefined();
+  });
+
+  it('keeps the formatted date line and the picker together on a dated job', () => {
+    wrap(<StringingJobDetail job={{ ...job, readyBy: '2026-10-09' }} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getByText(/Ready by/)).toBeDefined();
+    // The picker shows the chosen date, not the placeholder.
+    expect(screen.queryByText(enMessages.admin.stringing.readyByPlaceholder)).toBeNull();
+  });
+});
+
 describe('the change form never opens by default', () => {
   it('is collapsed on mount', async () => {
     // This screen's job is to say where a racket is. Changing what you charge

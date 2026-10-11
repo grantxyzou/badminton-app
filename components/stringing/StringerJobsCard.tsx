@@ -6,11 +6,20 @@ import { useRevealReady } from '@/components/primitives/Reveal';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
-import { STRINGING_FLOW } from '@/lib/stringing';
+import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
+import { dueFor, todayIso, formatReadyBy, type DueTone } from '@/lib/stringingDue';
 import type { StringerJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+/** Urgency ink, the same four the bench uses for its due column. */
+const DUE_FG: Record<DueTone, string> = {
+  overdue: 'var(--sev-crit-text, var(--color-red))',
+  soon: 'var(--pill-waitlist-text)',
+  ok: 'var(--text-secondary)',
+  done: 'var(--text-muted)',
+};
 
 /**
  * The bench, for the person actually holding the racket.
@@ -49,6 +58,16 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
   const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
+  /* The last tap, so it can be taken back. The person doing the work is the
+     one who knows it is strung — and the one whose thumb slips. A mis-tap on
+     "Mark ready" used to be final for the stringer (only an admin could move
+     a job backwards), and it sends the player a push. Undo PATCHes the
+     previous status; the route allows any move. The push already sent is not
+     retracted (audit 2026-10-11, finding 08). */
+  const [lastMove, setLastMove] = useState<{ jobId: string; from: StringingStatus } | null>(null);
+  // Bench words for the due line; the stringer is working the bench.
+  const tAdmin = useTranslations('admin.stringing');
+  const today = todayIso();
 
   const load = useCallback(async () => {
     if (!hasIdentity) return;
@@ -72,10 +91,13 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
 
   useEffect(() => { void load(); }, [load]);
 
-  async function advance(job: StringerJob, status: string) {
+  async function advance(job: StringerJob, status: StringingStatus, undo = false) {
     if (busy || !online) return;
     setBusy(job.id);
     setSaveError(false);
+    // Remember where it came from; an undo clears the offer rather than
+    // offering to undo the undo.
+    setLastMove(undo ? null : { jobId: job.id, from: job.status });
     try {
       const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
         method: 'PATCH',
@@ -161,19 +183,50 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
                 {' · '}
                 {t('stringerFor', { name: job.memberName })}
               </span>
-              {nextStatus && (
-                <button
-                  type="button"
-                  className="cc-btn cc-btn-secondary"
-                  disabled={busy !== null || !online}
-                  onClick={() => void advance(job, nextStatus)}
-                >
-                  {/* The status WORD from the locale, not the key: "Mark
-                      picked up" happened to read fine in English and rendered
-                      "标记为ready" in Chinese (audit 2026-10-11, finding 08). */}
-                  {t('stringerAdvance', { status: t(`next.${nextStatus}`) })}
-                </button>
-              )}
+              {/* The date, in the bench's own words and colours. The API sent
+                  it all along; the one person who has to hit it was the one
+                  not shown it (audit 2026-10-11, finding 09). */}
+              {(() => {
+                const due = dueFor({ readyBy: job.readyBy, status: job.status, paidAt: null }, today);
+                if (due.key === 'pickedUp' || due.key === 'readyUnpaid') return null;
+                const label =
+                  due.key === 'overdue'
+                    ? tAdmin('due.overdue', { days: due.days ?? 0 })
+                    : due.key === 'onDate'
+                      ? tAdmin('readyBy', { date: formatReadyBy(due.date) ?? due.date ?? '' })
+                      : tAdmin(`due.${due.key}`);
+                return (
+                  <span className="fs-sm" style={{ fontWeight: 600, color: DUE_FG[due.tone] }}>
+                    {label}
+                  </span>
+                );
+              })()}
+              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                {nextStatus && (
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-secondary"
+                    style={{ flex: 1 }}
+                    disabled={busy !== null || !online}
+                    onClick={() => void advance(job, nextStatus)}
+                  >
+                    {/* The status WORD from the locale, not the key: "Mark
+                        picked up" happened to read fine in English and rendered
+                        "标记为ready" in Chinese (audit 2026-10-11, finding 08). */}
+                    {t('stringerAdvance', { status: t(`next.${nextStatus}`) })}
+                  </button>
+                )}
+                {lastMove?.jobId === job.id && (
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-ghost"
+                    disabled={busy !== null || !online}
+                    onClick={() => void advance(job, lastMove.from, true)}
+                  >
+                    {t('stringerUndo')}
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

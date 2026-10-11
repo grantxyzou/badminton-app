@@ -38,6 +38,7 @@
         "picked_up": "picked up"
       },
       "stringerSaveError": "That didn't save \u2014 try again.",
+      "stringerUndo": "Undo",
         "confirm": {
           "banner": "Something changed — please confirm",
           "title": "A change to confirm",

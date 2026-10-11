@@ -72,6 +72,36 @@ describe('the advance button speaks the status words, not the key', () => {
     expect(screen.queryByRole('button', { name: /strung/ })).toBeNull();
   });
 
+  it('shows the ready-by date and how late it is — the stringer is the one who has to hit it', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ jobs: [{ ...stringerJob('received'), readyBy: '2000-01-01' }], view: 'stringer' }), { status: 200 }),
+    );
+    wrap();
+    await screen.findByText('Arcsaber 11 Pro');
+    // "N days late" from admin.stringing.due.overdue, the bench's own words.
+    expect(screen.getByText(/days late$/)).toBeDefined();
+  });
+
+  it('offers Undo after an advance, and Undo puts the previous status back', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method === 'PATCH') return new Response('{}', { status: 200 });
+      return new Response(JSON.stringify({ jobs: [stringerJob('received')], view: 'stringer' }), { status: 200 });
+    });
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark strung' }));
+    const undo = await screen.findByRole('button', { name: enMessages.home.stringing.stringerUndo });
+    fireEvent.click(undo);
+    await waitFor(() => {
+      const patches = fetchSpy.mock.calls.filter((c) => c[1]?.method === 'PATCH').map((c) => JSON.parse(String(c[1]?.body)));
+      expect(patches).toEqual([
+        { memberId: 'm-akane', status: 'strung' },
+        { memberId: 'm-akane', status: 'received' },
+      ]);
+    });
+    // Undone: the offer goes away until the next advance.
+    await waitFor(() => expect(screen.queryByRole('button', { name: enMessages.home.stringing.stringerUndo })).toBeNull());
+  });
+
   it('reads "Mark picked up" for a ready job', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ jobs: [stringerJob('ready')], view: 'stringer' }), { status: 200 }),
