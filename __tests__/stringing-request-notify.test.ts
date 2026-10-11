@@ -75,8 +75,17 @@ afterEach(() => {
   else process.env[FLAG] = flagBefore;
 });
 
-describe('a new request reaches the people who string', () => {
-  it('pushes every canString member and every admin, never the requester', async () => {
+describe('a new request reaches the people who can act on it', () => {
+  /**
+   * ADMINS, not every stringer (final review of the audit branch). A request
+   * arrives unassigned, and a non-admin stringer's card shows only jobs
+   * assigned to them — so a push about an unclaimed request sent them to a
+   * screen that bounced them (`?tab=admin`) or showed nothing. The admin is
+   * the one who claims or assigns; the stringer is told at ASSIGNMENT
+   * (`stringing-move-notify.test.ts`). Grant's "All stringer" is honoured one
+   * step later, at the moment the work is theirs.
+   */
+  it('pushes every admin, never the requester, and not a non-admin stringer', async () => {
     seedMember('m-lin', 'Lin', { canString: true });
     seedMember('m-zach', 'Zach', { canString: true });
     seedMember('m-sam', 'Sam');
@@ -86,11 +95,18 @@ describe('a new request reaches the people who string', () => {
 
     expect(sendPushToMembers).toHaveBeenCalledTimes(1);
     const [ids, payload] = sendPushToMembers.mock.calls[0];
-    expect(new Set(ids)).toEqual(new Set(['m-zach', ADMIN_MEMBER_ID]));
+    expect(ids).toEqual([ADMIN_MEMBER_ID]);
     // No tension, no string, no money on a lock screen.
     expect(payload.body).not.toMatch(/\$|lb|BG80|26/);
     expect(payload.body).toContain('Astrox 99 Pro');
     expect(payload.body).toContain('Lin');
+  });
+
+  it('an admin who is the requester is not pushed about their own racket', async () => {
+    const admin = getStore().members.find((m) => (m as { id: string }).id === ADMIN_MEMBER_ID) as { name: string };
+    const res = await POST(requestAs(admin.name, ADMIN_MEMBER_ID));
+    expect(res.status).toBe(201);
+    expect(sendPushToMembers).not.toHaveBeenCalled();
   });
 
   it('sends nothing when nobody strings and no admin exists beyond the requester', async () => {

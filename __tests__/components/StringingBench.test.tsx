@@ -669,6 +669,17 @@ describe('the bench lists first', () => {
     expect(await screen.findByText('Strings you stock')).toBeDefined();
     expect(screen.getByText('Your prices')).toBeDefined();
   });
+
+  it('opens the set-up cards as siblings, never a card inside a card', async () => {
+    // "Nested cards are always wrong" (DESIGN.md #12). The first cut wrapped
+    // the three glass cards in a fourth: doubled padding, stacked blur.
+    respondBench();
+    wrap(<StringingPage onBack={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Set-up/ }));
+    const stock = (await screen.findByText('Strings you stock')).closest('.glass-card') as HTMLElement;
+    expect(stock).not.toBeNull();
+    expect(stock.parentElement?.closest('.glass-card')).toBeNull();
+  });
 });
 
 describe('the change form never opens by default', () => {

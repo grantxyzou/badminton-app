@@ -700,39 +700,33 @@ export default function StringingPage({ onBack }: Props) {
             read behind "View pricing" — is "how the service is set up", not
             "what is on the bench", and it lived above the list the screen is
             named for. Closed is absent from the DOM, like every Collapse. */}
-        <div className="glass-card p-5 space-y-3">
-          <button
-            type="button"
-            onClick={() => setSetupOpen((v) => !v)}
-            aria-expanded={setupOpen}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 'var(--space-3)',
-              width: '100%',
-              minHeight: 44,
-              textAlign: 'left',
-            }}
+        {/* A plain row, NOT a card: the three set-up cards are glass cards of
+            their own, and wrapping them in a fourth was card-in-card (DESIGN.md
+            #12 — doubled padding, stacked blur). They open as siblings. */}
+        <button
+          type="button"
+          onClick={() => setSetupOpen((v) => !v)}
+          aria-expanded={setupOpen}
+          className="bpm-row-link"
+        >
+          {/* Muted, not accent: Add job above it is the row that earns green. */}
+          <span className="section-label-muted">Set-up</span>
+          <span
+            className="material-icons icon-sm motion-chevron"
+            data-open={setupOpen ? 'true' : 'false'}
+            aria-hidden="true"
+            style={{ color: 'var(--text-muted)' }}
           >
-            <span className="section-label">Set-up</span>
-            <span
-              className="material-icons icon-sm motion-chevron"
-              data-open={setupOpen ? 'true' : 'false'}
-              aria-hidden="true"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              expand_more
-            </span>
-          </button>
-          <Collapse open={setupOpen} spaceAbove="var(--space-3)">
-            <div className="flex flex-col gap-4">
-              <OfferedStringsCard />
-              <StringStockCard />
-              <PricingCard />
-            </div>
-          </Collapse>
-        </div>
+            expand_more
+          </span>
+        </button>
+        <Collapse open={setupOpen}>
+          <div className="flex flex-col gap-4">
+            <OfferedStringsCard />
+            <StringStockCard />
+            <PricingCard />
+          </div>
+        </Collapse>
       </div>
       {actionSheet}
     </div>

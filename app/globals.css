@@ -474,6 +474,10 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
    the browser (stringing audit 2026-10-11, A1); #9a4408 reads 5.8:1. The icon
    keeps -400: non-text, 3:1 is its bar and it clears it. Pinned by design-canary. */
 [data-theme="light"] .text-amber-300 { color: #9a4408; }
+/* A section label sitting on a green-tinted card (the job detail's "Change
+   this job"): accent on the tint measured 4.44:1 in light; accent-dark reads
+   6.3:1 (pinned by design-canary). Light only — dark's accent clears it. */
+[data-theme="light"] .section-label-on-tint { color: var(--accent-dark); }
 [data-theme="light"] .text-orange-400 { color: #c2410c; }
 [data-theme="light"] .text-orange-300 { color: #c2410c; }
 [data-theme="light"] .text-red-400 { color: #dc2626; }

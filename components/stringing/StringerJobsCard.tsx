@@ -64,7 +64,7 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
      a job backwards), and it sends the player a push. Undo PATCHes the
      previous status; the route allows any move. The push already sent is not
      retracted (audit 2026-10-11, finding 08). */
-  const [lastMove, setLastMove] = useState<{ jobId: string; from: StringingStatus } | null>(null);
+  const [lastMove, setLastMove] = useState<{ jobId: string; from: StringingStatus; to: StringingStatus } | null>(null);
   // Bench words for the due line; the stringer is working the bench.
   const tAdmin = useTranslations('admin.stringing');
   const today = todayIso();
@@ -95,9 +95,6 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
     if (busy || !online) return;
     setBusy(job.id);
     setSaveError(false);
-    // Remember where it came from; an undo clears the offer rather than
-    // offering to undo the undo.
-    setLastMove(undo ? null : { jobId: job.id, from: job.status });
     try {
       const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
         method: 'PATCH',
@@ -107,6 +104,11 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
         body: JSON.stringify({ memberId: job.memberId, status }),
       });
       if (!res.ok) throw new Error(`advance ${res.status}`);
+      // Remember the move only once it LANDED (a failed one has nothing to
+      // undo); an undo clears the offer rather than offering to undo the
+      // undo. `to` is kept so the offer can be withdrawn if the reload shows
+      // somebody else moved the job in between (final review).
+      setLastMove(undo ? null : { jobId: job.id, from: job.status, to: status });
       await load();
     } catch {
       setSaveError(true);
@@ -216,7 +218,9 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
                     {t('stringerAdvance', { status: t(`next.${nextStatus}`) })}
                   </button>
                 )}
-                {lastMove?.jobId === job.id && (
+                {/* Only while the job still sits where THIS card put it: if the
+                    admin moved it on in between, undo would revert their move. */}
+                {lastMove?.jobId === job.id && job.status === lastMove.to && (
                   <button
                     type="button"
                     className="cc-btn cc-btn-ghost"

@@ -1,29 +1,29 @@
 /**
- * Tell the stringers a request came in (docs/plans/stringing-audit-fixes.md).
+ * Who hears about stringing work, and when (docs/plans/stringing-audit-fixes.md).
  *
- * RECIPIENTS: every `canString` member AND every admin of the GROUP, minus
- * the requester (Grant, 2026-10-11: "All stringer"). Admins are included
- * because the admin runs the bench and is not necessarily flagged; the
- * requester is excluded because a stringer asking for their own restring
- * already knows. Resolved through the roster so a second club's stringers
- * never hear about this club's rackets — `pushSubscriptions` is person-scoped
- * and nothing on the row could separate them.
+ * A NEW REQUEST goes to the ADMINS of the group, minus the requester. A
+ * request arrives unassigned, and only an admin can claim or assign it; a
+ * non-admin stringer's card shows just the jobs assigned to them, so a push
+ * about an unclaimed request sent them to a screen that bounced them
+ * (`?tab=admin`) or showed nothing (final review, 2026-10-11). Grant's "All
+ * stringer" is honoured one step later: an ASSIGNMENT pushes the assignee,
+ * which is the moment the work is theirs to do.
  *
- * Same contract as the player notices (`lib/stringingNotifyDispatch.ts`):
- * never throws, never fails the request it rides on.
+ * Both resolve through the roster so a second club's people never hear about
+ * this club's rackets — `pushSubscriptions` is person-scoped and nothing on
+ * the row could separate them. Same contract as the player notices
+ * (`lib/stringingNotifyDispatch.ts`): never throws, never fails the write it
+ * rides on.
  */
 import { rosterMembers } from './roster';
 import { sendPushToMembers } from './push';
-import { buildRequestPayload } from './pushMessages';
+import { buildRequestPayload, buildAssignmentPayload } from './pushMessages';
 import type { StringingJob } from './types';
 
 export async function requestRecipients(groupId: string, requesterId: string): Promise<string[]> {
   const roster = await rosterMembers(groupId);
   return roster
-    .filter(
-      ({ member }) =>
-        member.id !== requesterId && (member.canString === true || member.role === 'admin'),
-    )
+    .filter(({ member }) => member.id !== requesterId && member.role === 'admin')
     .map(({ member }) => member.id);
 }
 
@@ -39,5 +39,17 @@ export async function notifyStringersOfRequest(
   } catch (err) {
     console.error('[stringing] request notify failed (the request stands):', err);
     return { recipients: 0, sent: 0 };
+  }
+}
+
+/** The assignee, and only them. The caller has already ruled out a self-claim. */
+export async function notifyStringerOfAssignment(job: StringingJob): Promise<{ sent: number }> {
+  if (!job.stringerId) return { sent: 0 };
+  try {
+    const { sent } = await sendPushToMembers([job.stringerId], buildAssignmentPayload(job));
+    return { sent };
+  } catch (err) {
+    console.error('[stringing] assignment notify failed (the assignment stands):', err);
+    return { sent: 0 };
   }
 }

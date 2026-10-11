@@ -216,3 +216,22 @@ export function buildRequestPayload(job: {
     tag: safeTag(`str-${job.jobNo}-request`),
   };
 }
+
+/**
+ * "This one's yours" — to the stringer a job was just assigned to. Same
+ * lock-screen rule: player and racket, no spec. Opens the Stringing tab,
+ * where their card lists exactly the jobs assigned to them.
+ */
+export function buildAssignmentPayload(job: {
+  jobNo: string;
+  memberName: string;
+  racketLabel?: string | null;
+}): PushPayload {
+  const racket = job.racketLabel?.trim() || 'racket';
+  return {
+    title: 'A racket for you to string',
+    body: `${job.memberName}'s ${racket} is yours.`,
+    url: `${BASE}/?tab=stringing`,
+    tag: safeTag(`str-${job.jobNo}-assigned`),
+  };
+}

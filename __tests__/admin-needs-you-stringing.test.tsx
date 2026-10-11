@@ -57,10 +57,23 @@ describe('useAdminNeedsYou counts the bench', () => {
     expect(result.current.loadError).toBe(false);
   });
 
-  it('a real bench failure is a failed check', async () => {
+  it('a real bench failure leaves the bench UNKNOWN and keeps the other three signals', async () => {
+    // Fail open (final review): the bench read shares a per-IP limit with every
+    // member's Home card, so a 429 on gym wifi is plausible — and it must not
+    // null the unpaid / birds / dormant count that was fine.
     stub(() => new Response(JSON.stringify({ error: 'read_failed' }), { status: 503 }));
     const { result } = renderHook(() => useAdminNeedsYou(true));
-    await waitFor(() => expect(result.current.loadError).toBe(true));
-    expect(result.current.needsYou).toBeNull();
+    await waitFor(() => expect(result.current.needsYou).toBe(0));
+    expect(result.current.stringing).toBeNull();
+    expect(result.current.loadError).toBe(false);
+  });
+
+  it('a paid racket waiting to be collected is not "late"', async () => {
+    // The work is done; the date has passed because the player has not come
+    // for it. That is not the stringer's lateness and must not count.
+    stub(() => new Response(JSON.stringify({ jobs: [{ id: 'p', stringerId: 'g', status: 'ready', readyBy: '2000-01-01', paidAt: '2026-10-01T00:00:00Z' }], view: 'bench' }), { status: 200 }));
+    const { result } = renderHook(() => useAdminNeedsYou(true));
+    await waitFor(() => expect(result.current.stringing).not.toBeNull());
+    expect(result.current.stringing).toEqual({ waiting: 0, late: 0 });
   });
 });

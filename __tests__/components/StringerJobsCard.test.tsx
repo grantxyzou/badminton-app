@@ -83,9 +83,14 @@ describe('the advance button speaks the status words, not the key', () => {
   });
 
   it('offers Undo after an advance, and Undo puts the previous status back', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
-      if (init?.method === 'PATCH') return new Response('{}', { status: 200 });
-      return new Response(JSON.stringify({ jobs: [stringerJob('received')], view: 'stringer' }), { status: 200 });
+    // The mock server remembers the status it was given, as the real one does.
+    let status = 'received';
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (_input, init) => {
+      if (init?.method === 'PATCH') {
+        status = JSON.parse(String(init.body)).status;
+        return new Response('{}', { status: 200 });
+      }
+      return new Response(JSON.stringify({ jobs: [stringerJob(status)], view: 'stringer' }), { status: 200 });
     });
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: 'Mark strung' }));
@@ -100,6 +105,35 @@ describe('the advance button speaks the status words, not the key', () => {
     });
     // Undone: the offer goes away until the next advance.
     await waitFor(() => expect(screen.queryByRole('button', { name: enMessages.home.stringing.stringerUndo })).toBeNull());
+  });
+
+  it('offers no Undo when the reload shows someone else moved the job meanwhile', async () => {
+    // The admin marked it picked up between the tap and the reload. Undo
+    // would revert THEIR move; it is offered only while the job still sits
+    // where this card put it.
+    let patched = false;
+    vi.spyOn(global, 'fetch').mockImplementation(async (_input, init) => {
+      if (init?.method === 'PATCH') return new Response('{}', { status: 200 });
+      return new Response(JSON.stringify({ jobs: [stringerJob(patched ? 'picked_up' : 'received')], view: 'stringer' }), { status: 200 });
+    });
+    wrap();
+    const btn = await screen.findByRole('button', { name: 'Mark strung' });
+    patched = true;
+    fireEvent.click(btn);
+    await screen.findByRole('button', { name: 'Mark picked up' }).catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByRole('button', { name: enMessages.home.stringing.stringerUndo })).toBeNull();
+  });
+
+  it('offers no Undo for an advance that failed', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (_input, init) => {
+      if (init?.method === 'PATCH') return new Response('{}', { status: 500 });
+      return new Response(JSON.stringify({ jobs: [stringerJob('received')], view: 'stringer' }), { status: 200 });
+    });
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark strung' }));
+    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(screen.queryByRole('button', { name: enMessages.home.stringing.stringerUndo })).toBeNull();
   });
 
   it('reads "Mark picked up" for a ready job', async () => {

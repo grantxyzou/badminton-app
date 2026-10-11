@@ -526,11 +526,11 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 textAlign: 'left',
               }}
             >
-              {/* `--accent-dark`, not the section label's accent: on the green
-                  price card in light mode the accent measured 4.44:1 (audit
-                  2026-10-11, A2); the darker ink reads 6.3:1 and is the same
-                  green the paid pill already uses. Pinned by design-canary. */}
-              <span className="section-label" style={{ color: 'var(--accent-dark)' }}>{t('propose.title')}</span>
+              {/* `.section-label-on-tint`: in LIGHT mode the label's accent on
+                  the green price card measured 4.44:1 (audit 2026-10-11, A2);
+                  the rule swaps in `--accent-dark` (6.3:1) there and leaves
+                  dark mode's label as bright as its neighbours. */}
+              <span className="section-label section-label-on-tint">{t('propose.title')}</span>
               <span
                 className="material-icons icon-sm motion-chevron"
                 aria-hidden="true"

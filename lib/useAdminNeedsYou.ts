@@ -29,14 +29,17 @@ export type BenchRow = { stringerId: string | null; status: string; readyBy: str
 
 /**
  * The bench's two actionable counts. Unclaimed = requested and nobody's; late =
- * past readyBy with work still to do (`dueFor` never calls a ready or picked-up
- * job late). Shared with the Command Center's bench row so the two cannot
- * disagree about what "waiting" means.
+ * past readyBy with WORK still to do. A `ready` or `picked_up` job is never
+ * late: the work is done, and a paid racket nobody has collected is the
+ * player's delay, not the stringer's (`dueFor` alone would call a PAID ready
+ * job overdue — it only exempts the unpaid one). Shared with the Command
+ * Center's bench row so the two cannot disagree about what "waiting" means.
  */
+const WORK_DONE = new Set(['ready', 'picked_up']);
 export function benchSignals(rows: BenchRow[], today = todayIso()): { waiting: number; late: number } {
   return {
     waiting: rows.filter((j) => j.stringerId === null && j.status === 'requested').length,
-    late: rows.filter((j) => dueFor(j, today).tone === 'overdue').length,
+    late: rows.filter((j) => !WORK_DONE.has(j.status) && dueFor(j, today).tone === 'overdue').length,
   };
 }
 
@@ -84,9 +87,7 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
         // an answer, not a failed check.
         const noSession = await isNoActiveSession(playersRes);
         if (cancelled) return;
-        // The stringing flag off answers 404 — no bench, not a failed read.
-        const noBench = benchRes.status === 404;
-        if ((!playersRes.ok && !noSession) || !birdsRes.ok || !membersRes.ok || (!benchRes.ok && !noBench)) {
+        if ((!playersRes.ok && !noSession) || !birdsRes.ok || !membersRes.ok) {
           setLoadError(true);
           setNeedsYou(null);
           setStringing(null);
@@ -97,7 +98,19 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
           : ((await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }>);
         const birds = (await birdsRes.json()) as { currentStock?: number; burnPerSession?: number };
         const members = (await membersRes.json()) as DormantInput[];
-        const benchRows = noBench ? null : (((await benchRes.json()) as { jobs?: BenchRow[] }).jobs ?? []);
+        /* The bench FAILS OPEN. A 404 is the stringing flag off (no bench,
+           not a failed read); any other failure — the route shares a per-IP
+           limit with every member's Home card, so a 429 on gym wifi is
+           plausible — leaves the bench UNKNOWN (`stringing: null`) rather
+           than nulling the three signals that were fine (final review). */
+        let benchRows: BenchRow[] | null = null;
+        if (benchRes.ok) {
+          try {
+            benchRows = ((await benchRes.json()) as { jobs?: BenchRow[] }).jobs ?? [];
+          } catch {
+            benchRows = null;
+          }
+        }
         if (cancelled) return;
 
         const active = players.filter((p) => !p.removed && !p.waitlisted);
