@@ -280,6 +280,10 @@ export default function StringingCard({ hasIdentity }: Props) {
               display: 'block',
               width: '100%',
               padding: '0',
+              // 362×25 measured in the browser (audit 2026-10-11, A3): the
+              // tab's most-used control, one pixel over the 24 floor. The
+              // 44 tap floor, as every sheet close button already carries.
+              minHeight: 44,
               background: 'none',
               border: 'none',
               font: 'inherit',

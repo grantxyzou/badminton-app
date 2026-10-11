@@ -520,6 +520,9 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 justifyContent: 'space-between',
                 gap: 'var(--space-3)',
                 width: '100%',
+                // 358×20 measured in the browser (audit 2026-10-11, A3). The
+                // same 44 floor as the status header above it.
+                minHeight: 44,
                 textAlign: 'left',
               }}
             >

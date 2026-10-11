@@ -331,7 +331,20 @@ export default function StringingPage({ onBack }: Props) {
                   setDeleteError(false);
                 }}
                 aria-label={t('actions.more', { name: job.memberName })}
-                style={{ pointerEvents: 'auto', flex: '0 0 auto', color: 'var(--ink-faint)' }}
+                /* 18×24 measured in the browser (audit 2026-10-11, A3), under
+                   the 24px floor of WCAG 2.5.8. A 44px hit area, pulled in by
+                   negative margins so the glyph does not move. */
+                style={{
+                  pointerEvents: 'auto',
+                  flex: '0 0 auto',
+                  color: 'var(--ink-faint)',
+                  minWidth: 44,
+                  minHeight: 44,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: 'calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) 0',
+                }}
               >
                 <span className="material-icons icon-md">more_vert</span>
               </button>
