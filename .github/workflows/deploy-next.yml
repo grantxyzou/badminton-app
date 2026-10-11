@@ -80,9 +80,9 @@ jobs:
           # Phase 2 ledger, stage 1: mirror every charge/payment into `ledger`.
           # Read server-side; nothing visible changes. See lib/flags.ts.
           NEXT_PUBLIC_FLAG_LEDGER_MIRROR: 'true'
-          # First-party usage records (docs/plans/usage-metrics.md). OFF until
-          # the App Store / Play privacy labels and a Home announcement are
-          # done. Read server-side; off, nothing is recorded.
+          # First-party usage records (docs/plans/usage-metrics.md). ON since
+          # 2026-10-07, once the store privacy labels declared it. Read
+          # server-side; off, nothing is recorded.
           NEXT_PUBLIC_FLAG_USAGE_METRICS: 'true'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.
@@ -133,8 +133,7 @@ jobs:
           # The one-time link that carries a signed-in PWA identity into the
           # native shell (docs/plans/native-shell.md, WP5). Gates two
           # credential-minting routes SERVER-side and the "Move to the app"
-          # row. OFF until the store listing exists: the sheet offers store
-          # badges, and there is nothing to badge yet.
+          # row. ON since 2026-10-07, the day both store listings went live.
           NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'true'
           # OFF. Multi-group (docs/plans/multi-group.md) is read server-side;
           # off means every request resolves to group "bpm" and nothing
