@@ -8,9 +8,9 @@
  * TWO AUDIENCES, TWO VOCABULARIES — DELIBERATELY
  * ----------------------------------------------
  * The bench tracks a job through `requested → received → strung → ready →
- * picked_up`. The player never sees any of those words. They see "Grant has
- * it", "Being strung", "Ready for you", "Picked up" — language about THEIR
- * racket rather than about someone else's workflow.
+ * picked_up`. The player never sees any of those words. They see "Waiting for
+ * your racket", "With the stringer", "Being strung", "Ready for you", "Picked
+ * up" — language about THEIR racket rather than about someone else's workflow.
  *
  * This is not a translation layer for its own sake. "Received" is a fact about
  * the bench and reads as bureaucracy to the person who just handed over a

@@ -557,6 +557,12 @@ describe('light-theme ink on tints clears 4.5:1', () => {
     expect(contrast(ink, ground)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it('accent-dark reads at ≥ 4.5:1 on the light green banner card (the detail\'s "Change this job" label)', () => {
+    const ink = hex(lightToken('--accent-dark'));
+    const ground = composite(lightToken('--banner-green-bg'), PAGE);
+    expect(contrast(ink, ground)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('the amber banner title reads at ≥ 4.5:1 on the light orange banner', () => {
     const ink = hex(prop('[data-theme="light"] .text-amber-300', 'color'));
     const ground = hex(lightToken('--banner-orange-solid'));
