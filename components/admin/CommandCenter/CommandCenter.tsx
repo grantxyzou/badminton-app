@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { benchSignals, type BenchRow } from '@/lib/useAdminNeedsYou';
 import TopBar from '../../primitives/TopBar';
 import AnomalyFeed from './AnomalyFeed';
 import InviteCard from './InviteCard';
@@ -54,6 +55,38 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
   const groupName = group?.name;
   const [localRefresh, setLocalRefresh] = useState(0);
   const composedRefresh = refreshKey + localRefresh;
+
+  /* The bench row's count: requests nobody has taken, jobs past their date.
+     One read of the bench, the same arithmetic as Profile's "need you"
+     (`benchSignals`). `null` while unknown — the row never says "0 waiting"
+     off a dead fetch. Audit 2026-10-11, finding 04: three unclaimed requests
+     and a job two days late showed nowhere on this screen. */
+  const [benchCount, setBenchCount] = useState<{ waiting: number; late: number } | null>(null);
+  const stringingOn = isFlagOn('NEXT_PUBLIC_FLAG_STRINGING');
+  useEffect(() => {
+    if (!stringingOn) return;
+    let cancelled = false;
+    fetch(`${BASE}/api/stringing/jobs`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { jobs?: BenchRow[] } | null) => {
+        if (!cancelled && d && Array.isArray(d.jobs)) setBenchCount(benchSignals(d.jobs));
+      })
+      .catch(() => {
+        /* the row still opens the bench; it just carries no count */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [stringingOn, composedRefresh]);
+  const benchTrailing =
+    benchCount && benchCount.waiting + benchCount.late > 0
+      ? [
+          benchCount.waiting > 0 ? `${benchCount.waiting} waiting` : null,
+          benchCount.late > 0 ? `${benchCount.late} late` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : undefined;
 
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
   const [profileMemberName, setProfileMemberName] = useState<string | null>(null);
@@ -206,6 +239,15 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
       <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
         <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
           {[
+            // The stringing bench, FIRST and with its count: it is the one row
+            // here with work waiting behind it, and it sat last of nine where
+            // nobody saw three unclaimed requests (audit 2026-10-11). It was
+            // first added to a btn-ghost row in the pre-Command-Center
+            // AdminDashboard layout, which nobody could see (see
+            // AdminBenchEntry.test.tsx). That layout is gone now.
+            ...(stringingOn
+              ? [{ icon: 'sports_tennis', label: 'Stringing bench', trailing: benchTrailing, onClick: () => setView('stringing') }]
+              : []),
             { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },
             { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
             { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
@@ -216,13 +258,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
             { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
             // Rackets members typed in by name: the models the catalog is missing.
             { icon: 'sports_tennis', label: 'Missing from the catalog', onClick: () => setView('catalog-gaps') },
-            // The stringing bench. It was first added to a btn-ghost row in the
-            // pre-Command-Center AdminDashboard layout, which nobody could see
-            // (see AdminBenchEntry.test.tsx). That layout is gone now.
-            ...(isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')
-              ? [{ icon: 'sports_tennis', label: 'Stringing bench', onClick: () => setView('stringing') }]
-              : []),
-          ].map((row, idx) => (
+          ].map((row: { icon: string; label: string; trailing?: string; onClick: () => void }, idx) => (
             <li
               key={row.label}
               style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}
@@ -252,6 +288,11 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
                   {row.icon}
                 </span>
                 <span style={{ flex: 1 }}>{row.label}</span>
+                {row.trailing && (
+                  <span className="fs-sm" style={{ color: 'var(--sev-warn)', fontWeight: 600 }}>
+                    {row.trailing}
+                  </span>
+                )}
                 <span
                   className="material-icons"
                   aria-hidden="true"

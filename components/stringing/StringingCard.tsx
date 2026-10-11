@@ -25,7 +25,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** Stages this card has copy for. See the guard in the render. */
-const KNOWN_STAGES = ['with_stringer', 'being_strung', 'ready_for_you', 'done'];
+const KNOWN_STAGES = ['awaiting_dropoff', 'with_stringer', 'being_strung', 'ready_for_you', 'done'];
 
 /** Matches the balance card's formatting, so the same number looks the same
  *  in both places on one screen. */
@@ -198,10 +198,21 @@ export default function StringingCard({ hasIdentity }: Props) {
   // A row without one cannot be rendered — `t()` THROWS on a missing key
   // rather than falling back — so an unexpected shape must drop out here
   // instead of taking the whole Home tab down with it.
-  const active =
-    jobs?.find(
-      (j) => KNOWN_STAGES.includes(j?.stage as string) && j.stage !== 'done',
-    ) ?? null;
+  /* EVERY open job, in the server's order (pinned first, then newest). It was
+     `jobs.find(...)` — one racket — and a player with three in saw the newest
+     only, while the cap error told them to collect rackets they could not see
+     (audit 2026-10-11, finding 01). */
+  const openJobs = (jobs ?? []).filter(
+    (j) => KNOWN_STAGES.includes(j?.stage as string) && j.stage !== 'done',
+  );
+  /* The racket the strip talks about. ONE strip, not one per row: the strip is
+     the glance answer and the rows are the detail. */
+  const lead = openJobs[0] ?? null;
+  /* The banners attach to the JOB that has something to say, which is not
+     necessarily the newest — an older racket can be the one that is ready, or
+     the one with a price waiting on an answer. */
+  const pendingJob = openJobs.find((j) => j.pendingEdit) ?? null;
+  const readyJobs = openJobs.filter((j) => j.stage === 'ready_for_you');
 
   /**
    * COLLAPSIBLE ONLY WHEN THERE IS A RACKET.
@@ -211,7 +222,7 @@ export default function StringingCard({ hasIdentity }: Props) {
    * a racket in, the rail is the glance answer and the detail is the thing
    * worth folding away, so the card opens collapsed and expands to the racket.
    */
-  const collapsible = active !== null;
+  const collapsible = lead !== null;
 
   /* THE RESTRING REMINDER. Only for someone the shop has strung for, only once
      it has been two months (`RESTRING_AFTER_WEEKS`), and only with no racket
@@ -220,7 +231,7 @@ export default function StringingCard({ hasIdentity }: Props) {
      `jobs !== null` waits for the read, so the line cannot flash in and then
      vanish when an active job arrives. */
   const restringWeeks =
-    jobs !== null && active === null ? restringDueWeeks(shopStrungAt, new Date()) : null;
+    jobs !== null && lead === null ? restringDueWeeks(shopStrungAt, new Date()) : null;
   const expanded = !collapsible || (openOverride ?? false);
 
   const header = (
@@ -269,6 +280,10 @@ export default function StringingCard({ hasIdentity }: Props) {
               display: 'block',
               width: '100%',
               padding: '0',
+              // 362×25 measured in the browser (audit 2026-10-11, A3): the
+              // tab's most-used control, one pixel over the 24 floor. The
+              // 44 tap floor, as every sheet close button already carries.
+              minHeight: 44,
               background: 'none',
               border: 'none',
               font: 'inherit',
@@ -300,7 +315,7 @@ export default function StringingCard({ hasIdentity }: Props) {
 
             Tapping opens the sheet; the banner alone never accepts anything —
             agreeing to a price is exactly the wrong thing to do by mis-tap. */}
-        {active?.pendingEdit && (
+        {pendingJob && (
           <button
             type="button"
             onClick={() => setConfirming(true)}
@@ -310,26 +325,27 @@ export default function StringingCard({ hasIdentity }: Props) {
               tone="warn"
               icon="request_quote"
               title={t('confirm.banner')}
-              body={t('confirm.intro', { racket: active.racketLabel })}
+              body={t('confirm.intro', { racket: pendingJob.racketLabel })}
             />
           </button>
         )}
 
-        {active?.stage === 'ready_for_you' && (
+        {readyJobs.map((j) => (
           <StatusBanner
+            key={j.id}
             tone="success"
             icon="check_circle"
             title={t('ready.title')}
-            body={t('ready.body', { racket: active.racketLabel, jobNo: active.jobNo })}
+            body={t('ready.body', { racket: j.racketLabel, jobNo: j.jobNo })}
           />
-        )}
+        ))}
 
         {/* THE RAIL WAITS UNTIL THERE IS A JOB, and then it is what the
             COLLAPSED card shows — four steps and ~90px describing a process
             nobody had started was an explanation charged against a card with
             nothing to report. Extra headroom because collapsed it is the
             card's whole content and sat too close to the title. */}
-        {active && (
+        {lead && (
           <div
             style={{
               paddingTop: expanded ? 0 : 'var(--space-4)',
@@ -337,13 +353,16 @@ export default function StringingCard({ hasIdentity }: Props) {
               transition: 'padding-top var(--duration-sheet) var(--ease-sheet)',
             }}
           >
-            <StringingSteps current={stepForStage((active.stage as PlayerStage) ?? null)} />
+            <StringingSteps current={stepForStage((lead.stage as PlayerStage) ?? null)} />
           </div>
         )}
 
-        {active && (
+        {lead && (
           <Collapse open={expanded} spaceAbove="var(--space-3)">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {openJobs.map((j) => (
           <div
+            key={j.id}
             className="cc-mini-card"
             style={{
               display: 'flex',
@@ -357,20 +376,22 @@ export default function StringingCard({ hasIdentity }: Props) {
               sports_tennis
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="fs-md" style={{ fontWeight: 600 }}>{active.racketLabel}</div>
+              <div className="fs-md" style={{ fontWeight: 600 }}>{j.racketLabel}</div>
               <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-                {t(`stage.${active.stage}`)}
+                {t(`stage.${j.stage}`)}
                 {/* The BILL if there is one, else the quote, else silence.
                     Showing the band once an exact amount is owed had this card
                     reading "$28–32" directly above a balance line saying "$30"
                     for the same racket. */}
-                {active.amountDue !== null && active.amountDue !== undefined
-                  ? ` · ${fmtMoney(active.amountDue)}`
-                  : active.priceRange
-                    ? ` · ${active.priceRange}`
+                {j.amountDue !== null && j.amountDue !== undefined
+                  ? ` · ${fmtMoney(j.amountDue)}`
+                  : j.priceRange
+                    ? ` · ${j.priceRange}`
                     : ''}
               </div>
             </div>
+          </div>
+          ))}
           </div>
           </Collapse>
         )}
@@ -493,9 +514,9 @@ export default function StringingCard({ hasIdentity }: Props) {
         gear={activeName.name ? gear : null}
       />
 
-      {active?.pendingEdit && (
+      {pendingJob && (
         <ConfirmChangeSheet
-          job={active}
+          job={pendingJob}
           open={confirming}
           onClose={() => setConfirming(false)}
           onAnswered={loadJobs}

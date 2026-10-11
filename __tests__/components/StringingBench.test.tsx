@@ -298,7 +298,9 @@ describe('intake shows the stringer what the player will read', () => {
     fireEvent.change(screen.getByLabelText(/Racket, e.g./i), { target: { value: 'Astrox' } });
     fireEvent.change(screen.getByLabelText(/String, e.g./i), { target: { value: 'BG80' } });
 
-    const save = screen.getByRole('button', { name: /Save & let Wei know/i });
+    // "Save job", not "Save & let Wei know": the POST sends nothing, and the
+    // label stopped claiming it does (audit 2026-10-11, finding 07).
+    const save = screen.getByRole('button', { name: /Save job/i });
     expect(save).toHaveProperty('disabled', false);
   });
 
@@ -611,6 +613,72 @@ describe('the price card and the change form are one card', () => {
     expect(card!.textContent).toContain('Change this job');
     openChangeForm();
     expect(card!.querySelector('input[aria-label="Price"]')).not.toBeNull();
+  });
+});
+
+describe('the detail screen can set the ready-by date', () => {
+  // Audit 2026-10-11, finding 06: intake had a date picker and the detail
+  // screen had none, so a player-made request (readyBy null) could never be
+  // given a date and "N days late" only ever applied to admin-logged jobs.
+  it('offers the date picker on a job with no date', () => {
+    wrap(<StringingJobDetail job={{ ...job, readyBy: null }} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getByText(enMessages.admin.stringing.readyByPlaceholder)).toBeDefined();
+  });
+
+  it('keeps the formatted date line and the picker together on a dated job', () => {
+    wrap(<StringingJobDetail job={{ ...job, readyBy: '2026-10-09' }} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getByText(/Ready by/)).toBeDefined();
+    // The picker shows the chosen date, not the placeholder.
+    expect(screen.queryByText(enMessages.admin.stringing.readyByPlaceholder)).toBeNull();
+  });
+});
+
+describe('the bench lists first', () => {
+  // Audit 2026-10-11, finding 05: the screen titled "Bench" opened on the
+  // shop sign, the stock list, the inventory and the rate card; the first job
+  // row sat at 826px of a 932px viewport. Grant: "bench first".
+  function respondBench() {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () =>
+            String(url).includes('/shop')
+              ? { open: true }
+              : String(url).includes('/strings')
+                ? { strings: ['BG80 white'] }
+                : String(url).includes('/pricing')
+                  ? { services: [] }
+                  : { jobs: [job], view: 'bench' },
+        } as Response),
+      ),
+    );
+  }
+
+  it('puts the first job row above the set-up cards, which start folded', async () => {
+    respondBench();
+    wrap(<StringingPage onBack={() => {}} />);
+    const row = await screen.findByText('J-0042');
+    const setup = screen.getByRole('button', { name: /Set-up/ });
+    expect(setup.getAttribute('aria-expanded')).toBe('false');
+    expect(row.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Folded means absent from the DOM, like every Collapse in the app.
+    expect(screen.queryByText('Strings you stock')).toBeNull();
+    fireEvent.click(setup);
+    expect(await screen.findByText('Strings you stock')).toBeDefined();
+    expect(screen.getByText('Your prices')).toBeDefined();
+  });
+
+  it('opens the set-up cards as siblings, never a card inside a card', async () => {
+    // "Nested cards are always wrong" (DESIGN.md #12). The first cut wrapped
+    // the three glass cards in a fourth: doubled padding, stacked blur.
+    respondBench();
+    wrap(<StringingPage onBack={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Set-up/ }));
+    const stock = (await screen.findByText('Strings you stock')).closest('.glass-card') as HTMLElement;
+    expect(stock).not.toBeNull();
+    expect(stock.parentElement?.closest('.glass-card')).toBeNull();
   });
 });
 

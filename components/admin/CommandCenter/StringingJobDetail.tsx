@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
+import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
 import Collapse from '@/components/primitives/Collapse';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -461,6 +462,16 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {t('readyBy', { date: formatReadyBy(local.readyBy) ?? local.readyBy })}
             </div>
           )}
+          {/* The date is SET here too, not only at intake. A player-made
+              request arrives with no date, and until now nothing on this
+              screen could give it one — so "N days late" only ever applied to
+              admin-logged jobs (audit 2026-10-11, finding 06). A bench fact,
+              not a proposal: a direct PATCH, nobody is asked. */}
+          <DatePicker
+            value={local.readyBy && /^\d{4}-\d{2}-\d{2}$/.test(local.readyBy) ? local.readyBy : ''}
+            onChange={(d) => patch({ readyBy: d || null })}
+            placeholder={t('readyByPlaceholder')}
+          />
 
           {/* What the other side is reading, right now. Still attached to the
               price above it rather than to the form below — it describes the
@@ -509,10 +520,17 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 justifyContent: 'space-between',
                 gap: 'var(--space-3)',
                 width: '100%',
+                // 358×20 measured in the browser (audit 2026-10-11, A3). The
+                // same 44 floor as the status header above it.
+                minHeight: 44,
                 textAlign: 'left',
               }}
             >
-              <span className="section-label">{t('propose.title')}</span>
+              {/* `.section-label-on-tint`: in LIGHT mode the label's accent on
+                  the green price card measured 4.44:1 (audit 2026-10-11, A2);
+                  the rule swaps in `--accent-dark` (6.3:1) there and leaves
+                  dark mode's label as bright as its neighbours. */}
+              <span className="section-label section-label-on-tint">{t('propose.title')}</span>
               <span
                 className="material-icons icon-sm motion-chevron"
                 aria-hidden="true"

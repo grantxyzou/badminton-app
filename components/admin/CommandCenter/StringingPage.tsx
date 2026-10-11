@@ -21,6 +21,7 @@ import StringStockCard from './StringStockCard';
 import PricingCard from './PricingCard';
 import { StateLink } from '@/components/primitives/StateCard';
 import StatusBadge, { type StateTone } from '@/components/primitives/StatusBadge';
+import Collapse from '@/components/primitives/Collapse';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -93,6 +94,10 @@ export default function StringingPage({ onBack }: Props) {
   // on a shop that is open is the confident-wrong answer, so unknown says so.
   const [shopOpen, setShopOpen] = useState<boolean | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
+  /* Strings, stock and prices fold under "Set-up", closed by default. The
+     bench opened on four set-up cards and the first job row sat at 826px of a
+     932px viewport (audit 2026-10-11, finding 05; Grant: "bench first"). */
+  const [setupOpen, setSetupOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -326,7 +331,20 @@ export default function StringingPage({ onBack }: Props) {
                   setDeleteError(false);
                 }}
                 aria-label={t('actions.more', { name: job.memberName })}
-                style={{ pointerEvents: 'auto', flex: '0 0 auto', color: 'var(--ink-faint)' }}
+                /* 18×24 measured in the browser (audit 2026-10-11, A3), under
+                   the 24px floor of WCAG 2.5.8. A 44px hit area, pulled in by
+                   negative margins so the glyph does not move. */
+                style={{
+                  pointerEvents: 'auto',
+                  flex: '0 0 auto',
+                  color: 'var(--ink-faint)',
+                  minWidth: 44,
+                  minHeight: 44,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: 'calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) 0',
+                }}
               >
                 <span className="material-icons icon-md">more_vert</span>
               </button>
@@ -609,18 +627,6 @@ export default function StringingPage({ onBack }: Props) {
           </div>
         </div>
 
-        {/* What the club stocks — the list behind the request form's dropdown.
-            Sits with the shop sign because both are "how the service is set
-            up" rather than "what is on the bench right now". */}
-        <OfferedStringsCard />
-
-        {/* The inventory for those strings — reels bought, sets used (counted
-            from jobs), what it cost (docs/plans/string-inventory.md). */}
-        <StringStockCard />
-
-        {/* The rate card players read behind "View pricing" on Home. */}
-        <PricingCard />
-
         {/* Mine / All. The wrapper needs `flex` and each tab `flex-1` —
             .segment-control sets no display, so without it the active pill
             overlaps its neighbour. */}
@@ -686,6 +692,41 @@ export default function StringingPage({ onBack }: Props) {
             ? t('archive.openUnknown')
             : t('archive.open', { count: archivedJobs.length })}
         </button>
+
+        {/* SET-UP, folded. The shop sign stays at the top because closing the
+            shop is the admin's most consequential bench action; the rest —
+            what the club stocks (the request form's dropdown), the inventory
+            for it (docs/plans/string-inventory.md) and the rate card players
+            read behind "View pricing" — is "how the service is set up", not
+            "what is on the bench", and it lived above the list the screen is
+            named for. Closed is absent from the DOM, like every Collapse. */}
+        {/* A plain row, NOT a card: the three set-up cards are glass cards of
+            their own, and wrapping them in a fourth was card-in-card (DESIGN.md
+            #12 — doubled padding, stacked blur). They open as siblings. */}
+        <button
+          type="button"
+          onClick={() => setSetupOpen((v) => !v)}
+          aria-expanded={setupOpen}
+          className="bpm-row-link"
+        >
+          {/* Muted, not accent: Add job above it is the row that earns green. */}
+          <span className="section-label-muted">Set-up</span>
+          <span
+            className="material-icons icon-sm motion-chevron"
+            data-open={setupOpen ? 'true' : 'false'}
+            aria-hidden="true"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            expand_more
+          </span>
+        </button>
+        <Collapse open={setupOpen}>
+          <div className="flex flex-col gap-4">
+            <OfferedStringsCard />
+            <StringStockCard />
+            <PricingCard />
+          </div>
+        </Collapse>
       </div>
       {actionSheet}
     </div>

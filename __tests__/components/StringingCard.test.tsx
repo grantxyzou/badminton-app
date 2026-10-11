@@ -97,7 +97,7 @@ describe('once the admin opens the shop', () => {
       'disabled',
       true,
     );
-    expect(screen.getByText(/Add your name above first/i)).toBeDefined();
+    expect(screen.getByText(enMessages.home.stringing.needName)).toBeDefined();
   });
 
   it('shows a racket already with the stringer, in the player’s own words', async () => {
@@ -202,7 +202,7 @@ describe('once the admin opens the shop', () => {
     // is an intake form, not a quote.
     expect(screen.queryByLabelText(/price/i)).toBeNull();
     expect(screen.queryByText(/confirms the price/i)).toBeNull();
-    expect(screen.getByText('Intake form')).toBeDefined();
+    expect(screen.getByText(enMessages.home.stringing.requestSubtitle)).toBeDefined();
   });
 });
 
@@ -368,5 +368,50 @@ describe('the restring reminder', () => {
     wrap();
     await screen.findByRole('button', { name: 'Submit a request' });
     expect(screen.queryByText(REMINDER)).toBeNull();
+  });
+});
+
+// Audit 2026-10-11, finding 01: a player with three rackets in saw ONE — the
+// card rendered `jobs.find(open)`, and the cap error then told them to collect
+// rackets they could not see.
+describe('every open racket is listed', () => {
+  const two = [
+    {
+      id: 'j2', jobNo: 'J-0002', stage: 'with_stringer', stageIndex: 0,
+      racketLabel: 'Nanoflare 800 Pro', stringLabel: 'Exbolt 63', tensionMains: 27, tensionCrosses: 29,
+      method: '', priceRange: null, amountDue: null, readyBy: null, paid: false,
+      pendingEdit: null, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-02T00:00:00Z',
+    },
+    {
+      id: 'j1', jobNo: 'J-0001', stage: 'ready_for_you', stageIndex: 2,
+      racketLabel: 'Astrox 88D Pro', stringLabel: 'BG80 white', tensionMains: 26, tensionCrosses: 28,
+      method: '', priceRange: '$28–32', amountDue: 30, readyBy: null, paid: false,
+      pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', priceFrom: null, priceTo: 30 },
+      createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-03T00:00:00Z',
+    },
+  ];
+
+  it('renders a row per open job, not only the first', async () => {
+    mockApi(true, two);
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /Stringing service/ }));
+    expect(await screen.findByText('Nanoflare 800 Pro')).toBeDefined();
+    expect(screen.getByText('Astrox 88D Pro')).toBeDefined();
+  });
+
+  it('shows the ready and confirm banners for the job that has them, even when it is not the newest', async () => {
+    mockApi(true, two);
+    wrap();
+    expect(await screen.findByText('Your racket is ready')).toBeDefined();
+    expect(screen.getByText(/Astrox 88D Pro \(J-0001\) is strung/)).toBeDefined();
+    expect(screen.getByText(/please confirm/)).toBeDefined();
+  });
+
+  it('still shows the one racket when there is only one', async () => {
+    mockApi(true, [two[0]]);
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /Stringing service/ }));
+    expect(await screen.findByText('Nanoflare 800 Pro')).toBeDefined();
+    expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
   });
 });

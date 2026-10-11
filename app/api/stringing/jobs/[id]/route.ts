@@ -20,7 +20,8 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isStringingStatus, isValidTension, canTransition } from '@/lib/stringing';
+import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW } from '@/lib/stringing';
+import { notifyStringerOfAssignment } from '@/lib/stringingRequestNotify';
 import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirror';
 import type { StringingJob, PendingEdit } from '@/lib/types';
 
@@ -349,9 +350,31 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
        AWAITED but never allowed to fail the request: the admin's action is
        about the racket, not the email. `notifyPlayerOfStage` swallows and logs
-       everything, so a dead mail server cannot 503 the bench. */
-    if (next.status !== job.status) {
+       everything, so a dead mail server cannot 503 the bench.
+
+       FORWARD MOVES ONLY (final review, 2026-10-11). An undo or a correction
+       backwards — `ready` → `strung`, `picked_up` → `ready` — used to send
+       "being strung" straight after "ready", or "your racket is ready" to
+       someone already holding it. A backward move is bookkeeping, not news;
+       the history still records it. */
+    if (
+      next.status !== job.status &&
+      STRINGING_FLOW.indexOf(next.status) > STRINGING_FLOW.indexOf(job.status)
+    ) {
       await notifyPlayerOfStage(next);
+    }
+
+    /* A stringer hears when a job becomes THEIRS. Their card shows only jobs
+       assigned to them, so assignment is the moment a request is something
+       they can act on (docs/plans/stringing-audit-fixes.md: the request push
+       goes to admins; this is the stringer's half). Not on a self-claim, a
+       re-save of the same assignee, or an unassign. Best-effort like the rest. */
+    if (
+      next.stringerId !== null &&
+      next.stringerId !== job.stringerId &&
+      next.stringerId !== actorId
+    ) {
+      await notifyStringerOfAssignment(next);
     }
 
     /* Same posture as the stage notice: awaited, best-effort, never able to

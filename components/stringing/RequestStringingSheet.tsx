@@ -103,6 +103,26 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  /* A fresh form every time the sheet opens. `done` and the fields are
+     component state and the sheet stays MOUNTED between opens (StringingCard
+     renders it unconditionally), so without this a second "Submit a request"
+     reopened onto the previous "Sent." screen with no form — a second racket
+     needed a page reload (audit 2026-10-11, finding 02). Keyed on the OPEN
+     transition only; the string list is fetched once on mount and kept. */
+  useEffect(() => {
+    if (!open) return;
+    setDone(false);
+    setError(null);
+    setBusy(false);
+    setRacketLabel('');
+    setCustomRacket(false);
+    setPickedString('');
+    setCustomString('');
+    setTension(26);
+    setCrosses(28);
+    setCustom(false);
+  }, [open]);
+
   useEffect(() => {
     let cancelled = false;
     fetch(`${BASE}/api/stringing/strings`, { cache: 'no-store' })

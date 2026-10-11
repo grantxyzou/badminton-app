@@ -26,6 +26,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isValidTension, formatJobNo } from '@/lib/stringing';
 import { readShopOpen } from '@/lib/stringingShop';
+import { notifyStringersOfRequest } from '@/lib/stringingRequestNotify';
 import { toPlayerJob, isArchived } from '../jobs/route';
 import type { StringingJob } from '@/lib/types';
 
@@ -153,6 +154,10 @@ export async function POST(req: NextRequest) {
     };
 
     await scope.create('stringingJobs', job);
+    /* Tell the people who string. Awaited, best-effort, never able to fail
+       the request — the same posture as the player notices on the bench PATCH.
+       Nothing told anyone a request existed before this (audit 2026-10-11). */
+    await notifyStringersOfRequest(job, groupId);
     // The PLAYER view back, not the raw document. Symmetry with GET matters
     // here: a create that echoed the full job would hand back exactly the
     // fields the read is careful to strip.

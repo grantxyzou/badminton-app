@@ -17,11 +17,16 @@ export type StepKey = (typeof STEP_KEYS)[number];
  * `ready_for_you` and `done` share the last step because "pick up and pay" is
  * one errand from the player's point of view, even though the bench tracks the
  * handover and the payment separately.
+ *
+ * `awaiting_dropoff` stands on "Drop off your racket" — that is what the
+ * player has left to do — and `with_stringer` on "Track progress", since the
+ * racket has been handed over and the next thing that happens is on the bench.
  */
 export function stepForStage(stage: PlayerStage | null): number {
   switch (stage) {
-    case 'with_stringer':
+    case 'awaiting_dropoff':
       return 1;
+    case 'with_stringer':
     case 'being_strung':
       return 2;
     case 'ready_for_you':

@@ -178,7 +178,7 @@ describe('when nothing is stocked', () => {
     wrap();
     expect(await screen.findByLabelText(/Which string\? e\.g\./i)).toBeDefined();
     expect(screen.queryByLabelText('Which string?')).toBeNull();
-    expect(screen.getByText(/hasn't listed what he stocks/i)).toBeDefined();
+    expect(screen.getByText(enMessages.home.stringing.noStringsYet)).toBeDefined();
   });
 
   it('does the same when the list could not be read at all', async () => {
@@ -218,7 +218,9 @@ describe('the header', () => {
   it('is an intake form, and promises nothing about price', async () => {
     mockApi(['BG80 white']);
     wrap();
-    expect(await screen.findByText('Intake form')).toBeDefined();
+    // Not "Intake form" any more: that was bench vocabulary on the player's
+    // sheet (audit 2026-10-11, note N1). The subtitle says what to do next.
+    expect(await screen.findByText(enMessages.home.stringing.requestSubtitle)).toBeDefined();
     expect(screen.queryByText(/confirms the price/i)).toBeNull();
     expect(screen.queryByLabelText(/price/i)).toBeNull();
   });
@@ -347,5 +349,32 @@ describe('RequestStringingSheet while the string list is unknown', () => {
     wrap();
     expect(await screen.findByText(enMessages.home.stringing.stringsUnavailable)).toBeDefined();
     expect(screen.queryByText(enMessages.home.stringing.noStringsYet)).toBeNull();
+  });
+});
+
+describe('reopening the sheet', () => {
+  // Audit 2026-10-11, finding 02: `done` is component state and the sheet
+  // stays MOUNTED between opens, so a second "Submit a request" reopened onto
+  // the previous "Sent." screen with no form — a second racket needed a reload.
+  it('starts a fresh form after a send, not the old "Sent." screen', async () => {
+    const fetchMock = mockApi(['BG80 white']);
+    const sheet = (open: boolean) => (
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <RequestStringingSheet open={open} onClose={() => {}} onRequested={() => {}} gear={null} />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(sheet(true));
+    await fillRacket();
+    fireEvent.change(await screen.findByLabelText('Which string?'), { target: { value: 'BG80 white' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    expect(await screen.findByRole('status')).toBeDefined();
+    expect(sentBody(fetchMock)).not.toBeNull();
+
+    // Close, then open again — the same mounted component, as StringingCard does.
+    rerender(sheet(false));
+    rerender(sheet(true));
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(((await screen.findByLabelText('Which racket?')) as HTMLInputElement).value).toBe('');
+    expect(screen.getByRole('button', { name: 'Send the request' })).toBeDefined();
   });
 });

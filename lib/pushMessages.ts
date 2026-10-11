@@ -194,3 +194,44 @@ export function buildPendingEditPayload(job: {
     tag: safeTag(`str-${job.jobNo}-edit`),
   };
 }
+
+/**
+ * "Somebody wants a restring" — to the people who string, not the club.
+ *
+ * Player and racket only. No string, no tension, no price: the spec is on
+ * the bench one tap away, and a lock screen is not the place for it. Opens
+ * the admin tab; the bench is the first row there (audit 2026-10-11,
+ * finding 04 — nothing told anyone a request existed).
+ */
+export function buildRequestPayload(job: {
+  jobNo: string;
+  memberName: string;
+  racketLabel?: string | null;
+}): PushPayload {
+  const racket = job.racketLabel?.trim() || 'racket';
+  return {
+    title: 'New stringing request',
+    body: `${job.memberName}'s ${racket} is waiting on the bench.`,
+    url: `${BASE}/?tab=admin`,
+    tag: safeTag(`str-${job.jobNo}-request`),
+  };
+}
+
+/**
+ * "This one's yours" — to the stringer a job was just assigned to. Same
+ * lock-screen rule: player and racket, no spec. Opens the Stringing tab,
+ * where their card lists exactly the jobs assigned to them.
+ */
+export function buildAssignmentPayload(job: {
+  jobNo: string;
+  memberName: string;
+  racketLabel?: string | null;
+}): PushPayload {
+  const racket = job.racketLabel?.trim() || 'racket';
+  return {
+    title: 'A racket for you to string',
+    body: `${job.memberName}'s ${racket} is yours.`,
+    url: `${BASE}/?tab=stringing`,
+    tag: safeTag(`str-${job.jobNo}-assigned`),
+  };
+}
