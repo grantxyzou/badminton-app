@@ -49,8 +49,12 @@ const DISMISS_FLOOR_PX = 88;
 const FLICK_VELOCITY = 0.55;
 /** Above the sheet's own top edge the drag rubber-bands instead of following,
  *  so an upward pull says "this does not go up" rather than tearing the sheet
- *  off the bottom of the screen. */
-const UP_RESISTANCE = 0.18;
+ *  off the bottom of the screen. The band is PROGRESSIVE — rubber, not a slower
+ *  wall: `y = raw * UP_FOLLOW / (1 + |raw| / UP_HALF_PX)` follows a third of
+ *  the first pixel, half that by `UP_HALF_PX`, and never passes
+ *  `UP_FOLLOW * UP_HALF_PX` (36px) however far the finger goes. */
+const UP_FOLLOW = 0.36;
+const UP_HALF_PX = 100;
 
 export default function BottomSheet({
   open,
@@ -187,7 +191,7 @@ export default function BottomSheet({
     const sheet = sheetRef.current;
     if (!d || !sheet || e.pointerId !== d.id) return;
     const raw = e.clientY - d.startY;
-    const y = raw >= 0 ? raw : raw * UP_RESISTANCE;
+    const y = raw >= 0 ? raw : (raw * UP_FOLLOW) / (1 + -raw / UP_HALF_PX);
     const now = performance.now();
     const dt = now - d.at;
     // Velocity from the LAST move only: an average over the whole gesture

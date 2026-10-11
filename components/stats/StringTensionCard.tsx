@@ -198,7 +198,7 @@ export default function StringTensionCard({ activeName, gear, suppressed, suppre
             onClick={() => { void pick(f); }}
             disabled={gear.busy}
             aria-current={selected === f ? 'true' : undefined}
-            className={`flex-1 flex items-center justify-center fs-sm transition-all ${
+            className={`flex-1 flex items-center justify-center fs-sm ${
               selected === f ? 'segment-tab-active' : 'segment-tab-inactive'
             }`}
           >

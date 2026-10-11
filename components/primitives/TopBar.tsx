@@ -62,7 +62,7 @@ export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back'
   // State machine on `<html>`:
   //   - `data-swiping="active"` during the drag (no CSS transition;
   //     transforms track the finger 1:1).
-  //   - `data-swiping="release"` for ~230ms after release while the
+  //   - `data-swiping="release"` for ~260ms after release while the
   //     springback transition runs.
   //   - attribute absent at rest. CRITICAL: the gating attribute is
   //     what lets us *omit* `transform` on the page shell at rest —
@@ -72,7 +72,8 @@ export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back'
   useEffect(() => {
     if (!onBack) return;
     const root = document.documentElement;
-    const RELEASE_MS = 230;
+    // Outlives the `--duration-normal` (250ms) release transitions in globals.css.
+    const RELEASE_MS = 260;
     let startX = 0;
     let startY = 0;
     let startT = 0;

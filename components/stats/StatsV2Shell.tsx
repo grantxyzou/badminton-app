@@ -90,7 +90,7 @@ export default function StatsV2Shell({
             type="button"
             onClick={() => setView(id)}
             aria-current={view === id ? 'page' : undefined}
-            className={`flex-1 flex items-center justify-center fs-sm transition-all ${
+            className={`flex-1 flex items-center justify-center fs-sm ${
               view === id ? 'segment-tab-active' : 'segment-tab-inactive'
             }`}
           >

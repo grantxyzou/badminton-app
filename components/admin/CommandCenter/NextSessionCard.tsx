@@ -355,10 +355,13 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           )}
         </div>
         <div className="h-1.5 rounded-full overflow-hidden cc-progress-track">
+          {/* The Fill recipe: the bar travels to its value by scaleX, so a
+              sign-up moves a transform, not the layout, and the travel shows
+              how much changed. */}
           <div
-            className="h-full transition-all"
+            className="h-full w-full motion-fill"
             style={{
-              width: `${capacityPct}%`,
+              transform: `scaleX(${capacityPct / 100})`,
               background: capacityPct >= 100 ? 'var(--sev-crit-text)' : capacityPct >= 80 ? 'var(--sev-med-text)' : 'var(--sev-good-text)',
             }}
           />

@@ -92,6 +92,27 @@ describe('<AnomalyFeed />', () => {
     });
 
     /**
+     * It leaves, it does not vanish. For `TOAST_EXIT_MS` after the timer the
+     * card is still mounted carrying `data-leaving`, which is the hook
+     * `.toast[data-leaving]` animates (globals.css); unmounting straight away
+     * made the notice disappear between frames. Same `waitFor` shape as above,
+     * for the same scheduling reason.
+     */
+    it('plays an exit before it goes', async () => {
+      mockFetch(async () => new Response(JSON.stringify([warn]), { status: 200 }));
+      render(<AnomalyFeed />);
+      await waitFor(() => expect(screen.getByText('cost drifted')).toBeTruthy());
+
+      await act(async () => { vi.advanceTimersByTime(6000); });
+      await waitFor(() => {
+        const card = screen.getByText('cost drifted').closest('.toast');
+        expect(card?.getAttribute('data-leaving')).toBe('true');
+      });
+      await act(async () => { vi.advanceTimersByTime(500); });
+      await waitFor(() => expect(screen.queryByText('cost drifted')).toBeNull());
+    });
+
+    /**
      * THE POINT OF THE WHOLE DESIGN. The server flag means "an admin saw this
      * and accepted it". Six seconds of being rendered cannot claim that — the
      * phone may have been in a pocket — so the timer hides the toast and
