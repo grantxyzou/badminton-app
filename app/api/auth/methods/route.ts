@@ -10,16 +10,17 @@
  * - `linked` / `hasPassword` / `hasPin`: what the CALLER already has. Drives the
  *   upgrade nudge, which must disappear the moment they have anything modern.
  *
- * Identity comes from the `member_session` cookie, never a name in the query
- * string. Names are enumerable, so a name-keyed version of this endpoint would
- * report any member's credential inventory to anyone who asked — a map of who
- * is easiest to attack.
+ * Identity comes from the session cookies (`callerMemberId`: the member
+ * cookie, else the admin cookie — an admin who signed in at Profile holds only
+ * the latter), never a name in the query string. Names are enumerable, so a
+ * name-keyed version of this endpoint would report any member's credential
+ * inventory to anyone who asked — a map of who is easiest to attack.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
-import { verifyMemberAuth } from '@/lib/auth';
+import { callerMemberId } from '@/lib/auth';
 import { configuredProviders } from '@/lib/oauthProviders';
 import { listIdentitiesForMember } from '@/lib/authIdentity';
 import { shouldNudgeUpgrade } from '@/lib/authNudge';
@@ -41,8 +42,8 @@ export async function GET(req: NextRequest) {
   }
 
   const available = configuredProviders();
-  const auth = verifyMemberAuth(req);
-  if (!auth) {
+  const memberId = await callerMemberId(req);
+  if (!memberId) {
     // Anonymous is a legitimate state, not an error: the sign-in surface needs
     // `available` to draw its buttons before anybody is signed in.
     return NextResponse.json({ available, linked: [], hasPassword: false, hasPin: false });
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { resource: member } = await getContainer('members')
-      .item(auth.memberId, auth.memberId)
+      .item(memberId, memberId)
       .read<Member>();
     if (!member || member.active !== true) {
       return NextResponse.json({ available, linked: [], hasPassword: false, hasPin: false });

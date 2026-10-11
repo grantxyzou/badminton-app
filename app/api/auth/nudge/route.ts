@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
-import { verifyMemberAuth } from '@/lib/auth';
+import { callerMemberId } from '@/lib/auth';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -28,13 +28,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  const auth = verifyMemberAuth(req);
-  if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  // Either cookie (see `callerMemberId`): the nudge this dismisses is shown
+  // from `auth/methods`, which answers for the admin cookie too.
+  const memberId = await callerMemberId(req);
+  if (!memberId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
     const container = getContainer('members');
     const { resource: member } = await container
-      .item(auth.memberId, auth.memberId)
+      .item(memberId, memberId)
       .read<Member>();
     if (!member || member.active !== true) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
