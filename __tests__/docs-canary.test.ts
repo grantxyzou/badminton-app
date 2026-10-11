@@ -47,6 +47,8 @@ const GOVERNING_DOCS = [
   'docs/plans/TEMPLATE.md',
   'docs/design-system/README.md',
   'docs/OWNER-KB.md',
+  'docs/review-bot.md',
+  'docs/flag-retirements.md',
 ];
 
 /**
