@@ -356,7 +356,10 @@
 
   --segment-bg: rgba(0, 0, 0, 0.05);
   --segment-active-bg: rgba(21, 128, 61, 0.14);
-  --segment-active-text: #15803d;
+  /* #166534, not #15803d: accent on its own tint over cream measured 3.55:1 in
+     the browser (stringing audit 2026-10-11, A2); this reads 5.1:1. Pinned by
+     design-canary. */
+  --segment-active-text: #166534;
   --segment-inactive-text: var(--text-muted);
 
   /* ── Release notes terminal — light ── */
@@ -467,7 +470,10 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
 [data-theme="light"] .text-green-400 { color: var(--accent); }
 [data-theme="light"] .text-green-300 { color: #15803d; }
 [data-theme="light"] .text-amber-400 { color: #b45309; }
-[data-theme="light"] .text-amber-300 { color: #b45309; }
+/* The warn banner's TITLE. #b45309 on --banner-orange-solid measured 4.43:1 in
+   the browser (stringing audit 2026-10-11, A1); #9a4408 reads 5.8:1. The icon
+   keeps -400: non-text, 3:1 is its bar and it clears it. Pinned by design-canary. */
+[data-theme="light"] .text-amber-300 { color: #9a4408; }
 [data-theme="light"] .text-orange-400 { color: #c2410c; }
 [data-theme="light"] .text-orange-300 { color: #c2410c; }
 [data-theme="light"] .text-red-400 { color: #dc2626; }
@@ -4562,7 +4568,10 @@ button.sheet-row { cursor: pointer; }
 [data-theme="light"] .cc-btn-primary {
   background: rgba(22, 163, 74, 0.12);
   border-color: rgba(22, 163, 74, 0.45);
-  color: #15803d;
+  /* #166534: #15803d on this fill over cream measured 4.16:1 in the browser
+     ("Add job", "Finalize cost", "Set up" — stringing audit 2026-10-11, A2);
+     this reads 5.9:1. Pinned by design-canary. */
+  color: #166534;
 }
 @media (hover: hover) {
   [data-theme="light"] .cc-btn-primary:hover:not(:disabled) {

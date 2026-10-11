@@ -482,3 +482,84 @@ describe('design-system canary: motion', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * Light-theme ink on a tint clears WCAG 1.4.3 (4.5:1).
+ *
+ * Measured in the browser on 2026-10-11 (stringing audit, A1/A2): the active
+ * segment tab read 3.55:1, `cc-btn-primary` 4.16:1 and the amber banner title
+ * 4.43:1 — accent green and amber sat on their own tints over cream, and jsdom
+ * can measure none of it. These are the numbers the browser measured, pinned
+ * by arithmetic over the CSS so a later tint change cannot slip back.
+ */
+describe('light-theme ink on tints clears 4.5:1', () => {
+  const PAGE = '#faf8f5'; // --page-bg (light)
+
+  const hex = (h: string) => {
+    const m = h.replace('#', '');
+    const n = parseInt(m.length === 3 ? m.split('').map((c) => c + c).join('') : m, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255] as const;
+  };
+  const rgba = (s: string) => {
+    const m = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\)/);
+    if (!m) throw new Error(`not a colour: ${s}`);
+    return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+  };
+  /** Alpha-composite a tint over an opaque ground. */
+  const composite = (tint: string, ground: string) => {
+    const t = rgba(tint);
+    const [gr, gg, gb] = hex(ground);
+    return [t.r * t.a + gr * (1 - t.a), t.g * t.a + gg * (1 - t.a), t.b * t.a + gb * (1 - t.a)] as const;
+  };
+  const lum = ([r, g, b]: readonly [number, number, number]) => {
+    const f = (c: number) => {
+      const s = c / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const contrast = (a: readonly [number, number, number], b: readonly [number, number, number]) => {
+    const [l1, l2] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (l1 + 0.05) / (l2 + 0.05);
+  };
+
+  /** The value of a property inside the FIRST matching rule block. Anchored so
+   *  `color:` cannot match the tail of `border-color:`. */
+  const prop = (selector: string, property: string) => {
+    const start = css.indexOf(selector);
+    expect(start, `rule ${selector} exists`).toBeGreaterThan(-1);
+    const block = css.slice(start, css.indexOf('}', start));
+    const m = block.match(new RegExp(`(?<![-\\w])${property}:\\s*([^;]+);`));
+    expect(m, `${selector} sets ${property}`).not.toBeNull();
+    return m![1].trim();
+  };
+  /** A custom property's value inside the light-theme TOKEN block (the first
+   *  `[data-theme="light"] {` rule), not the first mention of the attribute,
+   *  which is a comment inside `:root`. */
+  const lightToken = (name: string) => {
+    const light = css.indexOf('[data-theme="light"] {');
+    expect(light, 'light token block exists').toBeGreaterThan(-1);
+    const m = css.slice(light).match(new RegExp(`${name}:\\s*([^;]+);`));
+    expect(m, `${name} has a light value`).not.toBeNull();
+    return m![1].trim();
+  };
+
+  it('the active segment tab (Mine / All) reads at ≥ 4.5:1 on its tint', () => {
+    const ink = hex(lightToken('--segment-active-text'));
+    const ground = composite(lightToken('--segment-active-bg'), PAGE);
+    expect(contrast(ink, ground)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('cc-btn-primary ink reads at ≥ 4.5:1 on its light fill', () => {
+    const sel = '[data-theme="light"] .cc-btn-primary {';
+    const ink = hex(prop(sel, 'color'));
+    const ground = composite(prop(sel, 'background'), PAGE);
+    expect(contrast(ink, ground)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('the amber banner title reads at ≥ 4.5:1 on the light orange banner', () => {
+    const ink = hex(prop('[data-theme="light"] .text-amber-300', 'color'));
+    const ground = hex(lightToken('--banner-orange-solid'));
+    expect(contrast(ink, ground)).toBeGreaterThanOrEqual(4.5);
+  });
+});
