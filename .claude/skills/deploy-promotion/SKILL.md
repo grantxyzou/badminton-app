@@ -36,7 +36,7 @@ Merge to `main`. That's it — the push triggers `deploy-next.yml`, which runs t
 the full test suite and the build before deploying. A failing test cannot reach production.
 
 There is no promotion step and no tag to cut. `bpm-stable-v*` tags exist in history and
-are a **historical record only**; the last one (`bpm-stable-v1.8`, `0daf4ff`) points at a
+are a **historical record only**; the last one (`bpm-stable-v1.8`, `b7c77e0`) points at a
 build that is many commits behind and at an app service that no longer exists. Do not
 dispatch anything against them.
 
