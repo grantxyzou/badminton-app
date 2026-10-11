@@ -33,7 +33,13 @@ import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib
  * demanding a repo-root path everywhere would make the prose worse to read.
  */
 
-/** The documents that carry rules an agent or a contributor is expected to follow. */
+/**
+ * The documents an agent or a contributor is expected to read: the ones that
+ * carry rules, and the records those rules point to. A history doc in this
+ * list names paths too, so deleting a file it mentions needs a
+ * DELIBERATELY_ABSENT entry or an edit to the history — the price of keeping
+ * its pointers honest.
+ */
 const GOVERNING_DOCS = [
   'CLAUDE.md',
   'REVIEW.md',
@@ -224,5 +230,71 @@ describe('docs canary — the numbers CLAUDE.md states about the tree', () => {
       .filter((f) => /\.tsx?$/.test(f))
       .filter((f) => /eslint-disable[^\n]*no-restricted-syntax/.test(readFileSync(f, 'utf8'))).length;
     expect(stated, `CLAUDE.md says ${stated} files carry an escape hatch; the tree has ${actual}`).toBe(actual);
+  });
+});
+
+/**
+ * SENTENCE-level pins. The 2026-10-10 audit found nine stale claims by hand;
+ * three of them a regex could have caught: a count typed from memory (the
+ * audit itself turned a correct "nine" into "eight"), a retired flag described
+ * as live, and a date in the future. Each check below is the shape of one of
+ * those. What a regex cannot hold — "Cold starts (Free tier)" on an Always-On
+ * plan, a flip described as upcoming after it happened — still needs a reader.
+ */
+describe('docs canary — the sentences a regex can hold', () => {
+  const claude = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8');
+  const WORDS: Record<string, number> = {
+    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  };
+  const asNumber = (w: string) => WORDS[w.toLowerCase()] ?? Number(w);
+  const docLines = (doc: string) => readFileSync(join(process.cwd(), doc), 'utf8').split('\n');
+
+  it('the stated scripts/ check count matches the describe blocks in scripts.test.ts', () => {
+    const m = claude.match(/\*\*The (\w+) `scripts\/` checks are tested\*\*/);
+    expect(m, 'CLAUDE.md no longer states the scripts/ check count in the pinned form').not.toBeNull();
+    const src = readFileSync(join(process.cwd(), '__tests__/hooks/scripts.test.ts'), 'utf8');
+    const actual = (src.match(/^describe\('[\w-]+\.mjs/gm) ?? []).length;
+    expect(asNumber(m![1]), `CLAUDE.md says ${m![1]} scripts/ checks; scripts.test.ts has ${actual} describe blocks`).toBe(actual);
+  });
+
+  it('the stated hook count matches .claude/settings.json', () => {
+    const m = claude.match(/\*\*Automation hooks\*\* \([^)]*\): (\w+),/);
+    expect(m, 'CLAUDE.md no longer states the hook count in the pinned form').not.toBeNull();
+    const settings = readFileSync(join(process.cwd(), '.claude/settings.json'), 'utf8');
+    const actual = (settings.match(/"command": "/g) ?? []).length;
+    expect(asNumber(m![1]), `CLAUDE.md says ${m![1]} hooks; settings.json registers ${actual}`).toBe(actual);
+  });
+
+  it('a flag a governing doc names is in lib/flags.ts, or the line says it is retired', () => {
+    const registry = new Set(
+      Array.from(readFileSync(join(process.cwd(), 'lib/flags.ts'), 'utf8').matchAll(/(NEXT_PUBLIC_FLAG_[A-Z0-9_]+): \{/g), (m) => m[1]),
+    );
+    expect(registry.size, 'the FLAGS registry parse found nothing').toBeGreaterThan(5);
+    const offenders: string[] = [];
+    for (const doc of GOVERNING_DOCS) {
+      // Every row of the retirements table is a retired flag by construction.
+      if (doc === 'docs/flag-retirements.md') continue;
+      docLines(doc).forEach((line, i) => {
+        for (const [flag] of line.matchAll(/NEXT_PUBLIC_FLAG_[A-Z0-9_]+/g)) {
+          if (flag === 'NEXT_PUBLIC_FLAG_X' || registry.has(flag) || /retir/i.test(line)) continue;
+          offenders.push(`${doc}:${i + 1} names ${flag}, which is not in lib/flags.ts, without saying it is retired`);
+        }
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('no governing doc dates an event after the commit it lives in', () => {
+    // The commit date is deterministic where `new Date()` is not.
+    const head = execFileSync('git', ['log', '-1', '--format=%cs'], { cwd: process.cwd(), encoding: 'utf8' }).trim();
+    const offenders: string[] = [];
+    for (const doc of GOVERNING_DOCS) {
+      docLines(doc).forEach((line, i) => {
+        for (const [, verb, date] of line.matchAll(/\b(since|retired|shipped|fixed|landed|merged|deleted|moved)\s+(\d{4}-\d{2}-\d{2})/gi)) {
+          if (date > head) offenders.push(`${doc}:${i + 1} says "${verb} ${date}", after the commit date ${head}`);
+        }
+      });
+    }
+    expect(offenders).toEqual([]);
   });
 });
