@@ -1,7 +1,7 @@
 # Stringing flow — audit fixes
 
 **Track:** North Star pillar 4 (equipment service) — the stringing service is the one paid thing the app sells, and `restring-reach.md` already measures its reach; this closes what a role-by-role audit found between the player, the stringer and the bench.
-**Status:** in-flight
+**Status:** shipped 2026-10-11 (#598)
 **Review on:** 2026-11-11 — From `stringingJobs`: of the requests made in the four weeks after ship, how many were claimed within 24h of `createdAt` (the notification's job), and how many player-origin jobs carry a `readyBy` (the detail-screen date's job)? Before ship both were structurally zero.
 
 ## Problem
@@ -37,7 +37,7 @@ Grant, 2026-10-11, on the two open choices: "All stringer, bench first. and the 
 
 ## Decisions
 
-- **The new-request push goes to the group's ADMINS, minus the requester; a stringer is pushed when a job is ASSIGNED to them.** First cut (Grant: "All stringer") pushed every `canString` member on the request. The final review caught that a non-admin stringer's card shows only jobs assigned to them and the payload's `?tab=admin` bounces a non-admin to Home — so the push led them to nothing. Revised to the moment the work is actionable: the admin claims or assigns, and the assignment pushes the assignee ("Lin's Astrox 88D Pro is yours", `?tab=stringing`). Not on a self-claim. Grant's broadcast is one filter line away if he wants it back once stringers can see unclaimed requests. Resolved through `rosterMembers(groupId)` so a second club's people never hear about the first club's rackets.
+- **The new-request push goes to the group's ADMINS, minus the requester; a stringer is pushed when a job is ASSIGNED to them.** First cut (Grant: "All stringer") pushed every `canString` member on the request. The final review caught that a non-admin stringer's card shows only jobs assigned to them and the payload's `?tab=admin` bounces a non-admin to Home — so the push led them to nothing. Revised to the moment the work is actionable: the admin claims or assigns, and the assignment pushes the assignee ("Lin's Astrox 88D Pro is yours", `?tab=stringing`). Not on a self-claim. Grant confirmed this rule on 2026-10-11, after ship; the broadcast is one filter line away if stringers ever get a view of unclaimed requests. Resolved through `rosterMembers(groupId)` so a second club's people never hear about the first club's rackets.
 - **The player is told about a stage on FORWARD moves only.** The bench PATCH notified on any status change, so an undo or a correction backwards sent "being strung" straight after "ready", or "your racket is ready" to someone holding it. Backward moves stay in the history and say nothing.
 - **The bench signal in "need you" fails OPEN.** A failed bench read leaves it unknown rather than nulling the three signals that were fine; the route shares a per-IP limit with every member's Home card. And a `ready` or `picked_up` job is never "late": the work is done.
 - **The payload carries no money and no spec** — "New stringing request · Lin's Astrox 88D Pro" — the same lock-screen rule as the player payloads.
