@@ -49,6 +49,7 @@ const GOVERNING_DOCS = [
   'docs/OWNER-KB.md',
   'docs/review-bot.md',
   'docs/flag-retirements.md',
+  'docs/gotchas-history.md',
 ];
 
 /**
