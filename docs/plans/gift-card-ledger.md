@@ -67,6 +67,17 @@ the roster sheet and leave the field as harmless data.
   precedent) and beat exposing the switch through `members/me` (its
   projection is canary-pinned and the stringer card already proves the
   pattern of asking a dedicated route).
+- **With groups on, the switch is the MEMBERSHIP's** (2026-10-11, from a
+  security review). `Member.canGift` said nothing about WHICH club trusted
+  the helper, so a person on two rosters, granted it by one club's admin,
+  could mint a card against the other. Now `Membership.canGift` is what
+  `/api/giftcards` checks for the club the card is minted in (through
+  `readMembership`), `PATCH /api/members` writes it onto the admin's own
+  club's membership — a 404 for someone not on that roster — and still
+  writes the Member field, which is the flag-off value and the rollback copy.
+  The roster overlays the club's value so the checkbox shows what THIS club
+  granted. Consequence for the flip: nobody holds the switch until a club's
+  admin ticks it again, which is the point — a card is that club's liability.
 - **A gifter sees redeemed-or-not; the admin sees who.** The gifter handed
   the code to a person and already knows who they meant it for; naming the
   redeemer to a non-admin would be a roster read through a side door.

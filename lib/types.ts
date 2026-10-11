@@ -347,6 +347,13 @@ export interface Membership {
   status: 'active' | 'removed' | 'left';
   joinedAt: string;
   joinedVia: 'create' | 'link' | 'code' | 'backfill' | 'admin';
+  /**
+   * May give out gift cards IN THIS CLUB (docs/plans/gift-card-ledger.md).
+   * A card is the club's liability, so the switch is the club's to grant: with
+   * groups on this field is what a mint checks, and `Member.canGift` is only
+   * the flag-off value (still written, for rollback). Additive; absent = no.
+   */
+  canGift?: boolean;
 }
 
 /**
@@ -420,7 +427,10 @@ export interface Member {
    * The third independent switch beside `role` and `canString`: a helper who
    * runs a raffle or wants to thank someone can mint a card from Profile
    * without being handed the console. Set by an admin on the roster sheet;
-   * re-read on every mint. Additive; absent = no.
+   * re-read on every mint. Additive; absent = no. **With groups on, this is
+   * only the flag-off value**: the mint checks `Membership.canGift` for the
+   * club the card is minted in, because a person on two rosters is trusted
+   * by one club, not by both. Still written, for rollback.
    */
   canGift?: boolean;
   /** Audit trail of recovery-related events (issue / redeem / fail). */
