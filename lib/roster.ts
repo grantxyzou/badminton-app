@@ -72,8 +72,18 @@ export async function rosterMembers(
   for (const membership of memberships) {
     const member = members.get(membership.memberId);
     if (!member) continue; // a membership whose person was purged — nothing to show
-    // Roster name and per-group role overlay the person's defaults.
-    entries.push({ member: { ...member, name: membership.name, role: membership.role === 'member' ? 'member' : 'admin' }, membership });
+    // Roster name, per-group role and the per-club gift switch overlay the
+    // person's defaults — the roster sheet's checkbox must show what THIS
+    // club granted, not what another one did.
+    entries.push({
+      member: {
+        ...member,
+        name: membership.name,
+        role: membership.role === 'member' ? 'member' : 'admin',
+        canGift: membership.canGift === true,
+      },
+      membership,
+    });
   }
   return entries.sort((a, b) => a.member.name.localeCompare(b.member.name));
 }

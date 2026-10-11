@@ -6,7 +6,7 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rosterMembers, adminAddToRoster } from '@/lib/roster';
-import { rosterNameHolder, renameRosterMember, removeFromRoster, RosterNameTakenError } from '@/lib/groups';
+import { rosterNameHolder, renameRosterMember, removeFromRoster, setMembershipCanGift, RosterNameTakenError } from '@/lib/groups';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { randomBytes } from 'crypto';
 import { normalizeAvatar } from '@/lib/memberAvatar';
@@ -216,7 +216,16 @@ export async function PATCH(req: NextRequest) {
     // Orthogonal to `role` on purpose — see Member.canString.
     if (typeof body.canString === 'boolean') updates.canString = body.canString;
     // The third switch: may give out gift cards (docs/plans/gift-card-ledger.md).
-    if (typeof body.canGift === 'boolean') updates.canGift = body.canGift;
+    // With groups on it is the MEMBERSHIP's — a card is this club's liability,
+    // and the person may be on another roster where nobody granted it. The
+    // Member field is still written: it is the flag-off value and the rollback
+    // copy. Someone not on this roster is a 404, not a silent no-op.
+    if (typeof body.canGift === 'boolean') {
+      updates.canGift = body.canGift;
+      if (groupsOn() && !(await setMembershipCanGift(resolveGroupId(req), id, body.canGift))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
 
     // Admin can clear a member's PIN — deletes both the canonical
     // members.pinHash AND the legacy mirror on the active session's
