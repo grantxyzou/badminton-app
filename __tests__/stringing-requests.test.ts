@@ -119,7 +119,8 @@ describe('a player cannot set what is not theirs to set', () => {
     expect(raw).not.toContain('priceCents');
     expect(raw).not.toContain('stringerId');
     expect(raw).not.toContain('"status"');
-    expect(raw).toContain('with_stringer');
+    // A fresh request is its own player stage: the racket is still in the bag.
+    expect(raw).toContain('"stage":"awaiting_dropoff"');
   });
 });
 

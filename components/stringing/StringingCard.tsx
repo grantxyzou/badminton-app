@@ -25,7 +25,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** Stages this card has copy for. See the guard in the render. */
-const KNOWN_STAGES = ['with_stringer', 'being_strung', 'ready_for_you', 'done'];
+const KNOWN_STAGES = ['awaiting_dropoff', 'with_stringer', 'being_strung', 'ready_for_you', 'done'];
 
 /** Matches the balance card's formatting, so the same number looks the same
  *  in both places on one screen. */

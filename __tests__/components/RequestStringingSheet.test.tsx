@@ -178,7 +178,7 @@ describe('when nothing is stocked', () => {
     wrap();
     expect(await screen.findByLabelText(/Which string\? e\.g\./i)).toBeDefined();
     expect(screen.queryByLabelText('Which string?')).toBeNull();
-    expect(screen.getByText(/hasn't listed what he stocks/i)).toBeDefined();
+    expect(screen.getByText(enMessages.home.stringing.noStringsYet)).toBeDefined();
   });
 
   it('does the same when the list could not be read at all', async () => {
@@ -218,7 +218,9 @@ describe('the header', () => {
   it('is an intake form, and promises nothing about price', async () => {
     mockApi(['BG80 white']);
     wrap();
-    expect(await screen.findByText('Intake form')).toBeDefined();
+    // Not "Intake form" any more: that was bench vocabulary on the player's
+    // sheet (audit 2026-10-11, note N1). The subtitle says what to do next.
+    expect(await screen.findByText(enMessages.home.stringing.requestSubtitle)).toBeDefined();
     expect(screen.queryByText(/confirms the price/i)).toBeNull();
     expect(screen.queryByLabelText(/price/i)).toBeNull();
   });

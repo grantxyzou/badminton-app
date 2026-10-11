@@ -298,7 +298,9 @@ describe('intake shows the stringer what the player will read', () => {
     fireEvent.change(screen.getByLabelText(/Racket, e.g./i), { target: { value: 'Astrox' } });
     fireEvent.change(screen.getByLabelText(/String, e.g./i), { target: { value: 'BG80' } });
 
-    const save = screen.getByRole('button', { name: /Save & let Wei know/i });
+    // "Save job", not "Save & let Wei know": the POST sends nothing, and the
+    // label stopped claiming it does (audit 2026-10-11, finding 07).
+    const save = screen.getByRole('button', { name: /Save job/i });
     expect(save).toHaveProperty('disabled', false);
   });
 

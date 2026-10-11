@@ -62,9 +62,10 @@ export function canTransition(from: StringingStatus, to: StringingStatus): boole
  * value. Disjoint unions make that a type error instead of a code review.
  * It is also what the design calls the step.
  */
-export type PlayerStage = 'with_stringer' | 'being_strung' | 'ready_for_you' | 'done';
+export type PlayerStage = 'awaiting_dropoff' | 'with_stringer' | 'being_strung' | 'ready_for_you' | 'done';
 
 export const PLAYER_TRACK: readonly PlayerStage[] = [
+  'awaiting_dropoff',
   'with_stringer',
   'being_strung',
   'ready_for_you',
@@ -74,14 +75,20 @@ export const PLAYER_TRACK: readonly PlayerStage[] = [
 /**
  * Bench status → player stage.
  *
- * `requested` and `received` both read as "with the stringer" on purpose. The
- * difference between them is a bench bookkeeping detail — whether the racket is
- * physically in hand yet — and surfacing it would invite the player to wonder
- * why their job is "only requested" when they handed the racket over in person.
+ * `requested` has its own player stage since 2026-10-11, `awaiting_dropoff`.
+ * It was folded into `with_stringer`, argued from a racket handed over in
+ * person — surfacing the difference would have that player wondering why their
+ * job was "only requested". The request sheet is now the main way a job starts,
+ * and a player who filed one from the sofa read "With Grant" about a racket
+ * still in their bag, while the bench's footnote told the admin "Lin sees: You
+ * have it". "With the stringer" is only true from `received`. Named for what
+ * the PLAYER has left to do, and deliberately not `requested`: the two unions
+ * must stay disjoint (see the type-safety test in stringing-rules).
  */
 export function playerStageFor(status: StringingStatus): PlayerStage {
   switch (status) {
     case 'requested':
+      return 'awaiting_dropoff';
     case 'received':
       return 'with_stringer';
     case 'strung':

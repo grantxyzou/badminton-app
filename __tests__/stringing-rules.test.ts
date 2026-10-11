@@ -74,12 +74,14 @@ describe('the player never sees the bench vocabulary', () => {
     }
   });
 
-  it('collapses requested and received into one player-visible stage', () => {
-    // The difference is bench bookkeeping — whether the racket is physically in
-    // hand. Surfacing it would have a player who handed the racket over in
-    // person wondering why their job is "only requested".
-    expect(playerStageFor('requested')).toBe(playerStageFor('received'));
-    expect(playerStageFor('requested')).toBe('with_stringer');
+  it('keeps requested apart from received: a racket still in the bag is not "with" anybody', () => {
+    // The two were folded together when every job began with a racket handed
+    // over in person. The request sheet is now the main way a job starts, and
+    // a player who filed one from the sofa read "With Grant" about a racket
+    // still in their bag (audit 2026-10-11, finding 03).
+    expect(playerStageFor('requested')).toBe('awaiting_dropoff');
+    expect(playerStageFor('received')).toBe('with_stringer');
+    expect(playerStageIndex('requested')).toBeLessThan(playerStageIndex('received'));
   });
 
   it('shares no vocabulary between the two audiences', () => {

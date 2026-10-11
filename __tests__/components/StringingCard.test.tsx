@@ -97,7 +97,7 @@ describe('once the admin opens the shop', () => {
       'disabled',
       true,
     );
-    expect(screen.getByText(/Add your name above first/i)).toBeDefined();
+    expect(screen.getByText(enMessages.home.stringing.needName)).toBeDefined();
   });
 
   it('shows a racket already with the stringer, in the player’s own words', async () => {
@@ -202,7 +202,7 @@ describe('once the admin opens the shop', () => {
     // is an intake form, not a quote.
     expect(screen.queryByLabelText(/price/i)).toBeNull();
     expect(screen.queryByText(/confirms the price/i)).toBeNull();
-    expect(screen.getByText('Intake form')).toBeDefined();
+    expect(screen.getByText(enMessages.home.stringing.requestSubtitle)).toBeDefined();
   });
 });
 

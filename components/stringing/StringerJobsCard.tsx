@@ -168,7 +168,10 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
                   disabled={busy !== null || !online}
                   onClick={() => void advance(job, nextStatus)}
                 >
-                  {t('stringerAdvance', { status: nextStatus.replace('_', ' ') })}
+                  {/* The status WORD from the locale, not the key: "Mark
+                      picked up" happened to read fine in English and rendered
+                      "标记为ready" in Chinese (audit 2026-10-11, finding 08). */}
+                  {t('stringerAdvance', { status: t(`next.${nextStatus}`) })}
                 </button>
               )}
             </div>
