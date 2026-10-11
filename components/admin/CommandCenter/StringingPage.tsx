@@ -21,6 +21,7 @@ import StringStockCard from './StringStockCard';
 import PricingCard from './PricingCard';
 import { StateLink } from '@/components/primitives/StateCard';
 import StatusBadge, { type StateTone } from '@/components/primitives/StatusBadge';
+import Collapse from '@/components/primitives/Collapse';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -93,6 +94,10 @@ export default function StringingPage({ onBack }: Props) {
   // on a shop that is open is the confident-wrong answer, so unknown says so.
   const [shopOpen, setShopOpen] = useState<boolean | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
+  /* Strings, stock and prices fold under "Set-up", closed by default. The
+     bench opened on four set-up cards and the first job row sat at 826px of a
+     932px viewport (audit 2026-10-11, finding 05; Grant: "bench first"). */
+  const [setupOpen, setSetupOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -609,18 +614,6 @@ export default function StringingPage({ onBack }: Props) {
           </div>
         </div>
 
-        {/* What the club stocks — the list behind the request form's dropdown.
-            Sits with the shop sign because both are "how the service is set
-            up" rather than "what is on the bench right now". */}
-        <OfferedStringsCard />
-
-        {/* The inventory for those strings — reels bought, sets used (counted
-            from jobs), what it cost (docs/plans/string-inventory.md). */}
-        <StringStockCard />
-
-        {/* The rate card players read behind "View pricing" on Home. */}
-        <PricingCard />
-
         {/* Mine / All. The wrapper needs `flex` and each tab `flex-1` —
             .segment-control sets no display, so without it the active pill
             overlaps its neighbour. */}
@@ -686,6 +679,47 @@ export default function StringingPage({ onBack }: Props) {
             ? t('archive.openUnknown')
             : t('archive.open', { count: archivedJobs.length })}
         </button>
+
+        {/* SET-UP, folded. The shop sign stays at the top because closing the
+            shop is the admin's most consequential bench action; the rest —
+            what the club stocks (the request form's dropdown), the inventory
+            for it (docs/plans/string-inventory.md) and the rate card players
+            read behind "View pricing" — is "how the service is set up", not
+            "what is on the bench", and it lived above the list the screen is
+            named for. Closed is absent from the DOM, like every Collapse. */}
+        <div className="glass-card p-5 space-y-3">
+          <button
+            type="button"
+            onClick={() => setSetupOpen((v) => !v)}
+            aria-expanded={setupOpen}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 'var(--space-3)',
+              width: '100%',
+              minHeight: 44,
+              textAlign: 'left',
+            }}
+          >
+            <span className="section-label">Set-up</span>
+            <span
+              className="material-icons icon-sm motion-chevron"
+              data-open={setupOpen ? 'true' : 'false'}
+              aria-hidden="true"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              expand_more
+            </span>
+          </button>
+          <Collapse open={setupOpen} spaceAbove="var(--space-3)">
+            <div className="flex flex-col gap-4">
+              <OfferedStringsCard />
+              <StringStockCard />
+              <PricingCard />
+            </div>
+          </Collapse>
+        </div>
       </div>
       {actionSheet}
     </div>

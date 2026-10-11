@@ -633,6 +633,44 @@ describe('the detail screen can set the ready-by date', () => {
   });
 });
 
+describe('the bench lists first', () => {
+  // Audit 2026-10-11, finding 05: the screen titled "Bench" opened on the
+  // shop sign, the stock list, the inventory and the rate card; the first job
+  // row sat at 826px of a 932px viewport. Grant: "bench first".
+  function respondBench() {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () =>
+            String(url).includes('/shop')
+              ? { open: true }
+              : String(url).includes('/strings')
+                ? { strings: ['BG80 white'] }
+                : String(url).includes('/pricing')
+                  ? { services: [] }
+                  : { jobs: [job], view: 'bench' },
+        } as Response),
+      ),
+    );
+  }
+
+  it('puts the first job row above the set-up cards, which start folded', async () => {
+    respondBench();
+    wrap(<StringingPage onBack={() => {}} />);
+    const row = await screen.findByText('J-0042');
+    const setup = screen.getByRole('button', { name: /Set-up/ });
+    expect(setup.getAttribute('aria-expanded')).toBe('false');
+    expect(row.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Folded means absent from the DOM, like every Collapse in the app.
+    expect(screen.queryByText('Strings you stock')).toBeNull();
+    fireEvent.click(setup);
+    expect(await screen.findByText('Strings you stock')).toBeDefined();
+    expect(screen.getByText('Your prices')).toBeDefined();
+  });
+});
+
 describe('the change form never opens by default', () => {
   it('is collapsed on mount', async () => {
     // This screen's job is to say where a racket is. Changing what you charge
