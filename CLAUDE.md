@@ -557,7 +557,7 @@ npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
 ```
 
-**464 test files / ~4,870 tests** (2026-10-09). `__tests__/docs-canary.test.ts` fails the
+**470 test files / ~4,920 tests** (2026-10-11). `__tests__/docs-canary.test.ts` fails the
 build when the file count stated here drifts more than 10% from the tree — the
 previous figure, 279 / 2712, sat a third short for weeks and read as current.
 Covering API routes (admin auth,

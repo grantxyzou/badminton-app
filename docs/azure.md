@@ -1,6 +1,6 @@
 # Azure Architecture — Badminton App
 
-Last verified against the repo: 2026-10-07. Rows marked **†** cannot be derived
+Last verified against the repo: 2026-10-11. Rows marked **†** cannot be derived
 from anything in this repository; they are what the Azure portal said when
 someone last looked, and the "Observed in the portal" section at the end is
 where a fresh look gets recorded.
@@ -134,7 +134,7 @@ cannot run without:
 
 `ADMIN_PIN` is no longer read anywhere: admin auth has been per-member PIN
 since the auth restructure (section 5). Remove it from App Settings when
-convenient.
+convenient; `.env.local.example` still lists the line.
 
 ### Security headers
 
@@ -306,7 +306,9 @@ Rate limit on login: **5 attempts / 15 min per client IP**.
 Players receive a random `deleteToken` when they sign up (returned once in the
 POST response, stored client-side in `localStorage`). To self-cancel, they send
 this token with the DELETE request. The server verifies the token against the
-stored value. Admin cookie bypasses the token check.
+stored value. The admin cookie bypasses the token check, and so does the row's
+own member's `member_session` (re-read through `requireGroupMember` and matched
+on the row's `memberId`), for members whose token lives in another browser.
 
 ---
 

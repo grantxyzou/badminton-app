@@ -3,7 +3,7 @@
 Your personal operating manual. Not agent instructions (that's `CLAUDE.md`),
 not strategy (that's `ROADMAP.md`). This is *your* reference — maintain it.
 
-Last verified against the repo: 2026-10-07. Every claim below was checked that
+Last verified against the repo: 2026-10-11. Every claim below was checked that
 day; the ones that could only be checked in the Azure portal are marked so.
 
 ---
