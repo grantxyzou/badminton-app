@@ -4,7 +4,8 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { readActiveAnnouncements } from '@/lib/announcements';
 import { isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
-import { sendPushToAll } from '@/lib/push';
+import { sendPushToMembers } from '@/lib/push';
+import { rosterMemberIds } from '@/lib/roster';
 import { buildAnnouncementPayload } from '@/lib/pushMessages';
 import { randomBytes } from 'crypto';
 
@@ -110,7 +111,14 @@ export async function POST(req: NextRequest) {
        typo was fixed is exactly the empty interruption that teaches people to
        swipe these away. */
     try {
-      await sendPushToAll(buildAnnouncementPayload(announcement));
+      // TO THE ROSTER, NOT TO EVERYONE — the same narrowing as the sign-up
+      // trigger. `pushSubscriptions` is PERSON-scoped, so a member of two
+      // clubs has one set of devices, and `sendPushToAll` would tell every
+      // club in the deployment what THIS one announced. Flag off, the roster
+      // is every ACTIVE member, which also stops notifying a soft-deleted
+      // member whose phone is still subscribed.
+      const recipients = await rosterMemberIds(scope.groupId);
+      await sendPushToMembers([...recipients], buildAnnouncementPayload(announcement));
     } catch (err) {
       console.error('[announcements] push failed (announcement still saved):', err);
     }
