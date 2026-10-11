@@ -6,6 +6,15 @@ on:
       - main
   workflow_dispatch:
 
+# One deploy at a time. Azure OneDeploy refuses a second deployment while one
+# is in flight (409 Conflict), so three PRs merged inside two minutes on
+# 2026-10-11 started three runs and the middle one died red while the last one
+# carried everything. Queue them instead: `cancel-in-progress: false` so every
+# merged commit still deploys, in order, and the newest never loses the race.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
