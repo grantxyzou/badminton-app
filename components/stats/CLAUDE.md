@@ -495,11 +495,12 @@ racket and never excluded what they owned).
   - **The rail's refetch has THREE keys, two of them GATED, and is never
     keyed on the bag.** Format/budget reach both engines and always re-ask at
     once. The fit answers and the string budget are in the key only while
-    `PROFILE_READS_FIT` (`lib/racketProfile.ts`) is true — it is false until
-    the Phase 2 engine reads them, because re-asking on a field no engine
-    reads burnt the 10/min/IP limiter on identical answers (three reviewers,
-    one throttle-math). Flip it THERE, next to `buildProfile`, so the rail
-    cannot drift from the server. With the gate open: a change that leaves
+    `PROFILE_READS_FIT` (`lib/racketProfile.ts`) is true — which it has been
+    since the Phase 2 engine shipped (2026-09-09, #345); before that it was
+    false, because re-asking on a field no engine reads burnt the 10/min/IP
+    limiter on identical answers (three reviewers, one throttle-math). It
+    lives THERE, next to `buildProfile`, so the rail cannot drift from the
+    server. With the gate open: a change that leaves
     format/budget alone is debounced (`REC_REFETCH_DEBOUNCE_MS`, 500 ms); a
     string-budget change re-asks the string only; a fit change skips the
     string only when the SERVER said it is paired with the member's own frame

@@ -1,6 +1,6 @@
 # Push Notifications
 
-Flag: `NEXT_PUBLIC_FLAG_PUSH_NOTIFY`
+Flag: `NEXT_PUBLIC_FLAG_PUSH_NOTIFY` — retired 2026-09-10 (#353); push is unconditional since.
 
 ## Why
 
@@ -16,7 +16,7 @@ Three gaps had to be closed: no service worker (deliberate policy), no contact d
 
 **Its own container, not a field on `Member`.** `Member` is read on hot paths by both deployments; a per-device array would make it a write-contention hot doc. A new container also cannot break bpm-stable, satisfying the additive-only schema rule for the shared DB.
 
-**Sign-ups-open first.** The full pipeline shipped, but only one trigger is wired. The server path (container → send library → routes → admin self-test) landed *before* any UI, so the genuinely hard parts — SW registration, VAPID agreement, iOS standalone — were proven on a real phone via `POST /api/push/test` while the surface area was still small.
+**Sign-ups-open first.** The full pipeline shipped with one trigger wired (six by 2026-10-11 — see "Triggers today"). The server path (container → send library → routes → admin self-test) landed *before* any UI, so the genuinely hard parts — SW registration, VAPID agreement, iOS standalone — were proven on a real phone via `POST /api/push/test` while the surface area was still small.
 
 ## Shape
 
@@ -32,6 +32,21 @@ Three gaps had to be closed: no service worker (deliberate policy), no contact d
 | Opt-in UI | `components/PushSheet.tsx`, row in `components/ProfileTab.tsx` |
 
 Container `pushSubscriptions`, PK `/memberId`. One doc per device, deduped on `endpointHash` (sha256 of the endpoint — the endpoint itself is a send credential and never leaves the server). Cap 10 devices/member, oldest-`lastSeenAt` evicted.
+
+## Triggers today (2026-10-11)
+
+Every one is best-effort AFTER its primary write; a send failure logs and never fails the action.
+
+| Trigger | Where | Recipients |
+|---|---|---|
+| Sign-ups open (`signupOpen` false→true) | `app/api/session/route.ts` (PUT) | the group's roster (`rosterMemberIds`) |
+| Announcement posted | `app/api/announcements/route.ts` | `sendPushToAll` — the one remaining unnarrowed caller; a cross-group leak the day multi-group turns on |
+| Access request / join | `lib/joinNotify.ts`, `app/api/members/access-request/route.ts` | the group's admins |
+| Stringing status moved | `lib/stringingNotifyDispatch.ts` | the job's member (no price in the body) |
+| Payment reminder (settle +3 / +7 days) | `lib/paymentReminders.ts`, via the club's Gmail script | the member owing (no amount in the body) |
+| Admin self-test | `app/api/push/test/route.ts` | the calling admin |
+
+Still deferred: `deadline_soon`. The `payment_reminder` item below shipped under `docs/plans/payments.md` instead (2026-10-06, #514).
 
 ## Things that are easy to get wrong
 
