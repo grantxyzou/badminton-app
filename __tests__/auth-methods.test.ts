@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { resetMockStore, seedMember, setupAdminPin, memberCookieValue, getStore } from './helpers';
+import { resetMockStore, seedMember, setupAdminPin, memberCookieValue, getStore, seedTestAdminMember, adminCookieValue } from './helpers';
 import { GET } from '../app/api/auth/methods/route';
 import { POST as dismissNudge } from '../app/api/auth/nudge/route';
 import { reserveIdentity } from '../lib/authIdentity';
@@ -73,6 +73,18 @@ describe('GET /api/auth/methods', () => {
     // members/me-style exemption: your OWN address comes back, so Profile can
     // show which one you signed in with.
     expect(body.email).toBe('lin@example.com');
+  });
+
+  it("reports an admin's own inventory on a device holding only the admin cookie", async () => {
+    // `POST /api/admin` mints only an `admin_session`. The page gate lets that
+    // cookie in; this route read the member cookie alone and answered the
+    // anonymous shape, so Home told an admin with a PIN to set one
+    // (2026-10-11, "why is this showing").
+    await seedTestAdminMember();
+    const res = await GET(req(METHODS, `admin_session=${adminCookieValue()}`));
+    const body = await res.json();
+    expect(body.hasPin).toBe(true);
+    expect(body.linked).toEqual([]);
   });
 
   it("never reports another member's inventory", async () => {

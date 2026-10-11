@@ -375,6 +375,28 @@ export function verifyMemberAuth(req: NextRequest): MemberSession | null {
 }
 
 /**
+ * The member id of whoever is signed in on this device, from EITHER cookie:
+ * the `member_session` if there is one, else the `admin_session` (re-read, so
+ * a demoted or removed admin is nobody). `null` is anonymous.
+ *
+ * For the routes that answer "what does the CALLER have" — `auth/methods`,
+ * `auth/nudge` — and must not 401 a stranger. `POST /api/admin` mints ONLY an
+ * `admin_session`, so a phone an admin signed in on at Profile holds no
+ * member cookie at all; `auth/methods` read the member cookie alone and
+ * answered that phone the anonymous shape (no PIN, no password, nothing
+ * linked), and Home drew it as "Set a PIN so you can get back in" for an
+ * admin who signs in with one (Grant, 2026-10-11: "why is this showing").
+ * The page gate (`requireMember`) had let the same cookie in. One reading of
+ * who is signed in, not two.
+ */
+export async function callerMemberId(req: NextRequest): Promise<string | null> {
+  const member = verifyMemberAuth(req);
+  if (member) return member.memberId;
+  const admin = await isAdminAuthedWithMember(req);
+  return admin.authed ? admin.memberId : null;
+}
+
+/**
  * The group claim of a raw session token — signature and expiry verified,
  * nothing else — for `lib/groupContext.ts`, which resolves a request's group
  * synchronously from either cookie. `null` for anything that does not verify.
