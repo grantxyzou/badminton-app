@@ -35,6 +35,8 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const [refreshKey, setRefreshKey] = useState(0);
   // Session the Ledger drilled into; PaymentsCard preselects its chip.
   const [paymentsSessionId, setPaymentsSessionId] = useState<string | null>(null);
+  // Member the Roster should open on arrival (from Sign-in readiness).
+  const [rosterFocus, setRosterFocus] = useState<string | null>(null);
 
   // Which way the last move went. A push slides the page in from the right;
   // going BACK used to have no motion at all (the Command Center just cut in).
@@ -61,14 +63,11 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   }, []);
 
   /* ── Drill-down routing ── */
-  // 'session-details' and 'date-time' are two entry points to one screen — the
-  // pre-Command-Center layout had separate editors for them, retired with the
-  // COMMAND_CENTER flag (2026-09).
-  if (view === 'session-details' || view === 'date-time') {
+  if (view === 'session-details') {
     return <div className="animate-slideInRight"><SetupPage onBack={goBack} /></div>;
   }
   if (view === 'members') {
-    return <div className="animate-slideInRight"><RosterPage onBack={goBack} /></div>;
+    return <div className="animate-slideInRight"><RosterPage onBack={() => { setRosterFocus(null); goBack(); }} focusName={rosterFocus} /></div>;
   }
   if (view === 'birds') {
     return <div className="animate-slideInRight"><BirdsPage onBack={goBack} /></div>;
@@ -134,7 +133,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
 
   return (
     <div className={popped ? 'motion-fade' : undefined}>
-      <CommandCenter refreshKey={refreshKey} setView={push} onExit={onExit} />
+      <CommandCenter refreshKey={refreshKey} setView={push} onExit={onExit} onOpenMember={(name) => { setRosterFocus(name); push('members'); }} />
     </div>
   );
 }

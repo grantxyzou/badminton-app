@@ -239,7 +239,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
   return (
     <div className="space-y-4 w-full">
-      <AdminBackHeader onBack={onBack} title="Next Session" />
+      <AdminBackHeader onBack={onBack} title="Next session" />
 
       {prefillFailed && (
         <ErrorState
@@ -263,7 +263,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         <div className="glass-card p-5 space-y-3">
           <p className="fs-sm text-gray-400">{firstSession ? "Creates your group's first session." : 'Creates a new session. The current session will be archived.'}</p>
 
-          <Label text="Session Name">
+          <Label text="Title">
             <input
               id="advance-title"
               name="title"
@@ -334,7 +334,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             )}
           </Label>
 
-          <Label text="Date & Time">
+          <Label text="Date & start">
             <div className="flex gap-2">
               <div className="flex-1 min-w-0">
                 <DatePicker value={date} onChange={v => setDate(v)} placeholder="Date" />
@@ -352,7 +352,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             )}
           </Label>
 
-          <Label text="Sign-up Deadline">
+          <Label text="Sign-up deadline">
             <div className="flex gap-2">
               <div className="flex-1 min-w-0">
                 <DatePicker value={deadlineDate} onChange={v => setDeadlineDate(v)} placeholder="Date" />
@@ -363,7 +363,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             </div>
           </Label>
 
-          <Label text="Session End">
+          <Label text="End">
             <div className="flex gap-2">
               <div className="flex-1 min-w-0">
                 <DatePicker value={endDate} onChange={v => setEndDate(v)} placeholder="Date" />
@@ -378,7 +378,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             <Label text="Courts">
               <input id="advance-courts" name="courts" type="number" min={1} max={20} value={courts ?? ''} onChange={e => setCourts(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
             </Label>
-            <Label text="Max Players">
+            <Label text="Max players">
               <input id="advance-max-players" name="maxPlayers" type="number" min={1} max={100} value={maxPlayers ?? ''} onChange={e => setMaxPlayers(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
             </Label>
           </div>
@@ -512,7 +512,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
               disabled={advancing || !date || !time || !deadlineDate}
               className="cc-btn cc-btn-primary cc-btn-lg"
             >
-              {advancing ? 'Creating...' : 'Create Next Session \u2192'}
+              {advancing ? 'Creating...' : 'Create next session \u2192'}
             </button>
           )}
         </div>

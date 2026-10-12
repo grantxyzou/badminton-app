@@ -172,7 +172,7 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
   }
 
   // Dashboard renders its own h1 when on the dashboard view so the header
-  // disappears when the user drills into a sub-editor (Session Details,
-  // Members, etc.) — those render AdminBackHeader instead.
+  // disappears when the user drills into a sub-page (Set up, Roster, etc.) —
+  // those render AdminBackHeader instead.
   return <AdminDashboard onExit={onExit} />;
 }

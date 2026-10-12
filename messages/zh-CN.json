@@ -558,7 +558,7 @@
     "admin": {
       "checkFailed": "检查失败",
       "group": "管理",
-      "console": "管理控制台",
+      "console": "管理员工具",
       "needYou": "{count} 项待处理",
       "allClear": "没有待办"
     },
@@ -1555,7 +1555,7 @@
         "openCta": "开始接单",
         "closeCta": "暂停接单"
       },
-      "benchTitle": "工作台",
+      "benchTitle": "穿线工作台",
       "setupRow": "球线、库存与价格",
       "otherPrices": {
         "title": "其他价格",

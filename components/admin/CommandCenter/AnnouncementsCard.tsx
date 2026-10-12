@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
-import CardHeader from '@/components/primitives/CardHeader';
 import Collapse from '@/components/primitives/Collapse';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -188,11 +187,12 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
     <section className="glass-card p-4 space-y-3 flex flex-col" aria-label="Announcements">
       {/* The count is a claim about the list; a failed load never reaches this
           render (it returns the tinted StateCard above). */}
-      <CardHeader
-        icon="campaign"
-        title="Announcements"
-        subtitle={!loaded ? undefined : items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
-      />
+      {/* The page header names it; the card leads with the count. */}
+      {loaded && (
+        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+          {items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
+        </p>
+      )}
 
 
       <Collapse open={composing} spaceAbove="var(--space-3)">

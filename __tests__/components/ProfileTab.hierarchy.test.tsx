@@ -132,7 +132,7 @@ describe('ProfileTab — hierarchy pass', () => {
   it('renders the admin console as one row carrying the count, not a hero', async () => {
     signedIn();
     renderWith({ isAdmin: true });
-    expect(await screen.findByText('Admin console')).toBeDefined();
+    expect(await screen.findByText('Admin tools')).toBeDefined();
     expect(await screen.findByText('1 need you')).toBeDefined();
     // The hero's furniture is gone.
     expect(screen.queryByText(/Open admin home/i)).toBeNull();
@@ -144,7 +144,7 @@ describe('ProfileTab — hierarchy pass', () => {
     signedIn();
     renderWith({ isAdmin: false });
     await screen.findByText('Michael');
-    expect(screen.queryByText('Admin console')).toBeNull();
+    expect(screen.queryByText('Admin tools')).toBeNull();
   });
 
   // Legible-fail: a dead signal fetch must not render "0 need you", which is
@@ -153,7 +153,7 @@ describe('ProfileTab — hierarchy pass', () => {
     signedIn();
     mockAdminFetch({ fail: true });
     renderWith({ isAdmin: true });
-    expect(await screen.findByText('Admin console')).toBeDefined();
+    expect(await screen.findByText('Admin tools')).toBeDefined();
     // Let the three signal fetches actually settle first. Asserting absence
     // straight away would pass before any of them resolved — true of the
     // broken behaviour too, which is not a test. The success case above uses
@@ -165,6 +165,6 @@ describe('ProfileTab — hierarchy pass', () => {
     // never had a count. (`profile.admin.checkFailed`.)
     expect(screen.getByText("Couldn't check")).toBeDefined();
     // The row still works — the count is decoration, opening admin is the job.
-    expect(screen.getByRole('button', { name: /Admin console/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: /Admin tools/ })).toBeDefined();
   });
 });

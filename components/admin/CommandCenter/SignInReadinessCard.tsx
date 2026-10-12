@@ -27,7 +27,7 @@ interface Readiness {
  * A load failure is an explicit error, never a confident zero — "0 locked out"
  * is precisely the answer that would get the flag flipped.
  */
-export default function SignInReadinessCard({ refreshKey = 0 }: { refreshKey?: number }) {
+export default function SignInReadinessCard({ refreshKey = 0, onOpenMember }: { refreshKey?: number; onOpenMember?: (name: string) => void }) {
   const [data, setData] = useState<Readiness | null>(null);
   const [loadError, setLoadError] = useState(false);
   const flipped = isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
@@ -105,21 +105,30 @@ export default function SignInReadinessCard({ refreshKey = 0 }: { refreshKey?: n
           <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
             {locked === 1 ? 'This member has' : `These ${locked} members have`} no PIN, password or Google yet. They can tap
             &ldquo;I play here already&rdquo; to ask you, or set up a sign-in on Profile while they still can.
+            {onOpenMember ? ' Tap a name to give them a recovery code.' : ''}
           </p>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
             {data.cannotSignIn.map((name) => (
-              <li
-                key={name}
-                className="fs-sm"
-                style={{
-                  padding: 'var(--space-1) var(--space-4)',
-                  borderRadius: 'var(--radius-pill)',
-                  background: 'var(--inner-card-bg)',
-                  border: '1px solid var(--inner-card-border)',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                {name}
+              <li key={name}>
+                {/* A name with nowhere to go was a list of problems with no
+                    fix attached; it opens the member, recovery code inside. */}
+                <button
+                  type="button"
+                  className="fs-sm"
+                  disabled={!onOpenMember}
+                  onClick={() => onOpenMember?.(name)}
+                  aria-label={onOpenMember ? `Open ${name} in the roster` : undefined}
+                  style={{
+                    padding: 'var(--space-1) var(--space-4)',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'var(--inner-card-bg)',
+                    border: '1px solid var(--inner-card-border)',
+                    color: 'var(--text-primary)',
+                    cursor: onOpenMember ? 'pointer' : 'default',
+                  }}
+                >
+                  {name}
+                </button>
               </li>
             ))}
           </ul>
