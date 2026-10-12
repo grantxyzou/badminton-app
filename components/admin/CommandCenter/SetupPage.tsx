@@ -356,10 +356,12 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-4)' }}>
           <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 48, fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1, color: 'var(--accent)' }}>
-            ${perPlayer}
+            {activePlayerCount > 0 ? `$${perPlayer}` : '—'}
           </span>
           <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)' }}>
-            ${totalCost.toFixed(2)} ÷ {Math.max(1, activePlayerCount)}
+            {/* "$120 ÷ 1" beside "$0" said one person owes nothing. Nobody
+                signed up is no split yet, not a split by one. */}
+            {activePlayerCount > 0 ? `$${totalCost.toFixed(2)} ÷ ${activePlayerCount}` : `$${totalCost.toFixed(2)} · no one signed up yet`}
           </span>
         </div>
 

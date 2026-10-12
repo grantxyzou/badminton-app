@@ -560,7 +560,7 @@
     "admin": {
       "checkFailed": "Couldn't check",
       "group": "Admin",
-      "console": "Admin console",
+      "console": "Admin tools",
       "needYou": "{count} need you",
       "allClear": "All clear"
     },
@@ -1557,7 +1557,7 @@
           "openCta": "Open shop",
           "closeCta": "Close shop"
       },
-        "benchTitle": "Bench",
+        "benchTitle": "Stringing bench",
         "setupRow": "Strings, stock & prices",
         "otherPrices": {
           "title": "Other prices",

@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import EmptyState from '@/components/primitives/EmptyState';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
-import CardHeader from '@/components/primitives/CardHeader';
 import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -121,11 +120,10 @@ export default function SkipDatesEditor() {
 
   return (
     <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Skip dates">
-      <CardHeader
-        icon="calendar_today"
-        title="Skip dates"
-        subtitle="Dates the system will warn you about when advancing — holidays, travel, venue closures."
-      />
+      {/* The page header names it; the card says what it is for. */}
+      <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+        Dates you&apos;ll be warned about when advancing to next week — holidays, travel, venue closures.
+      </p>
 
       {loadState === 'refused' && (
         <EmptyState

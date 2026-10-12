@@ -63,7 +63,7 @@ export default function ReleasesView({ onBack }: Props) {
 
   return (
     <div className="space-y-4">
-      <AdminBackHeader onBack={onBack} title="Releases" />
+      <AdminBackHeader onBack={onBack} title="Release notes" />
 
       {form.kind !== 'hidden' ? (
         <ReleaseForm

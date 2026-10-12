@@ -1,5 +1,6 @@
 'use client';
 
+import { birdReorder } from './birdRunway';
 import { useEffect, useState } from 'react';
 import { isNoActiveSession } from '@/lib/apiFetch';
 import { isDormant, type DormantInput } from '@/lib/dormant';
@@ -120,11 +121,10 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
         // span the same window (see the mixed-window gotcha in CLAUDE.md).
         const stock = birds?.currentStock ?? 0;
         const burn = birds?.burnPerSession ?? 0;
-        const weeksLeft = burn > 0 && stock > 0 ? Math.floor(stock / burn) : null;
         // No burn data is "unknown", not "fine" — but it is also not an action,
-        // so it does not count. The hero said "Awaiting bird data" here; a row
-        // with room for two words cannot, and a wrong count is worse than none.
-        const birdsLow = weeksLeft !== null && weeksLeft <= 4;
+        // so it does not count. An empty cupboard always does (lib/birdRunway).
+        const reorder = birds ? birdReorder(stock, burn) : null;
+        const birdsLow = reorder === 'now' || reorder === 'soon';
 
         const dormant = Array.isArray(members) ? members.filter((m) => isDormant(m)).length : 0;
 

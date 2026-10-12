@@ -1,5 +1,6 @@
 'use client';
 
+import { birdReorder, type BirdReorder } from '@/lib/birdRunway';
 import { useEffect, useState } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { StateLink } from '@/components/primitives/StateCard';
@@ -22,6 +23,7 @@ type TileProblem = 'failed' | 'refused';
 interface BirdsData {
   birdStock: number;
   birdWeeksLeft: number | null;
+  reorder: BirdReorder | null;
 }
 
 interface RosterData {
@@ -66,7 +68,7 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
           const burn = b?.burnPerSession ?? 0;
           if (!cancelled) {
             setBirds({
-              data: { birdStock: stock, birdWeeksLeft: burn > 0 && stock > 0 ? Math.floor(stock / burn) : null },
+              data: { birdStock: stock, birdWeeksLeft: burn > 0 && stock > 0 ? Math.floor(stock / burn) : null, reorder: birdReorder(stock, burn) },
               problem: null,
             });
           }
@@ -137,7 +139,7 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
   );
 
   const birdsAlertClass = birds.data
-    ? birds.data.birdStock < 5 ? 'cc-dcard alert' : birds.data.birdStock < 10 ? 'cc-dcard warn' : 'cc-dcard'
+    ? birds.data.reorder === 'now' ? 'cc-dcard alert' : birds.data.reorder === 'soon' ? 'cc-dcard warn' : 'cc-dcard'
     : 'cc-dcard';
 
   return (

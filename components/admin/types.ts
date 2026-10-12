@@ -1,11 +1,9 @@
 export type AdminView =
   | 'dashboard'
   | 'session-details'
-  | 'date-time'
   | 'members'
   | 'birds'
   | 'advance'
-  | 'players-full'
   | 'releases'
   | 'ledger'
   | 'payments'

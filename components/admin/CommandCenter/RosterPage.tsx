@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
@@ -17,6 +17,9 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface RosterPageProps {
   onBack: () => void;
+  /** Open this member's editor once the roster has loaded — how Sign-in
+   *  readiness hands a locked-out name straight to its recovery code. */
+  focusName?: string | null;
 }
 
 interface RowData {
@@ -51,7 +54,7 @@ function Sparkline({ presence }: { presence: Array<1 | null> }) {
 }
 
 
-export default function RosterPage({ onBack }: RosterPageProps) {
+export default function RosterPage({ onBack, focusName = null }: RosterPageProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [presence, setPresence] = useState<Map<string, Array<1 | null>>>(new Map());
@@ -252,6 +255,17 @@ export default function RosterPage({ onBack }: RosterPageProps) {
     setFormError('');
     setSheetOpen(true);
   }
+
+  // Once, when the roster arrives: a name handed over from Sign-in readiness
+  // opens its editor, so the recovery code is one tap away, not a search.
+  const focused = useRef(false);
+  useEffect(() => {
+    if (focused.current || !focusName || loading) return;
+    const r = rows.find((x) => x.member.name.toLowerCase() === focusName.toLowerCase());
+    focused.current = true;
+    if (r) openEditSheet(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per hand-off
+  }, [focusName, loading, rows]);
 
   async function handleSave() {
     const name = formName.trim();
@@ -774,7 +788,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                   <span>Can give out gift cards</span>
                 </label>
 
-                <Field label="PIN reset">
+                <Field label="Recovery code">
                   <button
                     type="button"
                     onClick={handleResetPin}
@@ -782,7 +796,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     className="cc-btn cc-btn-secondary"
                     style={{ alignSelf: 'flex-start' }}
                   >
-                    {resettingPin ? 'Generating…' : 'Generate reset code'}
+                    {resettingPin ? 'Generating…' : 'Generate recovery code'}
                   </button>
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
                     For a player who forgot their PIN. Give them the code — they enter it under

@@ -5,10 +5,9 @@ import type { AdminNavProps } from './types';
 
 /**
  * Back-compat wrapper that delegates to the canonical `TopBar` primitive
- * (see `TopBar Spec.html` 2026-05-06 handoff). All seven admin sub-pages
- * (Roster, Birds, SessionDetails, DateTime, Releases, Members, Advance)
- * import this; routing them through `TopBar` gives them the sticky
- * scroll-condensed behavior without touching call sites.
+ * (see `TopBar Spec.html` 2026-05-06 handoff). Every admin sub-page imports
+ * this; routing them through `TopBar` gives them the sticky scroll-condensed
+ * behavior without touching call sites.
  *
  * The `sessionLabel` chip — when present — renders in the right slot.
  */

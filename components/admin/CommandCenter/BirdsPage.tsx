@@ -1,5 +1,6 @@
 'use client';
 
+import { birdReorder, birdWeeksLeft } from '@/lib/birdRunway';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
@@ -204,7 +205,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const openReconcileSheet = () => setReconcileSheet((prev) => ({ nonce: prev.nonce + 1, open: true }));
   const closeReconcileSheet = () => setReconcileSheet((prev) => ({ ...prev, open: false }));
 
-  const weeksRunway = burnPerSession > 0 ? currentStock / burnPerSession : null;
+  const weeksRunway = birdWeeksLeft(currentStock, burnPerSession);
+  const reorder = birdReorder(currentStock, burnPerSession);
   const currentPrice = useMemo(() => currentPricePerTube(purchases), [purchases]);
 
   // Brand summaries — grouped by FULL name (e.g. 'Ling-Mei 60' stays
@@ -258,12 +260,12 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
   const heroLabelColor = weeksRunway === null
     ? 'var(--text-muted)'
-    : weeksRunway < 2 ? 'var(--orange)' : weeksRunway < 4 ? 'var(--amber)' : 'var(--accent)';
-  const reorderPill = weeksRunway === null
+    : reorder === 'now' ? 'var(--orange)' : reorder === 'soon' ? 'var(--amber)' : 'var(--accent)';
+  const reorderPill = reorder === null
     ? null
-    : weeksRunway < 2
+    : reorder === 'now'
       ? { tone: 'orange', label: 'Reorder now' }
-      : weeksRunway < 4
+      : reorder === 'soon'
         ? { tone: 'amber', label: 'Reorder soon' }
         : { tone: 'green', label: 'Healthy' };
 

@@ -34,6 +34,8 @@ export interface OpenReceiptOpts {
 interface CommandCenterProps {
   refreshKey: number;
   setView: (v: AdminView) => void;
+  /** Open one member in the Roster editor. */
+  onOpenMember?: (name: string) => void;
   /** Exit the Admin tab back to Profile (Admin is reached from Profile). */
   onExit: () => void;
 }
@@ -43,7 +45,7 @@ interface CommandCenterProps {
  * across every admin domain (session, payments, birds, roster) so the
  * organizer can confirm "everything looks right" in 30 seconds.
  */
-export default function CommandCenter({ refreshKey, setView, onExit }: CommandCenterProps) {
+export default function CommandCenter({ refreshKey, setView, onExit, onOpenMember }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   // Members only needs the invite card even with one club: a new account can
   // only be made with an invite (docs/plans/members-only.md). The one rule,
@@ -125,7 +127,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
 
       const recipient = session?.eTransferRecipient ?? settings?.eTransferRecipient ?? null;
       if (!recipient || !session?.datetime) {
-        setReceiptError('Set an e-transfer recipient first (admin settings) before sharing.');
+        setReceiptError('Set an e-transfer recipient first (Admin → E-transfer recipient) before sharing.');
         setReceiptInput(null);
         return;
       }
@@ -227,7 +229,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
           not something to be interrupted by every Thursday. Access requests,
           which are someone waiting, stay at the top. */}
       <RevealSlot canBeEmpty placeholder={null}>
-        <SignInReadinessCard refreshKey={composedRefresh} />
+        <SignInReadinessCard refreshKey={composedRefresh} onOpenMember={onOpenMember} />
       </RevealSlot>
 
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
