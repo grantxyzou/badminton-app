@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
+import RegisterSwitch from '@/components/primitives/RegisterSwitch';
 import OverviewStrip from './OverviewStrip';
 import { StatsTakeoverContext } from './statsTakeover';
 import type { UseCheckIn } from './useCheckIn';
@@ -78,26 +79,9 @@ export default function StatsV2Shell({
         <OverviewStrip activeName={activeName} checkIn={checkIn} />
       </div>
 
-      {/* Full width, unlike v1's `maxWidth: 360`. NOTE: `.segment-control` is
-          shared with AdminTab (globals.css still calls it "Admin segment
-          control"), so the width change is a per-use override here and must
-          never become an edit to the shared class. */}
+      {/* The switch Stringing shares (RegisterSwitch), so the two can't drift. */}
       {!takeover && (
-      <div className="segment-control flex w-full">
-        {VIEWS.map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setView(id)}
-            aria-current={view === id ? 'page' : undefined}
-            className={`flex-1 flex items-center justify-center fs-sm ${
-              view === id ? 'segment-tab-active' : 'segment-tab-inactive'
-            }`}
-          >
-            {t(`registers.${id}`)}
-          </button>
-        ))}
-      </div>
+        <RegisterSwitch views={VIEWS} value={view} onChange={setView} label={(id) => t(`registers.${id}`)} ariaLabel={t('heading')} />
       )}
 
       {/* Keyed by view so a register switch remounts its content, and the

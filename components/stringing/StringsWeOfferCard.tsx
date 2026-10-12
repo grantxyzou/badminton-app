@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import Collapse from '@/components/primitives/Collapse';
 import ListRow from '@/components/primitives/ListRow';
 import { useRevealReady } from '@/components/primitives/Reveal';
@@ -27,6 +28,7 @@ import {
 import StringDetailSheet from './StringDetailSheet';
 import StringMap, { type MapDot } from './StringMap';
 import StockBadge from './StockBadge';
+import { formatServicePrice } from '@/lib/stringingRateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const VIEW_KEY = 'bpm:strings-view';
@@ -54,9 +56,27 @@ function readView(): View {
  * a request still starts from the Home card's request sheet.
  *
  * Renders nothing when the club lists nothing — the request form already
- * explains that case.
+ * explains that case. As the Stringing tab's whole Strings register
+ * (`showEmpty`, docs/plans/stringing-tabs.md) it says so instead, because a
+ * tab that opens onto nothing reads as broken.
+ *
+ * It also carries the rest of the prices there: a restring with the player's
+ * own string, and the stringer's note. The service card's "View pricing"
+ * expander used to hold them, and listed every string's price a second time.
  */
-export default function StringsWeOfferCard() {
+interface Props {
+  /** The whole register rather than one card among others: say "nothing
+   *  listed" instead of rendering nothing. */
+  showEmpty?: boolean;
+}
+
+/** The pricing doc's two player-facing extras. */
+interface OtherPrices {
+  ownStringCents: number | null;
+  note: string;
+}
+
+export default function StringsWeOfferCard({ showEmpty = false }: Props) {
   const t = useTranslations('home.stringing.offer');
   const tSetup = useTranslations('stats.gear.setup');
   const catalog = useCatalog('string');
@@ -70,6 +90,8 @@ export default function StringsWeOfferCard() {
   const [view, setView] = useState<View>(() => (typeof window === 'undefined' ? 'map' : readView()));
   /** Picked on the map; persists while the tab is mounted. */
   const [picked, setPicked] = useState<string | null>(null);
+  // null = not read yet; 'failed' leaves the rows out rather than guess "Ask".
+  const [other, setOther] = useState<OtherPrices | 'failed' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +106,19 @@ export default function StringsWeOfferCard() {
         } else setStatus('failed');
       })
       .catch(() => { if (!cancelled) setStatus('failed'); });
+    fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled) return;
+        // `services` is the doc's own marker that it was read; without it the
+        // answer is unknown, and an unknown price is never shown as "Ask".
+        if (!d || !Array.isArray(d.services)) { setOther('failed'); return; }
+        setOther({
+          ownStringCents: typeof d.ownStringCents === 'number' ? d.ownStringCents : null,
+          note: typeof d.note === 'string' ? d.note : '',
+        });
+      })
+      .catch(() => { if (!cancelled) setOther('failed'); });
     return () => { cancelled = true; };
   }, [attempt]);
 
@@ -94,12 +129,39 @@ export default function StringsWeOfferCard() {
     return sortShelf(shelf.strings.map((label) => ({ label, item: (shelf.links[label] && byId.get(shelf.links[label])) || null })));
   }, [shelf, catalog.items, catalog.loadError]);
 
-  // Holds its place until both the list and the catalog have answered; an
-  // empty list closes the slot (the tab's slot is `canBeEmpty`).
-  const ready = status !== 'loading' && (catalog.loaded || catalog.loadError);
+  // Holds its place until the list, the catalog and the prices have answered,
+  // so the price rows never arrive after the card. An empty list closes the
+  // slot, unless this is the whole register (`showEmpty`).
+  const ready = status !== 'loading' && (catalog.loaded || catalog.loadError) && other !== null;
   const empty = status === 'ready' && (shelf?.strings.length ?? 0) === 0;
-  useRevealReady(ready, empty);
-  if (!ready || empty) return null;
+  useRevealReady(ready, empty && !showEmpty);
+  if (!ready || (empty && !showEmpty)) return null;
+
+  // The own-string price and the note, below the strings they sit beside.
+  // Inset by a row's own padding, so the label and the figure line up with
+  // the strings' names and prices above them.
+  const otherPrices = other && other !== 'failed' ? (
+    <div className="flex flex-col gap-2" style={{ padding: '0 var(--space-4)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-3)' }}>
+        <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('ownString')}</span>
+        <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
+          {/* "Ask" rather than $0: no fixed price is not the same as free. */}
+          {formatServicePrice(other.ownStringCents) ?? t('priceAsk')}
+        </span>
+      </div>
+      {other.note && <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{other.note}</p>}
+    </div>
+  ) : null;
+
+  if (empty) {
+    return (
+      <div className="glass-card p-5 space-y-3">
+        <CardHeader icon="storefront" title={t('title')} />
+        <EmptyState icon="storefront">{t('empty')}</EmptyState>
+        {otherPrices}
+      </div>
+    );
+  }
 
   const bandOf = (label: string): StockBand | null => shelf?.stock?.[label] ?? null;
   const plotted = entries.filter(isPlottable);
@@ -303,6 +365,7 @@ export default function StringsWeOfferCard() {
           ) : (
             list(entries)
           )}
+          {otherPrices}
         </>
       )}
 

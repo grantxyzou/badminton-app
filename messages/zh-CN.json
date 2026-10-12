@@ -24,15 +24,14 @@
       "noneAction": "设置 PIN"
     },
     "stringing": {
-      "bench": {
-        "title": "穿线工作台",
-        "subtitle": "工单、球线与价格",
-        "waiting": "{count} 个待接",
-        "late": "{count} 个逾期",
-        "clear": "暂无待处理"
+      "registers": {
+        "racket": "球拍",
+        "strings": "球线",
+        "bench": "工作台"
       },
-      "viewPricing": "查看价格",
       "stringerTitle": "待穿线的球拍",
+      "seeStrings": "球线与价格",
+      "stringerEmpty": "目前没有分配给你的球拍。",
       "stringerSubtitle": "指派给你的。",
       "stringerFor": "给 {name}",
       "stringerError": "穿线单加载失败。",
@@ -62,12 +61,8 @@
         "gone": "这条修改已经处理过了，不用再确认。",
         "close": "关闭"
       },
-      "pricingEmpty": "还没公布价格，收拍时会跟你确认。",
-      "pricingUnavailable": "价格加载失败。",
       "jobsError": "球拍加载失败。",
       "retry": "重试",
-      "pricingAsk": "面议",
-      "pricingOwn": "自带球线",
       "steps": {
         "submit": "提交申请",
         "dropOff": "交付球拍",
@@ -183,6 +178,8 @@
         "seeHow": "看看打起来怎么样",
         "notOnMap": "不在地图上",
         "priceAsk": "询价",
+        "empty": "还没有列出球线，可以问问穿线师有哪些。",
+        "ownString": "自带拍线",
         "restringWith": "用这款线穿线",
         "clubCount": "俱乐部里有 {count} 人在用",
         "colours": "颜色",
@@ -1561,7 +1558,7 @@
       "setupRow": "球线、库存与价格",
       "otherPrices": {
         "title": "其他价格",
-        "subtitle": "每种球线的穿线价格在上方各行设置。以下内容显示在“查看价格”中，位于球线价格之下。",
+        "subtitle": "每种球线的穿线价格在上方各行设置。以下内容显示在穿线页的球线列表下方。",
         "own": "自带球线",
         "ownHint": "球员自带球线时的穿线价格。留空显示“面议”。",
         "note": "给球员的说明",

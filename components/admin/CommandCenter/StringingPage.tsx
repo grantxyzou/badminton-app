@@ -63,9 +63,17 @@ interface Props {
   onBack: () => void;
   /** The header's crumb: "Admin" from the Command Center, "Stringing" from the tab. */
   crumb?: string;
+  /** Rendered as the Stringing tab's Bench register (docs/plans/stringing-tabs.md):
+   *  the bench itself has no Back header there, because the tab's own header
+   *  and register switch already say where you are. */
+  embedded?: boolean;
+  /** Called with `true` while a sub-screen (a job, intake, the archive,
+   *  set-up) stands in for the whole tab, so the tab hides its chrome around
+   *  it, and with `false` when the bench is back. */
+  onTakeover?: (on: boolean) => void;
 }
 
-export default function StringingPage({ onBack, crumb }: Props) {
+export default function StringingPage({ onBack, crumb, embedded = false, onTakeover }: Props) {
   const t = useTranslations('admin.stringing');
   const online = useOnline();
   const [jobs, setJobs] = useState<StringingJob[] | null>(null);
@@ -250,6 +258,14 @@ export default function StringingPage({ onBack, crumb }: Props) {
     jobs?.find((j) => j.id === selectedId) ??
     archivedJobs?.find((j) => j.id === selectedId) ??
     null;
+  // A detail view whose job is gone renders the bench, so it is not a takeover.
+  const takingOver = view !== 'bench' && !(view === 'detail' && !selected);
+  useEffect(() => {
+    onTakeover?.(takingOver);
+  }, [takingOver, onTakeover]);
+  // Released on unmount: switching register away must never leave the tab's
+  // chrome hidden.
+  useEffect(() => () => onTakeover?.(false), [onTakeover]);
   // Resolved once per render rather than per row, so every row on the screen
   // agrees about what day it is even if the render straddles midnight.
   const today = todayIso();
@@ -579,7 +595,7 @@ export default function StringingPage({ onBack, crumb }: Props) {
     // Returning to the bench from a job, the archive or intake: it fades back
     // rather than cutting in (the wrapper's slide only runs on first entry).
     <div className="motion-fade">
-      <AdminBackHeader onBack={onBack} title={t('benchTitle')} crumb={crumb} />
+      {!embedded && <AdminBackHeader onBack={onBack} title={t('benchTitle')} crumb={crumb} />}
       {/* No horizontal padding here. The app shell's <main> already carries
           `px-4`, and a second inset made every card on the three stringing
           screens 362px wide against the app's 394 — visibly narrower than the

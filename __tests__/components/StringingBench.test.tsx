@@ -715,6 +715,68 @@ describe('the bench lists first', () => {
   });
 });
 
+describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', () => {
+  // The tab's own header and register switch already say where you are, so the
+  // bench drops its Back header there. Its sub-screens take the whole tab over
+  // (the tab hides its chrome) and come back to the Bench register.
+  function respondEmbedded() {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () =>
+            String(url).includes('/shop')
+              ? { open: true }
+              : String(url).includes('/strings')
+                ? { strings: ['BG80 white'] }
+                : String(url).includes('/pricing')
+                  ? { services: [], ownStringCents: null, note: '' }
+                  : String(url).includes('/stock')
+                    ? { lines: [], unmatched: [], purchases: [], aliases: {}, totals: { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0 } }
+                    : { jobs: [job], view: 'bench' },
+        } as Response),
+      ),
+    );
+  }
+
+  it('has no Back header of its own', async () => {
+    respondEmbedded();
+    wrap(<StringingPage embedded onBack={() => {}} onTakeover={() => {}} />);
+    await screen.findByText('J-0042');
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Bench' })).toBeNull();
+  });
+
+  it('takes the tab over for set-up, and gives it back on Back', async () => {
+    respondEmbedded();
+    const onTakeover = vi.fn();
+    wrap(<StringingPage embedded onBack={() => {}} onTakeover={onTakeover} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock & prices' }));
+    await screen.findByText('Other prices');
+    expect(onTakeover).toHaveBeenLastCalledWith(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('J-0042')).toBeDefined();
+    expect(onTakeover).toHaveBeenLastCalledWith(false);
+  });
+
+  it('takes the tab over for a job, too', async () => {
+    respondEmbedded();
+    const onTakeover = vi.fn();
+    wrap(<StringingPage embedded onBack={() => {}} onTakeover={onTakeover} />);
+    await screen.findByText('J-0042');
+    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.actions.open }));
+    await waitFor(() => expect(onTakeover).toHaveBeenLastCalledWith(true));
+  });
+
+  it('keeps its Back header when opened from the Command Center', async () => {
+    respondEmbedded();
+    wrap(<StringingPage onBack={() => {}} />);
+    await screen.findByText('J-0042');
+    expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
+  });
+});
+
 describe('Mine / All', () => {
   // Only worth a control when somebody else strings too. Read off the jobs
   // already on screen (an All load), so it arrives in the same frame as the
