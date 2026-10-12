@@ -117,6 +117,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // refetch the current view).
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [showAdmin, setShowAdmin] = useState(false);
+  // The bench opened from the Stringing tab. Held HERE, above that tab's
+  // `stringing-${refreshNonce}` key, so pull-to-refresh keeps it open.
+  const [stringingBenchOpen, setStringingBenchOpen] = useState(false);
   // Tri-state: `showAdmin` alone can't tell "confirmed not-admin" from
   // "not determined yet". On a reload landing on ?tab=admin, the bounce
   // effect would fire on the initial `false` BEFORE the async probe
@@ -838,7 +841,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           ) : (
           <>
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="motion-fade"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} /></div>}
-          {activeTab === 'stringing' && <div key={`stringing-${refreshNonce}`} className="motion-fade"><StringingTab /></div>}
+          {activeTab === 'stringing' && <div key={`stringing-${refreshNonce}`} className="motion-fade"><StringingTab isAdmin={showAdmin} benchOpen={stringingBenchOpen} onBenchOpenChange={setStringingBenchOpen} /></div>}
           {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="motion-fade"><SkillsTab onTabChange={setActiveTab} /></div>}
           {/* Admin's verdict is still pending (a reload or deep link onto the
               tab): show the console's loading frame, not an empty page. */}

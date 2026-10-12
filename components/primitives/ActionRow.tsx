@@ -49,8 +49,11 @@ export default function ActionRow({
         color: 'var(--text-primary)',
       }}
     >
+      {/* Decorative: the label names the action. Without this a screen
+          reader reads the ligature too ("link Li-Ning No. 1"). */}
       <span
         className="material-icons"
+        aria-hidden="true"
         style={{
           fontSize: 'var(--fs-stat)',
           color: destructive ? 'var(--red-soft)' : 'var(--text-secondary)',
