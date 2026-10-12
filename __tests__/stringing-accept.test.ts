@@ -383,3 +383,32 @@ describe('the two price mechanisms cannot drift apart', () => {
     expect(stored(job.id).pendingEdit?.priceCents).toBe(3400);
   });
 });
+
+/**
+ * A colour belongs to the string it was picked for (docs/design/strings-shelf-spec.md).
+ * Accepting a different string must not leave "BG80 · Yellow" on a job now
+ * strung with something that may not come in yellow.
+ */
+describe('the colour follows the string', () => {
+  it('is dropped when an accepted change swaps the string', async () => {
+    const job = await seedJob({ stringLabel: 'BG65', stringColor: 'Yellow' });
+    await propose(job, { stringLabel: 'BG80' });
+    await answer(job, 'wei', 'accept');
+    expect(stored(job.id).stringLabel).toBe('BG80');
+    expect(stored(job.id).stringColor).toBeUndefined();
+  });
+
+  it('stays when the change is only the price or tension', async () => {
+    const job = await seedJob({ stringLabel: 'BG65', stringColor: 'Yellow', priceCents: 3000 });
+    await propose(job, { priceCents: 3200 });
+    await answer(job, 'wei', 'accept');
+    expect(stored(job.id).stringColor).toBe('Yellow');
+  });
+
+  it('stays when the player declines', async () => {
+    const job = await seedJob({ stringLabel: 'BG65', stringColor: 'Yellow' });
+    await propose(job, { stringLabel: 'BG80' });
+    await answer(job, 'wei', 'decline');
+    expect(stored(job.id)).toMatchObject({ stringLabel: 'BG65', stringColor: 'Yellow' });
+  });
+});

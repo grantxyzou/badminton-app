@@ -77,7 +77,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     if (decision === 'accept') {
       if (pending.racketLabel !== undefined) next.racketLabel = pending.racketLabel;
-      if (pending.stringLabel !== undefined) next.stringLabel = pending.stringLabel;
+      if (pending.stringLabel !== undefined) {
+        next.stringLabel = pending.stringLabel;
+        // The colour was picked for the OLD string; the new one may not come
+        // in it. The stringer confirms it at hand-over, so none beats a stale one.
+        delete next.stringColor;
+      }
       if (pending.tensionMains !== undefined) next.tensionMains = pending.tensionMains;
       if (pending.tensionCrosses !== undefined) next.tensionCrosses = pending.tensionCrosses;
       if (pending.priceCents !== undefined) next.priceCents = pending.priceCents;

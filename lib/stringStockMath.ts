@@ -64,8 +64,20 @@ export function summarizeStringStock(input: {
   // Latest purchase per string decides the price; purchases sorted by date then createdAt.
   const sorted = input.purchases.slice().sort((a, b) => (a.date + a.createdAt < b.date + b.createdAt ? -1 : 1));
   const latestPerMetre = new Map<string, number>();
+  // An offered label is renamed more often than a reel changes: "BG65" on the
+  // shelf becomes "Yonex BG65 white" and every purchase logged under the old
+  // spelling would read as a different string, leaving the new one "unknown".
+  // A purchase carries the catalog row it was bought as, so that finds it.
+  // The old spelling then stands for the new one for JOBS too: a racket
+  // strung under the old name still used a set of that reel.
+  const byCatalog = new Map<string, string>();
+  for (const [key, line] of byKey) if (line.catalogId && !byCatalog.has(line.catalogId)) byCatalog.set(line.catalogId, key);
+  const renamed = new Map<string, string>();
   for (const p of sorted) {
-    const key = labelKey(p.label);
+    const own = labelKey(p.label);
+    const moved = !byKey.has(own) && p.catalogId ? byCatalog.get(p.catalogId) : undefined;
+    if (moved) renamed.set(own, moved);
+    const key = moved ?? own;
     let line = byKey.get(key);
     if (!line) {
       // Stock for a string no longer on the offered list still counts; the
@@ -88,8 +100,9 @@ export function summarizeStringStock(input: {
   const unmatched = new Map<string, { label: string; usedSets: number }>();
   for (const j of input.jobs) {
     if (!STRUNG_STATUSES.has(j.status)) continue;
-    const key = labelKey(j.stringLabel ?? '');
-    if (!key) continue;
+    const own = labelKey(j.stringLabel ?? '');
+    if (!own) continue;
+    const key = byKey.has(own) ? own : renamed.get(own) ?? own;
     const line = byKey.get(key);
     if (line) line.usedSets += 1;
     else {
