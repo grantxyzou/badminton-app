@@ -11,10 +11,10 @@
  * cookie and nothing else. Two handlers with two rules beats one handler with
  * a branch, because the branch is where the body-trust leaks.
  *
- * What a player may set is the racket, the string and the tension. What they
- * may NOT set is the price (the stringer's, and never theirs to propose), the
- * status (always `requested` — they have not handed anything over yet), the
- * stringer, or the ready-by date. Those are claims about the bench.
+ * What a player may set is the racket, the string (and its colour) and the
+ * tension. What they may NOT set is the price (the stringer's, and never
+ * theirs to propose), the status (always `requested` — they have not handed
+ * anything over yet), the stringer, or the ready-by date. Those are claims about the bench.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
@@ -102,6 +102,11 @@ export async function POST(req: NextRequest) {
   if (!isValidTension(body.tensionMains) || !isValidTension(body.tensionCrosses)) {
     return NextResponse.json({ error: 'invalid_tension' }, { status: 400 });
   }
+  // Optional, and never refused: a colour that is not a short string is
+  // dropped rather than failing a restring over a detail the stringer
+  // confirms at hand-over anyway. Kept apart from `stringLabel` so stock
+  // still matches the job to its reel by label.
+  const stringColor = label(body.stringColor, 30);
 
   const now = new Date().toISOString();
   try {
@@ -139,6 +144,7 @@ export async function POST(req: NextRequest) {
       status: 'requested',
       racketLabel,
       stringLabel,
+      ...(stringColor ? { stringColor } : {}),
       tensionMains: body.tensionMains,
       tensionCrosses: body.tensionCrosses,
       method: 'Zach · 2 strings, 4 knots',

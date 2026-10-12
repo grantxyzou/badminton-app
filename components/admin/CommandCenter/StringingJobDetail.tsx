@@ -222,7 +222,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
 
   const specRows: [string, string][] = [
     [t('spec.racket'), local.racketLabel],
-    [t('spec.string'), local.stringLabel],
+    [t('spec.string'), local.stringColor ? `${local.stringLabel} · ${local.stringColor}` : local.stringLabel],
     [t('spec.tension'), `${local.tensionMains} / ${local.tensionCrosses} lb`],
     [t('spec.method'), local.method],
   ];

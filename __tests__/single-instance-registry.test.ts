@@ -45,6 +45,7 @@ const REGISTRY: ReadonlyArray<{ file: string; name: string; scaleOut: ScaleOut; 
   { file: 'lib/cosmos.ts', name: 'pointerMemo', scaleOut: 'stale', note: '5 s per-group session-pointer memo; an advance on one instance reads old on another for up to POINTER_TTL_MS' },
   { file: 'lib/levelStore.ts', name: 'calCache', scaleOut: 'stale', note: 'group calibration, 30 s TTL; writers invalidate only their own process' },
   { file: 'app/api/equipment/catalog/route.ts', name: 'memo', scaleOut: 'stale', note: '60 s catalog memo; also honest only with real Cosmos (memoEnabled)' },
+  { file: 'lib/stringShelfRead.ts', name: 'shelfCache', scaleOut: 'stale', note: '60 s per-group player stock band + club count; a purchase or list save invalidates only its own process' },
   { file: 'lib/sharedRead.ts', name: 'inflight', scaleOut: 'browser', note: 'client-side fetch dedupe for cards that mount together' },
   { file: 'lib/sharedRead.ts', name: 'inflightFetches', scaleOut: 'browser', note: 'client-side fetch dedupe for cards that mount together' },
   { file: 'lib/useInsight.ts', name: 'cache', scaleOut: 'browser', note: 'client hook' },
@@ -111,7 +112,7 @@ describe('single-instance registry', () => {
     // and the pointer-memo gotcha should find the same files here. Pin the
     // set so the two cannot drift apart silently.
     const risky = REGISTRY.filter((r) => r.scaleOut === 'multiplies' || r.scaleOut === 'stale').map((r) => r.file);
-    expect(new Set(risky)).toEqual(new Set(['lib/rateLimit.ts', 'lib/cosmos.ts', 'lib/levelStore.ts', 'app/api/equipment/catalog/route.ts']));
+    expect(new Set(risky)).toEqual(new Set(['lib/rateLimit.ts', 'lib/cosmos.ts', 'lib/levelStore.ts', 'app/api/equipment/catalog/route.ts', 'lib/stringShelfRead.ts']));
   });
 
   it('the scanner itself still finds the rate limiter (a regex that matches nothing passes vacuously)', () => {

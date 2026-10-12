@@ -21,6 +21,7 @@ import {
   StringStockError, deleteStringPurchase, logStringPurchase, readStringCatalog, readStringPurchases, summarizeStringStock, validatePurchase,
 } from '@/lib/stringStock';
 import { mirrorStringPurchase, mirrorStringPurchaseDeleted } from '@/lib/ledgerMirror';
+import { forgetShelfExtras } from '@/lib/stringShelfRead';
 import type { StringingJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -75,6 +76,8 @@ export async function POST(req: NextRequest) {
     const groupId = resolveGroupId(req);
     const purchase = await logStringPurchase(groupId, input, admin.memberId);
     await mirrorStringPurchase(groupScope(groupId), purchase);
+    // A reel just logged should not read "Out" to players for another minute.
+    forgetShelfExtras(groupId);
     return NextResponse.json({ purchase }, { status: 201 });
   } catch (err) {
     if (err instanceof StringStockError) return NextResponse.json({ error: err.code }, { status: 400 });
@@ -96,6 +99,7 @@ export async function DELETE(req: NextRequest) {
     const groupId = resolveGroupId(req);
     const removed = await deleteStringPurchase(groupId, id);
     await mirrorStringPurchaseDeleted(groupScope(groupId), removed);
+    forgetShelfExtras(groupId);
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof StringStockError) return NextResponse.json({ error: err.code }, { status: 404 });
