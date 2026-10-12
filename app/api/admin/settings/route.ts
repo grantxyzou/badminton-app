@@ -5,6 +5,7 @@ import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
 import { readGroup, updateGroupSettings } from '@/lib/groups';
+import { recipientOf } from '@/lib/payTo';
 import type { ETransferRecipient } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,12 @@ function isValidSkipDates(value: unknown): value is string[] {
  * BPM before the backfill has created its doc — they are read from the
  * calling admin's own Member doc, where they always were. PATCH writes BOTH
  * (the Member fields stay for rollback: older code reads only those).
+ *
+ * EXCEPT THE RECIPIENT, which reads the group doc whenever one exists, flag on
+ * or off, and PATCH writes the group doc whenever one exists. Members are told
+ * that copy (`clubPayTo` in lib/payTo.ts), so this screen has to show and edit
+ * that copy too — with groups off it once showed the admin's own while Home
+ * showed the group's, and a save never reached members (2026-10-12).
  */
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -53,12 +60,13 @@ export async function GET(req: NextRequest) {
     // PER FIELD: a group doc that exists but has never had a recipient saved
     // still answers with the admin's — otherwise Setup showed no recipient
     // until the first re-save, and receipts went out without one.
-    const group = groupsOn() ? await readGroup(resolveGroupId(req)) : undefined;
-    const skipDates = Array.isArray(group?.settings.skipDates) && group.settings.skipDates.length > 0
-      ? group.settings.skipDates
+    const group = await readGroup(resolveGroupId(req));
+    const groupSkipDates = groupsOn() ? group?.settings.skipDates : undefined;
+    const skipDates = Array.isArray(groupSkipDates) && groupSkipDates.length > 0
+      ? groupSkipDates
       : Array.isArray(member.skipDates) ? member.skipDates : [];
     return NextResponse.json({
-      eTransferRecipient: group?.settings.eTransferRecipient ?? member.eTransferRecipient ?? null,
+      eTransferRecipient: recipientOf(group) ?? member.eTransferRecipient ?? null,
       skipDates,
     });
   } catch (error) {
@@ -98,14 +106,14 @@ export async function PATCH(req: NextRequest) {
       ...(body.eTransferRecipient !== undefined ? { eTransferRecipient: body.eTransferRecipient } : {}),
     };
     const { resource } = await container.items.upsert(updated);
-    // The group doc is the authoritative copy once groups are on. Written
-    // AFTER the Member doc so a failure here leaves the legacy copy current.
-    if (groupsOn()) {
-      await updateGroupSettings(resolveGroupId(req), {
-        ...(body.skipDates !== undefined ? { skipDates: body.skipDates } : {}),
-        ...(body.eTransferRecipient !== undefined ? { eTransferRecipient: body.eTransferRecipient } : {}),
-      });
-    }
+    // The group doc is the authoritative copy, written whenever it exists
+    // (a no-op when it does not), flag on or off: members are told its
+    // recipient either way. AFTER the Member doc so a failure here leaves the
+    // legacy copy current.
+    await updateGroupSettings(resolveGroupId(req), {
+      ...(body.skipDates !== undefined ? { skipDates: body.skipDates } : {}),
+      ...(body.eTransferRecipient !== undefined ? { eTransferRecipient: body.eTransferRecipient } : {}),
+    });
     // This reads and echoes back the caller's own MEMBER document, so every
     // member secret has to come off — not just the PIN hash. `recoveryCode`
     // was already leaking here before the credential fields existed.

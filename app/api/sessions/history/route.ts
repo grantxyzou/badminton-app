@@ -4,6 +4,8 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
+import { readGroup } from '@/lib/groups';
+import { recipientOf } from '@/lib/payTo';
 import type { ETransferRecipient, Member, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -30,11 +32,14 @@ export async function GET(req: NextRequest) {
     const scope = groupScope(resolveGroupId(req));
     const membersContainer = getContainer('members');
 
-    // The calling admin's own recipient is the default; a session may override it.
+    // The club's recipient is the default (the group doc's, else the calling
+    // admin's own — the same answer the settings screen shows and members are
+    // told, lib/payTo.ts); a session may override it.
     const { resource: adminMember } = await membersContainer
       .item(auth.memberId, auth.memberId)
       .read<Member>();
-    const globalRecipient: ETransferRecipient | null = adminMember?.eTransferRecipient ?? null;
+    const globalRecipient: ETransferRecipient | null =
+      recipientOf(await readGroup(scope.groupId)) ?? adminMember?.eTransferRecipient ?? null;
 
     // The currently-active session is owned by the Command Center's live
     // receipt — this list is for PAST (archived) sessions only. Exclude it
