@@ -72,6 +72,8 @@ interface LedgerPageProps {
   /** Drill into a session's payments. Omitted in contexts (e.g. tests)
    *  that render the page in isolation — rows stay inert then. */
   onOpenSession?: (sessionId: string) => void;
+  /** Every past session, outside the range — Past sessions lives here now. */
+  onOpenPastSessions?: () => void;
 }
 
 const money = (cents: number) => `${cents < 0 ? '−' : ''}$${(Math.abs(cents) / 100).toFixed(2)}`;
@@ -129,7 +131,7 @@ function Muted({ children }: { children: React.ReactNode }) {
  * A failed load is the error state and NO tiles: six true figures and one
  * silent zero is the lying empty state with a straight face.
  */
-export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
+export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }: LedgerPageProps) {
   const online = useOnline();
   const [range, setRange] = useState<RangeKey>('12w');
   const [data, setData] = useState<MoneyData | null>(null);
@@ -510,6 +512,13 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
               </button>
             ))}
           </div>
+        )}
+        {onOpenPastSessions && (
+          <button type="button" className="bpm-row-link" onClick={onOpenPastSessions}>
+            <span className="material-icons icon-sm" aria-hidden="true">restore</span>
+            <span className="fs-sm">Every past session, with per-player cost and % paid</span>
+            <span className="material-icons icon-sm" aria-hidden="true">chevron_right</span>
+          </button>
         )}
       </Section>
 

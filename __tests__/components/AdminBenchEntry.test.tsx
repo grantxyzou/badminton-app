@@ -69,7 +69,7 @@ describe('the bench is reachable from the admin screen that actually renders', (
     process.env[FLAG] = 'false';
     renderCenter();
     // The rest of the list is untouched — the flag hides one row, not the menu.
-    expect(await screen.findByRole('button', { name: /Past sessions/i })).toBeDefined();
+    expect(await screen.findByRole('button', { name: /Ledger/i })).toBeDefined();
     expect(screen.queryByRole('button', { name: /Stringing bench/i })).toBeNull();
   });
 });

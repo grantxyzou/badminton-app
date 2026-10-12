@@ -165,7 +165,6 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
       title: 'Money',
       rows: [
         { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
-        { icon: 'restore', label: 'Past sessions', onClick: () => setView('past-sessions') },
         ...(giftCardsOn ? [{ icon: 'payments', label: 'Gift cards', onClick: () => setView('gift-cards') }] : []),
         { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
       ],

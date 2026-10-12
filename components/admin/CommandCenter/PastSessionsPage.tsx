@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
-import ReceiptSheet from './ReceiptSheet';
 import { fmtShortDate } from '@/lib/fmt';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
 
@@ -24,19 +23,17 @@ interface HistoryRow {
 
 interface PastSessionsPageProps {
   onBack: () => void;
+  /** A row opens that session's payments — the same as a Ledger row, and one
+   *  tap from its receipt (Payments' Share). It opened the receipt directly,
+   *  so the three lists of past sessions did three different things. */
+  onOpenSession: (sessionId: string) => void;
 }
 
-export default function PastSessionsPage({ onBack }: PastSessionsPageProps) {
+export default function PastSessionsPage({ onBack, onOpenSession }: PastSessionsPageProps) {
   const [rows, setRows] = useState<HistoryRow[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   // Bumped by "Try again" to re-run the load effect.
   const [attempt, setAttempt] = useState(0);
-
-  // Receipt sheet state — this page owns its OWN instance (it renders instead
-  // of CommandCenter, so it can't reuse CommandCenter's sheet).
-  const [receiptOpen, setReceiptOpen] = useState(false);
-  const [receiptInput, setReceiptInput] = useState<ReceiptInput | null>(null);
-  const [receiptError, setReceiptError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -57,20 +54,10 @@ export default function PastSessionsPage({ onBack }: PastSessionsPageProps) {
     };
   }, [attempt]);
 
-  const openReceipt = useCallback((row: HistoryRow) => {
-    if (!row.receipt) {
-      setReceiptInput(null);
-      setReceiptError(row.receiptError ?? 'No receipt available for this session.');
-    } else {
-      setReceiptError('');
-      setReceiptInput(row.receipt);
-    }
-    setReceiptOpen(true);
-  }, []);
 
   return (
     <div className="animate-slideInRight">
-      <AdminBackHeader onBack={onBack} title="Past sessions" />
+      <AdminBackHeader onBack={onBack} title="Past sessions" crumb="Ledger" />
 
       <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {loadError ? (
@@ -105,8 +92,8 @@ export default function PastSessionsPage({ onBack }: PastSessionsPageProps) {
             return (
               <ListRow
                 key={row.sessionId}
-                onClick={() => openReceipt(row)}
-                ariaLabel={`Receipt for ${fmtShortDate(row.date)}`}
+                onClick={() => onOpenSession(row.sessionId)}
+                ariaLabel={`Payments for ${fmtShortDate(row.date)}`}
                 title={
                   <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', fontWeight: 600 }}>
                     {fmtShortDate(row.date) || row.sessionId}
@@ -129,13 +116,6 @@ export default function PastSessionsPage({ onBack }: PastSessionsPageProps) {
           })
         )}
       </div>
-
-      <ReceiptSheet
-        open={receiptOpen}
-        onClose={() => setReceiptOpen(false)}
-        input={receiptInput}
-        error={receiptError || undefined}
-      />
     </div>
   );
 }
