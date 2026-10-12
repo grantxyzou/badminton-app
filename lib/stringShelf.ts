@@ -24,10 +24,22 @@ export interface Shelf {
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
+/**
+ * An offered label that means "I'll bring my own string" rather than a string
+ * on the shelf. Before the request sheet had its own "Bring my own string"
+ * row, a club could only offer that by listing it, so an old list can carry
+ * one — and the player would then see it twice, the second with no reel,
+ * price or stock behind it. The admin still sees the chip to remove it.
+ */
+const BRING_OWN = /^\s*(bring(ing)?\s+(my|your|their|own)\b|b\.?y\.?o\.?\b|own\s+string\b|自带)/i;
+export function isBringOwnLabel(label: string): boolean {
+  return BRING_OWN.test(label);
+}
+
 /** The payload, or `null` when the list itself is unknown (failed or throttled). */
 export function parseShelf(d: unknown): Shelf | null {
   if (!isObj(d) || !Array.isArray(d.strings)) return null;
-  const strings = d.strings.filter((s): s is string => typeof s === 'string');
+  const strings = d.strings.filter((s): s is string => typeof s === 'string' && !isBringOwnLabel(s));
   const links: Record<string, string> = {};
   if (isObj(d.links)) for (const [k, v] of Object.entries(d.links)) if (typeof v === 'string') links[k] = v;
   const prices: Record<string, number | null> = {};

@@ -465,3 +465,15 @@ describe('the string list as a shelf', () => {
     expect(sentBody(fetchMock).stringColor).toBeUndefined();
   });
 });
+
+describe('a club list that still carries "Bring my own"', () => {
+  it('shows the built-in row once, not a second unpriced copy', async () => {
+    mockApi(['BG80 white', 'Bring my own']);
+    wrap();
+    await screen.findByRole('radiogroup', { name: 'Which string?' });
+    expect(screen.getAllByRole('radio').map((r) => r.textContent)).toEqual([
+      expect.stringContaining('BG80 white'),
+      expect.stringContaining('Bring my own string'),
+    ]);
+  });
+});
