@@ -13,6 +13,8 @@ interface Props {
   /** Only rendered for an admin of the current club; the endpoint enforces it too. */
   enabled?: boolean;
   groupName?: string;
+  /** On its own page the page header names it; the card keeps only its subtitle. */
+  bare?: boolean;
 }
 
 /**
@@ -29,7 +31,7 @@ interface Props {
  * The weekly "Share sign-up link" on the Next session card carries NO invite
  * any more: a one-time link in a chat is used up by the first tap.
  */
-export default function InviteCard({ enabled = true, groupName }: Props) {
+export default function InviteCard({ enabled = true, groupName, bare = false }: Props) {
   const t = useTranslations('groups.invite');
   const tGroups = useTranslations('groups');
   const { invites, loading, error, busy, create, revoke, reload } = useInvites(enabled);
@@ -79,7 +81,11 @@ export default function InviteCard({ enabled = true, groupName }: Props) {
     // `space-y-3` on the CARD, not a margin on the body: `CardHeader` sets no
     // bottom margin by design, so the card owns the gap under it.
     <div className="glass-card space-y-3" style={{ padding: 'var(--space-5)' }}>
-      <CardHeader icon="link" title={t('title')} subtitle={t('subtitle')} />
+      {bare ? (
+        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('subtitle')}</p>
+      ) : (
+        <CardHeader icon="link" title={t('title')} subtitle={t('subtitle')} />
+      )}
 
       <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
         {loading ? (

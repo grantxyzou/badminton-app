@@ -43,7 +43,7 @@ const who = (p: Person | null) => (p ? p.name ?? 'a deleted account' : '—');
  * oldest-source-first reading of the redeemer's credit, so a card's
  * "remaining" is the share of their balance this card still accounts for.
  */
-export default function GiftCardsCard({ refreshKey = 0 }: { refreshKey?: number }) {
+export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refreshKey?: number; bare?: boolean }) {
   const enabled = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
   const online = useOnline();
   const [cards, setCards] = useState<Card[] | null>(null);
@@ -152,11 +152,18 @@ export default function GiftCardsCard({ refreshKey = 0 }: { refreshKey?: number 
 
   return (
     <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
-      <CardHeader
-        icon="payments"
-        title={title}
-        subtitle={cards.length === 0 ? 'A code anyone can redeem for credit.' : `${open} not redeemed yet · ${cards.length} made`}
-      />
+      {/* On its own page the page header names it; the card keeps its count. */}
+      {bare ? (
+        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+          {cards.length === 0 ? 'A code anyone can redeem for credit.' : `${open} not redeemed yet · ${cards.length} made`}
+        </p>
+      ) : (
+        <CardHeader
+          icon="payments"
+          title={title}
+          subtitle={cards.length === 0 ? 'A code anyone can redeem for credit.' : `${open} not redeemed yet · ${cards.length} made`}
+        />
+      )}
       {minted && (
         <div className="cc-mini-card flex flex-col gap-2 motion-fade" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
           <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>

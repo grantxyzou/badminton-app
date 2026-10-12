@@ -90,8 +90,9 @@ export const CONSOLE_HEIGHTS = {
   inbox: 190,
   payments: 351,
   invite: 343,
-  // Nine rows since Metrics joined the list (measured 2026-10-07, 390px, all flags on).
-  settings: 440,
+  // The grouped lists (People / Money / Club / More, eyebrows included) since
+  // the admin regroup (measured 2026-10-12, 430px, all flags on).
+  settings: 700,
 } as const;
 
 /**
