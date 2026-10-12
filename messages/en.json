@@ -67,6 +67,7 @@
         "jobsError": "Couldn't load your rackets.",
         "retry": "Try again",
         "pricingAsk": "Ask",
+        "pricingOwn": "Bring your own string",
         "steps": {
           "submit": "Submit a request",
           "dropOff": "Drop off your racket",
@@ -1510,27 +1511,6 @@
   "admin": {
     "stringing": {
       "retry": "Try again",
-        "pricing": {
-          "title": "Your prices",
-          "hint": "Players read these behind “View pricing” on Home.",
-          "empty": "No prices posted yet.",
-          "labelPlaceholder": "e.g. Labour + string",
-          "pricePlaceholder": "30",
-          "add": "Add",
-          "ask": "Ask",
-          "remove": "Remove {name}",
-          "editPrice": "Price for {name}",
-          "moveUp": "Move {name} up",
-          "moveDown": "Move {name} down",
-          "edit": "Edit {name}",
-          "save": "Save",
-          "cancel": "Cancel",
-          "duplicate": "You already have a service with that name.",
-          "badPrice": "That doesn’t look like a price.",
-          "blankMeansAsk": "Leave the price blank for anything without a fixed rate — players see “Ask”.",
-          "loadError": "Couldn’t load your prices.",
-          "saveError": "Couldn’t save that — give it another go."
-        },
         "strings": {
           "title": "Strings you stock",
           "hint": "These become the list on a player's request. Tap one to set its restring price.",
@@ -1579,6 +1559,19 @@
       },
         "benchTitle": "Bench",
         "setupRow": "Strings, stock & prices",
+        "otherPrices": {
+          "title": "Other prices",
+          "subtitle": "Each string's restring price is set in its row above. These show under them in “View pricing”.",
+          "own": "Bring your own string",
+          "ownHint": "A restring with the player's own string. Leave empty to show “Ask”.",
+          "note": "Note for players",
+          "notePlaceholder": "e.g. Prices are new this month.",
+          "save": "Save",
+          "saveError": "Couldn't save that. Give it another go.",
+          "loadError": "Couldn't load your prices.",
+          "oldList": "{count, plural, one {Your old price list (# line) is no longer shown to players:} other {Your old price list (# lines) is no longer shown to players:}}",
+          "oldListClear": "Clear the old list"
+        },
         "shelf": {
           "title": "Strings",
           "full": "Your shelf is full ({max} strings). Remove one to add another.",
@@ -1736,7 +1729,8 @@
         "decrease": "Less {field}",
         "increase": "More {field}",
         "yourPrice": "Your price",
-        "rateCard": "From your rate card",
+        "rateCard": "From your prices",
+        "ownString": "Own string",
         "rateCardAsk": "Ask",
         "priceOptional": "Leave it blank and price it later.",
         "pricePlaceholder": "30.00",

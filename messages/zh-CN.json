@@ -67,6 +67,7 @@
       "jobsError": "球拍加载失败。",
       "retry": "重试",
       "pricingAsk": "面议",
+      "pricingOwn": "自带球线",
       "steps": {
         "submit": "提交申请",
         "dropOff": "交付球拍",
@@ -1510,27 +1511,6 @@
   "admin": {
     "stringing": {
       "retry": "重试",
-      "pricing": {
-        "title": "我的价目表",
-        "hint": "球友在首页的「查看价格」里看到这些。",
-        "empty": "还没有公布价格。",
-        "labelPlaceholder": "例如 人工 + 拍线",
-        "pricePlaceholder": "30",
-        "add": "添加",
-        "ask": "面议",
-        "remove": "移除 {name}",
-        "editPrice": "{name} 的价格",
-        "moveUp": "{name} 上移",
-        "moveDown": "{name} 下移",
-        "edit": "编辑 {name}",
-        "save": "保存",
-        "cancel": "取消",
-        "duplicate": "已经有同名的服务了。",
-        "badPrice": "这不像是价格。",
-        "blankMeansAsk": "没有固定价格的留空 — 球友看到的是「面议」。",
-        "loadError": "价格加载失败。",
-        "saveError": "没保存成功 — 再试一次。"
-      },
       "strings": {
         "title": "现有拍线",
         "hint": "球友申请时会从这些里选。点一款线可设置穿线价。",
@@ -1579,6 +1559,19 @@
       },
       "benchTitle": "工作台",
       "setupRow": "球线、库存与价格",
+      "otherPrices": {
+        "title": "其他价格",
+        "subtitle": "每种球线的穿线价格在上方各行设置。以下内容显示在“查看价格”中，位于球线价格之下。",
+        "own": "自带球线",
+        "ownHint": "球员自带球线时的穿线价格。留空显示“面议”。",
+        "note": "给球员的说明",
+        "notePlaceholder": "例如：本月起价格调整。",
+        "save": "保存",
+        "saveError": "保存失败，请再试一次。",
+        "loadError": "无法加载价格。",
+        "oldList": "你之前的价目表（{count} 项）已不再向球员显示：",
+        "oldListClear": "清除旧价目表"
+      },
       "shelf": {
         "title": "球线",
         "full": "货架已满（{max} 种）。移除一种后才能添加。",
@@ -1736,7 +1729,8 @@
       "decrease": "减少{field}",
       "increase": "增加{field}",
       "yourPrice": "报价",
-      "rateCard": "来自价目表",
+      "rateCard": "来自你的价格",
+      "ownString": "自带球线",
       "rateCardAsk": "面议",
       "priceOptional": "可以先留空，之后再定价。",
       "pricePlaceholder": "30.00",

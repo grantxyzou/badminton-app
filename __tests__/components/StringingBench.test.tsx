@@ -272,6 +272,33 @@ describe('intake shows the stringer what the player will read', () => {
     wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
   }
 
+  it('fills the price from the shelf string typed, until the stringer types one', async () => {
+    // docs/plans/bench-redesign.md, PR 2: each string's restring price is the
+    // price, so a walk-up on a shelf string should not need it typed twice.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        const u = String(url);
+        const body = u.includes('/strings')
+          ? { strings: ['BG80 Power-White'], prices: { 'BG80 Power-White': 3200 } }
+          : u.includes('/pricing')
+            ? { services: [], ownStringCents: 1500, note: '' }
+            : [{ id: 'member-wei', name: 'Wei' }];
+        return Promise.resolve({ ok: true, json: async () => body } as Response);
+      }),
+    );
+    wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
+    const price = (await screen.findByLabelText('Your price')) as HTMLInputElement;
+    fireEvent.change(screen.getByLabelText(/String, e.g./i), { target: { value: 'bg80 power-white' } });
+    await waitFor(() => expect(price.value).toBe('32.00'));
+    // The own-string figure is one tap away.
+    expect(screen.getByRole('button', { name: /Own string · \$15/ })).toBeDefined();
+    // Typed by hand, it stays put when the string changes.
+    fireEvent.change(price, { target: { value: '28' } });
+    fireEvent.change(screen.getByLabelText(/String, e.g./i), { target: { value: 'BG80 Power-White' } });
+    expect(price.value).toBe('28');
+  });
+
   it('previews the BAND live as the price is typed', async () => {
     // The stringer should never have to guess what the other side reads. This
     // is the same rule as the API strip, made visible at the moment the number
@@ -649,7 +676,7 @@ describe('the bench lists first', () => {
               : String(url).includes('/strings')
                 ? { strings: ['BG80 white'] }
                 : String(url).includes('/pricing')
-                  ? { services: [] }
+                  ? { services: [], ownStringCents: null, note: '' }
                   : String(url).includes('/stock')
                     ? { lines: [], unmatched: [], purchases: [], aliases: {}, totals: { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0 } }
                     : { jobs: [job], view: 'bench' },
@@ -666,9 +693,9 @@ describe('the bench lists first', () => {
     const row = await screen.findByText('J-0042');
     const setup = screen.getByRole('button', { name: 'Strings, stock & prices' });
     expect(row.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.queryByText('Your prices')).toBeNull();
+    expect(screen.queryByText('Other prices')).toBeNull();
     fireEvent.click(setup);
-    expect(await screen.findByText('Your prices')).toBeDefined();
+    expect(await screen.findByText('Other prices')).toBeDefined();
     expect(screen.queryByText('J-0042')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByText('J-0042')).toBeDefined();
@@ -679,7 +706,7 @@ describe('the bench lists first', () => {
     respondBench();
     wrap(<StringingPage onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock & prices' }));
-    const prices = (await screen.findByText('Your prices')).closest('.glass-card') as HTMLElement;
+    const prices = (await screen.findByText('Other prices')).closest('.glass-card') as HTMLElement;
     expect(prices).not.toBeNull();
     expect(prices.parentElement?.closest('.glass-card')).toBeNull();
   });

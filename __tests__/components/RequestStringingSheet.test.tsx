@@ -453,6 +453,21 @@ describe('the string list as a shelf', () => {
     expect(sentBody(fetchMock).stringColor).toBeUndefined();
   });
 
+  it('shows the stringer’s own-string price on Bring my own, read only once the sheet is open', async () => {
+    // docs/plans/bench-redesign.md, PR 2: "Ask" was the only answer this row
+    // could give; the bench now sets a figure for it.
+    const base = mockApi(['BG65'], SHELF, [BG65]);
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+      String(url).includes('/pricing')
+        ? Promise.resolve({ ok: true, json: async () => ({ services: [], ownStringCents: 1500, note: '' }) } as Response)
+        : base(url, init),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    wrap();
+    const own = await screen.findByRole('radio', { name: /Bring my own string/ });
+    await waitFor(() => expect(own.textContent).toContain('$15'));
+  });
+
   it('sends what was typed for Bring my own, with no colour', async () => {
     const fetchMock = mockApi(['BG65'], SHELF, [BG65]);
     wrap();

@@ -17,7 +17,7 @@ import { isBillable } from '@/lib/stringingBilling';
 import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
 import StringShelfCard from './StringShelfCard';
-import PricingCard from './PricingCard';
+import OtherPricesCard from './OtherPricesCard';
 import { StateLink } from '@/components/primitives/StateCard';
 import StatusBadge, { type StateTone } from '@/components/primitives/StatusBadge';
 import ListRow from '@/components/primitives/ListRow';
@@ -555,7 +555,7 @@ export default function StringingPage({ onBack, crumb }: Props) {
             never a card around cards (DESIGN.md #12). */}
         <div className="flex flex-col gap-4 pb-6">
           <StringShelfCard />
-          <PricingCard />
+          <OtherPricesCard />
         </div>
       </div>
     );

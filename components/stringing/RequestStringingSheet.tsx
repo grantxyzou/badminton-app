@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatServicePrice } from '@/lib/stringingRateCard';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
@@ -163,6 +164,28 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     setCustom(false);
   }, [open]);
 
+  // The own-string price (docs/plans/bench-redesign.md, PR 2). Unread or
+  // failed reads as "Ask", which is what the row said before it existed.
+  // Read each time the sheet OPENS: it is mounted, closed, under every Home
+  // render, and a price nobody asked to see is not worth a request each time.
+  // (Not "once, then never": a guard ref meant to say so is defeated by
+  // StrictMode's double effect run, which cancels the first read and skips
+  // the second.)
+  const [ownPriceCents, setOwnPriceCents] = useState<number | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && typeof d?.ownStringCents === 'number') setOwnPriceCents(d.ownStringCents);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   useEffect(() => {
     let cancelled = false;
     fetch(`${BASE}/api/stringing/strings`, { cache: 'no-store' })
@@ -216,7 +239,8 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const mains = tension;
   const finalCrosses = isCustom ? crosses : crossesFor(mains);
   const canSubmit = !busy && online && !!racketLabel.trim() && !!stringLabel;
-  const summaryPrice = ownString ? t('offer.priceAsk') : pickedString ? priceText(pickedString) : null;
+  const ownPriceText = formatServicePrice(ownPriceCents) ?? t('offer.priceAsk');
+  const summaryPrice = ownString ? ownPriceText : pickedString ? priceText(pickedString) : null;
 
   function pick(label: string) {
     if (isOut(label)) return;
@@ -494,7 +518,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                       <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{t('bringOwn')}</span>
                       <span className="fs-xs" style={{ display: 'block', color: 'var(--text-muted)' }}>{t('bringOwnSub')}</span>
                     </span>
-                    <span className="fs-md" style={{ flex: 'none', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{t('offer.priceAsk')}</span>
+                    <span className="fs-md" style={{ flex: 'none', fontFamily: 'var(--font-mono)', color: ownPriceCents === null ? 'var(--text-muted)' : 'var(--text-primary)' }}>{ownPriceText}</span>
                   </button>
                 </div>
                 {ownString && (

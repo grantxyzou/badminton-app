@@ -259,7 +259,9 @@ describe('view pricing', () => {
     expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/pricing'))).toBe(false);
   });
 
-  it('lists the posted rates once expanded', async () => {
+  it('lists each shelf string’s price, then your own string and the note, once expanded', async () => {
+    // docs/plans/bench-redesign.md, PR 2: a string's restring price IS the
+    // price; the old per-service rate card is not read any more.
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string) =>
@@ -268,14 +270,15 @@ describe('view pricing', () => {
           json: async () => {
             const u = String(url);
             if (u.includes('/shop')) return { open: true };
-            if (u.includes('/pricing'))
+            if (u.includes('/strings')) {
               return {
-                services: [
-                  { label: 'Labour', priceCents: 1500 },
-                  { label: 'Labour + string', priceCents: 3000 },
-                  { label: 'Special requests', priceCents: null },
-                ],
+                strings: ['BG80 Power-White', 'Exbolt 63', 'Not priced'],
+                prices: { 'BG80 Power-White': 3200, 'Exbolt 63': null },
               };
+            }
+            if (u.includes('/pricing')) {
+              return { services: [{ label: 'Labour + string', priceCents: 3000 }], ownStringCents: 1500, note: 'Prices are new this month.' };
+            }
             return { jobs: [], view: 'player' };
           },
         } as Response),
@@ -284,11 +287,18 @@ describe('view pricing', () => {
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /View pricing/i }));
 
-    expect(await screen.findByText('Labour + string')).toBeDefined();
-    expect(screen.getByText('$30')).toBeDefined();
+    expect(await screen.findByText('BG80 Power-White')).toBeDefined();
+    expect(screen.getByText('$32')).toBeDefined();
     // A null price reads "Ask", never $0.00 — those mean different things.
     expect(screen.getByText('Ask')).toBeDefined();
     expect(screen.queryByText('$0.00')).toBeNull();
+    // A string with no price set is not on the price list.
+    expect(screen.queryByText('Not priced')).toBeNull();
+    expect(screen.getByText('Bring your own string')).toBeDefined();
+    expect(screen.getByText('$15')).toBeDefined();
+    expect(screen.getByText('Prices are new this month.')).toBeDefined();
+    // The retired rate card is not shown.
+    expect(screen.queryByText('Labour + string')).toBeNull();
   });
 });
 

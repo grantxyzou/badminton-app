@@ -468,16 +468,14 @@ describe('design-system canary: motion', () => {
 
   /* "One glyph that turns, not two that swap." A disclosure that swaps
      expand_more for expand_less changes the picture without saying which way
-     it went. PricingCard's arrows are reorder controls, not a disclosure. */
+     it went. */
   it('no disclosure swaps expand_more / expand_less glyphs', () => {
     const walk = (dir: string): string[] =>
       readdirSync(dir).flatMap((f) => {
         const p = join(dir, f);
         return statSync(p).isDirectory() ? walk(p) : p.endsWith('.tsx') ? [p] : [];
       });
-    const ALLOW = ['PricingCard.tsx'];
     const offenders = walk(join(process.cwd(), 'components'))
-      .filter((p) => !ALLOW.some((a) => p.endsWith(a)))
       .filter((p) => /\?\s*'expand_(less|more)'\s*:\s*'expand_(less|more)'/.test(readFileSync(p, 'utf8')));
     expect(offenders).toEqual([]);
   });

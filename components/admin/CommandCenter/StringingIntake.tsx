@@ -9,7 +9,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
 import { useOnline } from '@/lib/useOnline';
-import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
+import { formatServicePrice } from '@/lib/stringingRateCard';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -61,23 +61,31 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
   const [mains, setMains] = useState(26);
   const [crosses, setCrosses] = useState(28);
   const [priceDollars, setPriceDollars] = useState('');
-  /* The rate card, for prefilling. null = not loaded or unreachable; the rail
-     simply does not render, because a price you have to type is the status quo
-     and not a failure worth a message. */
-  const [services, setServices] = useState<ServicePrice[] | null>(null);
+  // Once the stringer types a price, a string picked afterwards never
+  // overwrites it.
+  const [priceTouched, setPriceTouched] = useState(false);
+  /* Each shelf string's restring price, and a restring with the player's own
+     string (docs/plans/bench-redesign.md, PR 2), for prefilling. null = not
+     loaded or unreachable; nothing prefills and the field is typed, which is
+     the status quo and not a failure worth a message. */
+  const [shelfPrices, setShelfPrices] = useState<Record<string, number | null> | null>(null);
+  const [ownCents, setOwnCents] = useState<number | null>(null);
   const [readyBy, setReadyBy] = useState('');
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!cancelled && d && Array.isArray(d.services)) setServices(d.services);
+    const read = (path: string) =>
+      fetch(`${BASE}/api/stringing/${path}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null));
+    Promise.all([read('strings'), read('pricing')])
+      .then(([shelf, card]) => {
+        if (cancelled) return;
+        if (shelf && Array.isArray(shelf.strings) && shelf.prices && typeof shelf.prices === 'object') setShelfPrices(shelf.prices);
+        if (typeof card?.ownStringCents === 'number') setOwnCents(card.ownStringCents);
       })
       .catch(() => {
-        /* stays null — the rail just does not appear */
+        /* stays null — nothing prefills */
       });
     return () => {
       cancelled = true;
@@ -114,6 +122,21 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
   }, [members, search]);
 
   const clamp = (n: number) => Math.max(TENSION_MIN_LB, Math.min(TENSION_MAX_LB, n));
+
+  /** The shelf string a typed label is (its own spelling, any case), or null. */
+  const shelfLabelOf = (typed: string) => {
+    const key = typed.trim().toLowerCase();
+    if (!key || !shelfPrices) return null;
+    return Object.keys(shelfPrices).find((l) => l.toLowerCase() === key) ?? null;
+  };
+  const shelfLabel = shelfLabelOf(stringLabel);
+  const dollars = (cents: number | null) => (cents === null ? '' : (cents / 100).toFixed(2));
+  /** Typing or picking a shelf string fills its price, until the stringer types one. */
+  function changeString(next: string) {
+    setStringLabel(next);
+    const match = shelfLabelOf(next);
+    if (!priceTouched && match && shelfPrices) setPriceDollars(dollars(shelfPrices[match] ?? null));
+  }
 
   // Empty is a legitimate price — "not decided yet", not zero.
   const priceCents = useMemo(() => {
@@ -217,7 +240,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
             <input
               type="text"
               value={stringLabel}
-              onChange={(e) => setStringLabel(e.target.value)}
+              onChange={(e) => changeString(e.target.value)}
               placeholder={t('stringPlaceholder')}
               aria-label={t('stringPlaceholder')}
               maxLength={80}
@@ -284,31 +307,28 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
               court"). A placeholder disappears the moment you type, so the
               unit is gone exactly when you are entering the number and most
               want to know what it means. */}
-          {/* Tap a service, the price fills — still editable. The rate card is
-              already maintained on the bench, so the common job should not need
-              typing twice. A null-priced ("Ask") service deliberately CLEARS the
-              field rather than writing 0: "I'll tell you later" is a real answer
-              and free is not. */}
-          {services && services.length > 0 && (
+          {/* One tap fills the price, still editable: the picked string's
+              shelf price, or a restring with the player's own string. A null
+              ("Ask") price CLEARS the field rather than writing 0: "I'll tell
+              you later" is a real answer and free is not. */}
+          {(shelfLabel || ownCents !== null) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               <span className="section-label-muted">{t('rateCard')}</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                {services.map((svc) => (
-                  <button
-                    key={svc.label}
-                    type="button"
-                    className="bpm-chip"
-                    onClick={() =>
-                      setPriceDollars(
-                        svc.priceCents === null ? '' : (svc.priceCents / 100).toFixed(2),
-                      )
-                    }
-                  >
+                {shelfLabel && shelfPrices && (
+                  <button type="button" className="bpm-chip" onClick={() => { setPriceTouched(true); setPriceDollars(dollars(shelfPrices[shelfLabel] ?? null)); }}>
                     <span className="fs-sm">
-                      {svc.label} · {formatServicePrice(svc.priceCents) ?? t('rateCardAsk')}
+                      {shelfLabel} · {formatServicePrice(shelfPrices[shelfLabel] ?? null) ?? t('rateCardAsk')}
                     </span>
                   </button>
-                ))}
+                )}
+                {ownCents !== null && (
+                  <button type="button" className="bpm-chip" onClick={() => { setPriceTouched(true); setPriceDollars(dollars(ownCents)); }}>
+                    <span className="fs-sm">
+                      {t('ownString')} · {formatServicePrice(ownCents)}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -332,7 +352,10 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
               type="text"
               inputMode="decimal"
               value={priceDollars}
-              onChange={(e) => setPriceDollars(e.target.value)}
+              onChange={(e) => {
+                setPriceTouched(true);
+                setPriceDollars(e.target.value);
+              }}
               placeholder={t('pricePlaceholder')}
               aria-label={t('yourPrice')}
               maxLength={8}

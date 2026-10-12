@@ -35,9 +35,57 @@ import { MAX_SERVICES, MAX_LABEL_LEN, MAX_PRICE_CENTS, type ServicePrice } from 
 
 export interface PricingDoc {
   id: string;
+  /**
+   * The old per-service rate card. Since docs/plans/bench-redesign.md (PR 2)
+   * a string's own restring price is the price, so nothing edits or shows
+   * this any more; it stays stored so a rollback still has its menu.
+   */
   services: ServicePrice[];
+  /** A restring with the player's OWN string, in cents; `null` = "Ask". ADDITIVE. */
+  ownStringCents?: number | null;
+  /** A line players read under the prices ("Prices are new this month"). ADDITIVE. */
+  note?: string;
   updatedAt: string;
   updatedBy: string | null;
+}
+
+export const MAX_NOTE_LEN = 140;
+
+export interface PricingRead {
+  services: ServicePrice[];
+  ownStringCents: number | null;
+  note: string;
+}
+
+/** The whole pricing doc, defaults filled; `null` if it could not be read. */
+export async function readPricingDoc(groupId: string): Promise<PricingRead | null> {
+  try {
+    await ensureClubSettings();
+    const resource = await groupScope(groupId).read<PricingDoc>('clubSettings', pricingDocId(groupId));
+    const own = resource?.ownStringCents;
+    return {
+      services: Array.isArray(resource?.services) ? resource!.services : [],
+      ownStringCents: typeof own === 'number' && Number.isInteger(own) && own >= 0 && own <= MAX_PRICE_CENTS ? own : null,
+      note: typeof resource?.note === 'string' ? resource.note : '',
+    };
+  } catch (err) {
+    console.error('readPricingDoc failed:', err);
+    return null;
+  }
+}
+
+/** A submitted own-string price: whole cents in range, or null ("Ask"). `undefined` = invalid. */
+export function normaliseOwnStringCents(value: unknown): number | null | undefined {
+  if (value === null) return null;
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_PRICE_CENTS) return value;
+  return undefined;
+}
+
+/** A submitted note, trimmed; `undefined` = invalid (not a string, or too long). */
+export function normaliseNote(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const t = value.trim();
+  return t.length <= MAX_NOTE_LEN ? t : undefined;
 }
 
 /** The rate card, or `null` if it could not be read. `[]` means none posted. */
