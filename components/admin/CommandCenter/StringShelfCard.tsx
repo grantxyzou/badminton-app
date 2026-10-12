@@ -13,7 +13,7 @@ import { useOnline } from '@/lib/useOnline';
 import { MAX_OFFERED } from '@/lib/stringingLimits';
 import { formatServicePrice } from '@/lib/stringingRateCard';
 import { LOW_STOCK_SETS, labelKey, type StringStockSummary } from '@/lib/stringStockMath';
-import { catalogLabel, matches, purchasesFor } from '@/lib/shelfEdit';
+import { catalogLabel, matches } from '@/lib/shelfEdit';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
 import StringShelfSheet, { type ShelfSheetMode } from './StringShelfSheet';
 import StringPurchaseSheet from './StringPurchaseSheet';
@@ -55,6 +55,8 @@ export default function StringShelfCard() {
   const [sheet, setSheet] = useState<{ mode: ShelfSheetMode; label: string; n: number } | null>(null);
   const [purchase, setPurchase] = useState<{ label: string; n: number } | null>(null);
   const [jobsOpen, setJobsOpen] = useState(false);
+  // "The shelf is full" — said, rather than the typed name silently vanishing.
+  const [full, setFull] = useState(false);
 
   const loadStock = useCallback(async () => {
     const res = await fetch(`${BASE}/api/stringing/stock`, { cache: 'no-store' });
@@ -91,7 +93,13 @@ export default function StringShelfCard() {
     };
   }, [attempt, loadStock]);
 
-  /** Save the shelf. Optimistic with rollback, then re-count the stock, which is keyed by the list. */
+  /**
+   * Save the shelf. Optimistic with rollback, then re-count the stock, which
+   * is keyed by the list. Sends the list and ONLY the maps this change
+   * touched: the server keeps a map it is not sent, so a phone left open on
+   * this screen cannot write its stale copy of another device's aliases,
+   * prices or links back over them (review of the bench redesign, finding 2).
+   */
   async function save(next: Partial<Shelf>) {
     if (busy || !online || !shelf) return false;
     const previous = shelf;
@@ -103,7 +111,7 @@ export default function StringShelfCard() {
       const res = await fetch(`${BASE}/api/stringing/strings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(merged),
+        body: JSON.stringify({ strings: merged.strings, ...next }),
       });
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
@@ -136,16 +144,28 @@ export default function StringShelfCard() {
     }
   }
 
-  function add(label = draft.trim(), item: CatalogItem | null = null) {
-    if (!label || !shelf) return;
-    setDraft('');
+  /**
+   * Add a label (linked to a catalog row when one was picked). Every check runs
+   * BEFORE the typed text is cleared, so a refused add keeps it. Returns
+   * whether a save was issued. `fromBox` says the label came from the add
+   * field, which is the only text this may clear.
+   */
+  function add(label = draft.trim(), item: CatalogItem | null = null, fromBox = true): boolean {
+    if (!label || !shelf || busy || !online) return false;
     const existing = shelf.strings.find((s) => s.toLowerCase() === label.toLowerCase());
     if (existing) {
+      if (fromBox) setDraft('');
       if (item && shelf.links[existing] !== item.id) void save({ links: { ...shelf.links, [existing]: item.id } });
-      return;
+      return true;
     }
-    if (shelf.strings.length >= MAX_OFFERED) return;
-    void save({ strings: [...shelf.strings, label], links: item ? { ...shelf.links, [label]: item.id } : shelf.links });
+    if (shelf.strings.length >= MAX_OFFERED) {
+      setFull(true);
+      return false;
+    }
+    setFull(false);
+    if (fromBox) setDraft('');
+    void save(item ? { strings: [...shelf.strings, label], links: { ...shelf.links, [label]: item.id } } : { strings: [...shelf.strings, label] });
+    return true;
   }
 
   if (loadError) {
@@ -180,7 +200,9 @@ export default function StringShelfCard() {
   const sheetLine = sheet ? (sheet.mode === 'jobLabel' ? null : lineFor(sheetLabel)) : null;
 
   return (
-    <div className="glass-card p-5 space-y-3">
+    // A flex gap, not `space-y`: the list below carries its own reset, and an
+    // inline margin on a child silently beats `space-y`'s margin-top.
+    <div className="glass-card p-5 flex flex-col gap-3">
       <CardHeader icon="inventory_2" title={t('shelf.title')} subtitle={subtitle} />
 
       {saveError && <ErrorState message={t('strings.saveError')} />}
@@ -188,7 +210,7 @@ export default function StringShelfCard() {
       {ready && shelf.strings.length === 0 && <EmptyState icon="format_list_bulleted">{t('shelf.empty')}</EmptyState>}
 
       {ready && shelf.strings.length > 0 && (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="flex flex-col gap-2">
+        <ul style={{ listStyle: 'none', padding: 0 }} className="flex flex-col gap-2">
           {shelf.strings.map((label) => {
             const line = lineFor(label);
             const hasStock = !!line && line.purchases > 0;
@@ -251,7 +273,10 @@ export default function StringShelfCard() {
         <input
           type="text"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setFull(false);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -268,6 +293,8 @@ export default function StringShelfCard() {
           {t('strings.add')}
         </button>
       </div>
+
+      {full && <p className="field-error" role="alert">{t('shelf.full', { max: MAX_OFFERED })}</p>}
 
       {/* NOT ON YOUR SHELF — stock bought under another name, then names the
           jobs used. Each can be counted as a shelf string without renaming. */}
@@ -327,11 +354,15 @@ export default function StringShelfCard() {
           label={sheetLabel}
           busy={busy}
           online={online}
+          error={saveError}
           price={shelf.prices[sheetLabel]}
           line={sheetLine}
-          purchases={purchasesFor(sheetLabel, stock.purchases, shelf.aliases, shelf.links[sheetLabel] ?? null, shelf.strings)}
+          // Exactly the purchases the stock math counted on this line.
+          purchases={stock.purchases.filter((p) => (sheetLine?.purchaseIds ?? []).includes(p.id))}
+          linkedId={shelf.links[sheetLabel] ?? null}
           linked={shelf.links[sheetLabel] ? catalog.items.find((i) => i.id === shelf.links[sheetLabel]) ?? null : null}
           catalog={catalog.items}
+          catalogState={catalog.loadError ? 'failed' : catalog.loaded ? 'ready' : 'loading'}
           aliasesHere={Object.entries(shelf.aliases).filter(([, to]) => to === sheetLabel).map(([from]) => from)}
           offered={shelf.strings}
           jobCount={jobLabels.find((u) => u.label === sheetLabel)?.usedSets ?? 0}
@@ -354,8 +385,10 @@ export default function StringShelfCard() {
             void save({ aliases: { ...shelf.aliases, [sheetLabel]: target } }).then((ok) => ok && closeSheet());
           }}
           onOffer={() => {
+            // Closes either way: a refused add (a full shelf) is said on the
+            // card, under the add field, which is where the sheet returns to.
+            add(sheetLabel, null, false);
             closeSheet();
-            add(sheetLabel);
           }}
         />
       )}

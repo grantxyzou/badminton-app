@@ -1581,6 +1581,7 @@
         "setupRow": "Strings, stock & prices",
         "shelf": {
           "title": "Strings",
+          "full": "Your shelf is full ({max} strings). Remove one to add another.",
           "subtitle": "{value} on the shelf · {used, plural, one {# set} other {# sets}} used",
           "subtitleEmpty": "What you offer, what it costs, what's left.",
           "empty": "Add the strings you offer. Players pick from this list when they ask for a restring.",
@@ -1606,6 +1607,8 @@
             "removeAlias": "Stop counting {name} as this string",
             "catalog": "Catalog",
             "linkedAs": "Matched to {name}",
+            "linkedUnknown": "Matched in the catalog (details didn't load).",
+            "catalogError": "Couldn't load the catalog to match it. Try again later.",
             "notLinked": "Not matched yet. Matched strings get a page players can read.",
             "linkSearch": "Search the catalog",
             "remove": "Remove from shelf",

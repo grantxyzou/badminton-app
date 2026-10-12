@@ -231,3 +231,27 @@ describe('aliases through the routes', () => {
     expect(pub).not.toHaveProperty('aliases');
   });
 });
+
+describe('each line names the purchases it counted', () => {
+  // The string's sheet lists — and offers to delete — exactly these. Working
+  // them out again on the client disagreed with the math in order-dependent
+  // cases (review of the bench redesign, finding 5).
+  it('puts each purchase id on the one line that counted it', () => {
+    const s = summarizeStringStock({
+      offered: ['Yonex BG65 white'],
+      links: { 'Yonex BG65 white': 'string-yx-bg65' },
+      purchases: [
+        // Off the list, no catalog link: a line of its own...
+        purchase({ id: 'sp-0000000000000001', label: 'BG65', catalogId: undefined }),
+        // ...so a later purchase under the same label stays on it, even with a link.
+        purchase({ id: 'sp-0000000000000002', label: 'BG65', catalogId: 'string-yx-bg65', date: '2026-10-01', createdAt: '2026-10-01T00:00:00Z' }),
+        purchase({ id: 'sp-0000000000000003', label: 'Yonex BG65 white', date: '2026-10-02', createdAt: '2026-10-02T00:00:00Z' }),
+      ],
+      jobs: [],
+      catalog: new Map([[bg65.id, bg65]]),
+    });
+    const byLabel = Object.fromEntries(s.lines.map((l) => [l.label, l.purchaseIds]));
+    expect(byLabel['Yonex BG65 white']).toEqual(['sp-0000000000000003']);
+    expect(byLabel['BG65']).toEqual(['sp-0000000000000001', 'sp-0000000000000002']);
+  });
+});

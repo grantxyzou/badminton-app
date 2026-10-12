@@ -1581,6 +1581,7 @@
       "setupRow": "球线、库存与价格",
       "shelf": {
         "title": "球线",
+        "full": "货架已满（{max} 种）。移除一种后才能添加。",
         "subtitle": "库存价值 {value} · 已用 {used} 套",
         "subtitleEmpty": "提供哪些球线、价格多少、还剩多少。",
         "empty": "添加你提供的球线。球员申请穿线时从这份清单里选。",
@@ -1606,6 +1607,8 @@
           "removeAlias": "不再把 {name} 计入此球线",
           "catalog": "目录",
           "linkedAs": "已匹配：{name}",
+          "linkedUnknown": "已在目录中匹配（详情未加载）。",
+          "catalogError": "无法加载目录进行匹配，请稍后再试。",
           "notLinked": "尚未匹配。匹配后球员可以查看介绍。",
           "linkSearch": "搜索目录",
           "remove": "从货架移除",

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ActionRow from '@/components/primitives/ActionRow';
+import ErrorState from '@/components/primitives/ErrorState';
 import { catalogLabel, matches, parsePrice, priceDraftOf } from '@/lib/shelfEdit';
 import type { StringStockLine } from '@/lib/stringStockMath';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
@@ -36,12 +37,20 @@ interface Props {
   label: string;
   busy: boolean;
   online: boolean;
+  /** The last save failed. Said HERE, because the card's own message sits
+   *  behind this sheet (review of the bench redesign, finding 4). */
+  error?: boolean;
   /** offered */
   price?: number | null;
   line?: StringStockLine | null;
+  /** The purchases this line's stock was counted from (offered and offShelf). */
   purchases?: StringPurchase[];
+  /** The stored link. Decides "matched", whatever the catalog read says. */
+  linkedId?: string | null;
+  /** That link's catalog row, when the catalog has it. */
   linked?: CatalogItem | null;
   catalog?: CatalogItem[];
+  catalogState?: 'loading' | 'ready' | 'failed';
   aliasesHere?: string[];
   /** offShelf / jobLabel: the shelf strings it could be counted as. */
   offered?: string[];
@@ -65,7 +74,36 @@ export default function StringShelfSheet(props: Props) {
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const off = busy || !online;
   const parsed = parsePrice(priceDraft);
-  const priceChanged = parsed !== undefined && parsed !== (props.price ?? null);
+  // Against the STORED value, unset included: an empty field on a string with
+  // no price saves "Ask" (null), which is different from no price at all.
+  const priceChanged = parsed !== undefined && parsed !== props.price;
+  const errorLine = props.error ? <ErrorState message={t('strings.saveError')} /> : null;
+
+  /** One purchase, with its notes and a delete. Shared by both sheet modes. */
+  const purchaseList = (purchases: StringPurchase[]) =>
+    purchases.length > 0 && (
+      <ul style={{ listStyle: 'none', padding: 0 }} className="flex flex-col gap-1">
+        {purchases.map((p) => (
+          <li key={p.id} className="fs-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', color: 'var(--text-secondary)' }}>
+            <span style={{ minWidth: 0 }}>
+              {day(p.date)} · {p.units} {p.unit}{p.units === 1 ? '' : 's'} × {p.metresPerUnit} m · {money(p.totalCostCents)}
+              {p.label !== label ? ` · ${p.label}` : ''}
+              {p.notes ? ` · ${p.notes}` : ''}
+            </span>
+            <button
+              type="button"
+              className="cc-btn cc-btn-ghost"
+              disabled={off}
+              onClick={() => props.onRemovePurchase?.(p.id)}
+              aria-label={t('shelf.sheet.removePurchase', { date: day(p.date) })}
+              style={{ minWidth: 44, minHeight: 44, padding: 0, flex: '0 0 auto' }}
+            >
+              <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>delete_outline</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
 
   const heading = (
     <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
@@ -78,11 +116,15 @@ export default function StringShelfSheet(props: Props) {
         <BottomSheetHeader onClose={onClose} closeLabel={t('actions.close')}>{heading}</BottomSheetHeader>
         <BottomSheetBody>
           <div className="flex flex-col gap-4">
+            {errorLine}
             <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
               {mode === 'offShelf'
                 ? t('shelf.sheet.offShelfIntro', { sets: props.line?.remainingSets ?? 0 })
                 : t('shelf.sheet.jobLabelIntro', { count: props.jobCount ?? 0 })}
             </p>
+            {/* Its purchases, so a typo'd label's reel can be deleted without
+                first counting it as some other string. */}
+            {mode === 'offShelf' && purchaseList(props.purchases ?? [])}
             {offered.length > 0 && (
               <div className="flex flex-col gap-2">
                 <span className="section-label-muted">{t('shelf.sheet.sameAs')}</span>
@@ -114,13 +156,16 @@ export default function StringShelfSheet(props: Props) {
 
   const line = props.line ?? null;
   const purchases = props.purchases ?? [];
-  const suggestions = props.linked ? [] : matches(props.catalog ?? [], query.trim() || label);
+  const linkedId = props.linkedId ?? null;
+  const catalogReady = props.catalogState === 'ready';
+  const suggestions = linkedId || !catalogReady ? [] : matches(props.catalog ?? [], query.trim() || label);
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={label}>
       <BottomSheetHeader onClose={onClose} closeLabel={t('actions.close')}>{heading}</BottomSheetHeader>
       <BottomSheetBody>
         <div className="flex flex-col gap-5">
+          {errorLine}
           {/* PRICE — the first thing, because it is what a player reads. */}
           <div className="flex flex-col gap-2">
             <label htmlFor="shelf-price" className="section-label-muted">{t('strings.price')}</label>
@@ -181,28 +226,7 @@ export default function StringShelfSheet(props: Props) {
                 {t('shelf.sheet.logPurchase')}
               </button>
             </div>
-            {purchases.length > 0 && (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="flex flex-col gap-1">
-                {purchases.map((p) => (
-                  <li key={p.id} className="fs-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', color: 'var(--text-secondary)' }}>
-                    <span style={{ minWidth: 0 }}>
-                      {day(p.date)} · {p.units} {p.unit}{p.units === 1 ? '' : 's'} × {p.metresPerUnit} m · {money(p.totalCostCents)}
-                      {p.label !== label ? ` · ${p.label}` : ''}
-                    </span>
-                    <button
-                      type="button"
-                      className="cc-btn cc-btn-ghost"
-                      disabled={off}
-                      onClick={() => props.onRemovePurchase?.(p.id)}
-                      aria-label={t('shelf.sheet.removePurchase', { date: day(p.date) })}
-                      style={{ minWidth: 44, minHeight: 44, padding: 0, flex: '0 0 auto' }}
-                    >
-                      <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>delete_outline</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {purchaseList(purchases)}
           </div>
 
           {/* OLD SPELLINGS counted as this string. */}
@@ -231,11 +255,16 @@ export default function StringShelfSheet(props: Props) {
           {/* CATALOG — a linked string gets its page on the Stringing tab. */}
           <div className="flex flex-col gap-2">
             <span className="section-label-muted">{t('shelf.sheet.catalog')}</span>
-            {props.linked ? (
+            {/* "Matched" comes from the STORED link. The catalog row only adds
+                its name: a catalog still loading, or one that failed, must not
+                read as "not matched" and offer a search that overwrites it. */}
+            {linkedId ? (
               <span className="fs-sm" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
                 <span className="material-icons icon-xs" aria-hidden="true" style={{ color: 'var(--accent)' }}>check</span>
-                {t('shelf.sheet.linkedAs', { name: catalogLabel(props.linked) })}
+                {props.linked ? t('shelf.sheet.linkedAs', { name: catalogLabel(props.linked) }) : t('shelf.sheet.linkedUnknown')}
               </span>
+            ) : props.catalogState === 'failed' ? (
+              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('shelf.sheet.catalogError')}</span>
             ) : (
               <>
                 <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('shelf.sheet.notLinked')}</span>
@@ -246,6 +275,7 @@ export default function StringShelfSheet(props: Props) {
                   placeholder={t('shelf.sheet.linkSearch')}
                   aria-label={t('shelf.sheet.linkSearch')}
                   maxLength={60}
+                  disabled={!catalogReady}
                 />
                 {suggestions.length > 0 && (
                   <div role="listbox" aria-label={t('strings.matches')} className="flex flex-col gap-1">

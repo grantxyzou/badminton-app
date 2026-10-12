@@ -1,6 +1,5 @@
 import { MAX_PRICE_CENTS } from './stringingRateCard';
-import { labelKey } from './stringStockMath';
-import type { CatalogItem, StringPurchase } from './types';
+import type { CatalogItem } from './types';
 
 /**
  * The bench's string-shelf editing rules, pure and client-safe. Lifted out of
@@ -36,27 +35,4 @@ export function matches(items: readonly CatalogItem[], query: string, limit = 5)
       return words.every((w) => hay.includes(w));
     })
     .slice(0, limit);
-}
-
-/**
- * The purchases that count toward one shelf string: its own spelling, an
- * alias that points at it, or (the #603 rename rule) the catalog row it is
- * linked to. The same three routes `summarizeStringStock` takes, so the list
- * under a string is the list its stock was counted from.
- */
-export function purchasesFor(
-  label: string,
-  purchases: readonly StringPurchase[],
-  aliases: Readonly<Record<string, string>>,
-  catalogId: string | null,
-  offered: readonly string[],
-): StringPurchase[] {
-  const key = labelKey(label);
-  const offeredKeys = new Set(offered.map(labelKey));
-  const aliasKeys = new Set(Object.entries(aliases).filter(([, to]) => to === label).map(([from]) => labelKey(from)));
-  return purchases.filter((p) => {
-    const own = labelKey(p.label);
-    if (own === key || aliasKeys.has(own)) return true;
-    return !offeredKeys.has(own) && !!catalogId && p.catalogId === catalogId;
-  });
 }

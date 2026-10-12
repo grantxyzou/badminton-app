@@ -25,6 +25,10 @@ export interface StringStockLine {
   purchasedMetres: number;
   purchasedCostCents: number;
   purchases: number;
+  /** The purchases this line counted, by id: the ONE assignment the bench's
+   *  sheet lists and deletes from, so it can never show a purchase another
+   *  line's stock was counted from. ADDITIVE on the admin stock read. */
+  purchaseIds: string[];
   usedSets: number;
   usedMetres: number;
   remainingMetres: number;
@@ -62,7 +66,7 @@ export function summarizeStringStock(input: {
     const set = catalogId ? numberAttr(input.catalog.get(catalogId), 'setLengthM') ?? SET_M : SET_M;
     byKey.set(labelKey(label), {
       label, catalogId, setMetres: set,
-      purchasedMetres: 0, purchasedCostCents: 0, purchases: 0,
+      purchasedMetres: 0, purchasedCostCents: 0, purchases: 0, purchaseIds: [],
       usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
       costPerSetCents: null, usedCostCents: null,
     });
@@ -102,7 +106,7 @@ export function summarizeStringStock(input: {
       // line is shown so the admin can see where the metres went.
       line = {
         label: p.label, catalogId: p.catalogId ?? null, setMetres: SET_M,
-        purchasedMetres: 0, purchasedCostCents: 0, purchases: 0,
+        purchasedMetres: 0, purchasedCostCents: 0, purchases: 0, purchaseIds: [],
         usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
         costPerSetCents: null, usedCostCents: null,
       };
@@ -112,6 +116,7 @@ export function summarizeStringStock(input: {
     line.purchasedMetres += metres;
     line.purchasedCostCents += p.totalCostCents;
     line.purchases += 1;
+    line.purchaseIds.push(p.id);
     if (metres > 0) latestPerMetre.set(key, p.totalCostCents / metres);
   }
 
