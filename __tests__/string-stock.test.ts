@@ -113,12 +113,12 @@ describe('the stock routes', () => {
 
   it('links ride beside the offered list: a link to a label not listed or an id the catalog lacks is dropped, and a list-only save keeps the links', async () => {
     const saved = await (await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65', 'House string': 'string-nope', Ghost: 'string-yx-bg65' } }))).json();
-    expect(saved).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' } });
+    expect(saved).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' }, prices: {} });
     const lin = seedMember('Lin');
     const read = await (await stringsGET(makeRequest('GET', `${BASE}/stringing/strings`, undefined, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }))).json();
-    expect(read).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' } });
+    expect(read).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' }, prices: {}, stock: {}, players: {} });
     // An older client sends only the list: the link for the surviving label stays.
     const again = await (await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['BG65'] }))).json();
-    expect(again).toEqual({ strings: ['BG65'], links: { BG65: 'string-yx-bg65' } });
+    expect(again).toEqual({ strings: ['BG65'], links: { BG65: 'string-yx-bg65' }, prices: {} });
   });
 });

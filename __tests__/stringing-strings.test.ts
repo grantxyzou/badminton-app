@@ -1,10 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET, PATCH } from '../app/api/stringing/strings/route';
+import { POST as stockPOST } from '../app/api/stringing/stock/route';
 import { normaliseOfferedStrings, MAX_OFFERED } from '../lib/stringingStrings';
+import { resetShelfCache } from '../lib/stringShelfRead';
+import { __resetCatalogSeedForTests } from '../lib/catalogSeed';
 import {
   resetMockStore,
   setupAdminPin,
   seedTestAdminMember,
+  seedDoc,
+  seedMember,
   makeRequest,
   makeAdminRequest,
   memberCookieValue,
@@ -22,6 +27,8 @@ const flagBefore = process.env[FLAG];
 
 beforeEach(async () => {
   resetMockStore();
+  resetShelfCache();
+  __resetCatalogSeedForTests();
   setupAdminPin();
   await seedTestAdminMember();
   process.env[FLAG] = 'true';
@@ -37,15 +44,15 @@ describe('who can read and who can write', () => {
     // keeps on the shelf is not a secret.
     const res = await GET(makeRequest('GET', 'http://x/api/stringing/strings'));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ strings: [], links: {} });
+    expect(await res.json()).toEqual({ strings: [], links: {}, prices: {}, stock: {}, players: {} });
   });
 
-  it('returns only the list and its catalog links — no author, no timestamps', async () => {
+  it('returns the list and its per-label maps — no author, no timestamps', async () => {
     await PATCH(
       makeAdminRequest('PATCH', 'http://x/api/stringing/strings', { strings: ['BG80'] }),
     );
     const body = await (await GET(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
-    expect(Object.keys(body)).toEqual(['strings', 'links']);
+    expect(Object.keys(body)).toEqual(['strings', 'links', 'prices', 'stock', 'players']);
   });
 
   it('refuses a player trying to set it', async () => {
@@ -104,5 +111,60 @@ describe('the build flag gates it', () => {
       makeAdminRequest('PATCH', 'http://x/api/stringing/strings', { strings: [] }),
     );
     expect([get.status, patch.status]).toEqual([404, 404]);
+  });
+});
+
+/**
+ * The shelf (docs/design/strings-shelf-spec.md): a price per string, a stock
+ * BAND and how many in the club play it, each keyed by offered label.
+ */
+describe('the shelf extras', () => {
+  const read = async () => (await GET(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
+  const save = (body: Record<string, unknown>) => PATCH(makeAdminRequest('PATCH', 'http://x/api/stringing/strings', body));
+  const purchase = (label: string, sets: number) =>
+    stockPOST(makeAdminRequest('POST', 'http://x/api/stringing/stock', { label, unit: 'set', units: sets, metresPerUnit: 10, totalCostCents: 1000 * sets, date: '2026-10-01' }));
+
+  it('round-trips prices, keeping null as "Ask" and dropping junk', async () => {
+    const res = await save({ strings: ['BG80', 'BG66', 'House'], prices: { BG80: 3200, BG66: null, House: 12.5, Gone: 100 } });
+    expect((await res.json()).prices).toEqual({ BG80: 3200, BG66: null });
+    expect((await read()).prices).toEqual({ BG80: 3200, BG66: null });
+  });
+
+  it('keeps stored prices when an older client sends only the list', async () => {
+    await save({ strings: ['BG80', 'BG66'], prices: { BG80: 3200, BG66: 2800 } });
+    await save({ strings: ['BG80'] });
+    expect((await read()).prices).toEqual({ BG80: 3200 });
+  });
+
+  it('gives a band, never sets, and leaves out a string with no purchase', async () => {
+    await save({ strings: ['BG80', 'BG66', 'Aerobite', 'Never logged'] });
+    await purchase('BG80', 10);
+    await purchase('BG66', 2);
+    await purchase('Aerobite', 1);
+    const lin = seedMember('Lin');
+    seedDoc('stringingJobs', { id: 'job-a', groupId: 'bpm', memberId: lin.id, stringLabel: 'aerobite', status: 'strung' });
+    const body = await read();
+    expect(body.stock).toEqual({ BG80: 'in', BG66: 'low', Aerobite: 'out' });
+    const text = JSON.stringify(body);
+    for (const leak of ['remainingSets', 'remainingMetres', 'costPerSetCents', 'totalCostCents', 'purchasedCostCents']) {
+      expect(text).not.toContain(leak);
+    }
+  });
+
+  it('counts players only from three up, by label or by the linked catalog name', async () => {
+    await save({ strings: ['BG65 white', 'Exbolt'], links: { 'BG65 white': 'string-yx-bg65' } });
+    const bag = (label: string) => ({ items: [{ id: 'g', catalogId: null, category: 'string', label }] });
+    // Three bags hold the catalog's own name for the linked shelf label.
+    for (const n of ['A', 'B', 'C']) seedDoc('playerGear', { id: `gear-${n}`, memberId: seedMember(`P${n}`).id, ...bag('Yonex BG65') });
+    // Two hold Exbolt — below the cohort floor, so it is not said at all.
+    for (const n of ['D', 'E']) seedDoc('playerGear', { id: `gear-${n}`, memberId: seedMember(`P${n}`).id, ...bag('Exbolt') });
+    expect((await read()).players).toEqual({ 'BG65 white': 3 });
+  });
+
+  it('answers every field unknown when throttled', async () => {
+    const ip = { 'X-Client-IP': 'strings-ratelimit-probe' };
+    let last: Response | null = null;
+    for (let i = 0; i < 121; i++) last = await GET(makeRequest('GET', 'http://x/api/stringing/strings', undefined, ip));
+    expect(await last!.json()).toEqual({ strings: null, links: null, prices: null, stock: null, players: null });
   });
 });

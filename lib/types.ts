@@ -886,6 +886,11 @@ export interface StringingJob {
   status: StringingStatus;
   racketLabel: string;
   stringLabel: string;
+  /** The colour the player asked for, when the string comes in more than one
+   *  (docs/design/strings-shelf-spec.md). A SEPARATE field on purpose: stock
+   *  is matched by `labelKey(stringLabel)`, so "BG80 · Yellow" in the label
+   *  would stop the job counting against its reel. Absent = not chosen. */
+  stringColor?: string;
   tensionMains: number;
   tensionCrosses: number;
   /** Free text, e.g. "Zach · 2 strings, 4 knots". A note, not an enum: the
@@ -983,6 +988,7 @@ export interface StringerJob {
   status: StringingStatus;
   racketLabel: string;
   stringLabel: string;
+  stringColor?: string;
   tensionMains: number;
   tensionCrosses: number;
   method: string;
@@ -1000,6 +1006,7 @@ export interface PlayerStringingJob {
   stageIndex: number;
   racketLabel: string;
   stringLabel: string;
+  stringColor?: string;
   tensionMains: number;
   tensionCrosses: number;
   method: string;

@@ -181,7 +181,7 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
               </div>
               {/* The spec, which is the whole reason they opened this. */}
               <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
-                {job.stringLabel} · {job.tensionMains}/{job.tensionCrosses}
+                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} · {job.tensionMains}/{job.tensionCrosses}
                 {' · '}
                 {t('stringerFor', { name: job.memberName })}
               </span>

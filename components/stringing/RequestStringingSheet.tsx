@@ -5,6 +5,11 @@ import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import type { UseGear } from '@/components/stats/useGear';
+import { useCatalog } from '@/components/stats/useCatalog';
+import { stringSpecLine } from '@/lib/gearSetup';
+import { parseShelf, shelfPrice, stringColours, stringTypeOf, typeBand, type Shelf } from '@/lib/stringShelf';
+import type { CatalogItem } from '@/lib/types';
+import StockBadge from './StockBadge';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -13,6 +18,24 @@ import {
 } from '@/lib/stringing';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+/** A row in the string list: inner-card chrome, radius 12. */
+const ROW: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-4)',
+  width: '100%',
+  textAlign: 'left',
+  padding: 'var(--space-4)',
+  borderRadius: 'var(--radius-lg)',
+  background: 'var(--inner-card-bg)',
+  border: '1px solid var(--inner-card-border)',
+  color: 'inherit',
+};
+const ROW_ON: React.CSSProperties = {
+  background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--accent) 45%, transparent)',
+};
 
 interface Props {
   open: boolean;
@@ -39,7 +62,7 @@ interface Props {
  *
  * TWO STATES, AND THE SIMPLE ONE IS THE DEFAULT
  *
- * Standard: pick a string the club stocks from a dropdown, and set ONE tension
+ * Standard: pick a string the club stocks, and set ONE tension
  * number. The crosses are derived at +2 lb (`crossesFor`), because that is
  * what a stringer would have chosen anyway — cross strings are shorter and
  * woven through the mains, so they finish looser at the same reference
@@ -50,10 +73,18 @@ interface Props {
  * refused — someone who wants 28/28 is entitled to it, and blocking would be
  * the app overruling them about their own racket.
  *
- * WHY THE DROPDOWN IS ADMIN-FED. A free-text string field produces "bg80",
+ * WHY THE LIST IS ADMIN-FED. A free-text string field produces "bg80",
  * "BG-80", "Bg 80 white" and "yonex 80" for one spool, and the person who has
  * to reconcile that is the stringer. They declare what they stock on the
  * bench; this reads it.
+ *
+ * THE LIST IS A SHORT SHELF (docs/design/strings-shelf-spec.md, design 2f):
+ * one radio row per string with its gauge, the club's price and a stock band.
+ * Out of stock can't be picked — the band is advisory and the server does not
+ * refuse, so Custom request stays open as the way round. A string in more than
+ * one colour asks which, as `stringColor`, kept OFF the label so stock still
+ * matches the job to its reel. "Bring my own string" is the last row and sends
+ * what they type as the label.
  *
  * When nothing is stocked yet — or the list could not be read — the form falls
  * back to the custom path rather than presenting an empty dropdown. An empty
@@ -63,9 +94,11 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const t = useTranslations('home.stringing');
   // `close` lives in the shared namespace — every sheet in the app uses it.
   const tCommon = useTranslations('recovery');
+  const tSetup = useTranslations('stats.gear.setup');
   const online = useOnline();
 
-  const [offered, setOffered] = useState<string[] | null>(null);
+  const [shelf, setShelf] = useState<Shelf | null>(null);
+  const catalog = useCatalog('string');
   /** Loading and failed used to be the same `null`, so a list still on its
    *  way forced the form into free text and then swapped to a dropdown, and a
    *  list that FAILED said "Grant hasn't listed what he stocks" — untrue. */
@@ -76,6 +109,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
      the string dropdown already carries. */
   const [customRacket, setCustomRacket] = useState(false);
   const [pickedString, setPickedString] = useState('');
+  /** "Bring my own string": a built-in row, not an offered label. */
+  const [ownString, setOwnString] = useState(false);
+  const [ownLabel, setOwnLabel] = useState('');
+  const [pickedColour, setPickedColour] = useState('');
   const [customString, setCustomString] = useState('');
   const [tension, setTension] = useState(26);
   const [crosses, setCrosses] = useState(28);
@@ -117,6 +154,9 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     setRacketLabel('');
     setCustomRacket(false);
     setPickedString('');
+    setOwnString(false);
+    setOwnLabel('');
+    setPickedColour('');
     setCustomString('');
     setTension(26);
     setCrosses(28);
@@ -129,8 +169,9 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;
-        if (d && Array.isArray(d.strings)) {
-          setOffered(d.strings);
+        const parsed = parseShelf(d);
+        if (parsed) {
+          setShelf(parsed);
           setStringsStatus('ready');
         } else {
           setStringsStatus('failed');
@@ -149,19 +190,46 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   // offer. Forcing custom is the only honest option — once we KNOW. While the
   // list loads, neither control shows (like the racket field above).
   const stringsLoading = stringsStatus === 'loading';
-  const mustBeCustom = stringsStatus === 'failed' || (stringsStatus === 'ready' && (offered ?? []).length === 0);
+  const offered = shelf?.strings ?? [];
+  const mustBeCustom = stringsStatus === 'failed' || (stringsStatus === 'ready' && offered.length === 0);
   const isCustom = custom || mustBeCustom;
 
+  const itemFor = (label: string): CatalogItem | null => {
+    const id = shelf?.links[label];
+    return id && !catalog.loadError ? catalog.items.find((i) => i.id === id) ?? null : null;
+  };
+  /** The figure, "Ask", or null when no price is set. */
+  const priceText = (label: string): string | null => {
+    if (!shelf) return null;
+    const p = shelfPrice(shelf, label);
+    return p === undefined ? null : p ?? t('offer.priceAsk');
+  };
+  const isOut = (label: string) => shelf?.stock?.[label] === 'out';
+  const pickedItem = !ownString && pickedString ? itemFor(pickedString) : null;
+  const colours = stringColours(pickedItem);
+  /* More than one colour asks which; a single colour (or a two-tone, which is
+     one name) is sent as it is; an unlinked string or your own sends none. */
+  const stringColor = isCustom || ownString ? '' : colours.length > 1 ? pickedColour : colours[0]?.name ?? '';
+
   const clamp = (n: number) => Math.max(TENSION_MIN_LB, Math.min(TENSION_MAX_LB, n));
-  const stringLabel = (isCustom ? customString : pickedString).trim();
+  const stringLabel = (isCustom ? customString : ownString ? ownLabel : pickedString).trim();
   const mains = tension;
   const finalCrosses = isCustom ? crosses : crossesFor(mains);
   const canSubmit = !busy && online && !!racketLabel.trim() && !!stringLabel;
+  const summaryPrice = ownString ? t('offer.priceAsk') : pickedString ? priceText(pickedString) : null;
+
+  function pick(label: string) {
+    if (isOut(label)) return;
+    setOwnString(false);
+    setPickedString(label);
+    setPickedColour(stringColours(itemFor(label))[0]?.name ?? '');
+  }
 
   function enterCustom() {
     // Carry the simple choice forward rather than resetting: someone opening
     // custom usually wants to ADJUST what they had, not start over.
-    if (!customString && pickedString) setCustomString(pickedString);
+    const carried = ownString ? ownLabel : pickedString;
+    if (!customString && carried) setCustomString(carried);
     setCrosses(crossesFor(tension));
     setCustom(true);
   }
@@ -177,6 +245,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
         body: JSON.stringify({
           racketLabel: racketLabel.trim(),
           stringLabel,
+          ...(stringColor ? { stringColor } : {}),
           tensionMains: mains,
           tensionCrosses: finalCrosses,
         }),
@@ -367,18 +436,120 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                 maxLength={80}
               />
             ) : (
-              <select
-                value={pickedString}
-                onChange={(e) => setPickedString(e.target.value)}
-                aria-label={t('whichString')}
-              >
-                <option value="">{t('pickString')}</option>
-                {(offered ?? []).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <>
+                <span className="section-label-muted">{t('whichString')}</span>
+                <div role="radiogroup" aria-label={t('whichString')} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                  {offered.map((label) => {
+                    const item = itemFor(label);
+                    const on = !ownString && pickedString === label;
+                    const out = isOut(label);
+                    const band = shelf?.stock?.[label] ?? null;
+                    const price = priceText(label);
+                    const mm = typeof item?.attributes?.gaugeMm === 'number' ? item.attributes.gaugeMm : null;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        aria-disabled={out || undefined}
+                        aria-label={out ? t('outOfStock', { name: label }) : undefined}
+                        onClick={() => pick(label)}
+                        style={{ ...ROW, ...(on ? ROW_ON : null), cursor: out ? 'default' : 'pointer', opacity: out ? 0.5 : 1 }}
+                      >
+                        <span className="material-icons icon-lg" aria-hidden="true" style={{ flex: 'none', color: on ? 'var(--accent)' : 'var(--text-muted)' }}>
+                          {on ? 'radio_button_checked' : 'radio_button_unchecked'}
+                        </span>
+                        {item && (
+                          <span aria-hidden="true" style={{ flex: 'none', width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: typeBand(stringTypeOf(item)), display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {mm !== null ? mm.toFixed(2) : ''}
+                          </span>
+                        )}
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{label}</span>
+                          <span className="fs-xs" style={{ display: 'block', color: 'var(--text-muted)' }}>
+                            {item ? stringSpecLine(item, (k) => tSetup(k)) : t('offer.unknown')}
+                          </span>
+                        </span>
+                        {(price || band) && (
+                          <span style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-1)' }}>
+                            {price && <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>{price}</span>}
+                            {band && <StockBadge band={band} />}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={ownString}
+                    onClick={() => { setOwnString(true); setPickedString(''); }}
+                    style={{ ...ROW, ...(ownString ? ROW_ON : null), cursor: 'pointer' }}
+                  >
+                    <span className="material-icons icon-lg" aria-hidden="true" style={{ flex: 'none', color: ownString ? 'var(--accent)' : 'var(--text-muted)' }}>
+                      {ownString ? 'radio_button_checked' : 'radio_button_unchecked'}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{t('bringOwn')}</span>
+                      <span className="fs-xs" style={{ display: 'block', color: 'var(--text-muted)' }}>{t('bringOwnSub')}</span>
+                    </span>
+                    <span className="fs-md" style={{ flex: 'none', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{t('offer.priceAsk')}</span>
+                  </button>
+                </div>
+                {ownString && (
+                  <input
+                    type="text"
+                    value={ownLabel}
+                    onChange={(e) => setOwnLabel(e.target.value)}
+                    placeholder={t('bringOwnPlaceholder')}
+                    aria-label={t('bringOwnPlaceholder')}
+                    maxLength={80}
+                    autoFocus
+                  />
+                )}
+                {colours.length > 1 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
+                    <span className="section-label-muted">{t('colour')}</span>
+                    <div role="radiogroup" aria-label={t('colour')} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-2)' }}>
+                      {colours.map((c) => {
+                        const on = pickedColour === c.name;
+                        return (
+                          <button
+                            key={c.name}
+                            type="button"
+                            role="radio"
+                            aria-checked={on}
+                            onClick={() => setPickedColour(c.name)}
+                            style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
+                          >
+                            <span
+                              className="fs-base"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 'var(--space-3)',
+                                height: 34,
+                                boxSizing: 'border-box',
+                                padding: '0 var(--space-4) 0 var(--space-3)',
+                                borderRadius: 'var(--radius-pill)',
+                                background: on ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'var(--inner-card-bg)',
+                                border: `1px solid ${on ? 'color-mix(in srgb, var(--accent) 45%, transparent)' : 'var(--inner-card-border)'}`,
+                                color: on ? 'var(--accent)' : 'var(--text-secondary)',
+                                fontWeight: on ? 600 : 400,
+                              }}
+                            >
+                              <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: '50%', background: c.fill, boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)' }} />
+                              {c.name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('colourNote')}</p>
+                  </div>
+                )}
+              </>
             )}
 
             {isCustom ? (
@@ -407,6 +578,17 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
               >
                 {custom ? t('standardRequest') : t('customRequest')}
               </button>
+            )}
+
+            {!isCustom && stringLabel && (
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--inner-card-border)' }}>
+                <span className="fs-base" style={{ color: 'var(--text-secondary)' }}>
+                  {stringColor
+                    ? t('summary', { string: stringLabel, colour: stringColor, tension: mains })
+                    : t('summaryNoColour', { string: stringLabel, tension: mains })}
+                </span>
+                {summaryPrice && <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryPrice}</span>}
+              </div>
             )}
 
             {error && <p className="field-error">{error}</p>}

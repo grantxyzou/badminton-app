@@ -7,6 +7,17 @@
  * on the shelf is not a secret. Nothing else is returned — no timestamps, no
  * author. Since 2026-10-10 it also carries `links`, label → catalog id, for
  * the Stringing tab's "Strings we offer" card (docs/plans/string-inventory.md).
+ *
+ * Since the strings shelf (docs/design/strings-shelf-spec.md) it carries three
+ * more maps, each keyed by offered label and each ADDITIVE:
+ *   prices  — the stringer's restring price in cents; `null` = "Ask";
+ *             missing = no price set.
+ *   stock   — a BAND ('in' | 'low' | 'out'), never sets, metres or cost;
+ *             missing = unknown (no purchase logged), which is never "out".
+ *   players — how many on the roster have the string in their bag; only
+ *             counts of `CLUB_GEAR_MIN_COHORT` (3) or more, the same privacy
+ *             floor as `stats/club/gear`.
+ * A throttled or failed read answers every field `null`: unknown, not empty.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
@@ -19,14 +30,17 @@ import {
   readOfferedStringsWithLinks,
   normaliseOfferedStrings,
   normaliseLinks,
+  normalisePrices,
   stringsDocId,
   type OfferedStringsDoc,
 } from '@/lib/stringingStrings';
 import { readStringCatalog } from '@/lib/stringStock';
+import { forgetShelfExtras, readShelfExtras } from '@/lib/stringShelfRead';
 
 export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
+const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null };
 
 export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
@@ -36,15 +50,29 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`stringing-strings-read:${ip}`, 120, HOUR_MS)) {
     // Unknown, not empty. An empty list tells the form "nothing is stocked, go
     // custom"; a throttled read must not be allowed to say that confidently.
-    return NextResponse.json({ strings: null });
+    return NextResponse.json(UNKNOWN);
   }
   const gate = await requireMember(req);
   if (!gate.ok) return gate.response;
   // `links` (label → catalog id) rides beside `strings` since 2026-10-10
   // (docs/plans/string-inventory.md); a reader that wants only the list is
-  // untouched. Unknown is unknown for both.
-  const read = await readOfferedStringsWithLinks(resolveGroupId(req));
-  return NextResponse.json(read ? { strings: read.strings, links: read.links } : { strings: null, links: null });
+  // untouched. Unknown is unknown for every field.
+  const groupId = resolveGroupId(req);
+  const read = await readOfferedStringsWithLinks(groupId);
+  if (!read) return NextResponse.json(UNKNOWN);
+  // The list stands without the extras: a stock or gear read that fails
+  // leaves those two maps unknown rather than taking the shelf down with it.
+  const extras = await readShelfExtras(groupId, read.strings, read.links).catch((err) => {
+    console.error('GET /api/stringing/strings: stock/players read failed', err);
+    return null;
+  });
+  return NextResponse.json({
+    strings: read.strings,
+    links: read.links,
+    prices: read.prices,
+    stock: extras?.stock ?? null,
+    players: extras?.players ?? null,
+  });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -73,13 +101,17 @@ export async function PATCH(req: NextRequest) {
     // refused — the list is what is being saved. Absent `links` keeps the
     // ones already stored for labels that survive, so an older client that
     // sends only `strings` does not wipe them.
-    const prior = (await readOfferedStringsWithLinks(groupId))?.links ?? {};
+    const prior = await readOfferedStringsWithLinks(groupId);
     const validIds = new Set((await readStringCatalog()).keys());
-    const links = normaliseLinks(body?.links === undefined ? prior : body.links, strings, validIds);
+    const links = normaliseLinks(body?.links === undefined ? prior?.links ?? {} : body.links, strings, validIds);
+    // Prices follow the same rule as links: absent keeps what is stored for
+    // the labels that remain, so an older client cannot wipe them.
+    const prices = normalisePrices(body?.prices === undefined ? prior?.prices ?? {} : body.prices, strings);
     const doc: OfferedStringsDoc = {
       id: stringsDocId(groupId),
       strings,
       links,
+      prices,
       updatedAt: new Date().toISOString(),
       updatedBy: admin.memberId,
     };
@@ -87,7 +119,9 @@ export async function PATCH(req: NextRequest) {
     // to merge and nothing a concurrent write could clobber except the list
     // itself — which is what the caller means to replace.
     await groupScope(groupId).upsert('clubSettings', doc);
-    return NextResponse.json({ strings: doc.strings, links: doc.links });
+    // The list changed, so the stock and count keyed by it may have too.
+    forgetShelfExtras(groupId);
+    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices });
   } catch (err) {
     console.error('PATCH /api/stringing/strings failed:', err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });

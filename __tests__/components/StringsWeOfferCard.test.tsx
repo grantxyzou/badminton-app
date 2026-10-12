@@ -1,0 +1,129 @@
+// @vitest-environment jsdom
+// @vitest-environment-options { "url": "http://localhost:3000/bpm" }
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
+import StringsWeOfferCard from '../../components/stringing/StringsWeOfferCard';
+import { resetCatalogCache } from '@/components/stats/useCatalog';
+import enMessages from '../../messages/en.json';
+
+/**
+ * "Strings we offer" (docs/design/strings-shelf-spec.md, design 4a): the map
+ * by default, the list one tap away, and the list alone when there is too
+ * little to plot.
+ */
+
+const str = (id: string, model: string, repulsion: number | null, durability: number | null, extra: Record<string, unknown> = {}) => ({
+  id,
+  category: 'string',
+  brand: 'Yonex',
+  model,
+  attributes: { ...(repulsion !== null ? { repulsion } : {}), ...(durability !== null ? { durability } : {}), control: 7, bestFor: `${model} is for you`, ...extra },
+});
+
+const CATALOG = [
+  str('s-80', 'BG80', 8, 6),
+  str('s-66', 'BG66', 9, 4),
+  str('s-65', 'BG65', 5, 9),
+  str('s-ex', 'Exbolt 63', 9, 5),
+  str('s-nr', 'Unrated', null, null, { gaugeMm: 0.7 }),
+];
+
+function mockApi(strings: string[], extra: Record<string, unknown> = {}) {
+  const links: Record<string, string> = { BG80: 's-80', BG66: 's-66', BG65: 's-65', Exbolt: 's-ex', Unrated: 's-nr' };
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+    if (String(url).includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
+    return Promise.resolve({ ok: true, json: async () => ({ strings, links, ...extra }) } as Response);
+  }));
+}
+
+function wrap() {
+  return render(
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <StringsWeOfferCard />
+    </NextIntlClientProvider>,
+  );
+}
+
+beforeEach(() => {
+  resetCatalogCache();
+  try { localStorage.clear(); } catch { /* jsdom always has it */ }
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe('the map', () => {
+  it('opens on the map, with the first in-stock string selected', async () => {
+    // Exbolt and BG66 sort first (power 9) but BG66 is out.
+    mockApi(['BG80', 'BG66', 'BG65', 'Exbolt'], { stock: { BG66: 'out', Exbolt: 'in' }, prices: { Exbolt: 3200 } });
+    wrap();
+    const map = await screen.findByRole('group', { name: 'Strings by power and durability' });
+    const pressed = within(map).getAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true');
+    expect(pressed.map((b) => b.getAttribute('aria-label'))).toEqual(['Yonex Exbolt 63: power 9 out of 10, durability 5 out of 10']);
+    expect(screen.getByText('$32')).toBeDefined();
+    expect(screen.getByText('Power 9/10 · Durability 5/10 · Control 7/10')).toBeDefined();
+  });
+
+  it('moves the panel when a dot is tapped, without opening the sheet', async () => {
+    mockApi(['BG80', 'BG66', 'BG65']);
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /^Yonex BG65:/ }));
+    expect(screen.getByText('BG65 is for you')).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('moves the selection with the arrow keys, in list order', async () => {
+    mockApi(['BG80', 'BG66', 'BG65']);
+    wrap();
+    const first = await screen.findByRole('button', { name: /^Yonex BG66:/ });
+    fireEvent.keyDown(first, { key: 'ArrowRight' });
+    expect(screen.getByRole('button', { name: /^Yonex BG80:/ }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('lists strings it cannot plot under "Not on the map"', async () => {
+    mockApi(['BG80', 'BG66', 'BG65', 'Unrated', 'House']);
+    wrap();
+    await screen.findByRole('group', { name: 'Strings by power and durability' });
+    expect(screen.getByText('Not on the map')).toBeDefined();
+    // An unlinked label is the disabled row.
+    expect(screen.getByRole('button', { name: /House/ })).toHaveProperty('disabled', true);
+  });
+
+  it('shows a legend only when some string has a band', async () => {
+    mockApi(['BG80', 'BG66', 'BG65']);
+    wrap();
+    await screen.findByRole('group', { name: 'Strings by power and durability' });
+    expect(screen.queryByText('In stock')).toBeNull();
+  });
+});
+
+describe('the list', () => {
+  it('is one tap away, sorted by power, and remembered', async () => {
+    mockApi(['BG65', 'BG80', 'BG66']);
+    wrap();
+    fireEvent.click(await screen.findByRole('tab', { name: 'List' }));
+    expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
+    const rows = screen.getAllByText(/^Yonex /).map((n) => n.textContent);
+    expect(rows).toEqual(['Yonex BG66', 'Yonex BG80', 'Yonex BG65']);
+    expect(localStorage.getItem('bpm:strings-view')).toBe('list');
+  });
+
+  it('is all there is, with no toggle, when fewer than three strings plot', async () => {
+    mockApi(['BG80', 'BG66', 'Unrated']);
+    wrap();
+    await screen.findByText('Yonex BG80');
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
+  });
+
+  it('shows "Ask" for a null price and nothing when none is set', async () => {
+    mockApi(['BG80', 'BG66'], { prices: { BG80: null } });
+    wrap();
+    const bg80 = (await screen.findByText('Yonex BG80')).closest('button')!;
+    const bg66 = screen.getByText('Yonex BG66').closest('button')!;
+    expect(bg80.textContent).toContain('Ask');
+    expect(bg66.textContent).not.toMatch(/\$|Ask/);
+  });
+});

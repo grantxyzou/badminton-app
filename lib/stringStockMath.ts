@@ -136,3 +136,19 @@ export function numberAttr(item: CatalogItem | undefined, key: string): number |
 export function metresFor(unit: StringPurchase['unit'], item: CatalogItem | undefined): number {
   return unit === 'reel' ? numberAttr(item, 'reelLengthM') ?? REEL_M : numberAttr(item, 'setLengthM') ?? SET_M;
 }
+
+/**
+ * What a PLAYER is told about stock: a band, never sets, metres or cost
+ * (docs/design/strings-shelf-spec.md). "Low" is three sets or fewer — a
+ * reel is about twenty.
+ */
+export const LOW_STOCK_SETS = 3;
+export type StockBand = 'in' | 'low' | 'out';
+
+/** Null when no purchase has been logged: unknown, never "out". A reel the
+ *  stringer has not logged yet would otherwise read as an empty shelf. */
+export function stockBand(line: Pick<StringStockLine, 'purchases' | 'remainingSets'>): StockBand | null {
+  if (line.purchases === 0) return null;
+  if (line.remainingSets === 0) return 'out';
+  return line.remainingSets <= LOW_STOCK_SETS ? 'low' : 'in';
+}

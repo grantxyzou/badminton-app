@@ -192,3 +192,40 @@ describe('the build flag still gates it', () => {
     expect((await POST(playerReq('wei', VALID))).status).toBe(404);
   });
 });
+
+/**
+ * The colour a player picks (docs/design/strings-shelf-spec.md). A SEPARATE
+ * field, never folded into the label: stock matches a job to its reel by
+ * `labelKey(stringLabel)`, and "BG80 · Yellow" would match nothing.
+ */
+describe('stringColor', () => {
+  const jobs = () => getStore()['stringingJobs'] as StringingJob[];
+
+  it('is optional', async () => {
+    await openShop();
+    const res = await POST(playerReq('wei', VALID));
+    expect(res.status).toBe(201);
+    expect(jobs()[0].stringColor).toBeUndefined();
+  });
+
+  it('is trimmed, stored apart from the label, and reaches the player view', async () => {
+    await openShop();
+    const res = await POST(playerReq('wei', { ...VALID, stringColor: '  Yellow ' }));
+    expect(res.status).toBe(201);
+    expect(jobs()[0]).toMatchObject({ stringLabel: 'BG80 white', stringColor: 'Yellow', priceCents: null });
+    expect((await res.json()).job.stringColor).toBe('Yellow');
+  });
+
+  it('drops a colour that is too long or not a string, and still files the request', async () => {
+    await openShop();
+    expect((await POST(playerReq('wei', { ...VALID, stringColor: 'x'.repeat(31) }))).status).toBe(201);
+    expect((await POST(playerReq('wei', { ...VALID, stringColor: 42 }))).status).toBe(201);
+    expect(jobs().map((j) => j.stringColor)).toEqual([undefined, undefined]);
+  });
+
+  it('keeps 30 characters', async () => {
+    await openShop();
+    await POST(playerReq('wei', { ...VALID, stringColor: 'x'.repeat(30) }));
+    expect(jobs()[0].stringColor).toBe('x'.repeat(30));
+  });
+});

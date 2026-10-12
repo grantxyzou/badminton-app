@@ -148,7 +148,7 @@ describe('clubSettings', () => {
     stamped(pricingDocId('bpm'), { services: [{ label: MARKER, priceCents: 1 }] });
     const strings = await (await stringsGet(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
     const pricing = await (await pricingGet(makeRequest('GET', 'http://x/api/stringing/pricing'))).json();
-    expect(strings).toEqual({ strings: [], links: {} });
+    expect(strings).toEqual({ strings: [], links: {}, prices: {}, stock: {}, players: {} });
     expect(pricing).toEqual({ services: [] });
   });
 });

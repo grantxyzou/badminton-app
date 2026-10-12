@@ -352,7 +352,7 @@ export default function StringingPage({ onBack }: Props) {
             <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>{job.racketLabel}</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
               <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
-                {job.stringLabel} · {job.tensionMains}/{job.tensionCrosses}{t('lb')}
+                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} · {job.tensionMains}/{job.tensionCrosses}{t('lb')}
               </span>
               {/* URGENCY, not price. A bench is scanned for what is late, and
                   the exact figure lives one tap away on the detail screen —

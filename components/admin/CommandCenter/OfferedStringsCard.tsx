@@ -7,6 +7,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { MAX_OFFERED } from '@/lib/stringingLimits';
+import { formatServicePrice, MAX_PRICE_CENTS } from '@/lib/stringingRateCard';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { useCatalog } from '@/components/stats/useCatalog';
 import type { CatalogItem } from '@/lib/types';
@@ -14,6 +15,16 @@ import type { CatalogItem } from '@/lib/types';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 const catalogLabel = (i: CatalogItem) => `${i.brand} ${i.model}`;
+
+/** "32" or "29.50" → cents; "" → null ("Ask"); anything else → undefined (not savable). */
+function parsePrice(draft: string): number | null | undefined {
+  const t = draft.trim().replace(/^\$/, '');
+  if (!t) return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(t)) return undefined;
+  const cents = Math.round(Number(t) * 100);
+  return cents >= 0 && cents <= MAX_PRICE_CENTS ? cents : undefined;
+}
+
 /** Catalog strings whose brand or model carries every word typed. */
 function matches(items: CatalogItem[], query: string, limit = 5): CatalogItem[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -46,6 +57,13 @@ export default function OfferedStringsCard() {
   const [links, setLinks] = useState<Record<string, string>>({});
   // The chip whose catalog match is being picked, or null.
   const [linking, setLinking] = useState<string | null>(null);
+  // Offered label → restring price in cents, `null` = "Ask"
+  // (docs/design/strings-shelf-spec.md). Players see it on the Stringing tab
+  // and in the request sheet.
+  const [prices, setPrices] = useState<Record<string, number | null>>({});
+  // The chip whose price is being edited, and what has been typed.
+  const [pricing, setPricing] = useState<string | null>(null);
+  const [priceDraft, setPriceDraft] = useState('');
   const catalog = useCatalog('string');
   const [loadError, setLoadError] = useState(false);
   // Bumped by "Try again" to re-run the load effect.
@@ -64,6 +82,7 @@ export default function OfferedStringsCard() {
         if (Array.isArray(d.strings)) {
           setStrings(d.strings);
           setLinks(d.links && typeof d.links === 'object' ? d.links : {});
+          setPrices(d.prices && typeof d.prices === 'object' ? d.prices : {});
         } else setLoadError(true);
       })
       .catch(() => {
@@ -74,34 +93,39 @@ export default function OfferedStringsCard() {
     };
   }, [attempt]);
 
-  async function save(next: string[], nextLinks: Record<string, string> = links) {
+  async function save(next: string[], nextLinks: Record<string, string> = links, nextPrices: Record<string, number | null> = prices) {
     if (busy || !online) return;
     // Optimistic, with a rollback: the previous list is captured before the
     // write so a failure restores exactly what was on screen rather than
     // leaving a chip that was never actually saved.
     const previous = strings;
     const previousLinks = links;
-    // A link for a label that left the list goes with it.
+    const previousPrices = prices;
+    // A link or a price for a label that left the list goes with it.
     const kept = Object.fromEntries(Object.entries(nextLinks).filter(([label]) => next.includes(label)));
+    const keptPrices = Object.fromEntries(Object.entries(nextPrices).filter(([label]) => next.includes(label)));
     setStrings(next);
     setLinks(kept);
+    setPrices(keptPrices);
     setBusy(true);
     setSaveError(false);
     try {
       const res = await fetch(`${BASE}/api/stringing/strings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ strings: next, links: kept }),
+        body: JSON.stringify({ strings: next, links: kept, prices: keptPrices }),
       });
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
       if (Array.isArray(d.strings)) {
         setStrings(d.strings);
         setLinks(d.links && typeof d.links === 'object' ? d.links : {});
+        setPrices(d.prices && typeof d.prices === 'object' ? d.prices : {});
       }
     } catch {
       setStrings(previous);
       setLinks(previousLinks);
+      setPrices(previousPrices);
       setSaveError(true);
     } finally {
       setBusy(false);
@@ -121,6 +145,25 @@ export default function OfferedStringsCard() {
     }
     if (strings.length >= MAX_OFFERED) return;
     void save([...strings, label], item ? { ...links, [label]: item.id } : links);
+  }
+
+  function openPrice(label: string) {
+    if (pricing === label) {
+      setPricing(null);
+      return;
+    }
+    const cents = prices[label];
+    setPriceDraft(typeof cents === 'number' ? (cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2)) : '');
+    setPricing(label);
+  }
+
+  function savePrice() {
+    if (!pricing || !strings) return;
+    const cents = parsePrice(priceDraft);
+    if (cents === undefined) return;
+    const label = pricing;
+    setPricing(null);
+    void save(strings, links, { ...prices, [label]: cents });
   }
 
   function link(label: string, item: CatalogItem) {
@@ -187,7 +230,23 @@ export default function OfferedStringsCard() {
                   <span className="material-icons icon-xs" style={{ color: 'var(--text-muted)' }}>link</span>
                 </button>
               )}
-              <span className="fs-sm">{s}</span>
+              {/* The label opens its price: one all-in restring figure. */}
+              <button
+                type="button"
+                disabled={busy || !online}
+                onClick={() => openPrice(s)}
+                aria-label={t('strings.priceFor', { name: s })}
+                aria-expanded={pricing === s}
+                className="fs-sm"
+                style={{ background: 'transparent', border: 'none', padding: 0, color: 'inherit', cursor: 'pointer' }}
+              >
+                {s}
+                {s in prices && (
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                    {` · ${formatServicePrice(prices[s]) ?? t('strings.priceAsk')}`}
+                  </span>
+                )}
+              </button>
               <button
                 type="button"
                 disabled={busy || !online}
@@ -199,6 +258,43 @@ export default function OfferedStringsCard() {
               </button>
             </span>
           ))}
+        </div>
+      )}
+
+      {pricing && (
+        <div className="flex flex-col gap-1">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <label htmlFor="offered-string-price" className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
+              {t('strings.priceFor', { name: pricing })}
+            </label>
+            <span className="fs-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>$</span>
+            <input
+              id="offered-string-price"
+              type="text"
+              inputMode="decimal"
+              value={priceDraft}
+              onChange={(e) => setPriceDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  savePrice();
+                }
+              }}
+              placeholder={t('strings.priceAsk')}
+              maxLength={7}
+              autoFocus
+              style={{ width: '6rem' }}
+            />
+            <button
+              type="button"
+              onClick={savePrice}
+              disabled={busy || !online || parsePrice(priceDraft) === undefined}
+              className="cc-btn cc-btn-secondary"
+            >
+              {t('strings.priceSave')}
+            </button>
+          </div>
+          <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('strings.priceHint')}</p>
         </div>
       )}
 

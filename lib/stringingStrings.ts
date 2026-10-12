@@ -24,6 +24,7 @@ export function stringsDocId(groupId: string): string {
 }
 export { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
 import { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
+import { MAX_PRICE_CENTS } from './stringingRateCard';
 
 export interface OfferedStringsDoc {
   id: string;
@@ -36,12 +37,26 @@ export interface OfferedStringsDoc {
    * exactly the spelling in `strings`.
    */
   links?: Record<string, string>;
+  /**
+   * Offered label → restring price in cents for a restring with that string;
+   * `null` = "Ask" (docs/design/strings-shelf-spec.md). ADDITIVE, the same
+   * pattern as `links`: a label with no entry has no price set and shows
+   * none. One all-in figure per string, set by the stringer — not an
+   * estimate, so it is never shown with a tilde.
+   */
+  prices?: Record<string, number | null>;
   updatedAt: string;
   updatedBy: string | null;
 }
 
-/** The offered strings with their catalog links; `null` when the read threw. */
-export async function readOfferedStringsWithLinks(groupId: string): Promise<{ strings: string[]; links: Record<string, string> } | null> {
+export interface OfferedStringsRead {
+  strings: string[];
+  links: Record<string, string>;
+  prices: Record<string, number | null>;
+}
+
+/** The offered strings with their catalog links and prices; `null` when the read threw. */
+export async function readOfferedStringsWithLinks(groupId: string): Promise<OfferedStringsRead | null> {
   try {
     await ensureClubSettings();
     const resource = await groupScope(groupId).read<OfferedStringsDoc>('clubSettings', stringsDocId(groupId));
@@ -50,7 +65,7 @@ export async function readOfferedStringsWithLinks(groupId: string): Promise<{ st
     const known = new Set(strings);
     const links: Record<string, string> = {};
     for (const [label, id] of Object.entries(raw)) if (known.has(label) && typeof id === 'string') links[label] = id;
-    return { strings, links };
+    return { strings, links, prices: normalisePrices(resource?.prices, strings) };
   } catch (err) {
     console.error('readOfferedStringsWithLinks failed:', err);
     return null;
@@ -70,6 +85,24 @@ export function normaliseLinks(value: unknown, strings: readonly string[], valid
   for (const [label, id] of Object.entries(value as Record<string, unknown>)) {
     if (!known.has(label) || typeof id !== 'string' || !validIds.has(id)) continue;
     out[label] = id;
+  }
+  return out;
+}
+
+/**
+ * Clean a submitted price map against the (already normalised) list. Like
+ * `normaliseLinks`, anything wrong is DROPPED rather than refused: a label not
+ * in the list, or a value that is not `null` or a whole number of cents from
+ * 0 to `MAX_PRICE_CENTS`. `null` survives — it is "Ask", a real answer.
+ */
+export function normalisePrices(value: unknown, strings: readonly string[]): Record<string, number | null> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const known = new Set(strings);
+  const out: Record<string, number | null> = {};
+  for (const [label, cents] of Object.entries(value as Record<string, unknown>)) {
+    if (!known.has(label)) continue;
+    if (cents === null) out[label] = null;
+    else if (typeof cents === 'number' && Number.isInteger(cents) && cents >= 0 && cents <= MAX_PRICE_CENTS) out[label] = cents;
   }
   return out;
 }

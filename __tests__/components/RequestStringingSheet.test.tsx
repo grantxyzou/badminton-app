@@ -5,6 +5,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { NextIntlClientProvider } from 'next-intl';
 import RequestStringingSheet from '../../components/stringing/RequestStringingSheet';
 import type { UseGear } from '@/components/stats/useGear';
+import { resetCatalogCache } from '@/components/stats/useCatalog';
 import enMessages from '../../messages/en.json';
 
 /**
@@ -12,7 +13,7 @@ import enMessages from '../../messages/en.json';
  *
  * Two states. The standard one asks for ONE tension and derives the crosses at
  * +2 lb, because that is the pair a stringer would have chosen anyway. The
- * custom one opens both numbers and turns the string dropdown into free text.
+ * custom one opens both numbers and turns the string list into free text.
  *
  * The thing most worth pinning is what gets SENT, not what gets shown: a
  * player who touches one stepper must still produce a complete, sane
@@ -26,11 +27,15 @@ function wrap() {
   );
 }
 
-/** /strings answers with `offered`; the POST always succeeds. */
-function mockApi(offered: string[] | null) {
+/** /strings answers with `offered` (plus any shelf maps); /catalog with
+ *  `catalog`; the POST always succeeds. */
+function mockApi(offered: string[] | null, shelf: Record<string, unknown> = {}, catalog: unknown[] = []) {
   const fetchMock = vi.fn().mockImplementation((url: string) => {
     if (String(url).includes('/strings')) {
-      return Promise.resolve({ ok: true, json: async () => ({ strings: offered }) } as Response);
+      return Promise.resolve({ ok: true, json: async () => ({ strings: offered, ...shelf }) } as Response);
+    }
+    if (String(url).includes('/catalog')) {
+      return Promise.resolve({ ok: true, json: async () => ({ items: catalog }) } as Response);
     }
     return Promise.resolve({
       ok: true,
@@ -57,6 +62,8 @@ async function fillRacket() {
 
 beforeEach(() => {
   vi.stubGlobal('navigator', { ...global.navigator, onLine: true });
+  // The catalog read is cached per page; each test brings its own.
+  resetCatalogCache();
 });
 afterEach(() => {
   cleanup();
@@ -65,18 +72,23 @@ afterEach(() => {
 });
 
 describe('the standard form', () => {
-  it('offers the strings the club stocks, as a dropdown', async () => {
+  it('offers the strings the club stocks, as a list, with Bring my own last', async () => {
     mockApi(['BG80 white', 'Aerobite', 'NBG95']);
     wrap();
-    const select = await screen.findByRole('combobox', { name: 'Which string?' });
-    expect(select.tagName).toBe('SELECT');
-    expect(screen.getByRole('option', { name: 'Aerobite' })).toBeDefined();
+    await screen.findByRole('radiogroup', { name: 'Which string?' });
+    const radios = screen.getAllByRole('radio');
+    expect(radios.map((r) => r.textContent)).toEqual([
+      expect.stringContaining('BG80 white'),
+      expect.stringContaining('Aerobite'),
+      expect.stringContaining('NBG95'),
+      expect.stringContaining('Bring my own string'),
+    ]);
   });
 
   it('asks for ONE tension, not two', async () => {
     mockApi(['BG80 white']);
     wrap();
-    await screen.findByRole('combobox', { name: 'Which string?' });
+    await screen.findByRole('radiogroup', { name: 'Which string?' });
     expect(screen.getByText('Tension')).toBeDefined();
     expect(screen.queryByText('Mains')).toBeNull();
     expect(screen.queryByText('Crosses')).toBeNull();
@@ -89,7 +101,7 @@ describe('the standard form', () => {
     const fetchMock = mockApi(['BG80 white']);
     wrap();
     await fillRacket();
-    fireEvent.change(screen.getByLabelText('Which string?'), { target: { value: 'BG80 white' } });
+    fireEvent.click(screen.getByRole('radio', { name: /BG80 white/ }));
     fireEvent.click(screen.getByRole('button', { name: 'More Tension' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
@@ -117,7 +129,7 @@ describe('custom request', () => {
     expect(screen.getByText('Mains')).toBeDefined();
     expect(screen.getByText('Crosses')).toBeDefined();
     expect(screen.queryByText('Tension')).toBeNull();
-    // The dropdown is gone; a text box takes its place.
+    // The list is gone; a text box takes its place.
     expect(screen.queryByLabelText('Which string?')).toBeNull();
     expect(screen.getByLabelText(/Which string\? e\.g\./i)).toBeDefined();
   });
@@ -126,9 +138,7 @@ describe('custom request', () => {
     // Someone opening custom usually wants to ADJUST what they had.
     mockApi(['BG80 white']);
     wrap();
-    fireEvent.change(await screen.findByRole('combobox', { name: 'Which string?' }), {
-      target: { value: 'BG80 white' },
-    });
+    fireEvent.click(await screen.findByRole('radio', { name: /BG80 white/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Custom request' }));
     expect((screen.getByLabelText(/Which string\? e\.g\./i) as HTMLInputElement).value).toBe(
       'BG80 white',
@@ -301,7 +311,7 @@ describe('picking a racket from the kit', () => {
       target: { value: 'Arcsaber 11' },
     });
     // A string is required too, or the submit stays disabled.
-    fireEvent.change(screen.getByLabelText('Which string?'), { target: { value: 'BG65' } });
+    fireEvent.click(screen.getByRole('radio', { name: /BG65/ }));
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await waitFor(() => expect(addCustom).toHaveBeenCalledWith('Arcsaber 11'));
@@ -365,7 +375,7 @@ describe('reopening the sheet', () => {
     );
     const { rerender } = render(sheet(true));
     await fillRacket();
-    fireEvent.change(await screen.findByLabelText('Which string?'), { target: { value: 'BG80 white' } });
+    fireEvent.click(await screen.findByRole('radio', { name: /BG80 white/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
     expect(await screen.findByRole('status')).toBeDefined();
     expect(sentBody(fetchMock)).not.toBeNull();
@@ -376,5 +386,82 @@ describe('reopening the sheet', () => {
     expect(screen.queryByRole('status')).toBeNull();
     expect(((await screen.findByLabelText('Which racket?')) as HTMLInputElement).value).toBe('');
     expect(screen.getByRole('button', { name: 'Send the request' })).toBeDefined();
+  });
+});
+
+/**
+ * The short shelf (docs/design/strings-shelf-spec.md, design 2f): price and
+ * stock per string, out of stock refused, a colour when there is a choice,
+ * and "Bring my own" as the last row.
+ */
+describe('the string list as a shelf', () => {
+  const BG65 = {
+    id: 'string-yx-bg65',
+    category: 'string',
+    brand: 'Yonex',
+    model: 'BG65',
+    attributes: { gaugeMm: 0.7, stringType: 'Durability', colors: 'White; Yellow; Red' },
+  };
+  const SHELF = {
+    links: { BG65: 'string-yx-bg65' },
+    prices: { BG65: 2800, Aerobite: null },
+    stock: { BG65: 'in', Aerobite: 'out' },
+  };
+
+  it('shows the price and stock band, and "Ask" for a null price', async () => {
+    mockApi(['BG65', 'Aerobite', 'House'], SHELF, [BG65]);
+    wrap();
+    const bg65 = await screen.findByRole('radio', { name: /BG65/ });
+    expect(bg65.textContent).toContain('$28');
+    expect(bg65.textContent).toContain('In stock');
+    // No price set for House: nothing, not "$0" and not "Ask".
+    const house = screen.getByRole('radio', { name: /House/ });
+    expect(house.textContent).not.toMatch(/\$|Ask/);
+  });
+
+  it('will not let an out-of-stock string be picked', async () => {
+    mockApi(['BG65', 'Aerobite'], SHELF, [BG65]);
+    wrap();
+    const out = await screen.findByRole('radio', { name: 'Aerobite, out of stock' });
+    expect(out.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(out);
+    expect(out.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('asks which colour, first one by default, and sends it apart from the label', async () => {
+    const fetchMock = mockApi(['BG65'], SHELF, [BG65]);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /BG65/ }));
+    const colours = await screen.findByRole('radiogroup', { name: 'Colour' });
+    expect(colours.querySelector('[aria-checked="true"]')?.textContent).toBe('White');
+    fireEvent.click(screen.getByRole('radio', { name: 'Yellow' }));
+    expect(screen.getByText('BG65 · Yellow · 26 lb')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
+    expect(sentBody(fetchMock)).toMatchObject({ stringLabel: 'BG65', stringColor: 'Yellow' });
+  });
+
+  it('sends no colour for a string the catalog does not know', async () => {
+    const fetchMock = mockApi(['House'], {}, []);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /House/ }));
+    expect(screen.queryByRole('radiogroup', { name: 'Colour' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
+    expect(sentBody(fetchMock).stringColor).toBeUndefined();
+  });
+
+  it('sends what was typed for Bring my own, with no colour', async () => {
+    const fetchMock = mockApi(['BG65'], SHELF, [BG65]);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /Bring my own string/ }));
+    fireEvent.change(screen.getByLabelText('Which string? e.g. BG80 white'), { target: { value: 'Exbolt 63 lime' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
+    expect(sentBody(fetchMock)).toMatchObject({ stringLabel: 'Exbolt 63 lime' });
+    expect(sentBody(fetchMock).stringColor).toBeUndefined();
   });
 });
