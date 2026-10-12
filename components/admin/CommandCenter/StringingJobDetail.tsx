@@ -20,6 +20,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 interface Props {
   job: StringingJob;
   onBack: () => void;
+  /** The header's crumb, from whichever screen opened the bench. */
+  crumb?: string;
   onChanged: () => void;
 }
 
@@ -36,7 +38,7 @@ interface Props {
  * never seeing that figure — so the one screen where the exact number lives is
  * the right place to show, continuously, what the other side is reading.
  */
-export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
+export default function StringingJobDetail({ job, onBack, onChanged, crumb }: Props) {
   const t = useTranslations('admin.stringing');
   const online = useOnline();
   const [busy, setBusy] = useState(false);
@@ -230,7 +232,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
 
   return (
     <div>
-      <AdminBackHeader onBack={onBack} title={local.memberName} />
+      <AdminBackHeader onBack={onBack} title={local.memberName} crumb={crumb} />
       <div className="flex flex-col gap-4 pb-6">
         <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: '0' }}>
           {/* Just the number now. The status has a card of its own directly

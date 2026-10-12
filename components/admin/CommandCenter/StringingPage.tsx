@@ -411,6 +411,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       <div className="animate-slideInRight">
         <StringingJobDetail
           job={selected}
+          crumb={crumb}
           onBack={() => setView('bench')}
           onChanged={() => void load()}
         />
@@ -581,6 +582,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     return (
       <div className="animate-slideInRight">
         <StringingIntake
+          crumb={crumb}
           onBack={() => setView('bench')}
           onCreated={() => {
             setView('bench');

@@ -769,6 +769,22 @@ describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', ()
     await waitFor(() => expect(onTakeover).toHaveBeenLastCalledWith(true));
   });
 
+  it('carries the tab’s crumb onto a job and the intake, never "Admin"', async () => {
+    // The bench-redesign deferred minor: these two drew their own header and
+    // said "Admin" under the Stringing tab. With the Bench a tab, they are on
+    // the main path now.
+    respondEmbedded();
+    wrap(<StringingPage embedded crumb="Stringing" onBack={() => {}} onTakeover={() => {}} />);
+    await screen.findByText('J-0042');
+    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.actions.open }));
+    expect(await screen.findByText('Stringing')).toBeDefined();
+    expect(screen.queryByText('Admin')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Add job/ }));
+    expect(await screen.findByText('Stringing')).toBeDefined();
+    expect(screen.queryByText('Admin')).toBeNull();
+  });
+
   it('keeps its Back header when opened from the Command Center', async () => {
     respondEmbedded();
     wrap(<StringingPage onBack={() => {}} />);

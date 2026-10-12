@@ -150,7 +150,7 @@
         "ratingSource": "Ratings: {source}.",
         "meansTitle": "What this means",
         "specs": "Specs",
-        "typicalPrice": "Typically {range} a set in a shop — the club’s price is on the rate card.",
+        "typicalPrice": "Typically {range} a set in a shop. Ask the stringer for the club’s price.",
         "gauge_thin": "Thin ({mm} mm): lively and powerful, wears faster.",
         "gauge_standard": "Standard ({mm} mm): the middle of the road, a bit of everything.",
         "gauge_thick": "Thick ({mm} mm): tough and forgiving, a touch less bite.",

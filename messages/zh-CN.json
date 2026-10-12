@@ -150,7 +150,7 @@
         "ratingSource": "评分来源：{source}。",
         "meansTitle": "这意味着什么",
         "specs": "参数",
-        "typicalPrice": "店里通常 {range} 一组——俱乐部的价格以价目表为准。",
+        "typicalPrice": "店里通常 {range} 一组。俱乐部的价格请问穿线师。",
         "gauge_thin": "细线（{mm} mm）：弹性足、力量好，磨损更快。",
         "gauge_standard": "标准线径（{mm} mm）：中规中矩，各方面都有一点。",
         "gauge_thick": "粗线（{mm} mm）：结实耐打、容错高，咬球稍弱。",
