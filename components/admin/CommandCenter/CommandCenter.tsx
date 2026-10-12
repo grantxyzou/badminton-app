@@ -5,16 +5,16 @@ import { useTranslations } from 'next-intl';
 import { benchSignals, type BenchRow } from '@/lib/useAdminNeedsYou';
 import TopBar from '../../primitives/TopBar';
 import AnomalyFeed from './AnomalyFeed';
-import InviteCard from './InviteCard';
 import { isFlagOn } from '@/lib/flags';
 import { invitesOn } from '@/lib/invitesOn';
-import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AccessRequestsCard from './AccessRequestsCard';
 import SignInReadinessCard from './SignInReadinessCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import PaymentsInboxCard from './PaymentsInboxCard';
-import GiftCardsCard from './GiftCardsCard';
+import NeedsYouCard from './NeedsYouCard';
+import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
+import SettingsList, { type SettingsRow } from '@/components/profile/SettingsList';
 import AdminDashTiles from './AdminDashTiles';
 import PlayerProfileSheet from './PlayerProfileSheet';
 import ReceiptSheet from './ReceiptSheet';
@@ -36,6 +36,8 @@ interface CommandCenterProps {
   setView: (v: AdminView) => void;
   /** Open one member in the Roster editor. */
   onOpenMember?: (name: string) => void;
+  /** Open the Roster on its Dormant filter. */
+  onOpenDormant?: () => void;
   /** Exit the Admin tab back to Profile (Admin is reached from Profile). */
   onExit: () => void;
 }
@@ -45,16 +47,13 @@ interface CommandCenterProps {
  * across every admin domain (session, payments, birds, roster) so the
  * organizer can confirm "everything looks right" in 30 seconds.
  */
-export default function CommandCenter({ refreshKey, setView, onExit, onOpenMember }: CommandCenterProps) {
+export default function CommandCenter({ refreshKey, setView, onExit, onOpenMember, onOpenDormant }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
-  // Members only needs the invite card even with one club: a new account can
-  // only be made with an invite (docs/plans/members-only.md). The one rule,
-  // shared with the hook and the server (lib/invitesOn.ts).
+  // Members only needs the invite even with one club: a new account can only
+  // be made with an invite (docs/plans/members-only.md). The one rule, shared
+  // with the hook and the server (lib/invitesOn.ts). The invite has its own
+  // page now; this decides whether People offers it.
   const inviteSurfaces = invitesOn();
-  // Names the club in the share sheet. `null` with the flag off, which is also
-  // when `InviteCard` renders nothing.
-  const { group } = useCurrentGroup();
-  const groupName = group?.name;
   const [localRefresh, setLocalRefresh] = useState(0);
   const composedRefresh = refreshKey + localRefresh;
 
@@ -65,6 +64,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
      and a job two days late showed nowhere on this screen. */
   const [benchCount, setBenchCount] = useState<{ waiting: number; late: number } | null>(null);
   const stringingOn = isFlagOn('NEXT_PUBLIC_FLAG_STRINGING');
+  const giftCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
   useEffect(() => {
     if (!stringingOn) return;
     let cancelled = false;
@@ -150,6 +150,48 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
     }
   }, []);
 
+  /* The groups below "At a glance". Birds and Roster are the tiles above, not
+     rows again here. The bench leads Club with its count — the one row with
+     work waiting behind it (audit 2026-10-11). A group with no rows (People,
+     with invites off) is left out. */
+  const groups: Array<{ title: string; rows: SettingsRow[] }> = [
+    {
+      title: 'People',
+      rows: [
+        ...(inviteSurfaces ? [{ icon: 'person_add', label: 'Invite someone', onClick: () => setView('invite') }] : []),
+      ],
+    },
+    {
+      title: 'Money',
+      rows: [
+        { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
+        { icon: 'restore', label: 'Past sessions', onClick: () => setView('past-sessions') },
+        ...(giftCardsOn ? [{ icon: 'payments', label: 'Gift cards', onClick: () => setView('gift-cards') }] : []),
+        { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
+      ],
+    },
+    {
+      title: 'Club',
+      rows: [
+        ...(stringingOn
+          ? [{ icon: 'sports_tennis', label: 'Stringing bench', meta: benchTrailing, accent: !!benchTrailing, onClick: () => setView('stringing') }]
+          : []),
+        { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },
+        { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
+      ],
+    },
+    {
+      title: 'More',
+      rows: [
+        // Club totals: who plays, how fast sessions fill, who comes back.
+        { icon: 'bar_chart', label: 'Metrics', onClick: () => setView('metrics') },
+        { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
+        // Rackets members typed in by name: the models the catalog is missing.
+        { icon: 'sports_tennis', label: 'Missing from the catalog', onClick: () => setView('catalog-gaps') },
+      ],
+    },
+  ];
+
   return (
     <div className="space-y-5 w-full">
       {/* Admin is reached from Profile, so it's a sub-page: TopBar with a back
@@ -168,11 +210,30 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
           slot leaves none. */}
       <div className="flex flex-col gap-5">
       <RevealGroup>
-      {/* Above the session card: somebody locked out is waiting on a human,
-          and it renders nothing at all when nobody is. */}
+      {/* NEEDS YOU FIRST (admin audit, 2026-10-12). Someone waiting on a human
+          (sign-in requests), what Profile's "N need you" counted, and members
+          who'd be locked out. All three render nothing when nothing is
+          waiting, so on a quiet week the screen opens on "This week". */}
       <RevealSlot canBeEmpty placeholder={null}>
         <AccessRequestsCard refreshKey={composedRefresh} />
       </RevealSlot>
+      <RevealSlot canBeEmpty placeholder={null}>
+        <NeedsYouCard
+          refreshKey={composedRefresh}
+          onOpenPayments={() => document.getElementById('cc-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onOpenBirds={() => setView('birds')}
+          onOpenDormant={() => (onOpenDormant ? onOpenDormant() : setView('members'))}
+          onOpenBench={() => setView('stringing')}
+        />
+      </RevealSlot>
+      <RevealSlot canBeEmpty placeholder={null}>
+        <SignInReadinessCard refreshKey={composedRefresh} onOpenMember={onOpenMember} />
+      </RevealSlot>
+
+      {/* THIS WEEK: the session and its money, the screen's main job. The
+          e-transfers inbox sits right above the paid pills it resolves into;
+          a match bumps the refresh so the pills move with it. */}
+      <ProfileEyebrow>This week</ProfileEyebrow>
       <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />}>
       <NextSessionCard
         refreshKey={composedRefresh}
@@ -182,6 +243,19 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
         onChanged={() => setLocalRefresh((n) => n + 1)}
       />
       </RevealSlot>
+      {/* Holds a box: with the flag on this card ALWAYS renders (a status line
+          or the set-up invitation), so it is not "usually absent". */}
+      <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.inbox} />}>
+        <PaymentsInboxCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
+      </RevealSlot>
+      <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>
+        <div id="cc-payments" style={{ scrollMarginTop: 'var(--space-9)' }}>
+          <PaymentsCard refreshKey={composedRefresh} onOpenPlayer={openPlayer} />
+        </div>
+      </RevealSlot>
+
+      {/* AT A GLANCE: the two numbers worth seeing without a tap. */}
+      <ProfileEyebrow>At a glance</ProfileEyebrow>
       <RevealSlot
         placeholder={
           <div className="cc-dgrid">
@@ -195,118 +269,21 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
         onOpenRoster={() => setView('members')}
       />
       </RevealSlot>
-      {/* E-transfers waiting for a person sit right above the paid pills they
-          resolve into; a match bumps the refresh so the pills move with it. */}
-      {/* Holds a box: with the flag on this card ALWAYS renders (a status line
-          or the set-up invitation), so it is not "usually absent" — and a
-          space-less slot would hold the payments list below it. */}
-      <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.inbox} />}>
-        <PaymentsInboxCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
-      </RevealSlot>
-      <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>
-      <PaymentsCard
-        refreshKey={composedRefresh}
-        onOpenPlayer={openPlayer}
-      />
-      </RevealSlot>
 
-      {/* BELOW the week's work, not above it. Growing the club matters, but an
-          organiser opens this screen to run Thursday — the invite is the thing
-          you come looking for, not the thing you are interrupted by. Renders
-          nothing with the flag off (the endpoint 404s) or for a non-admin. */}
-      <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.invite} />}>
-        <InviteCard enabled={inviteSurfaces} groupName={groupName} />
-      </RevealSlot>
-
-      {/* Occasional, like the invite: below the week's work. */}
-      <RevealSlot canBeEmpty placeholder={null}>
-        <GiftCardsCard refreshKey={composedRefresh} />
-      </RevealSlot>
-
-      {/* Members only (docs/plans/members-only.md): who would be locked out.
-          BELOW the week's work, beside the invite, for the invite card's own
-          reason — it is a checklist worked through over weeks before the flip,
-          not something to be interrupted by every Thursday. Access requests,
-          which are someone waiting, stay at the top. */}
-      <RevealSlot canBeEmpty placeholder={null}>
-        <SignInReadinessCard refreshKey={composedRefresh} onOpenMember={onOpenMember} />
-      </RevealSlot>
-
-      {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
-          Announcements / E-transfer / Skip dates / Ledger / Release notes
-          are drill-in sub-pages (AdminBackHeader) wired in AdminDashboard.
-          Static, so ready at once — but slotted, so it shows only after the
-          cards above it, which would otherwise push it down as they arrive. */}
+      {/* EVERYTHING ELSE, grouped by what it is FOR. It was one nine-row list
+          mixing the bench, weekly settings, the books, analytics and catalog
+          upkeep, with the invite and gift cards as full cards between. Static,
+          so ready at once — but slotted, so it shows only after the cards
+          above it, which would otherwise push it down as they arrive. */}
       <RevealSlot ready placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.settings} />}>
-      <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
-        <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
-          {[
-            // The stringing bench, FIRST and with its count: it is the one row
-            // here with work waiting behind it, and it sat last of nine where
-            // nobody saw three unclaimed requests (audit 2026-10-11). It was
-            // first added to a btn-ghost row in the pre-Command-Center
-            // AdminDashboard layout, which nobody could see (see
-            // AdminBenchEntry.test.tsx). That layout is gone now.
-            ...(stringingOn
-              ? [{ icon: 'sports_tennis', label: 'Stringing bench', trailing: benchTrailing, onClick: () => setView('stringing') }]
-              : []),
-            { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },
-            { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
-            { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
-            { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
-            { icon: 'restore', label: 'Past sessions', onClick: () => setView('past-sessions') },
-            // Club totals: who plays, how fast sessions fill, who comes back.
-            { icon: 'bar_chart', label: 'Metrics', onClick: () => setView('metrics') },
-            { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
-            // Rackets members typed in by name: the models the catalog is missing.
-            { icon: 'sports_tennis', label: 'Missing from the catalog', onClick: () => setView('catalog-gaps') },
-          ].map((row: { icon: string; label: string; trailing?: string; onClick: () => void }, idx) => (
-            <li
-              key={row.label}
-              style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}
-            >
-              <button
-                type="button"
-                onClick={row.onClick}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-4)',
-                  padding: 'var(--space-4) var(--space-5)',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-primary)',
-                  fontSize: 'var(--fs-lg)',
-                  textAlign: 'left',
-                }}
-              >
-                <span
-                  className="material-icons"
-                  aria-hidden="true"
-                  style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-secondary)' }}
-                >
-                  {row.icon}
-                </span>
-                <span style={{ flex: 1 }}>{row.label}</span>
-                {row.trailing && (
-                  <span className="fs-sm" style={{ color: 'var(--sev-warn)', fontWeight: 600 }}>
-                    {row.trailing}
-                  </span>
-                )}
-                <span
-                  className="material-icons"
-                  aria-hidden="true"
-                  style={{ fontSize: 'var(--icon-md)', color: 'var(--text-secondary)' }}
-                >
-                  chevron_right
-                </span>
-              </button>
-            </li>
+        <div className="flex flex-col gap-2">
+          {groups.filter((g) => g.rows.length > 0).map((g) => (
+            <section key={g.title} aria-label={g.title} className="flex flex-col gap-2">
+              <ProfileEyebrow>{g.title}</ProfileEyebrow>
+              <SettingsList rows={g.rows} />
+            </section>
           ))}
-        </ul>
-      </div>
+        </div>
       </RevealSlot>
       </RevealGroup>
       </div>

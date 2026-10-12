@@ -1,6 +1,6 @@
 'use client';
 
-import { birdReorder } from './birdRunway';
+import { birdReorder, type BirdReorder } from './birdRunway';
 import { useEffect, useState } from 'react';
 import { isNoActiveSession } from '@/lib/apiFetch';
 import { isDormant, type DormantInput } from '@/lib/dormant';
@@ -23,6 +23,12 @@ export interface AdminNeedsYou {
    * not a failed check, just no bench.
    */
   stringing: { waiting: number; late: number } | null;
+  /**
+   * What the count is made of, so the Command Center can LIST it — Profile
+   * says "3 need you" and the admin should land on the three, not hunt for
+   * them. `null` exactly when `needsYou` is.
+   */
+  breakdown: { unpaid: number; birds: BirdReorder | null; dormant: number } | null;
   loadError: boolean;
 }
 
@@ -59,9 +65,11 @@ export function benchSignals(rows: BenchRow[], today = todayIso()): { waiting: n
  *     (audit 2026-10-11: three unclaimed requests and a job two days late
  *     read as "1 need you", because nothing counted the bench)
  */
-export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
+/** `refreshKey` re-reads, for the Command Center after a payment or a move on the bench. */
+export function useAdminNeedsYou(enabled: boolean, refreshKey = 0): AdminNeedsYou {
   const [needsYou, setNeedsYou] = useState<number | null>(null);
   const [stringing, setStringing] = useState<AdminNeedsYou['stringing']>(null);
+  const [breakdown, setBreakdown] = useState<AdminNeedsYou['breakdown']>(null);
   const [loadError, setLoadError] = useState(false);
 
   // Inlined into the effect rather than hoisted into a `useCallback` the effect
@@ -92,6 +100,7 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
           setLoadError(true);
           setNeedsYou(null);
           setStringing(null);
+          setBreakdown(null);
           return;
         }
         const players = noSession
@@ -130,6 +139,7 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
 
         const bench = benchRows ? benchSignals(benchRows) : null;
         setStringing(bench);
+        setBreakdown({ unpaid, birds: reorder, dormant });
 
         setNeedsYou(
           [unpaid > 0, birdsLow, dormant > 0, bench !== null && bench.waiting + bench.late > 0]
@@ -143,13 +153,14 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
         setLoadError(true);
         setNeedsYou(null);
         setStringing(null);
+        setBreakdown(null);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, refreshKey]);
 
-  return { needsYou, stringing, loadError };
+  return { needsYou, stringing, breakdown, loadError };
 }

@@ -20,6 +20,8 @@ interface RosterPageProps {
   /** Open this member's editor once the roster has loaded — how Sign-in
    *  readiness hands a locked-out name straight to its recovery code. */
   focusName?: string | null;
+  /** Open on this filter — "N dormant members" from Needs you lands on Dormant. */
+  initialFilter?: FilterKey;
 }
 
 interface RowData {
@@ -33,7 +35,7 @@ interface RowData {
   isYou: boolean;
 }
 
-type FilterKey = 'all' | 'recent' | 'regulars' | 'casual' | 'dormant';
+export type FilterKey = 'all' | 'recent' | 'regulars' | 'casual' | 'dormant';
 
 function Sparkline({ presence }: { presence: Array<1 | null> }) {
   return (
@@ -54,7 +56,7 @@ function Sparkline({ presence }: { presence: Array<1 | null> }) {
 }
 
 
-export default function RosterPage({ onBack, focusName = null }: RosterPageProps) {
+export default function RosterPage({ onBack, focusName = null, initialFilter = 'all' }: RosterPageProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [presence, setPresence] = useState<Map<string, Array<1 | null>>>(new Map());
@@ -65,7 +67,7 @@ export default function RosterPage({ onBack, focusName = null }: RosterPageProps
    *  is a confident wrong answer on the screen an admin manages people from. */
   const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterKey>('all');
+  const [filter, setFilter] = useState<FilterKey>(initialFilter);
 
   // SSR-safe portal mount guard
   const [portalReady, setPortalReady] = useState(false);

@@ -15,6 +15,11 @@ import LedgerPage from './LedgerPage';
 import MetricsPage from './MetricsPage';
 import PaymentsCard from './CommandCenter/PaymentsCard';
 import AdminBackHeader from './AdminBackHeader';
+import InviteCard from './CommandCenter/InviteCard';
+import GiftCardsCard from './CommandCenter/GiftCardsCard';
+import type { FilterKey as RosterFilter } from './CommandCenter/RosterPage';
+import { invitesOn } from '@/lib/invitesOn';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
 import ETransferRecipientEditor from './CommandCenter/ETransferRecipientEditor';
 import SkipDatesEditor from './CommandCenter/SkipDatesEditor';
@@ -35,8 +40,12 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const [refreshKey, setRefreshKey] = useState(0);
   // Session the Ledger drilled into; PaymentsCard preselects its chip.
   const [paymentsSessionId, setPaymentsSessionId] = useState<string | null>(null);
-  // Member the Roster should open on arrival (from Sign-in readiness).
+  // Member the Roster should open on arrival (from Sign-in readiness), or
+  // the filter it opens on (from Needs you's dormant row).
   const [rosterFocus, setRosterFocus] = useState<string | null>(null);
+  const [rosterFilter, setRosterFilter] = useState<RosterFilter>('all');
+  const inviteSurfaces = invitesOn();
+  const { group } = useCurrentGroup();
 
   // Which way the last move went. A push slides the page in from the right;
   // going BACK used to have no motion at all (the Command Center just cut in).
@@ -67,7 +76,15 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     return <div className="animate-slideInRight"><SetupPage onBack={goBack} /></div>;
   }
   if (view === 'members') {
-    return <div className="animate-slideInRight"><RosterPage onBack={() => { setRosterFocus(null); goBack(); }} focusName={rosterFocus} /></div>;
+    return (
+      <div className="animate-slideInRight">
+        <RosterPage
+          onBack={() => { setRosterFocus(null); setRosterFilter('all'); goBack(); }}
+          focusName={rosterFocus}
+          initialFilter={rosterFilter}
+        />
+      </div>
+    );
   }
   if (view === 'birds') {
     return <div className="animate-slideInRight"><BirdsPage onBack={goBack} /></div>;
@@ -127,13 +144,35 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
       </div>
     );
   }
+  if (view === 'invite') {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="Invite someone" />
+        <InviteCard enabled={inviteSurfaces} groupName={group?.name} bare />
+      </div>
+    );
+  }
+  if (view === 'gift-cards') {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="Gift cards" />
+        <GiftCardsCard refreshKey={refreshKey} bare />
+      </div>
+    );
+  }
   if (view === 'past-sessions') {
     return <PastSessionsPage onBack={goBack} />;
   }
 
   return (
     <div className={popped ? 'motion-fade' : undefined}>
-      <CommandCenter refreshKey={refreshKey} setView={push} onExit={onExit} onOpenMember={(name) => { setRosterFocus(name); push('members'); }} />
+      <CommandCenter
+        refreshKey={refreshKey}
+        setView={push}
+        onExit={onExit}
+        onOpenMember={(name) => { setRosterFocus(name); push('members'); }}
+        onOpenDormant={() => { setRosterFilter('dormant'); push('members'); }}
+      />
     </div>
   );
 }
