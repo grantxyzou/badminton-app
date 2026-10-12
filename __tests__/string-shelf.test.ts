@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { stockBand, LOW_STOCK_SETS } from '../lib/stringStockMath';
 import { normalisePrices } from '../lib/stringingStrings';
-import { parseShelf, shelfPrice, sortShelf, stringColours, typeBand, type ShelfEntry } from '../lib/stringShelf';
+import { isBringOwnLabel, parseShelf, shelfPrice, sortShelf, stringColours, typeBand, type ShelfEntry } from '../lib/stringShelf';
 import type { CatalogItem } from '../lib/types';
 
 /**
@@ -98,5 +98,22 @@ describe('typeBand', () => {
     expect(typeBand('hybrid')).toContain('#c4b5fd');
     expect(typeBand('all_round')).toBe('var(--inner-card-bg)');
     expect(typeBand(null)).toBe('var(--inner-card-bg)');
+  });
+});
+
+describe('a "bring my own" entry on the offered list', () => {
+  it('is recognised in the spellings a stringer would type', () => {
+    for (const l of ['Bring my own', 'bring your own string', 'Bring own', 'BYO', 'B.Y.O.', 'Own string', '自带拍线']) {
+      expect(isBringOwnLabel(l)).toBe(true);
+    }
+  });
+  it('leaves real strings alone', () => {
+    for (const l of ['BG80', 'Yonex BG65 white', 'Exbolt 63', 'Aerobite Boost', 'Bringer 70']) {
+      expect(isBringOwnLabel(l)).toBe(false);
+    }
+  });
+  it('is dropped from what players see, so the built-in row is the only one', () => {
+    const s = parseShelf({ strings: ['BG80', 'Bring my own', 'BYO'], prices: { BG80: 3000 } })!;
+    expect(s.strings).toEqual(['BG80']);
   });
 });
