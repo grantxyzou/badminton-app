@@ -125,13 +125,13 @@ describe('the shop sign', () => {
     respondShop(true);
     const { unmount } = wrap(<StringingPage onBack={() => {}} />);
     expect(await screen.findByText('Open for stringing')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Close' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Close shop' })).toBeDefined();
     unmount();
 
     respondShop(false);
     wrap(<StringingPage onBack={() => {}} />);
     expect(await screen.findByText('Closed for now')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Open' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open shop' })).toBeDefined();
   });
 
   it('says UNKNOWN rather than hanging a CLOSED sign it cannot verify', async () => {
@@ -144,11 +144,11 @@ describe('the shop sign', () => {
     expect(screen.queryByText('Closed for now')).toBeNull();
     // And no toggle at all, because there is nothing to toggle FROM — only the
     // way to read the sign again.
-    expect(screen.queryByRole('button', { name: 'Open' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open shop' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close shop' })).toBeNull();
   });
 
-  it('a failed read of the sign is red glass with a Try again that reads it again', async () => {
+  it('a failed read of the sign says so, with a Try again that reads it again', async () => {
     let shopCalls = 0;
     vi.stubGlobal(
       'fetch',
@@ -167,13 +167,13 @@ describe('the shop sign', () => {
     );
     const { container } = wrap(<StringingPage onBack={() => {}} />);
     expect(await screen.findByText("We couldn't check the sign.")).toBeDefined();
-    const sign = container.querySelector('[data-tone="danger"]') as HTMLElement;
+    const sign = container.querySelector('[data-state="unknown"]') as HTMLElement;
     expect(sign).not.toBeNull();
     expect(sign.textContent).not.toMatch(/refresh/i);
     fireEvent.click(within(sign).getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Open for stringing')).toBeDefined();
     expect(shopCalls).toBe(2);
-    expect(container.querySelector('[data-tone="success"]')).not.toBeNull();
+    expect(container.querySelector('[data-state="open"]')).not.toBeNull();
   });
 
   it('still lists the bench while the shop is closed', async () => {
@@ -338,7 +338,7 @@ describe('the archive', () => {
   it('offers a way in, carrying an honest count', async () => {
     respondBenchAndArchive([job], [{ ...job, id: 'job-2', archivedAt: '2026-09-01T00:00:00.000Z' }]);
     wrap(<StringingPage onBack={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Archived (1)' })).toBeDefined());
   });
 
   it('still offers a way in when the count is unknown', async () => {
@@ -346,7 +346,7 @@ describe('the archive', () => {
     // lying-empty-state rule, and here it would make archived work unreachable.
     respondBenchAndArchive([job], [], false);
     wrap(<StringingPage onBack={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Archived')).toBeDefined());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Archived' })).toBeDefined());
   });
 
   it('lists archived jobs once opened', async () => {
@@ -355,8 +355,8 @@ describe('the archive', () => {
       [{ ...job, id: 'job-2', jobNo: 'J-0099', archivedAt: '2026-09-01T00:00:00.000Z' }],
     );
     wrap(<StringingPage onBack={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
-    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Archived (1)' })).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Archived (1)' }));
     await waitFor(() => expect(screen.getByText('J-0099')).toBeDefined());
   });
 
@@ -378,15 +378,15 @@ describe('the archive', () => {
       ],
     );
     wrap(<StringingPage onBack={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
-    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Archived (1)' })).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Archived (1)' }));
     await waitFor(() => expect(screen.getByText('Still owed $32.00')).toBeDefined());
   });
 
   it('shows an error rather than an empty archive when the load fails', async () => {
     respondBenchAndArchive([job], [], false);
     wrap(<StringingPage onBack={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Archived')).toBeDefined());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Archived' })).toBeDefined());
     fireEvent.click(screen.getByText('Archived'));
     await waitFor(() =>
       expect(screen.getByText("Couldn't load the archive.")).toBeDefined(),
@@ -427,8 +427,8 @@ describe('deleting says what it destroys', () => {
   async function openArchivedMenu(j: StringingJob) {
     respondBenchAndArchive([], [j]);
     wrap(<StringingPage onBack={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
-    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Archived (1)' })).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Archived (1)' }));
     await waitFor(() => expect(screen.getByLabelText('More actions for Wei')).toBeDefined());
     fireEvent.click(screen.getByLabelText('More actions for Wei'));
     await waitFor(() => expect(screen.getByText('Delete permanently')).toBeDefined());
@@ -509,7 +509,7 @@ describe('the archive count stays honest after archiving from the bench', () => 
     );
 
     wrap(<StringingPage onBack={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Archived (0)')).toBeDefined());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Archived (0)' })).toBeDefined());
 
     fireEvent.click(screen.getByLabelText('More actions for Wei'));
     await waitFor(() =>
@@ -517,7 +517,7 @@ describe('the archive count stays honest after archiving from the bench', () => 
     );
     fireEvent.click(screen.getByText('Off the bench. They still owe what they owe.'));
 
-    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Archived (1)' })).toBeDefined());
   });
 });
 
@@ -650,35 +650,75 @@ describe('the bench lists first', () => {
                 ? { strings: ['BG80 white'] }
                 : String(url).includes('/pricing')
                   ? { services: [] }
-                  : { jobs: [job], view: 'bench' },
+                  : String(url).includes('/stock')
+                    ? { lines: [], unmatched: [], purchases: [], aliases: {}, totals: { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0 } }
+                    : { jobs: [job], view: 'bench' },
         } as Response),
       ),
     );
   }
 
-  it('puts the first job row above the set-up cards, which start folded', async () => {
+  it('puts the jobs first and set-up on a screen of its own', async () => {
+    // docs/plans/bench-redesign.md: folded set-up still opened three tall
+    // cards under the list. It is one row now, below the jobs.
     respondBench();
     wrap(<StringingPage onBack={() => {}} />);
     const row = await screen.findByText('J-0042');
-    const setup = screen.getByRole('button', { name: /Set-up/ });
-    expect(setup.getAttribute('aria-expanded')).toBe('false');
+    const setup = screen.getByRole('button', { name: 'Strings, stock & prices' });
     expect(row.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Folded means absent from the DOM, like every Collapse in the app.
-    expect(screen.queryByText('Strings you stock')).toBeNull();
+    expect(screen.queryByText('Your prices')).toBeNull();
     fireEvent.click(setup);
-    expect(await screen.findByText('Strings you stock')).toBeDefined();
-    expect(screen.getByText('Your prices')).toBeDefined();
+    expect(await screen.findByText('Your prices')).toBeDefined();
+    expect(screen.queryByText('J-0042')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('J-0042')).toBeDefined();
   });
 
   it('opens the set-up cards as siblings, never a card inside a card', async () => {
-    // "Nested cards are always wrong" (DESIGN.md #12). The first cut wrapped
-    // the three glass cards in a fourth: doubled padding, stacked blur.
+    // "Nested cards are always wrong" (DESIGN.md #12).
     respondBench();
     wrap(<StringingPage onBack={() => {}} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Set-up/ }));
-    const stock = (await screen.findByText('Strings you stock')).closest('.glass-card') as HTMLElement;
-    expect(stock).not.toBeNull();
-    expect(stock.parentElement?.closest('.glass-card')).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock & prices' }));
+    const prices = (await screen.findByText('Your prices')).closest('.glass-card') as HTMLElement;
+    expect(prices).not.toBeNull();
+    expect(prices.parentElement?.closest('.glass-card')).toBeNull();
+  });
+});
+
+describe('Mine / All', () => {
+  // Only worth a control when somebody else strings too. Read off the jobs
+  // already on screen (an All load), so it arrives in the same frame as the
+  // list rather than one request later, pushing it down.
+  function respondStringers(all: StringingJob[], mine: StringingJob[]) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        const u = String(url);
+        const body = u.includes('/shop')
+          ? { open: true }
+          : u.includes('mine=true')
+            ? { jobs: mine, view: 'bench' }
+            : { jobs: all, view: 'bench' };
+        return Promise.resolve({ ok: true, json: async () => body } as Response);
+      }),
+    );
+  }
+
+  it('is not offered while one person strings everything', async () => {
+    respondStringers([job, { ...job, id: 'job-2', jobNo: 'J-0043', stringerId: null }], [job]);
+    wrap(<StringingPage onBack={() => {}} />);
+    await screen.findByText('J-0043');
+    expect(screen.queryByRole('button', { name: 'Mine' })).toBeNull();
+  });
+
+  it('is offered with two stringers, and stays after switching to Mine', async () => {
+    const lins = { ...job, id: 'job-2', jobNo: 'J-0043', stringerId: 'member-lin', stringerName: 'Lin' };
+    respondStringers([job, lins], [job]);
+    wrap(<StringingPage onBack={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Mine' }));
+    await waitFor(() => expect(screen.queryByText('J-0043')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Mine' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'All' })).toBeDefined();
   });
 });
 

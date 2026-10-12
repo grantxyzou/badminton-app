@@ -10,7 +10,7 @@
 
 At the moment "Strings we offer" is a list of grey rows that look the same. It doesn't say whether a string is on the shelf or what a restring costs. This change plots each string by power and durability, shows the club's restring price and a stock band (In stock / Low / Out) everywhere a string appears, and turns the request form's string dropdown into a short list with price, stock and colour. The card is for browsing only. Requests still start from the Home card's request sheet.
 
-**In scope:** Stringing tab card, string detail sheet, string picker in `RequestStringingSheet`, per-string price on the admin `OfferedStringsCard`, and the API and data changes below.
+**In scope:** Stringing tab card, string detail sheet, string picker in `RequestStringingSheet`, per-string price on the admin strings card (`OfferedStringsCard` then; `StringShelfCard` + `StringShelfSheet` since [`bench-redesign.md`](../plans/bench-redesign.md)), and the API and data changes below.
 **Out of scope:** the quiz, compare and filter explorations (2a–2d), and per-colour stock.
 
 ## The flow
@@ -252,7 +252,7 @@ Light mode: every UI colour comes from tokens. Type tints and swatches stay fixe
 
 ## Admin: price per string
 
-`components/admin/CommandCenter/OfferedStringsCard.tsx`. Tapping a chip's label opens a small inline row with a `$` number input (`inputMode="decimal"`, 0–1000). It saves through the existing `save()`, which gets `prices` added to the PATCH body, and uses the same optimistic update with rollback. An empty field is stored as `null`, which shows "Ask". Removing a chip also drops its price.
+`components/admin/CommandCenter/OfferedStringsCard.tsx` (merged into `StringShelfCard.tsx` and `StringShelfSheet.tsx` by [`bench-redesign.md`](../plans/bench-redesign.md); the price is now set in a string's sheet). Tapping a chip's label opens a small inline row with a `$` number input (`inputMode="decimal"`, 0–1000). It saves through the existing `save()`, which gets `prices` added to the PATCH body, and uses the same optimistic update with rollback. An empty field is stored as `null`, which shows "Ask". Removing a chip also drops its price.
 
 ## Tests
 
@@ -286,7 +286,7 @@ Light mode: every UI colour comes from tokens. Type tints and swatches stay fixe
 | `components/stringing/StringMap.tsx` | **New** |
 | `components/stringing/StringDetailSheet.tsx` | Header band, chips, colours, Power rename |
 | `components/stringing/RequestStringingSheet.tsx` | Radio list, Bring my own, colour, summary |
-| `components/admin/CommandCenter/OfferedStringsCard.tsx` | Price per string |
+| `components/admin/CommandCenter/StringShelfSheet.tsx` (was `OfferedStringsCard.tsx`) | Price per string |
 | Bench job row | Show `stringColor` |
 | `messages/en.json`, `messages/zh-CN.json` | Keys above |
 

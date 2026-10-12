@@ -16,6 +16,8 @@ interface Props {
   onSaved: () => void;
   /** The offered strings, with the catalog row for each linked one. */
   offered: Array<{ label: string; item: CatalogItem | null }>;
+  /** Preselect a string: the sheet is opened from that string's own sheet. */
+  initialLabel?: string;
 }
 
 /**
@@ -25,12 +27,13 @@ interface Props {
  * cost, when. Mount it with a fresh `key` per opening, like the bird sheet:
  * the fields are `useState` initialisers.
  */
-export default function StringPurchaseSheet({ open, onClose, onSaved, offered }: Props) {
-  const [label, setLabel] = useState(offered[0]?.label ?? '');
+export default function StringPurchaseSheet({ open, onClose, onSaved, offered, initialLabel }: Props) {
+  const first = offered.find((o) => o.label === initialLabel) ?? offered[0];
+  const [label, setLabel] = useState(first?.label ?? '');
   const [unit, setUnit] = useState<StringPurchase['unit']>('reel');
   const [units, setUnits] = useState<number | ''>(1);
   const [metresTouched, setMetresTouched] = useState(false);
-  const [metres, setMetres] = useState<number | ''>(() => metresFor('reel', offered[0]?.item ?? undefined));
+  const [metres, setMetres] = useState<number | ''>(() => metresFor('reel', first?.item ?? undefined));
   const [cost, setCost] = useState<number | ''>('');
   const [date, setDate] = useState(() => todayIso());
   const [notes, setNotes] = useState('');

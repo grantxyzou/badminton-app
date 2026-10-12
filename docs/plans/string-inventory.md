@@ -115,6 +115,6 @@ shrinks to the plain list it replaces.
 | Ledger hooks | `stringPurchaseEntry`, `mirrorStringPurchase`, `mirrorStringPurchaseDeleted` in `lib/ledgerMirror.ts` |
 | Catalog links on the offered list | `OfferedStringsDoc.links`, `readOfferedStringsWithLinks`, `normaliseLinks` in `lib/stringingStrings.ts`; `GET`/`PATCH /api/stringing/strings` |
 | Admin routes | `GET`/`POST`/`DELETE /api/stringing/stock` |
-| Admin UI | `StringStockCard`, `StringPurchaseSheet`, linking in `OfferedStringsCard` (all `components/admin/CommandCenter/`), on `StringingPage` |
+| Admin UI | `StringShelfCard` + `StringShelfSheet` (one list since [`bench-redesign.md`](bench-redesign.md), which merged `StringStockCard` and `OfferedStringsCard`), `StringPurchaseSheet` (all `components/admin/CommandCenter/`), on `StringingPage`'s set-up screen |
 | Member UI | `components/stringing/StringsWeOfferCard.tsx`, `StringDetailSheet.tsx`, slot in `components/StringingTab.tsx`; copy `home.stringing.offer.*`, `admin.stringing.strings.{linked,link,matches,linkHint}` |
 | Tests | `__tests__/string-stock.test.ts`, `__tests__/group-string-stock.test.ts`, `__tests__/string-stock-read-failed.test.ts` (the 503 names its step); members-only and sweep canaries updated |

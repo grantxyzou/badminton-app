@@ -16,12 +16,11 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import { isBillable } from '@/lib/stringingBilling';
 import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
-import OfferedStringsCard from './OfferedStringsCard';
-import StringStockCard from './StringStockCard';
+import StringShelfCard from './StringShelfCard';
 import PricingCard from './PricingCard';
 import { StateLink } from '@/components/primitives/StateCard';
 import StatusBadge, { type StateTone } from '@/components/primitives/StatusBadge';
-import Collapse from '@/components/primitives/Collapse';
+import ListRow from '@/components/primitives/ListRow';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -62,9 +61,11 @@ const TONE: Record<StringingStatus, StateTone> = {
 
 interface Props {
   onBack: () => void;
+  /** The header's crumb: "Admin" from the Command Center, "Stringing" from the tab. */
+  crumb?: string;
 }
 
-export default function StringingPage({ onBack }: Props) {
+export default function StringingPage({ onBack, crumb }: Props) {
   const t = useTranslations('admin.stringing');
   const online = useOnline();
   const [jobs, setJobs] = useState<StringingJob[] | null>(null);
@@ -73,7 +74,12 @@ export default function StringingPage({ onBack }: Props) {
   // mean a stringer believing they have no rackets to string.
   const [loadError, setLoadError] = useState(false);
   const [mine, setMine] = useState(false);
-  const [view, setView] = useState<'bench' | 'detail' | 'new' | 'archive'>('bench');
+  const [view, setView] = useState<'bench' | 'detail' | 'new' | 'archive' | 'setup'>('bench');
+  /* Mine/All is only worth a control when somebody else strings too. Read off
+     an ALL load — the jobs already on screen, so it arrives in the same frame
+     as the list instead of one request later, pushing it down — and kept once
+     true, so switching to Mine (fewer stringers on screen) never hides it. */
+  const [multiStringer, setMultiStringer] = useState(false);
   /* The archive is its OWN list with its own loader, rather than a flag folded
      into `load`. Folding it in would put `view` in load's dependency array, and
      coming back from a detail screen would then refetch — the exact thing this
@@ -94,10 +100,6 @@ export default function StringingPage({ onBack }: Props) {
   // on a shop that is open is the confident-wrong answer, so unknown says so.
   const [shopOpen, setShopOpen] = useState<boolean | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
-  /* Strings, stock and prices fold under "Set-up", closed by default. The
-     bench opened on four set-up cards and the first job row sat at 826px of a
-     932px viewport (audit 2026-10-11, finding 05; Grant: "bench first"). */
-  const [setupOpen, setSetupOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -107,7 +109,9 @@ export default function StringingPage({ onBack }: Props) {
       });
       if (!res.ok) throw new Error(`stringing jobs ${res.status}`);
       const data = await res.json();
-      setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+      const list: StringingJob[] = Array.isArray(data.jobs) ? data.jobs : [];
+      setJobs(list);
+      if (!mine && new Set(list.map((j) => j.stringerId).filter(Boolean)).size > 1) setMultiStringer(true);
     } catch {
       setJobs(null);
       setLoadError(true);
@@ -519,7 +523,7 @@ export default function StringingPage({ onBack }: Props) {
   if (view === 'archive') {
     return (
       <div className="animate-slideInRight">
-        <AdminBackHeader onBack={() => setView('bench')} title={t('archive.title')} />
+        <AdminBackHeader onBack={() => setView('bench')} title={t('archive.title')} crumb={crumb} />
         <div className="flex flex-col gap-4 pb-6">
           {archiveError && (
             <ErrorState
@@ -542,6 +546,21 @@ export default function StringingPage({ onBack }: Props) {
     );
   }
 
+  if (view === 'setup') {
+    return (
+      <div className="animate-slideInRight">
+        <AdminBackHeader onBack={() => setView('bench')} title={t('setupRow')} crumb={crumb} />
+        {/* Its own screen (docs/plans/bench-redesign.md): folded under the
+            list, it still opened three tall cards beneath the jobs. Siblings,
+            never a card around cards (DESIGN.md #12). */}
+        <div className="flex flex-col gap-4 pb-6">
+          <StringShelfCard />
+          <PricingCard />
+        </div>
+      </div>
+    );
+  }
+
   if (view === 'new') {
     return (
       <div className="animate-slideInRight">
@@ -560,92 +579,103 @@ export default function StringingPage({ onBack }: Props) {
     // Returning to the bench from a job, the archive or intake: it fades back
     // rather than cutting in (the wrapper's slide only runs on first entry).
     <div className="motion-fade">
-      <AdminBackHeader onBack={onBack} title={t('benchTitle')} />
+      <AdminBackHeader onBack={onBack} title={t('benchTitle')} crumb={crumb} />
       {/* No horizontal padding here. The app shell's <main> already carries
           `px-4`, and a second inset made every card on the three stringing
           screens 362px wide against the app's 394 — visibly narrower than the
           Command Center they are opened from, and than Birds next to them. */}
       <div className="flex flex-col gap-4 pb-6">
-        {/* The shop sign. Separate from NEXT_PUBLIC_FLAG_STRINGING on purpose:
-            that says whether this code exists, this says whether Grant is
-            taking rackets this week. Closing does NOT stop the bench — jobs in
-            flight still need finishing and a walk-up can still be logged. */}
-        {/* The status is in the glass (StateCard tones): green when open, red
-            when the sign could not be read, plain while closed or loading. */}
-        <div
-          className="glass-card p-5 space-y-3"
-          data-tone={shopReadFailed ? 'danger' : shopOpen ? 'success' : undefined}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-            <span
-              className="material-icons icon-md"
-              style={{ color: shopReadFailed ? 'var(--tone-ink)' : shopOpen ? 'var(--accent)' : 'var(--text-muted)' }}
+        {/* The shop sign: a status LINE, not a card (docs/plans/bench-redesign.md).
+            As a green glass card it was the heaviest thing on a page named for
+            the jobs under it. Still first — closing is the most consequential
+            thing on this screen — but quiet. Separate from
+            NEXT_PUBLIC_FLAG_STRINGING on purpose: that says whether this code
+            exists, this says whether Grant is taking rackets this week.
+            Closing does NOT stop the bench. The icon carries the state as well
+            as the colour, never colour alone. */}
+        {(() => {
+          const state = shopReadFailed ? 'unknown' : shopOpen === null ? 'checking' : shopOpen ? 'open' : 'closed';
+          const icon = { unknown: 'error', checking: 'storefront', open: 'check_circle', closed: 'lock' }[state];
+          const ink = {
+            unknown: 'var(--sev-crit-text)',
+            checking: 'var(--text-muted)',
+            open: 'var(--accent)',
+            closed: 'var(--text-muted)',
+          }[state];
+          return (
+            <div
+              data-state={state}
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-1) 0' }}
             >
-              {shopReadFailed ? 'error' : shopOpen ? 'check_circle' : 'lock'}
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="bpm-h3 m-0">
-                {shopReadFailed
-                  ? t('shop.unknown')
-                  : shopOpen === null
-                    ? t('shop.checking')
-                    : shopOpen ? t('shop.open') : t('shop.closed')}
+              <span className="material-icons icon-md" aria-hidden="true" style={{ color: ink }}>{icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {state === 'unknown'
+                    ? t('shop.unknown')
+                    : state === 'checking'
+                      ? t('shop.checking')
+                      : state === 'open' ? t('shop.open') : t('shop.closed')}
+                </div>
+                <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+                  {state === 'unknown' ? (
+                    <>
+                      {t('shop.unknownHint')}{' '}
+                      <StateLink
+                        onClick={() => {
+                          setShopReadFailed(false);
+                          setShopAttempt((n) => n + 1);
+                        }}
+                      >
+                        {t('retry')}
+                      </StateLink>
+                    </>
+                  ) : state === 'checking'
+                    ? '\u00A0'
+                    : state === 'open'
+                      ? t('shop.openHint')
+                      : t('shop.closedHint')}
+                </p>
               </div>
-              <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 'var(--space-05) 0 0' }}>
-                {shopReadFailed ? (
-                  <>
-                    {t('shop.unknownHint')}{' '}
-                    <StateLink
-                      onClick={() => {
-                        setShopReadFailed(false);
-                        setShopAttempt((n) => n + 1);
-                      }}
-                    >
-                      {t('retry')}
-                    </StateLink>
-                  </>
-                ) : shopOpen === null
-                  ? '\u00A0'
-                  : shopOpen
-                    ? t('shop.openHint')
-                    : t('shop.closedHint')}
-              </p>
+              {/* No toggle on a sign that could not be read: there is nothing to
+                  flip FROM, and a greyed Open beside "Try again" is two controls
+                  where one is the answer. */}
+              {state !== 'unknown' && (
+                <button
+                  type="button"
+                  onClick={toggleShop}
+                  disabled={shopBusy || !online || shopOpen === null}
+                  className="cc-btn cc-btn-secondary"
+                  style={{ flex: '0 0 auto' }}
+                >
+                  {shopOpen ? t('shop.closeCta') : t('shop.openCta')}
+                </button>
+              )}
             </div>
-            {/* No toggle on a sign that could not be read: there is nothing to
-                flip FROM, and a greyed Open beside "Try again" is two controls
-                where one is the answer. */}
-            {!shopReadFailed && (
-              <button
-                type="button"
-                onClick={toggleShop}
-                disabled={shopBusy || !online || shopOpen === null}
-                className={`cc-btn ${shopOpen ? 'cc-btn-secondary' : 'cc-btn-primary'}`}
-              >
-                {shopOpen ? t('shop.closeCta') : t('shop.openCta')}
-              </button>
-            )}
-          </div>
-        </div>
+          );
+        })()}
 
-        {/* Mine / All. The wrapper needs `flex` and each tab `flex-1` —
-            .segment-control sets no display, so without it the active pill
-            overlaps its neighbour. */}
-        <div className="segment-control flex">
-          <button
-            type="button"
-            onClick={() => setMine(true)}
-            className={`flex-1 flex items-center justify-center ${mine ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-          >
-            {t('mine')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMine(false)}
-            className={`flex-1 flex items-center justify-center ${mine ? 'segment-tab-inactive' : 'segment-tab-active'}`}
-          >
-            {t('all')}
-          </button>
-        </div>
+        {/* Mine / All, only with two or more stringers (see `multiStringer`).
+            The wrapper needs `flex` and each tab `flex-1` — .segment-control
+            sets no display, so without it the active pill overlaps its
+            neighbour. */}
+        {multiStringer && (
+          <div className="segment-control flex">
+            <button
+              type="button"
+              onClick={() => setMine(true)}
+              className={`flex-1 flex items-center justify-center ${mine ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+            >
+              {t('mine')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMine(false)}
+              className={`flex-1 flex items-center justify-center ${mine ? 'segment-tab-inactive' : 'segment-tab-active'}`}
+            >
+              {t('all')}
+            </button>
+          </div>
+        )}
 
         {loadError && (
           <ErrorState
@@ -659,15 +689,12 @@ export default function StringingPage({ onBack }: Props) {
         )}
         {!loadError && jobs === null && <AdminPageSkeleton />}
         {!loadError && jobs !== null && jobs.length === 0 && (
-          /* The bench list IS this page's content; the segment control and
-             Add job are chrome around it. A 13px muted line wedged between two
-             chunky controls at 16px each read as a layout gap rather than an
-             answer. */
           <EmptyState icon="sports_tennis">{mine ? t('emptyMine') : t('empty')}</EmptyState>
         )}
 
         {jobs?.map((job) => renderJob(job, false))}
 
+        {/* The page's one accent action. */}
         <button
           type="button"
           onClick={() => setView('new')}
@@ -675,58 +702,35 @@ export default function StringingPage({ onBack }: Props) {
           className="cc-btn cc-btn-primary cc-btn-lg"
           style={{ width: '100%' }}
         >
+          <span className="material-icons icon-sm" aria-hidden="true">add</span>
           {t('addJob')}
         </button>
 
-        {/* Always rendered, even at zero and even when the count is unknown.
-            Hiding the way back to archived work when the archive fails to load
-            would be the lying-empty-state rule again — and the one thing an
-            archive must never do is become unreachable. */}
-        <button
-          type="button"
-          onClick={() => setView('archive')}
-          className="cc-btn cc-btn-ghost"
-          style={{ width: '100%' }}
-        >
-          {archivedJobs === null
-            ? t('archive.openUnknown')
-            : t('archive.open', { count: archivedJobs.length })}
-        </button>
-
-        {/* SET-UP, folded. The shop sign stays at the top because closing the
-            shop is the admin's most consequential bench action; the rest —
-            what the club stocks (the request form's dropdown), the inventory
-            for it (docs/plans/string-inventory.md) and the rate card players
-            read behind "View pricing" — is "how the service is set up", not
-            "what is on the bench", and it lived above the list the screen is
-            named for. Closed is absent from the DOM, like every Collapse. */}
-        {/* A plain row, NOT a card: the three set-up cards are glass cards of
-            their own, and wrapping them in a fourth was card-in-card (DESIGN.md
-            #12 — doubled padding, stacked blur). They open as siblings. */}
-        <button
-          type="button"
-          onClick={() => setSetupOpen((v) => !v)}
-          aria-expanded={setupOpen}
-          className="bpm-row-link"
-        >
-          {/* Muted, not accent: Add job above it is the row that earns green. */}
-          <span className="section-label-muted">Set-up</span>
-          <span
-            className="material-icons icon-sm motion-chevron"
-            data-open={setupOpen ? 'true' : 'false'}
-            aria-hidden="true"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            expand_more
-          </span>
-        </button>
-        <Collapse open={setupOpen}>
-          <div className="flex flex-col gap-4">
-            <OfferedStringsCard />
-            <StringStockCard />
-            <PricingCard />
-          </div>
-        </Collapse>
+        {/* The two ways off the bench, as quiet rows with a chevron — not a
+            full-width outlined button and a section eyebrow. The archive row
+            is ALWAYS rendered, even at zero and even when its count is
+            unknown: the one thing an archive must never become is unreachable. */}
+        <div className="flex flex-col gap-2" style={{ paddingTop: 'var(--space-2)' }}>
+          <ListRow
+            onClick={() => setView('archive')}
+            ariaLabel={archivedJobs === null ? t('archive.openUnknown') : t('archive.open', { count: archivedJobs.length })}
+            leading={<span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>inventory_2</span>}
+            title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{t('archive.title')}</span>}
+            trailing={
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--text-muted)' }}>
+                {archivedJobs !== null && <span className="fs-md" style={{ fontFamily: 'var(--font-mono)' }}>{archivedJobs.length}</span>}
+                <span className="material-icons icon-sm" aria-hidden="true">chevron_right</span>
+              </span>
+            }
+          />
+          <ListRow
+            onClick={() => setView('setup')}
+            ariaLabel={t('setupRow')}
+            leading={<span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>tune</span>}
+            title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{t('setupRow')}</span>}
+            trailing={<span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>}
+          />
+        </div>
       </div>
       {actionSheet}
     </div>

@@ -140,12 +140,118 @@ describe('the stock routes', () => {
 
   it('links ride beside the offered list: a link to a label not listed or an id the catalog lacks is dropped, and a list-only save keeps the links', async () => {
     const saved = await (await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65', 'House string': 'string-nope', Ghost: 'string-yx-bg65' } }))).json();
-    expect(saved).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' }, prices: {} });
+    expect(saved).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' }, prices: {}, aliases: {} });
     const lin = seedMember('Lin');
     const read = await (await stringsGET(makeRequest('GET', `${BASE}/stringing/strings`, undefined, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }))).json();
     expect(read).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' }, prices: {}, stock: {}, players: {} });
     // An older client sends only the list: the link for the surviving label stays.
     const again = await (await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['BG65'] }))).json();
-    expect(again).toEqual({ strings: ['BG65'], links: { BG65: 'string-yx-bg65' }, prices: {} });
+    expect(again).toEqual({ strings: ['BG65'], links: { BG65: 'string-yx-bg65' }, prices: {}, aliases: {} });
+  });
+});
+
+/**
+ * Aliases (docs/plans/bench-redesign.md): an old spelling of an offered string
+ * counts as that string, for purchases AND jobs, without rewriting either.
+ * Rewriting the purchases instead would strand jobs strung under the old
+ * spelling in `unmatched` — the string would read as having more left than
+ * the shelf holds, and that is the band players see.
+ */
+describe('aliases', () => {
+  it('counts a purchase and a job under an old spelling on the offered line, leaving nothing unmatched', () => {
+    const s = summarizeStringStock({
+      offered: ['Li-Ning No. 1'],
+      links: {},
+      aliases: { 'Lining No.1': 'Li-Ning No. 1' },
+      purchases: [purchase({ label: 'Lining No.1', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 18900 })],
+      jobs: [job('Lining No.1', 'picked_up'), job('lining no.1 ', 'strung'), job('Li-Ning No. 1', 'ready')],
+      catalog: new Map(),
+    });
+    expect(s.lines).toHaveLength(1);
+    expect(s.lines[0]).toMatchObject({ label: 'Li-Ning No. 1', purchases: 1, purchasedMetres: 200, usedSets: 3, remainingSets: 17, costPerSetCents: 945 });
+    expect(s.unmatched).toEqual([]);
+  });
+
+  it('ignores an alias whose target is not offered', () => {
+    const s = summarizeStringStock({
+      offered: ['BG65'],
+      links: {},
+      aliases: { 'Lining No.1': 'Gone' },
+      purchases: [purchase({ label: 'Lining No.1' })],
+      jobs: [],
+      catalog: new Map(),
+    });
+    expect(s.lines.map((l) => l.label)).toEqual(['BG65', 'Lining No.1']);
+  });
+});
+
+describe('aliases through the routes', () => {
+  beforeEach(async () => {
+    resetMockStore();
+    __resetCatalogSeedForTests();
+    setupAdminPin();
+    process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true';
+    await seedTestAdminMember();
+  });
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_FLAG_STRINGING;
+  });
+
+  it('stores only aliases to an offered string from a label that is not offered, and a save without aliases keeps them', async () => {
+    const saved = await (await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, {
+      strings: ['Li-Ning No. 1', 'BG65'],
+      aliases: { 'Lining No.1': 'Li-Ning No. 1', 'bg65': 'Li-Ning No. 1', 'Old': 'Gone', '': 'BG65', 'BG65P': 42 },
+    }))).json();
+    // 'bg65' IS offered (as BG65): an alias from it would hijack a real line.
+    expect(saved.aliases).toEqual({ 'Lining No.1': 'Li-Ning No. 1' });
+    const again = await (await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['Li-Ning No. 1', 'BG65'] }))).json();
+    expect(again.aliases).toEqual({ 'Lining No.1': 'Li-Ning No. 1' });
+    // Removing the target drops the alias with it.
+    const dropped = await (await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['BG65'] }))).json();
+    expect(dropped.aliases).toEqual({});
+  });
+
+  it('the admin stock summary and the players’ band both count the aliased purchase; the public read does not list aliases', async () => {
+    const lin = seedMember('Lin');
+    await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['Li-Ning No. 1'] }));
+    await stockPOST(makeAdminRequest('POST', `${BASE}/stringing/stock`, { label: 'Lining No.1', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 18900, date: '2026-10-01' }));
+    seedDoc('stringingJobs', { id: 'job-1', groupId: 'bpm', memberId: lin.id, stringLabel: 'Lining No.1', status: 'picked_up' });
+
+    const before = await (await stockGET(makeAdminRequest('GET', `${BASE}/stringing/stock`))).json();
+    expect(before.lines.find((l: { label: string }) => l.label === 'Li-Ning No. 1')).toMatchObject({ purchases: 0 });
+
+    await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['Li-Ning No. 1'], aliases: { 'Lining No.1': 'Li-Ning No. 1' } }));
+    const after = await (await stockGET(makeAdminRequest('GET', `${BASE}/stringing/stock`))).json();
+    expect(after.lines).toEqual([expect.objectContaining({ label: 'Li-Ning No. 1', purchases: 1, usedSets: 1, remainingSets: 19 })]);
+    expect(after.unmatched).toEqual([]);
+    expect(after.aliases).toEqual({ 'Lining No.1': 'Li-Ning No. 1' });
+
+    const pub = await (await stringsGET(makeRequest('GET', `${BASE}/stringing/strings`, undefined, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }))).json();
+    expect(pub.stock).toEqual({ 'Li-Ning No. 1': 'in' });
+    expect(pub).not.toHaveProperty('aliases');
+  });
+});
+
+describe('each line names the purchases it counted', () => {
+  // The string's sheet lists — and offers to delete — exactly these. Working
+  // them out again on the client disagreed with the math in order-dependent
+  // cases (review of the bench redesign, finding 5).
+  it('puts each purchase id on the one line that counted it', () => {
+    const s = summarizeStringStock({
+      offered: ['Yonex BG65 white'],
+      links: { 'Yonex BG65 white': 'string-yx-bg65' },
+      purchases: [
+        // Off the list, no catalog link: a line of its own...
+        purchase({ id: 'sp-0000000000000001', label: 'BG65', catalogId: undefined }),
+        // ...so a later purchase under the same label stays on it, even with a link.
+        purchase({ id: 'sp-0000000000000002', label: 'BG65', catalogId: 'string-yx-bg65', date: '2026-10-01', createdAt: '2026-10-01T00:00:00Z' }),
+        purchase({ id: 'sp-0000000000000003', label: 'Yonex BG65 white', date: '2026-10-02', createdAt: '2026-10-02T00:00:00Z' }),
+      ],
+      jobs: [],
+      catalog: new Map([[bg65.id, bg65]]),
+    });
+    const byLabel = Object.fromEntries(s.lines.map((l) => [l.label, l.purchaseIds]));
+    expect(byLabel['Yonex BG65 white']).toEqual(['sp-0000000000000003']);
+    expect(byLabel['BG65']).toEqual(['sp-0000000000000001', 'sp-0000000000000002']);
   });
 });

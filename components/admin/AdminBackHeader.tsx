@@ -12,7 +12,7 @@ import type { AdminNavProps } from './types';
  *
  * The `sessionLabel` chip — when present — renders in the right slot.
  */
-export default function AdminBackHeader({ onBack, title, sessionLabel }: AdminNavProps) {
+export default function AdminBackHeader({ onBack, title, sessionLabel, crumb = 'Admin' }: AdminNavProps) {
   const right = sessionLabel ? (
     <span
       className="text-[10px] font-semibold px-2 py-1 rounded-full"
@@ -32,5 +32,5 @@ export default function AdminBackHeader({ onBack, title, sessionLabel }: AdminNa
   // condensing). Returning TopBar directly makes its containing block the
   // tall page root. The page already animates in via `animate-slideInRight`,
   // so the header still has an entrance.
-  return <TopBar title={title} crumb="Admin" onBack={onBack} right={right} />;
+  return <TopBar title={title} crumb={crumb} onBack={onBack} right={right} />;
 }

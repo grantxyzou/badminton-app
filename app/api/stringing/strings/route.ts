@@ -31,6 +31,7 @@ import {
   normaliseOfferedStrings,
   normaliseLinks,
   normalisePrices,
+  normaliseAliases,
   stringsDocId,
   type OfferedStringsDoc,
 } from '@/lib/stringingStrings';
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
   if (!read) return NextResponse.json(UNKNOWN);
   // The list stands without the extras: a stock or gear read that fails
   // leaves those two maps unknown rather than taking the shelf down with it.
-  const extras = await readShelfExtras(groupId, read.strings, read.links).catch((err) => {
+  const extras = await readShelfExtras(groupId, read.strings, read.links, read.aliases).catch((err) => {
     console.error('GET /api/stringing/strings: stock/players read failed', err);
     return null;
   });
@@ -107,21 +108,28 @@ export async function PATCH(req: NextRequest) {
     // Prices follow the same rule as links: absent keeps what is stored for
     // the labels that remain, so an older client cannot wipe them.
     const prices = normalisePrices(body?.prices === undefined ? prior?.prices ?? {} : body.prices, strings);
+    // And aliases (docs/plans/bench-redesign.md): absent keeps what is stored,
+    // and an alias whose target left the list leaves with it.
+    const aliases = normaliseAliases(body?.aliases === undefined ? prior?.aliases ?? {} : body.aliases, strings);
     const doc: OfferedStringsDoc = {
       id: stringsDocId(groupId),
       strings,
       links,
       prices,
+      aliases,
       updatedAt: new Date().toISOString(),
       updatedBy: admin.memberId,
     };
-    // Upsert, like the shop sign: the document is one list, so there is nothing
-    // to merge and nothing a concurrent write could clobber except the list
-    // itself — which is what the caller means to replace.
+    // Upsert, like the shop sign. The maps are merged ABOVE, from the stored
+    // doc, for any the caller did not send — which is why the bench sends only
+    // the map it changed: a stale phone sending all four would write its old
+    // copies of the other three back over another device's edits. The list
+    // itself is always sent, and replacing it is what the caller means.
     await groupScope(groupId).upsert('clubSettings', doc);
     // The list changed, so the stock and count keyed by it may have too.
     forgetShelfExtras(groupId);
-    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices });
+    // Aliases go back to the admin who saved them; the public GET never lists them.
+    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices, aliases });
   } catch (err) {
     console.error('PATCH /api/stringing/strings failed:', err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });
