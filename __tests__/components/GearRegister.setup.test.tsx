@@ -7,7 +7,7 @@ import { resetCatalogCache } from '../../components/stats/useCatalog';
 import enMessages from '../../messages/en.json';
 
 /**
- * NEXT_PUBLIC_FLAG_GEAR_SETUP on: the register is the Set-up card, and every
+ * The register is the Set-up card (its flag retired 2026-10-12), and every
  * reader still has exactly one instance. The card, the tension card and the
  * club card all show facts about the same bag and the same tally — a second
  * reader of either is two chances to disagree on one screen.
@@ -24,16 +24,14 @@ function mount() {
   );
 }
 
-describe('GearRegister — flag on: the Set-up card', () => {
+describe('GearRegister — the Set-up card', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP = 'true';
     resetCatalogCache();
     global.fetch = vi.fn().mockImplementation(() =>
       Promise.resolve({ ok: true, json: () => Promise.resolve({ gear: null, items: [], entries: [], item: null, needsCheckIn: true }) }),
     ) as unknown as typeof fetch;
   });
   afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP;
     cleanup();
     vi.restoreAllMocks();
   });
@@ -54,23 +52,7 @@ describe('GearRegister — flag on: the Set-up card', () => {
   });
 });
 
-describe('GearRegister — flag off: unchanged', () => {
-  beforeEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP;
-    global.fetch = vi.fn().mockImplementation(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve({ gear: null, items: [], entries: [] }) }),
-    ) as unknown as typeof fetch;
-  });
-  afterEach(() => { cleanup(); vi.restoreAllMocks(); });
-
-  it('renders the kit card and not the Set-up card', async () => {
-    mount();
-    expect(await screen.findByText('Your equipment')).toBeTruthy();
-    expect(screen.queryByText('Set-up')).toBeNull();
-  });
-});
-
-describe('GearRegister — flag on: one door per line', () => {
+describe('GearRegister — one door per line', () => {
   /**
    * The routing table: a blank line NAMES itself (the add sheet, as the one in
    * play), a filled line is MANAGED (its own sheet), and the dashed "Add lb"
@@ -91,11 +73,9 @@ describe('GearRegister — flag on: one door per line', () => {
   }
 
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP = 'true';
     resetCatalogCache();
   });
   afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP;
     cleanup();
     vi.restoreAllMocks();
   });
@@ -127,9 +107,8 @@ describe('GearRegister — flag on: one door per line', () => {
   });
 });
 
-describe('GearRegister — flag on: swapping rackets', () => {
+describe('GearRegister — swapping rackets', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP = 'true';
     resetCatalogCache();
     let active = 'r1';
     const items = [
@@ -150,7 +129,6 @@ describe('GearRegister — flag on: swapping rackets', () => {
     }) as unknown as typeof fetch;
   });
   afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP;
     cleanup();
     vi.restoreAllMocks();
   });

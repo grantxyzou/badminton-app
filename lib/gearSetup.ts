@@ -3,7 +3,7 @@ import type { ClubGearEntry } from './clubGear';
 import { activeRacket } from './activeRacket';
 
 /**
- * The Set-up card's arithmetic (`NEXT_PUBLIC_FLAG_GEAR_SETUP`): which item
+ * The Set-up card's arithmetic: which item
  * fills each line, how a line describes itself, and the one club fact a
  * filled line may carry. Pure and DOM-free so the privacy rule on the club
  * fact is tested as arithmetic, not as rendered text.

@@ -12,7 +12,7 @@ state of its own except the one thing it exists to own (below).
 
 - **`GearRegister` calls `useGear` exactly once and passes it down. This is
   the single-owner invariant the whole redesign exists to establish**, pinned
-  by `__tests__/components/GearRegister.test.tsx` (exactly one gear read per
+  by `__tests__/components/GearRegister.setup.test.tsx` (exactly one gear read per
   mount). Before it, up to four components read `GET /api/equipment/gear`
   independently and two of them wrote it, each with its own monotonic op
   counter — an out-of-order-response race that shipped here twice. **Never
@@ -21,88 +21,16 @@ state of its own except the one thing it exists to own (below).
 - **`components/stats/useGear.ts`** holds `gear/rackets/active/loaded/
   loadError/busy/online` plus `reload/add/activate/remove/setPrefs`, and ONE
   monotonic op counter shared by the read and all writes.
-- **Two sheets, two jobs — "take our pick" vs. "choose your own":**
-  - **`GearPickRail` + `GearPickCard` + `GearPickSheet`** are "take our
-    pick" — one card per category showing what `/api/recommend` would
-    suggest, flipping to a YOU OWN THIS badge the instant the member already
-    owns it (the redesign's headline bug fix: the old surface could
-    recommend back gear the member already had). `GearPickSheet` is the
-    detail behind ONE rail card and ONE action (Add to my equipment); it never
-    browses the catalog. Reasons render plain-language first (the engine's
-    own headline reason) and the catalog spec line second — the spec line is
-    a display line here, never a "why this" reason (see `lib/pickReasons.ts`).
-  - **`GearSheet`** is "choose your own" — the full catalog for a category,
-    search-first, one tap commits and the sheet STAYS OPEN. Closing on success
-    was right while owned rows were hidden (nothing was left to look at); now
-    the tapped row becomes a checked, tinted, inert owned row, and dismissing
-    rendered that state for one frame to nobody. The confirmation IS the row.
-    `GearPickSheet` follows the same rule — a successful add flips its action
-    to the YOU OWN THIS badge in place. Both rely on `useGear` being the single
-    owner: the write updates the shared doc, so ownership re-renders with no
-    refetch and neither sheet holds gear state. It opens on an **All** brand tab,
-    not on the first brand: defaulting to a brand hid 46 of the 71 rackets
-    behind tabs nobody suspected, and reached us as "the racket database isn't
-    showing some rackets". Search runs through **`lib/gearSearch.ts`** (pure,
-    unit-tested), which is token-based and order-independent, with a typo pass
-    that only fires when the strict pass found nothing — a member typed
-    "helbatec" for Halbertec and got an empty list indistinguishable from an
-    absent row. Digits never get typo tolerance: one edit turns 5000 into 9000
-    and N65 into N68. It opens at the app's one sheet cap (`--sheet-max-h`, 88dvh —
-    `dvh` because `vh` ignores collapsible mobile chrome and clips the sheet;
-    it had its own 92dvh until every sheet was made one size, 2026-09-14).
-    **It BROWSES and nothing else** (gear-sheet redesign, 2026-08-27):
-    - **Brand is a GROUP HEADING with a count** (`YONEX · 21`), not the first
-      line of every row — it printed five times running under a filter chip
-      already naming that brand. The reason it used to ride on each row still
-      holds and is still satisfied: a query searches all brands at once, and a
-      cross-brand result set still groups, so brand stays legible exactly
-      where it matters. Do not put it back on the row.
-    - **Owned rows stay IN PLACE**, checked, captioned ("Yours · using
-      today" / "· strung at 24 lb"), and NOT tappable. They used to be deleted
-      from the catalog and re-rendered in an "Already in your kit" section
-      pinned above it — which is bag MANAGEMENT sitting on top of the list you
-      opened in order to ADD something. `duplicate_racket` stays off the happy
-      path because the row is inert, not because it is hidden.
-    - **Rows are edge-to-edge divided rows** (`.sheet-list` / `.sheet-row` in
-      `globals.css`), not bordered cards with gaps. 38 catalog rows as glass
-      cards fit five on screen; divided they fit eight with the next group
-      already in view. Same material as `ProfileTab`'s account list.
-    - **Search leads, and its placeholder carries the catalog count**
-      (`searchCountRacket` / `searchCountString`) — which is what let the
-      instruction line above it go, and is per-category: the string sheet used
-      to say "Search rackets".
-    - **No tension field.** It was parented to nothing, duplicated the "Set
-      tension" control one row above it, and could only describe a string the
-      member did not yet own. It moved to `YourKitCard` with the rows.
-  - Both sheets take the register's single `UseGear`, so adding from either
-    one updates every other surface (including the other sheet, which reads
-    ownership off the same object) with no reload. **`BagList` belongs to
-    `YourKitCard` only** — neither sheet imports it any more. `GearPickSheet`
-    is behind exactly one card and one action, so ownership there is a single
-    `StatusBadge` ("You own this"); `GearSheet` marks owned rows in place. A
-    LIST of owned items, with controls, is the kit's own job.
-- **`YourKitCard`** — one row per equipment category ("Your equipment"), showing
-  what the member owns and opening `GearSheet` to change it. Unpickable
-  categories (no catalog rows) render as a plain, non-interactive row rather
-  than a button that does nothing. **It is also the bag's MANAGE surface**
-  (2026-08-27): `BagList` plus the string-tension field live here, below the
-  category rows, because that is where the kit is. They were inside
-  `GearSheet`; moving them is what let the picker become a pure browse list.
-  The tension field sits ABOVE `BagList` — the flow is type a number then tap
-  the row it belongs to, and `BagList`'s control is disabled until the field
-  holds something usable. Activate/remove/set-tension results are RENDERED
-  (one `ErrorState` slot); calling them as `{ void activate(id) }` is what
-  once made a refused operation indistinguishable from a dead button.
-- **`BagList` always renders every owned item, active one included.** It used
-  to hide below two items ("a bag of one is chrome") — wrong once ownership
-  needed to be manageable from more than one place, because it left a
-  one-item player unable to remove or replace what they owned. The active
-  row shows a badge instead of "Use this one" but keeps its remove button.
-  Don't reintroduce the guard. It now mounts in `YourKitCard` over ALL
-  categories at once (it already gates activate on `racket` and tension on
-  `string` per row), rather than per-category inside `GearSheet`. **It is the
-  only surface anywhere that can remove or re-activate an item — deleting it
-  strands three functions.**
+- **The old arrangement is gone** (`NEXT_PUBLIC_FLAG_GEAR_SETUP` retired 2026-10-12). `GearPickRail` (one "take our pick" card per category), `YourKitCard`
+  ("Your equipment" rows), `BagList` (the owned-items list) and `GearSheet` (the
+  full-catalog "choose your own" picker) were the flag-off register and were
+  deleted with their tests. Their jobs live in the Set-up register below:
+  `GearPickCard`/`GearPickSheet` still show a pick's detail, `SetupAddSheet`
+  names or replaces a line from the catalog, and `SetupLineSheet` manages a
+  filled line. **`BagList` used to be the only surface that could remove or
+  re-activate an item**; that job is now `SetupLineSheet` (remove, tension) and
+  `SetupAddSheet` (activate, replace), and a register without both strands
+  three `useGear` functions.
 - **`lib/activeRacket.ts`** resolves the active racket read-tolerantly: new
   docs carry `activeRacketId`, legacy docs fall back to `items[0]`. No
   migration.
@@ -127,12 +55,11 @@ state of its own except the one thing it exists to own (below).
   fabricated spec driving a real stringing decision.
 - **Category scope is data-driven, not flag-driven.** Rackets and strings are
   selectable because the catalog has rows for them; shoes and shuttles are
-  parked because it doesn't — not because the UI is missing. Both the rail
-  and `YourKitCard`'s rows key off the same sourced-category list
-  (`GearPickRail`'s `SOURCED`, `YourKitCard`'s `PICKABLE`), so un-parking a
+  parked because it doesn't — not because the UI is missing. The picks key off
+  one sourced-category list (`SOURCED` in `useGearPicks.ts`), so un-parking a
   category is only ever a sourcing step, never a UI change.
 
-### Set-up register (`NEXT_PUBLIC_FLAG_GEAR_SETUP`, 2026-09-14)
+### Set-up register (2026-09-14; the only register since its flag retired 2026-10-12)
 
 The Equipment redesign — `docs/plans/equipment-setup-card.md`. Flag on,
 `GearRegister` renders `SetupRegister` instead of the rail + kit arrangement

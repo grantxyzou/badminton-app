@@ -24,7 +24,6 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
   | 'NEXT_PUBLIC_FLAG_RACKET_FIT'
   | 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY'
-  | 'NEXT_PUBLIC_FLAG_GEAR_SETUP'
   | 'NEXT_PUBLIC_FLAG_GEAR_PAGES'
   | 'NEXT_PUBLIC_FLAG_FIT_VERDICT'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
@@ -103,12 +102,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-10-23',
     note: 'Retiring this flag means deleting the OFF branch: recommendRackets, its seven scorers and lib/recommend.ts\'s stage-derived fallback (Phase 4 of the plan), plus the transitional English renderer lib/fitReasonText.ts once the client reads reason KEYS. Pull GEAR_RECOMMENDER forward at the same time — it will have no off branch left.',
   },
-  NEXT_PUBLIC_FLAG_GEAR_SETUP: {
-    description: 'The Equipment redesign (claude.ai/design "Equipment redesign", Turn 2): the Gear register becomes one "Set-up" spec card with two lines to fill (Racket, Strings), a club fact on each filled line, spares on their own line, a per-line manage sheet, "Where you\'d go next" and a share card. Replaces the pick rail, the kit rows and BagList on the flag-on branch; off, the register is unchanged. Client-only: every write still goes through the same /api/equipment/gear verbs, so it cannot change what is stored.',
-    owner: 'grant',
-    plannedRemoval: '2026-10-12',
-    note: 'Ships dark across three PRs (card → sheets → payoffs). Retiring it means deleting the flag-off register: GearPickRail, GearPickCard, YourKitCard, BagList and GearSheet if nothing else imports it, with their tests. Two things to know at the flip: `rec_card_tap` keeps its kind but its population changes ("Where you\'d go next" renders only once a racket is in play, the rail\'s card rendered always), so the slice0 tap rate moves for a reason that is not engagement. (It used to nest inside the value-hub flag, retired 2026-09-28.)',
-  },
   NEXT_PUBLIC_FLAG_GEAR_PAGES: {
     description: 'Equipment redesign Turn 3: "Your fit" and a racket\'s name open full pages inside Stats → Equipment (the fit profile, 3a; the frame page, 3d) instead of sheets. Client-only: the pages write through the same /api/equipment/gear verbs.',
     owner: 'grant',
@@ -169,8 +162,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
     case 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY':
       return process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
-    case 'NEXT_PUBLIC_FLAG_GEAR_SETUP':
-      return process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP;
     case 'NEXT_PUBLIC_FLAG_GEAR_PAGES':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_PAGES;
     case 'NEXT_PUBLIC_FLAG_FIT_VERDICT':

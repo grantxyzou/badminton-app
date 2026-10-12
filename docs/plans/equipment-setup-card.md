@@ -2,7 +2,7 @@
 
 **Track:** ROADMAP North Star pillar 4 (recommendations strong enough to suggest) — the club tally and the fit engine are only as good as the equipment members log, and today almost nobody logs any.
 **Status:** shipped 2026-09-14 (#419 dark, then the flag turned on)
-**Review on:** 2026-10-12 — has the flag been turned on, and did the share of members with a racket AND a string logged go up?
+**Review on:** 2026-11-09 — read the racket-AND-string count (below) and compare it with the 2026-10-12 figure Grant records; that comparison is the kill criterion, re-based.
 
 ## Problem
 
@@ -49,6 +49,19 @@ flag's retirement.
   truncated (head only).
 - **Shared gear is gear only, by type**: `SetupShare` has no field for a level, a
   game or a kudos, so the sheet's promise is kept by what can be passed to it.
+
+- **2026-10-12 review — the flag is retired; the criterion could not be read.**
+  The first half has an answer: the flag was on from 2026-09-14 and retired today,
+  with the old register (pick rail, "Your kit", `BagList`, `GearSheet`) deleted.
+  The second half does not. The criterion compares the racket-AND-string count
+  with "the week it flips", and nobody recorded that week's number, so there is no
+  baseline to rise above. The review was run by a scheduled job with no production
+  access, and it did not guess. **Re-based**: Grant reads the count from production
+  today (members with both a racket and a string logged, from `GET
+  /api/stats/club/gear` or the gear data behind it), writes it here, and the
+  2026-11-09 review compares against it. Retiring the flag does not wait on this:
+  if the criterion fails, the cure is trimming the Set-up surfaces, not bringing
+  the deleted register back.
 
 ## Shape
 

@@ -97,11 +97,10 @@ export interface UseGearPicks {
  * category, the park/ready/error ladder, the refetch keys and their skip
  * rules, and the translation of reason keys at render.
  *
- * Extracted verbatim from `GearPickRail` (2026-09-14) so the Set-up card
- * (`NEXT_PUBLIC_FLAG_GEAR_SETUP`) can show the same picks without a second
- * reader. It is the same single-owner rule as `useGear`: exactly ONE instance
- * per register, owned by whichever component renders the register — the rail
- * on the flag-off branch, `GearRegister` on the flag-on one. Every comment
+ * Extracted verbatim from the old pick rail (2026-09-14) so the Set-up card
+ * could show the same picks without a second reader; the rail itself left with
+ * NEXT_PUBLIC_FLAG_GEAR_SETUP on 2026-10-12. It is the same single-owner rule
+ * as `useGear`: exactly ONE instance per register, owned by `GearRegister`. Every comment
  * below was written about the rail and still holds word for word.
  */
 export function useGearPicks(
