@@ -31,7 +31,7 @@ export {
   formatServicePrice,
   type ServicePrice,
 } from './stringingRateCard';
-import { MAX_SERVICES, MAX_LABEL_LEN, MAX_PRICE_CENTS, type ServicePrice } from './stringingRateCard';
+import { MAX_SERVICES, MAX_LABEL_LEN, MAX_PRICE_CENTS, MAX_PRICING_NOTE_LEN, type ServicePrice } from './stringingRateCard';
 
 export interface PricingDoc {
   id: string;
@@ -49,7 +49,7 @@ export interface PricingDoc {
   updatedBy: string | null;
 }
 
-export const MAX_NOTE_LEN = 140;
+export const MAX_NOTE_LEN = MAX_PRICING_NOTE_LEN;
 
 export interface PricingRead {
   services: ServicePrice[];

@@ -164,7 +164,7 @@ export default function StringingCard({ hasIdentity }: Props) {
         }
         const prices: Record<string, number | null> = shelf.prices && typeof shelf.prices === 'object' ? shelf.prices : {};
         setPricing({
-          rows: (shelf.strings as string[]).filter((label) => label in prices).map((label) => ({ label, priceCents: prices[label] })),
+          rows: (shelf.strings as string[]).filter((label) => Object.prototype.hasOwnProperty.call(prices, label)).map((label) => ({ label, priceCents: prices[label] })),
           ownStringCents: typeof card.ownStringCents === 'number' ? card.ownStringCents : null,
           ownStringSet: typeof card.ownStringCents === 'number',
           note: typeof card.note === 'string' ? card.note : '',

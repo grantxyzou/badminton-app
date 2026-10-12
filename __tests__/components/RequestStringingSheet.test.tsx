@@ -468,6 +468,33 @@ describe('the string list as a shelf', () => {
     await waitFor(() => expect(own.textContent).toContain('$15'));
   });
 
+  it('reads "Ask" again when the stringer changes the own-string price to Ask between opens', async () => {
+    const base = mockApi(['BG65'], SHELF, [BG65]);
+    let own: number | null = 1500;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+        String(url).includes('/pricing')
+          ? Promise.resolve({ ok: true, json: async () => ({ services: [], ownStringCents: own, note: '' }) } as Response)
+          : base(url, init),
+      ),
+    );
+    const view = (open: boolean) => (
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <RequestStringingSheet open={open} onClose={() => {}} onRequested={() => {}} gear={null} />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(view(true));
+    const first = await screen.findByRole('radio', { name: /Bring my own string/ });
+    await waitFor(() => expect(first.textContent).toContain('$15'));
+    rerender(view(false));
+    own = null;
+    rerender(view(true));
+    const again = await screen.findByRole('radio', { name: /Bring my own string/ });
+    await waitFor(() => expect(again.textContent).not.toContain('$15'));
+    expect(again.textContent).toContain('Ask');
+  });
+
   it('sends what was typed for Bring my own, with no colour', async () => {
     const fetchMock = mockApi(['BG65'], SHELF, [BG65]);
     wrap();

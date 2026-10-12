@@ -70,4 +70,27 @@ describe('other prices', () => {
     expect(await screen.findByText(/Couldn't load your prices/)).toBeDefined();
     expect(screen.queryByLabelText('Bring your own string')).toBeNull();
   });
+
+  it('holds its place with a skeleton while it loads, never an empty "nothing set" form', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    wrap();
+    expect(screen.queryByLabelText('Bring your own string')).toBeNull();
+    expect(screen.queryByLabelText('Note for players')).toBeNull();
+    expect(screen.getByText('Other prices')).toBeDefined();
+  });
+
+  it('sends only the field that changed, and clearing the old list keeps an unsaved draft', async () => {
+    const patches = respond({ services: [{ label: 'Labour', priceCents: 1500 }], ownStringCents: 1500, note: 'Old note' });
+    wrap();
+    const note = await screen.findByLabelText('Note for players');
+    await waitFor(() => expect((note as HTMLTextAreaElement).disabled).toBe(false));
+    fireEvent.change(note, { target: { value: 'New note' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(patches).toEqual([{ note: 'New note' }]));
+    fireEvent.change(screen.getByLabelText('Bring your own string'), { target: { value: '18' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the old list' }));
+    await waitFor(() => expect(patches).toHaveLength(2));
+    expect(patches[1]).toEqual({ services: [] });
+    expect((screen.getByLabelText('Bring your own string') as HTMLInputElement).value).toBe('18');
+  });
 });

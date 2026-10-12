@@ -293,6 +293,9 @@ describe('intake shows the stringer what the player will read', () => {
     await waitFor(() => expect(price.value).toBe('32.00'));
     // The own-string figure is one tap away.
     expect(screen.getByRole('button', { name: /Own string · \$15/ })).toBeDefined();
+    // A label the shelf does not price takes the prefill back out.
+    fireEvent.change(screen.getByLabelText(/String, e.g./i), { target: { value: 'Exbolt 63' } });
+    expect(price.value).toBe('');
     // Typed by hand, it stays put when the string changes.
     fireEvent.change(price, { target: { value: '28' } });
     fireEvent.change(screen.getByLabelText(/String, e.g./i), { target: { value: 'BG80 Power-White' } });

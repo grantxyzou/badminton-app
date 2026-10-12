@@ -135,7 +135,10 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
   function changeString(next: string) {
     setStringLabel(next);
     const match = shelfLabelOf(next);
-    if (!priceTouched && match && shelfPrices) setPriceDollars(dollars(shelfPrices[match] ?? null));
+    // Until a price is typed, the field follows the string: a priced shelf
+    // string fills it, anything else empties it, so a prefill never rides
+    // along onto a string it was not for.
+    if (!priceTouched) setPriceDollars(match && shelfPrices ? dollars(shelfPrices[match] ?? null) : '');
   }
 
   // Empty is a legitimate price — "not decided yet", not zero.

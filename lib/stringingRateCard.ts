@@ -12,6 +12,8 @@ export const MAX_SERVICES = 12;
 export const MAX_LABEL_LEN = 60;
 /** $1000. A rate card, not an invoice — anything above this is a typo. */
 export const MAX_PRICE_CENTS = 100000;
+/** The stringer's note under the prices (docs/plans/bench-redesign.md). */
+export const MAX_PRICING_NOTE_LEN = 140;
 
 export interface ServicePrice {
   label: string;

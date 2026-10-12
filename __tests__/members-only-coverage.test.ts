@@ -187,7 +187,7 @@ describe('the source matches the classification', () => {
   const READS = [
     'groupScope(', 'getContainer(', 'getActiveSessionId(', 'ensureContainer(', 'ensureGames(',
     'ensureGear(', 'readActiveAnnouncements(', 'rosterMembers(', 'rosterMemberIds(', 'readShopOpen(',
-    'readOfferedStrings(', 'readPricing(', 'resolveActiveMemberId(', '.query(',
+    'readOfferedStrings(', 'readPricing(', 'readPricingDoc(', 'resolveActiveMemberId(', '.query(',
   ];
 
   for (const { key, body } of routesWithGet) {

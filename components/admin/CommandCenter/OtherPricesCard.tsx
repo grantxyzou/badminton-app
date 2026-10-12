@@ -6,11 +6,10 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { useOnline } from '@/lib/useOnline';
-import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
+import { formatServicePrice, MAX_PRICING_NOTE_LEN, type ServicePrice } from '@/lib/stringingRateCard';
 import { parsePrice, priceDraftOf } from '@/lib/shelfEdit';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const MAX_NOTE = 140;
 
 interface Pricing {
   services: ServicePrice[];
@@ -60,6 +59,12 @@ export default function OtherPricesCard() {
     };
   }, [attempt]);
 
+  /**
+   * Send ONLY the fields being changed: the route keeps what it is not sent,
+   * so a phone holding a stale copy of one field cannot write it back over
+   * another device's edit. Only the drafts for the fields sent are reset
+   * from the answer, so clearing the old list keeps an unsaved price or note.
+   */
   async function save(body: Partial<Pricing>) {
     if (busy || !online) return;
     setBusy(true);
@@ -74,8 +79,8 @@ export default function OtherPricesCard() {
       const d = await res.json();
       const p: Pricing = { services: d.services ?? [], ownStringCents: d.ownStringCents ?? null, note: d.note ?? '' };
       setPricing(p);
-      setOwn(priceDraftOf(p.ownStringCents));
-      setNote(p.note);
+      if ('ownStringCents' in body) setOwn(priceDraftOf(p.ownStringCents));
+      if ('note' in body) setNote(p.note);
     } catch {
       setSaveError(true);
     } finally {
@@ -96,11 +101,22 @@ export default function OtherPricesCard() {
     );
   }
 
+  // While the first read is in flight: the card's shape with no values. An
+  // empty field there would read as "no own-string price, no note".
+  if (pricing === null) {
+    return (
+      <div className="glass-card p-5 space-y-3" role="status" aria-label={t('title')}>
+        <CardHeader icon="request_quote" title={t('title')} subtitle={t('subtitle')} />
+        <PreviewRow width="60%" />
+        <PreviewRow width="80%" />
+      </div>
+    );
+  }
+
   const ownParsed = parsePrice(own);
-  const changed =
-    pricing !== null &&
-    ownParsed !== undefined &&
-    (ownParsed !== pricing.ownStringCents || note.trim() !== pricing.note);
+  const ownChanged = ownParsed !== undefined && ownParsed !== pricing.ownStringCents;
+  const noteChanged = note.trim() !== pricing.note;
+  const changed = ownParsed !== undefined && (ownChanged || noteChanged);
 
   return (
     <div className="glass-card p-5 space-y-3">
@@ -120,8 +136,7 @@ export default function OtherPricesCard() {
             onChange={(e) => setOwn(e.target.value)}
             placeholder={tRoot('strings.priceAsk')}
             maxLength={7}
-            disabled={pricing === null}
-            style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-mono)' }}
+                        style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-mono)' }}
           />
         </div>
         <p className="fs-xs" style={{ margin: 0, color: ownParsed === undefined ? 'var(--sev-crit-text)' : 'var(--text-muted)' }}>
@@ -136,10 +151,9 @@ export default function OtherPricesCard() {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder={t('notePlaceholder')}
-          maxLength={MAX_NOTE}
+          maxLength={MAX_PRICING_NOTE_LEN}
           rows={2}
-          disabled={pricing === null}
-        />
+                  />
       </div>
 
       <button
@@ -147,12 +161,17 @@ export default function OtherPricesCard() {
         className="cc-btn cc-btn-secondary"
         style={{ width: '100%' }}
         disabled={busy || !online || !changed}
-        onClick={() => void save({ ownStringCents: ownParsed ?? null, note: note.trim() })}
+        onClick={() =>
+          void save({
+            ...(ownChanged ? { ownStringCents: ownParsed ?? null } : {}),
+            ...(noteChanged ? { note: note.trim() } : {}),
+          })
+        }
       >
         {t('save')}
       </button>
 
-      {pricing !== null && pricing.services.length > 0 && (
+      {pricing.services.length > 0 && (
         <div className="flex flex-col gap-2" style={{ paddingTop: 'var(--space-2)' }}>
           <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
             {t('oldList', { count: pricing.services.length })}{' '}

@@ -178,7 +178,11 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!cancelled && typeof d?.ownStringCents === 'number') setOwnPriceCents(d.ownStringCents);
+        // A well-formed answer sets the figure outright, "Ask" (null) included,
+        // so a price changed to Ask between opens is not left showing the old
+        // one. A throttled/failed answer carries `services: null`: unknown,
+        // and the row keeps what it had.
+        if (!cancelled && Array.isArray(d?.services)) setOwnPriceCents(typeof d.ownStringCents === 'number' ? d.ownStringCents : null);
       })
       .catch(() => {});
     return () => {
