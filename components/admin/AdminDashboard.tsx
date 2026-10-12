@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { AdminView } from './types';
 import AdvanceSessionForm from './AdvanceSessionForm';
 import CatalogGapsPage from './CatalogGapsPage';
@@ -35,8 +35,35 @@ import { isFlagOn } from '@/lib/flags';
 
 /* ── Main component ── */
 
+/* Where the admin was, across a pull-to-refresh. HomeShell keys the tab on
+   its refresh nonce, so a pull remounted this at the dashboard from any
+   sub-page (admin audit, 2026-10-12). sessionStorage, like the active tab:
+   it survives a refresh, not a new launch. Only views that need nothing else
+   to render are restored — Payments needs the session it was opened for. */
+const VIEW_KEY = 'badminton_admin_view';
+const RESTORABLE: ReadonlySet<AdminView> = new Set<AdminView>([
+  'session-details', 'members', 'birds', 'releases', 'ledger', 'announcements', 'etransfer',
+  'skip-dates', 'past-sessions', 'stringing', 'catalog-gaps', 'metrics', 'invite', 'gift-cards',
+]);
+function storeView(v: AdminView | null) {
+  try {
+    if (v && RESTORABLE.has(v)) sessionStorage.setItem(VIEW_KEY, v);
+    else sessionStorage.removeItem(VIEW_KEY);
+  } catch { /* private mode: the place is not kept, nothing else changes */ }
+}
+
 export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const [view, setView] = useState<AdminView>('dashboard');
+  // Restored after mount, never in the initializer (the HomeShell rule:
+  // sessionStorage during hydration is a mismatch).
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(VIEW_KEY) as AdminView | null;
+      if (saved && RESTORABLE.has(saved)) setView(saved);
+    } catch { /* nothing to restore */ }
+  }, []);
+  useEffect(() => { storeView(view); }, [view]);
+  const exit = useCallback(() => { storeView(null); onExit(); }, [onExit]);
   const [refreshKey, setRefreshKey] = useState(0);
   // Session the Ledger drilled into; PaymentsCard preselects its chip.
   const [paymentsSessionId, setPaymentsSessionId] = useState<string | null>(null);
@@ -63,12 +90,13 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     setView('dashboard');
   }, []);
 
-  // Payments is reached from the Ledger, so Back returns there (not the
-  // dashboard) — preserving the drill-in trail.
-  const goBackToLedger = useCallback(() => {
+  // Payments is reached from the Ledger or from Past sessions (itself under
+  // the Ledger), so Back retraces the trail rather than jumping home.
+  const [paymentsFrom, setPaymentsFrom] = useState<'ledger' | 'past-sessions'>('ledger');
+  const goBackTo = useCallback((to: AdminView) => {
     setRefreshKey(k => k + 1);
     setPopped(true);
-    setView('ledger');
+    setView(to);
   }, []);
 
   /* ── Drill-down routing ── */
@@ -105,17 +133,19 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
           onBack={goBack}
           onOpenSession={(sessionId) => {
             setPaymentsSessionId(sessionId);
+            setPaymentsFrom('ledger');
             push('payments');
           }}
+          onOpenPastSessions={() => push('past-sessions')}
         />
       </div>
     );
   }
   if (view === 'payments') {
-    // Reached via the Ledger drill-in.
+    // Reached from a Ledger row or a Past sessions row.
     return (
       <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBackToLedger} title="Payments" />
+        <AdminBackHeader onBack={() => goBackTo(paymentsFrom)} title="Payments" />
         <PaymentsCard refreshKey={refreshKey} initialSessionId={paymentsSessionId} />
       </div>
     );
@@ -161,7 +191,16 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     );
   }
   if (view === 'past-sessions') {
-    return <PastSessionsPage onBack={goBack} />;
+    return (
+      <PastSessionsPage
+        onBack={() => goBackTo('ledger')}
+        onOpenSession={(sessionId) => {
+          setPaymentsSessionId(sessionId);
+          setPaymentsFrom('past-sessions');
+          push('payments');
+        }}
+      />
+    );
   }
 
   return (
@@ -169,7 +208,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
       <CommandCenter
         refreshKey={refreshKey}
         setView={push}
-        onExit={onExit}
+        onExit={exit}
         onOpenMember={(name) => { setRosterFocus(name); push('members'); }}
         onOpenDormant={() => { setRosterFilter('dormant'); push('members'); }}
       />
