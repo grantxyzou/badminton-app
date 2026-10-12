@@ -38,6 +38,7 @@ Grant's four calls, 2026-10-12 (each was the recommended option):
 Made while building:
 
 - **An old spelling is aliased, not relabelled.** A first idea was to rewrite the purchases' labels to the offered one. That would have broken #603's `renamed` mapping: jobs strung under the old spelling only count against the new label while a purchase still carries the old spelling. Those jobs would have fallen into `unmatched`, and the string would have shown more sets left than the shelf holds. `aliases` (old label → offered label) on the offered-strings doc is additive, maps purchases AND jobs, and rewrites nothing.
+- **The old rate card is kept in the doc, not shown** (PR 2). `services` stays stored so a rollback still has its menu; the set-up screen says, while it holds lines, that players no longer see it, with a "Clear the old list" button. A price that quietly stopped showing would otherwise be a surprise.
 - **Mine/All shows only when the bench has two or more stringers**, read from the jobs already loaded (an All load), and stays once shown. Asking `/api/stringing/stringers` instead would have shown the segment one request late and pushed the list down.
 
 ## Shape
@@ -48,4 +49,6 @@ Made while building:
 | One strings list + its sheet | `components/admin/CommandCenter/StringShelfCard.tsx`, `StringShelfSheet.tsx` |
 | Aliases (stored, normalised) | `lib/stringingStrings.ts`, `app/api/stringing/strings/route.ts` |
 | Aliases (counted) | `lib/stringStockMath.ts`, `app/api/stringing/stock/route.ts`, `lib/stringShelfRead.ts` |
-| Bench row on the Stringing tab | `components/StringingTab.tsx`, `components/HomeShell.tsx` |
+| Bench row on the Stringing tab | `components/StringingTab.tsx`, `components/stringing/BenchEntryRow.tsx`, `components/HomeShell.tsx` |
+| Own-string price + note (PR 2) | `lib/stringingPricing.ts`, `app/api/stringing/pricing/route.ts`, `components/admin/CommandCenter/OtherPricesCard.tsx` |
+| Players read shelf prices (PR 2) | `components/stringing/StringingCard.tsx` ("View pricing"), `RequestStringingSheet.tsx` (Bring my own), `components/admin/CommandCenter/StringingIntake.tsx` (prefill) |

@@ -15,7 +15,7 @@ import { useGear } from '@/components/stats/useGear';
 import { useActiveName } from '@/lib/useActiveName';
 import ConfirmChangeSheet from './ConfirmChangeSheet';
 import StringingSteps, { stepForStage } from './StringingSteps';
-import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
+import { formatServicePrice } from '@/lib/stringingRateCard';
 import type { PlayerStage } from '@/lib/stringing';
 import type { PlayerStringingJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
@@ -31,6 +31,16 @@ const KNOWN_STAGES = ['awaiting_dropoff', 'with_stringer', 'being_strung', 'read
  *  in both places on one screen. */
 function fmtMoney(n: number): string {
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
+}
+
+/** What "View pricing" lists: each shelf string with a price, then a restring
+ *  with the player's own string, then the stringer's note. */
+interface PriceList {
+  rows: Array<{ label: string; priceCents: number | null }>;
+  ownStringCents: number | null;
+  /** Whether a figure is set for the own-string row (null alone is also "Ask"). */
+  ownStringSet: boolean;
+  note: string;
 }
 
 interface Props {
@@ -90,9 +100,11 @@ export default function StringingCard({ hasIdentity }: Props) {
    * state happened to be right when the component first mounted.
    */
   const [openOverride, setOpenOverride] = useState<boolean | null>(null);
-  // null = unknown/unread. `[]` means nothing posted — the expander says so
-  // rather than showing a blank panel.
-  const [pricing, setPricing] = useState<ServicePrice[] | null>(null);
+  // null = unknown/unread. An empty list with no own-string price and no note
+  // means nothing posted, and the expander says so rather than a blank panel.
+  // Since docs/plans/bench-redesign.md (PR 2) the rows are the shelf's own
+  // restring prices; the old per-service rate card is no longer read here.
+  const [pricing, setPricing] = useState<PriceList | null>(null);
   /* Why the racket list is absent, when it is. `refused` is a device with no
      session for this name (the server answers 401/403) — not a failure, and
      not "no rackets" either. `failed` is a read that went wrong. Both used to
@@ -139,12 +151,24 @@ export default function StringingCard({ hasIdentity }: Props) {
   useEffect(() => {
     if (!pricingOpen || pricing !== null || pricingFailed) return;
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
+    const read = (path: string) =>
+      fetch(`${BASE}/api/stringing/${path}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null));
+    Promise.all([read('strings'), read('pricing')])
+      .then(([shelf, card]) => {
         if (cancelled) return;
-        if (d && Array.isArray(d.services)) setPricing(d.services);
-        else setPricingFailed(true);
+        // Either answer unknown (`strings`/`services` null) is a failed read,
+        // never "no prices posted".
+        if (!shelf || !Array.isArray(shelf.strings) || !card || !Array.isArray(card.services)) {
+          setPricingFailed(true);
+          return;
+        }
+        const prices: Record<string, number | null> = shelf.prices && typeof shelf.prices === 'object' ? shelf.prices : {};
+        setPricing({
+          rows: (shelf.strings as string[]).filter((label) => Object.prototype.hasOwnProperty.call(prices, label)).map((label) => ({ label, priceCents: prices[label] })),
+          ownStringCents: typeof card.ownStringCents === 'number' ? card.ownStringCents : null,
+          ownStringSet: typeof card.ownStringCents === 'number',
+          note: typeof card.note === 'string' ? card.note : '',
+        });
       })
       .catch(() => {
         if (!cancelled) setPricingFailed(true);
@@ -480,12 +504,12 @@ export default function StringingCard({ hasIdentity }: Props) {
                 }
               />
             )}
-            {pricing !== null && pricing.length === 0 && (
+            {pricing !== null && pricing.rows.length === 0 && !pricing.ownStringSet && !pricing.note && (
               <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
                 {t('pricingEmpty')}
               </p>
             )}
-            {(pricing ?? []).map((svc) => (
+            {(pricing?.rows ?? []).map((svc) => (
               <div
                 key={svc.label}
                 style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}
@@ -498,6 +522,17 @@ export default function StringingCard({ hasIdentity }: Props) {
                 </span>
               </div>
             ))}
+            {pricing !== null && (pricing.rows.length > 0 || pricing.ownStringSet) && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('pricingOwn')}</span>
+                <span className="fs-md" style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+                  {formatServicePrice(pricing.ownStringCents) ?? t('pricingAsk')}
+                </span>
+              </div>
+            )}
+            {pricing?.note && (
+              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>{pricing.note}</p>
+            )}
           </div>
         </Collapse>
         {!hasIdentity && (

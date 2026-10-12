@@ -2,7 +2,7 @@
  * The client-safe half of `lib/stringingPricing.ts`: limits, the row type and
  * the price formatter, in a module with NO imports.
  *
- * `StringingCard` (Home), `PricingCard` and `StringingIntake` are client
+ * `StringingCard` (Home), `OtherPricesCard` and `StringingIntake` are client
  * components. Importing `formatServicePrice` from `stringingPricing` reached
  * `groupScope` → `cosmos` → Node `crypto`, which bundled `crypto-browserify`
  * for every visitor. `stringingPricing` re-exports all of this, so server code
@@ -12,6 +12,8 @@ export const MAX_SERVICES = 12;
 export const MAX_LABEL_LEN = 60;
 /** $1000. A rate card, not an invoice — anything above this is a typo. */
 export const MAX_PRICE_CENTS = 100000;
+/** The stringer's note under the prices (docs/plans/bench-redesign.md). */
+export const MAX_PRICING_NOTE_LEN = 140;
 
 export interface ServicePrice {
   label: string;

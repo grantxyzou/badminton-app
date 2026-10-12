@@ -232,7 +232,7 @@ export default function StringShelfCard() {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', flex: '0 0 auto' }}>
                       {/* A figure in the data face; the absence of one in plain
                           muted text, so "No price" never reads as a number. */}
-                      {label in shelf.prices ? (
+                      {Object.prototype.hasOwnProperty.call(shelf.prices, label) ? (
                         <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {formatServicePrice(price ?? null) ?? t('strings.priceAsk')}
                         </span>
