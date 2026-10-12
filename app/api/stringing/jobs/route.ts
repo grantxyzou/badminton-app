@@ -268,6 +268,8 @@ export async function GET(req: NextRequest) {
      * return their own queue; a member without the flag gets an empty list
      * rather than an error, because "you are not a stringer" is not a secret
      * worth a distinct status but is also not something to explain here.
+     * `canString` rides along (additive) so the Stringing tab can offer a
+     * stringer their Bench even when nothing is assigned to them yet.
      */
     if (req.nextUrl.searchParams.get('view') === 'stringer') {
       const me = caller?.memberId ?? (admin.authed ? admin.memberId : null);
@@ -278,7 +280,7 @@ export async function GET(req: NextRequest) {
         .read<{ canString?: boolean }>()
         .then((r) => r.resource?.canString === true)
         .catch(() => false);
-      if (!canString) return NextResponse.json({ jobs: [], view: 'stringer' });
+      if (!canString) return NextResponse.json({ jobs: [], view: 'stringer', canString: false });
 
       const resources = await scope.query<StringingJob>('stringingJobs', {
         where: `c.stringerId = @stringerId AND ${LIVE_SQL}`,
@@ -290,7 +292,7 @@ export async function GET(req: NextRequest) {
         .filter((j) => j.stringerId === me && !isArchived(j))
         .sort(benchOrder)
         .map(toStringerJob);
-      return NextResponse.json({ jobs, view: 'stringer' });
+      return NextResponse.json({ jobs, view: 'stringer', canString: true });
     }
 
     if (admin.authed && !asPlayer) {

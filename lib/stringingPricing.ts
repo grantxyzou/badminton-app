@@ -1,5 +1,7 @@
 /**
- * The posted rate card — "View pricing" on the Home card.
+ * The posted prices: the own-string price and the stringer's note, shown
+ * under the strings on the Stringing tab's Strings register (the old
+ * per-service rate card, "View pricing", is retired; see below).
  *
  * A PUBLISHED PRICE LIST IS NOT A QUOTE, and the difference matters here
  * because this feature goes to some length to keep a stringer's exact figure

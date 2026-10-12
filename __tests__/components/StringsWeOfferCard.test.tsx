@@ -127,3 +127,68 @@ describe('the list', () => {
     expect(bg66.textContent).not.toMatch(/\$|Ask/);
   });
 });
+
+/**
+ * The Strings tab is where every price lives now (docs/plans/stringing-tabs.md):
+ * the service card's "View pricing" expander went, so the own-string price and
+ * the stringer's note moved here, beside the strings they are priced against.
+ */
+function mockWithPricing(strings: string[], pricing: Record<string, unknown> | 'fail', extra: Record<string, unknown> = {}) {
+  const links: Record<string, string> = { BG80: 's-80', BG66: 's-66', BG65: 's-65' };
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+    const u = String(url);
+    if (u.includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
+    if (u.includes('/pricing')) {
+      return pricing === 'fail'
+        ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response)
+        : Promise.resolve({ ok: true, json: async () => ({ services: [], ...pricing }) } as Response);
+    }
+    return Promise.resolve({ ok: true, json: async () => ({ strings, links, ...extra }) } as Response);
+  }));
+}
+
+function wrapWith(node: React.ReactNode) {
+  return render(<NextIntlClientProvider locale="en" messages={enMessages}>{node}</NextIntlClientProvider>);
+}
+
+describe('the rest of the prices', () => {
+  it('lists a restring with your own string, and the stringer’s note', async () => {
+    mockWithPricing(['BG80', 'BG66'], { ownStringCents: 1800, note: 'Ready in about a week.' });
+    wrapWith(<StringsWeOfferCard />);
+    const own = await screen.findByText('Bring your own string');
+    expect(within(own.parentElement as HTMLElement).getByText('$18')).toBeDefined();
+    expect(screen.getByText('Ready in about a week.')).toBeDefined();
+  });
+
+  it('says Ask when no own-string price is set', async () => {
+    mockWithPricing(['BG80', 'BG66'], { ownStringCents: null, note: '' });
+    wrapWith(<StringsWeOfferCard />);
+    const own = await screen.findByText('Bring your own string');
+    expect(within(own.parentElement as HTMLElement).getByText('Ask')).toBeDefined();
+  });
+
+  it('says the other prices did not load, rather than guess or go quiet', async () => {
+    // The Strings register is the only place the own-string price lives now,
+    // so a failed read must be visible (local review, 2026-10-12).
+    mockWithPricing(['BG80', 'BG66'], 'fail');
+    wrapWith(<StringsWeOfferCard />);
+    expect((await screen.findByRole('alert')).textContent).toBe(enMessages.home.stringing.offer.pricesError);
+    expect(screen.queryByText('Bring your own string')).toBeNull();
+    expect(screen.queryByText('Ask')).toBeNull();
+  });
+});
+
+describe('as a whole tab', () => {
+  it('says the stringer has listed nothing, instead of rendering nothing', async () => {
+    mockWithPricing([], { ownStringCents: null, note: '' });
+    wrapWith(<StringsWeOfferCard showEmpty />);
+    expect(await screen.findByText(enMessages.home.stringing.offer.empty)).toBeDefined();
+  });
+
+  it('still renders nothing on its own when empty, outside the tab', async () => {
+    mockWithPricing([], { ownStringCents: null, note: '' });
+    const { container } = wrapWith(<StringsWeOfferCard />);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(container.textContent).toBe('');
+  });
+});

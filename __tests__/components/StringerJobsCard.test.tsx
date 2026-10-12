@@ -145,3 +145,17 @@ describe('the advance button speaks the status words, not the key', () => {
     expect(await screen.findByRole('button', { name: expected })).toBeDefined();
   });
 });
+
+describe('as the Bench register (docs/plans/stringing-tabs.md)', () => {
+  it('says nothing is assigned, instead of rendering nothing', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ jobs: [], view: 'stringer', canString: true }), { status: 200 }),
+    );
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <StringerJobsCard hasIdentity showEmpty />
+      </NextIntlClientProvider>,
+    );
+    expect(await screen.findByText(enMessages.home.stringing.stringerEmpty)).toBeDefined();
+  });
+});

@@ -250,55 +250,35 @@ describe('the process strip', () => {
   });
 });
 
-describe('view pricing', () => {
-  it('is collapsed until asked for, and fetches nothing until then', async () => {
+describe('prices live on the Strings tab (docs/plans/stringing-tabs.md)', () => {
+  // The "View pricing" expander listed every string's price a second time,
+  // right above the shelf that already showed them. The Strings tab carries
+  // all of them now, and this card points there.
+  it('has no pricing expander, and never reads the prices', async () => {
     const fetchMock = mockApi(true, []);
     wrap();
     await screen.findByRole('button', { name: 'Submit a request' });
-    // A rate card nobody asked to see is not worth a request on every render.
+    expect(screen.queryByRole('button', { name: /View pricing/i })).toBeNull();
     expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/pricing'))).toBe(false);
   });
 
-  it('lists each shelf string’s price, then your own string and the note, once expanded', async () => {
-    // docs/plans/bench-redesign.md, PR 2: a string's restring price IS the
-    // price; the old per-service rate card is not read any more.
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation((url: string) =>
-        Promise.resolve({
-          ok: true,
-          json: async () => {
-            const u = String(url);
-            if (u.includes('/shop')) return { open: true };
-            if (u.includes('/strings')) {
-              return {
-                strings: ['BG80 Power-White', 'Exbolt 63', 'Not priced'],
-                prices: { 'BG80 Power-White': 3200, 'Exbolt 63': null },
-              };
-            }
-            if (u.includes('/pricing')) {
-              return { services: [{ label: 'Labour + string', priceCents: 3000 }], ownStringCents: 1500, note: 'Prices are new this month.' };
-            }
-            return { jobs: [], view: 'player' };
-          },
-        } as Response),
-      ),
+  it('offers a way to the Strings tab when it is in one', async () => {
+    mockApi(true, []);
+    const onShowStrings = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <StringingCard hasIdentity onShowStrings={onShowStrings} />
+      </NextIntlClientProvider>,
     );
-    wrap();
-    fireEvent.click(await screen.findByRole('button', { name: /View pricing/i }));
+    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.stringing.seeStrings }));
+    expect(onShowStrings).toHaveBeenCalled();
+  });
 
-    expect(await screen.findByText('BG80 Power-White')).toBeDefined();
-    expect(screen.getByText('$32')).toBeDefined();
-    // A null price reads "Ask", never $0.00 — those mean different things.
-    expect(screen.getByText('Ask')).toBeDefined();
-    expect(screen.queryByText('$0.00')).toBeNull();
-    // A string with no price set is not on the price list.
-    expect(screen.queryByText('Not priced')).toBeNull();
-    expect(screen.getByText('Bring your own string')).toBeDefined();
-    expect(screen.getByText('$15')).toBeDefined();
-    expect(screen.getByText('Prices are new this month.')).toBeDefined();
-    // The retired rate card is not shown.
-    expect(screen.queryByText('Labour + string')).toBeNull();
+  it('offers no such link when there is nowhere to go', async () => {
+    mockApi(true, []);
+    wrap();
+    await screen.findByRole('button', { name: 'Submit a request' });
+    expect(screen.queryByRole('button', { name: enMessages.home.stringing.seeStrings ?? 'Strings and prices' })).toBeNull();
   });
 });
 
@@ -332,13 +312,6 @@ describe('when the racket list is not there', () => {
     const before = fetchMock.mock.calls.length;
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(before));
-  });
-
-  it('pricing: no "couldn\'t load" while the request is still in flight', async () => {
-    answer(200, 200);
-    wrap();
-    fireEvent.click(await screen.findByRole('button', { name: /View pricing/ }));
-    expect(screen.queryByText("Couldn't load prices just now.")).toBeNull();
   });
 });
 

@@ -138,6 +138,17 @@ describe('a stringer sees the spec and never the money', () => {
     await seedJob();
     const body = await (await GET(memberReq('GET', 'http://x/jobs?view=stringer', 'priya'))).json();
     expect(body.jobs).toEqual([]);
+    expect(body.canString).toBe(false);
+  });
+
+  it('says a stringer is one even with nothing assigned (the Stringing tab’s Bench needs it)', async () => {
+    // Without this, "a stringer with an empty queue" and "not a stringer"
+    // answered the same `{ jobs: [] }`, and the tab could not tell whether to
+    // offer the Bench at all (docs/plans/stringing-tabs.md).
+    seedMember('Zach', { id: 'member-zach', canString: true });
+    const body = await (await GET(memberReq('GET', 'http://x/jobs?view=stringer', 'zach'))).json();
+    expect(body.jobs).toEqual([]);
+    expect(body.canString).toBe(true);
   });
 });
 

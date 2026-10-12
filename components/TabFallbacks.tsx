@@ -18,14 +18,29 @@ import CardSkeleton, { AdminTabSkeleton } from '@/components/primitives/CardSkel
  * tab's own first frame changes, change its copy here.
  */
 
-/** StringingTab: header, then the shop card (84px in its "Coming soon" state). */
+/**
+ * Placeholder heights for the Stringing tab's registers. `service` is the
+ * service card's skeleton, the size of its first frame (84px in the "Coming
+ * soon" state); `shelf` is the Strings register's, measured at 390px. Here, like STATS_HEIGHTS, so the chunk fallback and
+ * the tab read one set of numbers.
+ */
+export const STRINGING_HEIGHTS = {
+  service: 84,
+  // 679 at 390px on the MAP (five strings linked to the catalog, which is
+  // how production opens); the list view of three unlinked strings is 462.
+  shelf: 679,
+} as const;
+
+/** StringingTab: header, the register switch (32px), then the Racket
+ *  register's service card. */
 export function StringingFallback() {
   const tNav = useTranslations('nav');
   return (
-    <div className="space-y-5" role="status" aria-label="Loading">
+    <div className="space-y-5 w-full" role="status" aria-label="Loading">
       <PageHeader>{tNav('stringing')}</PageHeader>
-      <div className="space-y-4">
-        <CardSkeleton height={84} />
+      <div className="segment-control w-full" style={{ height: 32 }} aria-hidden="true" />
+      <div>
+        <CardSkeleton height={STRINGING_HEIGHTS.service} />
       </div>
     </div>
   );

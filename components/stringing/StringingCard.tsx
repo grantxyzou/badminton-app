@@ -15,7 +15,6 @@ import { useGear } from '@/components/stats/useGear';
 import { useActiveName } from '@/lib/useActiveName';
 import ConfirmChangeSheet from './ConfirmChangeSheet';
 import StringingSteps, { stepForStage } from './StringingSteps';
-import { formatServicePrice } from '@/lib/stringingRateCard';
 import type { PlayerStage } from '@/lib/stringing';
 import type { PlayerStringingJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
@@ -33,19 +32,12 @@ function fmtMoney(n: number): string {
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
 }
 
-/** What "View pricing" lists: each shelf string with a price, then a restring
- *  with the player's own string, then the stringer's note. */
-interface PriceList {
-  rows: Array<{ label: string; priceCents: number | null }>;
-  ownStringCents: number | null;
-  /** Whether a figure is set for the own-string row (null alone is also "Ask"). */
-  ownStringSet: boolean;
-  note: string;
-}
-
 interface Props {
   /** Whether anyone is signed in. A request has to belong to somebody. */
   hasIdentity: boolean;
+  /** Switches the Stringing tab to its Strings register, where every price
+   *  is (docs/plans/stringing-tabs.md). No link without it. */
+  onShowStrings?: () => void;
 }
 
 /**
@@ -68,7 +60,7 @@ interface Props {
  * data, and the same shape as `ProviderButtons`: unknown renders the modest
  * thing, never the confident one.
  */
-export default function StringingCard({ hasIdentity }: Props) {
+export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
   /* The kit's ONE owner in this tree, handed to the request sheet as a prop.
      `useGear` is single-owner by rule — four components once read the gear
      endpoint independently and raced each other's responses. `useActiveName`
@@ -89,7 +81,6 @@ export default function StringingCard({ hasIdentity }: Props) {
   // after one of them is a Rules-of-Hooks violation that only shows up when
   // the branch flips (here: the shop opening).
   const [confirming, setConfirming] = useState(false);
-  const [pricingOpen, setPricingOpen] = useState(false);
   /**
    * Collapsed/expanded, and null means "the player has not chosen".
    *
@@ -100,19 +91,11 @@ export default function StringingCard({ hasIdentity }: Props) {
    * state happened to be right when the component first mounted.
    */
   const [openOverride, setOpenOverride] = useState<boolean | null>(null);
-  // null = unknown/unread. An empty list with no own-string price and no note
-  // means nothing posted, and the expander says so rather than a blank panel.
-  // Since docs/plans/bench-redesign.md (PR 2) the rows are the shelf's own
-  // restring prices; the old per-service rate card is no longer read here.
-  const [pricing, setPricing] = useState<PriceList | null>(null);
   /* Why the racket list is absent, when it is. `refused` is a device with no
      session for this name (the server answers 401/403) — not a failure, and
      not "no rackets" either. `failed` is a read that went wrong. Both used to
      leave `jobs` null and render exactly like an empty bench. */
   const [jobsProblem, setJobsProblem] = useState<'refused' | 'failed' | null>(null);
-  // Loading and failed were one `null`, so opening the panel flashed "Couldn't
-  // load prices" before the request had even landed.
-  const [pricingFailed, setPricingFailed] = useState(false);
 
   const loadJobs = useCallback(() => {
     if (!hasIdentity) return;
@@ -145,38 +128,6 @@ export default function StringingCard({ hasIdentity }: Props) {
   useEffect(() => {
     if (open === true) loadJobs();
   }, [open, loadJobs]);
-
-  // Fetched only when the expander is first opened. A rate card nobody has
-  // asked to see is not worth a request on every Home render.
-  useEffect(() => {
-    if (!pricingOpen || pricing !== null || pricingFailed) return;
-    let cancelled = false;
-    const read = (path: string) =>
-      fetch(`${BASE}/api/stringing/${path}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null));
-    Promise.all([read('strings'), read('pricing')])
-      .then(([shelf, card]) => {
-        if (cancelled) return;
-        // Either answer unknown (`strings`/`services` null) is a failed read,
-        // never "no prices posted".
-        if (!shelf || !Array.isArray(shelf.strings) || !card || !Array.isArray(card.services)) {
-          setPricingFailed(true);
-          return;
-        }
-        const prices: Record<string, number | null> = shelf.prices && typeof shelf.prices === 'object' ? shelf.prices : {};
-        setPricing({
-          rows: (shelf.strings as string[]).filter((label) => Object.prototype.hasOwnProperty.call(prices, label)).map((label) => ({ label, priceCents: prices[label] })),
-          ownStringCents: typeof card.ownStringCents === 'number' ? card.ownStringCents : null,
-          ownStringSet: typeof card.ownStringCents === 'number',
-          note: typeof card.note === 'string' ? card.note : '',
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setPricingFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pricingOpen, pricing, pricingFailed]);
 
   // The Stringing tab's RevealSlot holds this place until the shop has answered.
   useRevealReady(shop.status !== 'loading');
@@ -434,7 +385,7 @@ export default function StringingCard({ hasIdentity }: Props) {
           />
         )}
 
-        {/* The CTA and pricing stay in BOTH states — only the RACKET folds away.
+        {/* The CTA and the prices link stay in BOTH states — only the RACKET folds away.
             Hiding them when collapsed also produced a visible jump: `active` is
             null until the jobs fetch lands, so the card rendered expanded and
             then snapped shut the moment data arrived. Keeping them put removes
@@ -466,75 +417,22 @@ export default function StringingCard({ hasIdentity }: Props) {
           <span className="material-icons icon-sm" aria-hidden="true">arrow_forward</span>
         </button>
 
-        {/* Pricing is a disclosure, not an action — hence a quiet row rather
-            than a third button competing with the one that matters. */}
-        {/* A ROW, matching "Submit a request" above it — label left, affordance
-            right, full width. It was a left-huddled underlined link with a
-            chevron in front of the text: a third geometry on a card that
-            already had two, and the chevron read as a bullet rather than as
-            "this opens". Quieter than the CTA because it is a disclosure, but
-            the same shape, so the card has one way of presenting a row. */}
-        <button
-          type="button"
-          onClick={() => setPricingOpen((v) => !v)}
-          aria-expanded={pricingOpen}
-          className="bpm-row-link"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          <span className="fs-sm">{t('viewPricing')}</span>
-          <span className="material-icons icon-sm motion-chevron" aria-hidden="true">
-            expand_more
-          </span>
-        </button>
-
-        <Collapse open={pricingOpen} spaceAbove="var(--space-3)">
-          <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-            {/* While the prices load: a shimmer line where the first row will
-                be, not an empty disclosure that opens onto nothing. */}
-            {pricing === null && !pricingFailed && (
-              <div className="shimmer-line rounded-lg" style={{ height: 12, width: '70%' }} aria-hidden="true" />
-            )}
-            {pricingFailed && (
-              <ErrorState
-                message={t('pricingUnavailable')}
-                action={
-                  <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setPricingFailed(false)}>
-                    {t('retry')}
-                  </button>
-                }
-              />
-            )}
-            {pricing !== null && pricing.rows.length === 0 && !pricing.ownStringSet && !pricing.note && (
-              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-                {t('pricingEmpty')}
-              </p>
-            )}
-            {(pricing?.rows ?? []).map((svc) => (
-              <div
-                key={svc.label}
-                style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}
-              >
-                <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{svc.label}</span>
-                <span className="fs-md" style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
-                  {/* "Ask" rather than $0.00 — a null price means there is no
-                      fixed one, which is a different thing from free. */}
-                  {formatServicePrice(svc.priceCents) ?? t('pricingAsk')}
-                </span>
-              </div>
-            ))}
-            {pricing !== null && (pricing.rows.length > 0 || pricing.ownStringSet) && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('pricingOwn')}</span>
-                <span className="fs-md" style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
-                  {formatServicePrice(pricing.ownStringCents) ?? t('pricingAsk')}
-                </span>
-              </div>
-            )}
-            {pricing?.note && (
-              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>{pricing.note}</p>
-            )}
-          </div>
-        </Collapse>
+        {/* Every price is on the Strings tab now (docs/plans/stringing-tabs.md):
+            the "View pricing" expander listed each string's price a second
+            time, above the shelf that already showed them. A quiet ROW, the
+            same shape as "Submit a request" above it and secondary ink, so it
+            never competes with the card's one way in. */}
+        {onShowStrings && (
+          <button
+            type="button"
+            onClick={onShowStrings}
+            className="bpm-row-link"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <span className="fs-sm">{t('seeStrings')}</span>
+            <span className="material-icons icon-sm" aria-hidden="true">chevron_right</span>
+          </button>
+        )}
         {!hasIdentity && (
           <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
             {t('needName')}

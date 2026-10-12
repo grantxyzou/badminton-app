@@ -197,6 +197,21 @@ describe('a failed load is not an empty bench', () => {
     expect(screen.queryByText('Nothing on the bench.')).toBeNull();
   });
 
+  it('treats a PLAYER-shaped answer as a failure, never as the club bench', async () => {
+    // An admin whose admin_session lapsed still holds a member_session, and
+    // the jobs route then answers their OWN jobs as `view: 'player'`. Shown,
+    // that read as "the bench is empty" (local review, 2026-10-12).
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) =>
+      Promise.resolve({
+        ok: true,
+        json: async () => (String(url).includes('/shop') ? { open: true } : String(url).includes('/strings') ? { strings: [] } : { jobs: [], view: 'player' }),
+      } as Response),
+    ));
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText(enMessages.admin.stringing.loadError)).toBeDefined();
+    expect(screen.queryByText(enMessages.admin.stringing.empty)).toBeNull();
+  });
+
   it('shows the empty state only on a real empty answer', async () => {
     respondJobs([]);
     wrap(<StringingPage onBack={() => {}} />);
@@ -712,6 +727,84 @@ describe('the bench lists first', () => {
     const prices = (await screen.findByText('Other prices')).closest('.glass-card') as HTMLElement;
     expect(prices).not.toBeNull();
     expect(prices.parentElement?.closest('.glass-card')).toBeNull();
+  });
+});
+
+describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', () => {
+  // The tab's own header and register switch already say where you are, so the
+  // bench drops its Back header there. Its sub-screens take the whole tab over
+  // (the tab hides its chrome) and come back to the Bench register.
+  function respondEmbedded() {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () =>
+            String(url).includes('/shop')
+              ? { open: true }
+              : String(url).includes('/strings')
+                ? { strings: ['BG80 white'] }
+                : String(url).includes('/pricing')
+                  ? { services: [], ownStringCents: null, note: '' }
+                  : String(url).includes('/stock')
+                    ? { lines: [], unmatched: [], purchases: [], aliases: {}, totals: { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0 } }
+                    : { jobs: [job], view: 'bench' },
+        } as Response),
+      ),
+    );
+  }
+
+  it('has no Back header of its own', async () => {
+    respondEmbedded();
+    wrap(<StringingPage embedded onBack={() => {}} onTakeover={() => {}} />);
+    await screen.findByText('J-0042');
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Bench' })).toBeNull();
+  });
+
+  it('takes the tab over for set-up, and gives it back on Back', async () => {
+    respondEmbedded();
+    const onTakeover = vi.fn();
+    wrap(<StringingPage embedded onBack={() => {}} onTakeover={onTakeover} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock & prices' }));
+    await screen.findByText('Other prices');
+    expect(onTakeover).toHaveBeenLastCalledWith(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('J-0042')).toBeDefined();
+    expect(onTakeover).toHaveBeenLastCalledWith(false);
+  });
+
+  it('takes the tab over for a job, too', async () => {
+    respondEmbedded();
+    const onTakeover = vi.fn();
+    wrap(<StringingPage embedded onBack={() => {}} onTakeover={onTakeover} />);
+    await screen.findByText('J-0042');
+    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.actions.open }));
+    await waitFor(() => expect(onTakeover).toHaveBeenLastCalledWith(true));
+  });
+
+  it('carries the tab’s crumb onto a job and the intake, never "Admin"', async () => {
+    // The bench-redesign deferred minor: these two drew their own header and
+    // said "Admin" under the Stringing tab. With the Bench a tab, they are on
+    // the main path now.
+    respondEmbedded();
+    wrap(<StringingPage embedded crumb="Stringing" onBack={() => {}} onTakeover={() => {}} />);
+    await screen.findByText('J-0042');
+    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.actions.open }));
+    expect(await screen.findByText('Stringing')).toBeDefined();
+    expect(screen.queryByText('Admin')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Add job/ }));
+    expect(await screen.findByText('Stringing')).toBeDefined();
+    expect(screen.queryByText('Admin')).toBeNull();
+  });
+
+  it('keeps its Back header when opened from the Command Center', async () => {
+    respondEmbedded();
+    wrap(<StringingPage onBack={() => {}} />);
+    await screen.findByText('J-0042');
+    expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
   });
 });
 

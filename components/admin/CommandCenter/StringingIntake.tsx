@@ -21,6 +21,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
   onBack: () => void;
+  /** The header's crumb, from whichever screen opened the bench. */
+  crumb?: string;
   onCreated: () => void;
 }
 
@@ -45,7 +47,7 @@ interface PickableMember {
  * be logged in ten seconds at a session and priced later at the bench, instead
  * of the form demanding a figure while someone stands waiting.
  */
-export default function StringingIntake({ onBack, onCreated }: Props) {
+export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
   const t = useTranslations('admin.stringing');
   const online = useOnline();
 
@@ -187,7 +189,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
 
   return (
     <div>
-      <AdminBackHeader onBack={onBack} title={t('newJob')} />
+      <AdminBackHeader onBack={onBack} title={t('newJob')} crumb={crumb} />
       <div className="flex flex-col gap-4 pb-6">
         {/* Who */}
         <div className="glass-card p-5 space-y-3">

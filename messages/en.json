@@ -24,15 +24,14 @@
       "noneAction": "Set a PIN"
     },
     "stringing": {
-      "bench": {
-        "title": "Stringing bench",
-        "subtitle": "Jobs, strings and prices",
-        "waiting": "{count} waiting",
-        "late": "{count} late",
-        "clear": "Nothing waiting"
+      "registers": {
+        "racket": "Racket",
+        "strings": "Strings",
+        "bench": "Bench"
       },
-        "viewPricing": "View pricing",
       "stringerTitle": "Rackets to string",
+      "seeStrings": "Strings and prices",
+      "stringerEmpty": "Nothing assigned to you right now.",
       "stringerSubtitle": "Assigned to you.",
       "stringerFor": "for {name}",
       "stringerError": "Couldn't load your jobs.",
@@ -62,12 +61,8 @@
           "gone": "That change is no longer waiting — nothing to answer.",
           "close": "Close"
         },
-        "pricingEmpty": "No prices posted yet — the price is confirmed when the racket is taken.",
-        "pricingUnavailable": "Couldn't load prices just now.",
         "jobsError": "Couldn't load your rackets.",
         "retry": "Try again",
-        "pricingAsk": "Ask",
-        "pricingOwn": "Bring your own string",
         "steps": {
           "submit": "Submit a request",
           "dropOff": "Drop off your racket",
@@ -155,7 +150,7 @@
         "ratingSource": "Ratings: {source}.",
         "meansTitle": "What this means",
         "specs": "Specs",
-        "typicalPrice": "Typically {range} a set in a shop — the club’s price is on the rate card.",
+        "typicalPrice": "Typically {range} a set in a shop. Ask the stringer for the club’s price.",
         "gauge_thin": "Thin ({mm} mm): lively and powerful, wears faster.",
         "gauge_standard": "Standard ({mm} mm): the middle of the road, a bit of everything.",
         "gauge_thick": "Thick ({mm} mm): tough and forgiving, a touch less bite.",
@@ -183,6 +178,9 @@
         "seeHow": "See how it plays",
         "notOnMap": "Not on the map",
         "priceAsk": "Ask",
+        "empty": "No strings listed yet. Ask the stringer what they have.",
+        "ownString": "Bring your own string",
+        "pricesError": "Couldn’t load the other prices.",
         "restringWith": "Restring with this string",
         "clubCount": "{count} in the club play it",
         "colours": "Colours",
@@ -1561,7 +1559,7 @@
         "setupRow": "Strings, stock & prices",
         "otherPrices": {
           "title": "Other prices",
-          "subtitle": "Each string's restring price is set in its row above. These show under them in “View pricing”.",
+          "subtitle": "Each string's restring price is set in its row above. These show under the strings on the Stringing tab.",
           "own": "Bring your own string",
           "ownHint": "A restring with the player's own string. Leave empty to show “Ask”.",
           "note": "Note for players",

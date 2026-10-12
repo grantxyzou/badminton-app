@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
 import { dueFor, todayIso, formatReadyBy, type DueTone } from '@/lib/stringingDue';
@@ -44,7 +45,13 @@ const DUE_FG: Record<DueTone, string> = {
  * "we could not ask" and "nothing to string" look identical and only one means
  * somebody's racket is sitting unstrung.
  */
-export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean }) {
+export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
+  hasIdentity: boolean;
+  /** The Stringing tab's Bench register (docs/plans/stringing-tabs.md): the
+   *  tab is only offered to a stringer, so an empty queue says so rather than
+   *  leaving the register blank. */
+  showEmpty?: boolean;
+}) {
   const t = useTranslations('home.stringing');
   const online = useOnline();
   const [jobs, setJobs] = useState<StringerJob[] | null>(null);
@@ -140,8 +147,17 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
     );
   }
   // No work is the normal state for most people and deserves no card at all —
-  // including everyone who is not a stringer, who gets an empty list.
-  if (!jobs || jobs.length === 0) return null;
+  // including everyone who is not a stringer, who gets an empty list. As the
+  // Bench register it is a stringer's whole screen, so it says so.
+  if (!jobs || jobs.length === 0) {
+    if (!showEmpty || !jobs) return null;
+    return (
+      <section className="glass-card p-5 space-y-3 motion-fade" aria-label="Rackets to string">
+        <CardHeader compact icon="sports_tennis" title={t('stringerTitle')} />
+        <EmptyState icon="sports_tennis">{t('stringerEmpty')}</EmptyState>
+      </section>
+    );
+  }
 
   return (
     <section className="glass-card p-5 space-y-3 motion-fade" aria-label="Rackets to string">
