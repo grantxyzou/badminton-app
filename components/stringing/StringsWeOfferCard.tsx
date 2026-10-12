@@ -140,7 +140,11 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
   // The own-string price and the note, below the strings they sit beside.
   // Inset by a row's own padding, so the label and the figure line up with
   // the strings' names and prices above them.
-  const otherPrices = other && other !== 'failed' ? (
+  const otherPrices = other === 'failed' ? (
+    // The Strings register is the only place these live, so a failed read
+    // says so rather than going quiet; a pull-to-refresh asks again.
+    <p className="field-error" role="alert" style={{ padding: '0 var(--space-4)' }}>{t('pricesError')}</p>
+  ) : other ? (
     <div className="flex flex-col gap-2" style={{ padding: '0 var(--space-4)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-3)' }}>
         <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('ownString')}</span>

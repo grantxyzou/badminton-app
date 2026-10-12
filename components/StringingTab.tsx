@@ -63,9 +63,15 @@ export default function StringingTab({ isAdmin = false, view: controlled, onView
   const [takeover, setTakeover] = useState(false);
 
   // Read after mount: identity lives in localStorage, which SSR cannot see.
+  // `identityRead` is the "not known yet" half, so a stringer coming back to
+  // their Bench waits for it instead of painting Racket for a frame.
   const [hasIdentity, setHasIdentity] = useState(false);
+  const [identityRead, setIdentityRead] = useState(false);
   useEffect(() => {
-    const read = () => setHasIdentity(getIdentity() !== null);
+    const read = () => {
+      setHasIdentity(getIdentity() !== null);
+      setIdentityRead(true);
+    };
     read();
     window.addEventListener(IDENTITY_EVENT, read);
     return () => window.removeEventListener(IDENTITY_EVENT, read);
@@ -94,7 +100,8 @@ export default function StringingTab({ isAdmin = false, view: controlled, onView
   // A Bench remembered for someone who no longer has one opens on Racket.
   // While a stringer's answer is still out it waits, rather than flashing
   // Racket and then jumping.
-  const benchPending = view === 'bench' && !adminBench && stringer === null && hasIdentity && flagOn;
+  const benchPending =
+    view === 'bench' && !adminBench && flagOn && (!identityRead || (hasIdentity && stringer === null));
   const current: StringingView = views.includes(view) || benchPending ? view : 'racket';
 
   return (

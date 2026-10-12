@@ -197,6 +197,21 @@ describe('a failed load is not an empty bench', () => {
     expect(screen.queryByText('Nothing on the bench.')).toBeNull();
   });
 
+  it('treats a PLAYER-shaped answer as a failure, never as the club bench', async () => {
+    // An admin whose admin_session lapsed still holds a member_session, and
+    // the jobs route then answers their OWN jobs as `view: 'player'`. Shown,
+    // that read as "the bench is empty" (local review, 2026-10-12).
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) =>
+      Promise.resolve({
+        ok: true,
+        json: async () => (String(url).includes('/shop') ? { open: true } : String(url).includes('/strings') ? { strings: [] } : { jobs: [], view: 'player' }),
+      } as Response),
+    ));
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText(enMessages.admin.stringing.loadError)).toBeDefined();
+    expect(screen.queryByText(enMessages.admin.stringing.empty)).toBeNull();
+  });
+
   it('shows the empty state only on a real empty answer', async () => {
     respondJobs([]);
     wrap(<StringingPage onBack={() => {}} />);

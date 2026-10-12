@@ -180,6 +180,7 @@
         "priceAsk": "询价",
         "empty": "还没有列出球线，可以问问穿线师有哪些。",
         "ownString": "自带拍线",
+        "pricesError": "其他价格加载失败。",
         "restringWith": "用这款线穿线",
         "clubCount": "俱乐部里有 {count} 人在用",
         "colours": "颜色",

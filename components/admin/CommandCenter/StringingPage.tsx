@@ -117,6 +117,10 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       });
       if (!res.ok) throw new Error(`stringing jobs ${res.status}`);
       const data = await res.json();
+      // Only the BENCH answer is the bench. An admin whose admin_session
+      // lapsed still has a member_session, and the route then answers their
+      // own jobs as `view: 'player'`; shown here, that read as an empty bench.
+      if (data?.view !== 'bench') throw new Error(`stringing jobs: ${String(data?.view)} view`);
       const list: StringingJob[] = Array.isArray(data.jobs) ? data.jobs : [];
       setJobs(list);
       if (!mine && new Set(list.map((j) => j.stringerId).filter(Boolean)).size > 1) setMultiStringer(true);
@@ -185,6 +189,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       );
       if (!res.ok) throw new Error(`stringing archive ${res.status}`);
       const data = await res.json();
+      // Same rule as the bench: the player branch ignores `archived=true`.
+      if (data?.view !== 'bench') throw new Error(`stringing archive: ${String(data?.view)} view`);
       setArchivedJobs(Array.isArray(data.jobs) ? data.jobs : []);
     } catch {
       // Same tri-state as the bench: null + error, never `[]`. An empty

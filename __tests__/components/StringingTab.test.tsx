@@ -131,6 +131,16 @@ describe('the Bench, for the people who string', () => {
     expect(await screen.findByText(enMessages.home.stringing.stringerEmpty)).toBeDefined();
   });
 
+  it('brings a stringer back to their Bench without painting Racket first', async () => {
+    // Identity is read after mount, so on the first render the tab could not
+    // yet know whether to wait for the stringer answer (local review).
+    signIn();
+    const urls = stubFetch({ canString: true });
+    wrap(<StringingTab view="bench" onViewChange={() => {}} />);
+    expect(await screen.findByText(enMessages.home.stringing.stringerEmpty)).toBeDefined();
+    expect(urls.some((u) => u.includes('/shop'))).toBe(false);
+  });
+
   it('is not offered to a signed-in member who does not string', async () => {
     signIn();
     const urls = stubFetch({ canString: false });

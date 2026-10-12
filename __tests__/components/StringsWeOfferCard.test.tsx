@@ -167,13 +167,14 @@ describe('the rest of the prices', () => {
     expect(within(own.parentElement as HTMLElement).getByText('Ask')).toBeDefined();
   });
 
-  it('leaves the row out when the prices could not be read, rather than guess', async () => {
+  it('says the other prices did not load, rather than guess or go quiet', async () => {
+    // The Strings register is the only place the own-string price lives now,
+    // so a failed read must be visible (local review, 2026-10-12).
     mockWithPricing(['BG80', 'BG66'], 'fail');
     wrapWith(<StringsWeOfferCard />);
-    await screen.findByText('Strings we offer');
-    // Let the pricing read settle.
-    await new Promise((r) => setTimeout(r, 0));
+    expect((await screen.findByRole('alert')).textContent).toBe(enMessages.home.stringing.offer.pricesError);
     expect(screen.queryByText('Bring your own string')).toBeNull();
+    expect(screen.queryByText('Ask')).toBeNull();
   });
 });
 

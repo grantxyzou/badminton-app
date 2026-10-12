@@ -180,6 +180,7 @@
         "priceAsk": "Ask",
         "empty": "No strings listed yet. Ask the stringer what they have.",
         "ownString": "Bring your own string",
+        "pricesError": "Couldn’t load the other prices.",
         "restringWith": "Restring with this string",
         "clubCount": "{count} in the club play it",
         "colours": "Colours",
