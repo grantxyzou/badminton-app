@@ -45,6 +45,13 @@ export interface StringStockSummary {
 export function summarizeStringStock(input: {
   offered: readonly string[];
   links: Readonly<Record<string, string>>;
+  /**
+   * Old spelling → offered label (docs/plans/bench-redesign.md). A purchase
+   * or a job under the old spelling counts as the offered string. Nothing is
+   * rewritten: an alias whose target is not offered is ignored and the old
+   * spelling stands on its own, as it did before the alias.
+   */
+  aliases?: Readonly<Record<string, string>>;
   purchases: readonly StringPurchase[];
   jobs: readonly Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt'>[];
   catalog: ReadonlyMap<string, CatalogItem>;
@@ -61,6 +68,17 @@ export function summarizeStringStock(input: {
     });
   }
 
+  // An alias resolves BEFORE keying, for purchases and jobs alike, so both
+  // halves of a string's arithmetic agree about which line they belong to.
+  const aliasTo = new Map<string, string>();
+  for (const [from, to] of Object.entries(input.aliases ?? {})) {
+    if (byKey.has(labelKey(to)) && !byKey.has(labelKey(from))) aliasTo.set(labelKey(from), labelKey(to));
+  }
+  const keyOf = (label: string) => {
+    const k = labelKey(label);
+    return aliasTo.get(k) ?? k;
+  };
+
   // Latest purchase per string decides the price; purchases sorted by date then createdAt.
   const sorted = input.purchases.slice().sort((a, b) => (a.date + a.createdAt < b.date + b.createdAt ? -1 : 1));
   const latestPerMetre = new Map<string, number>();
@@ -74,7 +92,7 @@ export function summarizeStringStock(input: {
   for (const [key, line] of byKey) if (line.catalogId && !byCatalog.has(line.catalogId)) byCatalog.set(line.catalogId, key);
   const renamed = new Map<string, string>();
   for (const p of sorted) {
-    const own = labelKey(p.label);
+    const own = keyOf(p.label);
     const moved = !byKey.has(own) && p.catalogId ? byCatalog.get(p.catalogId) : undefined;
     if (moved) renamed.set(own, moved);
     const key = moved ?? own;
@@ -100,7 +118,7 @@ export function summarizeStringStock(input: {
   const unmatched = new Map<string, { label: string; usedSets: number }>();
   for (const j of input.jobs) {
     if (!STRUNG_STATUSES.has(j.status)) continue;
-    const own = labelKey(j.stringLabel ?? '');
+    const own = keyOf(j.stringLabel ?? '');
     if (!own) continue;
     const key = byKey.has(own) ? own : renamed.get(own) ?? own;
     const line = byKey.get(key);

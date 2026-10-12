@@ -38,7 +38,12 @@ export function resetShelfCache(): void {
   shelfCache.clear();
 }
 
-export async function readShelfExtras(groupId: string, strings: string[], links: Record<string, string>): Promise<ShelfExtras> {
+export async function readShelfExtras(
+  groupId: string,
+  strings: string[],
+  links: Record<string, string>,
+  aliases: Record<string, string> = {},
+): Promise<ShelfExtras> {
   const cached = cacheEnabled() ? shelfCache.get(groupId) : undefined;
   if (cached && Date.now() - cached.at < SHELF_TTL_MS) return cached.value;
 
@@ -51,7 +56,7 @@ export async function readShelfExtras(groupId: string, strings: string[], links:
     readClubGearDocs(groupId),
   ]);
 
-  const summary = summarizeStringStock({ offered: strings, links, purchases, jobs, catalog });
+  const summary = summarizeStringStock({ offered: strings, links, aliases, purchases, jobs, catalog });
   const offeredKeys = new Map(strings.map((l) => [labelKey(l), l]));
   const stock: Record<string, StockBand> = {};
   for (const line of summary.lines) {

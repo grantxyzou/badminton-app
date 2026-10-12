@@ -45,6 +45,14 @@ export interface OfferedStringsDoc {
    * estimate, so it is never shown with a tilde.
    */
   prices?: Record<string, number | null>;
+  /**
+   * Old spelling → offered label (docs/plans/bench-redesign.md): a purchase
+   * or a job recorded under the old spelling counts as the offered string in
+   * the stock arithmetic. ADDITIVE, and nothing it points at is rewritten —
+   * rewriting purchase labels instead would strand the jobs strung under the
+   * old spelling. Admin-only: the public read does not return it.
+   */
+  aliases?: Record<string, string>;
   updatedAt: string;
   updatedBy: string | null;
 }
@@ -53,7 +61,11 @@ export interface OfferedStringsRead {
   strings: string[];
   links: Record<string, string>;
   prices: Record<string, number | null>;
+  aliases: Record<string, string>;
 }
+
+/** More than any shelf has had typos for; a cap so the doc stays small. */
+export const MAX_ALIASES = 50;
 
 /** The offered strings with their catalog links and prices; `null` when the read threw. */
 export async function readOfferedStringsWithLinks(groupId: string): Promise<OfferedStringsRead | null> {
@@ -65,7 +77,7 @@ export async function readOfferedStringsWithLinks(groupId: string): Promise<Offe
     const known = new Set(strings);
     const links: Record<string, string> = {};
     for (const [label, id] of Object.entries(raw)) if (known.has(label) && typeof id === 'string') links[label] = id;
-    return { strings, links, prices: normalisePrices(resource?.prices, strings) };
+    return { strings, links, prices: normalisePrices(resource?.prices, strings), aliases: normaliseAliases(resource?.aliases, strings) };
   } catch (err) {
     console.error('readOfferedStringsWithLinks failed:', err);
     return null;
@@ -103,6 +115,28 @@ export function normalisePrices(value: unknown, strings: readonly string[]): Rec
     if (!known.has(label)) continue;
     if (cents === null) out[label] = null;
     else if (typeof cents === 'number' && Number.isInteger(cents) && cents >= 0 && cents <= MAX_PRICE_CENTS) out[label] = cents;
+  }
+  return out;
+}
+
+/**
+ * Clean a submitted alias map against the (already normalised) list. DROPPED
+ * rather than refused, like links and prices: a target that is not offered, a
+ * blank or over-long old spelling, and an old spelling that is ITSELF offered
+ * (case-insensitively) — an alias from a real shelf label would fold one
+ * string's stock into another's.
+ */
+export function normaliseAliases(value: unknown, strings: readonly string[]): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const known = new Set(strings);
+  const offeredKeys = new Set(strings.map((x) => x.trim().toLowerCase()));
+  const out: Record<string, string> = {};
+  for (const [rawFrom, to] of Object.entries(value as Record<string, unknown>)) {
+    if (Object.keys(out).length >= MAX_ALIASES) break;
+    const from = rawFrom.trim();
+    if (!from || from.length > MAX_LABEL_LEN || typeof to !== 'string' || !known.has(to)) continue;
+    if (offeredKeys.has(from.toLowerCase())) continue;
+    out[from] = to;
   }
   return out;
 }
