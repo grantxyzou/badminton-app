@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
 import DatePicker from '@/components/DatePicker';
+import OfferedStringOptions from '@/components/stringing/OfferedStringOptions';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
@@ -220,7 +221,9 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
               placeholder={t('stringPlaceholder')}
               aria-label={t('stringPlaceholder')}
               maxLength={80}
+              list="intake-offered-strings"
             />
+            <OfferedStringOptions id="intake-offered-strings" />
           </div>
         </div>
 

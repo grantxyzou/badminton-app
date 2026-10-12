@@ -44,6 +44,33 @@ describe('summarizeStringStock', () => {
     expect(s.lines[0]).toMatchObject({ label: 'Old string', purchasedMetres: 20, usedSets: 3, remainingMetres: 0, remainingSets: 0, costPerSetCents: 1000 });
   });
 
+  it('follows a renamed shelf label through the catalog link, for purchases and the jobs strung under the old name', () => {
+    // The stringer listed "BG65", logged a reel under it, strung two rackets,
+    // then renamed the shelf label. Without the link both reel and jobs would
+    // fall off the new label and it would read as never bought.
+    const s = summarizeStringStock({
+      offered: ['Yonex BG65 white'],
+      links: { 'Yonex BG65 white': 'string-yx-bg65' },
+      purchases: [purchase({ label: 'BG65', catalogId: 'string-yx-bg65' })],
+      jobs: [job('BG65', 'picked_up'), job('Yonex BG65 white', 'strung'), job('BYO lime', 'strung')],
+      catalog: new Map([[bg65.id, bg65]]),
+    });
+    expect(s.lines).toHaveLength(1);
+    expect(s.lines[0]).toMatchObject({ label: 'Yonex BG65 white', purchases: 1, purchasedMetres: 200, usedSets: 2, remainingSets: 18 });
+    expect(s.unmatched).toEqual([{ label: 'BYO lime', usedSets: 1 }]);
+  });
+
+  it('keeps an unlinked old purchase on its own line rather than guessing', () => {
+    const s = summarizeStringStock({
+      offered: ['Yonex BG65 white'],
+      links: { 'Yonex BG65 white': 'string-yx-bg65' },
+      purchases: [purchase({ label: 'BG65', catalogId: undefined })],
+      jobs: [],
+      catalog: new Map([[bg65.id, bg65]]),
+    });
+    expect(s.lines.map((l) => l.label)).toEqual(['Yonex BG65 white', 'BG65']);
+  });
+
   it('validatePurchase refuses what it cannot count', () => {
     expect(() => validatePurchase({ label: '', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 100, date: '2026-10-10' })).toThrow(StringStockError);
     expect(() => validatePurchase({ label: 'BG65', unit: 'box', units: 1, metresPerUnit: 200, totalCostCents: 100, date: '2026-10-10' })).toThrow('invalid_units');

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
 import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
+import OfferedStringOptions from '@/components/stringing/OfferedStringOptions';
 import Collapse from '@/components/primitives/Collapse';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -570,7 +571,9 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 onChange={(e) => setProposeString(e.target.value)}
                 aria-label={t('propose.string')}
                 maxLength={80}
+                list="propose-offered-strings"
               />
+              <OfferedStringOptions id="propose-offered-strings" />
             </label>
             <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flex: 1 }}>
