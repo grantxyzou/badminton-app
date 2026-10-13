@@ -7,8 +7,7 @@ import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
-import { dueFor, todayIso, formatReadyBy, type DueTone } from '@/lib/stringingDue';
-import type { StringingStatus } from '@/lib/stringing';
+import { dueFor, dueStyle, todayIso, formatReadyBy } from '@/lib/stringingDue';
 import type { StringingJob } from '@/lib/types';
 import SwipeRow from '@/components/primitives/SwipeRow';
 import ActionRow from '@/components/primitives/ActionRow';
@@ -19,7 +18,8 @@ import StringingIntake from './StringingIntake';
 import StringShelfCard from './StringShelfCard';
 import OtherPricesCard from './OtherPricesCard';
 import { StateLink } from '@/components/primitives/StateCard';
-import StatusBadge, { type StateTone } from '@/components/primitives/StatusBadge';
+import StatusBadge from '@/components/primitives/StatusBadge';
+import { STATUS_TONE } from '@/components/stringing/statusTone';
 import ListRow from '@/components/primitives/ListRow';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -39,25 +39,11 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * trusting that.
  */
 
-/** Chip tone per status. Mirrors the design's TONE table. */
-/** Urgency colour for the due column. Separate from the status chip: a job can
- *  be `received` (neutral) and overdue (red) at the same time, which is exactly
- *  the pair a stringer scans for. */
-const DUE_FG: Record<DueTone, string> = {
-  overdue: 'var(--sev-crit-text, var(--color-red))',
-  soon: 'var(--pill-waitlist-text)',
-  ok: 'var(--text-secondary)',
-  done: 'var(--text-muted)',
-};
-
-/** Each job status in one of the canonical pill tones (`StatusBadge variant="state"`). */
-const TONE: Record<StringingStatus, StateTone> = {
-  requested: 'unpaid',
-  received: 'waitlist',
-  strung: 'waitlist',
-  ready: 'paid',
-  picked_up: 'unpaid',
-};
+/* Status pill tones live in components/stringing/statusTone.ts and the due
+   column's colours in lib/stringingDue.ts (`dueStyle`), shared with a
+   stringer's own queue. The two are separate on purpose: a job can be
+   `received` (neutral) and overdue (red) at once, which is exactly the pair a
+   stringer scans for. */
 
 interface Props {
   onBack: () => void;
@@ -286,7 +272,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
    * the same shape `PaymentsCard` arrived at.
    */
   function renderJob(job: StringingJob, inArchive: boolean) {
-    const tone = TONE[job.status] ?? TONE.requested;
+    const tone = STATUS_TONE[job.status] ?? STATUS_TONE.requested;
     const due = dueFor(job, today);
     const pinned = typeof job.prioritizedAt === 'string';
     // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
@@ -407,12 +393,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                   {t('archive.stillOwed', { amount: owed.toFixed(2) })}
                 </span>
               ) : (
-                <span
-                  className="fs-sm"
-                  /* Weight only for what needs doing: late, today, tomorrow.
-                     "No date set" in bold read as loud as the name. */
-                  style={{ fontWeight: due.tone === 'overdue' || due.tone === 'soon' ? 600 : 400, color: DUE_FG[due.tone], flex: '0 0 auto' }}
-                >
+                <span className="fs-sm" style={{ ...dueStyle(due.tone), flex: '0 0 auto' }}>
                   {/* Suppressed for a picked-up job: the status chip on the row
                       above already says "Picked up", and printing it twice in
                       one row is noise on a screen whose whole job is scanning. */}

@@ -8,19 +8,15 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
-import { dueFor, todayIso, formatReadyBy, type DueTone } from '@/lib/stringingDue';
+import { dueFor, dueStyle, todayIso, formatReadyBy } from '@/lib/stringingDue';
+import StatusBadge from '@/components/primitives/StatusBadge';
+import { STATUS_TONE } from '@/components/stringing/statusTone';
 import type { StringerJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** Urgency ink, the same four the bench uses for its due column. */
-const DUE_FG: Record<DueTone, string> = {
-  overdue: 'var(--sev-crit-text, var(--color-red))',
-  soon: 'var(--pill-waitlist-text)',
-  ok: 'var(--text-secondary)',
-  done: 'var(--text-muted)',
-};
 
 /**
  * The bench, for the person actually holding the racket.
@@ -133,7 +129,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
      treatment, and here it spent Home's accent on a label. */
   if (loadError) {
     return (
-      <section className="glass-card p-5 space-y-3 motion-fade" aria-label="Rackets to string">
+      <section className="glass-card p-5 space-y-3 motion-fade" aria-label={t('stringerTitle')}>
         <CardHeader compact icon="sports_tennis" title={t('stringerTitle')} />
         <ErrorState
           message={t('stringerError')}
@@ -152,7 +148,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   if (!jobs || jobs.length === 0) {
     if (!showEmpty || !jobs) return null;
     return (
-      <section className="glass-card p-5 space-y-3 motion-fade" aria-label="Rackets to string">
+      <section className="glass-card p-5 space-y-3 motion-fade" aria-label={t('stringerTitle')}>
         <CardHeader compact icon="sports_tennis" title={t('stringerTitle')} />
         <EmptyState icon="sports_tennis">{t('stringerEmpty')}</EmptyState>
       </section>
@@ -160,7 +156,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   }
 
   return (
-    <section className="glass-card p-5 space-y-3 motion-fade" aria-label="Rackets to string">
+    <section className="glass-card p-5 space-y-3 motion-fade" aria-label={t('stringerTitle')}>
       <CardHeader
         compact
         icon="sports_tennis"
@@ -175,29 +171,33 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
             ? STRINGING_FLOW[idx + 1]
             : null;
           return (
+            /* Tier 2 inside the card, the same surface and the same rules as
+               the bench row: who/what on the left, the status pill on the
+               right; words in the body face, only the tension in mono. */
             <div
               key={job.id}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--space-2)',
-                padding: 'var(--space-4)',
-                borderRadius: 'var(--radius-lg)',
-                background: 'var(--inner-card-bg)',
-                border: '1px solid var(--inner-card-border)',
-              }}
+              className="glass-card-soft"
+              style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-4)' }}
             >
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                <span className="fs-md" style={{ fontWeight: 600, minWidth: 0 }}>
-                  {job.racketLabel}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flex: '1 1 auto', minWidth: 0 }}>
+                  <span className="fs-md" style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {job.racketLabel}
+                  </span>
+                  <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', flex: 'none' }}>
+                    {job.jobNo}
+                  </span>
                 </span>
-                <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                  {job.jobNo}
-                </span>
+                <StatusBadge variant="state" tone={STATUS_TONE[job.status] ?? STATUS_TONE.requested}>
+                  {tAdmin(`status.${job.status}`)}
+                </StatusBadge>
               </div>
               {/* The spec, which is the whole reason they opened this. */}
-              <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
-                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} · {job.tensionMains}/{job.tensionCrosses}
+              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} ·{' '}
+                <span style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                  {job.tensionMains}/{job.tensionCrosses} {tAdmin('lb')}
+                </span>
                 {' · '}
                 {t('stringerFor', { name: job.memberName })}
               </span>
@@ -214,7 +214,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
                       ? tAdmin('readyBy', { date: formatReadyBy(due.date) ?? due.date ?? '' })
                       : tAdmin(`due.${due.key}`);
                 return (
-                  <span className="fs-sm" style={{ fontWeight: 600, color: DUE_FG[due.tone] }}>
+                  <span className="fs-sm" style={dueStyle(due.tone)}>
                     {label}
                   </span>
                 );
