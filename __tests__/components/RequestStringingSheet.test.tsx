@@ -288,7 +288,7 @@ describe('picking a racket from the kit', () => {
     await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
     // A text box, not an empty select — an empty select is a dead end.
     expect((screen.getByLabelText('Which racket?') as HTMLElement).tagName).toBe('INPUT');
-    expect(screen.getByText("Type the racket — we'll add it to your equipment.")).toBeDefined();
+    expect(screen.getByText("Type the racket and we'll add it to your equipment.")).toBeDefined();
   });
 
   it('says the kit could not be READ rather than implying it is empty', async () => {
@@ -328,7 +328,7 @@ describe('a kit that has not answered yet is not an empty kit', () => {
     mockApi(['BG65']);
     wrapWithGear(fakeGear({ rackets: [], loaded: false, loadError: false }));
     await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
-    expect(screen.queryByText("Type the racket — we'll add it to your equipment.")).toBeNull();
+    expect(screen.queryByText("Type the racket and we'll add it to your equipment.")).toBeNull();
     expect((screen.getByLabelText('Which racket?') as HTMLInputElement).disabled).toBe(true);
   });
 
@@ -336,7 +336,7 @@ describe('a kit that has not answered yet is not an empty kit', () => {
     mockApi(['BG65']);
     wrapWithGear(fakeGear({ rackets: [], loaded: true, loadError: false }));
     await waitFor(() =>
-      expect(screen.getByText("Type the racket — we'll add it to your equipment.")).toBeDefined(),
+      expect(screen.getByText("Type the racket and we'll add it to your equipment.")).toBeDefined(),
     );
   });
 });

@@ -80,7 +80,7 @@ export default function StringingSteps({ current }: { current: number }) {
                 className={`bpm-steps__leg ${last ? 'bpm-steps__leg--end' : i < current ? 'bpm-steps__leg--on' : ''}`}
               />
             </div>
-            <span className={`fs-2xs bpm-steps__label ${here ? 'bpm-steps__label--here' : ''}`}>
+            <span className={`fs-xs bpm-steps__label ${here ? 'bpm-steps__label--here' : ''}`}>
               {t(key)}
             </span>
           </li>

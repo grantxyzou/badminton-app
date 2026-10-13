@@ -322,7 +322,7 @@ describe('the restring reminder', () => {
   it('speaks up two months after the shop last strung for them', async () => {
     mockApi(true, [], weeksAgo(9));
     wrap();
-    expect(await screen.findByText('Strung 9 weeks ago — time for a restring?')).toBeDefined();
+    expect(await screen.findByText('Strung 9 weeks ago. Time for a restring?')).toBeDefined();
   });
 
   it('stays quiet before two months', async () => {
@@ -387,7 +387,7 @@ describe('every open racket is listed', () => {
     wrap();
     expect(await screen.findByText('Your racket is ready')).toBeDefined();
     expect(screen.getByText(/Astrox 88D Pro \(J-0001\) is strung/)).toBeDefined();
-    expect(screen.getByText(/please confirm/)).toBeDefined();
+    expect(screen.getByText(/Please confirm/)).toBeDefined();
   });
 
   it('still shows the one racket when there is only one', async () => {

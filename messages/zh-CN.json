@@ -25,7 +25,7 @@
     },
     "stringing": {
       "registers": {
-        "racket": "提交申请",
+        "racket": "申请穿线",
         "strings": "价格详情",
         "bench": "穿线单"
       },
