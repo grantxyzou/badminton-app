@@ -334,13 +334,22 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', minWidth: 0 }}>
+              {/* Grows to fill the row, so the status sits beside the menu at the
+                  far edge. With three children under space-between it floated
+                  in the middle of the row, aligned to nothing (Grant's
+                  screenshot, 2026-10-12). */}
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flex: '1 1 auto', minWidth: 0 }}>
                 {pinned && (
                   <span className="material-icons icon-xs" style={{ color: 'var(--accent)' }}>
                     star
                   </span>
                 )}
-                <span className="fs-lg" style={{ fontWeight: 600 }}>{job.memberName}</span>
+                <span
+                  className="fs-lg"
+                  style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {job.memberName}
+                </span>
                 <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                   {job.jobNo}
                 </span>
@@ -377,8 +386,14 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             </div>
             <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>{job.racketLabel}</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
-                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} · {job.tensionMains}/{job.tensionCrosses}{t('lb')}
+              {/* Words in the body face, the tension in mono: mono is for data,
+                  and a string's name is not. --text-muted, the secondary ink
+                  the rest of the row's helper text uses. */}
+              <span className="fs-sm" style={{ color: 'var(--text-muted)', minWidth: 0 }}>
+                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} ·{' '}
+                <span style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                  {job.tensionMains}/{job.tensionCrosses} {t('lb')}
+                </span>
               </span>
               {/* URGENCY, not price. A bench is scanned for what is late, and
                   the exact figure lives one tap away on the detail screen —
@@ -392,7 +407,12 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                   {t('archive.stillOwed', { amount: owed.toFixed(2) })}
                 </span>
               ) : (
-                <span className="fs-sm" style={{ fontWeight: 600, color: DUE_FG[due.tone] }}>
+                <span
+                  className="fs-sm"
+                  /* Weight only for what needs doing: late, today, tomorrow.
+                     "No date set" in bold read as loud as the name. */
+                  style={{ fontWeight: due.tone === 'overdue' || due.tone === 'soon' ? 600 : 400, color: DUE_FG[due.tone], flex: '0 0 auto' }}
+                >
                   {/* Suppressed for a picked-up job: the status chip on the row
                       above already says "Picked up", and printing it twice in
                       one row is noise on a screen whose whole job is scanning. */}

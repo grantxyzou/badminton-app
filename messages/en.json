@@ -26,11 +26,11 @@
     "stringing": {
       "registers": {
         "racket": "Submit request",
-        "strings": "String and cost",
+        "strings": "Pricing details",
         "bench": "Stringing jobs"
       },
       "stringerTitle": "Rackets to string",
-      "seeStrings": "See string and cost",
+      "seeStrings": "See pricing details",
       "stringerEmpty": "Nothing assigned to you right now.",
       "stringerSubtitle": "Assigned to you.",
       "stringerFor": "for {name}",
