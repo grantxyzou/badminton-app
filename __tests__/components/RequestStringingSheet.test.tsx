@@ -288,7 +288,7 @@ describe('picking a racket from the kit', () => {
     await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
     // A text box, not an empty select — an empty select is a dead end.
     expect((screen.getByLabelText('Which racket?') as HTMLElement).tagName).toBe('INPUT');
-    expect(screen.getByText("Type the racket — we'll add it to your equipment.")).toBeDefined();
+    expect(screen.getByText("Type the racket and we'll add it to your equipment.")).toBeDefined();
   });
 
   it('says the kit could not be READ rather than implying it is empty', async () => {
@@ -328,7 +328,7 @@ describe('a kit that has not answered yet is not an empty kit', () => {
     mockApi(['BG65']);
     wrapWithGear(fakeGear({ rackets: [], loaded: false, loadError: false }));
     await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
-    expect(screen.queryByText("Type the racket — we'll add it to your equipment.")).toBeNull();
+    expect(screen.queryByText("Type the racket and we'll add it to your equipment.")).toBeNull();
     expect((screen.getByLabelText('Which racket?') as HTMLInputElement).disabled).toBe(true);
   });
 
@@ -336,7 +336,7 @@ describe('a kit that has not answered yet is not an empty kit', () => {
     mockApi(['BG65']);
     wrapWithGear(fakeGear({ rackets: [], loaded: true, loadError: false }));
     await waitFor(() =>
-      expect(screen.getByText("Type the racket — we'll add it to your equipment.")).toBeDefined(),
+      expect(screen.getByText("Type the racket and we'll add it to your equipment.")).toBeDefined(),
     );
   });
 });
@@ -505,6 +505,44 @@ describe('the string list as a shelf', () => {
     await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
     expect(sentBody(fetchMock)).toMatchObject({ stringLabel: 'Exbolt 63 lime' });
     expect(sentBody(fetchMock).stringColor).toBeUndefined();
+  });
+
+  /* Design-system audit, 2026-10-12: a failure must never read as an answer. */
+  it('does not say "Ask" for your own string when the price could not be read', async () => {
+    const base = mockApi(['BG65'], SHELF, [BG65]);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+      String(url).includes('/pricing')
+        ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response)
+        : base(url, init)));
+    wrap();
+    const own = await screen.findByRole('radio', { name: /Bring my own string/ });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(own.textContent).not.toContain('Ask');
+  });
+
+  it('says the string details did not load instead of calling each string unknown', async () => {
+    const base = mockApi(['BG65'], SHELF, [BG65]);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+      String(url).includes('/catalog')
+        ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response)
+        : base(url, init)));
+    wrap();
+    expect(await screen.findByText(enMessages.home.stringing.offer.catalogError)).toBeDefined();
+    expect(screen.queryByText(enMessages.home.stringing.offer.unknown)).toBeNull();
+  });
+
+  it('announces a failed send to a screen reader', async () => {
+    const base = mockApi(['BG65'], SHELF, [BG65]);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'nope' }) } as Response)
+        : base(url, init)));
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /Bring my own string/ }));
+    fireEvent.change(screen.getByLabelText('Which string? e.g. BG80 white'), { target: { value: 'Exbolt 63' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    expect(await screen.findByRole('alert')).toBeDefined();
   });
 });
 

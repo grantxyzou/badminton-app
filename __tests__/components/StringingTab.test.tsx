@@ -75,6 +75,25 @@ describe('everyone gets Racket and Strings', () => {
     expect(urls.some((u) => u.includes('/stringing/jobs') && !u.includes('view='))).toBe(false);
   });
 
+  it('holds the service card behind its skeleton until the player\'s rackets have answered', async () => {
+    // The card used to reveal as soon as the shop answered, then grow when the
+    // rackets landed: banners, the step strip and the rows popped in after it.
+    signIn();
+    let answerJobs: (v: Response) => void = () => {};
+    stubFetch();
+    const inner = globalThis.fetch as (url: string) => Promise<Response>;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes('view=player')) return new Promise<Response>((resolve) => { answerJobs = resolve; });
+      return inner(url);
+    }));
+    wrap(<StringingTab />);
+    await waitFor(() => expect(screen.getByRole('button', { name: R.racket }).getAttribute('aria-current')).toBe('page'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
+    answerJobs({ ok: true, status: 200, json: async () => ({ jobs: [], view: 'player', lastStrungAt: null }) } as Response);
+    expect(await screen.findByRole('button', { name: 'Submit a request' })).toBeDefined();
+  });
+
   it('shows the shelf, with every price, on Strings', async () => {
     stubFetch();
     wrap(<StringingTab />);
@@ -84,7 +103,7 @@ describe('everyone gets Racket and Strings', () => {
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 
-  it('takes the service card’s "Strings and prices" link to the Strings register', async () => {
+  it('takes the service card’s "See pricing details" link to the Pricing details register', async () => {
     stubFetch();
     const onViewChange = vi.fn();
     wrap(<StringingTab view="racket" onViewChange={onViewChange} />);

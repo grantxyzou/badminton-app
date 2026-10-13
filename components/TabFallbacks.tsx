@@ -29,6 +29,10 @@ export const STRINGING_HEIGHTS = {
   // 679 at 390px on the MAP (five strings linked to the catalog, which is
   // how production opens); the list view of three unlinked strings is 462.
   shelf: 679,
+  // A stringer's own queue (the Stringing jobs register for a member who
+  // strings but is not an admin), empty: 170 at 390px, 2026-10-12. One
+  // assigned racket is 220.
+  queue: 170,
 } as const;
 
 /** StringingTab: header, the register switch (32px), then the Racket

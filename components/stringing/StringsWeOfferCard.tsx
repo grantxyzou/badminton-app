@@ -92,6 +92,9 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
   const [picked, setPicked] = useState<string | null>(null);
   // null = not read yet; 'failed' leaves the rows out rather than guess "Ask".
   const [other, setOther] = useState<OtherPrices | 'failed' | null>(null);
+  // Asks for the other prices again on its own, so a retry does not empty the
+  // whole card back to a skeleton.
+  const [otherAttempt, setOtherAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +109,11 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
         } else setStatus('failed');
       })
       .catch(() => { if (!cancelled) setStatus('failed'); });
+    return () => { cancelled = true; };
+  }, [attempt]);
+
+  useEffect(() => {
+    let cancelled = false;
     fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -120,7 +128,7 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
       })
       .catch(() => { if (!cancelled) setOther('failed'); });
     return () => { cancelled = true; };
-  }, [attempt]);
+  }, [otherAttempt]);
 
   const entries = useMemo<ShelfEntry[]>(() => {
     if (!shelf) return [];
@@ -141,9 +149,12 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
   // Inset by a row's own padding, so the label and the figure line up with
   // the strings' names and prices above them.
   const otherPrices = other === 'failed' ? (
-    // The Strings register is the only place these live, so a failed read
-    // says so rather than going quiet; a pull-to-refresh asks again.
-    <p className="field-error" role="alert" style={{ padding: '0 var(--space-4)' }}>{t('pricesError')}</p>
+    // The Pricing details register is the only place these live, so a failed
+    // read says so rather than going quiet, with a way to ask again.
+    <ErrorState
+      message={t('pricesError')}
+      action={<button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOtherAttempt((n) => n + 1)}>{t('retry')}</button>}
+    />
   ) : other ? (
     <div className="flex flex-col gap-2" style={{ padding: '0 var(--space-4)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-3)' }}>
@@ -153,14 +164,14 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
           {formatServicePrice(other.ownStringCents) ?? t('priceAsk')}
         </span>
       </div>
-      {other.note && <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{other.note}</p>}
+      {other.note && <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>{other.note}</p>}
     </div>
   ) : null;
 
   if (empty) {
     return (
       <div className="glass-card p-5 space-y-3">
-        <CardHeader icon="storefront" title={t('title')} />
+        <CardHeader compact icon="storefront" title={t('title')} subtitle={t('subtitle')} />
         <EmptyState icon="storefront">{t('empty')}</EmptyState>
         {otherPrices}
       </div>
@@ -215,22 +226,24 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
     const band = bandOf(e.label);
     const p = powerOf(e.item);
     const d = durabilityOf(e.item);
+    // A failed catalog knows nothing about ANY string, which is not the same as
+    // this string being unknown: the card says so once, and the row stays quiet.
     const subtitle = !e.item
-      ? t('unknown')
+      ? (catalog.loadError ? null : t('unknown'))
       : p !== null && d !== null
         ? t('listLine', { power: p, durability: d })
         : stringSpecLine(e.item, (k) => tSetup(k));
     return (
       <li key={e.label}>
-        {/* A string the catalog does not know has no page to open, so its
-            row is the DISABLED row — the same chrome at half opacity, which
-            is how every row in the app says "not tappable". */}
-        <ListRow
-          onClick={() => openRow(e)}
-          disabled={!e.item}
-          title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{name(e)}</span>}
-          subtitle={subtitle}
-          trailing={
+        {/* A string the catalog does not know has no page to open, so its row
+            is not a button. It is still on offer, with a price, so it keeps
+            the row's surface at full strength: the half-opacity disabled row
+            read as "not available". */}
+        {(() => {
+          const content = {
+            title: <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{name(e)}</span>,
+            subtitle,
+            trailing: (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)', flex: 'none' }}>
               {(price || band) && (
                 <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-1)' }}>
@@ -240,8 +253,16 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
               )}
               {e.item && <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>}
             </span>
-          }
-        />
+            ),
+          };
+          return e.item ? (
+            <ListRow onClick={() => openRow(e)} {...content} />
+          ) : (
+            <div className="cc-mini-card" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
+              <ListRow {...content} />
+            </div>
+          );
+        })()}
       </li>
     );
   };
@@ -254,39 +275,37 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <CardHeader icon="storefront" title={t('title')} subtitle={t('subtitle')} />
+      {/* Compact, like the other two registers' cards: a card that NAMES its
+          subject. The axis copy belongs to the map, so the list says only
+          what the prices are for. */}
+      <CardHeader compact icon="storefront" title={t('title')} subtitle={showMap ? t('subtitleMap') : t('subtitle')} />
+      {catalog.loadError && status !== 'failed' && (
+        <p className="fs-sm" role="status" style={{ color: 'var(--text-muted)' }}>{t('catalogError')}</p>
+      )}
       {status === 'failed' ? (
-        <ErrorState message={t('loadError')} action={<button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setStatus('loading'); setAttempt((n) => n + 1); }}>{t('retry')}</button>} />
+        // The retry asks again WITHOUT going back to 'loading': loading returns
+        // null, and the reveal slot has already let go of its skeleton, so the
+        // register would go blank. The failure stays up until the answer.
+        <ErrorState message={t('loadError')} action={<button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAttempt((n) => n + 1)}>{t('retry')}</button>} />
       ) : (
         <>
           {mapOn && (
-            <div role="tablist" aria-label={t('viewLabel')} style={{ display: 'flex', columnGap: 'var(--space-2)' }}>
+            /* Two pressed/unpressed buttons, not tabs: there is no tabpanel or
+               arrow-key model behind them, so `role="tab"` promised more than
+               it did. */
+            <div role="group" aria-label={t('viewLabel')} style={{ display: 'flex', columnGap: 'var(--space-2)' }}>
               {(['map', 'list'] as const).map((v) => {
                 const on = view === v;
                 return (
                   <button
                     key={v}
                     type="button"
-                    role="tab"
-                    aria-selected={on}
+                    aria-pressed={on}
                     onClick={() => pickView(v)}
                     style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
                   >
-                    <span
-                      className="fs-base"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        height: 34,
-                        boxSizing: 'border-box',
-                        padding: '0 var(--space-4)',
-                        borderRadius: 'var(--radius-pill)',
-                        background: on ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'var(--inner-card-bg)',
-                        border: `1px solid ${on ? 'color-mix(in srgb, var(--accent) 45%, transparent)' : 'var(--inner-card-border)'}`,
-                        color: on ? 'var(--accent)' : 'var(--text-secondary)',
-                        fontWeight: on ? 600 : 400,
-                      }}
-                    >
+                    {/* The app's chip (`.filter-chip`), inside a 44px hit area. */}
+                    <span className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'}>
                       {t(v === 'map' ? 'viewMap' : 'viewList')}
                     </span>
                   </button>
@@ -299,7 +318,7 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
             <>
               <StringMap dots={dots} selected={selected?.label ?? null} onSelect={setPicked} />
               {anyBand && (
-                <div className="fs-xs" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)', color: 'var(--text-muted)' }}>
+                <div className="fs-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)', color: 'var(--text-muted)' }}>
                   {(['in', 'low', 'out'] as const).map((b) => (
                     <span key={b} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}>
                       <span
@@ -332,25 +351,25 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600, lineHeight: 1.25, color: 'var(--text-primary)' }}>{name(selected)}</span>
+                    <span className="fs-lg" style={{ fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>{name(selected)}</span>
                     {priceText(selected.label) && (
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)', flex: 'none' }}>{priceText(selected.label)}</span>
                     )}
                   </div>
-                  <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+                  <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
                     {controlOf(selected.item) !== null
                       ? t('numbers', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)!, control: controlOf(selected.item)! })
                       : t('listLine', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)! })}
                   </span>
                   {bestForOf(selected.item) && (
-                    <p className="fs-base" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{bestForOf(selected.item)}</p>
+                    <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{bestForOf(selected.item)}</p>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
                     {bandOf(selected.label) ? <StockBadge band={bandOf(selected.label)!} /> : <span />}
                     <button
                       type="button"
                       onClick={() => setOpen(selected.label)}
-                      className="fs-base"
+                      className="fs-sm"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', minHeight: 44, margin: 'calc(-1 * var(--space-4)) 0', padding: 0, background: 'transparent', border: 'none', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' }}
                     >
                       {t('seeHow')}
@@ -361,7 +380,8 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
               )}
               {notOnMap.length > 0 && (
                 <>
-                  <span className="section-label-muted">{t('notOnMap')}</span>
+                  {/* A block, so the card's space-y gap applies above it. */}
+                  <p className="section-label-muted">{t('notOnMap')}</p>
                   {list(notOnMap)}
                 </>
               )}
@@ -375,15 +395,18 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
 
       {/* The lesson: four short paragraphs a member reads once. Behind a row
           link so the shelf stays the card's first job. */}
-      <button type="button" className="bpm-row-link" aria-expanded={learnOpen} onClick={() => setLearnOpen((v) => !v)}>
+      {/* Secondary ink: on this card the accent belongs to "See how it plays".
+          The label grows so it sits beside its icon rather than floating
+          between the icon and the chevron. */}
+      <button type="button" className="bpm-row-link" aria-expanded={learnOpen} onClick={() => setLearnOpen((v) => !v)} style={{ color: 'var(--text-secondary)' }}>
         <span className="material-icons icon-sm" aria-hidden="true">school</span>
-        <span className="fs-sm">{t('learnTitle')}</span>
+        <span className="fs-sm" style={{ flex: 1 }}>{t('learnTitle')}</span>
         <span className="material-icons icon-sm motion-chevron" aria-hidden="true">expand_more</span>
       </button>
       <Collapse open={learnOpen} spaceAbove="var(--space-3)">
         <div className="flex flex-col gap-3">
           {(['learnGauge', 'learnType', 'learnFeel', 'learnTension'] as const).map((k) => (
-            <p key={k} className="fs-base" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t(k)}</p>
+            <p key={k} className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t(k)}</p>
           ))}
         </div>
       </Collapse>

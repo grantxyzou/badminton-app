@@ -20,6 +20,7 @@ import type { PlayerStringingJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { STRINGING_HEIGHTS } from '@/components/TabFallbacks';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -129,13 +130,18 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
     if (open === true) loadJobs();
   }, [open, loadJobs]);
 
-  // The Stringing tab's RevealSlot holds this place until the shop has answered.
-  useRevealReady(shop.status !== 'loading');
+  // The Stringing tab's RevealSlot holds this place until the card can draw its
+  // final shape: the shop has answered and, when it is open for a signed-in
+  // player, so have their rackets (or the read has failed or been refused).
+  // Revealing on the shop alone let the banners, the step strip and the rows
+  // pop in afterwards and grow the card.
+  const jobsAnswered = !hasIdentity || open !== true || jobs !== null || jobsProblem !== null;
+  useRevealReady(shop.status === 'error' || (shop.status !== 'loading' && jobsAnswered));
 
   // Unknown is not closed. Before the shop answers this is a skeleton the size
   // of the card; if it cannot be read, it says so. "Coming soon" is only for a
   // shop the server says is closed — it used to stand in for all three.
-  if (shop.status === 'loading') return <CardSkeleton height={84} />;
+  if (shop.status === 'loading') return <CardSkeleton height={STRINGING_HEIGHTS.service} />;
   if (shop.status === 'error') {
     return (
       <div className="glass-card p-5 space-y-3">
@@ -222,7 +228,9 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
       title={t('title')}
       badge={
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <StatusBadge variant="accent">{t('openBadge')}</StatusBadge>
+          {/* Muted, like "Coming soon" when it is closed: the label carries the
+              state, and accent on this tab belongs to the request link. */}
+          <StatusBadge variant="muted">{t('openBadge')}</StatusBadge>
           {collapsible && (
             <span
               className="material-icons icon-sm motion-chevron"
@@ -338,16 +346,12 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
           {openJobs.map((j) => (
           <div
             key={j.id}
-            className="cc-mini-card"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-3)',
-              padding: 'var(--space-4)',
-              borderRadius: 'var(--radius-lg)',
-            }}
+            className="glass-card-soft"
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-4)' }}
           >
-            <span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>
+            {/* Muted: an icon beside a label is part of the label, and accent
+                here is spent on the one way in, "Submit a request". */}
+            <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
               sports_tennis
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -358,11 +362,11 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
                     Showing the band once an exact amount is owed had this card
                     reading "$28–32" directly above a balance line saying "$30"
                     for the same racket. */}
-                {j.amountDue !== null && j.amountDue !== undefined
-                  ? ` · ${fmtMoney(j.amountDue)}`
-                  : j.priceRange
-                    ? ` · ${j.priceRange}`
-                    : ''}
+                {j.amountDue !== null && j.amountDue !== undefined ? (
+                  <> · <span style={{ fontFamily: 'var(--font-mono)' }}>{fmtMoney(j.amountDue)}</span></>
+                ) : j.priceRange ? (
+                  <> · <span style={{ fontFamily: 'var(--font-mono)' }}>{j.priceRange}</span></>
+                ) : null}
               </div>
             </div>
           </div>
@@ -434,7 +438,7 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
           </button>
         )}
         {!hasIdentity && (
-          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
+          <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
             {t('needName')}
           </p>
         )}

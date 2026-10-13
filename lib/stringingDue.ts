@@ -22,6 +22,24 @@
 
 export type DueTone = 'overdue' | 'soon' | 'ok' | 'done';
 
+/**
+ * How a due label is drawn, on every row that shows one (the admin bench and a
+ * stringer's own queue each kept a copy of these colours, and the two drifted).
+ * Bold only for a date that asks for something: late, today, tomorrow. "No
+ * date set" in bold read as loud as the player's name. Late stays red because
+ * it is a promise already missed, not a deadline coming up.
+ */
+const DUE_FG: Record<DueTone, string> = {
+  overdue: 'var(--sev-crit-text, var(--color-red))',
+  soon: 'var(--pill-waitlist-text)',
+  ok: 'var(--text-secondary)',
+  done: 'var(--text-muted)',
+};
+
+export function dueStyle(tone: DueTone): { color: string; fontWeight: 400 | 600 } {
+  return { color: DUE_FG[tone], fontWeight: tone === 'overdue' || tone === 'soon' ? 600 : 400 };
+}
+
 export interface DueLabel {
   /** i18n key suffix under `admin.stringing.due`. */
   key: 'pickedUp' | 'readyUnpaid' | 'noDate' | 'overdue' | 'today' | 'tomorrow' | 'onDate';

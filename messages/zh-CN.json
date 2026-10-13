@@ -25,12 +25,12 @@
     },
     "stringing": {
       "registers": {
-        "racket": "球拍",
-        "strings": "球线",
-        "bench": "工作台"
+        "racket": "申请穿线",
+        "strings": "价格详情",
+        "bench": "穿线单"
       },
       "stringerTitle": "待穿线的球拍",
-      "seeStrings": "球线与价格",
+      "seeStrings": "查看价格详情",
       "stringerEmpty": "目前没有分配给你的球拍。",
       "stringerSubtitle": "指派给你的。",
       "stringerFor": "给 {name}",
@@ -134,10 +134,12 @@
       "shopUnavailable": "暂时无法确认穿线服务是否开放。",
       "offer": {
         "title": "我们提供的拍线",
-        "subtitle": "越高越有力量，越往右越耐用。价格为穿线价。",
+        "subtitle": "价格为穿线价。",
+        "subtitleMap": "越高越有力量，越往右越耐用。价格为穿线价。",
         "unknown": "目录里还没有这款线——问问穿线师它的手感。",
+        "catalogError": "拍线详情加载失败，价格仍然准确。",
         "loadError": "拍线列表加载失败。",
-        "retry": "再试一次",
+        "retry": "重试",
         "learnTitle": "怎么选拍线",
         "learnGauge": "线径就是粗细。细线（0.61–0.66 mm）咬球更狠、手感更弹；粗线（0.68–0.70 mm）更耐用、更容忍打偏。多数球友选中间的最舒服。",
         "learnType": "类型是厂家的调校方向。弹性线把球弹得更快，控制线让球在线床上多停一瞬，耐用线扛得住重炮手和碰框。",
@@ -1553,8 +1555,10 @@
         "closedHint": "球友看不到这个选项。工作台上已有的穿线单不受影响。",
         "unknownHint": "没能读到状态。",
         "openCta": "开始接单",
-        "closeCta": "暂停接单"
+        "closeCta": "暂停接单",
+        "toggleError": "没能更改接单状态，请重试。"
       },
+      "whoseJobs": "谁的穿线单",
       "benchTitle": "穿线工作台",
       "setupRow": "球线、库存与价格",
       "otherPrices": {

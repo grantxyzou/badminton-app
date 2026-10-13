@@ -7,8 +7,7 @@ import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
-import { dueFor, todayIso, formatReadyBy, type DueTone } from '@/lib/stringingDue';
-import type { StringingStatus } from '@/lib/stringing';
+import { dueFor, dueStyle, todayIso, formatReadyBy } from '@/lib/stringingDue';
 import type { StringingJob } from '@/lib/types';
 import SwipeRow from '@/components/primitives/SwipeRow';
 import ActionRow from '@/components/primitives/ActionRow';
@@ -19,7 +18,9 @@ import StringingIntake from './StringingIntake';
 import StringShelfCard from './StringShelfCard';
 import OtherPricesCard from './OtherPricesCard';
 import { StateLink } from '@/components/primitives/StateCard';
-import StatusBadge, { type StateTone } from '@/components/primitives/StatusBadge';
+import StatusBadge from '@/components/primitives/StatusBadge';
+import RegisterSwitch from '@/components/primitives/RegisterSwitch';
+import { STATUS_TONE } from '@/components/stringing/statusTone';
 import ListRow from '@/components/primitives/ListRow';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -39,25 +40,11 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * trusting that.
  */
 
-/** Chip tone per status. Mirrors the design's TONE table. */
-/** Urgency colour for the due column. Separate from the status chip: a job can
- *  be `received` (neutral) and overdue (red) at the same time, which is exactly
- *  the pair a stringer scans for. */
-const DUE_FG: Record<DueTone, string> = {
-  overdue: 'var(--sev-crit-text, var(--color-red))',
-  soon: 'var(--pill-waitlist-text)',
-  ok: 'var(--text-secondary)',
-  done: 'var(--text-muted)',
-};
-
-/** Each job status in one of the canonical pill tones (`StatusBadge variant="state"`). */
-const TONE: Record<StringingStatus, StateTone> = {
-  requested: 'unpaid',
-  received: 'waitlist',
-  strung: 'waitlist',
-  ready: 'paid',
-  picked_up: 'unpaid',
-};
+/* Status pill tones live in components/stringing/statusTone.ts and the due
+   column's colours in lib/stringingDue.ts (`dueStyle`), shared with a
+   stringer's own queue. The two are separate on purpose: a job can be
+   `received` (neutral) and overdue (red) at once, which is exactly the pair a
+   stringer scans for. */
 
 interface Props {
   onBack: () => void;
@@ -108,6 +95,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   // on a shop that is open is the confident-wrong answer, so unknown says so.
   const [shopOpen, setShopOpen] = useState<boolean | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
+  // A flip that failed says so. Leaving the sign as it was is right; leaving it
+  // without a word read as the tap not registering.
+  const [shopToggleError, setShopToggleError] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -163,15 +153,19 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   async function toggleShop() {
     if (shopBusy || !online || shopOpen === null) return;
     setShopBusy(true);
+    setShopToggleError(false);
     try {
       const res = await fetch(`${BASE}/api/stringing/shop`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ open: !shopOpen }),
       });
-      if (res.ok) setShopOpen((await res.json()).open === true);
+      if (!res.ok) throw new Error(`shop toggle ${res.status}`);
+      setShopOpen((await res.json()).open === true);
     } catch {
-      /* leave the sign as it was rather than claiming a change that failed */
+      // Leave the sign as it was rather than claim a change that failed, and
+      // say so.
+      setShopToggleError(true);
     } finally {
       setShopBusy(false);
     }
@@ -286,7 +280,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
    * the same shape `PaymentsCard` arrived at.
    */
   function renderJob(job: StringingJob, inArchive: boolean) {
-    const tone = TONE[job.status] ?? TONE.requested;
+    const tone = STATUS_TONE[job.status] ?? STATUS_TONE.requested;
     const due = dueFor(job, today);
     const pinned = typeof job.prioritizedAt === 'string';
     // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
@@ -334,13 +328,22 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', minWidth: 0 }}>
+              {/* Grows to fill the row, so the status sits beside the menu at the
+                  far edge. With three children under space-between it floated
+                  in the middle of the row, aligned to nothing (Grant's
+                  screenshot, 2026-10-12). */}
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flex: '1 1 auto', minWidth: 0 }}>
                 {pinned && (
                   <span className="material-icons icon-xs" style={{ color: 'var(--accent)' }}>
                     star
                   </span>
                 )}
-                <span className="fs-lg" style={{ fontWeight: 600 }}>{job.memberName}</span>
+                <span
+                  className="fs-lg"
+                  style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {job.memberName}
+                </span>
                 <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                   {job.jobNo}
                 </span>
@@ -377,8 +380,14 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             </div>
             <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>{job.racketLabel}</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
-                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} · {job.tensionMains}/{job.tensionCrosses}{t('lb')}
+              {/* Words in the body face, the tension in mono: mono is for data,
+                  and a string's name is not. --text-muted, the secondary ink
+                  the rest of the row's helper text uses. */}
+              <span className="fs-sm" style={{ color: 'var(--text-muted)', minWidth: 0 }}>
+                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} ·{' '}
+                <span style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                  {job.tensionMains}/{job.tensionCrosses} {t('lb')}
+                </span>
               </span>
               {/* URGENCY, not price. A bench is scanned for what is late, and
                   the exact figure lives one tap away on the detail screen —
@@ -392,7 +401,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                   {t('archive.stillOwed', { amount: owed.toFixed(2) })}
                 </span>
               ) : (
-                <span className="fs-sm" style={{ fontWeight: 600, color: DUE_FG[due.tone] }}>
+                <span className="fs-sm" style={{ ...dueStyle(due.tone), flex: '0 0 auto' }}>
                   {/* Suppressed for a picked-up job: the status chip on the row
                       above already says "Picked up", and printing it twice in
                       one row is noise on a screen whose whole job is scanning. */}
@@ -620,12 +629,31 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
         {(() => {
           const state = shopReadFailed ? 'unknown' : shopOpen === null ? 'checking' : shopOpen ? 'open' : 'closed';
           const icon = { unknown: 'error', checking: 'storefront', open: 'check_circle', closed: 'lock' }[state];
+          // Accent on this page is "Add job"'s. The icon carries the state.
           const ink = {
             unknown: 'var(--sev-crit-text)',
             checking: 'var(--text-muted)',
-            open: 'var(--accent)',
+            open: 'var(--text-secondary)',
             closed: 'var(--text-muted)',
           }[state];
+          if (state === 'checking') {
+            // A skeleton the row's size while the sign is read: no guessed
+            // "Open shop" button, and no "Checking…" line standing in for it.
+            return (
+              <div
+                data-state="checking"
+                role="status"
+                aria-label={t('shop.checking')}
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-1) 0', minHeight: 44 }}
+              >
+                <span className="material-icons icon-md" aria-hidden="true" style={{ color: ink }}>{icon}</span>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }} aria-hidden="true">
+                  <div className="shimmer-line rounded-lg" style={{ height: 12, width: '45%' }} />
+                  <div className="shimmer-line rounded-lg" style={{ height: 12, width: '75%', animationDelay: '120ms' }} />
+                </div>
+              </div>
+            );
+          }
           return (
             <div
               data-state={state}
@@ -634,11 +662,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
               <span className="material-icons icon-md" aria-hidden="true" style={{ color: ink }}>{icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {state === 'unknown'
-                    ? t('shop.unknown')
-                    : state === 'checking'
-                      ? t('shop.checking')
-                      : state === 'open' ? t('shop.open') : t('shop.closed')}
+                  {state === 'unknown' ? t('shop.unknown') : state === 'open' ? t('shop.open') : t('shop.closed')}
                 </div>
                 <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
                   {state === 'unknown' ? (
@@ -653,11 +677,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                         {t('retry')}
                       </StateLink>
                     </>
-                  ) : state === 'checking'
-                    ? '\u00A0'
-                    : state === 'open'
-                      ? t('shop.openHint')
-                      : t('shop.closedHint')}
+                  ) : state === 'open'
+                    ? t('shop.openHint')
+                    : t('shop.closedHint')}
                 </p>
               </div>
               {/* No toggle on a sign that could not be read: there is nothing to
@@ -678,27 +700,19 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           );
         })()}
 
+        {shopToggleError && <p className="field-error" role="alert">{t('shop.toggleError')}</p>}
+
         {/* Mine / All, only with two or more stringers (see `multiStringer`).
-            The wrapper needs `flex` and each tab `flex-1` — .segment-control
-            sets no display, so without it the active pill overlaps its
-            neighbour. */}
+            The same switch as the tab's registers, which marks the current
+            one for a screen reader (aria-current). */}
         {multiStringer && (
-          <div className="segment-control flex">
-            <button
-              type="button"
-              onClick={() => setMine(true)}
-              className={`flex-1 flex items-center justify-center ${mine ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-            >
-              {t('mine')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMine(false)}
-              className={`flex-1 flex items-center justify-center ${mine ? 'segment-tab-inactive' : 'segment-tab-active'}`}
-            >
-              {t('all')}
-            </button>
-          </div>
+          <RegisterSwitch
+            views={['mine', 'all'] as const}
+            value={mine ? 'mine' : 'all'}
+            onChange={(v) => setMine(v === 'mine')}
+            label={(v) => t(v)}
+            ariaLabel={t('whoseJobs')}
+          />
         )}
 
         {loadError && (
