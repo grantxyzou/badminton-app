@@ -25,12 +25,12 @@
     },
     "stringing": {
       "registers": {
-        "racket": "Racket",
-        "strings": "Strings",
-        "bench": "Bench"
+        "racket": "Submit request",
+        "strings": "String and cost",
+        "bench": "Stringing jobs"
       },
       "stringerTitle": "Rackets to string",
-      "seeStrings": "Strings and prices",
+      "seeStrings": "See string and cost",
       "stringerEmpty": "Nothing assigned to you right now.",
       "stringerSubtitle": "Assigned to you.",
       "stringerFor": "for {name}",

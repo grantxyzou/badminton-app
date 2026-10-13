@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 /**
  * The switch between a tab's registers: Stats' You / Play / Learn / Gear and
- * Stringing's Racket / Strings / Bench (docs/plans/stringing-tabs.md).
+ * Stringing's Submit request / String and cost / Stringing jobs (docs/plans/stringing-tabs.md).
  *
  * One component so the two can't drift apart. Full width, unlike the admin
  * screens' `.segment-control`, which is shared with them. The width is set

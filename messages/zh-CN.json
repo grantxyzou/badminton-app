@@ -25,12 +25,12 @@
     },
     "stringing": {
       "registers": {
-        "racket": "球拍",
-        "strings": "球线",
-        "bench": "工作台"
+        "racket": "提交申请",
+        "strings": "球线与价格",
+        "bench": "穿线单"
       },
       "stringerTitle": "待穿线的球拍",
-      "seeStrings": "球线与价格",
+      "seeStrings": "查看球线与价格",
       "stringerEmpty": "目前没有分配给你的球拍。",
       "stringerSubtitle": "指派给你的。",
       "stringerFor": "给 {name}",

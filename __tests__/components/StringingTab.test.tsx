@@ -84,7 +84,7 @@ describe('everyone gets Racket and Strings', () => {
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 
-  it('takes the service card’s "Strings and prices" link to the Strings register', async () => {
+  it('takes the service card’s "See string and cost" link to the String and cost register', async () => {
     stubFetch();
     const onViewChange = vi.fn();
     wrap(<StringingTab view="racket" onViewChange={onViewChange} />);

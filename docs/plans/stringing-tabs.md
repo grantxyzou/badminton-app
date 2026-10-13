@@ -1,7 +1,7 @@
 # Stringing tab: Racket · Strings · Bench
 
 **Track:** North Star pillar 4 (equipment service), the same track as [`bench-redesign.md`](bench-redesign.md): the Stringing tab is the player half of the stringing service, and the bench is the admin half.
-**Status:** in-flight
+**Status:** shipped 2026-10-12 (#614); labels renamed the same day
 
 ## Problem
 
@@ -33,6 +33,7 @@ Both were Grant's picks from a shape round, 2026-10-12:
   - **Stringers who aren't admins** get their queue there. `?view=stringer` now answers `canString`, so a stringer with nothing assigned still gets the tab, with an empty state.
 - **The chosen tab lives in HomeShell, above the tab's refresh key.** It replaces `benchOpen`, so a pull-to-refresh doesn't reset you to Racket.
 - **One register switch.** Stats and Stringing render the same `RegisterSwitch` primitive, so the two tab bars can't drift apart.
+- **The labels say what each tab is for** (Grant, 2026-10-12, after #614 shipped): Racket → "Submit request", Strings → "String and cost", Bench → "Stringing jobs". The service card's link to the second tab now uses the same words as the tab it opens. Only the labels changed; the ids stay `racket` / `strings` / `bench`, because HomeShell keeps the chosen id across a refresh.
 
 ## Shape
 
