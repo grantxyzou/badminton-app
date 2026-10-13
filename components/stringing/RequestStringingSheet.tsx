@@ -11,7 +11,6 @@ import { stringSpecLine } from '@/lib/gearSetup';
 import { parseShelf, shelfPrice, stringColours, stringTypeOf, typeBand, type Shelf } from '@/lib/stringShelf';
 import type { CatalogItem } from '@/lib/types';
 import StockBadge from './StockBadge';
-import Collapse from '@/components/primitives/Collapse';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -538,7 +537,12 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                     )}
                   </button>
                 </div>
-                <Collapse open={ownString}>
+                {/* Mounted, not <Collapse>d: Collapse holds its content at
+                    visibility:hidden until a layout effect, so `autoFocus` ran
+                    on an unfocusable field and the keyboard never came up. And
+                    this column is a grid with a gap, which a collapsing child
+                    cannot animate (the gap snaps). */}
+                {ownString && (
                   <input
                     type="text"
                     value={ownLabel}
@@ -548,8 +552,8 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                     maxLength={80}
                     autoFocus
                   />
-                </Collapse>
-                <Collapse open={colours.length > 1}>
+                )}
+                {colours.length > 1 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
                     <span className="section-label-muted">{t('colour')}</span>
                     <div role="radiogroup" aria-label={t('colour')} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-2)' }}>
@@ -575,7 +579,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                     </div>
                     <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('colourNote')}</p>
                   </div>
-                </Collapse>
+                )}
               </>
             )}
 

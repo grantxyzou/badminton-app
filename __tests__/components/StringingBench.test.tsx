@@ -787,7 +787,8 @@ describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', ()
     wrap(<StringingPage embedded onBack={() => {}} onTakeover={() => {}} />);
     await screen.findByText('J-0042');
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Bench' })).toBeNull();
+    // The bench's own title, which the full page shows in its back header.
+    expect(screen.queryByRole('heading', { name: enMessages.admin.stringing.benchTitle })).toBeNull();
   });
 
   it('takes the tab over for set-up, and gives it back on Back', async () => {

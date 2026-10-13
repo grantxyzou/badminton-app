@@ -105,7 +105,7 @@ describe('the list', () => {
   it('is one tap away, sorted by power, and remembered', async () => {
     mockApi(['BG65', 'BG80', 'BG66']);
     wrap();
-    fireEvent.click(await screen.findByRole('tab', { name: 'List' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'List' }));
     expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
     const rows = screen.getAllByText(/^Yonex /).map((n) => n.textContent);
     expect(rows).toEqual(['Yonex BG66', 'Yonex BG80', 'Yonex BG65']);
@@ -116,7 +116,7 @@ describe('the list', () => {
     mockApi(['BG80', 'BG66', 'Unrated']);
     wrap();
     await screen.findByText('Yonex BG80');
-    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'List' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
   });
 
@@ -224,6 +224,26 @@ describe('failures and unknowns (design-system audit, 2026-10-12)', () => {
     fireEvent.click(screen.getByRole('button', { name: O.retry }));
     expect(await screen.findByText('Bring your own string')).toBeDefined();
     expect(screen.getByText('$18')).toBeDefined();
+  });
+
+  it('keeps the card on screen while the string list is asked for again', async () => {
+    // Retrying used to set the card back to "loading", which returns null; the
+    // reveal slot had already let go of its skeleton, so the register went blank.
+    let stringCalls = 0;
+    let answer: (v: Response) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
+      if (u.includes('/pricing')) return Promise.resolve({ ok: true, json: async () => ({ services: [], ownStringCents: 1800, note: '' }) } as Response);
+      stringCalls += 1;
+      if (stringCalls === 1) return Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response);
+      return new Promise<Response>((resolve) => { answer = resolve; });
+    }));
+    wrapWith(<StringsWeOfferCard />);
+    fireEvent.click(await screen.findByRole('button', { name: O.retry }));
+    expect(screen.getByText(O.title)).toBeDefined();
+    answer({ ok: true, json: async () => ({ strings: ['BG80'], links: { BG80: 's-80' } }) } as Response);
+    expect(await screen.findByText('Yonex BG80')).toBeDefined();
   });
 
   it('keeps the map\'s axis copy to the map', async () => {

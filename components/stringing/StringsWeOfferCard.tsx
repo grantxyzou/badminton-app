@@ -283,19 +283,24 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
         <p className="fs-sm" role="status" style={{ color: 'var(--text-muted)' }}>{t('catalogError')}</p>
       )}
       {status === 'failed' ? (
-        <ErrorState message={t('loadError')} action={<button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setStatus('loading'); setAttempt((n) => n + 1); }}>{t('retry')}</button>} />
+        // The retry asks again WITHOUT going back to 'loading': loading returns
+        // null, and the reveal slot has already let go of its skeleton, so the
+        // register would go blank. The failure stays up until the answer.
+        <ErrorState message={t('loadError')} action={<button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAttempt((n) => n + 1)}>{t('retry')}</button>} />
       ) : (
         <>
           {mapOn && (
-            <div role="tablist" aria-label={t('viewLabel')} style={{ display: 'flex', columnGap: 'var(--space-2)' }}>
+            /* Two pressed/unpressed buttons, not tabs: there is no tabpanel or
+               arrow-key model behind them, so `role="tab"` promised more than
+               it did. */
+            <div role="group" aria-label={t('viewLabel')} style={{ display: 'flex', columnGap: 'var(--space-2)' }}>
               {(['map', 'list'] as const).map((v) => {
                 const on = view === v;
                 return (
                   <button
                     key={v}
                     type="button"
-                    role="tab"
-                    aria-selected={on}
+                    aria-pressed={on}
                     onClick={() => pickView(v)}
                     style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
                   >
