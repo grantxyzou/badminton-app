@@ -34,6 +34,16 @@ Both were Grant's picks from a shape round, 2026-10-12:
 - **The chosen tab lives in HomeShell, above the tab's refresh key.** It replaces `benchOpen`, so a pull-to-refresh doesn't reset you to Racket.
 - **One register switch.** Stats and Stringing render the same `RegisterSwitch` primitive, so the two tab bars can't drift apart.
 - **The labels say what each tab is for** (Grant, 2026-10-12, after #614 shipped): Racket → "Submit request", Strings → "Pricing details", Bench → "Stringing jobs". The service card's link to the second tab now uses the same words as the tab it opens. Only the labels changed; the ids stay `racket` / `strings` / `bench`, because HomeShell keeps the chosen id across a refresh.
+- **Design-system pass, the same day** (Grant: "review design system and see if we are following it", then "all of them" to the findings). One set of rules across the three registers:
+  - **Headers.** Every card uses `CardHeader compact`: a card that names a thing gets the section-label title with a muted icon. Pricing details was the odd one out with the full heading and an accent icon. The bench keeps no header (see above).
+  - **Accent** marks only the way in on each register: "Submit a request", "See how it plays", "Add job", plus the active tab. Status pills, row icons and secondary links are neutral. The map's dots and its selected panel keep accent, because those are state and selection.
+  - **Job rows** stay three components, because the player, stringer and admin rows are different projections of the money: a band, nothing, the exact figure. They follow one set of rules: body face for words, mono for the tension with "lb", `--text-muted` for the spec line, `dueStyle()` for the date (bold only when it asks for something), and `STATUS_TONE` for the pill.
+  - **Failures say so.** That covers the catalog, the pricing read in both places, the shop toggle and a failed request send. A failure never shows up as "Not in the catalog yet", "Ask" or silence.
+  - **Left alone, on purpose:**
+    - **The shared `RegisterSwitch` height.** Its 28px tabs pass WCAG 2.5.8, and changing it would also change Stats.
+    - **A failed stringer check means no tab.** That is still deliberate, and listed as open.
+    - **Late is red.** It is a promise already missed, not a deadline coming up.
+    - **English "Submit request" matches the request link.** It was Grant's choice. The zh tab is 申请穿线, so the two buttons no longer share a name there.
 
 ## Shape
 

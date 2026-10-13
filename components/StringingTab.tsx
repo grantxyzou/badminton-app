@@ -132,7 +132,7 @@ export default function StringingTab({ isAdmin = false, view: controlled, onView
           </RevealGroup>
         )}
 
-        {current === 'bench' && benchPending && <CardSkeleton height={STRINGING_HEIGHTS.service} />}
+        {current === 'bench' && benchPending && <CardSkeleton height={STRINGING_HEIGHTS.queue} />}
 
         {current === 'bench' && adminBench && (
           <AdminErrorBoundary>
@@ -142,7 +142,7 @@ export default function StringingTab({ isAdmin = false, view: controlled, onView
 
         {current === 'bench' && !adminBench && stringer === true && (
           <RevealGroup>
-            <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.service} />}>
+            <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.queue} />}>
               <StringerJobsCard hasIdentity={hasIdentity} showEmpty />
             </RevealSlot>
           </RevealGroup>
