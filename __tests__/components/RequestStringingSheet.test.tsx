@@ -506,6 +506,44 @@ describe('the string list as a shelf', () => {
     expect(sentBody(fetchMock)).toMatchObject({ stringLabel: 'Exbolt 63 lime' });
     expect(sentBody(fetchMock).stringColor).toBeUndefined();
   });
+
+  /* Design-system audit, 2026-10-12: a failure must never read as an answer. */
+  it('does not say "Ask" for your own string when the price could not be read', async () => {
+    const base = mockApi(['BG65'], SHELF, [BG65]);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+      String(url).includes('/pricing')
+        ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response)
+        : base(url, init)));
+    wrap();
+    const own = await screen.findByRole('radio', { name: /Bring my own string/ });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(own.textContent).not.toContain('Ask');
+  });
+
+  it('says the string details did not load instead of calling each string unknown', async () => {
+    const base = mockApi(['BG65'], SHELF, [BG65]);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+      String(url).includes('/catalog')
+        ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response)
+        : base(url, init)));
+    wrap();
+    expect(await screen.findByText(enMessages.home.stringing.offer.catalogError)).toBeDefined();
+    expect(screen.queryByText(enMessages.home.stringing.offer.unknown)).toBeNull();
+  });
+
+  it('announces a failed send to a screen reader', async () => {
+    const base = mockApi(['BG65'], SHELF, [BG65]);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'nope' }) } as Response)
+        : base(url, init)));
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /Bring my own string/ }));
+    fireEvent.change(screen.getByLabelText('Which string? e.g. BG80 white'), { target: { value: 'Exbolt 63' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    expect(await screen.findByRole('alert')).toBeDefined();
+  });
 });
 
 describe('a club list that still carries "Bring my own"', () => {

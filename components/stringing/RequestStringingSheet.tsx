@@ -11,6 +11,7 @@ import { stringSpecLine } from '@/lib/gearSetup';
 import { parseShelf, shelfPrice, stringColours, stringTypeOf, typeBand, type Shelf } from '@/lib/stringShelf';
 import type { CatalogItem } from '@/lib/types';
 import StockBadge from './StockBadge';
+import Collapse from '@/components/primitives/Collapse';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -171,7 +172,8 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   // (Not "once, then never": a guard ref meant to say so is defeated by
   // StrictMode's double effect run, which cancels the first read and skips
   // the second.)
-  const [ownPriceCents, setOwnPriceCents] = useState<number | null>(null);
+  // 'unknown' until a well-formed answer: a failed read is not "Ask".
+  const [ownPriceCents, setOwnPriceCents] = useState<number | null | 'unknown'>('unknown');
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -243,7 +245,9 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const mains = tension;
   const finalCrosses = isCustom ? crosses : crossesFor(mains);
   const canSubmit = !busy && online && !!racketLabel.trim() && !!stringLabel;
-  const ownPriceText = formatServicePrice(ownPriceCents) ?? t('offer.priceAsk');
+  // Unknown shows no figure at all, like a string with no price set: saying
+  // "Ask" off a failed read would be a failure dressed as an answer.
+  const ownPriceText = ownPriceCents === 'unknown' ? null : formatServicePrice(ownPriceCents) ?? t('offer.priceAsk');
   const summaryPrice = ownString ? ownPriceText : pickedString ? priceText(pickedString) : null;
 
   function pick(label: string) {
@@ -466,6 +470,11 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
             ) : (
               <>
                 <span className="section-label-muted">{t('whichString')}</span>
+                {/* Once, for the whole list: a failed catalog says nothing about
+                    any one string, so no row claims to be "not in the catalog". */}
+                {catalog.loadError && (
+                  <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('offer.catalogError')}</p>
+                )}
                 <div role="radiogroup" aria-label={t('whichString')} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                   {offered.map((label) => {
                     const item = itemFor(label);
@@ -495,9 +504,11 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                         )}
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{label}</span>
-                          <span className="fs-xs" style={{ display: 'block', color: 'var(--text-muted)' }}>
-                            {item ? stringSpecLine(item, (k) => tSetup(k)) : t('offer.unknown')}
-                          </span>
+                          {(item || !catalog.loadError) && (
+                            <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
+                              {item ? stringSpecLine(item, (k) => tSetup(k)) : t('offer.unknown')}
+                            </span>
+                          )}
                         </span>
                         {(price || band) && (
                           <span style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-1)' }}>
@@ -520,12 +531,14 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{t('bringOwn')}</span>
-                      <span className="fs-xs" style={{ display: 'block', color: 'var(--text-muted)' }}>{t('bringOwnSub')}</span>
+                      <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>{t('bringOwnSub')}</span>
                     </span>
-                    <span className="fs-md" style={{ flex: 'none', fontFamily: 'var(--font-mono)', color: ownPriceCents === null ? 'var(--text-muted)' : 'var(--text-primary)' }}>{ownPriceText}</span>
+                    {ownPriceText && (
+                      <span className="fs-md" style={{ flex: 'none', fontFamily: 'var(--font-mono)', color: ownPriceCents === null ? 'var(--text-muted)' : 'var(--text-primary)' }}>{ownPriceText}</span>
+                    )}
                   </button>
                 </div>
-                {ownString && (
+                <Collapse open={ownString}>
                   <input
                     type="text"
                     value={ownLabel}
@@ -535,8 +548,8 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                     maxLength={80}
                     autoFocus
                   />
-                )}
-                {colours.length > 1 && (
+                </Collapse>
+                <Collapse open={colours.length > 1}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
                     <span className="section-label-muted">{t('colour')}</span>
                     <div role="radiogroup" aria-label={t('colour')} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-2)' }}>
@@ -551,22 +564,8 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                             onClick={() => setPickedColour(c.name)}
                             style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
                           >
-                            <span
-                              className="fs-base"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 'var(--space-3)',
-                                height: 34,
-                                boxSizing: 'border-box',
-                                padding: '0 var(--space-4) 0 var(--space-3)',
-                                borderRadius: 'var(--radius-pill)',
-                                background: on ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'var(--inner-card-bg)',
-                                border: `1px solid ${on ? 'color-mix(in srgb, var(--accent) 45%, transparent)' : 'var(--inner-card-border)'}`,
-                                color: on ? 'var(--accent)' : 'var(--text-secondary)',
-                                fontWeight: on ? 600 : 400,
-                              }}
-                            >
+                            {/* The app's chip (`.filter-chip`), inside a 44px hit area. */}
+                            <span className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'}>
                               <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: '50%', background: c.fill, boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)' }} />
                               {c.name}
                             </span>
@@ -576,7 +575,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                     </div>
                     <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('colourNote')}</p>
                   </div>
-                )}
+                </Collapse>
               </>
             )}
 
@@ -610,7 +609,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
 
             {!isCustom && stringLabel && (
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--inner-card-border)' }}>
-                <span className="fs-base" style={{ color: 'var(--text-secondary)' }}>
+                <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>
                   {stringColor
                     ? t('summary', { string: stringLabel, colour: stringColor, tension: mains })
                     : t('summaryNoColour', { string: stringLabel, tension: mains })}
@@ -619,7 +618,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
               </div>
             )}
 
-            {error && <p className="field-error">{error}</p>}
+            {error && <p className="field-error" role="alert">{error}</p>}
             <button
               type="button"
               onClick={submit}
