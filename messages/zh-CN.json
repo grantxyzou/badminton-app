@@ -1555,8 +1555,10 @@
         "closedHint": "球友看不到这个选项。工作台上已有的穿线单不受影响。",
         "unknownHint": "没能读到状态。",
         "openCta": "开始接单",
-        "closeCta": "暂停接单"
+        "closeCta": "暂停接单",
+        "toggleError": "没能更改接单状态，请重试。"
       },
+      "whoseJobs": "谁的穿线单",
       "benchTitle": "穿线工作台",
       "setupRow": "球线、库存与价格",
       "otherPrices": {

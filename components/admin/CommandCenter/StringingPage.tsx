@@ -19,6 +19,7 @@ import StringShelfCard from './StringShelfCard';
 import OtherPricesCard from './OtherPricesCard';
 import { StateLink } from '@/components/primitives/StateCard';
 import StatusBadge from '@/components/primitives/StatusBadge';
+import RegisterSwitch from '@/components/primitives/RegisterSwitch';
 import { STATUS_TONE } from '@/components/stringing/statusTone';
 import ListRow from '@/components/primitives/ListRow';
 
@@ -94,6 +95,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   // on a shop that is open is the confident-wrong answer, so unknown says so.
   const [shopOpen, setShopOpen] = useState<boolean | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
+  // A flip that failed says so. Leaving the sign as it was is right; leaving it
+  // without a word read as the tap not registering.
+  const [shopToggleError, setShopToggleError] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -149,15 +153,19 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   async function toggleShop() {
     if (shopBusy || !online || shopOpen === null) return;
     setShopBusy(true);
+    setShopToggleError(false);
     try {
       const res = await fetch(`${BASE}/api/stringing/shop`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ open: !shopOpen }),
       });
-      if (res.ok) setShopOpen((await res.json()).open === true);
+      if (!res.ok) throw new Error(`shop toggle ${res.status}`);
+      setShopOpen((await res.json()).open === true);
     } catch {
-      /* leave the sign as it was rather than claiming a change that failed */
+      // Leave the sign as it was rather than claim a change that failed, and
+      // say so.
+      setShopToggleError(true);
     } finally {
       setShopBusy(false);
     }
@@ -621,12 +629,31 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
         {(() => {
           const state = shopReadFailed ? 'unknown' : shopOpen === null ? 'checking' : shopOpen ? 'open' : 'closed';
           const icon = { unknown: 'error', checking: 'storefront', open: 'check_circle', closed: 'lock' }[state];
+          // Accent on this page is "Add job"'s. The icon carries the state.
           const ink = {
             unknown: 'var(--sev-crit-text)',
             checking: 'var(--text-muted)',
-            open: 'var(--accent)',
+            open: 'var(--text-secondary)',
             closed: 'var(--text-muted)',
           }[state];
+          if (state === 'checking') {
+            // A skeleton the row's size while the sign is read: no guessed
+            // "Open shop" button, and no "Checking…" line standing in for it.
+            return (
+              <div
+                data-state="checking"
+                role="status"
+                aria-label={t('shop.checking')}
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-1) 0', minHeight: 44 }}
+              >
+                <span className="material-icons icon-md" aria-hidden="true" style={{ color: ink }}>{icon}</span>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }} aria-hidden="true">
+                  <div className="shimmer-line rounded-lg" style={{ height: 12, width: '45%' }} />
+                  <div className="shimmer-line rounded-lg" style={{ height: 12, width: '75%', animationDelay: '120ms' }} />
+                </div>
+              </div>
+            );
+          }
           return (
             <div
               data-state={state}
@@ -635,11 +662,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
               <span className="material-icons icon-md" aria-hidden="true" style={{ color: ink }}>{icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {state === 'unknown'
-                    ? t('shop.unknown')
-                    : state === 'checking'
-                      ? t('shop.checking')
-                      : state === 'open' ? t('shop.open') : t('shop.closed')}
+                  {state === 'unknown' ? t('shop.unknown') : state === 'open' ? t('shop.open') : t('shop.closed')}
                 </div>
                 <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
                   {state === 'unknown' ? (
@@ -654,11 +677,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                         {t('retry')}
                       </StateLink>
                     </>
-                  ) : state === 'checking'
-                    ? '\u00A0'
-                    : state === 'open'
-                      ? t('shop.openHint')
-                      : t('shop.closedHint')}
+                  ) : state === 'open'
+                    ? t('shop.openHint')
+                    : t('shop.closedHint')}
                 </p>
               </div>
               {/* No toggle on a sign that could not be read: there is nothing to
@@ -679,27 +700,19 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           );
         })()}
 
+        {shopToggleError && <p className="field-error" role="alert">{t('shop.toggleError')}</p>}
+
         {/* Mine / All, only with two or more stringers (see `multiStringer`).
-            The wrapper needs `flex` and each tab `flex-1` — .segment-control
-            sets no display, so without it the active pill overlaps its
-            neighbour. */}
+            The same switch as the tab's registers, which marks the current
+            one for a screen reader (aria-current). */}
         {multiStringer && (
-          <div className="segment-control flex">
-            <button
-              type="button"
-              onClick={() => setMine(true)}
-              className={`flex-1 flex items-center justify-center ${mine ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-            >
-              {t('mine')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMine(false)}
-              className={`flex-1 flex items-center justify-center ${mine ? 'segment-tab-inactive' : 'segment-tab-active'}`}
-            >
-              {t('all')}
-            </button>
-          </div>
+          <RegisterSwitch
+            views={['mine', 'all'] as const}
+            value={mine ? 'mine' : 'all'}
+            onChange={(v) => setMine(v === 'mine')}
+            label={(v) => t(v)}
+            ariaLabel={t('whoseJobs')}
+          />
         )}
 
         {loadError && (

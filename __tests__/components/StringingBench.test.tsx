@@ -134,6 +134,33 @@ describe('the shop sign', () => {
     expect(screen.getByRole('button', { name: 'Open shop' })).toBeDefined();
   });
 
+  /* Design-system audit, 2026-10-12. */
+  it('says so when flipping the sign fails, instead of leaving it silently unchanged', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes('/shop') && init?.method === 'PATCH') {
+        return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'nope' }) } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => (u.includes('/shop') ? { open: true } : { jobs: [job], view: 'bench' }) } as Response);
+    }));
+    wrap(<StringingPage onBack={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Close shop' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(enMessages.admin.stringing.shop.toggleError);
+    expect(screen.getByText('Open for stringing')).toBeDefined();
+  });
+
+  it('holds a skeleton while the sign is read, not a guessed Open shop button', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) =>
+      String(url).includes('/shop')
+        ? new Promise(() => {})
+        : Promise.resolve({ ok: true, json: async () => ({ jobs: [job], view: 'bench' }) } as Response)));
+    wrap(<StringingPage onBack={() => {}} />);
+    await screen.findByText('J-0042');
+    expect(screen.getByRole('status', { name: enMessages.admin.stringing.shop.checking })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Open shop' })).toBeNull();
+    expect(screen.queryByText(enMessages.admin.stringing.shop.checking)).toBeNull();
+  });
+
   it('says UNKNOWN rather than hanging a CLOSED sign it cannot verify', async () => {
     // Answering "closed" on a throttled read would put a CLOSED sign on a shop
     // that is open — the confident-wrong answer, which is the one that costs
@@ -840,8 +867,8 @@ describe('Mine / All', () => {
     wrap(<StringingPage onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Mine' }));
     await waitFor(() => expect(screen.queryByText('J-0043')).toBeNull());
-    expect(screen.getByRole('button', { name: 'Mine' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'All' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Mine' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-current')).toBeNull();
   });
 });
 

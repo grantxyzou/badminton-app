@@ -1555,8 +1555,10 @@
           "closedHint": "Players won't be offered it. Jobs already on the bench are unaffected.",
           "unknownHint": "We couldn't check the sign.",
           "openCta": "Open shop",
-          "closeCta": "Close shop"
+          "closeCta": "Close shop",
+          "toggleError": "Couldn’t change the sign. Try again."
       },
+        "whoseJobs": "Whose jobs",
         "benchTitle": "Stringing bench",
         "setupRow": "Strings, stock & prices",
         "otherPrices": {
