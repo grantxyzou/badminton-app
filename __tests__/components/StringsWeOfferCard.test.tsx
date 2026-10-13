@@ -64,6 +64,7 @@ describe('the map', () => {
     expect(pressed.map((b) => b.getAttribute('aria-label'))).toEqual(['Yonex Exbolt 63: power 9 out of 10, durability 5 out of 10']);
     expect(screen.getByText('$32')).toBeDefined();
     expect(screen.getByText('Power 9/10 · Durability 5/10 · Control 7/10')).toBeDefined();
+    expect(screen.getByText(enMessages.home.stringing.offer.subtitleMap)).toBeDefined();
   });
 
   it('moves the panel when a dot is tapped, without opening the sheet', async () => {
@@ -87,8 +88,9 @@ describe('the map', () => {
     wrap();
     await screen.findByRole('group', { name: 'Strings by power and durability' });
     expect(screen.getByText('Not on the map')).toBeDefined();
-    // An unlinked label is the disabled row.
-    expect(screen.getByRole('button', { name: /House/ })).toHaveProperty('disabled', true);
+    // An unlinked label is listed, as a plain row: it has no page to open, but
+    // it is on offer, so it is not drawn as a disabled one (audit 2026-10-12).
+    expect(screen.getByText('House').closest('button')).toBeNull();
   });
 
   it('shows a legend only when some string has a band', async () => {
@@ -175,6 +177,61 @@ describe('the rest of the prices', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(enMessages.home.stringing.offer.pricesError);
     expect(screen.queryByText('Bring your own string')).toBeNull();
     expect(screen.queryByText('Ask')).toBeNull();
+  });
+});
+
+describe('failures and unknowns (design-system audit, 2026-10-12)', () => {
+  const O = enMessages.home.stringing.offer;
+
+  it('says the details did not load when the catalog fails, instead of calling every string unknown', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/catalog')) return Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response);
+      if (u.includes('/pricing')) return Promise.resolve({ ok: true, json: async () => ({ services: [], ownStringCents: 1800, note: '' }) } as Response);
+      return Promise.resolve({ ok: true, json: async () => ({ strings: ['BG80', 'BG66'], links: { BG80: 's-80', BG66: 's-66' }, prices: { BG80: 3000 } }) } as Response);
+    }));
+    wrapWith(<StringsWeOfferCard />);
+    expect(await screen.findByText(O.catalogError)).toBeDefined();
+    expect(screen.queryByText(O.unknown)).toBeNull();
+    expect(screen.getByText('BG80')).toBeDefined();
+    expect(screen.getByText('$30')).toBeDefined();
+  });
+
+  it('lists a string the catalog does not know at full strength, not as a disabled row', async () => {
+    mockWithPricing(['Mystery 70'], { ownStringCents: null, note: '' }, { prices: { 'Mystery 70': 2600 } });
+    wrapWith(<StringsWeOfferCard />);
+    const name = await screen.findByText('Mystery 70');
+    expect(name.closest('button')).toBeNull();
+    expect(name.closest('[aria-disabled]')).toBeNull();
+    expect(screen.getByText(O.unknown)).toBeDefined();
+  });
+
+  it('offers a retry when the other prices fail, and shows them once they load', async () => {
+    let calls = 0;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
+      if (u.includes('/pricing')) {
+        calls += 1;
+        return calls === 1
+          ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response)
+          : Promise.resolve({ ok: true, json: async () => ({ services: [], ownStringCents: 1800, note: '' }) } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ strings: ['BG80'], links: { BG80: 's-80' } }) } as Response);
+    }));
+    wrapWith(<StringsWeOfferCard />);
+    await screen.findByText(O.pricesError);
+    fireEvent.click(screen.getByRole('button', { name: O.retry }));
+    expect(await screen.findByText('Bring your own string')).toBeDefined();
+    expect(screen.getByText('$18')).toBeDefined();
+  });
+
+  it('keeps the map\'s axis copy to the map', async () => {
+    mockApi(['BG80', 'BG66', 'Unrated']);
+    wrap();
+    await screen.findByText('Yonex BG80');
+    expect(screen.getByText(O.subtitle)).toBeDefined();
+    expect(screen.queryByText(O.subtitleMap)).toBeNull();
   });
 });
 

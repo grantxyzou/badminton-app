@@ -134,8 +134,10 @@
       "shopUnavailable": "Couldn\u2019t check whether the stringing service is open.",
       "offer": {
         "title": "Strings we offer",
-        "subtitle": "Higher hits harder. Further right lasts longer. Prices are for a restring.",
-        "unknown": "Not in the catalog yet — ask the stringer what it’s like.",
+        "subtitle": "Prices are for a restring.",
+        "subtitleMap": "Higher hits harder. Further right lasts longer. Prices are for a restring.",
+        "unknown": "Not in the catalog yet. Ask the stringer what it’s like.",
+        "catalogError": "Couldn’t load the string details. The prices are still right.",
         "loadError": "Couldn’t load the string list.",
         "retry": "Try again",
         "learnTitle": "How to choose a string",

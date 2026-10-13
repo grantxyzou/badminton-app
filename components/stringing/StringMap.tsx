@@ -17,6 +17,8 @@ export interface MapDot {
 
 const PLOT_H = 220;
 const HIT = 44;
+// --fs-sm in pixels: the labels are drawn at the token and measured on a
+// canvas, which needs the number. Keep the two in step.
 const LABEL_PX = 12;
 const LABEL_H = Math.ceil(LABEL_PX * 1.2);
 /** Until the plot has been measured. The dots are the map's buttons, so they
@@ -174,7 +176,7 @@ export default function StringMap({
               height: l.h,
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
-              fontSize: LABEL_PX,
+              fontSize: 'var(--fs-sm)',
               lineHeight: `${LABEL_H}px`,
               fontWeight: i === selectedIndex ? 600 : 400,
               color: i === selectedIndex ? 'var(--text-primary)' : 'var(--text-secondary)',
