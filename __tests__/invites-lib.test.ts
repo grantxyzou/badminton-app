@@ -166,18 +166,18 @@ describe('listInvites and revokeInvite', () => {
   it('revoke removes one invite and leaves the others', async () => {
     const a = await mintInvite('bpm', 'admin', NOW);
     const b = await mintInvite('bpm', 'admin', NOW);
-    expect(await revokeInvite('bpm', a!.id)).toBe(true);
+    expect(await revokeInvite('bpm', a!.id, NOW)).toBe(true);
     expect(await resolveInvite(a!.token, 'invite', NOW)).toBeNull();
     expect(await resolveInvite(a!.code, 'code', NOW)).toBeNull();
     expect(await resolveInvite(b!.token, 'invite', NOW)).toBe('bpm');
-    expect(await revokeInvite('bpm', a!.id)).toBe(false);
+    expect(await revokeInvite('bpm', a!.id, NOW)).toBe(false);
     expect(doc(a!.id)).toBeUndefined();
   });
 
   it('a revoke names an id the club does not hold → false, nothing touched', async () => {
     seedGroup('other');
     const a = await mintInvite('bpm', 'admin', NOW);
-    expect(await revokeInvite('other', a!.id)).toBe(false);
+    expect(await revokeInvite('other', a!.id, NOW)).toBe(false);
     expect(await resolveInvite(a!.token, 'invite', NOW)).toBe('bpm');
   });
 });
