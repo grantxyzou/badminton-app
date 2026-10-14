@@ -172,7 +172,7 @@ virtual network. Neither has been done. †
 | Account name † | `cosmos-bd` |
 | API | NoSQL |
 | Database name | `badminton` (env var `COSMOS_DB_NAME`) |
-| Throughput † | 400 RU/s shared across containers, the minimum for a shared database. **The code now defines 27 containers**, and Microsoft caps a shared-throughput database at 25: past that, a new container can only be added with its own dedicated throughput (400 RU/s minimum each), unless the account already held 25 or more before the cap was introduced. Payments and the ledger work in production, so either the account is exempt or the extra containers carry their own throughput. Which one is a portal fact; see §10. **2026-10-10: the first create past the 27 was refused in production** — the string inventory shipped with a 28th container, `stringStock`, and its admin card failed to load the day it deployed with nothing else in the route new to production. Not confirmed in the portal (the count in §10 is still unread), but strong enough that the fix moved those rows into `clubSettings` and the code is back to 27. Treat the cap as real until the portal says otherwise |
+| Throughput | **800 RU/s billed, read in the portal 2026-10-14 (§9)**: the `badminton` database holds 400 RU/s shared, the minimum for a shared database, and `aliases` carries its OWN 400 RU/s on top, so the account pays for two minimums. **The shared database is at Microsoft's 25-container cap.** The code defines 27; in the portal 26 of them sit on the shared throughput and `aliases` is the one dedicated container — created by hand with its own throughput, which is why it does not count against the shared cap. Past 25, a new container can only be added with its own dedicated throughput (another 400 RU/s minimum, roughly $23/month). **2026-10-10: the first create past the cap was refused in production** — the string inventory shipped with a 28th container, `stringStock`, and its admin card failed to load the day it deployed; the portal shows no `stringStock` row, which confirms the refusal. The fix moved those rows into `clubSettings` (`CLAUDE.md`, Cosmos DB convention: a new doc KIND goes into an existing container). Nothing in the code depends on `aliases` being dedicated: moving it onto the shared database would halve the Cosmos bill but needs a free shared slot first (the 25 are full), so the realistic route is folding its two doc kinds into `clubSettings` by `kind` and deleting the container — a data move, Grant's call |
 | Backup mode † | Not recorded. The `deploy-promotion` skill claims 7-day point-in-time restore; nothing in the repo shows it was set or exercised |
 | Access † | Primary/secondary keys via connection string; no RBAC role assignments, no managed identity |
 
@@ -404,6 +404,20 @@ Everything marked † above is a claim until someone looks. Record each look
 here with the date, so the next reader knows how old the fact is. The five
 pages, and what to read on each, are in `docs/plans/infra-baseline.md`.
 
+### 2026-10-14 — Cosmos → Data Explorer, container list (Grant, screenshot)
+
+| What | Observed |
+|---|---|
+| Containers in `badminton` | the 27 the code defines, and no `stringStock` — the 2026-10-10 create was refused, not slow |
+| Throughput per container | every container reads "400 (Shared)" except `aliases`, which reads a bare "400": its own dedicated throughput |
+| Account total | **800 RU/s** — the shared 400 plus `aliases`'s 400, so the bill is two minimums, not one |
+| Data | 3.69 MB in all; `events` is the largest at 1.48 MB (the usage-metrics rows, 396-day TTL) |
+
+Consequences: §3's throughput row, and §10 item 1 is answered — a 28th
+container is a known cost (~$23/month, its own throughput) and never a free
+line in the registry. The partition keys of the six hand-made containers are
+still unread (the list page does not show them).
+
 ### 2026-10-07 — not yet observed
 
 | Page | What to read | Observed |
@@ -440,11 +454,11 @@ unknown.
 **Before the flip — three portal reads** (they extend the walkthrough in
 `docs/plans/infra-baseline.md`):
 
-1. **Container count vs the 25 cap.** Cosmos → Data Explorer: count the
-   containers in `badminton`, and on any past 25 check whether it carries its
-   own throughput (billed separately) or the account is exempt. Record the
-   answer here, so the next container added is a known cost rather than a
-   refused create in production.
+1. **Container count vs the 25 cap — done 2026-10-14 (§9).** The shared
+   database is full at 25 (26 shared rows, `aliases` dedicated); the account is
+   not exempt, and the 2026-10-10 refusal was the cap. Rule from here: a new
+   doc kind goes into an existing container; a genuinely new container is a
+   budget line (~$23/month) decided before the code is written.
 2. **Backup.** Cosmos → Backup & Restore: periodic or continuous. Nothing in
    the repo shows a restore has ever been tried.
 3. **Alerts.** App Service → Alerts: at least one rule on HTTP 5xx. There are
@@ -453,6 +467,12 @@ unknown.
 **After the flip — one week of watching:** the `[group-leak]` log line (the
 flip's own gate) and Cosmos 429s (Cosmos → Metrics → Total Requests, split by
 status code).
+
+**Start the scale work when one of these happens, not before:** Cosmos 429s
+on a sign-up night (Cosmos → Metrics → Total Requests by status code); a second
+club with real weekly traffic; a feature that needs a partition key no existing
+container has. Until then the share-by-kind rule costs nothing and the 800 RU/s
+is the whole database bill.
 
 **Only later, if clubs grow into the dozens:** a shared rate-limit store before
 a second instance; per-club addresses for per-club previews; a cost review of
