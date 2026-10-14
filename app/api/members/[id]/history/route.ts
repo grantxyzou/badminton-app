@@ -5,7 +5,8 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { costSplit, type SplitPlayer } from '@/lib/sessionCost';
 import { expandAliasNames } from '@/lib/playerIdentity';
-import type { Alias, Member, Player, Session } from '@/lib/types';
+import type { Member, Player, Session } from '@/lib/types';
+import { readAliases } from '@/lib/aliases';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     // Fallback: name + aliases (covers legacy records the migration missed).
     if (players.length === 0) {
-      const aliasRows = await scope.query<Alias>('aliases');
+      const aliasRows = await readAliases(scope);
       const candidateNames = expandAliasNames(member.name, aliasRows);
 
       const allPlayers = await scope.query<Player>('players');

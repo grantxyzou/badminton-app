@@ -61,8 +61,8 @@ describe('birds', () => {
 
 describe('aliases', () => {
   it('lists only this group’s aliases', async () => {
-    push('aliases', { id: 'a-other', appName: MARKER, etransferName: 'x', groupId: 'other' });
-    push('aliases', { id: 'a-bpm', appName: 'Ours', etransferName: 'y', groupId: 'bpm' });
+    push('clubSettings', { id: 'a-other', kind: 'alias', appName: MARKER, etransferName: 'x', groupId: 'other' });
+    push('clubSettings', { id: 'a-bpm', kind: 'alias', appName: 'Ours', etransferName: 'y', groupId: 'bpm' });
     const res = await aliasesGet(makeAdminRequest('GET', 'http://x/api/aliases'));
     const text = await res.text();
     expect(text).not.toContain(MARKER);
@@ -70,8 +70,8 @@ describe('aliases', () => {
   });
 
   it('resolveIdentity expands only this group’s aliases', async () => {
-    push('aliases', { id: 'a-other', appName: 'Mike', etransferName: MARKER, groupId: 'other' });
-    push('aliases', { id: 'a-bpm', appName: 'Mike', etransferName: 'michael', groupId: 'bpm' });
+    push('clubSettings', { id: 'a-other', kind: 'alias', appName: 'Mike', etransferName: MARKER, groupId: 'other' });
+    push('clubSettings', { id: 'a-bpm', kind: 'alias', appName: 'Mike', etransferName: 'michael', groupId: 'bpm' });
     const idy = await resolveIdentity({ name: 'Mike' }, 'bpm');
     expect(idy.names.has('michael')).toBe(true);
     expect(idy.names.has(MARKER.toLowerCase())).toBe(false);

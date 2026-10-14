@@ -2,8 +2,9 @@
  * GET /api/reports/feedback — "Report a problem" messages for the monthly UX
  * report (docs/plans/usage-metrics.md), with the person taken out.
  *
- * `feedback` is a GLOBAL container: a report goes to whoever runs the
- * deployment, not to a club's admin (lib/containers.ts). So only the
+ * A report is a `kind: 'feedback'` row in the GLOBAL `releases` container
+ * (lib/feedback.ts): it goes to whoever runs the deployment, not to a club's
+ * admin (lib/containers.ts). So only the
  * OPERATOR'S club key may read it — BPM's, the club this deployment is run
  * for — and every other club's key gets 403.
  *
@@ -15,7 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { groupForReportsKey, pathOnly, type FeedbackReportRow } from '@/lib/reportsAccess';
-import { ensureContainer, getContainer } from '@/lib/cosmos';
+import { readFeedbackSince } from '@/lib/feedback';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 
 export const dynamic = 'force-dynamic';
@@ -37,17 +38,7 @@ export async function GET(req: NextRequest) {
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
 
   try {
-    await ensureContainer('feedback', '/id');
-    const { resources } = await getContainer('feedback')
-      .items.query<Record<string, unknown>>({
-        query: 'SELECT c.createdAt, c.message, c.tab, c.url FROM c WHERE c.createdAt >= @since',
-        parameters: [{ name: '@since', value: since }],
-      })
-      .fetchAll();
-    const rows: FeedbackReportRow[] = resources
-      // Re-checked: the mock store does not apply the WHERE.
-      .filter((r) => typeof r.createdAt === 'string' && r.createdAt >= since && typeof r.message === 'string')
-      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    const rows: FeedbackReportRow[] = (await readFeedbackSince(since))
       .slice(0, MAX_ROWS)
       .map((r) => ({
         createdAt: r.createdAt as string,

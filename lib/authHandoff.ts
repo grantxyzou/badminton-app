@@ -143,6 +143,13 @@ export function isHandoffRef(value: string | null | undefined): value is string 
 export interface HandoffDoc {
   /** The REF (hash), never the id — the store must not hold a usable credential. */
   id: string;
+  /**
+   * The container also holds the PWA-to-native migration stash (`kind:
+   * 'link' | 'short'`, lib/authMigration.ts) since 2026-10-14
+   * (`docs/plans/container-fold.md`). Absent means a handoff written before
+   * the field; a ten-minute doc, so the tolerance is brief.
+   */
+  kind?: 'handoff';
   /** What the absent `bpm_oauth_state` cookie would have carried. */
   state: string;
   /** What the absent `bpm_oauth_verifier` cookie would have carried. Apple
@@ -200,8 +207,12 @@ export interface HandoffDoc {
   expiresAt: string;
 }
 
+function isHandoff(doc: HandoffDoc | null): doc is HandoffDoc {
+  return !!doc && (doc.kind ?? 'handoff') === 'handoff';
+}
+
 function live(doc: HandoffDoc | null, now: number): doc is HandoffDoc {
-  return !!doc && Date.parse(doc.expiresAt) > now;
+  return isHandoff(doc) && Date.parse(doc.expiresAt) > now;
 }
 
 async function readDoc(ref: string): Promise<HandoffDoc | null> {
@@ -237,10 +248,15 @@ export async function beginHandoff(
   await containerReady();
 
   const existing = await readDoc(ref);
+  // A doc of another kind at this ref — only the holder of a migration link
+  // could compute one — is never overwritten; "expired, so replaceable"
+  // applies to a handoff alone.
+  if (existing && !isHandoff(existing)) return false;
   if (live(existing, now)) return false;
 
   const doc: HandoffDoc = {
     id: ref,
+    kind: 'handoff',
     state: values.state,
     codeVerifier: values.codeVerifier,
     ...(values.native ? { native: true } : {}),

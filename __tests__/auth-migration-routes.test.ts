@@ -83,7 +83,7 @@ describe('POST /api/auth/migrate/start', () => {
     const body = await res.json();
     expect(body.link).toBe(`https://bpm.grantzou.com/bpm/migrate?c=${body.linkCode}`);
     expect(body.shortCode).toMatch(/^\d{6}$/);
-    const raw = JSON.stringify(getStore()['authmigration']);
+    const raw = JSON.stringify(getStore()['authhandoff']);
     expect(raw).not.toContain(body.linkCode);
     expect(raw).not.toContain(body.shortCode);
     expect(raw).toContain('"locale":"zh-CN"');

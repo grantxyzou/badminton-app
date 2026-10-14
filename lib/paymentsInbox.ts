@@ -15,7 +15,6 @@
  * alone and the allocation is dropped — two paths racing to mark the same row
  * must not let the second one quietly move money onto it.
  */
-import { randomBytes } from 'crypto';
 import { groupNamedByKey, keyMatchesHash, newClubKey, sha256Hex as sha256 } from './clubKey';
 import { ensureContainer, getActiveSessionId } from './cosmos';
 import { defaultMaxPlayers } from './defaults';
@@ -30,7 +29,8 @@ import { dueReminders } from './paymentReminders';
 import { mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
 import type { Mismatch } from './ledgerReconcile';
 import { isFlagOn } from './flags';
-import type { Alias, EtransferPayment, PaymentAllocation, Player, StringingJob } from './types';
+import type { EtransferPayment, PaymentAllocation, Player, StringingJob } from './types';
+import { createAlias, readAliases } from './aliases';
 
 export const PAYMENTS_SETTINGS_ID = 'payments-inbox';
 export function paymentsSettingsId(groupId: string): string {
@@ -143,7 +143,7 @@ export async function candidatesFor(
 ): Promise<MatchCandidate[]> {
   if (!senderName) return [];
   const lower = senderName.trim().toLowerCase();
-  const aliases = await scope.query<Alias>('aliases');
+  const aliases = await readAliases(scope);
   const names = new Set<string>();
   for (const a of aliases) {
     if (typeof a.etransferName === 'string' && a.etransferName.trim().toLowerCase() === lower && a.appName) {
@@ -332,15 +332,13 @@ async function rememberSender(
   const sender = senderName.trim().toLowerCase();
   const payer = payerName.trim().toLowerCase();
   if (!sender || !payer || sender === payer) return;
-  const known = (await scope.query<Alias>('aliases')).some(
+  const known = (await readAliases(scope)).some(
     (a) => a.etransferName?.trim().toLowerCase() === sender && a.appName?.trim().toLowerCase() === payer,
   );
   if (known) return;
-  await scope.create<Alias>('aliases', {
-    id: randomBytes(12).toString('hex'),
+  await createAlias(scope, {
     appName: payerName.trim().slice(0, 50),
     etransferName: senderName.trim().slice(0, 50),
-    // So deleting the member's account deletes the link to their legal name.
     ...(memberId ? { memberId } : {}),
   });
 }

@@ -2,6 +2,7 @@ import { getContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import type { Alias, Member, Player, Session } from './types';
 import { sessionCostTotals } from './sessionCost';
+import { readAliases } from './aliases';
 
 /**
  * Shared player-identity resolution + owed classification.
@@ -87,7 +88,7 @@ export async function resolveIdentity(
   }
 
   const baseName = (member?.name ?? arg.name ?? '').trim();
-  const aliasRows = await groupScope(groupId).query<Alias>('aliases');
+  const aliasRows = await readAliases(groupScope(groupId));
   const names = baseName ? expandAliasNames(baseName, aliasRows) : new Set<string>();
 
   return { member, memberId: member?.id ?? null, names };

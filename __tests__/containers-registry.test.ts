@@ -73,7 +73,6 @@ describe('lib/containers registry', () => {
     // production, not a way to silence that canary.
     expect(PROVISIONED_CONTAINERS).toContain('players');
     expect(PROVISIONED_CONTAINERS).not.toContain('pushSubscriptions');
-    expect(PROVISIONED_CONTAINERS).not.toContain('authmigration');
     // Phase 2's two are ensured lazily (any account deletion touches them);
     // the backfill is what populates them, not what creates them.
     expect(PROVISIONED_CONTAINERS).not.toContain('groups');

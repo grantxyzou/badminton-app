@@ -14,7 +14,8 @@ import { loadOwedInputs } from './owedRows';
 import { isFlagOn } from './flags';
 import { rosterMembers } from './roster';
 import { stringingCharges, type StringingCharge } from './stringingBilling';
-import type { Alias, Player, Session, StringingJob } from './types';
+import type { Player, Session, StringingJob } from './types';
+import { readAliases } from './aliases';
 
 export interface UnpaidSession {
   sessionId: string;
@@ -147,7 +148,7 @@ export interface RosterOwed {
 export async function computeOwedForRoster(scope: GroupScope, now: number = Date.now()): Promise<RosterOwed[]> {
   const activeSessionId = (await getActiveSessionId(scope.groupId)) ?? '';
   const roster = await rosterMembers(scope.groupId);
-  const aliasRows = await scope.query<Alias>('aliases');
+  const aliasRows = await readAliases(scope);
   const allPlayers = (await scope.query<Player>('players')).filter((p) => p && typeof p.id === 'string');
   const sessionById = new Map<string, Session>();
   for (const s of await scope.query<Session>('sessions')) if (s && typeof s.id === 'string') sessionById.set(s.id, s);

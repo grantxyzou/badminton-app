@@ -153,15 +153,18 @@ export function seedMembership(
   return row;
 }
 
-export function seedAlias(appName: string, etransferName: string) {
+/** An alias is a `kind: 'alias'` row in `clubSettings` (docs/plans/container-fold.md). */
+export function seedAlias(appName: string, etransferName: string, groupId: string = 'bpm') {
   const store = getStore();
-  if (!store['aliases']) store['aliases'] = [];
+  if (!store['clubSettings']) store['clubSettings'] = [];
   const alias = {
     id: `alias-${Math.random().toString(36).slice(2, 8)}`,
+    kind: 'alias',
+    groupId,
     appName,
     etransferName,
   };
-  store['aliases'].push(alias);
+  store['clubSettings'].push(alias);
   return alias;
 }
 

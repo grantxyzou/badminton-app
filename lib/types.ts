@@ -487,6 +487,13 @@ export interface Member {
 
 export interface Alias {
   id: string;
+  /**
+   * An alias is a row in `clubSettings` since 2026-10-14
+   * (`docs/plans/container-fold.md`); the kind is what tells it from the shop
+   * sign and the gift cards sharing the container. Optional only for the rows
+   * still in the old `aliases` container, which the copy route stamps.
+   */
+  kind?: 'alias';
   groupId?: string;
   appName: string;
   etransferName: string;

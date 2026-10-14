@@ -135,8 +135,10 @@ beforeEach(async () => {
   // so this survived a deletion request in the first cut.
   await getContainer('authhandoff').items.upsert({ id: 'ref-h', memberId: MEMBER_ID });
 
-  await getContainer('feedback').items.create({
+  // A report is a `kind: 'feedback'` row in `releases` (docs/plans/container-fold.md).
+  await getContainer('releases').items.create({
     id: 'r1',
+    kind: 'feedback',
     message: 'button is broken',
     name: 'Wei',
     ip: '203.0.113.9',
@@ -209,7 +211,7 @@ describe('what survives, and in what shape', () => {
 
   it('anonymizes a problem report without losing the report', async () => {
     await del();
-    const report = rows('feedback').find((f) => f.id === 'r1');
+    const report = rows('releases').find((f) => f.id === 'r1');
     expect(report).toBeDefined();
     expect(report!.message).toBe('button is broken');
     expect(report!.name).toBe(TOMBSTONE_NAME);
