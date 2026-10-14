@@ -3,6 +3,13 @@ import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { getEnv } from '@/lib/flags';
+import { RELEASE_KIND } from '@/lib/feedback';
+
+// The container also holds the problem reports (`kind: 'feedback'`,
+// lib/feedback.ts) since 2026-10-14 (docs/plans/container-fold.md). A release
+// is a row with `kind: 'release'` — or, until the copy route has stamped the
+// rows that predate the field, no kind at all. Never a feedback row.
+const isRelease = (r: { kind?: unknown }) => r.kind === undefined || r.kind === RELEASE_KIND;
 
 export const dynamic = 'force-dynamic';
 
@@ -44,11 +51,14 @@ export async function GET(_req: NextRequest) {
     await ensureReleasesContainer();
     const container = getContainer('releases');
     const { resources } = await container.items
-      .query({ query: 'SELECT * FROM c ORDER BY c.publishedAt DESC' })
+      .query<{ kind?: unknown; publishedAt: string }>({
+        query: `SELECT * FROM c WHERE c.kind = '${RELEASE_KIND}' OR NOT IS_DEFINED(c.kind) ORDER BY c.publishedAt DESC`,
+      })
       .fetchAll();
     // Defensive sort — real Cosmos honors ORDER BY, but the in-memory mock
-    // store does not. Sorting here guarantees newest-first in both.
-    const sorted = [...resources].sort((a, b) =>
+    // store does not (nor the WHERE, hence the filter). Sorting here
+    // guarantees newest-first in both.
+    const sorted = resources.filter(isRelease).sort((a, b) =>
       (b as { publishedAt: string }).publishedAt.localeCompare((a as { publishedAt: string }).publishedAt),
     );
 
@@ -85,6 +95,7 @@ export async function POST(req: NextRequest) {
     const env = getEnv();
     const record = {
       id,
+      kind: RELEASE_KIND,
       version: validated.version,
       title: validated.title,
       body: validated.body,
@@ -126,12 +137,13 @@ export async function PATCH(req: NextRequest) {
         parameters: [{ name: '@id', value: r.id }],
       })
       .fetchAll();
-    if (resources.length === 0) {
+    if (resources.length === 0 || !isRelease(resources[0] as { kind?: unknown })) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
     const existing = resources[0] as Record<string, unknown>;
     const updated = {
       ...existing,
+      kind: RELEASE_KIND,
       version: validated.version,
       title: validated.title,
       body: validated.body,
@@ -154,6 +166,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
     }
     const container = getContainer('releases');
+    // A report shares the container; this route deletes releases only.
+    const existing = await container.item(id, id).read<{ kind?: unknown }>().then((r) => r.resource ?? null).catch(() => null);
+    if (!existing || !isRelease(existing)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     await container.item(id, id).delete();
     return NextResponse.json({ ok: true });
   } catch (error) {

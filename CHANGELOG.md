@@ -48,6 +48,15 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Three containers folded into the cabinets that hold their kind (2026-10-14)
+
+`docs/plans/container-fold.md`. Grant's portal reading showed the shared Cosmos database at its 25-container cap and `aliases` on its own dedicated throughput, so the account billed two minimums for 3.7 MB of data.
+
+- **E-transfer aliases are `kind: 'alias'` rows in `clubSettings`** (`lib/aliases.ts`); **problem reports are `kind: 'feedback'` rows in `releases`** (`lib/feedback.ts`); **the PWA-to-native migration stash lives in `authhandoff`**, kind-checked both ways so a handoff ref can never redeem a migration doc.
+- **Nothing is unreadable during the move**: every alias and report read is the new home union the old container until the copy has run, and editing a legacy alias moves it.
+- **`GET`/`POST /api/admin/migrate-containers`** (admin cookie + `x-migration-key`, the `migrate-groups` gate, now shared through `lib/migrationKey.ts`) copies the old rows under their own ids, idempotently, and reports what is left. PR 2 deletes the fallbacks and the route; the old containers are then deleted in the portal.
+- The releases route stamps `kind: 'release'`, lists releases only, and refuses to delete a report by id.
+
 ### Motion hygiene from the design-engineering review (2026-10-11)
 
 - **Admin notices leave instead of vanishing.** A toast that timed out or was dismissed used to disappear between frames; it now fades and drops the 8px it rose by, in 150ms.

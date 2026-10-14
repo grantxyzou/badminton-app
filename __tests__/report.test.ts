@@ -16,8 +16,8 @@ describe('POST /api/report — in-app problem reports', () => {
     expect(res.status).toBe(201);
 
     const store = getStore();
-    expect(store['feedback']?.length).toBe(1);
-    const saved = store['feedback'][0] as Record<string, unknown>;
+    expect(store['releases']?.length).toBe(1);
+    const saved = store['releases'][0] as Record<string, unknown>;
     expect(saved.message).toBe('Sign-up button does nothing');
     expect(saved.name).toBe('Lin');
     expect(typeof saved.createdAt).toBe('string');
@@ -27,19 +27,19 @@ describe('POST /api/report — in-app problem reports', () => {
   it('rejects an empty / whitespace-only message with 400', async () => {
     const res = await POST(makeRequest('POST', URL, { message: '   ' }));
     expect(res.status).toBe(400);
-    expect(getStore()['feedback'] ?? []).toHaveLength(0);
+    expect(getStore()['releases'] ?? []).toHaveLength(0);
   });
 
   it('rejects an over-long message with 400', async () => {
     const res = await POST(makeRequest('POST', URL, { message: 'x'.repeat(2001) }));
     expect(res.status).toBe(400);
-    expect(getStore()['feedback'] ?? []).toHaveLength(0);
+    expect(getStore()['releases'] ?? []).toHaveLength(0);
   });
 
   it('captures optional context (tab, name) but tolerates its absence', async () => {
     const res = await POST(makeRequest('POST', URL, { message: 'broke on stats', tab: 'skills' }));
     expect(res.status).toBe(201);
-    const saved = getStore()['feedback'][0] as Record<string, unknown>;
+    const saved = getStore()['releases'][0] as Record<string, unknown>;
     expect(saved.tab).toBe('skills');
     expect(saved.name).toBeUndefined();
   });
@@ -52,7 +52,7 @@ describe('POST /api/report — in-app problem reports', () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(getStore()['feedback']).toHaveLength(1);
+    expect(getStore()['releases']).toHaveLength(1);
   });
 
   it('rate-limits abusive repeats from a single IP', async () => {

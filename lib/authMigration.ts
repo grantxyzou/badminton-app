@@ -38,13 +38,19 @@
 import { createHash, randomBytes, randomInt } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 
-const CONTAINER = 'authmigration';
+/**
+ * The `authhandoff` container since 2026-10-14 (`docs/plans/container-fold.md`):
+ * both stashes are minutes-long, `/id`-keyed and person-scoped, so one cabinet
+ * holds both. The `kind` on every doc is what keeps them apart — a handoff ref
+ * can never redeem a migration doc, and the reverse (`live` checks it).
+ */
+const CONTAINER = 'authhandoff';
 export const MIGRATION_TTL_MS = 5 * 60 * 1000;
 
 let ready: Promise<void> | null = null;
 function containerReady(): Promise<void> {
   if (!ready) {
-    ready = ensureContainer('authmigration', '/id').catch((err) => {
+    ready = ensureContainer('authhandoff', '/id').catch((err) => {
       ready = null; // let the next request retry rather than cache a failure
       throw err;
     });
@@ -95,7 +101,7 @@ function shortId(name: string, digits: string): string {
 }
 
 function live(doc: MigrationDoc | null, now: number): doc is MigrationDoc {
-  return !!doc && Date.parse(doc.expiresAt) > now;
+  return !!doc && (doc.kind === 'link' || doc.kind === 'short') && Date.parse(doc.expiresAt) > now;
 }
 
 async function readDoc(id: string): Promise<MigrationDoc | null> {

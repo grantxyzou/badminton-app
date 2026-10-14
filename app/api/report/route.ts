@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { createFeedback } from '@/lib/feedback';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { notifyReport } from '@/lib/reportEmail';
 
@@ -9,20 +9,6 @@ export const dynamic = 'force-dynamic';
 const MAX_MESSAGE = 2000;
 const RATE_MAX = 10;
 const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-
-// Lazy container bootstrap — real Cosmos doesn't auto-create containers, and
-// `feedback` is global (not session-scoped), so its partition key is `/id`.
-// Cache the promise so createIfNotExists fires at most once per instance.
-let feedbackReady: Promise<void> | null = null;
-function ensureFeedbackContainer(): Promise<void> {
-  if (!feedbackReady) {
-    feedbackReady = ensureContainer('feedback', '/id').catch((err) => {
-      feedbackReady = null;
-      throw err;
-    });
-  }
-  return feedbackReady;
-}
 
 /** Trim, drop-if-empty, and cap an optional free-text field. */
 function optionalStr(v: unknown, max: number): string | undefined {
@@ -72,8 +58,7 @@ export async function POST(req: NextRequest) {
 
   // Persist FIRST — the store is the source of truth. If this throws, the error
   // propagates (500) rather than pretending the report was captured.
-  await ensureFeedbackContainer();
-  await getContainer('feedback').items.create(report);
+  await createFeedback(report);
 
   // Notify best-effort. An email hiccup must NOT fail the request — the report
   // is already safely stored and will surface in the admin feed.

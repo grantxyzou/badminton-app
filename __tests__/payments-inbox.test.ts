@@ -10,6 +10,9 @@ import { apiGuards } from '../proxy';
 import { mintPaymentsKey, signupHeldForUnpaid, setHoldThreshold, holdCount, memoRosterName } from '@/lib/paymentsInbox';
 import { PATCH as patchSettings } from '@/app/api/admin/payments/settings/route';
 import { groupScope } from '@/lib/groupScope';
+
+/** The aliases the inbox wrote — `kind: 'alias'` rows in `clubSettings` (docs/plans/container-fold.md). */
+const writtenAliases = () => ((getStore()['clubSettings'] ?? []) as Array<Record<string, unknown>>).filter((r) => r.kind === 'alias');
 import {
   resetMockStore,
   getStore,
@@ -169,7 +172,7 @@ describe('matching', () => {
     );
     expect(res.status).toBe(200);
     expect(rowById(row1.id).paid).toBe(true);
-    expect((getStore()['aliases'] as Array<Record<string, unknown>>)).toEqual([
+    expect(writtenAliases()).toEqual([
       expect.objectContaining({ appName: 'Lin', etransferName: 'LIN DAN', groupId: 'bpm' }),
     ]);
 
@@ -195,7 +198,7 @@ describe('matching', () => {
     const res = await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: id, action: 'ignore', name: 'Lin', remember: true }));
     expect(res.status).toBe(200);
     expect((await res.json()).status).toBe('ignored');
-    expect(getStore()['aliases']).toEqual([expect.objectContaining({ appName: 'Lin', etransferName: 'MEI LING CHAN', groupId: 'bpm' })]);
+    expect(writtenAliases()).toEqual([expect.objectContaining({ appName: 'Lin', etransferName: 'MEI LING CHAN', groupId: 'bpm' })]);
     // The next one from that bank name matches on its own.
     rowById(row2.id).paid = false;
     expect((await (await post(email('MEI LING CHAN', '15.00'))).json()).status).toBe('matched');
@@ -206,12 +209,12 @@ describe('matching', () => {
     await post(email('Stranger', '2.00'));
     const [a, b] = (getStore()['payments'] as Array<{ id: string }>).map((p) => p.id);
     await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: a, action: 'ignore' }));
-    expect(getStore()['aliases'] ?? []).toHaveLength(0);
+    expect(writtenAliases()).toHaveLength(0);
     await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: b, action: 'ignore', name: 'Lin', remember: true }));
     await post(email('Stranger', '3.00'));
     const c = (getStore()['payments'] as Array<{ id: string; status: string }>).find((p) => p.status === 'review')!.id;
     await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: c, action: 'ignore', name: 'Lin', remember: true }));
-    expect(getStore()['aliases']).toHaveLength(1);
+    expect(writtenAliases()).toHaveLength(1);
   });
 
   it('assigning is admin-only', async () => {
@@ -270,7 +273,7 @@ describe('the memo and the reference — from a real notification', () => {
     const viktor = seedMember('Viktor');
     seedPlayer(S1, 'Viktor', { memberId: viktor.id, owedAmount: 12, settledAt: '2026-10-02T00:00:00Z' });
     // Lin's alias is known; the memo says Viktor — Lin paying for Viktor.
-    seedDoc('aliases', { id: 'a1', groupId: 'bpm', appName: 'Lin', etransferName: 'LIN DAN' });
+    seedDoc('clubSettings', { id: 'a1', kind: 'alias', groupId: 'bpm', appName: 'Lin', etransferName: 'LIN DAN' });
     const res = await post(real('LIN DAN', '12.00', 'BPM Sep 24 - Viktor', 'C1AB2cDEFGh2'));
     expect((await res.json()).status).toBe('review');
     expect((getStore()['payments'] as Array<{ reason: string }>)[0].reason).toBe('ambiguous_sender');
@@ -428,7 +431,7 @@ describe('review fixes (2026-10-06)', () => {
     await post(email('MEI LING CHAN', '12.00'));
     const id = (getStore()['payments'] as Array<{ id: string }>)[0].id;
     await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: id, action: 'assign', memberId: lin.id, remember: true }));
-    expect(getStore()['aliases']).toEqual([expect.objectContaining({ memberId: lin.id, etransferName: 'MEI LING CHAN' })]);
+    expect(writtenAliases()).toEqual([expect.objectContaining({ memberId: lin.id, etransferName: 'MEI LING CHAN' })]);
   });
 
   it('resolving a half-applied payment keeps what it already paid and allocates only the rest', async () => {

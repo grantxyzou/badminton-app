@@ -48,10 +48,13 @@ export const CONTAINERS = {
   skills: { pk: '/sessionId', scope: 'group', provisioned: true, reason: 'per-session skill scores, keyed by roster name within that session' },
   gameResults: { pk: '/sessionId', scope: 'group', provisioned: true, reason: 'four roster names from one session' },
   birds: { pk: '/id', scope: 'group', provisioned: true, reason: "shuttle purchases and stock adjustments — one club's inventory" },
-  aliases: { pk: '/id', scope: 'group', provisioned: true, reason: "e-transfer names read against one club's payments (security rule 10)" },
+  // LEGACY (docs/plans/container-fold.md, 2026-10-14): folded into `clubSettings` as
+  // `kind: 'alias'`. Read only by lib/aliases.ts's union fallback and copied by
+  // lib/containerFold.ts until PR 2 deletes both and the container.
+  aliases: { pk: '/id', scope: 'group', provisioned: true, reason: "e-transfer names read against one club's payments (security rule 10) — legacy home, being folded into clubSettings" },
   kudos: { pk: '/recipientMemberId', scope: 'group', provisioned: true, reason: 'eligibility is co-play on one roster, and raterName is a roster name' },
   stringingJobs: { pk: '/memberId', scope: 'group', provisioned: true, reason: "the bench is a club service; a job carries that club's rate card" },
-  clubSettings: { pk: '/id', scope: 'group', provisioned: true, reason: 'shop sign, stocked strings, rate card — per club, per-group ids' },
+  clubSettings: { pk: '/id', scope: 'group', provisioned: true, reason: "shop sign, stocked strings, rate card, gift cards, string purchases and the e-transfer aliases (kind 'alias') — per club, per-group ids" },
   events: { pk: '/memberId', scope: 'group', provisioned: true, reason: "an engagement happens inside one group's tabs; slice0 is a per-group readout" },
   insights: { pk: '/memberId', scope: 'group', provisioned: true, reason: 'narrates group play (partners, kudos); one cache doc per group per member' },
   ledger: { pk: '/memberId', scope: 'group', provisioned: false, reason: "store credit a club gave one of its members, and what it paid; a person's balance in one club is that club's to give" },
@@ -64,12 +67,14 @@ export const CONTAINERS = {
   assessments: { pk: '/memberId', scope: 'person', provisioned: true, reason: 'one skill self-assessment history per person' },
   drillCompletions: { pk: '/memberId', scope: 'person', provisioned: true, reason: 'a drill done is done, regardless of club' },
   pushSubscriptions: { pk: '/memberId', scope: 'person', provisioned: false, reason: 'one device row per person; the SENDER narrows by roster' },
-  authhandoff: { pk: '/id', scope: 'person', provisioned: true, reason: 'ten-minute OAuth stash keyed by a hashed ref, no group context' },
-  authmigration: { pk: '/id', scope: 'person', provisioned: false, reason: 'five-minute PWA-to-native stash, no group context' },
+  authhandoff: { pk: '/id', scope: 'person', provisioned: true, reason: "ten-minute OAuth stash and the five-minute PWA-to-native stash (kind 'link' | 'short'), keyed by hashed refs, no group context" },
   // ── global ──────────────────────────────────────────────────────────────
   equipmentCatalog: { pk: '/category', scope: 'global', provisioned: true, reason: 'the racket/string catalog; seeded, not user data' },
-  releases: { pk: '/id', scope: 'global', provisioned: true, reason: "the app's own changelog" },
-  feedback: { pk: '/id', scope: 'global', provisioned: true, reason: 'reports go to the operator, not to a group admin; groupId is context only' },
+  releases: { pk: '/id', scope: 'global', provisioned: true, reason: "the operator's container: the app's own changelog (kind 'release') and the problem reports (kind 'feedback'), which go to whoever runs the deployment, not a group admin" },
+  // LEGACY (docs/plans/container-fold.md, 2026-10-14): folded into `releases` as
+  // `kind: 'feedback'`. Read by lib/feedback.ts's union fallback and copied by
+  // lib/containerFold.ts until PR 2 deletes both and the container.
+  feedback: { pk: '/id', scope: 'global', provisioned: true, reason: 'reports go to the operator, not to a group admin — legacy home, being folded into releases' },
   groups: { pk: '/id', scope: 'global', provisioned: false, reason: 'the registry of clubs themselves — a group doc is not inside any group; read by id, never listed to a member' },
 } as const satisfies Readonly<Record<string, ContainerMeta>>;
 

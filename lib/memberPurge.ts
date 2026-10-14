@@ -35,6 +35,8 @@ import { revokeAppleIdentity } from './appleRevoke';
 import { accountOf } from './storeCredit';
 import { ANON_LEDGER_ID, isSentinelLedgerId } from './ledgerMirror';
 import type { LedgerEntry } from './types';
+import { anonymizeFeedbackRows } from './feedback';
+import { ALIAS_KIND } from './aliases';
 
 /** What an anonymized row says instead of a name. */
 export const TOMBSTONE_NAME = 'Former member';
@@ -55,7 +57,9 @@ interface PurgeTarget {
 const OWNED: readonly PurgeTarget[] = [
   { container: 'identities', by: 'memberId' },
   // Rule 10: e-transfer names are sensitive payment data. Scoped to the
-  // caller's OWN memberId — never a name fallback.
+  // caller's OWN memberId — never a name fallback. This is the LEGACY home
+  // (docs/plans/container-fold.md); the `clubSettings` rows of kind 'alias'
+  // are `purgeAliasRows`, below, until PR 2 deletes this container.
   { container: 'aliases', by: 'memberId' },
   { container: 'assessments', by: 'memberId' },
   { container: 'insights', by: 'memberId' },
@@ -91,10 +95,9 @@ const OWNED: readonly PurgeTarget[] = [
      literal, and the canary only matched quoted arguments — so it survived a
      deletion request in the first cut of this file. */
   { container: 'authhandoff', by: 'memberId' },
-  /* Same family: a five-minute stash holding a memberId while a PWA→native
-     migration link is in flight (lib/authMigration.ts). Also a `const
-     CONTAINER` alias, which is why the canary resolves those now. */
-  { container: 'authmigration', by: 'memberId' },
+  /* The five-minute PWA→native migration stash (lib/authMigration.ts) lives
+     in the SAME container since 2026-10-14 (docs/plans/container-fold.md),
+     as `kind: 'link' | 'short'`; the entry above clears both kinds. */
   /* A person's per-group role, and the roster-name reservation that made their
      name unique in that group — both carry `memberId`, both live under the
      GROUP's partition key, and `pkFieldOf` reads `groupId` off each row, so
@@ -117,9 +120,7 @@ export const NOT_MEMBER_SCOPED: Readonly<Record<string, string>> = {
   sessions: 'club-wide session records; player identity lives in `players`',
   announcements: 'written by an admin to the whole club',
   birds: 'shuttle purchases and stock adjustments — club inventory',
-  clubSettings: 'shop sign, stocked strings, rate card, string purchases (docs/plans/string-inventory.md) — club-wide',
   equipmentCatalog: 'the racket/string catalog; seeded, not user data',
-  releases: 'changelog entries',
 };
 
 /**
@@ -136,7 +137,9 @@ export const CLASSIFIED_ELSEWHERE: Readonly<Record<string, string>> = {
   members: 'the member row itself — deleted directly by the route',
   players: 'shared cost history — `anonymizePlayerRows`',
   gameResults: 'shared match history — `anonymizeGameResults`',
-  feedback: 'reports carry a name and an IP — `anonymizeFeedback`',
+  feedback: 'reports carry a name and an IP — `anonymizeFeedback` (legacy home, docs/plans/container-fold.md)',
+  releases: "changelog entries are club-wide; the problem reports folded in beside them (kind 'feedback') carry a name and an IP — `anonymizeFeedback`",
+  clubSettings: "shop sign, strings, rate card and string purchases are club-wide; the e-transfer aliases folded in (kind 'alias') name a member's bank legal name — `purgeAliasRows`",
   ledger: "store credit is forfeited (deleted); charges and payments are the club's history and are re-keyed under `~anon` — `relocateLedger`",
   payments: 'club bookkeeping that names a payer — anonymized in `purgeMember` (sender, memo, member link)',
   groups: 'a group names its owner — `reassignOwnership` (lib/groups.ts) runs in `purgeMember` before the owned rows go',
@@ -268,6 +271,16 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
       console.error(`[purge] ${t.container} failed:`, err);
       summary.failed.push(t.container);
     }
+  }
+
+  // The aliases in their NEW home (`clubSettings`, kind 'alias'): theirs by
+  // memberId, plus the older shape matched by appName when no memberId names
+  // anyone (same rule as the legacy block below).
+  try {
+    summary.deleted += await purgeAliasRows(memberId, lowerName);
+  } catch (err) {
+    console.error('[purge] aliases (clubSettings) failed:', err);
+    summary.failed.push('clubSettings:alias');
   }
 
   // Aliases from before they carried a `memberId` (the admin alias screen
@@ -518,19 +531,35 @@ export async function relocateLedger(memberId: string): Promise<{ deleted: numbe
 
 /**
  * Problem reports carry an optional reporter name AND the submitting IP. Both
- * are personal data; the report text is operational and stays.
+ * are personal data; the report text is operational and stays. Over both
+ * homes (lib/feedback.ts) until the fold's PR 2.
  */
 export async function anonymizeFeedback(name: string): Promise<number> {
-  const lowerName = name.trim().toLowerCase();
-  const rows = await queryAll(
-    'feedback',
-    'LOWER(c.name) = @name',
-    [{ name: '@name', value: lowerName }],
-    (row) => sameName(row, lowerName),
+  return anonymizeFeedbackRows(name, TOMBSTONE_NAME);
+}
+
+/**
+ * The e-transfer aliases in `clubSettings` (kind 'alias'): rows naming this
+ * member, and rows naming nobody whose app name is theirs. A row that names
+ * ANOTHER member under the same app name is that member's. `@memberId` is a
+ * name the mock store filters on; the kind is re-checked in JS because it
+ * does not.
+ */
+export async function purgeAliasRows(memberId: string, lowerName: string): Promise<number> {
+  const isAlias = (row: Record<string, unknown>) => row.kind === ALIAS_KIND;
+  const mine = await queryAll(
+    'clubSettings',
+    `c.kind = '${ALIAS_KIND}' AND c.memberId = @memberId`,
+    [{ name: '@memberId', value: memberId }],
+    (row) => isAlias(row) && row.memberId === memberId,
   );
-  for (const row of rows) {
-    const { ip: _ip, ...rest } = row as Record<string, unknown>;
-    await getContainer('feedback').items.upsert({ ...rest, name: TOMBSTONE_NAME });
-  }
-  return rows.length;
+  const unowned = await queryAll(
+    'clubSettings',
+    `c.kind = '${ALIAS_KIND}' AND NOT IS_DEFINED(c.memberId) AND LOWER(c.appName) = @appName`,
+    [{ name: '@appName', value: lowerName }],
+    (row) => isAlias(row) && !row.memberId && typeof row.appName === 'string' && row.appName.trim().toLowerCase() === lowerName,
+  );
+  const ids = new Set([...mine, ...unowned].map((row) => String(row.id)));
+  for (const id of ids) await getContainer('clubSettings').item(id, id).delete();
+  return ids.size;
 }

@@ -16,7 +16,7 @@ import {
 const LIN = { id: 'member-lin', name: 'Lin' };
 
 function docs() {
-  return (getStore()['authmigration'] ?? []) as Array<{ id: string; kind: string; sibling: string }>;
+  return ((getStore()['authhandoff'] ?? []) as Array<{ kind: string }>).filter((d) => d.kind === 'link' || d.kind === 'short') as Array<{ id: string; kind: string; sibling: string }>;
 }
 
 beforeEach(() => {

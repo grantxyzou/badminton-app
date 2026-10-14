@@ -22,23 +22,12 @@
  * `remaining` is non-empty, then read GET until every count is zero.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { createHash, timingSafeEqual } from 'crypto';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { MIGRATION_KEY_HEADER, migrationKeyConfigured, migrationKeyMatches } from '@/lib/migrationKey';
 import { backfillStatus, runBackfill, DEFAULT_SCAN_CAP, DEFAULT_ROW_BUDGET } from '@/lib/groupBackfill';
 
 export const dynamic = 'force-dynamic';
-
-const KEY_HEADER = 'x-migration-key';
-
-/** Hash both sides first so a length difference cannot leak through timing (security rule 11). */
-function keyMatches(provided: string | null): boolean {
-  const expected = process.env.MIGRATION_KEY;
-  if (!expected || expected.length < 16 || !provided) return false;
-  const a = createHash('sha256').update(provided).digest();
-  const b = createHash('sha256').update(expected).digest();
-  return timingSafeEqual(a, b);
-}
 
 export async function GET(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
@@ -57,10 +46,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
-  if (!process.env.MIGRATION_KEY) {
+  if (!migrationKeyConfigured()) {
     return NextResponse.json({ error: 'migration_key_not_configured' }, { status: 503 });
   }
-  if (!keyMatches(req.headers.get(KEY_HEADER))) return unauthorized();
+  if (!migrationKeyMatches(req.headers.get(MIGRATION_KEY_HEADER))) return unauthorized();
 
   let dryRun = true;
   let limit = DEFAULT_SCAN_CAP;

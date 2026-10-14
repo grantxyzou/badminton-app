@@ -11,12 +11,23 @@ describe('purgeMember — aliases', () => {
   beforeEach(() => resetMockStore());
 
   it('deletes their aliases with or without a memberId, and leaves everyone else\'s', async () => {
-    seedDoc('aliases', { id: 'a1', groupId: 'bpm', appName: 'Lin', etransferName: 'MEI LING CHAN', memberId: 'm-lin' });
-    seedDoc('aliases', { id: 'a2', groupId: 'bpm', appName: 'lin', etransferName: 'LIN DAN' });
-    seedDoc('aliases', { id: 'a3', groupId: 'bpm', appName: 'Viktor', etransferName: 'V AXELSEN' });
+    const alias = (row: Record<string, unknown>) => seedDoc('clubSettings', { kind: 'alias', ...row });
+    alias({ id: 'a1', groupId: 'bpm', appName: 'Lin', etransferName: 'MEI LING CHAN', memberId: 'm-lin' });
+    alias({ id: 'a2', groupId: 'bpm', appName: 'lin', etransferName: 'LIN DAN' });
+    alias({ id: 'a3', groupId: 'bpm', appName: 'Viktor', etransferName: 'V AXELSEN' });
     // Same app name, but it names ANOTHER member: not this person's to delete.
-    seedDoc('aliases', { id: 'a4', groupId: 'other', appName: 'Lin', etransferName: 'LIN OTHER', memberId: 'm-other' });
+    alias({ id: 'a4', groupId: 'other', appName: 'Lin', etransferName: 'LIN OTHER', memberId: 'm-other' });
+    // A gift card is not an alias, whatever its fields say.
+    seedDoc('clubSettings', { id: 'gift:x', kind: 'giftCard', groupId: 'bpm', appName: 'Lin', memberId: 'm-lin' });
     await purgeMember('m-lin', 'Lin');
-    expect((getStore()['aliases'] as Array<{ id: string }>).map((a) => a.id).sort()).toEqual(['a3', 'a4']);
+    expect((getStore()['clubSettings'] as Array<{ id: string }>).map((a) => a.id).sort()).toEqual(['a3', 'a4', 'gift:x']);
+  });
+
+  it('still clears the legacy `aliases` container during the fold window', async () => {
+    seedDoc('aliases', { id: 'l1', groupId: 'bpm', appName: 'Lin', etransferName: 'MEI LING CHAN', memberId: 'm-lin' });
+    seedDoc('aliases', { id: 'l2', groupId: 'bpm', appName: 'lin', etransferName: 'LIN DAN' });
+    seedDoc('aliases', { id: 'l3', groupId: 'bpm', appName: 'Viktor', etransferName: 'V AXELSEN' });
+    await purgeMember('m-lin', 'Lin');
+    expect((getStore()['aliases'] as Array<{ id: string }>).map((a) => a.id)).toEqual(['l3']);
   });
 });
