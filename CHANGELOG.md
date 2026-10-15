@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The Home skill lead, rebuilt as an upsell (2026-10-15)
+
+`docs/plans/home-skill-lead.md`. The one-line card ("Level 3.4 overall, up 0.5 since September. See the trend →") gave no scale and no reason to tap. It is now one compact tappable card in the Stats tab's blue: a headline in words, the level out of 5 beside a small line through the recent check-ins, and chips naming what Stats holds (Focus drill, Your record, Racket fit). A member who has never rated sees "This is {club}'s average skill level" over the club's technical, physical and mental bars, and "Add yours to get improvement tips, drills, and racket and string picks." Rated once, a dotted line runs to the next check-in. A dip reads in neutral text, never red. The card holds 160px in every state.
+
 ### The Home skill lead (2026-10-14)
 
 `docs/plans/home-skill-lead.md`. The skill-leads reading (#623) showed 17 of 36 members ever open Stats, so the Home decision was reopened. One card under the sign-up card, for every identified member, every week, in the third person: the group's skill spread and the ask for someone who has never rated, their level after one rating, and the change since the previous check-in after two. A failed read renders a plain line, never a number. Replaces the self-retiring `SkillDiscoveryCard`. `stats_open` may now carry `source: 'home'`, and slice0 reports `homeLeadTappers`.

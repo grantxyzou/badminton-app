@@ -5309,14 +5309,115 @@ html:root[data-theme="light"] {
 
 
 /* ── Home skill lead (docs/plans/home-skill-lead.md) ─────────────────────
-   A whole card that is one button. A surface you can see the edges of SCALES
-   on press (the ladder below: cards 0.98); nothing else moves. */
+   A whole card that is one button, selling the Stats tab from Home. A surface
+   you can see the edges of SCALES on press (the ladder below: cards 0.98);
+   nothing else moves.
+
+   It wears the Stats field's BLUE (--sev-low-text, plus a faint glow in the
+   corner the Stats field is lit from), never accent: on Home green marks the
+   sign-up button, the one link and the active tab, and this card must not
+   outweigh the week's actual decision above it. The blue says "this is a
+   window into Stats" before a word is read.
+
+   min-height holds every state at the tallest one's measured height
+   (SKILL_LEAD_HEIGHT) so the box never changes with a member's data. */
+:root {
+  --skill-lead-glow: rgba(96, 165, 250, 0.16);
+  --skill-lead-track: rgba(255, 255, 255, 0.08);
+}
+[data-theme="light"] {
+  --skill-lead-glow: rgba(37, 99, 235, 0.07);
+  --skill-lead-track: rgba(26, 35, 50, 0.08);
+}
+html:root .glass-card.skill-lead {
+  background:
+    radial-gradient(90% 70% at 100% 0%, var(--skill-lead-glow), transparent 70%),
+    var(--fcard-bg);
+}
 button.skill-lead {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 160px;
+  text-align: left;
+  color: var(--text-primary);
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: transform var(--duration-press) var(--ease-out-quart);
 }
 button.skill-lead:active { transform: scale(0.98); }
 button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.skill-lead-head { display: flex; align-items: flex-start; gap: var(--space-3); }
+.skill-lead-title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+  color: var(--fcard-title);
+  /* Two even lines, never one word alone under a full one. */
+  text-wrap: balance;
+}
+.skill-lead-chevron.material-icons { font-size: var(--icon-md); color: var(--text-muted); }
+
+/* The number and its picture: the level out of 5 on the left, the trend line
+   (or the dotted line to the next check-in) on the right. */
+.skill-lead-body { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.skill-lead-figure { display: flex; flex-direction: column; gap: var(--space-05); }
+.skill-lead-level-row { display: flex; align-items: baseline; gap: var(--space-1); }
+.skill-lead-level {
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat-lg);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  color: var(--fcard-title);
+}
+.skill-lead-outof { font-family: var(--font-mono); font-size: var(--fs-base); color: var(--text-muted); }
+.skill-lead-delta { font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); }
+/* A rise is the Stats blue; a drop stays neutral, never red — red means
+   failure on Home (docs/plans/home-skill-lead.md, Decisions). */
+.skill-lead-delta.is-up { color: var(--sev-low-text); }
+.skill-lead-spark { flex-shrink: 0; overflow: visible; }
+.skill-lead-spark-stop { stop-color: var(--sev-low-text); }
+.skill-lead-spark-line { fill: none; stroke: var(--sev-low-text); stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+.skill-lead-spark-dot { fill: var(--page-bg); stroke: var(--sev-low-text); stroke-width: 1.75; }
+.skill-lead-spark-halo { fill: var(--sev-low-text); opacity: 0.22; }
+.skill-lead-spark-now { fill: var(--sev-low-text); }
+.skill-lead-spark-next { stroke: var(--sev-low-text); opacity: 0.5; stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; }
+.skill-lead-spark-open { fill: none; stroke: var(--sev-low-text); opacity: 0.65; stroke-width: 1.75; stroke-dasharray: 3 3; }
+.skill-lead-spark-plus { stroke: var(--sev-low-text); stroke-width: 1.75; stroke-linecap: round; }
+
+/* What Stats holds, named. Labels, not links: the whole card is the button.
+   A pill's padding steps with its text — --fs-xs → 4/12 (StatusBadge spec). */
+.skill-lead-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.skill-lead-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-soft-border);
+  background: var(--glass-soft-bg);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.skill-lead-chip .material-icons { font-size: var(--icon-xs); color: var(--sev-low-text); }
+
+/* The club's average levels, for a member who has never rated. */
+.skill-lead-dims { display: flex; gap: var(--space-5); }
+.skill-lead-dim { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.skill-lead-dim-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-1); }
+.skill-lead-dim-label { font-size: var(--fs-xs); color: var(--text-muted); }
+.skill-lead-dim-value { font-family: var(--font-mono); font-size: var(--fs-md); font-weight: 600; color: var(--fcard-title); }
+.skill-lead-track { display: flex; height: 5px; border-radius: var(--radius-pill); background: var(--skill-lead-track); }
+.skill-lead-fill { height: 5px; border-radius: var(--radius-pill); background: var(--sev-low-text); }
+.skill-lead-foot { font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.skill-lead-strong { font-weight: 600; color: var(--fcard-title); }
 
 /* ── Toasts ─────────────────────────────────────────────────────────
    Transient notices that float over the page instead of occupying a
