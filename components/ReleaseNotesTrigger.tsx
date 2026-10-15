@@ -35,7 +35,9 @@ function ReleaseNotesTrigger({ releases, onOpen }: ReleaseNotesTriggerProps) {
     <button
       type="button"
       onClick={onOpen}
-      className={`fs-sm px-2 transition-colors text-left ${
+      // No horizontal padding: the line sits directly under the page title,
+      // and `px-2` started its text 8px right of the title's left edge.
+      className={`fs-sm transition-colors text-left ${
         isUnread ? 'terminal-accent-text font-semibold' : 'text-gray-400'
       }`}
     >

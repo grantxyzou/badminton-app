@@ -5235,17 +5235,6 @@ html:root[data-theme="light"] {
 .bpm-chip:hover { background: var(--glass-bg); }
 .bpm-chip:disabled { opacity: 0.5; pointer-events: none; }
 
-/* Compact page title — see PageHeader's `compact` prop.
-   The app's name on its own home screen is orientation, not content. At 30px
-   bold it took the top of the hierarchy from the thing the page exists for. */
-.bpm-page-header__title--compact {
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold, 600);
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
-}
-
 /* The one number a screen is really asking about.
    Home's spots-left count: the thing that decides whether you tap. Big enough
    to be the first thing read, tight tracking so a two-part figure ("12/12")

@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Home's title matches every other tab (2026-10-15)
+
+Grant: "this header size is off from the other page." Home rendered the club name at 16px semibold (`PageHeader compact`, from the 2026-08-27 hierarchy pass) while Stringing, Stats and Profile use the 30px `bpm-h1`; the compact title also grew to 18px on scroll, because the shared condensed rule is more specific. The variant is deleted and Home uses the same header as every tab. The "What's new" line under it loses its 8px inset so it lines up with the title.
+
 ### The Home skill lead, rebuilt as an upsell (2026-10-15)
 
 `docs/plans/home-skill-lead.md`. The one-line card ("Level 3.4 overall, up 0.5 since September. See the trend →") gave no scale and no reason to tap. It is now one compact tappable card in the Stats tab's blue: a headline in words, the level out of 5 beside a small line through the recent check-ins, and chips naming what Stats holds (Focus drill, Your record, Racket fit). A member who has never rated sees "This is {club}'s average skill level" over the club's technical, physical and mental bars, and "Add yours to get improvement tips, drills, and racket and string picks." Rated once, a dotted line runs to the next check-in. A dip reads in neutral text, never red. The card holds 160px in every state.
