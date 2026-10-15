@@ -1,15 +1,16 @@
 # Container fold — three cheap merges to get the shared database off its cap
 
-**Track:** infrastructure baseline (`docs/plans/infra-baseline.md`, `docs/azure.md` §10) — the multi-group launch needs a database that can still take a container when a feature genuinely needs one, and a bill that is one Cosmos minimum, not two.
-**Status:** shipped 2026-10-15 (code); the portal deletions are Grant's, see Review on
-**Review on:** 2026-10-28 — have the `aliases`, `feedback` and `authmigration` containers been deleted in the portal, does the Cosmos total read 400 RU/s, and has `GET /api/admin/migrate-containers` reported zero remaining before each deletion?
+**Track:** infrastructure baseline (`docs/plans/infra-baseline.md`, `docs/azure.md` §10) — the multi-group launch needs a database that can still take a container when a feature genuinely needs one, and headroom under the 25-container cap.
+**Status:** shipped 2026-10-15
 
 ## Problem
 
 Grant read the Cosmos portal on 2026-10-14 (`docs/azure.md` §9): the `badminton`
 database holds the 27 containers the code defines; 26 share its 400 RU/s and
-`aliases` carries its own 400 RU/s, so the account bills **800 RU/s** for
-3.7 MB of data. The shared database is at Microsoft's 25-container cap — the
+`aliases` carries its own 400 RU/s, so the account provisions **800 RU/s** for
+3.7 MB of data. (Read on the day as two billed minimums; the 2026-10-15
+portal reading showed the account is on Cosmos's free tier, 1000 RU/s, so the
+bill was $0 either way — see Decisions.) The shared database is at Microsoft's 25-container cap — the
 2026-10-10 `stringStock` create was refused (`docs/plans/string-inventory.md`),
 and the next feature that needs a container will be too.
 
@@ -20,7 +21,7 @@ cheap ones, write the plan doc first."* The three:
    both `/id`, both PERSON scoped. Nothing to backfill: a doc lives minutes.
 2. `feedback` into `releases` — both GLOBAL, both `/id`, a few dozen rows each.
 3. `aliases` into `clubSettings` — both GROUP scoped, both `/id`. The only one
-   of the three that moves the bill: `aliases` is the dedicated container.
+   of the three on dedicated throughput.
 
 A filing cabinet costs rent and has one lock design (its partition key) and
 one shredding schedule (its TTL); a folder inside it is free. These three
@@ -32,7 +33,7 @@ If a copy run reports `remaining > 0` that a second run does not clear, or if
 any alias, report or release is unreadable after the switch, the readers'
 fallback to the old container is kept and the old containers are NOT deleted
 — the fold stops at "two homes, one authoritative" and this file says so. The
-fold has failed if, by the review date, the portal still bills 800 RU/s.
+fold has failed if the old containers cannot be deleted.
 
 ## Non-goals
 
@@ -120,6 +121,8 @@ fold has failed if, by the review date, the portal still bills 800 RU/s.
 | Tests | `__tests__/container-fold.test.ts` (copy, status, union, kind checks), the existing alias / feedback / migration tests pointed at the new homes |
 | Record | `docs/azure.md` §3 and §9, `CLAUDE.md` container list, `CHANGELOG.md` |
 
-**Record.** PR 1 (#618) deployed 2026-10-15; Grant ran the copy the same day: `aliases` 14 legacy / 14 copied / 0 remaining, `feedback` 4 / 4 / 0, `releases` 0 unstamped. PR 2 removed the fallbacks, the route, `lib/containerFold.ts` and the legacy registry and purge entries. Left for Grant: delete `aliases`, `feedback` and `authmigration` in the portal and confirm the total reads 400 RU/s.
+**Record.** PR 1 (#618) deployed 2026-10-15; Grant ran the copy the same day: `aliases` 14 legacy / 14 copied / 0 remaining, `feedback` 4 / 4 / 0, `releases` 0 unstamped. PR 2 (#619) removed the fallbacks, the route, `lib/containerFold.ts` and the legacy registry and purge entries, and Grant deleted `aliases`, `feedback` and `authmigration` in the portal the same evening. The database reads 400 RU/s with 24 containers.
 
-**Prod order (as run):** deploy PR 1 → `GET /api/admin/migrate-containers` → `POST { dryRun: true }` → `POST { dryRun: false }` → `GET` reads zero remaining → PR 2 → deploy → delete `aliases`, `feedback`, `authmigration` in the portal → portal total reads 400 RU/s → record in `docs/azure.md` §9.
+- **The bill was never the win.** The plan's premise said the dedicated `aliases` container doubled the Cosmos bill. The Scale page Grant read after the deletions carries the free-tier banner — the first 1000 RU/s are free on this account — so 800 RU/s cost $0 and 400 RU/s costs $0. What the fold actually bought: two free shared slots under the 25 cap, and the knowledge that one more dedicated container is free too. The lesson for the next cost argument: read the account's pricing tier before multiplying RU/s by list price.
+
+**Prod order (as run):** deploy PR 1 → `GET /api/admin/migrate-containers` → `POST { dryRun: true }` → `POST { dryRun: false }` → `GET` reads zero remaining → PR 2 → deploy → delete `aliases`, `feedback`, `authmigration` in the portal → recorded in `docs/azure.md` §9 (2026-10-15).

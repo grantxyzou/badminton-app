@@ -172,8 +172,8 @@ virtual network. Neither has been done. †
 | Account name † | `cosmos-bd` |
 | API | NoSQL |
 | Database name | `badminton` (env var `COSMOS_DB_NAME`) |
-| Throughput | **800 RU/s billed, read in the portal 2026-10-14 (§9)**: the `badminton` database holds 400 RU/s shared, the minimum for a shared database, and `aliases` carries its OWN 400 RU/s on top, so the account pays for two minimums. **The shared database is at Microsoft's 25-container cap.** The code defined 27 on the day of the reading; in the portal 26 of them sit on the shared throughput and `aliases` is the one dedicated container — created by hand with its own throughput, which is why it does not count against the shared cap. Past 25, a new container can only be added with its own dedicated throughput (another 400 RU/s minimum, roughly $23/month). **2026-10-10: the first create past the cap was refused in production** — the string inventory shipped with a 28th container, `stringStock`, and its admin card failed to load the day it deployed; the portal shows no `stringStock` row, which confirms the refusal. The fix moved those rows into `clubSettings` (`CLAUDE.md`, Cosmos DB convention: a new doc KIND goes into an existing container). **The fold shipped** (`docs/plans/container-fold.md`): `aliases` into `clubSettings`, `feedback` into `releases`, `authmigration` into `authhandoff`. The copy ran in production on 2026-10-15 (14 aliases, 4 reports, zero remaining) and the code defines 24; once the three old containers are deleted in the portal the total reads 400 RU/s with two free shared slots — record that reading in §9 |
-| Backup mode † | Not recorded. The `deploy-promotion` skill claims 7-day point-in-time restore; nothing in the repo shows it was set or exercised |
+| Throughput | **400 RU/s, on the FREE TIER** (read in the portal 2026-10-15, §9): the `badminton` database holds 400 RU/s shared, the minimum for a shared database, and the account's free tier covers the first 1000 RU/s and 25 GB, so the Cosmos bill is **$0** and was $0 even while `aliases` carried its own 400 RU/s on top (800 total, read 2026-10-14). The fold's win was the two shared slots and the cap headroom, not money — the earlier claim that the dedicated container doubled the bill was wrong, corrected the day the free-tier banner was read. Free headroom now: one more dedicated 400 RU/s container (800 ≤ 1000) costs nothing; a second would bill the 200 RU/s over. **The shared database was at Microsoft's 25-container cap.** The code defined 27 on the day of the reading; in the portal 26 of them sit on the shared throughput and `aliases` is the one dedicated container — created by hand with its own throughput, which is why it does not count against the shared cap. Past 25, a new container can only be added with its own dedicated throughput (another 400 RU/s minimum — free while the account total stays under the free tier's 1000). **2026-10-10: the first create past the cap was refused in production** — the string inventory shipped with a 28th container, `stringStock`, and its admin card failed to load the day it deployed; the portal shows no `stringStock` row, which confirms the refusal. The fix moved those rows into `clubSettings` (`CLAUDE.md`, Cosmos DB convention: a new doc KIND goes into an existing container). **The fold shipped** (`docs/plans/container-fold.md`): `aliases` into `clubSettings`, `feedback` into `releases`, `authmigration` into `authhandoff`. The copy ran in production on 2026-10-15 (14 aliases, 4 reports, zero remaining), the code defines 24, and Grant deleted the three old containers the same day: the database reads 400 RU/s with 23 shared containers, two slots free (§9) |
+| Backup mode | **Continuous, 7-day** — the cost export of 2026-10-14 carries a `PITR · Cont 7D Bkup Continuous Backup` meter for `cosmos-bd` (at $0, inside the free tier). Point-in-time restore to any moment in the last week; a restore has still never been exercised |
 | Access † | Primary/secondary keys via connection string; no RBAC role assignments, no managed identity |
 
 ### Containers
@@ -365,8 +365,9 @@ Browser
 
 | Resource | Cost |
 |----------|------|
-| App Service B1 Basic † | ~$13 USD/month — Always On, dedicated compute, no cold starts |
-| Cosmos DB 400 RU/s † | ~$23 USD/month; serverless pricing available for low-traffic |
+| App Service B1 Basic | ~$12 USD/month (the 2026-10-14 cost export: $5.64 for 1–14 Oct) — Always On, dedicated compute, no cold starts |
+| Microsoft Defender for Cloud, App Service plan protection | **~$27 USD/month, on TWO plans** — the export bills `Standard Node` on `granxyzou-vnext-bpm` (production, B1) AND on `asp-grantzou-b0c9` (the Free-plan staging slot's plan), $6.25 each for 1–14 Oct. More than the app's compute. Whether to keep it is Grant's call (Defender for Cloud → Environment settings → Defender plans → App Service); the staging plan's charge buys nothing |
+| Cosmos DB 400 RU/s | **$0 — free tier** (first 1000 RU/s and 25 GB; read in the portal 2026-10-15). Would be ~$23 USD/month at list price |
 | Anthropic Claude API | Pay-per-token; low volume |
 
 ### Previous tier (for reference)
@@ -378,9 +379,10 @@ no deployment, and is the natural target for a restore drill.
 
 ### Alternative hosting paths
 
-- **Cosmos DB Serverless**: eliminates the ~$23/month baseline, charges per RU
-  consumed. Switching means a new account and a data copy; do a restore drill
-  first.
+- **Cosmos DB Serverless**: charges per RU consumed instead of a provisioned
+  baseline. Pointless while the free tier makes the baseline $0; switching
+  would mean a new account (free tier is one per subscription and does not
+  move) and a data copy, so it is a step backwards today.
 - **Vercel (free Hobby tier)**: no cold starts, native Next.js support.
 
 ---
@@ -410,13 +412,42 @@ pages, and what to read on each, are in `docs/plans/infra-baseline.md`.
 |---|---|
 | Containers in `badminton` | the 27 the code defines, and no `stringStock` — the 2026-10-10 create was refused, not slow |
 | Throughput per container | every container reads "400 (Shared)" except `aliases`, which reads a bare "400": its own dedicated throughput |
-| Account total | **800 RU/s** — the shared 400 plus `aliases`'s 400, so the bill is two minimums, not one |
+| Account total | **800 RU/s** — the shared 400 plus `aliases`'s 400. Read on the day as two billed minimums; the 2026-10-15 reading below showed the account is on the free tier, so this was $0 |
 | Data | 3.69 MB in all; `events` is the largest at 1.48 MB (the usage-metrics rows, 396-day TTL) |
 
 Consequences: §3's throughput row, and §10 item 1 is answered — a 28th
-container is a known cost (~$23/month, its own throughput) and never a free
-line in the registry. The partition keys of the six hand-made containers are
-still unread (the list page does not show them).
+container needs its own throughput and never a free line in the registry. The
+partition keys of the five hand-made containers are still unread (the list
+page does not show them).
+
+### 2026-10-15 — Cosmos → Data Explorer, after the container fold (Grant, screenshot)
+
+| What | Observed |
+|---|---|
+| Containers in `badminton` | 24 — `aliases`, `feedback` and `authmigration` deleted by Grant after PR 2 (#619) deployed; the list matches `lib/containers.ts` |
+| Database throughput (Scale) | 400 RU/s, manual |
+| Free tier | the Scale page's banner: *"With free tier, you will get the first 1000 RU/s and 25 GB of storage in this account for free."* The Cosmos bill is $0, and was $0 at 800 RU/s too |
+| Cost estimate shown | $23.36/mo at list price for 400 RU/s — what the free tier is absorbing |
+
+Consequence: the fold bought two shared slots and headroom under the cap, not
+money. One dedicated container can be added free (800 ≤ 1000); the shared
+database is at 23 of 25.
+
+### 2026-10-14 — Cost Management export, subscription, 1–14 Oct (Grant, CSV)
+
+| What | Observed |
+|---|---|
+| `cosmos-bd` | $0 on every meter (`100 RU/s`, `Data Stored`, continuous 7-day backup): the free tier |
+| `granxyzou-vnext-bpm` (production plan) | B1 Linux $5.64 USD; Defender for Cloud `Standard Node` $6.25 |
+| `asp-grantzou-b0c9` (the staging slot's plan) | Defender for Cloud `Standard Node` $6.25 — on a plan whose only app is the Free-tier `staging-badminton-app` |
+| `vnext-badminton-app` | bandwidth $0.05; a `Free Plan - Linux` meter at $0 |
+| Not BPM | `portfolio-fd-prod` (Azure Front Door Standard) $14.80, two Basic container registries in `gzlearnscix` and `rg-migration` $2.17 each, the default Log Analytics workspace $1.15 |
+| Subscription total | $38.47 USD ($53.33 CAD) for the fortnight, about $82 USD a month at that rate |
+
+Consequence: the badminton app itself costs about $12 USD a month (B1) plus
+pennies of bandwidth; Cosmos is $0. The two Defender charges are the one
+BPM-side line worth a decision, and the Front Door base fee is the biggest
+line on the subscription and belongs to another project.
 
 ### 2026-10-07 — not yet observed
 
@@ -458,9 +489,11 @@ unknown.
    database is full at 25 (26 shared rows, `aliases` dedicated); the account is
    not exempt, and the 2026-10-10 refusal was the cap. Rule from here: a new
    doc kind goes into an existing container; a genuinely new container is a
-   budget line (~$23/month) decided before the code is written.
-2. **Backup.** Cosmos → Backup & Restore: periodic or continuous. Nothing in
-   the repo shows a restore has ever been tried.
+   decision made before the code is written — free under the free tier up to
+   one dedicated 400 RU/s, a budget line past that.
+2. **Backup — answered 2026-10-14 by the cost export:** continuous, 7-day
+   point-in-time restore (§3). A restore has still never been tried; that is
+   the drill left.
 3. **Alerts.** App Service → Alerts: at least one rule on HTTP 5xx. There are
    none known today.
 
@@ -471,8 +504,8 @@ status code).
 **Start the scale work when one of these happens, not before:** Cosmos 429s
 on a sign-up night (Cosmos → Metrics → Total Requests by status code); a second
 club with real weekly traffic; a feature that needs a partition key no existing
-container has. Until then the share-by-kind rule costs nothing and the 800 RU/s
-is the whole database bill.
+container has. Until then the share-by-kind rule costs nothing and the free
+tier makes the database bill $0.
 
 **Only later, if clubs grow into the dozens:** a shared rate-limit store before
 a second instance; per-club addresses for per-club previews; a cost review of
