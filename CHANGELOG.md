@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Email, Google and Apple sign-in are no longer behind a flag (2026-10-15)
+
+`NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` retired on its date. It has been on in production since the store launch, so nothing a member sees changes. The code that ran when it was off is gone: the 404 at the top of all sixteen `/api/auth/*` routes, the "Sign-up isn't available yet" and "needs an account" screens, and ProfileTab's PIN-only arrangement. Which buttons show is still decided by which providers have credentials configured (`configuredProviders()`), so a deployment with none still gets the PIN form alone. `docs/flag-retirements.md` has the record.
+
 ### Home's title matches every other tab (2026-10-15)
 
 Grant: "this header size is off from the other page." Home rendered the club name at 16px semibold (`PageHeader compact`, from the 2026-08-27 hierarchy pass) while Stringing, Stats and Profile use the 30px `bpm-h1`; the compact title also grew to 18px on scroll, because the shared condensed rule is more specific. The variant is deleted and Home uses the same header as every tab. The "What's new" line under it loses its 8px inset so it lines up with the title.

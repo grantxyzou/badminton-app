@@ -20,10 +20,8 @@ let ipSeq = 0;
 beforeEach(() => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
 });
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 function req(body: Record<string, unknown>, cookie?: string): NextRequest {
@@ -181,11 +179,4 @@ describe('DELETE /api/auth/identity', () => {
     expect(stored(m.id).email).toBe('grant@example.com');
   });
 
-  it('404s when the flag is off', async () => {
-    const m = seedMember('Lin', { pinHash: await hashPin('1234'), linkedProviders: ['google'] });
-    await reserveIdentity('google', 'sub-lin', m.id);
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await DELETE(req({ provider: 'google' }, asMember('Lin', m.id)));
-    expect(res.status).toBe(404);
-  });
 });

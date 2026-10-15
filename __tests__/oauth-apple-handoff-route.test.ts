@@ -86,11 +86,9 @@ const fragmentOf = (res: Response) => new URLSearchParams(locOf(res).hash.replac
 beforeEach(() => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
   process.env.APP_ORIGIN = 'https://bpm.grantzou.com';
 });
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
   delete process.env.APP_ORIGIN;
   vi.restoreAllMocks();
 });

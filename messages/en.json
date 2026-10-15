@@ -1891,8 +1891,7 @@
       "accountTitle": "Join {name}",
       "accountBody": "Create your account. It takes a second.",
       "or": "or",
-      "haveAccount": "Already have an account? Log in",
-      "noProviders": "Sign-up isn't available yet. Ask an admin to add you."
+      "haveAccount": "Already have an account? Log in"
     }
   },
   "onboarding": {
@@ -1926,7 +1925,6 @@
       "done": "Done",
       "tooMany": "You already organise as many groups as one account can. Hand one on before starting another.",
       "nameTooShort": "Give the group a name of at least 2 characters.",
-      "needsAccount": "Create your account first — tap \u201cI already have an account\u201d to sign in or set one up, then come back.",
       "failed": "Couldn't create the group. Try again."
     },
     "join": {
@@ -1952,7 +1950,6 @@
       "joining": "Joining…",
       "joined": "You're in",
       "notFound": "That link or code doesn't work. Ask whoever invited you for a fresh one.",
-      "needsAccount": "You'll need an account first. Sign up with email or Google on Profile — this invite is kept, and you'll land straight in {name}.",
       "nameTaken": "Someone in that group already goes by that name. Pick a different one.",
       "failed": "Couldn't join. Try again."
     }

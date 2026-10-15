@@ -13,7 +13,6 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { getContainer } from '@/lib/cosmos';
 import { claimHandoff } from '@/lib/authHandoff';
 import { completeSignIn } from '@/lib/authSession';
@@ -26,10 +25,6 @@ import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   // Rate limit BEFORE anything else (security rule 4). The claim is a
   // guessable-shaped endpoint — 32 bytes of entropy make guessing hopeless, but
   // a limiter keeps a flood from becoming a Cosmos bill.

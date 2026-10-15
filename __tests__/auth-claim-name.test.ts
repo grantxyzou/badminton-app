@@ -27,10 +27,8 @@ let ipSeq = 0;
 beforeEach(() => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
 });
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 function pendingCookie(over: Partial<PendingSignup> = {}): string {
@@ -184,9 +182,4 @@ describe('POST /api/auth/claim-name', () => {
     expect(stored(grant.id).role).toBe('admin');
   });
 
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await POST(req({ name: 'Grant', pin: '1130' }, pendingCookie()));
-    expect(res.status).toBe(404);
-  });
 });

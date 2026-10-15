@@ -8,10 +8,8 @@ const URL_ = 'http://localhost:3000/bpm/api/auth/signin';
 
 beforeEach(() => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
 });
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 /**
@@ -114,11 +112,4 @@ describe('POST /api/auth/signin', () => {
     }
   });
 
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await POST(
-      makeRequest('POST', URL_, { email: 'kento@example.com', password: 'a good long password' }),
-    );
-    expect(res.status).toBe(404);
-  });
 });

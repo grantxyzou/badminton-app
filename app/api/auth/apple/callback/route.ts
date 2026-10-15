@@ -19,7 +19,6 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { appOrigin, appleClient, decodeIdTokenClaims } from '@/lib/oauthProviders';
 import { readOAuthCookies, classifyState, describeCallbackContext } from '@/lib/oauthState';
 import { readHandoff, handoffStateMatches, isHandoffRef } from '@/lib/authHandoff';
@@ -48,10 +47,6 @@ export function readOneShotName(raw: string | null): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   // appOrigin THROWS when APP_ORIGIN is unset outside local dev. Unguarded,
   // that 500s before ANY of this route's oauthFailure redirects can run -- and
   // oauthFailure itself needs an origin to redirect to, so the fallback is a

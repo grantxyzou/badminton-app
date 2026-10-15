@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 import { resetMockStore, seedMember, getStore } from './helpers';
 import { POST } from '../app/api/auth/complete-signup/route';
@@ -11,10 +11,6 @@ let ipSeq = 0;
 
 beforeEach(() => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
-});
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 /** Mint a real signed pending cookie by round-tripping through the setter. */
@@ -127,11 +123,6 @@ describe('POST /api/auth/complete-signup', () => {
     expect((await lookupIdentity('google', 'google-sub-1'))).not.toBeNull();
   });
 
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await POST(req({ name: 'Carolina' }, pendingCookie()));
-    expect(res.status).toBe(404);
-  });
 });
 
 /**

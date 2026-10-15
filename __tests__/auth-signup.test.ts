@@ -8,12 +8,10 @@ const URL_ = 'http://localhost:3000/bpm/api/auth/signup';
 
 beforeEach(() => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 function body(over: Record<string, unknown> = {}) {
@@ -108,9 +106,4 @@ describe('POST /api/auth/signup', () => {
     expect(await lookupIdentity('email', 'orphan@example.com')).toBeNull();
   });
 
-  it('404s when the flag is off, so a client flag flip cannot reach the database', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await POST(makeRequest('POST', URL_, body()));
-    expect(res.status).toBe(404);
-  });
 });

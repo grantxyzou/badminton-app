@@ -18,7 +18,6 @@
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
   | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
-  | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
@@ -57,12 +56,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'never',
     note: 'Deliberately dateless. This gates the /design preview route — developer tooling, not a staged feature, so there is no ship moment to count two weeks from. It retires when the route does.',
-  },
-  NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: {
-    description:
-      'Email+password sign-up, Sign in with Google, and Sign in with Apple, plus the dismissible upgrade nudge for existing PIN-only members. Gates the UI entry points AND the /api/auth/* routes (read server-side there, since a client flag cannot protect the database). The PIN path is unaffected and is NOT being retired: turning this off restores name+PIN as the only credential with no data migration and no orphaned records, because provider identities live in their own container rather than replacing anything on the member.',
-    owner: 'grant',
-    plannedRemoval: '2026-10-15',
   },
   NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: {
     description:
@@ -150,8 +143,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
-    case 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS':
-      return process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
     case 'NEXT_PUBLIC_FLAG_STRINGING':
       return process.env.NEXT_PUBLIC_FLAG_STRINGING;
     case 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE':

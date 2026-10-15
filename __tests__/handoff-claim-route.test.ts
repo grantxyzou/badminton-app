@@ -41,10 +41,8 @@ async function webStash(outcome: Parameters<typeof completeHandoff>[1]) {
 beforeEach(() => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
 });
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 describe('POST /api/auth/handoff/claim', () => {
