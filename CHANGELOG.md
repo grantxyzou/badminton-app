@@ -50,7 +50,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### The Set-up card is the Gear register (2026-10-14)
 
-`NEXT_PUBLIC_FLAG_GEAR_SETUP` retired, a month after it turned on (Grant: "yes retire the flag"). The flag-off register — `GearPickRail`, `YourKitCard`, `BagList`, `GearSheet` and their six test files — is deleted; `GearRegister` is the Set-up register outright. Nothing a member sees changes. The plan's kill criterion (`docs/plans/equipment-setup-card.md`) could not be read as written, so the card stays on a product call, with `racketSavers` 10/36 recorded as the baseline for the next look.
+`NEXT_PUBLIC_FLAG_GEAR_SETUP` retired, a month after it turned on (Grant: "yes retire the flag"). The flag-off register — `GearPickRail`, `YourKitCard`, `BagList`, `GearSheet` and their six test files — is deleted; `GearRegister` is the Set-up register outright. `GearPickCard`, the rail's card, followed the next day once it was clear nothing rendered it (its types moved to `components/stats/gearPick.ts`), and `docs/flag-retirements.md` records the retirement. Nothing a member sees changes. The plan's kill criterion (`docs/plans/equipment-setup-card.md`) could not be read as written, so the card stays on a product call, with `racketSavers` 10/36 recorded as the baseline for the next look.
 
 ### Three containers folded into the cabinets that hold their kind (2026-10-14)
 
