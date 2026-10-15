@@ -173,7 +173,7 @@ virtual network. Neither has been done. †
 | API | NoSQL |
 | Database name | `badminton` (env var `COSMOS_DB_NAME`) |
 | Throughput | **400 RU/s, on the FREE TIER** (read in the portal 2026-10-15, §9): the `badminton` database holds 400 RU/s shared, the minimum for a shared database, and the account's free tier covers the first 1000 RU/s and 25 GB, so the Cosmos bill is **$0** and was $0 even while `aliases` carried its own 400 RU/s on top (800 total, read 2026-10-14). The fold's win was the two shared slots and the cap headroom, not money — the earlier claim that the dedicated container doubled the bill was wrong, corrected the day the free-tier banner was read. Free headroom now: one more dedicated 400 RU/s container (800 ≤ 1000) costs nothing; a second would bill the 200 RU/s over. **The shared database was at Microsoft's 25-container cap.** The code defined 27 on the day of the reading; in the portal 26 of them sit on the shared throughput and `aliases` is the one dedicated container — created by hand with its own throughput, which is why it does not count against the shared cap. Past 25, a new container can only be added with its own dedicated throughput (another 400 RU/s minimum — free while the account total stays under the free tier's 1000). **2026-10-10: the first create past the cap was refused in production** — the string inventory shipped with a 28th container, `stringStock`, and its admin card failed to load the day it deployed; the portal shows no `stringStock` row, which confirms the refusal. The fix moved those rows into `clubSettings` (`CLAUDE.md`, Cosmos DB convention: a new doc KIND goes into an existing container). **The fold shipped** (`docs/plans/container-fold.md`): `aliases` into `clubSettings`, `feedback` into `releases`, `authmigration` into `authhandoff`. The copy ran in production on 2026-10-15 (14 aliases, 4 reports, zero remaining), the code defines 24, and Grant deleted the three old containers the same day: the database reads 400 RU/s with 23 shared containers, two slots free (§9) |
-| Backup mode † | Not recorded. The `deploy-promotion` skill claims 7-day point-in-time restore; nothing in the repo shows it was set or exercised |
+| Backup mode | **Continuous, 7-day** — the cost export of 2026-10-14 carries a `PITR · Cont 7D Bkup Continuous Backup` meter for `cosmos-bd` (at $0, inside the free tier). Point-in-time restore to any moment in the last week; a restore has still never been exercised |
 | Access † | Primary/secondary keys via connection string; no RBAC role assignments, no managed identity |
 
 ### Containers
@@ -365,7 +365,8 @@ Browser
 
 | Resource | Cost |
 |----------|------|
-| App Service B1 Basic † | ~$13 USD/month — Always On, dedicated compute, no cold starts |
+| App Service B1 Basic | ~$12 USD/month (the 2026-10-14 cost export: $5.64 for 1–14 Oct) — Always On, dedicated compute, no cold starts |
+| Microsoft Defender for Cloud, App Service plan protection | **~$27 USD/month, on TWO plans** — the export bills `Standard Node` on `granxyzou-vnext-bpm` (production, B1) AND on `asp-grantzou-b0c9` (the Free-plan staging slot's plan), $6.25 each for 1–14 Oct. More than the app's compute. Whether to keep it is Grant's call (Defender for Cloud → Environment settings → Defender plans → App Service); the staging plan's charge buys nothing |
 | Cosmos DB 400 RU/s | **$0 — free tier** (first 1000 RU/s and 25 GB; read in the portal 2026-10-15). Would be ~$23 USD/month at list price |
 | Anthropic Claude API | Pay-per-token; low volume |
 
@@ -432,6 +433,22 @@ Consequence: the fold bought two shared slots and headroom under the cap, not
 money. One dedicated container can be added free (800 ≤ 1000); the shared
 database is at 23 of 25.
 
+### 2026-10-14 — Cost Management export, subscription, 1–14 Oct (Grant, CSV)
+
+| What | Observed |
+|---|---|
+| `cosmos-bd` | $0 on every meter (`100 RU/s`, `Data Stored`, continuous 7-day backup): the free tier |
+| `granxyzou-vnext-bpm` (production plan) | B1 Linux $5.64 USD; Defender for Cloud `Standard Node` $6.25 |
+| `asp-grantzou-b0c9` (the staging slot's plan) | Defender for Cloud `Standard Node` $6.25 — on a plan whose only app is the Free-tier `staging-badminton-app` |
+| `vnext-badminton-app` | bandwidth $0.05; a `Free Plan - Linux` meter at $0 |
+| Not BPM | `portfolio-fd-prod` (Azure Front Door Standard) $14.80, two Basic container registries in `gzlearnscix` and `rg-migration` $2.17 each, the default Log Analytics workspace $1.15 |
+| Subscription total | $38.47 USD ($53.33 CAD) for the fortnight, about $82 USD a month at that rate |
+
+Consequence: the badminton app itself costs about $12 USD a month (B1) plus
+pennies of bandwidth; Cosmos is $0. The two Defender charges are the one
+BPM-side line worth a decision, and the Front Door base fee is the biggest
+line on the subscription and belongs to another project.
+
 ### 2026-10-07 — not yet observed
 
 | Page | What to read | Observed |
@@ -474,8 +491,9 @@ unknown.
    doc kind goes into an existing container; a genuinely new container is a
    decision made before the code is written — free under the free tier up to
    one dedicated 400 RU/s, a budget line past that.
-2. **Backup.** Cosmos → Backup & Restore: periodic or continuous. Nothing in
-   the repo shows a restore has ever been tried.
+2. **Backup — answered 2026-10-14 by the cost export:** continuous, 7-day
+   point-in-time restore (§3). A restore has still never been tried; that is
+   the drill left.
 3. **Alerts.** App Service → Alerts: at least one rule on HTTP 5xx. There are
    none known today.
 
