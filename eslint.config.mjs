@@ -100,8 +100,18 @@ const config = [
     // warnings — a future "make it compiler-ready" pass (audit Harvest B) can
     // address them — but don't block CI on them. The classic correctness rule
     // `rules-of-hooks` stays an error; `exhaustive-deps` stays a warning.
+    //
+    // `set-state-in-effect` is OFF, not warn (Grant, 2026-10-14). react-hooks
+    // 7.1 (eslint-config-next 16.4, #628) raised it to 59 sites, and every one
+    // read is the loading cascade doing its job: `setLoading(true)` at the top
+    // of an effect before the fetch, so the skeleton shows the instant a sheet
+    // opens or a tab mounts (docs/plans/loading-cascade.md), or a one-shot
+    // storage marker that cannot be derived during render. The rule cannot
+    // tell that from redundant state, and 59 permanent warnings nobody acts
+    // on train everyone to skim the list. The other three stay as warnings:
+    // they are a real backlog (17 sites on 2026-10-14).
     rules: {
-      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/set-state-in-effect': 'off',
       'react-hooks/static-components': 'warn',
       'react-hooks/purity': 'warn',
       'react-hooks/refs': 'warn',
