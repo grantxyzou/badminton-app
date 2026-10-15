@@ -2,7 +2,9 @@
 
 **Track:** ROADMAP North Star pillar 4 (recommendations strong enough to suggest) — the club tally and the fit engine are only as good as the equipment members log, and today almost nobody logs any.
 **Status:** shipped 2026-09-14 (#419 dark, then the flag turned on)
-**Review on:** 2026-10-22 — the flag has been on since 2026-09-14 (#419); did the share of members with a racket AND a string logged go up? (2026-10-15: half-answered. The flip-week baseline the kill criterion compares against was never written down, so the comparison cannot be made as stated; Grant reads `GET /api/stats/club/gear` today, that number is recorded here as the baseline, and the criterion is read against it four weeks on. The flag's own removal date, 2026-10-12, is past — which branch survives waits on this.)
+**Review on:** 2026-11-12 — four weeks on the baseline below: has `racketSavers` in `GET /api/admin/slice0` risen above 10, and has the racket-AND-string count gained a reader?
+
+**Read 2026-10-15** (Grant, in the browser): the flag has been on since 2026-09-14 (#419). The kill criterion cannot be read as written — `GET /api/stats/club/gear` is the cohort-gated tally (`minCohort: 3`) and answered `entries: []`, because no racket or string model is shared by three members yet; it never carried a per-member "has both" count, and nothing else does. The nearest reader is slice0's `racketSavers`: **10 of 36** roster members have a racket saved. That is the baseline from today, racket-only. The flip-week number was never recorded. Two consequences: the criterion is reworded above onto the number that exists, and the retirement of `NEXT_PUBLIC_FLAG_GEAR_SETUP` (removal date 2026-10-12, past) is a decision for Grant rather than a reading — the card stays unless he says otherwise.
 
 ## Problem
 
