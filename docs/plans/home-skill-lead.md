@@ -61,12 +61,33 @@ nobody acts on is a cost paid by everyone weekly.
   mount beacon stays as it is. Slice0 adds `homeLeadTappers` (members).
 - **A measured placeholder, not a space-less slot.** The card renders for every
   identified member now, so the loading rule applies: its slot holds the card's height.
+- **Rebuilt as an upsell, 2026-10-15.** Grant, on the one-line card in production:
+  *"this does not make sense, I would be like huh? … Redesign it. Like an actual
+  upsell."* "Level 3.4 overall" named no scale and no subject, and nothing said what a
+  tap would get. Explored on a design canvas first; the first redesign (~560px, a list
+  of Stats sections and a button) was *"too tall … a quarter or half"*. What shipped is
+  one tappable card of at most three rows, held at 160px (the tallest state at 400px):
+  a headline in words, the level **out of 5** beside a small line through the recent
+  check-ins (or a dotted line to the next one), and three chips naming what Stats holds
+  — Focus drill, Your record (a chart glyph: *"data related"*), Racket fit.
+- **The never-rated state names the club and asks.** Grant: *"This is the {group
+  name}'s average skill level. Add yours."*, and *"after adding there will be
+  improvement tips, drills, racket, and string recommendations"*. The headline takes
+  the group's name from `useCurrentGroup` (the app name with groups off); the bars are
+  the dimension MEDIANS, which "average" stands for in member-facing copy. This
+  supersedes **Third person, always** above: Grant's own copy says "yours", and the
+  headlines speak to the member ("Your level is climbing").
+- **Blue, not green.** The card wears the Stats field's blue (`--sev-low-text`) and a
+  faint glow from the corner the Stats field is lit from, so it reads as a window into
+  that tab; accent stays spent on the sign-up button, and the card carries no filled
+  button that could outweigh it. A rise is blue, a dip is neutral text, never red.
 
 ## Shape
 
 | piece | file |
 |---|---|
-| The card (three states, two reads through `sharedFetch`) | `components/home/SkillLeadCard.tsx` (replaces `SkillDiscoveryCard.tsx`) |
+| The card (its states, two reads through `sharedFetch`) | `components/home/SkillLeadCard.tsx` (replaces `SkillDiscoveryCard.tsx`) |
+| Its look (classes and the two `--skill-lead-*` tokens) | `app/globals.css` (`.skill-lead*`) |
 | Its slot and measured placeholder | `components/HomeTab.tsx` |
 | `stats_open` may carry `source: 'home'` | `lib/events.ts`, `app/api/events/route.ts` |
 | `homeLeadTappers` | `app/api/admin/slice0/route.ts` |

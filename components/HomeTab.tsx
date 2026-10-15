@@ -1142,7 +1142,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         )}
       </div>
 
-      {/* The skill lead (docs/plans/home-skill-lead.md): one line under the
+      {/* The skill lead (docs/plans/home-skill-lead.md): a compact card under the
           sign-up card, for every identified member, every week — the club
           spread and the ask, or the member's own level and how it moved. It
           replaced the self-retiring discovery hook on 2026-10-14, because a
@@ -1151,7 +1151,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           the card's measured height rather than being space-less. */}
       {currentUser && (
         <RevealSlot placeholder={<CardSkeleton height={SKILL_LEAD_HEIGHT} />}>
-          <SkillLeadCard name={currentUser} onOpen={() => onTabChange?.('skills')} />
+          <SkillLeadCard name={currentUser} club={clubName} onOpen={() => onTabChange?.('skills')} />
         </RevealSlot>
       )}
 
