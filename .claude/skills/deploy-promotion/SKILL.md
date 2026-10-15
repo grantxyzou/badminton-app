@@ -17,10 +17,12 @@ The names are inverted relative to reality, and this has caused repeated confusi
 - The app service called **`badminton-app`** sounded like production and was not. It was
   120+ commits behind, had no custom domain, and pointed at a database that doesn't exist.
   **It and its B1 plan were deleted on 2026-08-25.**
-- **`staging-badminton-app` is still there and is deliberately kept.** It runs on an F1
-  **Free** plan (`ASP-grantzou-b0c9`), so it costs nothing; it holds no deployment, has no
-  custom domain, and nothing in `.github/` targets it. Don't mistake it for production and
-  don't delete it — it's kept on purpose. (It has `httpsOnly: false`, which is harmless
+- **`staging-badminton-app` is still there and is deliberately kept.** Since 2026-10-15 it
+  sits on the PRODUCTION plan `granxyzou-vnext-bpm` (its F1 Free plan `ASP-grantzou-b0c9`
+  was deleted — it carried a second Defender for App Service charge for an idle app). An idle
+  app on the same plan costs nothing; it holds no deployment, has no custom domain, and
+  nothing in `.github/` targets it. Don't mistake it for production and don't delete it —
+  it's kept on purpose. (It has `httpsOnly: false`, which is harmless
   while it serves nothing but is worth flipping if it is ever used for anything.)
 - `deploy-next.yml` sets `NEXT_PUBLIC_ENV: stable` **on purpose**, with a comment saying
   so. Building production as `next` made it advertise itself as a preview — the

@@ -366,7 +366,7 @@ Browser
 | Resource | Cost |
 |----------|------|
 | App Service B1 Basic | ~$12 USD/month (the 2026-10-14 cost export: $5.64 for 1–14 Oct) — Always On, dedicated compute, no cold starts |
-| Microsoft Defender for Cloud, App Service plan protection | **~$27 USD/month, on TWO plans** — the export bills `Standard Node` on `granxyzou-vnext-bpm` (production, B1) AND on `asp-grantzou-b0c9` (the Free-plan staging slot's plan), $6.25 each for 1–14 Oct. More than the app's compute. Whether to keep it is Grant's call (Defender for Cloud → Environment settings → Defender plans → App Service); the staging plan's charge buys nothing |
+| Microsoft Defender for Cloud, App Service plan protection | **~$13 USD/month, one plan** since 2026-10-15. The 1–14 Oct export billed `Standard Node` on TWO plans, $6.25 each: production's `granxyzou-vnext-bpm` and `asp-grantzou-b0c9`, whose only app was the idle Free-tier `staging-badminton-app`. Grant moved that app onto the production plan and deleted the Free plan the same day, which ends the second charge. Whether to keep Defender on production is still his call (Defender for Cloud → Environment settings → Defender plans → App Service) |
 | Cosmos DB 400 RU/s | **$0 — free tier** (first 1000 RU/s and 25 GB; read in the portal 2026-10-15). Would be ~$23 USD/month at list price |
 | Anthropic Claude API | Pay-per-token; low volume |
 
@@ -374,8 +374,9 @@ Browser
 
 The app ran on Free (F1) until the cold-start wake time (10–20s) became
 disruptive for live-session use. B1 Basic added Always On, which eliminates the
-cold start entirely. `staging-badminton-app` still exists on a Free plan, holds
-no deployment, and is the natural target for a restore drill.
+cold start entirely. `staging-badminton-app` still exists, holds no deployment,
+and is the natural target for a restore drill; since 2026-10-15 it sits on the
+production B1 plan (its own Free plan was deleted — see §9, 2026-10-15).
 
 ### Alternative hosting paths
 
@@ -432,6 +433,18 @@ page does not show them).
 Consequence: the fold bought two shared slots and headroom under the cap, not
 money. One dedicated container can be added free (800 ≤ 1000); the shared
 database is at 23 of 25.
+
+### 2026-10-15 — App Service: staging moved onto the production plan (Grant, portal)
+
+| What | Observed |
+|---|---|
+| `staging-badminton-app` | moved from its own Free plan `ASP-grantzou-b0c9` (F1, Canada Central, Linux) onto `granxyzou-vnext-bpm` (B1, the production plan), via the app's App Service plan blade → Change plan |
+| `ASP-grantzou-b0c9` | deleted in the same step (the "delete the unused plan" box) |
+| Why | the cost export below billed Defender for App Service `Standard Node` on that plan, $6.25 a fortnight, for an idle Free-tier app. One plan is one Defender charge |
+
+Consequence: the subscription has ONE App Service plan. Staging shares B1 with
+production and costs nothing while idle; if it is ever used for a restore
+drill, remember it competes with production for the one small instance.
 
 ### 2026-10-14 — Cost Management export, subscription, 1–14 Oct (Grant, CSV)
 
