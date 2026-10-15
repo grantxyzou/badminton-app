@@ -17,7 +17,7 @@ The names are inverted relative to reality, and this has caused repeated confusi
 - The app service called **`badminton-app`** sounded like production and was not. It was
   120+ commits behind, had no custom domain, and pointed at a database that doesn't exist.
   **It and its B1 plan were deleted on 2026-08-25.**
-- **`staging-badminton-app` is still there and is deliberately kept.** Since 2026-10-15 it
+- **`staging-badminton-app` is still there and is deliberately kept.** Since 2026-10-14 it
   sits on the PRODUCTION plan `granxyzou-vnext-bpm` (its F1 Free plan `ASP-grantzou-b0c9`
   was deleted — it carried a second Defender for App Service charge for an idle app). An idle
   app on the same plan costs nothing; it holds no deployment, has no custom domain, and
