@@ -79,7 +79,9 @@ describe('Home sign-up card, members only', () => {
   it('signs up with one tap', async () => {
     renderHome('Lin');
     await screen.findByText('Signing up as Lin');
-    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
+    // Role queries skip the RevealSlot's `hidden` wrapper; the text query above
+    // does not, so await the button too (same race as #540).
+    fireEvent.click(await screen.findByRole('button', { name: /I'm in/i }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([u, i]) => String(u).includes('/api/players') && (i as RequestInit)?.method === 'POST')).toBe(true),
     );
@@ -118,7 +120,7 @@ describe('the pre-flip sign-in warning', () => {
     probeAnswers({ createdAt: '2026-01-01', hasPin: false, authed: false });
     renderHome(null);
     expect(await screen.findByText('Set up a way to sign in', {}, { timeout: 2000 })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Ask to be let in' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Ask to be let in' })).toBeDefined();
   });
 
   it('once signed up, the confirmation itself is the warning — amber, not a green thank-you', async () => {
@@ -134,7 +136,7 @@ describe('the pre-flip sign-in warning', () => {
     });
     renderHome(null);
     expect(await screen.findByText("Kento, you're in this week", {}, { timeout: 2000 })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Ask to be let in' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Ask to be let in' })).toBeDefined();
     expect(screen.queryByText("Kento, you're in")).toBeNull();
     // One warning, in the sign-up card — not a second copy down in the account group.
     expect(screen.queryByText('Set up a way to sign in')).toBeNull();
