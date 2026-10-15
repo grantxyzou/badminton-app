@@ -80,8 +80,7 @@ describe('GET /api/reports/metrics', () => {
 describe('GET /api/reports/feedback', () => {
   it('returns recent reports with the person taken out, newest first', async () => {
     seedDoc('releases', { id: 'r1', kind: 'feedback', message: 'Sign-up button did nothing', name: 'Lin', ip: '203.0.113.9', tab: 'home', url: 'https://bpm.grantzou.com/bpm?join=abcdef0123456789#code=999', createdAt: ago(2) });
-    // Still in the old container during the fold window: read all the same.
-    seedDoc('feedback', { id: 'r2', message: 'Stats would not load', tab: 'skills', url: '/bpm', createdAt: ago(1) });
+    seedDoc('releases', { id: 'r2', kind: 'feedback', message: 'Stats would not load', tab: 'skills', url: '/bpm', createdAt: ago(1) });
     seedDoc('releases', { id: 'r3', kind: 'feedback', message: 'old one', createdAt: ago(60) });
     // A changelog entry shares the container and is never a report.
     seedDoc('releases', { id: 'rel-1', kind: 'release', version: '9.9', message: 'not a report', createdAt: ago(1), publishedAt: ago(1) });

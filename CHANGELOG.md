@@ -56,6 +56,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Nothing is unreadable during the move**: every alias and report read is the new home union the old container until the copy has run, and editing a legacy alias moves it.
 - **`GET`/`POST /api/admin/migrate-containers`** (admin cookie + `x-migration-key`, the `migrate-groups` gate, now shared through `lib/migrationKey.ts`) copies the old rows under their own ids, idempotently, and reports what is left. PR 2 deletes the fallbacks and the route; the old containers are then deleted in the portal.
 - The releases route stamps `kind: 'release'`, lists releases only, and refuses to delete a report by id.
+- **2026-10-15: the copy ran** (14 aliases, 4 reports, nothing remaining) and PR 2 removed the fallback reads, the copy route and the legacy registry entries; the code defines 24 containers. The three old containers are deleted in the portal.
 
 ### Motion hygiene from the design-engineering review (2026-10-11)
 

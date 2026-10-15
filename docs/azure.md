@@ -172,7 +172,7 @@ virtual network. Neither has been done. †
 | Account name † | `cosmos-bd` |
 | API | NoSQL |
 | Database name | `badminton` (env var `COSMOS_DB_NAME`) |
-| Throughput | **800 RU/s billed, read in the portal 2026-10-14 (§9)**: the `badminton` database holds 400 RU/s shared, the minimum for a shared database, and `aliases` carries its OWN 400 RU/s on top, so the account pays for two minimums. **The shared database is at Microsoft's 25-container cap.** The code defined 27 on the day of the reading; in the portal 26 of them sit on the shared throughput and `aliases` is the one dedicated container — created by hand with its own throughput, which is why it does not count against the shared cap. Past 25, a new container can only be added with its own dedicated throughput (another 400 RU/s minimum, roughly $23/month). **2026-10-10: the first create past the cap was refused in production** — the string inventory shipped with a 28th container, `stringStock`, and its admin card failed to load the day it deployed; the portal shows no `stringStock` row, which confirms the refusal. The fix moved those rows into `clubSettings` (`CLAUDE.md`, Cosmos DB convention: a new doc KIND goes into an existing container). **The fold is in flight** (`docs/plans/container-fold.md`, 2026-10-14): `aliases` into `clubSettings`, `feedback` into `releases`, `authmigration` into `authhandoff` — the code defines 26 now and 24 once PR 2 lands, and the three old containers are deleted in the portal after `GET /api/admin/migrate-containers` reads zero remaining. That takes the total to 400 RU/s and leaves two free shared slots |
+| Throughput | **800 RU/s billed, read in the portal 2026-10-14 (§9)**: the `badminton` database holds 400 RU/s shared, the minimum for a shared database, and `aliases` carries its OWN 400 RU/s on top, so the account pays for two minimums. **The shared database is at Microsoft's 25-container cap.** The code defined 27 on the day of the reading; in the portal 26 of them sit on the shared throughput and `aliases` is the one dedicated container — created by hand with its own throughput, which is why it does not count against the shared cap. Past 25, a new container can only be added with its own dedicated throughput (another 400 RU/s minimum, roughly $23/month). **2026-10-10: the first create past the cap was refused in production** — the string inventory shipped with a 28th container, `stringStock`, and its admin card failed to load the day it deployed; the portal shows no `stringStock` row, which confirms the refusal. The fix moved those rows into `clubSettings` (`CLAUDE.md`, Cosmos DB convention: a new doc KIND goes into an existing container). **The fold shipped** (`docs/plans/container-fold.md`): `aliases` into `clubSettings`, `feedback` into `releases`, `authmigration` into `authhandoff`. The copy ran in production on 2026-10-15 (14 aliases, 4 reports, zero remaining) and the code defines 24; once the three old containers are deleted in the portal the total reads 400 RU/s with two free shared slots — record that reading in §9 |
 | Backup mode † | Not recorded. The `deploy-promotion` skill claims 7-day point-in-time restore; nothing in the repo shows it was set or exercised |
 | Access † | Primary/secondary keys via connection string; no RBAC role assignments, no managed identity |
 
@@ -180,23 +180,23 @@ virtual network. Neither has been done. †
 
 **`lib/containers.ts` is the registry** (partition key, scope, provisioning per
 container) and `__tests__/containers-registry.test.ts` pins it to the source.
-`CLAUDE.md` groups them by key. The 26 (two of them legacy homes mid-fold, see the throughput row), by partition key:
+`CLAUDE.md` groups them by key. The 24, by partition key:
 
 | Partition key | Containers |
 |---|---|
 | `/sessionId` | `sessions`, `players`, `announcements`, `skills`, `gameResults` |
 | `/memberId` | `events`, `assessments`, `insights`, `playerGear`, `pushSubscriptions`, `drillCompletions`, `stringingJobs`, `ledger` |
-| `/id` | `members`, `aliases` (legacy), `birds`, `identities`, `authhandoff`, `feedback` (legacy), `releases`, `clubSettings`, `groups`, `payments` |
+| `/id` | `members`, `birds`, `identities`, `authhandoff`, `releases`, `clubSettings`, `groups`, `payments` |
 | `/groupId` | `memberships` |
 | `/recipientMemberId` | `kudos` |
 | `/category` | `equipmentCatalog` |
 
-**Six of these keys are inferred, not declared** — `sessions`, `players`,
-`announcements`, `members`, `aliases`, `birds` were created by hand in the
+**Five of these keys are inferred, not declared** — `sessions`, `players`,
+`announcements`, `members`, `birds` were created by hand in the
 portal before `ensureContainer()` existed. The registry records what every call
 site assumes. The portal is ground truth; see "Observed in the portal". †
 
-The other 20 are created on first touch by `ensureContainer(name, pk)` in
+The other 19 are created on first touch by `ensureContainer(name, pk)` in
 `lib/cosmos.ts`, memoized per process. `ensureContainer` passes no throughput,
 so a container created past the shared database's 25th would be refused unless
 the account is exempt (see the Throughput row above).

@@ -77,6 +77,6 @@ describe('lib/containers registry', () => {
     // the backfill is what populates them, not what creates them.
     expect(PROVISIONED_CONTAINERS).not.toContain('groups');
     expect(PROVISIONED_CONTAINERS).not.toContain('memberships');
-    expect(PROVISIONED_CONTAINERS.length).toBe(21);
+    expect(PROVISIONED_CONTAINERS.length).toBe(19);
   });
 });

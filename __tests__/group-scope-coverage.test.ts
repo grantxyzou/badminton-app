@@ -28,9 +28,6 @@ const RAW_ACCESS_ALLOWLIST = new Set([
   // The person-side view of memberships ("which clubs am I in?") is cross-group
   // by definition. ONE raw read; `groups-lib.test.ts` pins the count at one.
   'lib/groups.ts',
-  // The container fold copies every `aliases` row of every club into
-  // `clubSettings` (docs/plans/container-fold.md); deleted with PR 2.
-  'lib/containerFold.ts',
   // The Phase 2 backfill stamps `groupId` onto every unstamped row of every
   // group container — it spans them all by definition, like the purge.
   'lib/groupBackfill.ts',

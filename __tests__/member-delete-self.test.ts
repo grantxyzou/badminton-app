@@ -123,7 +123,7 @@ beforeEach(async () => {
     kind: 'apple_refresh_token',
     refreshToken: 'refresh-wei',
   });
-  await getContainer('aliases').items.upsert({ id: 'a1', memberId: MEMBER_ID, name: 'Wei' });
+  await getContainer('clubSettings').items.upsert({ id: 'a1', kind: 'alias', groupId: 'bpm', memberId: MEMBER_ID, appName: 'Wei', etransferName: 'WEI CHEN' });
   await getContainer('skills').items.upsert({
     id: 's1',
     sessionId: 'session-2026-08-14',
@@ -224,7 +224,6 @@ describe('what is destroyed', () => {
     ['playerGear'],
     ['pushSubscriptions'],
     ['identities'],
-    ['aliases'],
     ['skills'],
     ['authhandoff'],
   ])('purges %s outright', async (container) => {

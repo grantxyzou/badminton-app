@@ -16,8 +16,8 @@
  * with this list. `__tests__/docs-canary.test.ts` separately holds CLAUDE.md's
  * bullet to the same set.
  *
- * SIX KEYS ARE INFERRED, NOT DECLARED: `sessions`, `players`, `announcements`,
- * `members`, `aliases`, `birds` predate `ensureContainer` and were created by
+ * FIVE KEYS ARE INFERRED, NOT DECLARED: `sessions`, `players`, `announcements`,
+ * `members`, `birds` predate `ensureContainer` and were created by
  * hand in the Azure portal. The values match every `.item(id, pk)` call site,
  * which is consistent with them but not proof; ground truth is the portal.
  */
@@ -48,10 +48,6 @@ export const CONTAINERS = {
   skills: { pk: '/sessionId', scope: 'group', provisioned: true, reason: 'per-session skill scores, keyed by roster name within that session' },
   gameResults: { pk: '/sessionId', scope: 'group', provisioned: true, reason: 'four roster names from one session' },
   birds: { pk: '/id', scope: 'group', provisioned: true, reason: "shuttle purchases and stock adjustments — one club's inventory" },
-  // LEGACY (docs/plans/container-fold.md, 2026-10-14): folded into `clubSettings` as
-  // `kind: 'alias'`. Read only by lib/aliases.ts's union fallback and copied by
-  // lib/containerFold.ts until PR 2 deletes both and the container.
-  aliases: { pk: '/id', scope: 'group', provisioned: true, reason: "e-transfer names read against one club's payments (security rule 10) — legacy home, being folded into clubSettings" },
   kudos: { pk: '/recipientMemberId', scope: 'group', provisioned: true, reason: 'eligibility is co-play on one roster, and raterName is a roster name' },
   stringingJobs: { pk: '/memberId', scope: 'group', provisioned: true, reason: "the bench is a club service; a job carries that club's rate card" },
   clubSettings: { pk: '/id', scope: 'group', provisioned: true, reason: "shop sign, stocked strings, rate card, gift cards, string purchases and the e-transfer aliases (kind 'alias') — per club, per-group ids" },
@@ -71,10 +67,6 @@ export const CONTAINERS = {
   // ── global ──────────────────────────────────────────────────────────────
   equipmentCatalog: { pk: '/category', scope: 'global', provisioned: true, reason: 'the racket/string catalog; seeded, not user data' },
   releases: { pk: '/id', scope: 'global', provisioned: true, reason: "the operator's container: the app's own changelog (kind 'release') and the problem reports (kind 'feedback'), which go to whoever runs the deployment, not a group admin" },
-  // LEGACY (docs/plans/container-fold.md, 2026-10-14): folded into `releases` as
-  // `kind: 'feedback'`. Read by lib/feedback.ts's union fallback and copied by
-  // lib/containerFold.ts until PR 2 deletes both and the container.
-  feedback: { pk: '/id', scope: 'global', provisioned: true, reason: 'reports go to the operator, not to a group admin — legacy home, being folded into releases' },
   groups: { pk: '/id', scope: 'global', provisioned: false, reason: 'the registry of clubs themselves — a group doc is not inside any group; read by id, never listed to a member' },
 } as const satisfies Readonly<Record<string, ContainerMeta>>;
 
