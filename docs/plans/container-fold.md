@@ -1,8 +1,7 @@
 # Container fold — three cheap merges to get the shared database off its cap
 
 **Track:** infrastructure baseline (`docs/plans/infra-baseline.md`, `docs/azure.md` §10) — the multi-group launch needs a database that can still take a container when a feature genuinely needs one, and a bill that is one Cosmos minimum, not two.
-**Status:** shipped 2026-10-15 (code); the portal deletions are Grant's, see Review on
-**Review on:** 2026-10-28 — have the `aliases`, `feedback` and `authmigration` containers been deleted in the portal, does the Cosmos total read 400 RU/s, and has `GET /api/admin/migrate-containers` reported zero remaining before each deletion?
+**Status:** shipped 2026-10-15 (code); the three containers deleted 2026-10-14 (`az` CLI) with the copy at zero remaining, and the portal reads 24 containers on 400 RU/s shared (`docs/azure.md` §9)
 
 ## Problem
 
@@ -120,6 +119,6 @@ fold has failed if, by the review date, the portal still bills 800 RU/s.
 | Tests | `__tests__/container-fold.test.ts` (copy, status, union, kind checks), the existing alias / feedback / migration tests pointed at the new homes |
 | Record | `docs/azure.md` §3 and §9, `CLAUDE.md` container list, `CHANGELOG.md` |
 
-**Record.** PR 1 (#618) deployed 2026-10-15; Grant ran the copy the same day: `aliases` 14 legacy / 14 copied / 0 remaining, `feedback` 4 / 4 / 0, `releases` 0 unstamped. PR 2 removed the fallbacks, the route, `lib/containerFold.ts` and the legacy registry and purge entries. Left for Grant: delete `aliases`, `feedback` and `authmigration` in the portal and confirm the total reads 400 RU/s.
+**Record.** PR 1 (#618) deployed 2026-10-15; Grant ran the copy the same day: `aliases` 14 legacy / 14 copied / 0 remaining, `feedback` 4 / 4 / 0, `releases` 0 unstamped. PR 2 removed the fallbacks, the route, `lib/containerFold.ts` and the legacy registry and purge entries. The three containers were deleted 2026-10-14 with `az cosmosdb sql container delete`, after the #619 deploy had succeeded; `az` then listed 24 containers, none with its own throughput, and the database at 400 RU/s manual — one minimum, one shared slot free.
 
 **Prod order (as run):** deploy PR 1 → `GET /api/admin/migrate-containers` → `POST { dryRun: true }` → `POST { dryRun: false }` → `GET` reads zero remaining → PR 2 → deploy → delete `aliases`, `feedback`, `authmigration` in the portal → portal total reads 400 RU/s → record in `docs/azure.md` §9.
