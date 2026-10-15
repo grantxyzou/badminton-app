@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The Set-up card is the Gear register (2026-10-14)
+
+`NEXT_PUBLIC_FLAG_GEAR_SETUP` retired, a month after it turned on (Grant: "yes retire the flag"). The flag-off register — `GearPickRail`, `YourKitCard`, `BagList`, `GearSheet` and their six test files — is deleted; `GearRegister` is the Set-up register outright. Nothing a member sees changes. The plan's kill criterion (`docs/plans/equipment-setup-card.md`) could not be read as written, so the card stays on a product call, with `racketSavers` 10/36 recorded as the baseline for the next look.
+
 ### Three containers folded into the cabinets that hold their kind (2026-10-14)
 
 `docs/plans/container-fold.md`. Grant's portal reading showed the shared Cosmos database at its 25-container cap and `aliases` on its own dedicated throughput, so the account provisioned two minimums for 3.7 MB of data (both free, it turned out: the account is on Cosmos's free tier, so the fold's win was two shared slots, not money).
