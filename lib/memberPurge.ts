@@ -56,11 +56,6 @@ interface PurgeTarget {
  */
 const OWNED: readonly PurgeTarget[] = [
   { container: 'identities', by: 'memberId' },
-  // Rule 10: e-transfer names are sensitive payment data. Scoped to the
-  // caller's OWN memberId — never a name fallback. This is the LEGACY home
-  // (docs/plans/container-fold.md); the `clubSettings` rows of kind 'alias'
-  // are `purgeAliasRows`, below, until PR 2 deletes this container.
-  { container: 'aliases', by: 'memberId' },
   { container: 'assessments', by: 'memberId' },
   { container: 'insights', by: 'memberId' },
   { container: 'playerGear', by: 'memberId' },
@@ -137,7 +132,6 @@ export const CLASSIFIED_ELSEWHERE: Readonly<Record<string, string>> = {
   members: 'the member row itself — deleted directly by the route',
   players: 'shared cost history — `anonymizePlayerRows`',
   gameResults: 'shared match history — `anonymizeGameResults`',
-  feedback: 'reports carry a name and an IP — `anonymizeFeedback` (legacy home, docs/plans/container-fold.md)',
   releases: "changelog entries are club-wide; the problem reports folded in beside them (kind 'feedback') carry a name and an IP — `anonymizeFeedback`",
   clubSettings: "shop sign, strings, rate card and string purchases are club-wide; the e-transfer aliases folded in (kind 'alias') name a member's bank legal name — `purgeAliasRows`",
   ledger: "store credit is forfeited (deleted); charges and payments are the club's history and are re-keyed under `~anon` — `relocateLedger`",
@@ -273,37 +267,18 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
     }
   }
 
-  // The aliases in their NEW home (`clubSettings`, kind 'alias'): theirs by
-  // memberId, plus the older shape matched by appName when no memberId names
-  // anyone (same rule as the legacy block below).
+  // Rule 10: e-transfer names are sensitive payment data. The aliases
+  // (`clubSettings`, kind 'alias'): theirs by memberId, plus the rows from
+  // before an alias carried one (the admin alias screen never wrote it),
+  // matched by appName and ONLY where no memberId names anyone — otherwise
+  // the link between this person's app name and their bank's legal name
+  // would outlive a deletion request, and a later member taking that name
+  // would inherit it.
   try {
     summary.deleted += await purgeAliasRows(memberId, lowerName);
   } catch (err) {
-    console.error('[purge] aliases (clubSettings) failed:', err);
+    console.error('[purge] aliases failed:', err);
     summary.failed.push('clubSettings:alias');
-  }
-
-  // Aliases from before they carried a `memberId` (the admin alias screen
-  // never wrote one) cannot be found by the OWNED loop above, so the link
-  // between this person's app name and their bank's legal name would outlive
-  // a deletion request — and a later member taking that name would inherit
-  // it. Matched by `appName`, and ONLY on rows with no `memberId`: a row that
-  // names its member belongs to that member and was handled above.
-  try {
-    const legacy = await queryAll(
-      'aliases',
-      'LOWER(c.appName) = @appName',
-      [{ name: '@appName', value: lowerName }],
-      (row) =>
-        !row.memberId && typeof row.appName === 'string' && row.appName.trim().toLowerCase() === lowerName,
-    );
-    for (const row of legacy) {
-      await getContainer('aliases').item(String(row.id), String(row.id)).delete();
-      summary.deleted += 1;
-    }
-  } catch (err) {
-    console.error('[purge] aliases (legacy, by name) failed:', err);
-    summary.failed.push('aliases:legacy');
   }
 
   // The ledger: credit is theirs and is forfeited; charges and payments are
@@ -531,8 +506,7 @@ export async function relocateLedger(memberId: string): Promise<{ deleted: numbe
 
 /**
  * Problem reports carry an optional reporter name AND the submitting IP. Both
- * are personal data; the report text is operational and stays. Over both
- * homes (lib/feedback.ts) until the fold's PR 2.
+ * are personal data; the report text is operational and stays (lib/feedback.ts).
  */
 export async function anonymizeFeedback(name: string): Promise<number> {
   return anonymizeFeedbackRows(name, TOMBSTONE_NAME);

@@ -23,11 +23,4 @@ describe('purgeMember — aliases', () => {
     expect((getStore()['clubSettings'] as Array<{ id: string }>).map((a) => a.id).sort()).toEqual(['a3', 'a4', 'gift:x']);
   });
 
-  it('still clears the legacy `aliases` container during the fold window', async () => {
-    seedDoc('aliases', { id: 'l1', groupId: 'bpm', appName: 'Lin', etransferName: 'MEI LING CHAN', memberId: 'm-lin' });
-    seedDoc('aliases', { id: 'l2', groupId: 'bpm', appName: 'lin', etransferName: 'LIN DAN' });
-    seedDoc('aliases', { id: 'l3', groupId: 'bpm', appName: 'Viktor', etransferName: 'V AXELSEN' });
-    await purgeMember('m-lin', 'Lin');
-    expect((getStore()['aliases'] as Array<{ id: string }>).map((a) => a.id)).toEqual(['l3']);
-  });
 });

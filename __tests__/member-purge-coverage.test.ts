@@ -80,10 +80,11 @@ describe('account deletion covers every container', () => {
    * `NOT_MEMBER_SCOPED` used to hold `players`, `gameResults`, `feedback` and
    * `members` too, which made its name assert something false about four
    * containers that hold personal data. Splitting them out only helps if they
-   * stay split.
+   * stay split. `releases` and `clubSettings` joined the list with the
+   * container fold (a report's name and IP, an alias's bank legal name).
    */
   it('keeps personal-data containers out of the "not member scoped" list', () => {
-    for (const container of ['players', 'gameResults', 'feedback', 'members']) {
+    for (const container of ['players', 'gameResults', 'releases', 'clubSettings', 'members']) {
       expect(
         NOT_MEMBER_SCOPED[container],
         `${container} holds member data — it belongs in CLASSIFIED_ELSEWHERE`,

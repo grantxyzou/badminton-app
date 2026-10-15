@@ -1,7 +1,7 @@
 /**
  * The migration key — the second lock on every admin route that rewrites
- * stored data in bulk (`migrate-groups`, `ledger-backfill`,
- * `migrate-containers`). An admin cookie proves a person; this proves the
+ * stored data in bulk (`migrate-groups`, `ledger-backfill`, and the container
+ * fold's copy route while it existed). An admin cookie proves a person; this proves the
  * DEPLOYMENT has decided to migrate, because the key exists only in the App
  * Settings of the one that has. Unset is a 503, never an open door.
  *
