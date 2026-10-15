@@ -5308,6 +5308,16 @@ html:root[data-theme="light"] {
 }
 
 
+/* ── Home skill lead (docs/plans/home-skill-lead.md) ─────────────────────
+   A whole card that is one button. A surface you can see the edges of SCALES
+   on press (the ladder below: cards 0.98); nothing else moves. */
+button.skill-lead {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-press) var(--ease-out-quart);
+}
+button.skill-lead:active { transform: scale(0.98); }
+button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* ── Toasts ─────────────────────────────────────────────────────────
    Transient notices that float over the page instead of occupying a
    card in it. Used by the admin anomaly feed.

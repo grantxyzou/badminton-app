@@ -198,11 +198,19 @@
         "typeWord_all_round": "All-round"
       }
     },
-    "skillDiscovery": {
-      "title": "Curious if your game's improving?",
-      "titleSignedUp": "You're in! Want to track your game?",
-      "cta": "Rate your skills",
-      "dismiss": "Dismiss"
+    "skillLead": {
+      "spread": "The group: {cohort} people have rated. Technical {technical}, physical {physical}, mental {mental}.",
+      "first": "Fewer than {min} people in the group have rated a game so far.",
+      "unrated": "A rating shows how a game compares with the group.",
+      "once": "Level {level} overall. A second rating shows the change.",
+      "up": "Level {level} overall, up {delta} since {month}.",
+      "down": "Level {level} overall, down {delta} since {month}.",
+      "flat": "Level {level} overall, unchanged since {month}.",
+      "plain": "Ratings and the trend live in Stats.",
+      "ctaRate": "Rate skills",
+      "ctaAgain": "Rate again",
+      "ctaTrend": "See the trend",
+      "ctaStats": "Open Stats"
     },
     "signup": {
       "spotsLeftSuffix": "{remaining, plural, one {spot left} other {spots left}} out of {total}",

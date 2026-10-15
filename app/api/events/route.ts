@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, isCheckInSource, isUsageKind, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS } from '@/lib/events';
+import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, isUsageKind, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS } from '@/lib/events';
 import { usageOn } from '@/lib/usage';
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
@@ -34,7 +34,11 @@ function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unkn
     if (field === 'engineVersion' && typeof body.engineVersion === 'string' && body.engineVersion.length <= 20) out.engineVersion = body.engineVersion;
     if (field === 'rating' && (body.rating === 'up' || body.rating === 'down')) out.rating = body.rating;
     if (field === 'category' && (body.category === 'racket' || body.category === 'string')) out.category = body.category;
-    if (field === 'source' && isCheckInSource(body.source)) out.source = body.source;
+    // Each kind has its own vocabulary: a check-in names its DOOR, a Stats
+    // open names the LEAD that sent it. One list for both would let a
+    // check-in claim it came from Home.
+    if (field === 'source' && kind === 'stats_open' && isStatsOpenSource(body.source)) out.source = body.source;
+    if (field === 'source' && kind !== 'stats_open' && isCheckInSource(body.source)) out.source = body.source;
     if (field === 'tab' && oneOf(USAGE_TABS, body.tab)) out.tab = body.tab;
     if (field === 'platform' && oneOf(USAGE_PLATFORMS, body.platform)) out.platform = body.platform;
   }

@@ -75,6 +75,19 @@ describe('POST /api/events', () => {
     expect((getStore()['events'] as Array<{ source?: string }>)[1].source).toBeUndefined();
   });
 
+  it("a Stats open may say it was led from Home, and only that; a check-in cannot borrow the word", async () => {
+    const led = await POST(postAs('member-lin', 'Lin', { kind: 'stats_open', source: 'home' }));
+    expect(led.status).toBe(201);
+    const ownDoor = await POST(postAs('member-viktor', 'Viktor', { kind: 'stats_open', source: 'strip' }));
+    expect(ownDoor.status).toBe(201);
+    const borrowed = await POST(postAs('member-carolina', 'Carolina', { kind: 'checkin_open', source: 'home' }));
+    expect(borrowed.status).toBe(201);
+    const rows = (getStore()['events'] ?? []) as Array<{ kind: string; source?: string; name: string }>;
+    expect(rows.find((r) => r.name === 'Lin' && r.kind === 'stats_open')?.source).toBe('home');
+    expect(rows.find((r) => r.name === 'Viktor' && r.kind === 'stats_open')?.source).toBeUndefined();
+    expect(rows.find((r) => r.name === 'Carolina' && r.kind === 'checkin_open')?.source).toBeUndefined();
+  });
+
   it('401s without a member cookie, so anonymous and preview-name taps do not count', async () => {
     const res = await POST(post({ kind: 'rec_card_tap' }));
     expect(res.status).toBe(401);

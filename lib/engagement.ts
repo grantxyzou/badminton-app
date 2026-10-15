@@ -1,6 +1,6 @@
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-import type { ClientKind, CheckInSource, USAGE_PLATFORMS, USAGE_TABS } from './events';
+import type { ClientKind, CheckInSource, StatsOpenSource, USAGE_PLATFORMS, USAGE_TABS } from './events';
 
 /** The kinds a CLIENT may send — server-only kinds (`pick_served`) are not in
  *  this type, and `POST /api/events` refuses them. */
@@ -13,8 +13,9 @@ export interface EngagementMeta {
   engineVersion?: string;
   rating?: 'up' | 'down';
   category?: 'racket' | 'string';
-  /** `checkin_open` only — which door the member used. */
-  source?: CheckInSource;
+  /** `checkin_open`: which door the member used. `stats_open`: `home` when
+   *  the Home skill lead sent them; the tab's own beacon carries none. */
+  source?: CheckInSource | StatsOpenSource;
   /** `tab_view` only. */
   tab?: (typeof USAGE_TABS)[number];
   /** `app_open` only. */
