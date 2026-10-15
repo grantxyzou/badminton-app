@@ -50,7 +50,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Three containers folded into the cabinets that hold their kind (2026-10-14)
 
-`docs/plans/container-fold.md`. Grant's portal reading showed the shared Cosmos database at its 25-container cap and `aliases` on its own dedicated throughput, so the account billed two minimums for 3.7 MB of data.
+`docs/plans/container-fold.md`. Grant's portal reading showed the shared Cosmos database at its 25-container cap and `aliases` on its own dedicated throughput, so the account provisioned two minimums for 3.7 MB of data (both free, it turned out: the account is on Cosmos's free tier, so the fold's win was two shared slots, not money).
 
 - **E-transfer aliases are `kind: 'alias'` rows in `clubSettings`** (`lib/aliases.ts`); **problem reports are `kind: 'feedback'` rows in `releases`** (`lib/feedback.ts`); **the PWA-to-native migration stash lives in `authhandoff`**, kind-checked both ways so a handoff ref can never redeem a migration doc.
 - **Nothing is unreadable during the move**: every alias and report read is the new home union the old container until the copy has run, and editing a legacy alias moves it.
