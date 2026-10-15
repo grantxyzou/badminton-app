@@ -117,6 +117,16 @@ export default function CreateGroupPage({
   }, []);
 
   /**
+   * `defaultName` is read at HomeShell's render time and is `undefined` on both
+   * arrival paths into this step, so without this the "Your name in this group"
+   * field is empty for everyone who came through it. `|| n` first: never
+   * overwrite something already typed.
+   */
+  function seedRosterName() {
+    setRosterName((n) => n || getIdentity()?.name || '');
+  }
+
+  /**
    * The INSTALLED-PWA return, where the document never died.
    *
    * The system-browser sheet closes, HomeShell's collector claims the parked
@@ -141,16 +151,6 @@ export default function CreateGroupPage({
     return () => window.removeEventListener(IDENTITY_EVENT, onIdentity);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  /**
-   * `defaultName` is read at HomeShell's render time and is `undefined` on both
-   * arrival paths into this step, so without this the "Your name in this group"
-   * field is empty for everyone who came through it. `|| n` first: never
-   * overwrite something already typed.
-   */
-  function seedRosterName() {
-    setRosterName((n) => n || getIdentity()?.name || '');
-  }
 
   function signedInHere(name: string, verificationSent = true) {
     setIdentity({ name, sessionId });

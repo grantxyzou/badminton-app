@@ -167,8 +167,13 @@ export function RevealGroup({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // `recompute` is a `useCallback` with no deps, so one instance lives for
+  // the group's life and the ref never goes stale; it exists only so the
+  // space-less wakeup timer (above) can call it without holding a closure.
+  // It used to be re-assigned on every render as a "latest ref", which the
+  // React Compiler rule forbids (react-hooks 7.1, `refs`) and which did
+  // nothing — the value never changed.
   const recomputeRef = useRef(recompute);
-  recomputeRef.current = recompute;
 
   const report = useCallback(
     (id: string, ready: boolean, empty: boolean, holdsSpace: boolean, node: HTMLElement | null) => {
