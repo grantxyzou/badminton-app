@@ -8,7 +8,7 @@ import ListRow from '@/components/primitives/ListRow';
 import { recordEngagement } from '@/lib/engagement';
 import { isFlagOn } from '@/lib/flags';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
-import type { GearPick } from './GearPickCard';
+import type { GearPick } from './gearPick';
 import { budgetWords, type UseGear } from './useGear';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 import { catalogSpecRows } from '@/lib/catalogSpecs';

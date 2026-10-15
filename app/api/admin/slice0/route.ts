@@ -198,6 +198,10 @@ export async function GET(req: NextRequest) {
         if (typeof e?.kind !== 'string' || typeof e.at !== 'string' || e.at < since) continue;
         const key = typeof e.memberId === 'string' ? e.memberId : norm(String(e.name ?? ''));
         if (!key) continue;
+        // `rec_card_tap`'s writer moved on 2026-09-14 from the pick rail's card
+        // (rendered always) to NextRacketCard (rendered only once a racket is
+        // in play), so a tap rate spanning that date moved for a reason that is
+        // not engagement. The series is continuous; the population is not.
         if (e.kind === 'rec_card_tap') taps.set(key, (taps.get(key) ?? 0) + 1);
         if ((PICK_KINDS as readonly string[]).includes(e.kind)) tallyPick(e as PickEvent, key);
         if ((GEAR_SURFACE_KINDS as readonly string[]).includes(e.kind)) {

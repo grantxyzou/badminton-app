@@ -106,7 +106,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description: 'Equipment redesign Turn 3: "Your fit" and a racket\'s name open full pages inside Stats → Equipment (the fit profile, 3a; the frame page, 3d) instead of sheets. Client-only: the pages write through the same /api/equipment/gear verbs.',
     owner: 'grant',
     plannedRemoval: '2026-10-19',
-    note: 'Retiring it means deleting GearFitSheet\'s door on the Set-up branch (the sheet itself stays while the flag-off register uses it).',
+    note: 'Retiring it means deleting the OFF branch: GearFitSheet and its doors in GearRegister and GearPickSheet (the flag-off register that also used the sheet retired on 2026-10-14, so this flag is its only remaining user), plus the `pagesOn` forks in GearRegister.',
   },
   NEXT_PUBLIC_FLAG_FIT_VERDICT: {
     description: 'The fit verdict ("Your Air Force 79 is fighting you slightly") written by Claude from facts computed in lib/fitVerdict.ts. Read SERVER-side by /api/equipment/fit-verdict: off, the route returns the facts with no AI copy and the page shows the fixed wording for each state.',

@@ -11,9 +11,11 @@ pick sheets); the v2 arrangement it replaced — the pick rail, "Your equipment"
 `BagList` and the catalog `GearSheet` — lived on the flag-off branch of
 `NEXT_PUBLIC_FLAG_GEAR_SETUP` until the flag retired on **2026-10-14**, when
 `GearPickRail`, `YourKitCard`, `BagList`, `GearSheet` and their six test files
-were deleted. Comments across `useGear`, `GearPickCard`, `lib/tension.ts` and
-the gear route still cite those names as the history of a rule; the rules
-hold, the components do not exist.
+were deleted; `GearPickCard`, the rail's card, followed on 2026-10-15 once it
+was clear nothing rendered it (its pick types — `GearPick`, `PickReasonKey`,
+`ParkReason`, … — live in `components/stats/gearPick.ts`). Comments across
+`useGear`, `lib/tension.ts` and the gear route still cite those names as the
+history of a rule; the rules hold, the components do not exist.
 
 What survived that arrangement, and the rules that came with it:
 
@@ -30,7 +32,7 @@ What survived that arrangement, and the rules that came with it:
   monotonic op counter shared by the read and all writes. The Set-up card's
   line sheet (`SetupLineSheet`) is the only surface that can remove or
   re-activate an item — the role `BagList` used to hold.
-- **`GearPickCard` + `GearPickSheet`** are "take our pick" — what
+- **`NextRacketCard` + `GearPickSheet`** are "take our pick" — what
   `/api/recommend` would suggest, flipping to a YOU OWN THIS badge the instant
   the member already owns it (the redesign's headline bug fix: the old surface
   could recommend back gear the member already had). `GearPickSheet` is the
@@ -259,10 +261,9 @@ conditional.
 - **Honest states** (`resolveFitState`): a pick needs a catalog racket in the
   bag, OR a check-in, OR goal + swing — goal alone is not enough, swing is the
   injury axis. Otherwise `needsFit`, which the route returns as
-  `{ needsFit: true }`; the rail parks on it with a `parkReason`, and
-  `GearPickCard` renders a racket parked on `needsFit` as a tappable DOOR to
-  the questionnaire (`railRacketFit` + `railTapToFit`), one parked on an empty
-  catalog as `railNoCatalog` — never "do a check-in" for either.
+  `{ needsFit: true }`; `useGearPicks` parks on it with a `parkReason`, and
+  `NextRacketCard` renders a racket parked on `needsFit` as a tappable DOOR to
+  the questionnaire (`railRacketFit` + `railTapToFit`) — never "do a check-in".
 - **Level from RATED skills only** (`fitLevel`, null below three) — the
   string engine keeps `overall()`'s fill-with-3 for its reference constants;
   the two are different on purpose. `buildProfile` records `ratedKeys`.

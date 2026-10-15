@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { GearPick, GearPickCardStatus, ParkReason, PickReasonKey } from './GearPickCard';
+import type { GearPick, GearPickCardStatus, ParkReason, PickReasonKey } from './gearPick';
 import type { UseGear } from './useGear';
 import { PROFILE_READS_FIT } from '@/lib/racketProfile';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
