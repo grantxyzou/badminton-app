@@ -19,7 +19,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { verifyMemberAuth } from '@/lib/auth';
 import { listIdentitiesForMember, releaseIdentityDoc } from '@/lib/authIdentity';
 import { revokeAppleIdentity } from '@/lib/appleRevoke';
@@ -30,10 +29,6 @@ export const dynamic = 'force-dynamic';
 const PROVIDERS = new Set(['google', 'apple']);
 
 export async function DELETE(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   const ip = getClientIp(req);
   if (!checkRateLimit(`auth-unlink:${ip}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });

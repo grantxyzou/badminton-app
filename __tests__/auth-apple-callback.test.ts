@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 import { resetMockStore, setupAdminPin } from './helpers';
 import { POST, readOneShotName } from '../app/api/auth/apple/callback/route';
@@ -11,10 +11,6 @@ let ipSeq = 0;
 beforeEach(() => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
-});
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 function stateCookie(value: string): string {
@@ -76,11 +72,6 @@ describe('POST /api/auth/apple/callback', () => {
     if (saved !== undefined) process.env.APPLE_CLIENT_ID = saved;
   });
 
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await POST(formPost({ code: 'x', state: 'y' }));
-    expect(res.status).toBe(404);
-  });
 });
 
 describe("Apple's one-shot name", () => {

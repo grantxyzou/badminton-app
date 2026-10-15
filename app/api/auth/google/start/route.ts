@@ -10,7 +10,6 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { appOrigin, googleClient } from '@/lib/oauthProviders';
 import { createState, createCodeVerifier, setOAuthCookies } from '@/lib/oauthState';
 import { beginHandoff, isHandoffRef } from '@/lib/authHandoff';
@@ -20,10 +19,6 @@ import { ownOriginOrNull } from '@/lib/appOrigin';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   const ip = getClientIp(req);
   if (!checkRateLimit(`oauth-start:${ip}`, 10, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });

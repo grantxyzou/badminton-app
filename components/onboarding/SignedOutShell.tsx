@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import EmptyState from '@/components/primitives/EmptyState';
 import LaunchArt from '@/components/launch/LaunchArt';
 import { buttonDelayMs } from '@/lib/launchMotion';
 import TopBar from '@/components/primitives/TopBar';
@@ -569,7 +568,6 @@ function LogInView({
   onSignUp: () => void;
 }) {
   const t = useTranslations('signedOut');
-  const providersOn = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
   const [mode, setMode] = useState<'pin' | 'email'>('pin');
   const [askOpen, setAskOpen] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -587,7 +585,7 @@ function LogInView({
         <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('login.body')}</p>
 
         <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
-          {providersOn && authProviders.length > 0 && (
+          {authProviders.length > 0 && (
             <>
               <ProviderButtons mode="signin" available={authProviders} />
               <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
@@ -598,8 +596,8 @@ function LogInView({
 
           {/* Keyed wrapper: PIN ↔ email crossfades rather than swapping the
               form (and the card's height) in one frame. */}
-          <div key={providersOn && mode === 'email' ? 'email' : 'pin'} className="motion-fade">
-            {providersOn && mode === 'email' ? (
+          <div key={mode} className="motion-fade">
+            {mode === 'email' ? (
               <EmailSignInForm onSuccess={signedIn} />
             ) : (
               <SignInForm sessionId="" onSuccess={signedIn} probeName={false} />
@@ -614,11 +612,9 @@ function LogInView({
             >
               {mode === 'email' ? t('login.forgotPassword') : t('login.playHereAlready')}
             </button>
-            {providersOn && (
-              <button type="button" className="link-quiet" onClick={() => setMode((m) => (m === 'pin' ? 'email' : 'pin'))}>
-                {mode === 'pin' ? t('login.useEmail') : t('login.usePin')}
-              </button>
-            )}
+            <button type="button" className="link-quiet" onClick={() => setMode((m) => (m === 'pin' ? 'email' : 'pin'))}>
+              {mode === 'pin' ? t('login.useEmail') : t('login.usePin')}
+            </button>
           </div>
         </div>
 
@@ -670,7 +666,6 @@ function SignUpView({
   onCreate?: () => void;
 }) {
   const t = useTranslations('signedOut');
-  const providersOn = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
   const [entry, setEntry] = useState('');
   const [found, setFound] = useState<(Invite & { name: string }) | null>(null);
   const [busy, setBusy] = useState(false);
@@ -717,33 +712,28 @@ function SignUpView({
         <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
           <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('signup.accountBody')}</p>
 
-          {!providersOn ? (
-            // A configuration fact, not a failure the visitor caused or can retry.
-            <EmptyState>{t('signup.noProviders')}</EmptyState>
-          ) : (
-            <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
-              {authProviders.length > 0 && (
-                <>
-                  {/* The invite must survive the trip to Google: the callback
-                      builds its return URL from scratch, so localStorage is the
-                      only thing that comes back. Recorded at the tap. */}
-                  <ProviderButtons
-                    mode="signin"
-                    available={authProviders}
-                    onLeave={() => markOnboardingResume('join', found.token, found.code)}
-                  />
-                  <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                    {t('signup.or')}
-                  </p>
-                </>
-              )}
-              <EmailSignUpForm
-                inviteToken={found.token}
-                inviteCode={found.code}
-                onSuccess={({ name }) => setIdentity({ name, sessionId: '' })}
-              />
-            </div>
-          )}
+          <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
+            {authProviders.length > 0 && (
+              <>
+                {/* The invite must survive the trip to Google: the callback
+                    builds its return URL from scratch, so localStorage is the
+                    only thing that comes back. Recorded at the tap. */}
+                <ProviderButtons
+                  mode="signin"
+                  available={authProviders}
+                  onLeave={() => markOnboardingResume('join', found.token, found.code)}
+                />
+                <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                  {t('signup.or')}
+                </p>
+              </>
+            )}
+            <EmailSignUpForm
+              inviteToken={found.token}
+              inviteCode={found.code}
+              onSuccess={({ name }) => setIdentity({ name, sessionId: '' })}
+            />
+          </div>
 
           <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onLogIn}>
             {t('signup.haveAccount')}

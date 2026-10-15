@@ -14,7 +14,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { checkToken } from '@/lib/authToken';
 import { normalizeEmail, lookupIdentity, MAX_EMAIL_LENGTH } from '@/lib/authIdentity';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
@@ -35,10 +34,6 @@ function landing(req: NextRequest, ok: boolean): NextResponse {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   const ip = getClientIp(req);
   if (!checkRateLimit(`auth-verify:${ip}`, 10, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });

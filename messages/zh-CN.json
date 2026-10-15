@@ -1891,8 +1891,7 @@
       "accountTitle": "加入 {name}",
       "accountBody": "创建账号，很快就好。",
       "or": "或",
-      "haveAccount": "已经有账号？登录",
-      "noProviders": "暂时无法注册，找管理员把你加进来。"
+      "haveAccount": "已经有账号？登录"
     }
   },
   "onboarding": {
@@ -1926,7 +1925,6 @@
       "done": "完成",
       "tooMany": "你组织的群组数量已达上限。先把其中一个交接出去，再创建新的。",
       "nameTooShort": "群组名称至少 2 个字。",
-      "needsAccount": "先创建账号：点击「我已经有账号」登录或注册，然后再回来。",
       "failed": "创建失败，再试一次。"
     },
     "join": {
@@ -1952,7 +1950,6 @@
       "joining": "加入中…",
       "joined": "已加入",
       "notFound": "这个链接或邀请码无效。找邀请你的人要一个新的。",
-      "needsAccount": "需要先有账号。去「我的」用邮箱或 Google 注册，这个邀请会保留，注册后直接进入 {name}。",
       "nameTaken": "这个群组里已经有人用这个名字，换一个。",
       "failed": "加入失败，再试一次。"
     }

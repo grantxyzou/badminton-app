@@ -19,5 +19,6 @@ The full set of retired flags is `git log -p -- lib/flags.ts`; this table lists 
 | `NEXT_PUBLIC_FLAG_PUSH_NOTIFY` | 2026-09-10 (#353) | |
 | `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE` | 2026-09-28 | twelve off-branches and six route guards went with it; `docs/plans/value-hub-slice-0.md` |
 | `NEXT_PUBLIC_FLAG_GEAR_SETUP` | 2026-10-14 (#624) | the flag-off Gear register (`GearPickRail`, `YourKitCard`, `BagList`, `GearSheet`, six test files) went with it, and `GearPickCard` the next day once nothing rendered it (its pick types moved to `components/stats/gearPick.ts`). Two days late; the plan's kill criterion could not be read as written, so `docs/plans/equipment-setup-card.md` records a baseline instead. |
+| `NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` | 2026-10-15 | sixteen `/api/auth/*` route gates (a 404 when off), the "Sign-up isn't available yet" and "needs an account" refusals in `SignedOutShell`, `CreateGroupPage` and `JoinGroupPage`, ProfileTab's PIN-only branches (no "How you sign in" row, no email switch), and ten flag-off route tests. The PIN path was never behind it and is untouched. `auth-route-hygiene` now pins the server-side gate only on the migrate routes, which keep their own flag. |
 
 `lib/flags.ts` is the registry of what is still live; `scripts/check-flag-sync.mjs` reports the overdue ones.

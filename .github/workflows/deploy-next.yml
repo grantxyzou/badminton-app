@@ -125,7 +125,6 @@ jobs:
           #
           # 2026-09-03: apple/start and apple/callback gained the same handoff
           # Google had -- Apple sign-in from the PWA was still hitting the split.
-          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'
           # ON as of 2026-08-27. This lights up the admin bench (job list, job
           # detail, intake form) and un-404s /api/stringing/*.
           #

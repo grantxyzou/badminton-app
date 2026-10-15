@@ -2,13 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import EmptyState from '@/components/primitives/EmptyState';
 import TopBar from '@/components/primitives/TopBar';
 import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
 import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
 import EmailSignInForm from '@/components/auth/EmailSignInForm';
 import { setIdentity } from '@/lib/identity';
-import { isFlagOn } from '@/lib/flags';
 import { clearOnboardingResume, markOnboardingResume } from '@/lib/onboardingResume';
 import { parseInviteInput } from '@/lib/parseInviteInput';
 
@@ -161,8 +159,6 @@ export default function JoinGroupPage({
     }
   }
 
-  /** With the providers flag off this step can offer nothing — say so instead. */
-  const canOfferCredential = authProviders.length > 0 || isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
 
   /**
    * Signed in here. Replays the Join they already tapped rather than making
@@ -215,50 +211,38 @@ export default function JoinGroupPage({
               {t('auth.body', { name: found?.name ?? '' })}
             </p>
 
-            {!canOfferCredential ? (
-              <>
-                {/* A refusal, not a failure: nothing broke, this path needs an account. */}
-                <EmptyState>{t('needsAccount', { name: found?.name ?? '' })}</EmptyState>
-                <button type="button" onClick={onBack} className="cc-btn cc-btn-ghost" style={{ width: '100%' }}>
-                  {t('backLabel')}
-                </button>
-              </>
-            ) : (
-              <>
-                {/* The token rides through signup, so the account lands in THIS
-                    club rather than on BPM's roster with the real club added on
-                    top. `onLeave` records the flow for the trip to Google. */}
-                <ProviderButtons
-                  mode="signin"
-                  available={authProviders}
-                  onLeave={() => markOnboardingResume('join', found?.token)}
+              {/* The token rides through signup, so the account lands in THIS
+                  club rather than on BPM's roster with the real club added on
+                  top. `onLeave` records the flow for the trip to Google. */}
+              <ProviderButtons
+                mode="signin"
+                available={authProviders}
+                onLeave={() => markOnboardingResume('join', found?.token)}
+              />
+
+              {authProviders.length > 0 && (
+                <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                  {t('auth.or')}
+                </p>
+              )}
+
+              {credMode === 'signup' ? (
+                <EmailSignUpForm
+                  inviteToken={found?.token}
+                  onSuccess={({ name: n, verificationSent }) => signedInHere(n, verificationSent)}
                 />
+              ) : (
+                <EmailSignInForm onSuccess={({ name: n }) => signedInHere(n)} />
+              )}
 
-                {authProviders.length > 0 && (
-                  <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                    {t('auth.or')}
-                  </p>
-                )}
-
-                {credMode === 'signup' ? (
-                  <EmailSignUpForm
-                    inviteToken={found?.token}
-                    onSuccess={({ name: n, verificationSent }) => signedInHere(n, verificationSent)}
-                  />
-                ) : (
-                  <EmailSignInForm onSuccess={({ name: n }) => signedInHere(n)} />
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setCredMode((m) => (m === 'signup' ? 'signin' : 'signup'))}
-                  className="link-quiet"
-                  style={{ justifySelf: 'center' }}
-                >
-                  {credMode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}
-                </button>
-              </>
-            )}
+              <button
+                type="button"
+                onClick={() => setCredMode((m) => (m === 'signup' ? 'signin' : 'signup'))}
+                className="link-quiet"
+                style={{ justifySelf: 'center' }}
+              >
+                {credMode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}
+              </button>
           </div>
         ) : found ? (
           <>

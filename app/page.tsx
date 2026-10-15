@@ -6,7 +6,6 @@ import { NextRequest } from 'next/server';
 import { readActiveAnnouncements } from '@/lib/announcements';
 import { resolveGroupIdFromCookieHeader } from '@/lib/groupContext';
 import { configuredProviders } from '@/lib/oauthProviders';
-import { isFlagOn } from '@/lib/flags';
 import { membersOnlyOn } from '@/lib/auth';
 import { decidePage } from '@/lib/pageGate';
 
@@ -37,7 +36,7 @@ export default async function Page() {
   // reads — no Cosmos, no network — so it costs nothing here, and resolving it
   // on the server is what lets the provider buttons LEAD without the card
   // painting form-first and jumping when a client probe returns.
-  const authProviders = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') ? configuredProviders() : [];
+  const authProviders = configuredProviders();
 
   /**
    * MEMBERS ONLY (docs/plans/members-only.md): THE SERVER DECIDES WHO IS SIGNED

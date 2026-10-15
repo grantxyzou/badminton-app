@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { resetMockStore, seedMember, getStore, makeRequest } from './helpers';
 import { POST as forgot } from '../app/api/auth/forgot-password/route';
 import { POST as reset } from '../app/api/auth/reset-password/route';
@@ -11,10 +11,6 @@ const RESET = 'http://localhost:3000/bpm/api/auth/reset-password';
 
 beforeEach(() => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
-});
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 // Derived once per file: scrypt at N=2^16 costs 64 MiB a time, and the suite
@@ -123,11 +119,4 @@ describe('POST /api/auth/reset-password', () => {
     expect(stored(member.id).passwordReset).toBeTruthy();
   });
 
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await reset(
-      makeRequest('POST', RESET, { email: 'x@example.com', token: 'a', password: 'a long password' }),
-    );
-    expect(res.status).toBe(404);
-  });
 });

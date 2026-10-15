@@ -154,12 +154,12 @@ export default function ProfileTab({
   const [methodsOpen, setMethodsOpen] = useState(false);
   // Read once here so the row's summary and the sheet's body agree.
   //
-  // Gated on `identity` as well as the flag: the row only exists for a
+  // Gated on `identity`: the row only exists for a
   // signed-in member, and the anonymous card must not probe at all -- the
   // server has already resolved availability by the time that card renders,
   // and a probe would reflow it. Same shape as `useStatsPrivacy` above, which
   // takes null when there is nobody to read for.
-  const methodsState = useSignInMethods(!!identity && isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'));
+  const methodsState = useSignInMethods(!!identity);
   const privacyState = useStatsPrivacy(identity?.name ?? null);
   // Called unconditionally, and gated by its own argument, because the two
   // early returns below (anonymous, and the Stats & privacy sub-screen) sit
@@ -339,7 +339,6 @@ export default function ProfileTab({
     setIdentity({ name, token, sessionId });
     setLocalIdentity(getIdentity());
   }
-  const authProvidersOn = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
 
   // A device that remembers a name but holds no session for it (a name-only
   // sign-up, or a 30-day cookie that lapsed). Grant, 2026-09-14: "why show
@@ -362,8 +361,8 @@ export default function ProfileTab({
   if (!identity || deviceSignedOut) {
     // Availability is server-resolved, so this is settled on the first paint
     // rather than arriving later and reflowing the card.
-    const providersLead = authProvidersOn && authProviders.length > 0;
-    const emailMode = authProvidersOn && credMode === 'email';
+    const providersLead = authProviders.length > 0;
+    const emailMode = credMode === 'email';
     const orDivider = (
       <div
         aria-hidden="true"
@@ -445,7 +444,7 @@ export default function ProfileTab({
         )}
       </div>
     );
-    const switchCredentialLink = authProvidersOn ? (
+    const switchCredentialLink = (
       <button
         type="button"
         onClick={() => setCredMode((m) => (m === 'pin' ? 'email' : 'pin'))}
@@ -453,7 +452,7 @@ export default function ProfileTab({
       >
         {credMode === 'pin' ? t('auth.useEmailInstead') : t('auth.usePinInstead')}
       </button>
-    ) : null;
+    );
     return (
       <div key="profile-anon" className="motion-fade flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
@@ -779,18 +778,16 @@ export default function ProfileTab({
           // a checklist, a bordered provider button and a "Not now", wedged
           // between two one-line rows. It is a row now. The nudge survives as
           // `accent`, the same signal the admin row uses for a live count.
-          ...(isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')
-            ? [{
-                icon: 'lock',
-                label: tAuth('methodsTitle'),
-                meta: methodsSummary(methodsState.methods, {
-                  pin: tAuth('methodPin'),
-                  email: tAuth('methodEmailShort'),
-                }),
-                accent: methodsState.methods?.nudge === true,
-                onClick: () => setMethodsOpen(true),
-              }]
-            : []),
+          {
+            icon: 'lock',
+            label: tAuth('methodsTitle'),
+            meta: methodsSummary(methodsState.methods, {
+              pin: tAuth('methodPin'),
+              email: tAuth('methodEmailShort'),
+            }),
+            accent: methodsState.methods?.nudge === true,
+            onClick: () => setMethodsOpen(true),
+          },
           // Batch B (expanded): PIN management is now member-scoped via
           // PATCH /api/members/me — works regardless of whether the user
           // has a session player. The previous "Sign up for a session

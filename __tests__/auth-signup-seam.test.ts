@@ -30,12 +30,10 @@ const PLAYERS = 'http://localhost:3000/bpm/api/players';
 
 beforeEach(() => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
   seedPointer('session-2026-09-03');
   seedSession('session-2026-09-03', { signupOpen: true, maxPlayers: 12 });
 });
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 function members() {

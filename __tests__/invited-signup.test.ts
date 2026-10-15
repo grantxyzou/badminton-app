@@ -88,7 +88,6 @@ function body(over: Record<string, unknown> = {}) {
 
 beforeEach(async () => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
   process.env[FLAG] = 'true';
   await seedTestAdminMember();
   seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID, name: 'BPM Badminton' });
@@ -96,7 +95,6 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
   delete process.env[FLAG];
 });
 

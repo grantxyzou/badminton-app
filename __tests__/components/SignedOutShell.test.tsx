@@ -104,7 +104,6 @@ beforeEach(() => {
   for (const k of Object.keys(captured)) delete captured[k];
   hardReload.mockClear();
   delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
   fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes('/api/groups/preview')) {
@@ -120,7 +119,6 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 describe('Welcome', () => {

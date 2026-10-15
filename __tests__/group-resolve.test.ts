@@ -225,11 +225,6 @@ describe('GET /api/members/me?name= (the sign-up probe)', () => {
 });
 
 describe('email sign-up joins the group (POST /api/auth/signup)', () => {
-  const PROVIDERS = 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS';
-  const providersBefore = process.env[PROVIDERS];
-  beforeEach(() => { process.env[PROVIDERS] = 'true'; });
-  afterEach(() => { if (providersBefore === undefined) delete process.env[PROVIDERS]; else process.env[PROVIDERS] = providersBefore; });
-
   it('flag ON: refuses a name whose reservation lingers, and joins a fresh account to this group', async () => {
     on();
     const gone = seedMember('Ghost', { active: false });

@@ -97,7 +97,6 @@ describe('ProfileTab', () => {
     // beneath the provider buttons. Its own tests render it directly, and these
     // tests rendered both states without ever asserting on it, so nothing
     // caught the misplacement.
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
     // URL-aware: ProfileTab also fetches /api/players and /api/members/me, and
     // answering those with the methods payload breaks its render.
     vi.stubGlobal(
@@ -129,7 +128,6 @@ describe('ProfileTab', () => {
     renderWith();
     expect(await screen.findByText('How you sign in')).toBeDefined();
 
-    delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
     vi.unstubAllGlobals();
   });
 
@@ -162,15 +160,12 @@ describe('ProfileTab', () => {
  *  2. Weight is RELATIVE. "Create an account" drops to a link only when a
  *     provider button is above it competing. With no providers configured it is
  *     the only way to make an account from this screen, and keeps its button.
- *     Getting this wrong would ship a weaker create path to production, where
- *     the flag is currently off.
+ *     Getting this wrong would ship a weaker create path to any deployment
+ *     with no provider credentials configured.
  */
 describe('ProfileTab anonymous card order', () => {
-  const flagBefore = process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
-
   beforeEach(() => {
     localStorage.clear();
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) } as unknown as Response),
@@ -180,8 +175,6 @@ describe('ProfileTab anonymous card order', () => {
     cleanup();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-    if (flagBefore === undefined) delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
-    else process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = flagBefore;
   });
 
   /** Tappable controls inside the sign-in card, in document order. */
@@ -265,8 +258,8 @@ describe('ProfileTab anonymous card order', () => {
   });
 
   it('keeps the form owning its forgot link when no provider competes', () => {
-    // The row only exists when providers lead. With the flag off — production
-    // today — the card must be exactly what it always was.
+    // The row only exists when providers lead. With no provider configured
+    // the card must be exactly what it always was.
     render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <ProfileTab {...baseProps} authProviders={[]} />
