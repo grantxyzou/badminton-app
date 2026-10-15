@@ -154,14 +154,43 @@ a 413 for bodies over 256 KB and a 403 for cross-site non-safe methods.
 
 ### Networking: outbound to Cosmos
 
-Cosmos is reached over its public endpoint. The account's firewall was set to
-"Accept connections from within public Azure datacenters" because the Free
-tier had no static outbound IP. **Two things have changed since:** B1 publishes
-its outbound IPs (App Service → Properties), and Microsoft's own page says the
-datacenters switch admits requests from every Azure customer's subscriptions,
-so it is not a meaningful second wall. A valid key is still required. The
-narrower options are listing the outbound IPs, or a private endpoint inside a
-virtual network. Neither has been done. †
+Cosmos is reached over its public endpoint, and the account's IP firewall is
+ON (read with `az cosmosdb show` on 2026-10-14, §9). What it holds:
+
+- **`0.0.0.0`** — the "Accept connections from within Azure datacenters"
+  switch. This is how the APP gets in: `vnext-badminton-app` has no VNet
+  integration (`az webapp vnet-integration list` is empty), so its requests
+  arrive from Azure's shared ranges and nothing narrower would admit them.
+  Microsoft's own page says the switch admits every Azure customer's
+  subscriptions, so it is not a meaningful second wall; a valid key is still
+  required. The narrower options — listing B1's published outbound IPs, or a
+  private endpoint — remain undone.
+- **Grant's client IPs, hand-added one at a time** (five as of 2026-10-14,
+  all Vancouver ISP addresses that rotate with DHCP). The Data Explorer on the
+  NoSQL API sends its data-plane requests from the BROWSER, so each new home
+  IP has to be added before the portal can read a container; the symptom is
+  "Request originated from IP … blocked by your Cosmos DB account firewall
+  settings" on every container. There is no durable fix for that on an IP
+  firewall — Microsoft's doc says to add your current IP — only the two
+  portal middleware IPs below, which cover the portal's own services.
+- **`52.247.163.6`, `52.244.134.181`** — the Azure portal middleware IPs for
+  all APIs (added 2026-10-14; Microsoft's current list, replacing the legacy
+  `104.42.195.92`-family). They let the portal's server-side features reach
+  the account; they do not stand in for the client IP above.
+- **One virtual-network rule** on `gzlearnscix/vnet-westus2/snet-westus2-1`
+  (service endpoint `Microsoft.AzureCosmosDB`). That subnet belongs to
+  another project's resource group and nothing of this app runs in it; the
+  rule is a leftover and admits nothing this app uses. Left in place because
+  it is not ours to judge.
+
+Adding an address replaces the whole list, so carry every existing entry:
+
+```bash
+az cosmosdb update --name cosmos-bd --resource-group grantzou \
+  --ip-range-filter "0.0.0.0,<existing…>,<new IP>"
+```
+
+Firewall edits take up to 15 minutes to reach the data plane.
 
 ---
 
@@ -461,6 +490,19 @@ Consequence: the badminton app itself costs about $12 USD a month (B1) plus
 pennies of bandwidth; Cosmos is $0. The two Defender charges are the one
 BPM-side line worth a decision, and the Front Door base fee is the biggest
 line on the subscription and belongs to another project.
+
+### 2026-10-14 — Cosmos → Networking (`az cosmosdb show`, evening Pacific)
+
+| What | Observed |
+|---|---|
+| Public network access | Enabled, IP firewall on |
+| `ipRules` | `0.0.0.0` (Azure datacenters), five of Grant's client IPs (`205.250.77.220`, `207.216.56.95`, `207.216.103.119`, `207.216.101.80`, `206.116.167.17` — the last added that evening after the Data Explorer refused every container from it), and the two portal middleware IPs `52.247.163.6`, `52.244.134.181` (added the same evening) |
+| Virtual-network rules | one, `gzlearnscix/vnet-westus2/snet-westus2-1`, another project's subnet |
+| App Service VNet integration | none — the app reaches Cosmos through the datacenters switch |
+| Private endpoints | none |
+
+Consequence: §2's networking section rewritten — it had said no narrowing was
+ever done, which the five client IPs and the VNet rule contradicted.
 
 ### 2026-10-07 — not yet observed
 
