@@ -4,7 +4,7 @@
 the measurement below is what makes that readout legible. This is not Track 1 (#102);
 Track 1 is what it unblocks.
 **Status:** intent
-**Review on:** 2026-10-15 — Of `reach` / `entry` / `finish` / `repeat` in `GET /api/admin/slice0` → `skill`, which is lowest, and does it point inside Stats or off-tab?
+**Review on:** 2026-10-22 — Of `reach` / `entry` / `finish` / `repeat` in `GET /api/admin/slice0` → `skill`, which is lowest, and does it point inside Stats or off-tab? (2026-10-15: not read — the route needs the admin cookie, so Grant reads it in the browser and pastes the four numbers; nothing else in this review can be decided without them.)
 
 ## Problem
 

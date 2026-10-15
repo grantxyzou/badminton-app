@@ -2,7 +2,7 @@
 
 **Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); requested directly by the owner on 2026-09-16
 **Status:** in-flight
-**Review on:** 2026-10-15 — did the deferred items (sheet height, keyboard lift, conditionally-mounted sheets) get their own PRs, or has this list gone stale?
+**Review on:** 2026-11-15 — of the six deferred items still open on 2026-10-15 (sheet height, keyboard lift, gear sub-page pop, conditionally-mounted sheets, register-switch skeletons, 3D canvas crossfade), which got a PR?
 
 ## Problem
 
@@ -38,10 +38,10 @@ This failed if, after it ships, a screenshot pass at a phone viewport shows any 
 |---|---|
 | Sheet content height animates on step change (ResizeObserver in `BottomSheetBody`) | ~31 consumers, a `transitionend`-filtered close contract, drag-dismiss and keyboard inset all meet in that element; animates a layout property. Steps crossfade today; the sheet's top edge still jumps. |
 | Keyboard lift via `translate` instead of snapping `bottom` | iOS `visualViewport` timing varies by version; only provable on a phone. |
-| Roster refetch in place | `RosterPage.load` has no `loadError` — a failed read already renders empty lists — so keeping stale content would compound a lying-empty state. Fix the error state first. |
-| Toast exit animation (`AnomalyFeed`) | Needs a leaving state held across an unmount. |
+| ~~Roster refetch in place~~ **Done 2026-10-06, #538** (`RosterPage` has `loadError` now). Was: `RosterPage.load` has no `loadError` — a failed read already renders empty lists — so keeping stale content would compound a lying-empty state. Fix the error state first. |
+| ~~Toast exit animation (`AnomalyFeed`)~~ **Done 2026-10-11, #593** (a leaving state held across unmount). Was: Needs a leaving state held across an unmount. |
 | Gear sub-page pop (`GearRegister` page stack) | Back unmounts the page in one frame and re-enters a previous page from the right; needs the same popped flag `AdminDashboard` now has, plus scroll restore. |
-| Sheets mounted conditionally, which snap shut instead of sliding | `GearRegister` (share, look, frame view, line, add), `CheckInSheet` (`if (!open) return null`), `SkillTrendCard`'s anchor sheet, `PaymentsCard`'s `CoverSheet` / `ResetAccessSheet`. Each needs to stay mounted with a nullable subject; the line→add swap also needs the second sheet held until the first has closed. |
+| Sheets mounted conditionally, which snap shut instead of sliding (**still open 2026-10-15**: `CheckInSheet` keeps `if (!open) return null`, `GearRegister` still mounts its share / look / frame / line / add sheets with `&&`) | `GearRegister` (share, look, frame view, line, add), `CheckInSheet` (`if (!open) return null`), `SkillTrendCard`'s anchor sheet, `PaymentsCard`'s `CoverSheet` / `ResetAccessSheet`. Each needs to stay mounted with a nullable subject; the line→add swap also needs the second sheet held until the first has closed. |
 | Stats register switch still lands on skeletons | The switch now crossfades, but each register's cards re-fetch on every switch (`sharedRead` reuses a read for 2 seconds), so the fade often lands into skeletons. The fix is per-card last-data-while-refetching, not motion. |
 | Racket 3D canvas crossfade | The fallback image unmounts the instant the canvas is ready; fading the canvas in without holding the image would flash blank. |
 

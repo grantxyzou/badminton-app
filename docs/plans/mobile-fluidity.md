@@ -2,7 +2,7 @@
 
 **Track:** Native shell / store launch (the app people install is this app in a WebView).
 **Status:** in-flight
-**Review on:** 2026-10-15 — did the native-rebuild list below go out with a build, or is it still waiting on one?
+**Review on:** 2026-11-15 — has a native build gone out since build 4 (2026-09-17), and which of the rebuild list rode with it?
 
 ## Problem
 
@@ -74,6 +74,12 @@ transition passes every existing test.
 ## Native rebuild list (Xcode / Android Studio, then a store build)
 
 Ranked. These do NOT ship with a web deploy.
+
+**Read 2026-10-15:** still waiting on a build. The latest store build is 4
+(2026-09-17). Of the list, only item 3 (haptics, `@capacitor/haptics` in
+`package.json`) and the web half of item 4 (`interactiveWidget` in
+`app/layout.tsx`) are in the tree; items 1, 2, 5, 6, 7 and 8 and the native
+half of 4 are not yet written, let alone built. The list is current, not stale.
 
 1. **`backgroundColor: '#100F0F'`** in `capacitor.config.ts` (top level + `ios` +
    `android`), and `LaunchScreen.storyboard:18` off `systemBackgroundColor`.
