@@ -5661,7 +5661,7 @@ html:root .swipe-row {
   }
 }
 
-/* ── Set-up card (Equipment redesign, NEXT_PUBLIC_FLAG_GEAR_SETUP) ──────────
+/* ── Set-up card (Equipment redesign, 2026-09-14) ───────────────────────────
    One spec card, one row per line. A filled line is separated by a plain
    divider; a blank line by a DASHED one, which is the whole of how the card
    says "this is still to fill" — no "Not set" text, no empty-state icon. The

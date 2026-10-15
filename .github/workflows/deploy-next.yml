@@ -72,7 +72,6 @@ jobs:
           NEXT_PUBLIC_FLAG_RACKET_FIT: 'true'
           # The Equipment redesign (the Set-up card). On since 2026-09-14; revert
           # to 'false' to bring back the old register. See lib/flags.ts.
-          NEXT_PUBLIC_FLAG_GEAR_SETUP: 'true'
           # Equipment Turn 3 pages and the AI fit verdict. On since 2026-09-14;
           # revert either to 'false' to go back to the fit sheet (pages) or to
           # the fixed verdict wording (verdict). See lib/flags.ts.

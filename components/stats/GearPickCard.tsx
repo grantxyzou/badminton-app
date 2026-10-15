@@ -310,7 +310,7 @@ export default function GearPickCard({ category, pick, owned, status, onOpen, pa
 
       {/* Three different claims, and only the first two are about ownership.
           `owned` means "you own THIS pick", never "you own a racket" — the
-          member's own kit lives in `YourKitCard`, which reads the same gear
+          member's own kit lives on the Set-up card (once `YourKitCard`), which reads the same gear
           document. Saying "Yours · none on file" on the not-owned branch
           therefore told a member holding an Aeronaut 9000 that their kit was
           empty. The not-owned branch now states what the card is actually

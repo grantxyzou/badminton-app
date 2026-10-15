@@ -8,7 +8,7 @@ import type { PlayerGear, GearItem } from './types';
  * The category is read-tolerant for the same reason the pointer is. Rackets
  * predate the `category` field, so a legacy item has none; every other call
  * site already reads `(category ?? 'racket')` (gear/route.ts:164,
- * clubGear.ts:30, GearPickRail, YourKitCard). A strict `=== 'racket'` here
+ * clubGear.ts:30, and the retired GearPickRail / YourKitCard). A strict `=== 'racket'` here
  * made a legacy item unactivatable in a way that showed nothing: the item
  * listed fine (those call sites are tolerant) but this returned null, so the
  * row offered "Use this one", and the PATCH guard — which calls this same
