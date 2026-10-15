@@ -88,6 +88,13 @@ const config = [
       // (the directory is gitignored, so it is not in the repo), which is
       // exactly why it went unnoticed locally for so long.
       '.worktrees/**',
+      // claude.ai/design handoff bundles unpacked at the repo root while a
+      // design is being built (`design_handoff_racket_3d/`, `..._launch_screen/`,
+      // a Finder copy named `design_handoff_racket_3d 2/`). They are untracked
+      // reference code — browser globals, `ReactDOM.render`, `module =` — so
+      // linting them put 6 errors in front of a 0-error baseline on
+      // 2026-10-15 while CI, which never has them, stayed green.
+      'design_handoff_*/**',
     ],
   },
   ...coreWebVitals,
