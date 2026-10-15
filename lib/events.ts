@@ -115,6 +115,17 @@ export function isCheckInSource(v: unknown): v is CheckInSource {
   return typeof v === 'string' && (CHECKIN_SOURCES as readonly string[]).includes(v);
 }
 
+/** Where a Stats OPEN was led from, when it was led at all. `SkillsTab`'s own
+ *  mount beacon carries no source; the Home skill lead (`docs/plans/
+ *  home-skill-lead.md`) stamps `home` on the tap, so slice0 can say how many
+ *  members reached Stats THROUGH it rather than only how many reached it. */
+export const STATS_OPEN_SOURCES = ['home'] as const;
+export type StatsOpenSource = (typeof STATS_OPEN_SOURCES)[number];
+
+export function isStatsOpenSource(v: unknown): v is StatsOpenSource {
+  return typeof v === 'string' && (STATS_OPEN_SOURCES as readonly string[]).includes(v);
+}
+
 export function isValueHubKind(v: string): boolean {
   return (VALUE_HUB_KINDS as readonly string[]).includes(v);
 }
@@ -129,7 +140,7 @@ export const CLIENT_PAYLOAD: Record<
   pick_added: ['catalogId', 'engineVersion', 'category'],
   pick_tried: ['catalogId', 'engineVersion', 'category'],
   pick_rated: ['catalogId', 'engineVersion', 'rating', 'category'],
-  stats_open: [],
+  stats_open: ['source'],
   checkin_open: ['source'],
   catalog_filter_applied: ['category'],
   tension_skipped: ['catalogId'],

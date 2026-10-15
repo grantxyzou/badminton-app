@@ -274,6 +274,19 @@ describe('GET /api/admin/slice0', () => {
       expect(body.skill.rates.reach).toBe(0);   // this one HAS a denominator
     });
 
+    it('counts homeLeadTappers as MEMBERS whose Stats open was led from Home — a subset of statsOpeners', async () => {
+      const lin = seedMember('Lin');
+      const viktor = seedMember('Viktor');
+      seedMember('Carolina');
+      seedSkillEvent(lin.id, 'Lin', 'stats_open', 'home');
+      seedSkillEvent(lin.id, 'Lin', 'stats_open', 'home');   // twice: still one member
+      seedSkillEvent(viktor.id, 'Viktor', 'stats_open');     // the tab's own beacon, no source
+
+      const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+      expect(body.skill.statsOpeners).toBe(2);
+      expect(body.skill.homeLeadTappers).toBe(1);
+    });
+
     it('counts openBySource as EVENTS and checkInOpeners as MEMBERS', async () => {
       const lin = seedMember('Lin');
       seedSkillEvent(lin.id, 'Lin', 'checkin_open', 'strip');

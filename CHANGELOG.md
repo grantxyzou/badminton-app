@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The Home skill lead (2026-10-14)
+
+`docs/plans/home-skill-lead.md`. The skill-leads reading (#623) showed 17 of 36 members ever open Stats, so the Home decision was reopened. One card under the sign-up card, for every identified member, every week, in the third person: the group's skill spread and the ask for someone who has never rated, their level after one rating, and the change since the previous check-in after two. A failed read renders a plain line, never a number. Replaces the self-retiring `SkillDiscoveryCard`. `stats_open` may now carry `source: 'home'`, and slice0 reports `homeLeadTappers`.
+
 ### The Set-up card is the Gear register (2026-10-14)
 
 `NEXT_PUBLIC_FLAG_GEAR_SETUP` retired, a month after it turned on (Grant: "yes retire the flag"). The flag-off register — `GearPickRail`, `YourKitCard`, `BagList`, `GearSheet` and their six test files — is deleted; `GearRegister` is the Set-up register outright. `GearPickCard`, the rail's card, followed the next day once it was clear nothing rendered it (its types moved to `components/stats/gearPick.ts`), and `docs/flag-retirements.md` records the retirement. Nothing a member sees changes. The plan's kill criterion (`docs/plans/equipment-setup-card.md`) could not be read as written, so the card stays on a product call, with `racketSavers` 10/36 recorded as the baseline for the next look.

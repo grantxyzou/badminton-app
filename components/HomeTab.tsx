@@ -17,7 +17,7 @@ import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@
 import CardSkeleton, { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
-import SkillDiscoveryCard from './home/SkillDiscoveryCard';
+import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
@@ -1142,19 +1142,18 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         )}
       </div>
 
-      {/* Skill-rating discovery hook, moved with the sign-up list from the
-          Sign-Ups tab: the moment a player has just confirmed they're playing
-          is when "is my game improving?" lands. Self-retiring: flag-on,
-          identified, unrated and undismissed only. */}
-      {/* No placeholder: it is usually absent. It reports through
-          useRevealReady, and nothing below shows before it has answered. */}
-      <RevealSlot canBeEmpty placeholder={null}>
-        <SkillDiscoveryCard
-          name={currentUser}
-          signedUp={isSignedUp}
-          onOpen={() => onTabChange?.('skills')}
-        />
-      </RevealSlot>
+      {/* The skill lead (docs/plans/home-skill-lead.md): one line under the
+          sign-up card, for every identified member, every week — the club
+          spread and the ask, or the member's own level and how it moved. It
+          replaced the self-retiring discovery hook on 2026-10-14, because a
+          card that retired on the first rating could never show a change.
+          It always renders something once it has read, so its slot holds
+          the card's measured height rather than being space-less. */}
+      {currentUser && (
+        <RevealSlot placeholder={<CardSkeleton height={SKILL_LEAD_HEIGHT} />}>
+          <SkillLeadCard name={currentUser} onOpen={() => onTabChange?.('skills')} />
+        </RevealSlot>
+      )}
 
       </section>
       )}

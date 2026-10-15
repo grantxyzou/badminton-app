@@ -58,7 +58,7 @@ export default function ThemeToggle() {
      answering the SYSTEM value. Without it the store never moves, so the icon
      never flips and `next` is recomputed from the same stale value every tap —
      the toggle sets the attribute once and can never set it back. Same shape
-     as `InstallBanner` and `SkillDiscoveryCard` in this directory: the stored
+     as `InstallBanner` in this directory (and, until 2026-10-14, `SkillDiscoveryCard`): the stored
      answer is the durable one, the local one covers the write that failed. */
   const [override, setOverride] = useState<Theme | null>(null);
   const theme = override ?? stored;

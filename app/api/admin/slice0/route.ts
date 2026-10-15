@@ -180,6 +180,10 @@ export async function GET(req: NextRequest) {
     const statsOpeners = new Set<string>();
     const checkInOpeners = new Set<string>();
     const openBySource: Record<string, number> = { strip: 0, trend: 0, learn: 0, unknown: 0 };
+    // Members whose Stats open was LED from Home (`stats_open { source: 'home' }`,
+    // docs/plans/home-skill-lead.md). A subset of `statsOpeners`; it is what
+    // says whether the card moved `reach` or was merely on screen.
+    const homeLeadTappers = new Set<string>();
 
     try {
       await ensureContainer('events', '/memberId');
@@ -237,7 +241,10 @@ export async function GET(req: NextRequest) {
             // stats_open" rather than to `checkin_open`, so the day a third
             // kind joins the guard above it would be silently counted as a
             // check-in open — a misclassification that reads as real data.
-            if (e.kind === 'stats_open') statsOpeners.add(rk);
+            if (e.kind === 'stats_open') {
+              statsOpeners.add(rk);
+              if (e.source === 'home') homeLeadTappers.add(rk);
+            }
             if (e.kind === 'checkin_open') {
               checkInOpeners.add(rk);
               const src = isCheckInSource(e.source) ? e.source : 'unknown';
@@ -389,6 +396,7 @@ export async function GET(req: NextRequest) {
       skill: {
         rosterSize,
         statsOpeners: statsOpeners.size,
+        homeLeadTappers: homeLeadTappers.size,
         checkInOpeners: checkInOpeners.size,
         openBySource,
         checkedInWindow,

@@ -198,11 +198,19 @@
         "typeWord_all_round": "全面"
       }
     },
-    "skillDiscovery": {
-      "title": "想知道自己有没有进步吗？",
-      "titleSignedUp": "报名成功！想看看自己的进步吗？",
-      "cta": "去自评",
-      "dismiss": "关闭"
+    "skillLead": {
+      "spread": "群里已有 {cohort} 人评过：技术 {technical}，体能 {physical}，心理 {mental}。",
+      "first": "群里评过的人还不到 {min} 个。",
+      "unrated": "评一次，就能看到和群里的对比。",
+      "once": "总体 {level} 级。再评一次就能看到变化。",
+      "up": "总体 {level} 级，比{month}高了 {delta}。",
+      "down": "总体 {level} 级，比{month}低了 {delta}。",
+      "flat": "总体 {level} 级，和{month}持平。",
+      "plain": "评分和趋势都在「数据」里。",
+      "ctaRate": "去自评",
+      "ctaAgain": "再评一次",
+      "ctaTrend": "看趋势",
+      "ctaStats": "打开数据"
     },
     "signup": {
       "spotsLeftSuffix": "个空位，共 {total} 个",
