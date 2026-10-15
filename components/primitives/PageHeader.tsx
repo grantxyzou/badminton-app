@@ -32,21 +32,19 @@ export interface PageHeaderProps {
    * heading at the same baseline.
    */
   action?: ReactNode;
-  /**
-   * Render the title small (17px, semibold) instead of the 30px bpm-h1.
-   *
-   * For a screen where the app's own name is orientation rather than content —
-   * Home. A 30px bold wordmark on the home screen competes with the thing the
-   * page exists for, and the user already knows which app they opened. At 17px
-   * it still orients without taking the top of the visual hierarchy.
-   *
-   * A prop rather than an inline override at the call site, per this file's own
-   * rule: overriding here is how the header fragmented across eight tabs before.
-   */
-  compact?: boolean;
 }
 
-export default function PageHeader({ children, action, compact = false }: PageHeaderProps) {
+/*
+ * There was a `compact` prop (2026-08-27 to 2026-10-15): Home rendered its title
+ * at 16px semibold so the club name read as orientation rather than content.
+ * Grant reversed it ("this header size is off from the other page"), and it had
+ * a defect besides: the condensed rule below (`.scrolled` → 18px) is more
+ * specific than the compact class, so Home's title GREW when the page scrolled.
+ * Every tab now shares one title. Add a variant only with a reason that survives
+ * that comparison, and check it against the condensed size.
+ */
+
+export default function PageHeader({ children, action }: PageHeaderProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Condense once the real scroll ancestor passes 8px. This app scrolls
@@ -57,7 +55,7 @@ export default function PageHeader({ children, action, compact = false }: PageHe
   return (
     <div ref={ref} className="bpm-page-header">
       <h1
-        className={`${compact ? 'bpm-page-header__title--compact' : 'bpm-h1'} bpm-page-header__title leading-tight`}
+        className="bpm-h1 bpm-page-header__title leading-tight"
       >
         {children}
       </h1>

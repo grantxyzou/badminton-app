@@ -730,8 +730,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           of condensing like every other tab. The version stamp stays tight under
           the title via inline marginTop (beats the space-y-5 gap).
           The easter-egg `onTitleTap` lives on the inner span so PageHeader owns
-          the scroll-condense. */}
-      <PageHeader compact>
+          the scroll-condense.
+          Same 30px title as every other tab (Grant, 2026-10-15: "this header
+          size is off from the other page"). The 2026-08-27 hierarchy pass had
+          made it a 16px `compact` variant; that variant also GREW on scroll,
+          to the shared 18px condensed size, so it is gone, not just unused. */}
+      <PageHeader>
         <span
           role="button"
           tabIndex={0}
