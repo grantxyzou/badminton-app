@@ -91,7 +91,7 @@ describe('the sign-up tap and the shuttle burst', () => {
 
     // The server has confirmed and the banner is up, but the morph is still
     // running: nothing felt, nothing flying.
-    expect(await screen.findByText("Lin, you're in")).toBeDefined();
+    expect(await screen.findByText('Lin, you have signed up for this week!')).toBeDefined();
     expect(morph.finish).not.toBeNull();
     expect(haptics.tapSuccess).not.toHaveBeenCalled();
     expect(document.querySelector('.shuttle-burst')).toBeNull();
