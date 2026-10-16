@@ -63,6 +63,12 @@ export default function MemberAvatar({ name, avatar: given, size = 32, tone = 'n
           className="member-avatar__racket"
           src={racketSrc(racketId)}
           alt=""
+          // Every catalog image is 240×624. The CSS sets the rendered width;
+          // these only give a lazy image its ratio before it loads (Chrome
+          // flags a lazy <img> without them, though this one is absolute in
+          // a fixed circle and cannot shift anything).
+          width={240}
+          height={624}
           loading="lazy"
           decoding="async"
           data-loaded="false"
