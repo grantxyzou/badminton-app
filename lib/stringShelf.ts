@@ -72,6 +72,24 @@ const text = (item: CatalogItem | null, k: string): string | null => {
 export const powerOf = (item: CatalogItem | null) => num(item, 'repulsion');
 export const durabilityOf = (item: CatalogItem | null) => num(item, 'durability');
 export const controlOf = (item: CatalogItem | null) => num(item, 'control');
+/** Soft to hard, 1–5 (`feelScale`; higher is harder). */
+export const feelOf = (item: CatalogItem | null) => num(item, 'feelScale');
+
+/**
+ * What runs up the side of the map (docs/plans/string-inventory.md,
+ * Decisions, 2026-10-16). Durability always runs along the bottom; power is
+ * its mirror image (r = −0.78 across the catalog), so the map read as one
+ * diagonal until the member could swap power for control or feel — the two
+ * ratings nothing else on the map already says.
+ */
+export const MAP_AXES = ['power', 'control', 'feel'] as const;
+export type MapAxis = (typeof MAP_AXES)[number];
+/** The top of each axis's scale, for "out of" in the copy. */
+export const AXIS_MAX: Record<MapAxis, number> = { power: 10, control: 10, feel: 5 };
+
+export function axisValueOf(axis: MapAxis, item: CatalogItem | null): number | null {
+  return axis === 'power' ? powerOf(item) : axis === 'control' ? controlOf(item) : feelOf(item);
+}
 export const bestForOf = (item: CatalogItem | null) => text(item, 'bestFor');
 
 export interface ShelfEntry {

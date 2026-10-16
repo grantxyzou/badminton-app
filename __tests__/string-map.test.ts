@@ -13,7 +13,7 @@ import {
 } from '../lib/stringMap';
 
 /**
- * The "Strings we offer" map's geometry (docs/design/strings-shelf-spec.md).
+ * The "Strings in stock" map's geometry (docs/design/strings-shelf-spec.md).
  * The mock placed its labels by hand; these hold the rule that replaced
  * that: no label leaves the plot, none overlaps a dot or another label, and
  * the selected one is always shown.
@@ -53,20 +53,20 @@ describe('canPlot', () => {
 });
 
 describe('dotPositions', () => {
-  it('puts more power higher and more durability further right', () => {
-    const [weak, strong] = dotPositions([{ power: 5, durability: 5 }, { power: 9, durability: 8 }], W, H);
+  it('puts a higher rating higher and more durability further right', () => {
+    const [weak, strong] = dotPositions([{ value: 5, durability: 5 }, { value: 9, durability: 8 }], W, H);
     expect(strong.y).toBeLessThan(weak.y);
     expect(strong.x).toBeGreaterThan(weak.x);
   });
 
   it('spreads strings on the same point 10px apart, in list order, around the point', () => {
-    const items = [{ power: 8, durability: 6 }, { power: 8, durability: 6 }, { power: 8, durability: 6 }, { power: 5, durability: 9 }];
+    const items = [{ value: 8, durability: 6 }, { value: 8, durability: 6 }, { value: 8, durability: 6 }, { value: 5, durability: 9 }];
     const [a, b, c] = dotPositions(items, W, H);
     expect(b.x - a.x).toBe(SAME_POINT_SPREAD);
     expect(c.x - b.x).toBe(SAME_POINT_SPREAD);
     expect(a.y).toBe(b.y);
     // Centred: the middle one sits on the true point.
-    const [solo] = dotPositions([{ power: 8, durability: 6 }, { power: 5, durability: 9 }], W, H);
+    const [solo] = dotPositions([{ value: 8, durability: 6 }, { value: 5, durability: 9 }], W, H);
     expect(b.x).toBeCloseTo(solo.x);
   });
 });
@@ -74,11 +74,11 @@ describe('dotPositions', () => {
 describe('placeLabels', () => {
   // Five strings, four of them clustered — the BPM shelf's shape.
   const items = [
-    { power: 9, durability: 6 },
-    { power: 9, durability: 6.5 },
-    { power: 8.5, durability: 6 },
-    { power: 8, durability: 7 },
-    { power: 6, durability: 9 },
+    { value: 9, durability: 6 },
+    { value: 9, durability: 6.5 },
+    { value: 8.5, durability: 6 },
+    { value: 8, durability: 7 },
+    { value: 6, durability: 9 },
   ];
   const dots = dotPositions(items, W, H);
   const widths = [60, 70, 90, 50, 80];
@@ -106,7 +106,7 @@ describe('placeLabels', () => {
 
   it('hides a label with nowhere to go, but never the selected one', () => {
     // A plot too small for any label beside any dot.
-    const tiny = dotPositions([{ power: 5, durability: 5 }, { power: 6, durability: 6 }, { power: 7, durability: 7 }], 40, 30);
+    const tiny = dotPositions([{ value: 5, durability: 5 }, { value: 6, durability: 6 }, { value: 7, durability: 7 }], 40, 30);
     const placed = placeLabels({ dots: tiny, widths: [80, 80, 80], labelHeight: 15, width: 40, height: 30, selected: 1 });
     expect(placed[0]).toBeNull();
     expect(placed[2]).toBeNull();

@@ -8,9 +8,9 @@ import { resetCatalogCache } from '@/components/stats/useCatalog';
 import enMessages from '../../messages/en.json';
 
 /**
- * "Strings we offer" (docs/design/strings-shelf-spec.md, design 4a): the map
- * by default, the list one tap away, and the list alone when there is too
- * little to plot.
+ * "Strings in stock" (docs/design/strings-shelf-spec.md, design 4a): the map
+ * by default, with power, control or feel up the side; the list one tap away;
+ * and the list alone when there is too little to plot.
  */
 
 const str = (id: string, model: string, repulsion: number | null, durability: number | null, extra: Record<string, unknown> = {}) => ({
@@ -98,6 +98,47 @@ describe('the map', () => {
     wrap();
     await screen.findByRole('group', { name: 'Strings by power and durability' });
     expect(screen.queryByText('In stock')).toBeNull();
+  });
+});
+
+describe('what runs up the side', () => {
+  it('switches from power to control, says so, and remembers it', async () => {
+    mockApi(['BG80', 'BG66', 'BG65', 'Exbolt']);
+    wrap();
+    await screen.findByRole('group', { name: 'Strings by power and durability' });
+    expect(screen.getByText('More power →')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Control' }));
+    const map = screen.getByRole('group', { name: 'Strings by control and durability' });
+    expect(within(map).getByRole('button', { name: 'Yonex BG80: control 7 out of 10, durability 6 out of 10' })).toBeDefined();
+    expect(screen.getByText('More control →')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-pressed')).toBe('true');
+    expect(localStorage.getItem('bpm:strings-axis')).toBe('control');
+  });
+
+  it('plots feel out of 5, higher is harder', async () => {
+    resetCatalogCache();
+    CATALOG.forEach((c, i) => { (c.attributes as Record<string, unknown>).feelScale = [4, 3, 2, 5, 3][i]; });
+    try {
+      mockApi(['BG80', 'BG66', 'BG65', 'Exbolt']);
+      wrap();
+      fireEvent.click(await screen.findByRole('button', { name: 'Feel' }));
+      const map = screen.getByRole('group', { name: 'Strings by feel and durability' });
+      expect(within(map).getByRole('button', { name: 'Yonex BG65: feel 2 out of 5, higher is harder, durability 9 out of 10' })).toBeDefined();
+      expect(screen.getByText('Harder feel →')).toBeDefined();
+    } finally {
+      CATALOG.forEach((c) => { delete (c.attributes as Record<string, unknown>).feelScale; });
+    }
+  });
+
+  it('offers only the axes enough strings are rated on, and falls back to power', async () => {
+    // The fixtures carry no feel rating: Feel is not offered, and a stored
+    // "feel" opens on power rather than an empty map.
+    localStorage.setItem('bpm:strings-axis', 'feel');
+    mockApi(['BG80', 'BG66', 'BG65', 'Exbolt']);
+    wrap();
+    await screen.findByRole('group', { name: 'Strings by power and durability' });
+    expect(screen.queryByRole('button', { name: 'Feel' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Control' })).toBeDefined();
   });
 });
 

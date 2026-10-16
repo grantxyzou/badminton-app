@@ -1,6 +1,8 @@
 /**
- * The geometry of the "Strings we offer" map (docs/design/strings-shelf-spec.md):
- * each string a dot, power up the side, durability along the bottom.
+ * The geometry of the "Strings in stock" map (docs/design/strings-shelf-spec.md):
+ * each string a dot, durability along the bottom, and up the side whichever
+ * rating the member picked — power, control or feel (`MapAxis` in
+ * `lib/stringShelf.ts`). The geometry does not care which: it takes a value.
  *
  * Pure and import-free on purpose — the card is a client component, and this
  * is the part a test can pin: the domain, where the dots land, and where the
@@ -50,7 +52,8 @@ export function canPlot(plottedCount: number): boolean {
 }
 
 export interface MapInput {
-  power: number;
+  /** Up the side: the picked axis's rating. */
+  value: number;
   durability: number;
 }
 
@@ -61,20 +64,20 @@ export interface Point {
 
 /**
  * Pixel centres inside a `width` × `height` plot, in input order. x is
- * durability (right lasts longer), y is power (up hits harder). Strings on an
+ * durability (right lasts longer), y is the picked axis (up is more). Strings on an
  * identical point spread `SAME_POINT_SPREAD` apart around it, in input order,
  * so neither hides the other.
  */
 export function dotPositions(items: readonly MapInput[], width: number, height: number): Point[] {
   const x = axisDomain(items.map((i) => i.durability));
-  const y = axisDomain(items.map((i) => i.power));
+  const y = axisDomain(items.map((i) => i.value));
   const raw = items.map((i) => ({
     x: ((i.durability - x.min) / (x.max - x.min)) * width,
-    y: height - ((i.power - y.min) / (y.max - y.min)) * height,
+    y: height - ((i.value - y.min) / (y.max - y.min)) * height,
   }));
   const groups = new Map<string, number[]>();
   items.forEach((i, n) => {
-    const key = `${i.durability}|${i.power}`;
+    const key = `${i.durability}|${i.value}`;
     groups.set(key, [...(groups.get(key) ?? []), n]);
   });
   for (const members of groups.values()) {

@@ -10,7 +10,8 @@ export interface MapDot {
   /** The model name drawn beside the dot (not the brand — there is no room). */
   model: string;
   ariaLabel: string;
-  power: number;
+  /** Up the side: the rating the member picked (power, control or feel). */
+  value: number;
   durability: number;
   band: StockBand | null;
 }
@@ -28,9 +29,10 @@ const NOMINAL_W = 300;
 const GUIDE = 'color-mix(in srgb, var(--text-primary) 10%, transparent)';
 
 /**
- * The trade-off map on "Strings we offer" (docs/design/strings-shelf-spec.md,
- * design 4a): every plotted string a dot, power up the side and durability
- * along the bottom, coloured by stock. Tapping a dot SELECTS it — the panel
+ * The trade-off map on "Strings in stock" (docs/design/strings-shelf-spec.md,
+ * design 4a): every plotted string a dot, durability along the bottom and the
+ * member's pick of power, control or feel up the side, coloured by stock. The
+ * card owns the pick and hands in the side's words (`yLabel`, `mapLabel`). Tapping a dot SELECTS it — the panel
  * under the map follows — and never opens the sheet.
  *
  * The geometry is `lib/stringMap.ts`. This file measures: the plot's width
@@ -45,10 +47,16 @@ export default function StringMap({
   dots,
   selected,
   onSelect,
+  yLabel,
+  mapLabel,
 }: {
   dots: MapDot[];
   selected: string | null;
   onSelect: (key: string) => void;
+  /** The side axis's words, e.g. "More control →". */
+  yLabel: string;
+  /** The plot's accessible name, e.g. "Strings by control and durability". */
+  mapLabel: string;
 }) {
   const t = useTranslations('home.stringing.offer');
   const plotRef = useRef<HTMLDivElement>(null);
@@ -98,12 +106,12 @@ export default function StringMap({
         className="fs-xs"
         style={{ gridRow: 1, gridColumn: 1, writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', lineHeight: '16px', color: 'var(--text-muted)' }}
       >
-        {t('axisPower')}
+        {yLabel}
       </span>
       <div
         ref={plotRef}
         role="group"
-        aria-label={t('mapLabel')}
+        aria-label={mapLabel}
         style={{
           gridRow: 1,
           gridColumn: 2,
@@ -187,7 +195,10 @@ export default function StringMap({
           </span>
         ))}
       </div>
-      <span aria-hidden="true" className="fs-xs" style={{ gridRow: 2, gridColumn: 2, textAlign: 'right', color: 'var(--text-muted)' }}>
+      {/* Starts under the plot's left edge (Grant's edit on the design canvas,
+          2026-10-16): with three side axes, the eye reads the bottom axis
+          first, from where the plot starts. */}
+      <span aria-hidden="true" className="fs-xs" style={{ gridRow: 2, gridColumn: 2, textAlign: 'start', color: 'var(--text-muted)' }}>
         {t('axisDurability')}
       </span>
     </div>

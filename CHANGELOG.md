@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The string map can show control or feel (2026-10-16)
+
+`docs/plans/string-inventory.md`. Power and durability are near mirror images in the catalog, so the map on the Stringing tab drew one dimension as a diagonal. A Power, Control and Feel switch above the map now sets what runs up the side, with durability still along the bottom. It opens on power and remembers the pick. On the club's strings, Control lifts Aerobite Boost from a bottom corner to the top. The card is now titled "Strings in stock", and the selected string's line adds its feel out of 5.
+
 ### No card lifts on hover (2026-10-15)
 
 Grant: "Nothing lifts." Since 2026-09-14 only a card that is itself a button rose 2px and deepened its shadow under a mouse, and that turned out to be two cards in the whole app (the Home skill lead and the Gear "next racket" card), so it read as an inconsistency. Every card hover rule is gone (Home, Stats, admin `cc-dcard`), along with the locked-card override that existed only to cancel the lift and the two hover tokens. Pressable cards keep their chevron, pointer cursor and 0.98 press scale. Phones never showed a hover, so members see no change.
