@@ -1,3 +1,5 @@
+import { lateCancelHoursOf, lateCancelVerdict } from '@/lib/cancelPolicy';
+import { readGroup } from '@/lib/groups';
 import { NextRequest, NextResponse } from 'next/server';
 import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
@@ -1056,12 +1058,50 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
+    /**
+     * LATE CANCELLATION (docs/plans/late-cancel-fee.md). Asked only AFTER the
+     * caller is known to own the row: checking earlier would let anyone holding
+     * a name probe whether that player's cancel would count as late.
+     *
+     * A player's own confirmed spot, inside the club's window: without
+     * `acknowledgeLateFee: true` the answer is 409 `late_cancel` and nothing
+     * changes; the client shows the fee warning and resends. The stamp follows
+     * LATENESS, not the acknowledgement — a client that acknowledges up front
+     * skips the warning, never the record. Admins (whose cancels are already
+     * `cancelledBySelf: false`) and waitlist rows are exempt. A failed policy
+     * read FAILS OPEN: nobody is kept in a spot they are trying to give back
+     * because a settings read hiccuped; the miss is logged.
+     */
+    let lateStamp: { lateCancel?: true; lateCancelHoursBefore?: number } = {};
+    if (!isAdmin && player.waitlisted !== true) {
+      let policyHours: number | null = null;
+      let startIso: string | undefined;
+      try {
+        const [group, session] = await Promise.all([
+          readGroup(scope.groupId),
+          scope.read<{ id: string; datetime?: string }>('sessions', sessionId, sessionId),
+        ]);
+        policyHours = lateCancelHoursOf(group?.settings);
+        startIso = typeof session?.datetime === 'string' ? session.datetime : undefined;
+      } catch (err) {
+        console.error('DELETE player: late-cancel policy read failed, cancelling without it', err);
+      }
+      const verdict = lateCancelVerdict(startIso, Date.now(), policyHours);
+      if (verdict.late) {
+        if (body.acknowledgeLateFee !== true) {
+          return NextResponse.json({ error: 'late_cancel', hours: policyHours }, { status: 409 });
+        }
+        lateStamp = { lateCancel: true, lateCancelHoursBefore: verdict.hoursBefore ?? 0 };
+      }
+    }
+
     // Soft delete — mark as removed instead of destroying the record
     await scope.upsert('players', {
       ...player,
       removed: true,
       removedAt: new Date().toISOString(),
       cancelledBySelf: !isAdmin,
+      ...lateStamp,
     });
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -10,6 +10,7 @@ export type AdminView =
   | 'announcements'
   | 'etransfer'
   | 'skip-dates'
+  | 'late-cancel'
   | 'past-sessions'
   | 'stringing'
   | 'catalog-gaps'

@@ -23,6 +23,7 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
 import ETransferRecipientEditor from './CommandCenter/ETransferRecipientEditor';
 import SkipDatesEditor from './CommandCenter/SkipDatesEditor';
+import LateCancelEditor from './CommandCenter/LateCancelEditor';
 import { isFlagOn } from '@/lib/flags';
 
 /*
@@ -43,7 +44,7 @@ import { isFlagOn } from '@/lib/flags';
 const VIEW_KEY = 'badminton_admin_view';
 const RESTORABLE: ReadonlySet<AdminView> = new Set<AdminView>([
   'session-details', 'members', 'birds', 'releases', 'ledger', 'announcements', 'etransfer',
-  'skip-dates', 'past-sessions', 'stringing', 'catalog-gaps', 'metrics', 'invite', 'gift-cards',
+  'skip-dates', 'late-cancel', 'past-sessions', 'stringing', 'catalog-gaps', 'metrics', 'invite', 'gift-cards',
 ]);
 function storeView(v: AdminView | null) {
   try {
@@ -171,6 +172,14 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
       <div className="animate-slideInRight space-y-3">
         <AdminBackHeader onBack={goBack} title="Skip dates" />
         <SkipDatesEditor />
+      </div>
+    );
+  }
+  if (view === 'late-cancel') {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="Late cancellations" />
+        <LateCancelEditor />
       </div>
     );
   }

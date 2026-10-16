@@ -177,6 +177,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
           : []),
         { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },
         { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
+        { icon: 'schedule', label: 'Late cancellations', onClick: () => setView('late-cancel') },
       ],
     },
     {

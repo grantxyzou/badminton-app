@@ -309,14 +309,14 @@ describe('/api/admin/settings', () => {
     seedAdminOwnsBpm();
     seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID, settings: { skipDates: ['2026-12-25'], maxPlayers: 12 } });
     const got = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
-    expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-12-25'] });
+    expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-12-25'], lateCancelHours: null });
     const patched = await settingsPatch(makeAdminRequest('PATCH', 'http://x/api/admin/settings', { skipDates: ['2027-01-01'], eTransferRecipient: { name: 'Club', email: 'club@example.com' } }));
     expect(patched.status).toBe(200);
     expect((await readGroup('bpm'))?.settings).toMatchObject({ skipDates: ['2027-01-01'], eTransferRecipient: { name: 'Club' }, maxPlayers: 12 });
     const me = (getStore()['members'] as { id: string; skipDates?: string[] }[]).find((m) => m.id === ADMIN_MEMBER_ID);
     expect(me?.skipDates).toEqual(['2027-01-01']);
     const again = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
-    expect(await again.json()).toEqual({ eTransferRecipient: { name: 'Club', email: 'club@example.com' }, skipDates: ['2027-01-01'] });
+    expect(await again.json()).toEqual({ eTransferRecipient: { name: 'Club', email: 'club@example.com' }, skipDates: ['2027-01-01'], lateCancelHours: null });
   });
 
   it('flag ON with a group doc that has no recipient yet: the admin’s own recipient still answers', async () => {
@@ -327,7 +327,7 @@ describe('/api/admin/settings', () => {
     me.eTransferRecipient = { name: 'Grant', email: 'g@example.com' };
     me.skipDates = ['2026-11-11'];
     const got = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
-    expect(await got.json()).toEqual({ eTransferRecipient: { name: 'Grant', email: 'g@example.com' }, skipDates: ['2026-11-11'] });
+    expect(await got.json()).toEqual({ eTransferRecipient: { name: 'Grant', email: 'g@example.com' }, skipDates: ['2026-11-11'], lateCancelHours: null });
   });
 
   it('flag ON without a group doc (before the backfill): falls back to the admin’s Member doc', async () => {
@@ -336,7 +336,7 @@ describe('/api/admin/settings', () => {
     const me = (getStore()['members'] as { id: string; skipDates?: string[] }[]).find((m) => m.id === ADMIN_MEMBER_ID)!;
     me.skipDates = ['2026-10-01'];
     const got = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
-    expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-10-01'] });
+    expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-10-01'], lateCancelHours: null });
   });
 });
 

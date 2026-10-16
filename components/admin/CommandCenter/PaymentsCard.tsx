@@ -18,6 +18,7 @@ import type { Session, ETransferRecipient } from '@/lib/types';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import MemberAvatar from '@/components/primitives/MemberAvatar';
 import Collapse from '@/components/primitives/Collapse';
+import StatusBadge from '@/components/primitives/StatusBadge';
 import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -30,6 +31,9 @@ interface Player {
   removed?: boolean;
   removedAt?: string;
   cancelledBySelf?: boolean;
+  /** Cancelled inside the club's late-cancellation window (docs/plans/late-cancel-fee.md). */
+  lateCancel?: boolean;
+  lateCancelHoursBefore?: number;
   waitlisted?: boolean;
   memberId?: string;
   /** Stamped at settle time. Frozen — survives retro edits to court/bird costs. */
@@ -832,6 +836,17 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
               {lists.removed.map((p) => (
                 <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
                   <span style={{ flex: 1, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{p.name}</span>
+                  {/* A cancel inside the club's window (docs/plans/late-cancel-fee.md).
+                      Amber, the attention tone — a fee is the admin's call, not a failure. */}
+                  {p.lateCancel && (
+                    <StatusBadge
+                      variant="state"
+                      tone="waitlist"
+                      ariaLabel={`Cancelled late, ${p.lateCancelHoursBefore ?? 0} hours before the session`}
+                    >
+                      Late · {p.lateCancelHoursBefore ?? 0}h
+                    </StatusBadge>
+                  )}
                   {p.removedAt && (
                     <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
                       {p.cancelledBySelf ? 'cancelled' : 'removed'} {fmtSessionLabel(p.removedAt)}
