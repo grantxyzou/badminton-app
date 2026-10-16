@@ -98,7 +98,7 @@ describe('everyone gets Racket and Strings', () => {
     stubFetch();
     wrap(<StringingTab />);
     fireEvent.click(await screen.findByRole('button', { name: R.strings }));
-    expect(await screen.findByText('Strings we offer')).toBeDefined();
+    expect(await screen.findByText('Strings in stock')).toBeDefined();
     expect(await screen.findByText('Bring your own string')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
@@ -115,7 +115,7 @@ describe('everyone gets Racket and Strings', () => {
     stubFetch();
     wrap(<StringingTab view="strings" onViewChange={() => {}} />);
     expect((await screen.findByRole('button', { name: R.strings })).getAttribute('aria-current')).toBe('page');
-    expect(await screen.findByText('Strings we offer')).toBeDefined();
+    expect(await screen.findByText('Strings in stock')).toBeDefined();
   });
 });
 
