@@ -85,7 +85,7 @@ describe('signing up', () => {
   it('confirms with the plan itself, without dropping Home into the skeleton', async () => {
     renderHome();
     await screen.findByText('Signing up as Lin');
-    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
 
     expect(await screen.findByText('Lin, you have signed up for this week!')).toBeDefined();
     expect(screen.getByText(/ at Test Gym$/)).toBeDefined();
@@ -118,7 +118,7 @@ describe('signing up', () => {
   it('keeps the same wording once you are in', async () => {
     renderHome();
     await screen.findByText('Signing up as Lin');
-    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
     await screen.findByText('Lin, you have signed up for this week!');
     expect(screen.getByText('8 spots left out of 12')).toBeDefined();
   });
@@ -126,7 +126,7 @@ describe('signing up', () => {
   it('never carries the delete token into the roster it renders', async () => {
     renderHome();
     await screen.findByText('Signing up as Lin');
-    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
     await screen.findByText('Lin, you have signed up for this week!');
     expect(document.body.innerHTML).not.toContain('t'.repeat(32));
   });

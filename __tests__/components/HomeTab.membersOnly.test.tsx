@@ -81,7 +81,7 @@ describe('Home sign-up card, members only', () => {
     await screen.findByText('Signing up as Lin');
     // Role queries skip the RevealSlot's `hidden` wrapper; the text query above
     // does not, so await the button too (same race as #540).
-    fireEvent.click(await screen.findByRole('button', { name: /I'm in/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Sign up for this week/i }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([u, i]) => String(u).includes('/api/players') && (i as RequestInit)?.method === 'POST')).toBe(true),
     );
@@ -270,7 +270,7 @@ describe('a no-PIN regular on a new phone, before the flip', () => {
     fireEvent.change(input, { target: { value: 'Kento' } });
     await new Promise((r) => setTimeout(r, 700)); // past the probe debounce
     expect(screen.queryByLabelText('Create a PIN')).toBeNull();
-    expect((screen.getByRole('button', { name: /I'm in this week/i }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: /Sign up for this week/i }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('still offers "Create a PIN" on a phone that holds their session, where it works', async () => {

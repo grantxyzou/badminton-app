@@ -50,7 +50,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Sign-up wording (2026-10-15)
 
-Grant's copy: the confirmation reads "{name}, you have signed up for this week!" (both the green banner and the amber PIN-setup one, which keeps its own body), and the line under the sign-up card reads "A has signed up", "A and B have signed up", or, for three or more, "A and N others have signed up" — one name and a count, where it used to name the two newest. Chinese follows.
+Grant's copy: the confirmation reads "{name}, you have signed up for this week!" (both the green banner and the amber PIN-setup one, which keeps its own body), and the line under the sign-up card reads "A has signed up", "A and B have signed up", or, for three or more, "A and N others have signed up" — one name and a count, where it used to name the two newest. Chinese follows. The button itself reads "Sign up for this week" (was "I'm in this week"; Chinese already said 立即报名), and "Join Waitlist" becomes "Join the waitlist".
 
 ### Email, Google and Apple sign-in are no longer behind a flag (2026-10-15)
 

@@ -396,7 +396,7 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
             the flash and is what was actually asked for — collapsed shows the
             progress, expanded shows the racket. */}
         {/* A TEXT ROW, not a filled block.
-            As a full-width button this outweighed "I'm in this week" — the
+            As a full-width button this outweighed the sign-up button — the
             week's actual decision — from inside the group below it. Demoted to
             a link with an arrow, it still reads as the way in without
             competing for the one primary slot on the screen. */}
