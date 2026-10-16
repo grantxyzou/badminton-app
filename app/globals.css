@@ -69,9 +69,7 @@
   --glass-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.03) 0%, rgba(var(--glass-tint), 0.01) 100%);
   --glass-border: rgba(var(--glass-tint), 0.14);
   --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.12);
-  --glass-shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
   --glass-inset: rgba(var(--glass-tint), 0.14);
-  --glass-inset-hover: rgba(var(--glass-tint), 0.18);
   --glass-blur: 10px;
 
   /* ── Buttons ── */
@@ -311,9 +309,7 @@
   --glass-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.55) 100%);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --glass-shadow-hover: 0 2px 4px rgba(26, 35, 50, 0.08), 0 4px 8px rgba(26, 35, 50, 0.07);
   --glass-inset: rgba(255, 255, 255, 0.5);
-  --glass-inset-hover: rgba(255, 255, 255, 0.6);
   --glass-blur: 16px;
 
   /* White on #22c55e was 2.3:1 — the app's most important button failed its
@@ -1782,14 +1778,6 @@ html[data-tab="skills"] .glass-card {
     inset 0 -1px 1px rgba(0, 0, 0, 0.18);
 }
 
-@media (hover: hover) {
-  html[data-tab="skills"] :is(button, a, [role="button"]).glass-card:hover {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.24),
-      inset 0 -1px 1px rgba(0, 0, 0, 0.20);
-  }
-}
-
 /* Light mode: the same card material as every other tab (--fcard-*).
    This used to be its own frost — white at .62→.48, no drop shadow, no edge —
    which only read as a card while a strong blue field sat behind it. With the
@@ -1802,13 +1790,6 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   -webkit-backdrop-filter: var(--fcard-blur);
   backdrop-filter: var(--fcard-blur);
   box-shadow: var(--fcard-inset), var(--fcard-shadow);
-}
-
-@media (hover: hover) {
-  [data-theme="light"] html[data-tab="skills"] :is(button, a, [role="button"]).glass-card:hover,
-  html[data-tab="skills"][data-theme="light"] :is(button, a, [role="button"]).glass-card:hover {
-    box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
-  }
 }
 
 /* ── Liquid Glass card ── */
@@ -1835,16 +1816,15 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
               transform var(--duration-normal) var(--ease-glass);
 }
 
-/* Hover lifts only a card you can press. A static card that rose and
-   brightened under the pointer read as a control that did nothing ("the cards
-   move and shine when mouse hover on it. weird", Grant 2026-09-14). */
-@media (hover: hover) {
-  :is(button, a, [role="button"]).glass-card:hover {
-    transform: translateY(-2px);
-    box-shadow:
-      inset 0 1px 0 var(--glass-inset-hover);
-  }
-}
+/* NO card has a hover state (Grant, 2026-10-15: "Nothing lifts").
+   History: until 2026-09-14 every card rose 2px and brightened under the
+   pointer, which read as a control that did nothing ("the cards move and shine
+   when mouse hover on it. weird"); then only a card that is itself a button
+   kept the lift — and that turned out to be two cards in the whole app (the
+   Home skill lead, the Gear "next racket" card), so the lift read as an
+   inconsistency rather than an affordance. A pressable card says so with its
+   chevron, its cursor and the press scale (the ladder further down: cards
+   0.98). Do not add a :hover to a card; phones never see it anyway. */
 
 /* ══════════════════════════════════════════════════════════════════════════
    FIELD CARD MATERIAL                   [flag retired 2026-09-10]
@@ -1893,12 +1873,6 @@ html:root .glass-card {
   box-shadow: var(--fcard-inset), var(--fcard-shadow);
 }
 
-@media (hover: hover) {
-  html:root :is(button, a, [role="button"]).glass-card:hover {
-    box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
-  }
-}
-
 
 /* ══════════════════════════════════════════════════════════════════════════
    ADMIN cc-* ON THE FIELD MATERIAL          [fields — flag retired 2026-09-10]
@@ -1933,16 +1907,6 @@ html:root .cc-dcard {
    waiting" already have fills. */
 html:root .cc-dcard.alert { background: var(--fcard-full-bg); }
 html:root .cc-dcard.warn  { background: var(--fcard-wait-bg); }
-
-/* Hover was a border-colour change, which cannot survive border: none. Moved to
-   the same inset-brightening the field card already uses, so admin hover and
-   app hover are one behaviour. */
-@media (hover: hover) {
-  html:root :is(button, a, [role="button"]).cc-dcard:hover {
-    border-color: transparent;
-    box-shadow: inset 0 1px 0 var(--glass-inset-hover), var(--glass-shadow-hover);
-  }
-}
 
 /* The hero keeps its accent rim: it is the "you are in admin" marker, not
    decoration, and it is the one place the rim carries meaning. */
@@ -2222,19 +2186,6 @@ html:root .glass-card.is-locked {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
-}
-/* Inert means inert on hover too. `box-shadow` is already handled -- the rule
-   above has the same specificity as the scoped :hover and comes later, so it
-   wins. `transform` does NOT: the 2px lift comes from the UNSCOPED
-   `.glass-card:hover` further up the file, which .is-locked never overrides.
-   Without this, a card the member has deliberately kept private animates when
-   you point at it, which is precisely the affordance the material exists to
-   withhold. */
-@media (hover: hover) {
-  html:root .glass-card.is-locked:hover {
-    transform: none;
-    box-shadow: none;
-  }
 }
 
 /* ── Locked card (components/stats/LockedCard.tsx) ──
@@ -3890,7 +3841,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 /* Welcome's two doors, real DOM pinned to the bottom (outside the scaled
    canvas, so the home indicator is honoured and the text stays crisp), as wide
    as the canvas. The rise uses `translate`, not `transform`, and fills
-   `backwards` only, so neither the press scale nor the hover lift is held
+   `backwards` only, so the press scale is not held
    hostage by a finished animation. Held at its first frame while the splash
    is still deciding. */
 .launch-actions {
@@ -5001,7 +4952,6 @@ html:root[data-theme="light"] {
   cursor: pointer;
   transition: border-color var(--duration-fast) ease;
 }
-:is(button, a, [role="button"]).cc-dcard:hover { border-color: rgba(255, 255, 255, 0.22); }
 .cc-dcard .htitle {
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
   font-size: 12px;
@@ -5042,7 +4992,6 @@ html:root[data-theme="light"] {
 [data-theme="light"] .cc-dcard .htitle { color: var(--text-secondary); }
 [data-theme="light"] .cc-dcard .big { color: var(--text-primary); }
 [data-theme="light"] .cc-dcard .small { color: var(--text-secondary); }
-[data-theme="light"] :is(button, a, [role="button"]).cc-dcard:hover { border-color: rgba(0, 0, 0, 0.18); }
 [data-theme="light"] .cc-dcard.alert {
   border-color: rgba(234, 88, 12, 0.30);
   background: linear-gradient(160deg, rgba(234, 88, 12, 0.06), rgba(0, 0, 0, 0.01));

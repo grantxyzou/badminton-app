@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### No card lifts on hover (2026-10-15)
+
+Grant: "Nothing lifts." Since 2026-09-14 only a card that is itself a button rose 2px and deepened its shadow under a mouse, and that turned out to be two cards in the whole app (the Home skill lead and the Gear "next racket" card), so it read as an inconsistency. Every card hover rule is gone (Home, Stats, admin `cc-dcard`), along with the locked-card override that existed only to cancel the lift and the two hover tokens. Pressable cards keep their chevron, pointer cursor and 0.98 press scale. Phones never showed a hover, so members see no change.
+
 ### Sign-up wording (2026-10-15)
 
 Grant's copy: the confirmation reads "{name}, you have signed up for this week!" (both the green banner and the amber PIN-setup one, which keeps its own body), and the line under the sign-up card reads "A has signed up", "A and B have signed up", or, for three or more, "A and N others have signed up" — one name and a count, where it used to name the two newest. Chinese follows. The button itself reads "Sign up for this week" (was "I'm in this week"; Chinese already said 立即报名), and "Join Waitlist" becomes "Join the waitlist".
