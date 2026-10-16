@@ -764,8 +764,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           mode); we only set flex on the wrapper. */}
       {isCurrentSession && (
         <form onSubmit={handleAdd} style={{ display: 'flex', gap: 'var(--space-3)', paddingTop: 'var(--space-3)' }}>
+          {/* `name` lets the browser identify the field; autofill stays off
+              because the name typed here is a player's, never the admin's. */}
           <input
             type="text"
+            name="playerName"
+            aria-label="Add player by name"
+            autoComplete="off"
             value={addName}
             onChange={(e) => { setAddName(e.target.value); setAddError(''); }}
             placeholder="Add player by name"
