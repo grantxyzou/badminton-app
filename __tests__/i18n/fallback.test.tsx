@@ -42,7 +42,7 @@ describe('locale fallback — missing zh-CN key falls back to English', () => {
         <SignupLabel />
       </NextIntlClientProvider>,
     );
-    expect(screen.getByTestId('label').textContent).toBe("I'm in this week");
+    expect(screen.getByTestId('label').textContent).toBe('Sign up for this week');
   });
 
   it('renders the zh-CN string when present (sanity check)', () => {

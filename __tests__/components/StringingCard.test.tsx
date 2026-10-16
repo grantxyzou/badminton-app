@@ -239,7 +239,7 @@ describe('the process strip', () => {
   });
 
   it('is a text ROW, not a button that competes with sign-up', async () => {
-    // As a filled block this outweighed "I'm in this week" — the week's actual
+    // As a filled block this outweighed the sign-up button — the week's actual
     // decision — from inside the group below it. Home gets exactly one primary.
     mockApi(true, []);
     wrap();

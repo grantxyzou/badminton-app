@@ -61,7 +61,9 @@ export default function WhoElseIsIn({
       ? t('othersInOne', { a })
       : others.length === 2
         ? t('othersInTwo', { a, b })
-        : t('othersInMany', { a, b, count: others.length - 2 });
+        // Three or more: the newest by name, the rest as a count (Grant,
+        // 2026-10-15: "XXX and X others have signed up").
+        : t('othersInMany', { a, count: others.length - 1 });
   const faces = others.slice(0, MAX_FACES);
   const hidden = others.length - faces.length;
 

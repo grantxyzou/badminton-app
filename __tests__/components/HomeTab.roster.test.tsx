@@ -68,20 +68,20 @@ afterEach(() => {
 });
 
 async function openRoster() {
-  fireEvent.click(await screen.findByRole('button', { name: /are in$|is in$/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /have signed up$|has signed up$/ }));
   return screen.getAllByRole('list');
 }
 
 describe('the sign-up card as the sign-up list', () => {
   it('no longer sends people to a Sign-Ups tab', async () => {
     renderHome();
-    await screen.findByText("Grant, you're in");
+    await screen.findByText('Grant, you have signed up for this week!');
     expect(screen.queryByRole('button', { name: /View Sign Up List/i })).toBeNull();
   });
 
   it('opens the roster numbered in sign-up order, the viewer included', async () => {
     renderHome();
-    await screen.findByText("Grant, you're in");
+    await screen.findByText('Grant, you have signed up for this week!');
     const [active] = await openRoster();
     const items = within(active).getAllByRole('listitem').map((li) => li.textContent);
     expect(items[0]).toMatch(/^1.*Lin/);
@@ -92,7 +92,7 @@ describe('the sign-up card as the sign-up list', () => {
   it('shows the waitlist as a second section, numbering on from the active list', async () => {
     roster.push({ id: 'p4', name: 'Akane', waitlisted: true });
     renderHome();
-    await screen.findByText("Grant, you're in");
+    await screen.findByText('Grant, you have signed up for this week!');
     const lists = await openRoster();
     expect(screen.getByText(enMessages.players.waitlistHeader)).toBeDefined();
     expect(within(lists[1]).getByRole('listitem').textContent).toMatch(/^4.*Akane/);
@@ -100,7 +100,7 @@ describe('the sign-up card as the sign-up list', () => {
 
   it('offers kudos on every row but your own, and opens the sheet on that person', async () => {
     renderHome();
-    await screen.findByText("Grant, you're in");
+    await screen.findByText('Grant, you have signed up for this week!');
     await openRoster();
     expect(screen.getByRole('button', { name: 'Give kudos to Lin' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Give kudos to Grant' })).toBeNull();
@@ -108,7 +108,7 @@ describe('the sign-up card as the sign-up list', () => {
 
   it('cancels your spot from the card through a sheet that names the action', async () => {
     renderHome();
-    await screen.findByText("Grant, you're in");
+    await screen.findByText('Grant, you have signed up for this week!');
     fireEvent.click(screen.getByRole('button', { name: enMessages.home.signup.cantMakeIt }));
     expect(await screen.findByText(enMessages.players.cancelSheetBody)).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Yes$/ })).toBeNull();
@@ -126,7 +126,7 @@ describe('the sign-up card as the sign-up list', () => {
 
   it('dismissing the sheet cancels nothing', async () => {
     renderHome();
-    await screen.findByText("Grant, you're in");
+    await screen.findByText('Grant, you have signed up for this week!');
     fireEvent.click(screen.getByRole('button', { name: enMessages.home.signup.cantMakeIt }));
     fireEvent.click(await screen.findByRole('button', { name: enMessages.players.sheetKeep }));
     expect(fetchMock.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === 'DELETE')).toBe(false);

@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Sign-up wording (2026-10-15)
+
+Grant's copy: the confirmation reads "{name}, you have signed up for this week!" (both the green banner and the amber PIN-setup one, which keeps its own body), and the line under the sign-up card reads "A has signed up", "A and B have signed up", or, for three or more, "A and N others have signed up" — one name and a count, where it used to name the two newest. Chinese follows. The button itself reads "Sign up for this week" (was "I'm in this week"; Chinese already said 立即报名), and "Join Waitlist" becomes "Join the waitlist".
+
 ### Email, Google and Apple sign-in are no longer behind a flag (2026-10-15)
 
 `NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` retired on its date. It has been on in production since the store launch, so nothing a member sees changes. The code that ran when it was off is gone: the 404 at the top of all sixteen `/api/auth/*` routes, the "Sign-up isn't available yet" and "needs an account" screens, and ProfileTab's PIN-only arrangement. Which buttons show is still decided by which providers have credentials configured (`configuredProviders()`), so a deployment with none still gets the PIN form alone. `docs/flag-retirements.md` has the record.

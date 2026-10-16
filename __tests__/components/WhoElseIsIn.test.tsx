@@ -23,17 +23,17 @@ describe('WhoElseIsIn', () => {
 
   it('names one person', () => {
     renderRow(['Viktor'], 'Lin');
-    expect(screen.getByText('Viktor is in')).toBeDefined();
+    expect(screen.getByText('Viktor has signed up')).toBeDefined();
   });
 
   it('names two, newest first', () => {
     renderRow(['Viktor', 'Akane'], null);
-    expect(screen.getByText('Akane and Viktor are in')).toBeDefined();
+    expect(screen.getByText('Akane and Viktor have signed up')).toBeDefined();
   });
 
-  it('names the two newest and counts the rest, leaving the viewer out', () => {
+  it('names the newest and counts the rest, leaving the viewer out', () => {
     renderRow(['Viktor', 'Akane', 'Lin', 'Kento', 'Sindhu'], 'Lin');
-    expect(screen.getByText('Sindhu, Kento and 2 others are in')).toBeDefined();
+    expect(screen.getByText('Sindhu and 3 others have signed up')).toBeDefined();
   });
 
   it('shows at most five faces, then a count of the rest', () => {
@@ -49,7 +49,7 @@ describe('WhoElseIsIn', () => {
 
   it('is a disclosure: tapping the row opens the numbered roster, the viewer marked', () => {
     const { container } = renderRow(['Viktor', 'Akane', 'Lin', 'Kento'], 'Lin');
-    const row = screen.getByRole('button', { name: /are in/ });
+    const row = screen.getByRole('button', { name: /have signed up/ });
     expect(row.getAttribute('aria-expanded')).toBe('false');
     // Closed means absent, not hidden.
     expect(screen.queryByRole('list')).toBeNull();
@@ -65,7 +65,7 @@ describe('WhoElseIsIn', () => {
 
   it('draws no kudos buttons unless the card passes a handler', () => {
     renderRow(['Viktor', 'Lin'], 'Lin');
-    fireEvent.click(screen.getByRole('button', { name: /is in/ }));
+    fireEvent.click(screen.getByRole('button', { name: /has signed up/ }));
     expect(screen.queryByRole('button', { name: /Give kudos/ })).toBeNull();
   });
 });
