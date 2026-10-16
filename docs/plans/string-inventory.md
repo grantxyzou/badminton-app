@@ -105,6 +105,24 @@ shrinks to the plain list it replaces.
   queue in a `canBeEmpty` slot with no placeholder, like that queue: most
   members will see it, but a club with nothing listed shows nothing and the
   request form already explains that case.
+- **The map's side axis is the member's pick: power, control or feel**
+  (2026-10-16). Grant, on the power-by-durability map: *"I think what we are
+  lacking is another dimention control?"* Read against the catalog, power and
+  durability are near mirror images across all 46 strings (r = −0.78; gauge
+  tracks durability at 0.91 and hitting sound tracks power at 0.89), so the
+  map drew one dimension as a diagonal. Control (|r| ≤ 0.32 with the rest)
+  and feel (|r| ≤ 0.44) are the only two ratings that add information. Two
+  options were mocked on the design canvas; Grant chose the switch over
+  merging power and durability into one axis, because it keeps the map
+  members already know. Durability stays along the bottom; a three-way
+  switch (Power, Control, Feel) sets the side, power by default, and the
+  pick is remembered per device (`bpm:strings-axis`). An axis is offered only
+  when at least `MIN_PLOTTED` strings are rated on it. Known limits: the
+  ratings are mostly the makers' own, so a Yonex 9 is not measured against a
+  Li-Ning 9, and both new axes cluster (control is 7–10 on the club's nine).
+  Grant's canvas edits came with it: the card is titled "Strings in stock",
+  the map subtitle says "Tap on a string to view more", and the bottom axis
+  label starts at the plot's left edge.
 
 ## Shape
 

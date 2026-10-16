@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The string map can show control or feel (2026-10-16)
+
+`docs/plans/string-inventory.md`. Power and durability are near mirror images in the catalog, so the map on the Stringing tab drew one dimension as a diagonal. A Power, Control and Feel switch above the map now sets what runs up the side, with durability still along the bottom. It opens on power and remembers the pick. On the club's strings, Control lifts Aerobite Boost from a bottom corner to the top. The card is now titled "Strings in stock", and the selected string's line adds its feel out of 5.
+
 ### Sign-up wording (2026-10-15)
 
 Grant's copy: the confirmation reads "{name}, you have signed up for this week!" (both the green banner and the amber PIN-setup one, which keeps its own body), and the line under the sign-up card reads "A has signed up", "A and B have signed up", or, for three or more, "A and N others have signed up" — one name and a count, where it used to name the two newest. Chinese follows. The button itself reads "Sign up for this week" (was "I'm in this week"; Chinese already said 立即报名), and "Join Waitlist" becomes "Join the waitlist".
