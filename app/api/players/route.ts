@@ -539,6 +539,10 @@ export async function POST(req: NextRequest) {
         removed: false,
         removedAt: undefined,
         cancelledBySelf: undefined,
+        // A row back in play carries no late-cancel tag (docs/plans/late-cancel-fee.md):
+        // it would tag a later removal "Late" and ride along in the roster.
+        lateCancel: undefined,
+        lateCancelHoursBefore: undefined,
         waitlisted: startWaitlisted,
         heldForUnpaid: heldForUnpaid ? true : undefined,
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
@@ -884,6 +888,11 @@ export async function PATCH(req: NextRequest) {
       }
     }
     if (typeof body.removed === 'boolean') updates.removed = body.removed;
+    // Restored by an admin: the late-cancel tag described the removal being undone.
+    if (body.removed === false) {
+      updates.lateCancel = undefined;
+      updates.lateCancelHoursBefore = undefined;
+    }
     if (typeof body.waitlisted === 'boolean') updates.waitlisted = body.waitlisted;
     // Promoting by hand ends the unpaid hold: the row is no longer held, and a
     // stale flag would let a later payment treat it as still waiting.
@@ -1095,9 +1104,12 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    // Soft delete — mark as removed instead of destroying the record
+    // Soft delete — mark as removed instead of destroying the record. Any
+    // stamp from an earlier cancellation of this row is dropped first: the
+    // tag describes THIS cancel, never one the row was later restored from.
+    const { lateCancel: _staleLate, lateCancelHoursBefore: _staleHours, ...unstamped } = player as typeof player & { lateCancel?: boolean; lateCancelHoursBefore?: number };
     await scope.upsert('players', {
-      ...player,
+      ...unstamped,
       removed: true,
       removedAt: new Date().toISOString(),
       cancelledBySelf: !isAdmin,

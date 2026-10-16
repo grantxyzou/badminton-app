@@ -10,8 +10,9 @@ import {
   makeAdminRequest,
   seedAdminMember,
   getStore,
+  seedMember,
 } from './helpers';
-import { DELETE } from '@/app/api/players/route';
+import { DELETE, PATCH, POST } from '@/app/api/players/route';
 
 /**
  * The late-cancellation handshake (docs/plans/late-cancel-fee.md).
@@ -114,5 +115,46 @@ describe('DELETE /api/players — late cancellation', () => {
     seedPlayer(SESSION_ID, 'Alice', { deleteToken: TOKEN });
     const res = await DELETE(makeRequest('DELETE', URL, { name: 'Alice', deleteToken: 'b'.repeat(32) }));
     expect(res.status).toBe(401);
+  });
+
+  /**
+   * The stamp describes ONE cancellation. A row can come back active — the
+   * same player signing up again that week, or an admin restoring them — and
+   * a stamp left on it would tag a later, ordinary removal "Late", and ride
+   * along in the roster every member reads.
+   */
+  describe('the stamp never outlives the cancel it describes', () => {
+    it('a cancel outside the window does not inherit an old stamp', async () => {
+      setup({ policy: 48, startsInHours: 72 });
+      const p = seedPlayer(SESSION_ID, 'Alice', { deleteToken: TOKEN, lateCancel: true, lateCancelHoursBefore: 5 });
+      expect((await cancel()).status).toBe(200);
+      const row = rowOf(p.id);
+      expect(row.removed).toBe(true);
+      expect(row.lateCancel).toBeUndefined();
+      expect(row.lateCancelHoursBefore).toBeUndefined();
+    });
+
+    it('signing up again clears it', async () => {
+      setup({ policy: 48, startsInHours: 72 });
+      seedMember('Alice'); // the invite gate: a sign-up name must be on the member list
+      const p = seedPlayer(SESSION_ID, 'Alice', { removed: true, removedAt: new Date().toISOString(), cancelledBySelf: true, lateCancel: true, lateCancelHoursBefore: 5 });
+      const res = await POST(makeRequest('POST', URL, { name: 'Alice' }));
+      expect(res.status).toBe(201);
+      const row = rowOf(p.id);
+      expect(row.removed).toBe(false);
+      expect(row.lateCancel).toBeUndefined();
+      expect(row.lateCancelHoursBefore).toBeUndefined();
+    });
+
+    it('an admin restore clears it', async () => {
+      setup({ policy: 48, startsInHours: 72 });
+      const p = seedPlayer(SESSION_ID, 'Alice', { removed: true, removedAt: new Date().toISOString(), cancelledBySelf: true, lateCancel: true, lateCancelHoursBefore: 5 });
+      const res = await PATCH(makeAdminRequest('PATCH', URL, { id: p.id, removed: false }));
+      expect(res.status).toBe(200);
+      const row = rowOf(p.id);
+      expect(row.removed).toBe(false);
+      expect(row.lateCancel).toBeUndefined();
+      expect(row.lateCancelHoursBefore).toBeUndefined();
+    });
   });
 });
