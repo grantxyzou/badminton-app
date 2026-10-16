@@ -180,6 +180,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const tClose = useTranslations('recovery');
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelError, setCancelError] = useState('');
+  // The club's late-cancellation window, set only when the server answered
+  // 409 `late_cancel` (docs/plans/late-cancel-fee.md): the sheet then shows the
+  // fee warning and "Cancel anyway" resends with the acknowledgement.
+  const [lateCancelHours, setLateCancelHours] = useState<number | null>(null);
+  const closeCancel = () => { setConfirmingCancel(false); setLateCancelHours(null); };
   const [kudosFor, setKudosFor] = useState<string | null>(null);
   // Forgot-PIN handoff from the inline sign-in form opens this code-entry sheet.
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
@@ -520,15 +525,28 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
    * server consumed it. The row leaves the roster at once; the refetch
    * confirms. A failure keeps the sheet open and says so.
    */
-  async function handleCancel() {
+  async function handleCancel(acknowledgeLateFee = false) {
     if (!currentUser || !online) return;
     const id = getIdentity();
     try {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: currentUser, deleteToken: id?.token }),
+        body: JSON.stringify({
+          name: currentUser,
+          deleteToken: id?.token,
+          ...(acknowledgeLateFee ? { acknowledgeLateFee: true } : {}),
+        }),
       });
+      if (res.status === 409) {
+        // Not a failure: the server wants the late-fee warning seen first.
+        const data = await res.json().catch(() => ({})) as { error?: string; hours?: unknown };
+        if (data.error === 'late_cancel' && typeof data.hours === 'number') {
+          setCancelError('');
+          setLateCancelHours(data.hours);
+          return;
+        }
+      }
       if (!res.ok) {
         setCancelError(tPlayers('cancelFailure'));
         return;
@@ -538,7 +556,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       setPlayers((prev) => prev.filter((p) => p.name.toLowerCase() !== me));
       setSignupEntrance('none');
       setCancelError('');
-      setConfirmingCancel(false);
+      closeCancel();
       void loadData();
     } catch {
       setCancelError(tPlayers('cancelFailure'));
@@ -954,7 +972,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               type="button"
               className="link-quiet"
               style={{ display: 'flex', marginInline: 'auto' }}
-              onClick={() => { setCancelError(''); setConfirmingCancel(true); }}
+              onClick={() => { setCancelError(''); setLateCancelHours(null); setConfirmingCancel(true); }}
               disabled={!online}
             >
               {t('signup.cantMakeIt')}
@@ -988,7 +1006,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               type="button"
               className="link-quiet"
               style={{ display: 'flex', marginInline: 'auto' }}
-              onClick={() => { setCancelError(''); setConfirmingCancel(true); }}
+              onClick={() => { setCancelError(''); setLateCancelHours(null); setConfirmingCancel(true); }}
               disabled={!online}
             >
               {t('signup.leaveWaitlist')}
@@ -1209,30 +1227,54 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
       <BottomSheet
         open={confirmingCancel}
-        onClose={() => setConfirmingCancel(false)}
+        onClose={closeCancel}
         ariaLabel={isWaitlisted ? tPlayers('leaveSheetTitle') : tPlayers('cancelConfirm')}
       >
-        <BottomSheetHeader onClose={() => setConfirmingCancel(false)} closeLabel={tClose('close')}>
+        <BottomSheetHeader onClose={closeCancel} closeLabel={tClose('close')}>
           <h2 className="bpm-h3 m-0">
             {isWaitlisted ? tPlayers('leaveSheetTitle') : tPlayers('cancelConfirm')}
           </h2>
         </BottomSheetHeader>
         <BottomSheetBody>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            <p className="fs-base m-0" style={{ color: 'var(--text-secondary)' }}>
-              {isWaitlisted ? tPlayers('leaveSheetBody') : tPlayers('cancelSheetBody')}
-            </p>
-            {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              {/* The destructive action leads and is named for what it does. */}
-              <button type="button" onClick={handleCancel} disabled={!online} className="cc-btn cc-btn-danger cc-btn-lg">
-                {isWaitlisted ? tPlayers('leaveSheetConfirm') : tPlayers('cancelSheetConfirm')}
-              </button>
-              <button type="button" onClick={() => setConfirmingCancel(false)} className="cc-btn cc-btn-ghost cc-btn-lg">
-                {tPlayers('sheetKeep')}
-              </button>
+          {/* Two states of one sheet. Keyed so the swap to the late-fee warning
+              replays `.motion-fade` (the Appear recipe): content arriving into a
+              surface already on screen fades, it does not rise. */}
+          {lateCancelHours === null ? (
+            <div key="cancel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <p className="fs-base m-0" style={{ color: 'var(--text-secondary)' }}>
+                {isWaitlisted ? tPlayers('leaveSheetBody') : tPlayers('cancelSheetBody')}
+              </p>
+              {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {/* The destructive action leads and is named for what it does. */}
+                <button type="button" onClick={() => void handleCancel()} disabled={!online} className="cc-btn cc-btn-danger cc-btn-lg">
+                  {isWaitlisted ? tPlayers('leaveSheetConfirm') : tPlayers('cancelSheetConfirm')}
+                </button>
+                <button type="button" onClick={closeCancel} className="cc-btn cc-btn-ghost cc-btn-lg">
+                  {tPlayers('sheetKeep')}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div key="late" className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              {/* Amber, never red: red on Home means something failed, and nothing has. */}
+              <StatusBanner
+                tone="warn"
+                icon="schedule"
+                title={tPlayers('lateCancelTitle', { hours: lateCancelHours })}
+                body={tPlayers('lateCancelBody')}
+              />
+              {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                <button type="button" onClick={() => void handleCancel(true)} disabled={!online} className="cc-btn cc-btn-danger cc-btn-lg">
+                  {tPlayers('lateCancelConfirm')}
+                </button>
+                <button type="button" onClick={closeCancel} className="cc-btn cc-btn-ghost cc-btn-lg">
+                  {tPlayers('sheetKeep')}
+                </button>
+              </div>
+            </div>
+          )}
         </BottomSheetBody>
       </BottomSheet>
       {/* Opened on a specific person from the roster, so the sheet skips its

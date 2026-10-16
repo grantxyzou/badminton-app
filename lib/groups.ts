@@ -220,6 +220,19 @@ export async function updateGroupSettings(groupId: string, patch: Partial<GroupS
   return mutateGroup(groupId, (group) => ({ ...group, settings: { ...group.settings, ...patch } }));
 }
 
+/**
+ * Set or clear the club's late-cancellation window (docs/plans/late-cancel-fee.md).
+ * `null` REMOVES the key rather than storing `undefined`: the mock and Cosmos need
+ * not agree on how an `undefined` field survives a write, and absent is what "off"
+ * means everywhere it is read. Resolves `undefined` when the group record is missing.
+ */
+export async function setLateCancelHours(groupId: string, hours: number | null): Promise<Group | undefined> {
+  return mutateGroup(groupId, (group) => {
+    const { lateCancelHours: _previous, ...rest } = group.settings;
+    return { ...group, settings: hours === null ? rest : { ...rest, lateCancelHours: hours } };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // memberships (GROUP_SCOPED, PK /groupId) — through the accessor
 // ---------------------------------------------------------------------------

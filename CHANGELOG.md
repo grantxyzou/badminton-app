@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Late cancellations: a warning the player confirms, a tag the admin sees (2026-10-16)
+
+`docs/plans/late-cancel-fee.md`. Grant: "when player wants to cancel, they need to confirm there may be a fee if its done less than 48 hours away. This should be a per group setting for the admin to toggle on." Admin → Late cancellations turns it on and sets the window (12, 24, 48 or 72 hours; off by default). A player cancelling their own spot inside it is answered by the server with a warning — "The session starts in less than 48 hours. Cancelling this close to the session may come with a fee. The organiser decides." — and must tap "Cancel anyway". The cancelled row is tagged "Late · 20h" in Payments. No money moves; the admin decides any fee. Admins and people leaving the waitlist are never warned.
+
 ### The string map can show control or feel (2026-10-16)
 
 `docs/plans/string-inventory.md`. Power and durability are near mirror images in the catalog, so the map on the Stringing tab drew one dimension as a diagonal. A Power, Control and Feel switch above the map now sets what runs up the side, with durability still along the bottom. It opens on power and remembers the pick. On the club's strings, Control lifts Aerobite Boost from a bottom corner to the top. The card is now titled "Strings in stock", and the selected string's line adds its feel out of 5.

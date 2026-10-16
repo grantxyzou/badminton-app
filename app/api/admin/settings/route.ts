@@ -4,7 +4,8 @@ import { publicMember } from '@/lib/publicShapes';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
-import { readGroup, updateGroupSettings } from '@/lib/groups';
+import { readGroup, setLateCancelHours, updateGroupSettings } from '@/lib/groups';
+import { isValidLateCancelHours, lateCancelHoursOf } from '@/lib/cancelPolicy';
 import { recipientOf } from '@/lib/payTo';
 import type { ETransferRecipient } from '@/lib/types';
 
@@ -68,6 +69,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       eTransferRecipient: recipientOf(group) ?? member.eTransferRecipient ?? null,
       skipDates,
+      // The group record only, flag on or off (docs/plans/late-cancel-fee.md):
+      // a new field has no Member-doc history to fall back to. null = off.
+      lateCancelHours: lateCancelHoursOf(group?.settings),
     });
   } catch (error) {
     console.error('GET /api/admin/settings error:', error);
@@ -79,7 +83,7 @@ export async function PATCH(req: NextRequest) {
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();
 
-  let body: { skipDates?: unknown; eTransferRecipient?: unknown };
+  let body: { skipDates?: unknown; eTransferRecipient?: unknown; lateCancelHours?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -92,8 +96,18 @@ export async function PATCH(req: NextRequest) {
   if (body.eTransferRecipient !== undefined && !isValidETransferRecipient(body.eTransferRecipient)) {
     return NextResponse.json({ error: 'Invalid eTransferRecipient' }, { status: 400 });
   }
+  if (body.lateCancelHours !== undefined && body.lateCancelHours !== null && !isValidLateCancelHours(body.lateCancelHours)) {
+    return NextResponse.json({ error: 'Invalid lateCancelHours' }, { status: 400 });
+  }
 
   try {
+    // The late-cancellation window lives on the group record ONLY, so a save
+    // with no record would be a 200 that stored nothing. Refuse it up front,
+    // before anything else in the body is written.
+    const groupId = resolveGroupId(req);
+    if (body.lateCancelHours !== undefined && !(await readGroup(groupId))) {
+      return NextResponse.json({ error: 'no_group' }, { status: 409 });
+    }
     const container = getContainer('members');
     const { resource: existing } = await container.item(auth.memberId, auth.memberId).read();
     if (!existing) {
@@ -114,6 +128,9 @@ export async function PATCH(req: NextRequest) {
       ...(body.skipDates !== undefined ? { skipDates: body.skipDates } : {}),
       ...(body.eTransferRecipient !== undefined ? { eTransferRecipient: body.eTransferRecipient } : {}),
     });
+    if (body.lateCancelHours !== undefined) {
+      await setLateCancelHours(groupId, body.lateCancelHours as number | null);
+    }
     // This reads and echoes back the caller's own MEMBER document, so every
     // member secret has to come off — not just the PIN hash. `recoveryCode`
     // was already leaking here before the credential fields existed.

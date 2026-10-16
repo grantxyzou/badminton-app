@@ -108,6 +108,10 @@ export interface Player {
   removed?: boolean;
   removedAt?: string;
   cancelledBySelf?: boolean;
+  /** Cancelled by the player inside the club's late-cancellation window (docs/plans/late-cancel-fee.md). */
+  lateCancel?: boolean;
+  /** Whole hours before the session's start when that late cancel happened (0 once it had begun). */
+  lateCancelHoursBefore?: number;
   selfReportedPaid?: boolean;
   memberId?: string;    // links to Member.id for persistent identity
   deleteToken?: string; // DB-only — never sent to clients
@@ -287,6 +291,12 @@ export interface GroupSettings {
   receiptMemo?: string;
   /** The App Review demo group — excluded from any future metric, nothing else special. */
   demo?: true;
+  /**
+   * Late-cancellation window in whole hours (1–168; docs/plans/late-cancel-fee.md).
+   * Absent = off. A player cancelling inside it is warned a fee may apply and the
+   * row is stamped `lateCancel`. Read only through `lateCancelHoursOf`.
+   */
+  lateCancelHours?: number;
 }
 
 /** Container `groups`, PK `/id`. Group #1 is `'bpm'`; new groups get a random hex id. */
