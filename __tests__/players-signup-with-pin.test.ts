@@ -28,30 +28,30 @@ setupAdminPin();
  * Regression tests for the unified Home sign-in flow.
  *
  * Before commit fa7544a, `POST /api/players` always rejected PIN'd
- * members with `pin_required` regardless of body content. The unified
- * Home form sent `pin` in the body after /recover succeeded but the
- * route ignored it. These tests lock in the post-fix behavior:
- *  - valid PIN in body → register the player (201)
- *  - wrong PIN in body → 401 pin_incorrect
- *  - no PIN in body → 401 pin_required (existing, unchanged)
+ * members with `pin_required` regardless of body content. Members-only is now
+ * permanent (2026-10-17): a non-admin must hold a `member_session`, and the
+ * name comes from it, so the name + PIN "sign-in" mode with no cookie is gone —
+ * a correct PIN without an account cookie is refused at the gate. What
+ * survives: a signed-in member's sign-up never leaks or re-mirrors their PIN.
  */
 describe('POST /api/players with PIN (v1.4 unified Home sign-in fix)', () => {
   const sessionId = 'session-2026-05-20';
   const pin = '2468';
+  let lin: { id: string };
 
   beforeEach(async () => {
     resetMockStore();
     seedPointer(sessionId);
     seedSession(sessionId, { maxPlayers: 12, signupOpen: true });
     const pinHash = await hashPin(pin);
-    seedMember('Lin', { pinHash });
+    lin = seedMember('Lin', { pinHash }) as { id: string };
   });
 
-  it('valid PIN in body registers the player (201)', async () => {
+  it('a signed-in PIN member registers (201) and the response strips pinHash', async () => {
     const req = makeRequest('POST', 'http://localhost:3000/api/players', {
       name: 'Lin',
       pin,
-    }, { 'X-Client-IP': '10.0.0.1' });
+    }, { 'X-Client-IP': '10.0.0.1', Cookie: `member_session=${memberCookie(lin.id, 'Lin')}` });
 
     const res = await POST(req);
     expect(res.status).toBe(201);
@@ -64,44 +64,34 @@ describe('POST /api/players with PIN (v1.4 unified Home sign-in fix)', () => {
     expect(body.pinHash).toBeUndefined();
   });
 
-  it('wrong PIN in body returns 401 pin_incorrect', async () => {
-    const req = makeRequest('POST', 'http://localhost:3000/api/players', {
-      name: 'Lin',
-      pin: '9999',
-    }, { 'X-Client-IP': '10.0.0.2' });
+  it('name + PIN with no member cookie is refused at the gate (401), right PIN or wrong, and counts nothing', async () => {
+    for (const [i, candidate] of [pin, '9999', undefined].entries()) {
+      const req = makeRequest('POST', 'http://localhost:3000/api/players', {
+        name: 'Lin',
+        ...(candidate ? { pin: candidate } : {}),
+      }, { 'X-Client-IP': `10.0.0.${2 + i}` });
 
-    const res = await POST(req);
-    expect(res.status).toBe(401);
-
-    const body = await res.json();
-    expect(body.error).toBe('pin_incorrect');
+      const res = await POST(req);
+      expect(res.status).toBe(401);
+      // One answer for every case: the gate says nothing about the account.
+      expect((await res.json()).error).toBe('Unauthorized');
+    }
+    expect(getStore()['players'] ?? []).toHaveLength(0);
+    // The PIN was never checked, so no guess counted toward the account lock.
+    const stored = (getStore().members as Array<{ id: string; pinLock?: unknown }>).find((m) => m.id === lin.id);
+    expect(stored?.pinLock).toBeUndefined();
   });
 
-  it('missing PIN on a PIN-protected member returns 401 pin_required', async () => {
-    const req = makeRequest('POST', 'http://localhost:3000/api/players', {
-      name: 'Lin',
-    }, { 'X-Client-IP': '10.0.0.3' });
-
-    const res = await POST(req);
-    expect(res.status).toBe(401);
-
-    const body = await res.json();
-    expect(body.error).toBe('pin_required');
-  });
-
-  it('valid PIN does not change the member.pinHash on success (no re-mirror)', async () => {
-    // The fix sets pinHash = undefined after verification so the player
-    // record + member upsert don't accidentally re-hash the same PIN
-    // with a new salt. Verify the stored pinHash is unchanged by reading
-    // the mock store directly.
-    const { getStore } = await import('./helpers');
+  it('a PIN sent with a signed-in sign-up does not change the member.pinHash (no re-mirror)', async () => {
+    // A sign-up is not a PIN change: the stored hash must not be re-hashed
+    // with a new salt. Read the mock store directly.
     const storedBefore = ((getStore().members as { name?: string; pinHash?: string }[] | undefined)?.find((m) => m.name === 'Lin') as { pinHash?: string })?.pinHash;
     expect(storedBefore).toBeTruthy();
 
     const req = makeRequest('POST', 'http://localhost:3000/api/players', {
       name: 'Lin',
       pin,
-    }, { 'X-Client-IP': '10.0.0.4' });
+    }, { 'X-Client-IP': '10.0.0.5', Cookie: `member_session=${memberCookie(lin.id, 'Lin')}` });
     const res = await POST(req);
     expect(res.status).toBe(201);
 
@@ -141,30 +131,36 @@ describe('POST /api/players with trusted-device cookie (member_session)', () => 
     expect(body.pinHash).toBeUndefined();
   });
 
-  it('member_session cookie for a DIFFERENT name still requires the PIN', async () => {
-    const cookie = memberCookie('someone-else', 'Viktor');
+  it('a member_session cookie for a DIFFERENT member signs up that member, never the named one', async () => {
+    const viktor = seedMember('Viktor') as { id: string };
+    const cookie = memberCookie(viktor.id, 'Viktor');
     const req = makeRequest('POST', 'http://localhost:3000/api/players',
       { name: 'Lin' },
       { 'X-Client-IP': '10.1.0.2', Cookie: `member_session=${cookie}` });
     const res = await POST(req);
-    expect(res.status).toBe(401);
-    expect((await res.json()).error).toBe('pin_required');
+    expect(res.status).toBe(201);
+    expect((await res.json()).name).toBe('Viktor');
+    const players = (getStore()['players'] ?? []) as Array<{ name: string }>;
+    expect(players.map((p) => p.name)).toEqual(['Viktor']);
   });
 
-  it('no cookie + no PIN still returns pin_required (guard intact)', async () => {
+  it('a cookie naming a member who does not exist is refused (401)', async () => {
+    const cookie = memberCookie('someone-else', 'Lin');
+    const req = makeRequest('POST', 'http://localhost:3000/api/players',
+      { name: 'Lin' },
+      { 'X-Client-IP': '10.1.0.5', Cookie: `member_session=${cookie}` });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    expect(getStore()['players'] ?? []).toHaveLength(0);
+  });
+
+  it('no cookie + no PIN is refused at the gate (401), writing nothing', async () => {
     const req = makeRequest('POST', 'http://localhost:3000/api/players',
       { name: 'Lin' }, { 'X-Client-IP': '10.1.0.3' });
     const res = await POST(req);
     expect(res.status).toBe(401);
-    expect((await res.json()).error).toBe('pin_required');
-  });
-
-  it('signing up with the correct PIN mints a member_session cookie for next time', async () => {
-    const req = makeRequest('POST', 'http://localhost:3000/api/players',
-      { name: 'Lin', pin }, { 'X-Client-IP': '10.1.0.4' });
-    const res = await POST(req);
-    expect(res.status).toBe(201);
-    expect(res.cookies.get('member_session')?.value).toBeTruthy();
+    expect((await res.json()).error).toBe('Unauthorized');
+    expect(getStore()['players'] ?? []).toHaveLength(0);
   });
 });
 
@@ -190,12 +186,12 @@ describe('POST /api/players waitlist with PIN', () => {
     seedMember('Lin', { pinHash });
   });
 
-  it('valid PIN + waitlist:true waitlists the PIN-protected member (201)', async () => {
+  it('a signed-in PIN member + waitlist:true is waitlisted (201)', async () => {
+    const lin = (getStore().members as Array<{ id: string; name: string }>).find((m) => m.name === 'Lin')!;
     const req = makeRequest('POST', 'http://localhost:3000/api/players', {
       name: 'Lin',
-      pin,
       waitlist: true,
-    }, { 'X-Client-IP': '10.2.0.1' });
+    }, { 'X-Client-IP': '10.2.0.1', Cookie: `member_session=${memberCookie(lin.id, 'Lin')}` });
 
     const res = await POST(req);
     expect(res.status).toBe(201);
@@ -206,27 +202,17 @@ describe('POST /api/players waitlist with PIN', () => {
     expect(body.pinHash).toBeUndefined();
   });
 
-  it('missing PIN + waitlist:true returns 401 pin_required (guard runs before the waitlist branch)', async () => {
+  it('no cookie + waitlist:true is refused (401) before the waitlist branch, right PIN or not', async () => {
     const req = makeRequest('POST', 'http://localhost:3000/api/players', {
       name: 'Lin',
+      pin,
       waitlist: true,
     }, { 'X-Client-IP': '10.2.0.2' });
 
     const res = await POST(req);
     expect(res.status).toBe(401);
-    expect((await res.json()).error).toBe('pin_required');
-  });
-
-  it('wrong PIN + waitlist:true returns 401 pin_incorrect', async () => {
-    const req = makeRequest('POST', 'http://localhost:3000/api/players', {
-      name: 'Lin',
-      pin: '9999',
-      waitlist: true,
-    }, { 'X-Client-IP': '10.2.0.3' });
-
-    const res = await POST(req);
-    expect(res.status).toBe(401);
-    expect((await res.json()).error).toBe('pin_incorrect');
+    const players = (getStore()['players'] ?? []) as Array<{ name: string }>;
+    expect(players.some((p) => p.name === 'Lin')).toBe(false);
   });
 });
 
@@ -249,13 +235,15 @@ describe('a PIN-less member cannot be claimed by anyone who knows the name', () 
     const res = await POST(
       makeRequest('POST', 'http://x/api/players', { name: 'Lin', pin: '2468' }),
     );
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe('account_claim_needs_approval');
+    // Refused at the members-only gate now (it used to reach
+    // `account_claim_needs_approval`); the threat and the outcome are the same.
+    expect(res.status).toBe(401);
 
     // And nothing was written: no PIN, no session record.
     const stored = (getStore()['members'] as { id: string; pinHash?: string }[])
       .find((m) => m.id === member.id)!;
     expect(stored.pinHash ?? '').toBe('');
+    expect(getStore()['players'] ?? []).toHaveLength(0);
   });
 
   it('allows it from the member’s own device', async () => {
@@ -323,9 +311,9 @@ describe('a PIN-less member cannot be claimed by anyone who knows the name', () 
     expect(stored?.pinHash).toBe(original);
   });
 
-  it('still lets a brand-new name sign up freely', async () => {
-    // The gate keys on an EXISTING member. Someone nobody has ever heard of is
-    // not claiming anything, and must not be pushed into an approval queue.
+  it('a brand-new name with no account is refused (401) and no account is minted', async () => {
+    // Members-only: someone nobody has heard of is not claiming anything, but
+    // they have no account either, so they cannot sign up (they need an invite).
     resetMockStore();
     seedPointer('session-2026-06-08');
     seedSession('session-2026-06-08');
@@ -333,6 +321,8 @@ describe('a PIN-less member cannot be claimed by anyone who knows the name', () 
     const res = await POST(
       makeRequest('POST', 'http://x/api/players', { name: 'Brand New Person', pin: '1357' }),
     );
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(401);
+    expect(getStore()['members'] ?? []).toHaveLength(0);
+    expect(getStore()['players'] ?? []).toHaveLength(0);
   });
 });

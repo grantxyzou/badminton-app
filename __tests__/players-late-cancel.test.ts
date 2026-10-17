@@ -11,6 +11,7 @@ import {
   seedAdminMember,
   getStore,
   seedMember,
+  memberCookieValue,
 } from './helpers';
 import { DELETE, PATCH, POST } from '@/app/api/players/route';
 
@@ -136,9 +137,10 @@ describe('DELETE /api/players — late cancellation', () => {
 
     it('signing up again clears it', async () => {
       setup({ policy: 48, startsInHours: 72 });
-      seedMember('Alice'); // the invite gate: a sign-up name must be on the member list
+      // Members-only: Alice signs up again as herself, with her account cookie.
+      const alice = seedMember('Alice');
       const p = seedPlayer(SESSION_ID, 'Alice', { removed: true, removedAt: new Date().toISOString(), cancelledBySelf: true, lateCancel: true, lateCancelHoursBefore: 5 });
-      const res = await POST(makeRequest('POST', URL, { name: 'Alice' }));
+      const res = await POST(makeRequest('POST', URL, {}, { Cookie: `member_session=${memberCookieValue('Alice', alice.id)}` }));
       expect(res.status).toBe(201);
       const row = rowOf(p.id);
       expect(row.removed).toBe(false);

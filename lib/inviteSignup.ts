@@ -94,14 +94,9 @@ function clean(raw: unknown, max: number): string | null {
 /**
  * The group a signup should join, given whatever invite the body carried.
  *
- * Flag OFF this is `resolveGroupId(req)` and nothing else — there is one club,
- * the invite surface 404s, and a token in the body means a client talking to a
- * deployment that does not have the feature. Ignoring it rather than refusing
- * keeps the flag-off path byte-identical to what shipped.
- *
- * MEMBERS ONLY OVERRIDES THAT (`NEXT_PUBLIC_FLAG_MEMBERS_ONLY`,
- * docs/plans/members-only.md): a new account must carry a valid invite, on both
- * terminals, whichever way multi-group is set. Without this, "a signed-out
+ * MEMBERS ONLY (docs/plans/members-only.md; unconditional since 2026-10-17,
+ * when `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` began retiring): a new account must
+ * carry a valid invite, on both terminals, whichever way multi-group is set. Without this, "a signed-out
  * visitor sees nothing" protects nothing — anyone could make an account with an
  * email address and be a signed-in member of the only club there is. The one
  * exception is multi-group's `noGroup` (creating your own club): that account
@@ -110,10 +105,6 @@ function clean(raw: unknown, max: number): string | null {
 export async function signupGroupFor(req: NextRequest, body: InviteFields): Promise<SignupGroup> {
   const requestGroup = resolveGroupId(req);
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
-  const membersOnly = isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
-  if (!groupsOn && !membersOnly) {
-    return { ok: true, groupId: requestGroup, invited: false };
-  }
 
   // PRESENT-BUT-INVALID IS NOT ABSENT. `clean` answers `null` for both, and
   // collapsing them here would reinstate the fallback this file exists to
@@ -150,8 +141,7 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
     if (groupsOn && body.noGroup === true) return { ok: true, groupId: null, invited: false };
     // Members only: no invite, no account. The same one refusal a bad token
     // gets, so the answer never says which of the two it was.
-    if (membersOnly) return { ok: false };
-    return { ok: true, groupId: requestGroup, invited: false };
+    return { ok: false };
   }
 
   // CLAIMED, not merely resolved: the invite is consumed here, atomically, so

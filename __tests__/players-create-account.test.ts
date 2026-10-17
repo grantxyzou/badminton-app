@@ -17,6 +17,18 @@ import { verifyPin } from '@/lib/recoveryHash';
 const SESSION = 'session-2026-04-30';
 const URL_PATH = 'http://localhost:3000/api/players';
 
+/**
+ * MEMBERS ONLY (permanent): a non-admin caller must be a signed-in ACTIVE
+ * member, and the name comes from that account — the body's `name` is ignored.
+ * So every non-admin case here carries the member's own `member_session`.
+ */
+function cookieFor(member: { id: string; name: string }) {
+  return { Cookie: `member_session=${memberCookieValue(member.name, member.id)}` };
+}
+
+const membersNamed = (name: string) =>
+  ((getStore()['members'] ?? []) as Array<{ name: string; pinHash?: string }>).filter((m) => m.name === name);
+
 beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
@@ -49,8 +61,9 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
   });
 
   it('PIN is required — 400 when omitted', async () => {
+    const riley = seedMember('Riley');
     const res = await POST(
-      makeRequest('POST', URL_PATH, { name: 'Riley', sessionSignup: false }),
+      makeRequest('POST', URL_PATH, { name: 'Riley', sessionSignup: false }, cookieFor(riley)),
     );
     expect(res.status).toBe(400);
     const data = await res.json();
@@ -58,8 +71,9 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
   });
 
   it('rejects blocklisted PINs', async () => {
+    const riley = seedMember('Riley');
     const res = await POST(
-      makeRequest('POST', URL_PATH, { name: 'Riley', pin: '1234', sessionSignup: false }),
+      makeRequest('POST', URL_PATH, { name: 'Riley', pin: '1234', sessionSignup: false }, cookieFor(riley)),
     );
     expect(res.status).toBe(400);
     const data = await res.json();
@@ -67,8 +81,9 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
   });
 
   it('rejects malformed PINs (non-4-digit)', async () => {
+    const riley = seedMember('Riley');
     const res = await POST(
-      makeRequest('POST', URL_PATH, { name: 'Riley', pin: '12', sessionSignup: false }),
+      makeRequest('POST', URL_PATH, { name: 'Riley', pin: '12', sessionSignup: false }, cookieFor(riley)),
     );
     expect(res.status).toBe(400);
     const data = await res.json();
@@ -79,20 +94,41 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
     // Pre-seeded member with a PIN already set. A second create-account
     // attempt for that name MUST 409 — otherwise anyone who knows a
     // member's name could rewrite their PIN and lock them out.
-    seedMember('Casey', { pinHash: 'old-hash' });
+    // Members only: a stranger can no longer name a target at all, so the
+    // guard is held from the three directions that can still reach it.
+    const casey = seedMember('Casey', { pinHash: 'old-hash' });
+    const lin = seedMember('Lin');
 
-    const res = await POST(
+    // 1. No cookie: refused before the name is looked at.
+    const anon = await POST(
       makeRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }),
     );
-    expect(res.status).toBe(409);
-    const data = await res.json();
-    expect(data.error).toBe('account_exists');
+    expect(anon.status).toBe(401);
 
-    // Old pinHash unchanged
-    const store = getStore();
-    const members = (store['members'] ?? []) as Array<{ name: string; pinHash?: string }>;
-    const casey = members.find((m) => m.name === 'Casey');
-    expect(casey?.pinHash).toBe('old-hash');
+    // 2. Another member's cookie naming Casey: the body's name is ignored, so
+    //    the request can only ever act on Lin's own account.
+    const viaOther = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }, cookieFor(lin)),
+    );
+    expect(viaOther.status).toBe(201);
+    expect((await viaOther.json()).name).toBe('Lin');
+
+    // 3. Casey's own device, and an admin: the PIN is still not overwritten
+    //    here — changing a PIN needs the current one (PATCH), not "create".
+    const own = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }, cookieFor(casey)),
+    );
+    expect(own.status).toBe(409);
+    expect((await own.json()).error).toBe('account_exists');
+    const byAdmin = await POST(
+      makeAdminRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }),
+    );
+    expect(byAdmin.status).toBe(409);
+    expect((await byAdmin.json()).error).toBe('account_exists');
+
+    // Old pinHash unchanged, and still exactly one Casey.
+    expect(membersNamed('Casey')).toHaveLength(1);
+    expect(membersNamed('Casey')[0].pinHash).toBe('old-hash');
   });
 
   it('refuses a first-PIN set on a pre-seeded member from a device with no proof', async () => {
@@ -100,20 +136,28 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
     // pass — and that used to be the whole gate, which handed anyone who read
     // the name off GET /api/members a member_session bound to that person.
     // Same rule as the session-signup branch: claiming needs proof.
+    // Members only: "no proof" is now refused at the door (401), before the
+    // name is read — and a DIFFERENT member's proof cannot redirect the claim,
+    // because the body's name is ignored for a non-admin.
     seedMember('Casey'); // no pinHash
+    const lin = seedMember('Lin');
 
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }),
     );
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe('account_claim_needs_approval');
+    expect(res.status).toBe(401);
     // No cookie was minted for the caller.
     expect(res.cookies.get('member_session')).toBeUndefined();
 
-    // And nothing was written: the PIN is still unset.
-    const store = getStore();
-    const members = (store['members'] ?? []) as Array<{ name: string; pinHash?: string }>;
-    const caseys = members.filter((m) => m.name === 'Casey');
+    const viaOther = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }, cookieFor(lin)),
+    );
+    // It acted on Lin's own account — never Casey's.
+    expect(viaOther.status).toBe(201);
+    expect((await viaOther.json()).name).toBe('Lin');
+
+    // And nothing was written to Casey: the PIN is still unset.
+    const caseys = membersNamed('Casey');
     expect(caseys).toHaveLength(1);
     expect(caseys[0].pinHash ?? '').toBe('');
   });
@@ -159,48 +203,61 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
     // are seeded but unclaimed, so all three attempts are refused by the claim
     // gate (403); what the fourth proves is that the limiter, not the gate,
     // answers once the budget is spent.
-    seedMember('Spammer');
-    seedMember('Different');
+    // Members only: each caller is a signed-in member acting on their own
+    // account. The first attempt sets Spammer's PIN (201) and the next two are
+    // refused by the overwrite guard (409); the fourth proves the limiter, not
+    // a gate, answers once the budget is spent.
+    const spammer = seedMember('Spammer');
+    const different = seedMember('Different');
     const ip = { 'X-Client-IP': '10.99.0.1' };
 
+    const statuses: number[] = [];
     for (let i = 0; i < 3; i++) {
       const res = await POST(
-        makeRequest('POST', URL_PATH, { name: 'Spammer', pin: '4827', sessionSignup: false }, ip),
+        makeRequest('POST', URL_PATH, { pin: '4827', sessionSignup: false }, { ...ip, ...cookieFor(spammer) }),
       );
-      expect(res.status).toBe(403);
+      statuses.push(res.status);
     }
+    expect(statuses).toEqual([201, 409, 409]);
 
     const fourth = await POST(
-      makeRequest('POST', URL_PATH, { name: 'Spammer', pin: '4827', sessionSignup: false }, ip),
+      makeRequest('POST', URL_PATH, { pin: '4827', sessionSignup: false }, { ...ip, ...cookieFor(spammer) }),
     );
     expect(fourth.status).toBe(429);
 
-    // Different name from same IP gets its own bucket — still refused by the
-    // claim gate, but NOT by the limiter.
+    // A different name from the same IP gets its own bucket — NOT refused by
+    // the limiter.
     const otherName = await POST(
-      makeRequest('POST', URL_PATH, { name: 'Different', pin: '4827', sessionSignup: false }, ip),
+      makeRequest('POST', URL_PATH, { pin: '4827', sessionSignup: false }, { ...ip, ...cookieFor(different) }),
     );
-    expect(otherName.status).toBe(403);
+    expect(otherName.status).toBe(201);
   });
 
-  it('enforces invite list — non-existent name is rejected (admin must pre-seed)', async () => {
-    seedMember('Existing'); // "NewPerson" is NOT on the list
+  it('enforces invite list — a name nobody seeded cannot become an account', async () => {
+    // Members only: a stranger is refused at the door (401) and a signed-in
+    // member can only act on their own account, so no non-admin request can
+    // mint a member for an unseeded name.
+    const existing = seedMember('Existing'); // "NewPerson" is NOT on the list
 
-    const res = await POST(
+    const anon = await POST(
       makeRequest('POST', URL_PATH, { name: 'NewPerson', pin: '4827', sessionSignup: false }),
     );
-    expect(res.status).toBe(403);
-    const data = await res.json();
-    expect(data.error).toBe('invite_list_not_found');
+    expect(anon.status).toBe(401);
+
+    await POST(
+      makeRequest('POST', URL_PATH, { name: 'NewPerson', pin: '4827', sessionSignup: false }, cookieFor(existing)),
+    );
+    expect(membersNamed('NewPerson')).toEqual([]);
   });
 });
 
 describe('POST /api/players — default session signup', () => {
   it('still creates a session player when member has no PIN (PIN-less first-time signup)', async () => {
-    seedMember('Riley'); // on invite list, no pinHash
+    const riley = seedMember('Riley'); // on invite list, no pinHash
 
+    // Members only: the account's own cookie is the credential; no PIN needed.
     const res = await POST(
-      makeRequest('POST', URL_PATH, { name: 'Riley' }),
+      makeRequest('POST', URL_PATH, {}, cookieFor(riley)),
     );
     expect(res.status).toBe(201);
     const data = await res.json();
@@ -215,17 +272,25 @@ describe('POST /api/players — default session signup', () => {
     // form (name only) MUST fail — otherwise anyone on the invite list
     // could sign up as anyone else on a fresh session before the rightful
     // owner gets there.
+    // Members only: a name-only request is refused at the door (401) without
+    // saying whether the name has a PIN, and another member's cookie cannot
+    // put Riley on the list — the body's name is ignored for a non-admin.
     seedMember('Riley', { pinHash: 'someHash' });
+    const lin = seedMember('Lin');
 
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'Riley' }),
     );
     expect(res.status).toBe(401);
-    const data = await res.json();
-    expect(data.error).toBe('pin_required');
 
     // No session player created
     const store = getStore();
     expect((store['players'] ?? [])).toHaveLength(0);
+
+    const viaOther = await POST(makeRequest('POST', URL_PATH, { name: 'Riley' }, cookieFor(lin)));
+    expect(viaOther.status).toBe(201);
+    expect((await viaOther.json()).name).toBe('Lin');
+    const rileyRows = ((getStore()['players'] ?? []) as Array<{ name: string }>).filter((p) => p.name === 'Riley');
+    expect(rileyRows).toEqual([]);
   });
 });

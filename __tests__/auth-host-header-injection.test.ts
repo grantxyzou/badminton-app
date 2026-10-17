@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { resetMockStore, seedMember, getStore, setupAdminPin } from './helpers';
+import { resetMockStore, seedGroup, seedMember, getStore, setupAdminPin } from './helpers';
+import { mintInvite } from '../lib/invites';
 import { POST as forgot } from '../app/api/auth/forgot-password/route';
 import { POST as signup } from '../app/api/auth/signup/route';
 import { reserveIdentity } from '../lib/authIdentity';
@@ -34,6 +35,8 @@ beforeEach(() => {
   // closed on a missing SESSION_SECRET -- correct behaviour, but it would mask
   // what this file is actually testing behind a 503.
   setupAdminPin();
+  // Members only: a sign-up needs an invite, so BPM must exist to mint one.
+  seedGroup('bpm', { name: 'BPM Badminton' });
   // The credentials ARE configured in production, so the send path is live.
   process.env.GMAIL_USER = 'bpm@example.com';
   process.env.GMAIL_APP_PASSWORD = 'app-password';
@@ -138,6 +141,7 @@ describe('verification link cannot be pointed at an attacker host', () => {
         name: 'Newcomer',
         email: 'newcomer@example.com',
         password: 'a good long password',
+        inviteToken: (await mintInvite('bpm', 'owner'))!.token,
       }),
     );
     expect(res.status).toBe(201);
@@ -157,6 +161,7 @@ describe('verification link cannot be pointed at an attacker host', () => {
         name: 'Newcomer',
         email: 'newcomer@example.com',
         password: 'a good long password',
+        inviteToken: (await mintInvite('bpm', 'owner'))!.token,
       }),
     );
     // The account is real and usable; only the poisoned link is withheld, and

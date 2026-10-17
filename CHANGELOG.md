@@ -50,7 +50,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Club data needs a signed-in member, always (2026-10-17)
 
-`NEXT_PUBLIC_FLAG_MEMBERS_ONLY` starts retiring (members-only is permanent, Grant 2026-10-09). This first part makes the read gate unconditional: `requireMember` and the page gate no longer read the flag, so the flag-off pass-through is gone. Production has had the flag on since 3 Oct, so nothing changes there. The sign-up paths and the Home card's flag-off branches follow in their own changes, and the flag leaves the registry with the last of them.
+`NEXT_PUBLIC_FLAG_MEMBERS_ONLY` starts retiring (members-only is permanent, Grant 2026-10-09). This first part makes the read gate unconditional: `requireMember` and the page gate no longer read the flag, so the flag-off pass-through is gone. Production has had the flag on since 3 Oct, so nothing changes there. Second part: sign-up. `POST /api/players` needs a signed-in member for every non-admin caller (the name comes from the account), and `signupGroupFor` refuses a new account without an invite whatever the env says. The body-PIN sign-in block and the `account_claim_needs_approval` guard in that route could no longer be reached by anyone and are deleted. The Home card's flag-off form follows, and the flag leaves the registry with it.
 
 ### Late cancellations: a warning the player confirms, a tag the admin sees (2026-10-16)
 
