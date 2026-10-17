@@ -18,7 +18,7 @@ vi.mock('@/lib/authIdentity', async (importOriginal) => {
 
 const { POST: signupRoute } = await import('../app/api/auth/signup/route');
 const SIGNUP = 'http://localhost:3000/bpm/api/auth/signup';
-const FLAGS = ['NEXT_PUBLIC_FLAG_MEMBERS_ONLY', 'NEXT_PUBLIC_FLAG_MULTI_GROUP'] as const;
+const FLAGS = ['NEXT_PUBLIC_FLAG_MULTI_GROUP'] as const;
 const saved: Record<string, string | undefined> = {};
 
 beforeEach(async () => {
@@ -26,7 +26,6 @@ beforeEach(async () => {
   setupAdminPin();
   reserveIdentity.mockReset();
   for (const f of FLAGS) saved[f] = process.env[f];
-  process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
   delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
   await seedTestAdminMember();
   seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID, name: 'BPM Badminton' });

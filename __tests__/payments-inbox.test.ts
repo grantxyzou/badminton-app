@@ -337,14 +337,9 @@ describe('the soft hold', () => {
     });
 
     it('holds under members-only too (production has it on)', async () => {
-      process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
-      try {
-        const res = await signUpLin();
-        expect(res.status).toBe(201);
-        expect(await res.json()).toMatchObject({ waitlisted: true, heldForUnpaid: true });
-      } finally {
-        delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
-      }
+      const res = await signUpLin();
+      expect(res.status).toBe(201);
+      expect(await res.json()).toMatchObject({ waitlisted: true, heldForUnpaid: true });
     });
 
     it('one unpaid session is under the line', async () => {

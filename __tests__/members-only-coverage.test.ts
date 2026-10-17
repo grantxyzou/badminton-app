@@ -242,7 +242,7 @@ describe('server-rendered pages do not bypass the gate', () => {
 });
 
 describe('behaviour of the gated routes', () => {
-  const FLAGS = ['NEXT_PUBLIC_FLAG_MEMBERS_ONLY', 'NEXT_PUBLIC_FLAG_STRINGING'] as const;
+  const FLAGS = ['NEXT_PUBLIC_FLAG_STRINGING'] as const;
   const saved: Record<string, string | undefined> = {};
 
   beforeEach(() => {
@@ -291,13 +291,11 @@ describe('behaviour of the gated routes', () => {
   for (const [key, handler, url] of CASES) {
     describe(key, () => {
       it('flag on, no cookie: 401', async () => {
-        process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
         const res = await handler(makeRequest('GET', url));
         expect(res.status).toBe(401);
       });
 
       it('flag on, a lapsed member cookie: 401', async () => {
-        process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
         const cookie = `member_session=${memberCookieValue('Lin', 'member-lin', -60)}`;
         const res = await handler(makeRequest('GET', url, undefined, { Cookie: cookie }));
         expect(res.status).toBe(401);
@@ -305,7 +303,6 @@ describe('behaviour of the gated routes', () => {
 
       it('flag on, a REMOVED member with a live cookie: 401', async () => {
         // The case the cheap signature check would have let through for a month.
-        process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
         resetMockStore();
         seedMember('Lin', { id: 'member-lin', active: false });
         const cookie = `member_session=${memberCookieValue('Lin', 'member-lin')}`;
@@ -314,7 +311,6 @@ describe('behaviour of the gated routes', () => {
       });
 
       it('flag on, an active member cookie: not refused by the gate', async () => {
-        process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
         const cookie = `member_session=${memberCookieValue('Lin', 'member-lin')}`;
         const res = await handler(makeRequest('GET', url, undefined, { Cookie: cookie }));
         expect(res.status).not.toBe(401);
@@ -322,7 +318,6 @@ describe('behaviour of the gated routes', () => {
 
       it('flag on, an admin-only cookie: not refused by the gate', async () => {
         // `POST /api/admin` mints only an admin_session.
-        process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
         await seedTestAdminMember();
         const cookie = `admin_session=${adminCookieValue()}`;
         const res = await handler(makeRequest('GET', url, undefined, { Cookie: cookie }));
@@ -348,7 +343,6 @@ describe('members/me answers a member only about themselves', () => {
   const asLin = { Cookie: `member_session=${memberCookieValue('Lin', 'member-lin')}` };
 
   it('flag on: refuses another name (403) rather than confirming the account exists', async () => {
-    process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
     const res = await membersMeGET(makeRequest('GET', 'http://localhost/api/members/me?name=Viktor', undefined, asLin));
     expect(res.status).toBe(403);
     const body = await res.json();
@@ -357,14 +351,12 @@ describe('members/me answers a member only about themselves', () => {
   });
 
   it('flag on: answers for the caller, case-insensitively', async () => {
-    process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
     const res = await membersMeGET(makeRequest('GET', 'http://localhost/api/members/me?name=lin', undefined, asLin));
     expect(res.status).toBe(200);
     expect((await res.json()).hasPin).toBe(true);
   });
 
   it('flag on: an admin may still ask about anyone', async () => {
-    process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
     await seedTestAdminMember();
     const res = await membersMeGET(
       makeRequest('GET', 'http://localhost/api/members/me?name=Viktor', undefined, { Cookie: `admin_session=${adminCookieValue()}` }),

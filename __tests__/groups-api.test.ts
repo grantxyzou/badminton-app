@@ -571,18 +571,18 @@ describe('flag off — the whole surface is absent', () => {
     delete process.env[FLAG];
   });
 
+  // The invite surfaces (`invite`, `preview`) are not behind this flag: since
+  // members-only became permanent (2026-10-17) a new account always needs an
+  // invite, so they exist with one club too.
   it('404s every route', async () => {
     const person = seedMember('Grace');
     const headers = asMember('Grace', person.id);
     const responses = await Promise.all([
       createGroupRoute(makeRequest('POST', BASE, { name: 'Tuesday Smash' }, headers)),
-      previewRoute(makeRequest('GET', `${BASE}/preview?token=whatever`)),
       joinRoute(makeRequest('POST', `${BASE}/join`, { token: 'whatever' }, headers)),
       switchRoute(makeRequest('POST', `${BASE}/switch`, { groupId: 'other' }, headers)),
       mineRoute(makeRequest('GET', `${BASE}/mine`, undefined, headers)),
       currentRoute(makeRequest('GET', `${BASE}/current`, undefined, headers)),
-      inviteRoute(makeAdminRequest('GET', `${BASE}/invite`)),
-      regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`)),
       patchMemberRoute(makeAdminRequest('PATCH', `${BASE}/members/x`, { role: 'admin' }), {
         params: Promise.resolve({ memberId: 'x' }),
       }),

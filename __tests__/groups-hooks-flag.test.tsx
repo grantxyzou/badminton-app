@@ -9,7 +9,6 @@ import { useInvites } from '../lib/useInvites';
 // wall of red 404s in every member's console. Flag off must mean no request.
 
 const FLAG = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
-const MEMBERS_ONLY = 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY';
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -34,7 +33,6 @@ describe('group hooks and the multi-group flag', () => {
   afterEach(() => {
     cleanup();
     delete process.env[FLAG];
-    delete process.env[MEMBERS_ONLY];
     localStorage.clear();
     vi.unstubAllGlobals();
   });
@@ -58,16 +56,6 @@ describe('group hooks and the multi-group flag', () => {
     expect(result.current.group?.id).toBe('bpm');
   });
 
-  it('useInvites: both flags off makes no request', async () => {
-    process.env[FLAG] = 'false';
-    process.env[MEMBERS_ONLY] = 'false';
-    const { result } = renderHook(() => useInvites());
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.current.invites).toEqual([]);
-    expect(result.current.error).toBe(false);
-  });
-
   it('useInvites: flag on asks for the invites', async () => {
     process.env[FLAG] = 'true';
     const { result } = renderHook(() => useInvites());
@@ -87,7 +75,6 @@ describe('group hooks and the multi-group flag', () => {
    */
   it('useInvites: members-only alone asks for the invites, as the server allows', async () => {
     process.env[FLAG] = 'false';
-    process.env[MEMBERS_ONLY] = 'true';
     const { result } = renderHook(() => useInvites());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(fetchMock.mock.calls.some((c) => String(c[0]).endsWith('/api/groups/invite'))).toBe(true);
