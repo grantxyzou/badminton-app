@@ -3,6 +3,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, act, fireEvent } from '@testing-library/react';
 import AnomalyFeed from '@/components/admin/CommandCenter/AnomalyFeed';
 
+/** Step the fake clock, flushing React between steps, until `done()` or `capMs`
+ *  of fake time. A timer an effect schedules late is still reached. */
+async function advanceUntil(done: () => boolean, stepMs = 250, capMs = 20_000) {
+  for (let t = 0; t < capMs && !done(); t += stepMs) {
+    await act(async () => { vi.advanceTimersByTime(stepMs); });
+  }
+}
+
 const originalFetch = global.fetch;
 
 function mockFetch(impl: typeof fetch) {
@@ -73,43 +81,42 @@ describe('<AnomalyFeed />', () => {
      * That is what failed the deploy of `2c5f3e8` on 2026-09-08: the assertion
      * received the `<p>cost drifted</p>` it expected to be null.
      *
-     * `waitFor` closes the race without weakening the test. RTL advances fake
-     * timers while it polls, so a late-scheduled timer still fires — and if the
-     * notice never hides, `waitFor` times out and this still fails. It cannot
-     * turn a real "auto-hide is broken" regression green.
-     *
-     * NOT REPRODUCED LOCALLY: 4 full-suite runs under vitest 5 and 25 isolated
-     * runs of this file all passed. It needs a slower, contended runner, which
-     * is exactly why it is worth removing by construction rather than by luck.
+     * The first fix was `waitFor`, on the belief that RTL advances fake timers
+     * while it polls. It does under Jest, not under Vitest: with
+     * `shouldAdvanceTime` the fake clock moved only as far as `waitFor`'s one
+     * real second, short of a 6 s timer scheduled late, and the race failed
+     * #644's verify on 2026-10-17. `advanceUntil` steps the clock and flushes
+     * effects between steps, so a late-scheduled timer is still reached — and a
+     * notice that never hides fails at the cap. It cannot turn a real
+     * "auto-hide is broken" regression green.
      */
     it('hides a dismissable notice once its time is up', async () => {
       mockFetch(async () => new Response(JSON.stringify([warn]), { status: 200 }));
       render(<AnomalyFeed />);
       await waitFor(() => expect(screen.getByText('cost drifted')).toBeTruthy());
 
-      await act(async () => { vi.advanceTimersByTime(6500); });
-      await waitFor(() => expect(screen.queryByText('cost drifted')).toBeNull());
+      await advanceUntil(() => screen.queryByText('cost drifted') === null);
+      expect(screen.queryByText('cost drifted')).toBeNull();
     });
 
     /**
      * It leaves, it does not vanish. For `TOAST_EXIT_MS` after the timer the
      * card is still mounted carrying `data-leaving`, which is the hook
      * `.toast[data-leaving]` animates (globals.css); unmounting straight away
-     * made the notice disappear between frames. Same `waitFor` shape as above,
-     * for the same scheduling reason.
+     * made the notice disappear between frames. Same `advanceUntil` shape as above,
+     * for the same scheduling reason; its 25 ms step cannot jump the
+     * 150 ms exit window.
      */
     it('plays an exit before it goes', async () => {
       mockFetch(async () => new Response(JSON.stringify([warn]), { status: 200 }));
       render(<AnomalyFeed />);
       await waitFor(() => expect(screen.getByText('cost drifted')).toBeTruthy());
 
-      await act(async () => { vi.advanceTimersByTime(6000); });
-      await waitFor(() => {
-        const card = screen.getByText('cost drifted').closest('.toast');
-        expect(card?.getAttribute('data-leaving')).toBe('true');
-      });
-      await act(async () => { vi.advanceTimersByTime(500); });
-      await waitFor(() => expect(screen.queryByText('cost drifted')).toBeNull());
+      const leavingNow = () => screen.queryByText('cost drifted')?.closest('.toast')?.getAttribute('data-leaving') === 'true';
+      await advanceUntil(leavingNow, 25);
+      expect(leavingNow()).toBe(true);
+      await advanceUntil(() => screen.queryByText('cost drifted') === null);
+      expect(screen.queryByText('cost drifted')).toBeNull();
     });
 
     /**
