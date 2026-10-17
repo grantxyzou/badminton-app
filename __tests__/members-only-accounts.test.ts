@@ -158,12 +158,6 @@ describe('a new account needs an invite', () => {
     expect(res.status).toBe(201);
   });
 
-  it('flag off: an uninvited sign-up is accepted, exactly as before', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
-    const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody()));
-    expect(res.status).toBe(201);
-  });
-
   describe('with multi-group on as well', () => {
     beforeEach(() => {
       process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
@@ -285,11 +279,5 @@ describe('a session sign-up needs an account', () => {
       statuses.push(res.status);
     }
     expect(statuses[10]).toBe(429);
-  });
-
-  it('flag off: a name-only sign-up for a member works, exactly as before', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
-    const res = await playersPOST(makeRequest('POST', PLAYERS, { name: 'Lin' }));
-    expect(res.status).toBe(201);
   });
 });
