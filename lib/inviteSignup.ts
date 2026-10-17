@@ -95,7 +95,7 @@ function clean(raw: unknown, max: number): string | null {
  * The group a signup should join, given whatever invite the body carried.
  *
  * MEMBERS ONLY (docs/plans/members-only.md; unconditional since 2026-10-17,
- * when `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` began retiring): a new account must
+ * when `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` retired): a new account must
  * carry a valid invite, on both terminals, whichever way multi-group is set. Without this, "a signed-out
  * visitor sees nothing" protects nothing — anyone could make an account with an
  * email address and be a signed-in member of the only club there is. The one

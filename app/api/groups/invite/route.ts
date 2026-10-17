@@ -17,14 +17,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { listInvites, mintInvite, revokeInvite } from '@/lib/invites';
-import { invitesOn, featureOff, rateLimited } from '@/lib/groupRoutes';
+import { rateLimited } from '@/lib/groupRoutes';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`groups-invite-read:${ip}`, 60, 15 * 60 * 1000)) return rateLimited();
-  if (!invitesOn()) return featureOff();
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();
 
@@ -40,7 +39,6 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   // Enough for an evening of onboarding, too few to mint a pile of live links.
   if (!checkRateLimit(`groups-invite:${ip}`, 30, 60 * 60 * 1000)) return rateLimited();
-  if (!invitesOn()) return featureOff();
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();
 
@@ -57,7 +55,6 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`groups-invite:${ip}`, 30, 60 * 60 * 1000)) return rateLimited();
-  if (!invitesOn()) return featureOff();
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();
 
