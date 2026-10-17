@@ -24,6 +24,7 @@ import { POST as signupPost } from '@/app/api/auth/signup/route';
 import { GET as bandsGet } from '@/app/api/stats/club/bands/route';
 import { memberCookieValue } from './helpers';
 import { POST as playersPost } from '@/app/api/players/route';
+import { mintInvite } from '@/lib/invites';
 import { GET as settingsGet, PATCH as settingsPatch } from '@/app/api/admin/settings/route';
 
 /**
@@ -233,11 +234,15 @@ describe('GET /api/members/me?name= (the sign-up probe)', () => {
 describe('email sign-up joins the group (POST /api/auth/signup)', () => {
   it('flag ON: refuses a name whose reservation lingers, and joins a fresh account to this group', async () => {
     on();
+    // Members-only: a new account needs an invite, so both attempts carry one.
+    seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID });
     const gone = seedMember('Ghost', { active: false });
     await reserveRosterName('bpm', 'Ghost', gone.id);
-    const taken = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Ghost', email: 'ghost@example.com', password: 'correct-horse-battery' }));
+    const first = await mintInvite('bpm', ADMIN_MEMBER_ID);
+    const taken = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Ghost', email: 'ghost@example.com', password: 'correct-horse-battery', inviteToken: first!.token }));
     expect(taken.status).toBe(409);
-    const res = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Fresh', email: 'fresh@example.com', password: 'correct-horse-battery' }));
+    const second = await mintInvite('bpm', ADMIN_MEMBER_ID);
+    const res = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Fresh', email: 'fresh@example.com', password: 'correct-horse-battery', inviteToken: second!.token }));
     expect(res.status).toBe(201);
     const id = await resolveActiveMemberId('bpm', 'Fresh');
     expect(id).not.toBeNull();
@@ -277,16 +282,22 @@ describe('POST /api/players (the session sign-up invite gate)', () => {
     const lin = seedMember('Lin');
     await addMembership({ groupId: 'other', memberId: lin.id, name: 'Lin', joinedVia: 'link' });
     await addMembership({ groupId: 'bpm', memberId: ADMIN_MEMBER_ID, name: 'Test Admin', role: 'owner', joinedVia: 'backfill' });
-    const res = await playersPost(makeRequest('POST', 'http://x/api/players', { name: 'Lin' }));
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe('invite_list_not_found');
+    // A real account and a validly signed cookie that CLAIMS bpm — but Lin has
+    // no membership here, so the members-only gate refuses her (401) and no row is written.
+    const res = await playersPost(makeRequest('POST', 'http://x/api/players', { name: 'Lin' }, {
+      Cookie: `member_session=${memberCookieValue('Lin', lin.id, 3600, 'bpm')}`,
+    }));
+    expect(res.status).toBe(401);
+    expect(getStore()['players'] ?? []).toHaveLength(0);
   });
 
   it('flag ON: a member of THIS group signs up and the player row links to them', async () => {
     on();
     const lin = seedMember('Lin');
     await addMembership({ groupId: 'bpm', memberId: lin.id, name: 'Lin', joinedVia: 'backfill' });
-    const res = await playersPost(makeRequest('POST', 'http://x/api/players', { name: 'lin' }));
+    const res = await playersPost(makeRequest('POST', 'http://x/api/players', { name: 'lin' }, {
+      Cookie: `member_session=${memberCookieValue('Lin', lin.id, 3600, 'bpm')}`,
+    }));
     expect(res.status).toBe(201);
     expect((await res.json()).memberId).toBe(lin.id);
   });

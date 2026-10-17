@@ -34,6 +34,29 @@ function makePostRequest(body: Record<string, unknown>): NextRequest {
   });
 }
 
+/**
+ * Sign up AS a member. Members-only is permanent: a non-admin caller must be a
+ * signed-in active member and the name comes from the cookie's account, so
+ * every non-admin sign-up seeds (or reuses) the member and sends their
+ * `member_session`. The body's `name` is ignored for this caller.
+ */
+function makeMemberPostRequest(name: string, body: Record<string, unknown> = {}): NextRequest {
+  reqCounter++;
+  const store = getStore();
+  const existing = ((store['members'] ?? []) as Array<{ id: string; name: string; active?: boolean }>)
+    .find((m) => m.name === name && m.active === true);
+  const member = existing ?? seedMember(name);
+  return new NextRequest('http://localhost:3000/api/players', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Client-IP': `test-${reqCounter}`,
+      Cookie: `member_session=${memberCookieValue(name, member.id)}`,
+    },
+    body: JSON.stringify({ name, ...body }),
+  });
+}
+
 /** Reset the in-memory mock store between tests so they don't bleed into each other.
  *  IMPORTANT: We clear the object's contents instead of replacing it, because
  *  cosmos.ts holds a reference captured at import time. Replacing the object
@@ -83,6 +106,7 @@ describe('POST /api/players', () => {
   // before each design review — start from a known state.
   beforeEach(() => {
     resetMockStore();
+    setupAdminPin(); // the cookie secret: every sign-up carries a signed cookie now
     seedPointer('session-2026-04-05');
     seedSession('session-2026-04-05', { maxPlayers: 3 });
   });
@@ -91,8 +115,8 @@ describe('POST /api/players', () => {
   it('signs up a player successfully', async () => {
     // ARRANGE: nothing extra — the beforeEach already set up an open session
 
-    // ACT: make the request
-    const res = await POST(makePostRequest({ name: 'Grant' }));
+    // ACT: make the request as the signed-in member Grant
+    const res = await POST(makeMemberPostRequest('Grant'));
     const data = await res.json();
 
     // ASSERT: check the result
@@ -106,12 +130,12 @@ describe('POST /api/players', () => {
   // This tests the BOUNDARY — the moment behavior changes.
   it('rejects sign-up when session is full', async () => {
     // ARRANGE: fill the session (maxPlayers is 3)
-    await POST(makePostRequest({ name: 'Alice' }));
-    await POST(makePostRequest({ name: 'Bob' }));
-    await POST(makePostRequest({ name: 'Charlie' }));
+    await POST(makeMemberPostRequest('Alice'));
+    await POST(makeMemberPostRequest('Bob'));
+    await POST(makeMemberPostRequest('Charlie'));
 
     // ACT: 4th player tries to join without requesting waitlist
-    const res = await POST(makePostRequest({ name: 'Dave' }));
+    const res = await POST(makeMemberPostRequest('Dave'));
     const data = await res.json();
 
     // ASSERT: rejected with 409
@@ -122,12 +146,12 @@ describe('POST /api/players', () => {
   // TEST 3: Full session, but player asks for waitlist
   it('allows waitlist sign-up when session is full', async () => {
     // ARRANGE: fill the session
-    await POST(makePostRequest({ name: 'Alice' }));
-    await POST(makePostRequest({ name: 'Bob' }));
-    await POST(makePostRequest({ name: 'Charlie' }));
+    await POST(makeMemberPostRequest('Alice'));
+    await POST(makeMemberPostRequest('Bob'));
+    await POST(makeMemberPostRequest('Charlie'));
 
     // ACT: 4th player requests waitlist
-    const res = await POST(makePostRequest({ name: 'Dave', waitlist: true }));
+    const res = await POST(makeMemberPostRequest('Dave', { waitlist: true }));
     const data = await res.json();
 
     // ASSERT: accepted but waitlisted
@@ -138,10 +162,10 @@ describe('POST /api/players', () => {
   // TEST 4: Duplicate name — same person trying to sign up twice
   it('rejects duplicate sign-up', async () => {
     // ARRANGE: sign up once
-    await POST(makePostRequest({ name: 'Grant' }));
+    await POST(makeMemberPostRequest('Grant'));
 
-    // ACT: try again with same name
-    const res = await POST(makePostRequest({ name: 'Grant' }));
+    // ACT: try again as the same member
+    const res = await POST(makeMemberPostRequest('Grant'));
     const data = await res.json();
 
     // ASSERT
@@ -149,9 +173,11 @@ describe('POST /api/players', () => {
     expect(data.error).toBe('Already signed up');
   });
 
-  // TEST 5: Empty name — basic validation
+  // TEST 5: Empty name — basic validation. A non-admin's name comes from their
+  // account, so only an admin (who signs up anyone by name) can send one.
   it('rejects empty name', async () => {
-    const res = await POST(makePostRequest({ name: '' }));
+    seedAdminMember();
+    const res = await POST(makeAdminRequest('POST', 'http://localhost/api/players', { name: '' }));
     const data = await res.json();
 
     expect(res.status).toBe(400);
@@ -166,7 +192,7 @@ describe('POST /api/players', () => {
     seedSession('session-2026-04-05', { signupOpen: false });
 
     // ACT
-    const res = await POST(makePostRequest({ name: 'Grant' }));
+    const res = await POST(makeMemberPostRequest('Grant'));
     const data = await res.json();
 
     // ASSERT
@@ -174,37 +200,43 @@ describe('POST /api/players', () => {
     expect(data.error).toBe('Sign-ups are not open yet');
   });
 
-  // TEST 7: Non-member name rejected when members exist
-  it('rejects name not in members list', async () => {
-    // ARRANGE: add a member so the members check activates
+  // TEST 7: A stranger (no account, no cookie) is refused at the gate, before
+  // any name lookup — they learn nothing about the members list and nothing
+  // is written. (This used to be `invite_list_not_found` for a name-only call.)
+  it('rejects a stranger with no account (401), writing nothing', async () => {
+    // ARRANGE: add a member so the club has a roster
     const g = global as typeof globalThis & { _mockStore?: Record<string, unknown[]> };
     if (!g._mockStore!['members']) g._mockStore!['members'] = [];
     g._mockStore!['members'].push({ id: 'm1', name: 'Alice', active: true });
 
-    // ACT: try to sign up with a name that's NOT a member
+    // ACT: try to sign up by name with no cookie
     const res = await POST(makePostRequest({ name: 'Stranger' }));
     const data = await res.json();
 
-    // ASSERT: rejected — not a recognized member
-    expect(res.status).toBe(403);
-    expect(data.error).toBe('invite_list_not_found');
-    expect(data.name).toBe('Stranger');
+    // ASSERT: refused at the gate; no player row
+    expect(res.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(data.name).toBeUndefined();
+    expect(g._mockStore!['players'] ?? []).toHaveLength(0);
   });
 
-  // TEST 8: Member name IS accepted
-  it('accepts name that matches a member', async () => {
+  // TEST 8: Member is accepted, under their OWN name — a body name is ignored,
+  // so a signed-in member cannot put someone else on the list.
+  it('accepts a signed-in member under their account name, ignoring the body name', async () => {
     // ARRANGE: add a member
     const g = global as typeof globalThis & { _mockStore?: Record<string, unknown[]> };
     if (!g._mockStore!['members']) g._mockStore!['members'] = [];
     g._mockStore!['members'].push({ id: 'm1', name: 'Alice', active: true, sessionCount: 5 });
 
-    // ACT: sign up with the member's name
-    const res = await POST(makePostRequest({ name: 'Alice' }));
+    // ACT: sign up as Alice while naming someone else in the body
+    const res = await POST(makeMemberPostRequest('Alice', { name: 'Bob' }));
     const data = await res.json();
 
-    // ASSERT: accepted
+    // ASSERT: accepted, as Alice
     expect(res.status).toBe(201);
     expect(data.name).toBe('Alice');
+    const players = (g._mockStore!['players'] ?? []) as Array<{ name: string }>;
+    expect(players.map((p) => p.name)).toEqual(['Alice']);
   });
 });
 
@@ -311,19 +343,31 @@ describe('PATCH /api/players — pin field', () => {
 
   /**
    * The whole exploit end to end: an anonymous sign-up for a PIN-less member
-   * hands back a real `deleteToken` (the POST PIN gate only fires once a
-   * member HAS a PIN), and that token used to be enough to choose that
-   * account's PIN and then sign in as them through `/recover`.
+   * used to hand back a real `deleteToken`, and that token used to be enough
+   * to choose that account's PIN and then sign in as them through `/recover`.
+   * Members-only closed the first half (no cookie, no sign-up); the token half
+   * still matters, because a `deleteToken` sits in one browser's storage and
+   * can leak — it must never be a claim on the account.
    */
-  it('an anonymous signup token cannot claim the account it signed up', async () => {
+  it('an anonymous caller cannot sign up a PIN-less member, and a signup token cannot claim the account', async () => {
     const member = seedMember('Lin', { id: 'member-lin' }); // no pinHash — claimable
-    const signup = await POST(
+    const anon = await POST(
       makeRequest('POST', 'http://localhost/api/players', { name: 'Lin' })
+    );
+    expect(anon.status).toBe(401);
+    expect(getStore()['players'] ?? []).toHaveLength(0);
+
+    // Lin signs up herself; the token she gets back is session-scoped only.
+    const signup = await POST(
+      makeRequest('POST', 'http://localhost/api/players', {}, {
+        Cookie: `member_session=${memberCookieValue('Lin', member.id)}`,
+      })
     );
     expect(signup.status).toBe(201);
     const { id, deleteToken } = await signup.json();
     expect(typeof deleteToken).toBe('string');
 
+    // Whoever holds only that token (no cookie) cannot set a PIN with it.
     const res = await PATCH(
       makeRequest('PATCH', 'http://localhost/api/players', { id, pin: '7391', deleteToken })
     );
@@ -405,13 +449,21 @@ describe('POST /api/players — opt-in PIN at sign-up', () => {
     }
   });
 
+  /** A signed-in member (no PIN yet) signing up as themselves. */
+  function memberPost(name: string, body: Record<string, unknown>) {
+    const member = seedMember(name);
+    return makeRequest('POST', 'http://localhost/api/players', body, {
+      Cookie: `member_session=${memberCookieValue(name, member.id)}`,
+    });
+  }
+
   function findPlayerByName(name: string) {
     const players = (getStore()['players'] ?? []) as Array<Record<string, unknown>>;
     return players.find((p) => (p.name as string)?.toLowerCase() === name.toLowerCase());
   }
 
   it('valid PIN at sign-up — 201, response strips pinHash, DB stores it, deleteToken returned', async () => {
-    const res = await POST(makeRequest('POST', 'http://localhost/api/players', { name: 'Alice', pin: '5839' }));
+    const res = await POST(memberPost('Alice', { name: 'Alice', pin: '5839' }));
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.pinHash).toBeUndefined();
@@ -423,14 +475,14 @@ describe('POST /api/players — opt-in PIN at sign-up', () => {
   });
 
   it('blocklisted PIN at sign-up — 400 pin_too_common', async () => {
-    const res = await POST(makeRequest('POST', 'http://localhost/api/players', { name: 'Bob', pin: '0000' }));
+    const res = await POST(memberPost('Bob', { name: 'Bob', pin: '0000' }));
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe('pin_too_common');
   });
 
   it('sign-up with no pin field — 201, current behavior preserved', async () => {
-    const res = await POST(makeRequest('POST', 'http://localhost/api/players', { name: 'Carol' }));
+    const res = await POST(memberPost('Carol', { name: 'Carol' }));
     expect(res.status).toBe(201);
     const stored = findPlayerByName('Carol');
     expect(stored?.pinHash).toBeUndefined();
@@ -442,7 +494,7 @@ describe('POST /api/players — opt-in PIN at sign-up', () => {
 
   it('PIN at signup is now accepted regardless of any env flag (recovery flag retired)', async () => {
     const res = await POST(
-      makeRequest('POST', 'http://localhost/api/players', { name: 'Dan', pin: '5839' }),
+      memberPost('Dan', { name: 'Dan', pin: '5839' }),
     );
     expect(res.status).toBe(201);
     const stored = findPlayerByName('Dan');
