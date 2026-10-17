@@ -17,7 +17,7 @@ import { mirrorPaid, mirrorUnpaid, mirrorCover, mirrorUncover, mirrorRowDeleted 
 import type { Player } from '@/lib/types';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, membersOnlyOn, unauthorized } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, unauthorized } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
@@ -101,13 +101,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  const membersOnly = membersOnlyOn();
-  // Rule 4: the per-IP limit stays first, before any auth. It is looser under
-  // members-only because it is no longer the only limit: every caller past it
+  // Rule 4: the per-IP limit stays first, before any auth. It is loose
+  // because it is no longer the only limit: every caller past it
   // must hold a verified cookie (an unauthenticated flood costs one HMAC check
   // and no Cosmos read), and the real limit is PER MEMBER below. At 10/min per
   // address a gym full of friends on one Wi-Fi could not all tap "I'm in".
-  if (!checkRateLimit(`signup:${ip}`, membersOnly ? 60 : 10, 60 * 1000)) {
+  if (!checkRateLimit(`signup:${ip}`, 60, 60 * 1000)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
@@ -130,13 +129,14 @@ export async function POST(req: NextRequest) {
    * answered a name-only request: `invite_list_not_found`, `pin_required`,
    * `pin_incorrect` and `account_claim_needs_approval` each told a stranger
    * something about an account (does it exist, does it have a PIN) and none
-   * can be reached with a verified cookie for the same member. They stay for
-   * the flag-off path and go when the flag is retired.
+   * can be reached with a verified cookie for the same member; they remain
+   * only on the admin path. Unconditional since 2026-10-17, when
+   * `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` began retiring (members-only is permanent).
    *
    * Admins keep signing up anyone by name, as before.
    */
-  const signedIn = membersOnly && !admin ? await requireGroupMember(req) : null;
-  if (membersOnly && !admin && !signedIn) return unauthorized();
+  const signedIn = !admin ? await requireGroupMember(req) : null;
+  if (!admin && !signedIn) return unauthorized();
   if (signedIn && !checkRateLimit(`signup:member:${signedIn.memberId}`, 10, 60 * 1000)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
