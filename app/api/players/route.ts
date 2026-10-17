@@ -382,63 +382,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // PIN-protected member: the caller must prove ownership before we
-    // register them for a session. Three accepted proofs, in order:
-    //   1. Admin cookie (admins bypass everywhere)
-    //   2. Valid body.pin matching member.pinHash (unified Home sign-in path
-    //      sends pin alongside name in one call — see HomeTab.handleSignUp)
-    //   3. Nothing → 401 pin_required, client falls back to /recover-then-POST
-    //
-    // PIN verification on this path is rate-limited per (name, IP) at the
-    // same strictness as /api/players/recover (5/hr) so this endpoint can't
-    // be used to bypass the stricter recover-side rate limit.
-    // 4th accepted proof: a device that already proved this member's PIN holds
-    // a signed `member_session` cookie. It's HMAC-signed + name/id bound, so
-    // it's identity proof equivalent to body.pin — the "stay logged in" model
-    // that lets returning members skip the per-session PIN re-entry.
-    const memberAuth = matchedMember ? verifyMemberAuth(req) : null;
-    const trustedAsMember =
-      !!memberAuth &&
-      !!matchedMember &&
-      (memberAuth.memberId === matchedMember.id ||
-        memberAuth.name.toLowerCase() === matchedMember.name.toLowerCase());
-    // Set true when this request itself proves/establishes PIN ownership, so we
-    // can mint the member cookie below and trust this device going forward.
-    let trustDevice = false;
-    if (
-      matchedMember &&
-      typeof matchedMember.pinHash === 'string' &&
-      matchedMember.pinHash.length > 0 &&
-      !admin &&
-      !trustedAsMember
-    ) {
-      const candidate = typeof body.pin === 'string' ? body.pin : null;
-      if (!candidate) {
-        // Constant-time miss against FAKE_HASH so "no pin provided" and
-        // "wrong pin" return at the same wall-clock.
-        await verifyPin('0000', FAKE_HASH);
-        return NextResponse.json({ error: 'pin_required' }, { status: 401 });
-      }
-      if (!checkRateLimit(`signup-pin:${trimmedName.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
-        return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
-      }
-      // Per-account lock (lib/pinLockout.ts): locked reads as a wrong PIN.
-      if (isPinLocked(matchedMember.pinLock)) {
-        await verifyPin('0000', FAKE_HASH);
-        return NextResponse.json({ error: 'pin_incorrect' }, { status: 401 });
-      }
-      const ok = await verifyPin(candidate, matchedMember.pinHash);
-      if (!ok) {
-        await notePinFailure(matchedMember);
-        return NextResponse.json({ error: 'pin_incorrect' }, { status: 401 });
-      }
-      await notePinSuccess(matchedMember);
-      // Verified by PIN on this call → trust this device for future sign-ups.
-      // pinHash from body.pin is intentionally NOT mirrored back to the player
-      // record (the client wasn't asking to change the PIN, just to authenticate).
-      trustDevice = true;
-      pinHash = undefined;
-    }
+    // PIN-protected member: no proof is asked for here any more. A non-admin
+    // caller is the signed-in member the name came from (the gate above), and
+    // an admin signs up anyone. The body-PIN sign-in path that used to sit
+    // here served the cookie-less Home form and retired with
+    // NEXT_PUBLIC_FLAG_MEMBERS_ONLY (2026-10-17).
 
     /**
      * SIGNING UP IS NOT CHANGING YOUR PIN, and this route must never confuse
@@ -462,44 +410,16 @@ export async function POST(req: NextRequest) {
      * `PATCH /api/members/me` is the route that changes a PIN, and it demands
      * `currentPin` for exactly this reason. Here the rule is simpler: an
      * account that already has a PIN never has it rewritten by a sign-up. The
-     * first-PIN case is untouched and still guarded by the claim check below.
+     * first-PIN case is the signed-in member setting their own.
      */
     if (matchedMember && typeof matchedMember.pinHash === 'string' && matchedMember.pinHash.length > 0) {
       pinHash = undefined;
     }
 
-    /**
-     * SETTING A FIRST PIN ON AN EXISTING MEMBER NEEDS PROOF.
-     *
-     * The gate above only fires when the member ALREADY has a `pinHash`. A
-     * member with none fell straight through, so anyone could type a name they
-     * did not own, choose a PIN, and be signed in as that person from any
-     * device — no cookie, no code, nothing.
-     *
-     * That is the exact operation `PATCH /api/members/me` refuses, for the
-     * reason its own comment gives: member names are enumerable through
-     * `GET /api/members`, so the name is not a secret and cannot be treated as
-     * one. Two routes disagreed about the same rule and the laxer one was the
-     * one on the busiest screen.
-     *
-     * `account_claim_needs_approval` is a distinct code, not a 401, because the
-     * client turns it into the "ask Grant to let me in" flow — the person
-     * hitting this is usually the real owner on a new phone, and the honest
-     * answer to them is a way in, not a refusal.
-     */
-    if (
-      matchedMember &&
-      (typeof matchedMember.pinHash !== 'string' || matchedMember.pinHash.length === 0) &&
-      typeof body.pin === 'string' &&
-      body.pin.length > 0 &&
-      !admin &&
-      !trustedAsMember
-    ) {
-      return NextResponse.json(
-        { error: 'account_claim_needs_approval' },
-        { status: 403 },
-      );
-    }
+    // A FIRST PIN on an existing member needs proof, and the gate above is
+    // that proof: a non-admin is the signed-in member the name came from. The
+    // `account_claim_needs_approval` refusal that guarded the cookie-less path
+    // retired with NEXT_PUBLIC_FLAG_MEMBERS_ONLY (2026-10-17).
 
     const anyExisting = existingRes;
     const activeRecord = anyExisting.find((p: { removed?: boolean }) => !p.removed);
@@ -563,7 +483,7 @@ export async function POST(req: NextRequest) {
       // The one-time `deleteToken` is added back on purpose: sign-up is the
       // only response that ever carries it (security rule 1).
       const out = NextResponse.json({ ...publicPlayer(resource as unknown as Record<string, unknown>), deleteToken }, { status: 201 });
-      if (matchedMember && (trustDevice || pinHash) && !admin) {
+      if (matchedMember && pinHash && !admin) {
         setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
       }
       return out;
@@ -617,7 +537,7 @@ export async function POST(req: NextRequest) {
     // Trust this device for future sign-ups when this request proved (sign-in)
     // or created (first PIN) the member's PIN — the "stay logged in" model.
     // Skip for admins acting on behalf of others and for anon (no-PIN) names.
-    if (matchedMember && (trustDevice || pinHash) && !admin) {
+    if (matchedMember && pinHash && !admin) {
       setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
     }
     return out;
