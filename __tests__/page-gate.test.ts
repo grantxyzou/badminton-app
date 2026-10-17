@@ -48,13 +48,6 @@ afterEach(() => {
   }
 });
 
-describe('members only OFF', () => {
-  it('is a pass-through: everyone gets the app, with no name', async () => {
-    delete process.env[MEMBERS];
-    expect(await decidePage(makeRequest('GET', 'http://localhost/bpm'))).toEqual({ kind: 'app', memberName: null });
-  });
-});
-
 describe('members only ON, groups OFF — exactly what shipped', () => {
   it('no cookie → signed out', async () => {
     expect(await decidePage(makeRequest('GET', 'http://localhost/bpm'))).toEqual({ kind: 'signed-out' });

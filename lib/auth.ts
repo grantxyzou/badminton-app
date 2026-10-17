@@ -457,7 +457,7 @@ export async function requireGroupMember(
 export const membersOnlyOn = (): boolean => isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
 
 export type MemberGate =
-  | { ok: true; member: (MemberSession & { role: MembershipRole }) | null }
+  | { ok: true; member: MemberSession & { role: MembershipRole } }
   | { ok: false; response: NextResponse };
 
 /**
@@ -466,11 +466,9 @@ export type MemberGate =
  * anything; `__tests__/members-only-coverage.test.ts` fails the build on a
  * listed route that does not.
  *
- * FLAG OFF IT IS A PASS-THROUGH with no I/O, and answers `member: null` —
- * a route must not start treating that null as "anonymous" and change its
- * response, or turning the flag off would stop restoring what shipped.
- *
- * FLAG ON, two things pass, and a bare cookie signature is neither:
+ * ALWAYS ON since `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` began retiring (2026-10-17;
+ * members-only is permanent, Grant 2026-10-09). It used to be a pass-through
+ * with the flag off. Two things pass, and a bare cookie signature is neither:
  *
  * - an ACTIVE member, via `requireGroupMember`. That re-reads the Member (flag
  *   off for groups) or the membership (flag on), so a removed person's 30-day
@@ -483,8 +481,6 @@ export type MemberGate =
  * Anything else is one identical 401. It never says whether a name exists.
  */
 export async function requireMember(req: NextRequest): Promise<MemberGate> {
-  if (!membersOnlyOn()) return { ok: true, member: null };
-
   const member = await requireGroupMember(req);
   if (member) return { ok: true, member };
 
