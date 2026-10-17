@@ -453,9 +453,6 @@ export async function requireGroupMember(
   }
 }
 
-/** `NEXT_PUBLIC_FLAG_MEMBERS_ONLY`, read server-side — a client flag cannot protect a route. */
-export const membersOnlyOn = (): boolean => isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
-
 export type MemberGate =
   | { ok: true; member: MemberSession & { role: MembershipRole } }
   | { ok: false; response: NextResponse };
@@ -466,7 +463,7 @@ export type MemberGate =
  * anything; `__tests__/members-only-coverage.test.ts` fails the build on a
  * listed route that does not.
  *
- * ALWAYS ON since `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` began retiring (2026-10-17;
+ * ALWAYS ON since `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` retired (2026-10-17;
  * members-only is permanent, Grant 2026-10-09). It used to be a pass-through
  * with the flag off. Two things pass, and a bare cookie signature is neither:
  *

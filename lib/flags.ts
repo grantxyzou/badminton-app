@@ -22,7 +22,6 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
   | 'NEXT_PUBLIC_FLAG_RACKET_FIT'
-  | 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY'
   | 'NEXT_PUBLIC_FLAG_GEAR_PAGES'
   | 'NEXT_PUBLIC_FLAG_FIT_VERDICT'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
@@ -70,13 +69,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-12-15',
     note: 'About two weeks after the intended Phase 5 cutover. Retiring it means deleting the "resolve to bpm" branch AND flipping TOLERATE_UNSTAMPED off in lib/groupScope.ts (only after the migrate-groups status read shows zero unstamped rows for a week), not just removing the switch.',
-  },
-  NEXT_PUBLIC_FLAG_MEMBERS_ONLY: {
-    description:
-      'A signed-out visitor sees no club data at all — only Sign up / Log in (docs/plans/members-only.md). Read SERVER-SIDE: on, every group-data read requires a signed-in active member (requireMember in lib/auth.ts), new accounts need an invite, and a session sign-up needs an account. Off, every gate is a pass-through and nothing observable changes. Ships dark; the flip waits until the admin list of members with no way to sign in is short, because turning it on locks those people out until an admin approves them.',
-    owner: 'grant',
-    plannedRemoval: '2026-10-17',
-    note: 'Turned on in production 2026-10-03. Retiring it means deleting the OFF branches, not just the switch: the anonymous and body-PIN paths in POST /api/players, the flag-off branch of signupGroupFor, and the adaptive anon/sign-in/create modes of the Home sign-up card. Grant, 2026-10-09: members-only is PERMANENT — retire by keeping the ON branch.',
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
@@ -151,8 +143,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
     case 'NEXT_PUBLIC_FLAG_RACKET_FIT':
       return process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
-    case 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY':
-      return process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
     case 'NEXT_PUBLIC_FLAG_GEAR_PAGES':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_PAGES;
     case 'NEXT_PUBLIC_FLAG_FIT_VERDICT':

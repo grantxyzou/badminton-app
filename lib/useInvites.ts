@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { invitesOn } from '@/lib/invitesOn';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -29,11 +28,9 @@ export function inviteUrl(token: string): string {
  * PWA and in the native WebView it differs, and a link that points at the
  * wrong origin is worse than no link.
  *
- * It asks exactly when the server answers — `invitesOn()`, multi-group OR
- * members-only — and otherwise does not (see `useCurrentGroup` for why a
- * flag-off hook must make no request). A 401 or 404 resolves to an empty list
- * with no error: not an admin, or a server whose flag disagrees with this
- * bundle. A real failure sets `error`, so the card can say it could not load
+ * The invite surfaces always exist (members-only is permanent, so a new
+ * account always needs one). A 401 or 404 resolves to an empty list with no
+ * error: not an admin. A real failure sets `error`, so the card can say it could not load
  * rather than render an empty list that reads as "nothing waiting".
  */
 export function useInvites(enabled = true) {
@@ -43,7 +40,7 @@ export function useInvites(enabled = true) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!enabled || !invitesOn()) {
+    if (!enabled) {
       setLoading(false);
       return;
     }
