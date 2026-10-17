@@ -10,6 +10,8 @@ import {
   makeGetRequest,
   getStore,
   seedAdminMember,
+  seedMember,
+  memberCookieValue,
 } from './helpers';
 import { GET, PUT } from '@/app/api/session/route';
 import { POST as ADVANCE } from '@/app/api/session/advance/route';
@@ -18,6 +20,12 @@ import { POST as CREATE_BIRD } from '@/app/api/birds/route';
 import { POST as RECONCILE_BIRDS } from '@/app/api/birds/reconcile/route';
 
 setupAdminPin();
+
+/** A GET from a signed-in, non-admin member (club-data reads need one). */
+function memberGet(url: string) {
+  seedMember('Lin');
+  return makeRequest('GET', url, undefined, { Cookie: `member_session=${memberCookieValue('Lin')}` });
+}
 
 describe('GET /api/session', () => {
   beforeEach(() => {
@@ -29,7 +37,7 @@ describe('GET /api/session', () => {
 
   it('returns the active session with expected shape', async () => {
     // ARRANGE
-    const req = makeGetRequest('http://localhost:3000/api/session');
+    const req = memberGet('http://localhost:3000/api/session');
 
     // ACT
     const res = await GET(req as never);
@@ -58,7 +66,7 @@ describe('GET /api/session — admin-only field stripping', () => {
   });
 
   it('strips eTransferRecipient and approvedNames for a non-admin caller', async () => {
-    const res = await GET(makeGetRequest('http://localhost:3000/api/session') as never);
+    const res = await GET(memberGet('http://localhost:3000/api/session') as never);
     const data = await res.json();
     expect(res.status).toBe(200);
     expect(data.eTransferRecipient).toBeUndefined();

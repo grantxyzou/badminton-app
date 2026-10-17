@@ -42,9 +42,10 @@ describe('GET /api/recommend — the fit engine', () => {
     delete process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
   });
 
-  it('still 403s without the member cookie — reasons quote the member', async () => {
+  it('still refuses (401) without the member cookie — reasons quote the member', async () => {
     const res = await GET(makeRequest('GET', `${BASE}?name=Lin`));
-    expect(res.status).toBe(403);
+    // Refused at the members-only read gate, before the ownership check (403).
+    expect(res.status).toBe(401);
   });
 
   it('answers needsFit, not needsCheckIn, when there is no racket, no check-in and no fit answers', async () => {

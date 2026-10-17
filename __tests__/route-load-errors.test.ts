@@ -6,7 +6,7 @@ import { GET as getReleases } from '@/app/api/releases/route';
 import { GET as getAliases } from '@/app/api/aliases/route';
 import { GET as getCosts } from '@/app/api/sessions/costs/route';
 import { NextRequest } from 'next/server';
-import { resetMockStore, seedPointer, seedSession, setupAdminPin, makeGetRequest } from './helpers';
+import { resetMockStore, seedPointer, seedSession, setupAdminPin, makeGetRequest, seedMember, memberCookieValue } from './helpers';
 
 /**
  * Audit remediation (silent-failure cluster): a data-store failure on a read
@@ -33,10 +33,17 @@ describe('read routes surface load failures instead of a lying empty state', () 
   it('GET /api/players returns 503 when the players query throws (not 200 + [])', async () => {
     // getActiveSessionId uses cosmos' internal container ref (still works);
     // the route's getContainer('players') export call is what we break.
-    vi.spyOn(cosmos, 'getContainer').mockImplementation(() => {
-      throw new Error('cosmos down');
+    // Only `players` is broken: the members-only read gate re-reads the
+    // caller's Member first, and that read has to succeed to reach the query.
+    const realGetContainer = cosmos.getContainer;
+    vi.spyOn(cosmos, 'getContainer').mockImplementation((name: string) => {
+      if (name === 'players') throw new Error('cosmos down');
+      return realGetContainer(name);
     });
-    const res = await getPlayers(getReq('http://localhost/api/players'));
+    seedMember('Lin');
+    const res = await getPlayers(new NextRequest('http://localhost/api/players', {
+      headers: { 'X-Client-IP': 'load-err-test', cookie: `member_session=${memberCookieValue('Lin')}` },
+    }));
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toBeTruthy();

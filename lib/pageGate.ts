@@ -45,7 +45,7 @@ export type PageOutcome =
 
 const SIGNED_OUT: PageOutcome = { kind: 'signed-out' };
 
-/** Called only under `membersOnlyOn()`; the page keeps that check literal. */
+/** The page's gate: `app/page.tsx` calls it for every visitor, before anything is read. */
 export async function decidePage(req: NextRequest): Promise<PageOutcome> {
   const gate = await requireMember(req);
   if (gate.ok) return { kind: 'app', memberName: gate.member?.name ?? null };

@@ -130,8 +130,12 @@ describe('GET /api/members', () => {
     await addMembership({ groupId: 'bpm', memberId: ADMIN_MEMBER_ID, name: 'Test Admin', role: 'owner', joinedVia: 'backfill' });
     seedMembership('other', 'stranger', { name: 'Stranger' });
     seedMember('Stranger');
-    const anon = await membersGet(makeGetRequest('http://x/api/members'));
-    expect(await anon.json()).toEqual([{ name: 'Lin', active: true, avatar: null }, { name: 'Test Admin', active: true, avatar: null }]);
+    // A plain member (the roster is members-only) sees names, not docs.
+    const asLin = makeRequest('GET', 'http://x/api/members', undefined, {
+      Cookie: `member_session=${memberCookieValue('Lin', lin.id)}`,
+    });
+    const plain = await membersGet(asLin);
+    expect(await plain.json()).toEqual([{ name: 'Lin', active: true, avatar: null }, { name: 'Test Admin', active: true, avatar: null }]);
     const admin = await membersGet(makeGetRequest('http://x/api/members', true));
     const text = await admin.text();
     expect(text).toContain('"id"');
@@ -219,7 +223,9 @@ describe('GET /api/members/me?name= (the sign-up probe)', () => {
       Cookie: `member_session=${memberCookieValue('Lin', ours.id)}`,
     });
     expect(await (await meGet(asOurs)).json()).toMatchObject({ hasPin: true, role: 'admin' });
-    const nobody = await meGet(makeGetRequest('http://x/api/members/me?name=Unknown'));
+    // Asking about a name on no roster here needs standing to ask about
+    // someone else — an admin of this group.
+    const nobody = await meGet(makeGetRequest('http://x/api/members/me?name=Unknown', true));
     expect(await nobody.json()).toMatchObject({ hasPin: false, role: 'member' });
   });
 });

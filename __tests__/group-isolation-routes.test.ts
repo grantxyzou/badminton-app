@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   resetMockStore,
+  getStore,
   seedDoc,
+  seedMember,
   setupAdminPin,
   seedTestAdminMember,
   seedGroup,
@@ -52,8 +54,18 @@ function adminIn(groupId: string) {
   seedMembership(groupId, ADMIN_MEMBER_ID, { name: `Admin ${groupId}`, role: 'owner' });
   return `admin_session=${adminCookieValue({ groupId })}`;
 }
-const memberIn = (groupId: string, name: string, memberId: string) =>
-  `member_session=${memberCookieValue(name, memberId, 3600, groupId)}`;
+/**
+ * A member cookie for one club, plus the active Member and membership that
+ * admit it — every club-data read is members-only, so a cookie for a person
+ * who does not exist would be refused before the route ever chose a group.
+ */
+function memberIn(groupId: string, name: string, memberId: string) {
+  const members = (getStore()['members'] ?? []) as { id: string }[];
+  if (!members.some((m) => m.id === memberId)) seedMember(name, { id: memberId });
+  const rows = (getStore()['memberships'] ?? []) as { id: string }[];
+  if (!rows.some((r) => r.id === `${groupId}:${memberId}`)) seedMembership(groupId, memberId, { name });
+  return `member_session=${memberCookieValue(name, memberId, 3600, groupId)}`;
+}
 
 const req = (url: string, cookie: string) =>
   makeRequest('GET', url, undefined, { Cookie: cookie, 'X-Client-IP': `10.8.0.${++ip}` });
