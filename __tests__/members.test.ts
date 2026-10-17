@@ -7,6 +7,8 @@ import {
   makeRequest,
   makeAdminRequest,
   makeGetRequest,
+  memberCookieValue,
+  ADMIN_MEMBER_ID,
 } from './helpers';
 import { GET, POST } from '@/app/api/members/route';
 import { GET as ME_GET, PATCH as ME_PATCH } from '@/app/api/members/me/route';
@@ -26,13 +28,18 @@ setupAdminPin();
 describe('GET /api/members', () => {
   beforeEach(() => {
     resetMockStore();
-    seedMember('Alice', { role: 'admin', sessionCount: 10 });
+    // Alice IS the test admin: the admin cookie's member is re-read on the
+    // members-only read gate, and seeding a separate admin row would change
+    // the roster these tests count.
+    seedMember('Alice', { role: 'admin', sessionCount: 10, id: ADMIN_MEMBER_ID });
     seedMember('Bob', { role: 'member', sessionCount: 3 });
   });
 
   it('non-admin returns only [{name, active, avatar}] — no role, id, or stats', async () => {
-    // ARRANGE: request without admin cookie
-    const req = makeGetRequest('http://localhost:3000/api/members');
+    // ARRANGE: a signed-in non-admin member (Bob), no admin cookie
+    const req = makeRequest('GET', 'http://localhost:3000/api/members', undefined, {
+      Cookie: `member_session=${memberCookieValue('Bob')}`,
+    });
 
     // ACT
     const res = await GET(req);
@@ -152,19 +159,28 @@ describe('GET /api/members/me', () => {
     expect(data.role).toBe('admin');
   });
 
-  it('withholds role from an ANONYMOUS probe — the roster must not become an admin directory', async () => {
+  it("withholds role from another member's probe — the roster must not become an admin directory", async () => {
     // Names are enumerable via `GET /api/members`, so answering `role` here
-    // would name the accounts whose only credential is a 4-digit PIN.
-    const res = await ME_GET(makeGetRequest('http://localhost:3000/api/members/me?name=Alice'));
+    // would name the accounts whose only credential is a 4-digit PIN. With
+    // members-only permanent, an anonymous probe is a 401 at the gate and a
+    // signed-in member asking about someone else is refused outright.
+    seedMember('Bob', { role: 'member', active: true });
+    const res = await ME_GET(makeRequest('GET', 'http://localhost:3000/api/members/me?name=Alice', undefined, {
+      Cookie: `member_session=${memberCookieValue('Bob')}`,
+    }));
+    expect(res.status).toBe(403);
     const data = await res.json();
-    expect(data.role).toBe('member');
-    // The sign-up form's half of the response is unchanged.
-    expect(data.hasPin).toBe(false);
-    expect(typeof data.createdAt).toBe('string');
+    expect(data.role).toBeUndefined();
+  });
+
+  it('refuses an ANONYMOUS probe at the members-only gate', async () => {
+    const res = await ME_GET(makeGetRequest('http://localhost:3000/api/members/me?name=Alice'));
+    expect(res.status).toBe(401);
+    expect((await res.json()).role).toBeUndefined();
   });
 
   it('returns authed:true when a matching member_session cookie is present', async () => {
-    seedMember('Trusted', { pinHash: 'x' });
+    seedMember('Trusted', { pinHash: 'x', id: 'tid' }); // the gate re-reads the cookie's member by id
     const cookie = memberCookie('tid', 'Trusted');
     const req = makeRequest(
       'GET',
@@ -176,10 +192,14 @@ describe('GET /api/members/me', () => {
     expect(data.authed).toBe(true);
   });
 
-  it('returns authed:false without a member cookie (and for a different name)', async () => {
-    const noCookie = await (await ME_GET(makeGetRequest('http://localhost:3000/api/members/me?name=Alice'))).json();
-    expect(noCookie.authed).toBe(false);
+  it('returns authed:false without a member cookie for that name (an admin asking), and refuses a different name', async () => {
+    // An admin may ask about anyone, but holding an admin cookie is not
+    // holding ALICE's member session on this device.
+    seedAdminMember();
+    const adminAsks = await (await ME_GET(makeGetRequest('http://localhost:3000/api/members/me?name=Alice', true))).json();
+    expect(adminAsks.authed).toBe(false);
 
+    seedMember('Viktor', { id: 'vid' });
     const wrongName = memberCookie('vid', 'Viktor');
     const req = makeRequest(
       'GET',
@@ -187,13 +207,16 @@ describe('GET /api/members/me', () => {
       undefined,
       { Cookie: `member_session=${wrongName}` },
     );
-    const data = await (await ME_GET(req)).json();
-    expect(data.authed).toBe(false);
+    const res = await ME_GET(req);
+    expect(res.status).toBe(403);
+    expect((await res.json()).authed).toBeUndefined();
   });
 
   it('?name=Unknown → { role: "member" }', async () => {
-    // ARRANGE: no member named Unknown in the store
-    const req = makeGetRequest('http://localhost:3000/api/members/me?name=Unknown');
+    // ARRANGE: no member named Unknown in the store. Asked by an admin — the
+    // only signed-in caller who may ask about a name other than their own.
+    seedAdminMember();
+    const req = makeGetRequest('http://localhost:3000/api/members/me?name=Unknown', true);
 
     // ACT
     const res = await ME_GET(req);
@@ -204,8 +227,10 @@ describe('GET /api/members/me', () => {
   });
 
   it('no name param → { role: "member" }', async () => {
-    // ARRANGE: no query param at all
-    const req = makeGetRequest('http://localhost:3000/api/members/me');
+    // ARRANGE: no query param at all, from a signed-in member
+    const req = makeRequest('GET', 'http://localhost:3000/api/members/me', undefined, {
+      Cookie: `member_session=${memberCookieValue('Alice')}`,
+    });
 
     // ACT
     const res = await ME_GET(req);

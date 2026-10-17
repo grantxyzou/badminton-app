@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET } from '@/app/api/recommend/route';
-import { makeGetRequest, setupAdminPin, resetMockStore, getStore } from './helpers';
+import { makeGetRequest, setupAdminPin, resetMockStore, getStore, seedAdminMember } from './helpers';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { getContainer } from '@/lib/cosmos';
 
@@ -37,7 +37,10 @@ const STRING = {
 
 function seedMember(withRatings = true) {
   const store = getStore();
+  // Appended, not replaced: the admin Member `ask` signs in as is re-read on
+  // the read gate (members-only is permanent).
   store['members'] = [
+    ...((store['members'] ?? []) as Array<{ id: string }>).filter((m) => m.id !== 'm-lin'),
     { id: 'm-lin', name: 'Lin', role: 'member', active: true, sessionCount: 0, createdAt: new Date().toISOString() },
   ];
   store['assessments'] = withRatings
@@ -77,6 +80,7 @@ describe('GET /api/recommend?category=string', () => {
     __resetCatalogSeedForTests();
     setupAdminPin();
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
+    seedAdminMember();
   });
 
   afterEach(() => {
@@ -165,6 +169,7 @@ describe('GET /api/recommend?category=string', () => {
     const res = await GET(
       makeGetRequest('http://localhost:3000/api/recommend?name=Lin&category=string', false),
     );
-    expect(res.status).toBe(403);
+    // Refused at the members-only read gate now, before the ownership check.
+    expect(res.status).toBe(401);
   });
 });
