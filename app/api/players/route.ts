@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
    * something about an account (does it exist, does it have a PIN) and none
    * can be reached with a verified cookie for the same member; they remain
    * only on the admin path. Unconditional since 2026-10-17, when
-   * `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` began retiring (members-only is permanent).
+   * `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` retired (members-only is permanent).
    *
    * Admins keep signing up anyone by name, as before.
    */

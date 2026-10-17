@@ -6,7 +6,6 @@ import { benchSignals, type BenchRow } from '@/lib/useAdminNeedsYou';
 import TopBar from '../../primitives/TopBar';
 import AnomalyFeed from './AnomalyFeed';
 import { isFlagOn } from '@/lib/flags';
-import { invitesOn } from '@/lib/invitesOn';
 import AccessRequestsCard from './AccessRequestsCard';
 import SignInReadinessCard from './SignInReadinessCard';
 import NextSessionCard from './NextSessionCard';
@@ -49,11 +48,6 @@ interface CommandCenterProps {
  */
 export default function CommandCenter({ refreshKey, setView, onExit, onOpenMember, onOpenDormant }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
-  // Members only needs the invite even with one club: a new account can only
-  // be made with an invite (docs/plans/members-only.md). The one rule, shared
-  // with the hook and the server (lib/invitesOn.ts). The invite has its own
-  // page now; this decides whether People offers it.
-  const inviteSurfaces = invitesOn();
   const [localRefresh, setLocalRefresh] = useState(0);
   const composedRefresh = refreshKey + localRefresh;
 
@@ -158,7 +152,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
     {
       title: 'People',
       rows: [
-        ...(inviteSurfaces ? [{ icon: 'person_add', label: 'Invite someone', onClick: () => setView('invite') }] : []),
+        { icon: 'person_add', label: 'Invite someone', onClick: () => setView('invite') },
       ],
     },
     {

@@ -1,8 +1,7 @@
 # Members only: a signed-out visitor sees nothing but "Sign up / Log in"
 
 **Track:** Store launch — a stranger who installs the app must not see a club they are not in, and multi-group readiness depends on the same boundary.
-**Status:** shipped 2026-10-03 — the flag turned on in production in #504; permanent per decision 20
-**Review on:** 2026-10-17 — the flag's removal date: delete the OFF branches listed in its `lib/flags.ts` note. Read 2026-10-15: flipped 2026-10-03, two sign-up days since; no regular has been locked out (Grant, 2026-10-15). Clear to retire.
+**Status:** shipped 2026-10-03 — the flag turned on in production in #504; permanent per decision 20; the flag retired 2026-10-17 with its OFF branches (#643 read gate, #644 sign-up, then the Home card). The 2026-10-15 review found no regular locked out (Grant).
 
 ## Problem
 

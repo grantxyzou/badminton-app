@@ -18,7 +18,6 @@ import AdminBackHeader from './AdminBackHeader';
 import InviteCard from './CommandCenter/InviteCard';
 import GiftCardsCard from './CommandCenter/GiftCardsCard';
 import type { FilterKey as RosterFilter } from './CommandCenter/RosterPage';
-import { invitesOn } from '@/lib/invitesOn';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
 import ETransferRecipientEditor from './CommandCenter/ETransferRecipientEditor';
@@ -72,7 +71,6 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   // the filter it opens on (from Needs you's dormant row).
   const [rosterFocus, setRosterFocus] = useState<string | null>(null);
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>('all');
-  const inviteSurfaces = invitesOn();
   const { group } = useCurrentGroup();
 
   // Which way the last move went. A push slides the page in from the right;
@@ -187,7 +185,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     return (
       <div className="animate-slideInRight space-y-3">
         <AdminBackHeader onBack={goBack} title="Invite someone" />
-        <InviteCard enabled={inviteSurfaces} groupName={group?.name} bare />
+        <InviteCard enabled groupName={group?.name} bare />
       </div>
     );
   }

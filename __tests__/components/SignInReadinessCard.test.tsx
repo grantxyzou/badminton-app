@@ -17,13 +17,11 @@ function answer(body: unknown, status = 200) {
 }
 
 beforeEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
 });
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
-  delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
 });
 
 describe('SignInReadinessCard', () => {
@@ -35,29 +33,20 @@ describe('SignInReadinessCard', () => {
     expect(screen.getByText(/of 5 members can sign in/)).toBeDefined();
   });
 
-  it('before the flip, says so plainly when nobody would be locked out', async () => {
-    answer({ total: 4, ready: 4, cannotSignIn: [] });
-    render(<SignInReadinessCard />);
-    expect(await screen.findByText(/Nobody would be locked out/)).toBeDefined();
-  });
-
   it('a failed load is an ERROR, never a confident zero', async () => {
     answer({ error: 'readiness_failed' }, 503);
     render(<SignInReadinessCard />);
     expect(await screen.findByRole('alert')).toBeDefined();
-    expect(screen.queryByText(/Nobody would be locked out/)).toBeNull();
   });
 
-  it('after the flip, disappears once nobody is locked out', async () => {
-    process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
+  it('disappears once nobody is locked out', async () => {
     answer({ total: 4, ready: 4, cannotSignIn: [] });
     const { container } = render(<SignInReadinessCard />);
     await new Promise((r) => setTimeout(r, 20));
     expect(container.textContent).toBe('');
   });
 
-  it('after the flip, still shows anyone who is locked out', async () => {
-    process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
+  it('shows anyone who is locked out', async () => {
     answer({ total: 4, ready: 3, cannotSignIn: ['Kento'] });
     render(<SignInReadinessCard />);
     expect(await screen.findByText('Kento')).toBeDefined();
