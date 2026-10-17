@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET as CLUB_TENSION } from '../app/api/stats/club/tension/route';
-import { resetMockStore, setupAdminPin, makeRequest, getStore } from './helpers';
+import { resetMockStore, setupAdminPin, makeRequest, getStore, seedMember, memberCookieValue } from './helpers';
 import { tallyClubTension, clubTensionFor } from '../lib/clubTension';
 import type { PlayerGear } from '../lib/types';
 
@@ -49,16 +49,24 @@ describe('GET /api/stats/club/tension', () => {
     setupAdminPin();
   });
 
+  /** A signed-in member with no gear of their own — club reads are members-only. */
+  const asReader = (url: string) => {
+    const reader = seedMember('Reader');
+    return makeRequest('GET', url, undefined, {
+      Cookie: `member_session=${memberCookieValue('Reader', reader.id)}`,
+    });
+  };
+
   it('answers a band and nothing about the people in it — no ids, no fit answers', async () => {
     getStore()['playerGear'] = [1, 2, 3].map((i) => doc(i, FRAME, 23 + i, { fitArmComfort: 'often_sore', fitSwing: 'fast' }));
-    const res = await CLUB_TENSION(makeRequest('GET', `http://localhost/api/stats/club/tension?frame=${FRAME}`));
+    const res = await CLUB_TENSION(asReader(`http://localhost/api/stats/club/tension?frame=${FRAME}`));
     const body = await res.json();
     expect(body).toEqual({ band: { sampleSize: 3, low: 24, high: 26, mean: 25 } });
     expect(JSON.stringify(body)).not.toMatch(/m1|sore|fast|gear-/);
   });
 
   it('requires a frame', async () => {
-    const res = await CLUB_TENSION(makeRequest('GET', 'http://localhost/api/stats/club/tension'));
+    const res = await CLUB_TENSION(asReader('http://localhost/api/stats/club/tension'));
     expect(res.status).toBe(400);
   });
 });

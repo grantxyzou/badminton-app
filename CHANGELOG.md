@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Club data needs a signed-in member, always (2026-10-17)
+
+`NEXT_PUBLIC_FLAG_MEMBERS_ONLY` starts retiring (members-only is permanent, Grant 2026-10-09). This first part makes the read gate unconditional: `requireMember` and the page gate no longer read the flag, so the flag-off pass-through is gone. Production has had the flag on since 3 Oct, so nothing changes there. The sign-up paths and the Home card's flag-off branches follow in their own changes, and the flag leaves the registry with the last of them.
+
 ### Late cancellations: a warning the player confirms, a tag the admin sees (2026-10-16)
 
 `docs/plans/late-cancel-fee.md`. Grant: "when player wants to cancel, they need to confirm there may be a fee if its done less than 48 hours away. This should be a per group setting for the admin to toggle on." Admin → Late cancellations turns it on and sets the window (12, 24, 48 or 72 hours; off by default). A player cancelling their own spot inside it is answered by the server with a warning — "The session starts in less than 48 hours. Cancelling this close to the session may come with a fee. The organiser decides." — and must tap "Cancel anyway". The cancelled row is tagged "Late · 20h" in Payments. No money moves; the admin decides any fee. Admins and people leaving the waitlist are never warned.

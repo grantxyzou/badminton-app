@@ -120,7 +120,10 @@ describe('fit questionnaire fields', () => {
 
     // The GET was public by name and stripped only this field. It is now
     // owner-or-admin, so a non-owner sees none of the doc at all.
-    expect((await GET(makeRequest('GET', `${BASE}?name=Lin`))).status).toBe(403);
+    // Members only: an anonymous caller is refused at the read gate (401);
+    // another signed-in member gets past it and is refused the doc (403).
+    expect((await GET(makeRequest('GET', `${BASE}?name=Lin`))).status).toBe(401);
+    seedMember('Viktor');
     expect((await GET(makeRequest('GET', `${BASE}?name=Lin`, undefined, { Cookie: `member_session=${memberCookieValue('Viktor')}` }))).status).toBe(403);
 
     expect((await read(cookie)).fitArmComfort).toBe('often_sore');
@@ -159,7 +162,8 @@ describe('fit questionnaire fields', () => {
   it('refuses the LAPSED OWNER rather than showing a redacted bag', async () => {
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: 'sometimes_sore' }, cookie));
     const lapsed = await GET(makeRequest('GET', `${BASE}?name=Lin`, undefined, { Cookie: `member_session=${memberCookieValue('Lin', 'member-lin', -60)}` }));
-    expect(lapsed.status).toBe(403);
+    // A lapsed cookie proves nothing, so the read gate refuses it as signed out.
+    expect(lapsed.status).toBe(401);
     expect(JSON.stringify(await lapsed.json())).not.toContain('sore');
   });
 

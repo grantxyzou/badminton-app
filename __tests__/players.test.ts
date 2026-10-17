@@ -9,7 +9,6 @@ import {
   seedPlayer,
   makeRequest,
   makeAdminRequest,
-  makeGetRequest,
   getStore,
   seedAdminMember,
   seedMember,
@@ -371,7 +370,11 @@ describe('PATCH /api/players — pin field', () => {
   it('GET strips pinHash from every player', async () => {
     seedPlayer(SESSION, 'Alice', { id: 'p1', pinHash: 'salt:hash-a' });
     seedPlayer(SESSION, 'Bob', { id: 'p2', pinHash: 'salt:hash-b' });
-    const res = await GET(makeGetRequest('http://localhost/api/players'));
+    // The roster is members-only: read it as a signed-in (non-admin) member.
+    const reader = seedMember('Reader');
+    const res = await GET(makeRequest('GET', 'http://localhost/api/players', undefined, {
+      Cookie: `member_session=${memberCookieValue('Reader', reader.id)}`,
+    }));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(Array.isArray(data)).toBe(true);

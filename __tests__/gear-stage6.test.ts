@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { GET as CATALOG } from '../app/api/equipment/catalog/route';
 import { GET as CLUB_GEAR } from '../app/api/stats/club/gear/route';
-import { resetMockStore, setupAdminPin, makeRequest, getStore } from './helpers';
+import { resetMockStore, setupAdminPin, makeRequest, getStore, seedMember, memberCookieValue } from './helpers';
 import { __resetCatalogSeedForTests } from '../lib/catalogSeed';
 import { recommendTension, formatForToggle, MIN_LB, MAX_LB } from '../lib/tension';
 import { tallyClubGear, CLUB_GEAR_MIN_COHORT } from '../lib/clubGear';
@@ -253,6 +253,14 @@ describe('GET /api/stats/club/gear', () => {
   afterAll(() => {
   });
 
+  /** A signed-in member with no gear of their own — club reads are members-only. */
+  const asReader = (url: string) => {
+    const reader = seedMember('Reader');
+    return makeRequest('GET', url, undefined, {
+      Cookie: `member_session=${memberCookieValue('Reader', reader.id)}`,
+    });
+  };
+
   it('returns counts only — the response has no seam for a name', async () => {
     const store = getStore();
     store['playerGear'] = Array.from({ length: 4 }, (_, i) => ({
@@ -261,7 +269,7 @@ describe('GET /api/stats/club/gear', () => {
       items: [{ id: `x${i}`, catalogId: null, category: 'string', label: 'BG65' }],
       updatedAt: '2026-01-01',
     }));
-    const res = await CLUB_GEAR(makeRequest('GET', 'http://localhost:3000/api/stats/club/gear'));
+    const res = await CLUB_GEAR(asReader('http://localhost:3000/api/stats/club/gear'));
     const body = await res.json();
     expect(body.entries).toEqual([{ category: 'string', label: 'BG65', count: 4 }]);
     const text = JSON.stringify(body);
@@ -273,7 +281,7 @@ describe('GET /api/stats/club/gear', () => {
     store['playerGear'] = [
       { id: 'g1', memberId: 'm1', items: [{ id: 'a', catalogId: null, category: 'string', label: 'Rare' }], updatedAt: '' },
     ];
-    const res = await CLUB_GEAR(makeRequest('GET', 'http://localhost:3000/api/stats/club/gear'));
+    const res = await CLUB_GEAR(asReader('http://localhost:3000/api/stats/club/gear'));
     const body = await res.json();
     expect(body.entries).toEqual([]);
     expect(body.minCohort).toBe(CLUB_GEAR_MIN_COHORT);

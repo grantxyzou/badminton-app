@@ -33,16 +33,24 @@ beforeEach(async () => {
   await seedTestAdminMember();
   process.env[FLAG] = 'true';
 });
+
+/** A signed-in member's GET — every club-data read needs an account. */
+const memberGet = (url: string) => {
+  const reader = seedMember('Reader');
+  return makeRequest('GET', url, undefined, {
+    Cookie: `member_session=${memberCookieValue('Reader', reader.id)}`,
+  });
+};
 afterEach(() => {
   if (flagBefore === undefined) delete process.env[FLAG];
   else process.env[FLAG] = flagBefore;
 });
 
 describe('who can read and who can write', () => {
-  it('lets an anonymous visitor read the list', async () => {
+  it('lets a signed-in member read the list', async () => {
     // The request form is the entire audience. Which strings a badminton club
-    // keeps on the shelf is not a secret.
-    const res = await GET(makeRequest('GET', 'http://x/api/stringing/strings'));
+    // keeps on the shelf is not a secret — from its own members.
+    const res = await GET(memberGet('http://x/api/stringing/strings'));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ strings: [], links: {}, prices: {}, stock: {}, players: {} });
   });
@@ -51,7 +59,7 @@ describe('who can read and who can write', () => {
     await PATCH(
       makeAdminRequest('PATCH', 'http://x/api/stringing/strings', { strings: ['BG80'] }),
     );
-    const body = await (await GET(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
+    const body = await (await GET(memberGet('http://x/api/stringing/strings'))).json();
     expect(Object.keys(body)).toEqual(['strings', 'links', 'prices', 'stock', 'players']);
   });
 
@@ -70,7 +78,7 @@ describe('who can read and who can write', () => {
         strings: ['BG80 white', 'Aerobite'],
       }),
     );
-    const body = await (await GET(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
+    const body = await (await GET(memberGet('http://x/api/stringing/strings'))).json();
     expect(body.strings).toEqual(['BG80 white', 'Aerobite']);
   });
 });
@@ -119,7 +127,7 @@ describe('the build flag gates it', () => {
  * BAND and how many in the club play it, each keyed by offered label.
  */
 describe('the shelf extras', () => {
-  const read = async () => (await GET(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
+  const read = async () => (await GET(memberGet('http://x/api/stringing/strings'))).json();
   const save = (body: Record<string, unknown>) => PATCH(makeAdminRequest('PATCH', 'http://x/api/stringing/strings', body));
   const purchase = (label: string, sets: number) =>
     stockPOST(makeAdminRequest('POST', 'http://x/api/stringing/stock', { label, unit: 'set', units: sets, metresPerUnit: 10, totalCostCents: 1000 * sets, date: '2026-10-01' }));

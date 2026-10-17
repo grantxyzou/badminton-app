@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET as ME_GET, PATCH } from '../app/api/members/me/route';
 import { GET as ROSTER_GET } from '../app/api/members/route';
-import { resetMockStore, setupAdminPin, seedMember, makeRequest, makeGetRequest, memberCookieValue, getStore } from './helpers';
+import { resetMockStore, setupAdminPin, seedMember, makeRequest, memberCookieValue, getStore } from './helpers';
 import { parseAvatar, normalizeAvatar, isRacketAvatarId, racketAvatarIds, DEFAULT_RACKET_ID, racketAvatarGround } from '../lib/memberAvatar';
 import { RACKET_LOOKS } from '../lib/racketLook';
 import { shuffleRacket } from '../components/profile/AvatarSheet';
@@ -102,14 +102,22 @@ describe('reading avatars back', () => {
   it('the roster carries each member\'s picture beside their name', async () => {
     seedMember('Lin', { avatar: { kind: 'racket', racketId: RACKET } });
     seedMember('Viktor');
-    const rows = (await (await ROSTER_GET(makeGetRequest('http://localhost:3000/api/members'))).json()) as Array<{ name: string; avatar: unknown }>;
+    // The roster is members-only: read it as Viktor, a fellow member.
+    const asViktor = makeRequest('GET', 'http://localhost:3000/api/members', undefined, {
+      Cookie: `member_session=${memberCookieValue('Viktor')}`,
+    });
+    const rows = (await (await ROSTER_GET(asViktor)).json()) as Array<{ name: string; avatar: unknown }>;
     expect(rows.find((r) => r.name === 'Lin')?.avatar).toEqual({ kind: 'racket', racketId: RACKET });
     expect(rows.find((r) => r.name === 'Viktor')?.avatar).toBeNull();
   });
 
   it('members/me returns it', async () => {
     seedMember('Lin', { avatar: { kind: 'racket', racketId: RACKET } });
-    const data = await (await ME_GET(makeGetRequest(`${BASE}?name=Lin`))).json();
+    // Lin asking about herself — the probe is members-only and self-only.
+    const asLin = makeRequest('GET', `${BASE}?name=Lin`, undefined, {
+      Cookie: `member_session=${memberCookieValue('Lin')}`,
+    });
+    const data = await (await ME_GET(asLin)).json();
     expect(data.avatar).toEqual({ kind: 'racket', racketId: RACKET });
   });
 });
