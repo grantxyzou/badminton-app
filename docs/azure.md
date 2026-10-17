@@ -1,6 +1,6 @@
 # Azure Architecture — Badminton App
 
-Last verified against the repo: 2026-10-11. Rows marked **†** cannot be derived
+Last verified against the repo: 2026-10-15. Rows marked **†** cannot be derived
 from anything in this repository; they are what the Azure portal said when
 someone last looked, and the "Observed in the portal" section at the end is
 where a fresh look gets recorded.
@@ -21,7 +21,7 @@ where a fresh look gets recorded.
         │  Azure Cosmos DB      │    │  Anthropic Claude API   │
         │  account cosmos-bd †  │    │  (external, pay-per-use)│
         │  database `badminton` │    │  two model ids, below   │
-        │  27 containers        │    │                         │
+        │  24 containers        │    │                         │
         └───────────────────────┘    └─────────────────────────┘
 ```
 
