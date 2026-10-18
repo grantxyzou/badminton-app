@@ -48,6 +48,30 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Club data needs a signed-in member, always (2026-10-17)
+
+`NEXT_PUBLIC_FLAG_MEMBERS_ONLY` starts retiring (members-only is permanent, Grant 2026-10-09). This first part makes the read gate unconditional: `requireMember` and the page gate no longer read the flag, so the flag-off pass-through is gone. Production has had the flag on since 3 Oct, so nothing changes there. Second part: sign-up. `POST /api/players` needs a signed-in member for every non-admin caller (the name comes from the account), and `signupGroupFor` refuses a new account without an invite whatever the env says. The body-PIN sign-in block and the `account_claim_needs_approval` guard in that route could no longer be reached by anyone and are deleted. Third part: the Home sign-up card is always the locked "Signing up as {name}" card (the name field, its autocomplete, the PIN fields and the probe-driven sign-in and create modes are gone, with the pre-flip warning banner), `invitesOn` and its guards are gone because the invite surfaces always exist, the readiness card lost its pre-flip branch, and the flag left `lib/flags.ts`, both workflows, `.env.local.example` and `dev:next`. `docs/flag-retirements.md` has the record.
+
+### Late cancellations: a warning the player confirms, a tag the admin sees (2026-10-16)
+
+`docs/plans/late-cancel-fee.md`. Grant: "when player wants to cancel, they need to confirm there may be a fee if its done less than 48 hours away. This should be a per group setting for the admin to toggle on." Admin → Late cancellations turns it on and sets the window (12, 24, 48 or 72 hours; off by default). A player cancelling their own spot inside it is answered by the server with a warning — "The session starts in less than 48 hours. Cancelling this close to the session may come with a fee. The organiser decides." — and must tap "Cancel anyway". The cancelled row is tagged "Late · 20h" in Payments. No money moves; the admin decides any fee. Admins and people leaving the waitlist are never warned.
+
+### The string map can show control or feel (2026-10-16)
+
+`docs/plans/string-inventory.md`. Power and durability are near mirror images in the catalog, so the map on the Stringing tab drew one dimension as a diagonal. A Power, Control and Feel switch above the map now sets what runs up the side, with durability still along the bottom. It opens on power and remembers the pick. On the club's strings, Control lifts Aerobite Boost from a bottom corner to the top. The card is now titled "Strings in stock", and the selected string's line adds its feel out of 5.
+
+### No card lifts on hover (2026-10-15)
+
+Grant: "Nothing lifts." Since 2026-09-14 only a card that is itself a button rose 2px and deepened its shadow under a mouse, and that turned out to be two cards in the whole app (the Home skill lead and the Gear "next racket" card), so it read as an inconsistency. Every card hover rule is gone (Home, Stats, admin `cc-dcard`), along with the locked-card override that existed only to cancel the lift and the two hover tokens. Pressable cards keep their chevron, pointer cursor and 0.98 press scale. Phones never showed a hover, so members see no change.
+
+### Sign-up wording (2026-10-15)
+
+Grant's copy: the confirmation reads "{name}, you have signed up for this week!" (both the green banner and the amber PIN-setup one, which keeps its own body), and the line under the sign-up card reads "A has signed up", "A and B have signed up", or, for three or more, "A and N others have signed up" — one name and a count, where it used to name the two newest. Chinese follows. The button itself reads "Sign up for this week" (was "I'm in this week"; Chinese already said 立即报名), and "Join Waitlist" becomes "Join the waitlist".
+
+### Email, Google and Apple sign-in are no longer behind a flag (2026-10-15)
+
+`NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` retired on its date. It has been on in production since the store launch, so nothing a member sees changes. The code that ran when it was off is gone: the 404 at the top of all sixteen `/api/auth/*` routes, the "Sign-up isn't available yet" and "needs an account" screens, and ProfileTab's PIN-only arrangement. Which buttons show is still decided by which providers have credentials configured (`configuredProviders()`), so a deployment with none still gets the PIN form alone. `docs/flag-retirements.md` has the record.
+
 ### Home's title matches every other tab (2026-10-15)
 
 Grant: "this header size is off from the other page." Home rendered the club name at 16px semibold (`PageHeader compact`, from the 2026-08-27 hierarchy pass) while Stringing, Stats and Profile use the 30px `bpm-h1`; the compact title also grew to 18px on scroll, because the shared condensed rule is more specific. The variant is deleted and Home uses the same header as every tab. The "What's new" line under it loses its 8px inset so it lines up with the title.

@@ -9,28 +9,23 @@ export interface MemberProbe {
   exists: boolean;
   /** Member exists AND has a PIN set. */
   hasPin: boolean;
-  /**
-   * This device holds a valid member_session cookie for this name — i.e. the
-   * PIN was already proven here, so sign-up can skip the PIN field. When true
-   * alongside `hasPin`, the form renders one-tap sign-up.
-   */
+  /** This device holds a valid member_session cookie for this name. */
   authed: boolean;
 }
 
 /**
- * Debounced probe of /api/members/me?name=X. Drives the HomeTab sign-up
- * form's three modes:
- *   - `null` → unknown / probing / network failed → anon mode (default)
- *   - `{exists: false, hasPin: false}` → no member → anon mode (default)
- *   - `{exists: true, hasPin: true}` → member with PIN → sign-in mode
- *   - `{exists: true, hasPin: false}` → member without PIN → create-account mode
+ * Debounced probe of /api/members/me?name=X. `SignInForm` reads it to tell a
+ * member who never set a PIN so, instead of reporting a wrong one.
+ *   - `null` → unknown / probing / network failed
+ *   - `{exists: false}` → no such member
+ *   - `{exists: true, hasPin}` → a member, with or without a PIN
  *
  * Server failures fall through to `null` so the caller's UI is non-blocking
  * — the server-side check on submit is the authoritative gate.
  *
  * Probe is debounced (500ms default). Trimmed names shorter than 2 chars
  * are skipped to keep the rate limiter (10/min on /api/members/me) happy
- * while the user is mid-typing.
+ * while the user is mid-typing; an empty name probes nothing.
  */
 export function useMemberProbe(name: string, debounceMs = 500): MemberProbe | null {
   const [probe, setProbe] = useState<MemberProbe | null>(null);
@@ -78,12 +73,3 @@ export function useMemberProbe(name: string, debounceMs = 500): MemberProbe | nu
   return probe;
 }
 
-/**
- * @deprecated Use `useMemberProbe` instead, which also exposes whether
- * the member exists. Kept as a thin shim during the auth-flow refactor.
- */
-export function useHasPin(name: string, debounceMs = 500): boolean | null {
-  const probe = useMemberProbe(name, debounceMs);
-  if (probe === null) return null;
-  return probe.hasPin;
-}

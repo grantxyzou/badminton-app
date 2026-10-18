@@ -19,7 +19,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { callerMemberId } from '@/lib/auth';
 import { configuredProviders } from '@/lib/oauthProviders';
 import { listIdentitiesForMember } from '@/lib/authIdentity';
@@ -29,10 +28,6 @@ import type { Member } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   const ip = getClientIp(req);
   if (!checkRateLimit(`auth-methods:${ip}`, 30, 60 * 1000)) {
     // Degraded, not empty: reporting "nothing available" would hide the

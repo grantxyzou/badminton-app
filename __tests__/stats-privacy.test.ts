@@ -112,7 +112,7 @@ describe('GET /api/members/me — statsPrivacy', () => {
     });
   });
 
-  it('withholds statsPrivacy from an ANONYMOUS caller — null, not the default', async () => {
+  it('withholds statsPrivacy from an ANONYMOUS caller — refused outright, 401', async () => {
     // The probe is name-keyed and names are enumerable, so answering this for
     // an unproven caller publishes every member's club-comparison answer. `null`
     // is the same UNKNOWN the degraded paths return, which
@@ -121,11 +121,14 @@ describe('GET /api/members/me — statsPrivacy', () => {
     seedMember('Carolina', {
       statsPrivacy: { clubComparison: false, promptedAt: '2026-08-01T00:00:00.000Z' },
     });
+    // Members only: the read gate now refuses an anonymous caller before the
+    // probe runs at all, which withholds the answer more strongly than `null`.
     const res = await GET(makeRequest('GET', `${BASE}?name=Carolina`));
-    expect(await res.json()).toMatchObject({ statsPrivacy: null });
+    expect(res.status).toBe(401);
+    expect(await res.json()).not.toHaveProperty('statsPrivacy');
   });
 
-  it("withholds statsPrivacy from ANOTHER member's cookie", async () => {
+  it("withholds statsPrivacy from ANOTHER member's cookie — refused, 403", async () => {
     seedMember('Akane', {
       statsPrivacy: { clubComparison: false, promptedAt: '2026-08-01T00:00:00.000Z' },
     });
@@ -135,13 +138,21 @@ describe('GET /api/members/me — statsPrivacy', () => {
         Cookie: `member_session=${memberCookieValue('Kento')}`,
       }),
     );
-    expect(await res.json()).toMatchObject({ statsPrivacy: null });
+    // Members only: a member may ask about themselves and nobody else, so the
+    // refusal is now a 403 before any of Akane's doc is read.
+    expect(res.status).toBe(403);
+    expect(await res.json()).not.toHaveProperty('statsPrivacy');
   });
 
   it('returns statsPrivacy: null (UNKNOWN) when no name is given', async () => {
     // Distinct from the never-asked default — a degraded response must not
     // claim the member is unprompted, or the consent sheet re-fires.
-    const res = await GET(makeRequest('GET', BASE));
+    seedMember('Sindhu');
+    const res = await GET(
+      makeRequest('GET', BASE, undefined, {
+        Cookie: `member_session=${memberCookieValue('Sindhu')}`,
+      }),
+    );
     const body = await res.json();
     expect(body.statsPrivacy).toBeNull();
   });

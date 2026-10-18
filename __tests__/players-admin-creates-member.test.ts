@@ -8,6 +8,8 @@ import {
   makeAdminRequest,
   makeRequest,
   getStore,
+  seedMember,
+  memberCookieValue,
 } from './helpers';
 import { POST } from '@/app/api/players/route';
 
@@ -66,14 +68,30 @@ describe('POST /api/players — admin creates member when missing', () => {
     expect(namedMembers.length).toBe(1); // no duplicate
   });
 
-  it('non-admin signing up a name not in members is rejected when invite list is populated', async () => {
-    // members is non-empty (just the admin) — invite-only behavior fires
+  it('a non-admin with no account cannot sign up a new name, and no member is created', async () => {
+    // Members-only: refused at the gate (401) before any name lookup — this
+    // used to be `invite_list_not_found` (403) for a name-only call.
     const req = makeRequest('POST', 'http://localhost:3000/api/players', {
       name: 'Anonymous Stranger',
     });
     const res = await POST(req);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
+    const members = getStore()['members'] as Array<{ name: string }>;
+    expect(members.some((m) => m.name === 'Anonymous Stranger')).toBe(false);
+    expect(getStore()['players'] ?? []).toHaveLength(0);
+  });
+
+  it('a signed-in non-admin cannot create a member by naming one: the body name is ignored', async () => {
+    const lin = seedMember('Lin');
+    const req = makeRequest('POST', 'http://localhost:3000/api/players', {
+      name: 'Anonymous Stranger',
+    }, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` });
+    const res = await POST(req);
+    expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.error).toBe('invite_list_not_found');
+    expect(body.name).toBe('Lin');
+    expect(body.memberId).toBe(lin.id);
+    const members = getStore()['members'] as Array<{ name: string }>;
+    expect(members.some((m) => m.name === 'Anonymous Stranger')).toBe(false);
   });
 });

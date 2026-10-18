@@ -5,6 +5,7 @@ import {
   getStore,
   setupAdminPin,
   seedTestAdminMember,
+  seedMember,
   makeRequest,
   makeAdminRequest,
   memberCookieValue,
@@ -26,6 +27,14 @@ beforeEach(async () => {
   await seedTestAdminMember();
   process.env[FLAG] = 'true';
 });
+/** A signed-in member's GET — every club-data read needs an account. */
+const memberGet = (url: string) => {
+  const reader = seedMember('Reader');
+  return makeRequest('GET', url, undefined, {
+    Cookie: `member_session=${memberCookieValue('Reader', reader.id)}`,
+  });
+};
+
 afterEach(() => {
   if (flagBefore === undefined) delete process.env[FLAG];
   else process.env[FLAG] = flagBefore;
@@ -34,23 +43,23 @@ afterEach(() => {
 describe('the default is closed', () => {
   it('reads closed when nobody has ever opened it', async () => {
     // A service that has never been switched on must not advertise itself.
-    const res = await GET(makeRequest('GET', 'http://x/api/stringing/shop'));
+    const res = await GET(memberGet('http://x/api/stringing/shop'));
     expect(await res.json()).toEqual({ open: false });
   });
 });
 
 describe('who can read it and who can change it', () => {
-  it('lets an ANONYMOUS visitor read the sign', async () => {
+  it('lets a signed-in MEMBER (not only an admin) read the sign', async () => {
     // The sign is for players, and whether this club strings rackets is not a
-    // secret. If only admins could read it, the audience it exists for could
-    // never see it.
-    const res = await GET(makeRequest('GET', 'http://x/api/stringing/shop'));
+    // secret from them. If only admins could read it, the audience it exists
+    // for could never see it.
+    const res = await GET(memberGet('http://x/api/stringing/shop'));
     expect(res.status).toBe(200);
   });
 
   it('exposes nothing but the answer', async () => {
     await PATCH(makeAdminRequest('PATCH', 'http://x/api/stringing/shop', { open: true }));
-    const body = await (await GET(makeRequest('GET', 'http://x/api/stringing/shop'))).json();
+    const body = await (await GET(memberGet('http://x/api/stringing/shop'))).json();
     // No updatedBy, no memberId, no timestamps — a reader learns whether the
     // shop is open and nothing about who runs it.
     expect(Object.keys(body)).toEqual(['open']);
@@ -68,10 +77,10 @@ describe('who can read it and who can change it', () => {
   it('opens and closes for an admin', async () => {
     const open = await PATCH(makeAdminRequest('PATCH', 'http://x/api/stringing/shop', { open: true }));
     expect(await open.json()).toEqual({ open: true });
-    expect((await (await GET(makeRequest('GET', 'http://x/api/stringing/shop'))).json()).open).toBe(true);
+    expect((await (await GET(memberGet('http://x/api/stringing/shop'))).json()).open).toBe(true);
 
     await PATCH(makeAdminRequest('PATCH', 'http://x/api/stringing/shop', { open: false }));
-    expect((await (await GET(makeRequest('GET', 'http://x/api/stringing/shop'))).json()).open).toBe(false);
+    expect((await (await GET(memberGet('http://x/api/stringing/shop'))).json()).open).toBe(false);
   });
 
   it('rejects anything that is not a boolean', async () => {

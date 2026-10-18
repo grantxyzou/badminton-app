@@ -18,12 +18,10 @@
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
   | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
-  | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
   | 'NEXT_PUBLIC_FLAG_RACKET_FIT'
-  | 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY'
   | 'NEXT_PUBLIC_FLAG_GEAR_PAGES'
   | 'NEXT_PUBLIC_FLAG_FIT_VERDICT'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
@@ -58,12 +56,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: 'never',
     note: 'Deliberately dateless. This gates the /design preview route — developer tooling, not a staged feature, so there is no ship moment to count two weeks from. It retires when the route does.',
   },
-  NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: {
-    description:
-      'Email+password sign-up, Sign in with Google, and Sign in with Apple, plus the dismissible upgrade nudge for existing PIN-only members. Gates the UI entry points AND the /api/auth/* routes (read server-side there, since a client flag cannot protect the database). The PIN path is unaffected and is NOT being retired: turning this off restores name+PIN as the only credential with no data migration and no orphaned records, because provider identities live in their own container rather than replacing anything on the member.',
-    owner: 'grant',
-    plannedRemoval: '2026-10-15',
-  },
   NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: {
     description:
       'The one-time link that carries a signed-in PWA identity into the native (App Store / Play) shell — docs/plans/native-shell.md WP5. Gates two SERVER-side credential-minting routes (POST /api/auth/migrate/{start,claim}), the "Move to the app" Profile row and the native "Enter code" row. lib/authMigration.ts: link code + 6-digit short code as sibling docs in `authmigration` (PK /id), TTL 5 min, single use, point reads only. The claim re-mints deleteToken because DELETE /api/players never accepts member_session. Held off until the store listings existed; ON since 2026-10-07, when both were live.',
@@ -77,13 +69,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-12-15',
     note: 'About two weeks after the intended Phase 5 cutover. Retiring it means deleting the "resolve to bpm" branch AND flipping TOLERATE_UNSTAMPED off in lib/groupScope.ts (only after the migrate-groups status read shows zero unstamped rows for a week), not just removing the switch.',
-  },
-  NEXT_PUBLIC_FLAG_MEMBERS_ONLY: {
-    description:
-      'A signed-out visitor sees no club data at all — only Sign up / Log in (docs/plans/members-only.md). Read SERVER-SIDE: on, every group-data read requires a signed-in active member (requireMember in lib/auth.ts), new accounts need an invite, and a session sign-up needs an account. Off, every gate is a pass-through and nothing observable changes. Ships dark; the flip waits until the admin list of members with no way to sign in is short, because turning it on locks those people out until an admin approves them.',
-    owner: 'grant',
-    plannedRemoval: '2026-10-17',
-    note: 'Turned on in production 2026-10-03. Retiring it means deleting the OFF branches, not just the switch: the anonymous and body-PIN paths in POST /api/players, the flag-off branch of signupGroupFor, and the adaptive anon/sign-in/create modes of the Home sign-up card. Grant, 2026-10-09: members-only is PERMANENT — retire by keeping the ON branch.',
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
@@ -150,8 +135,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
-    case 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS':
-      return process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
     case 'NEXT_PUBLIC_FLAG_STRINGING':
       return process.env.NEXT_PUBLIC_FLAG_STRINGING;
     case 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE':
@@ -160,8 +143,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
     case 'NEXT_PUBLIC_FLAG_RACKET_FIT':
       return process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
-    case 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY':
-      return process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
     case 'NEXT_PUBLIC_FLAG_GEAR_PAGES':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_PAGES;
     case 'NEXT_PUBLIC_FLAG_FIT_VERDICT':

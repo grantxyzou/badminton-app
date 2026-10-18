@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import CardHeader from '@/components/primitives/CardHeader';
-import { isFlagOn } from '@/lib/flags';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { useRevealReady } from '@/components/primitives/Reveal';
 
@@ -15,22 +14,18 @@ interface Readiness {
 }
 
 /**
- * "Who would be locked out?" — the list members-only's flip waits on
- * (docs/plans/members-only.md).
+ * "Who is locked out?" — members with no PIN, password or provider, who
+ * cannot sign in now that members-only is permanent (docs/plans/members-only.md).
  *
- * BEFORE THE FLIP it always renders, including when everyone is ready: that
- * line is the go-ahead, and a card that vanished at zero would leave the admin
- * unsure whether the list was empty or had failed to load. AFTER the flip it
- * renders only while someone is still locked out, because by then an empty list
- * is ordinary and the card would be noise.
+ * It renders only while someone is locked out; an empty list is ordinary and
+ * the card would be noise. (Before the flag retired on 2026-10-17 it also
+ * rendered at zero, as the go-ahead for the flip.)
  *
- * A load failure is an explicit error, never a confident zero — "0 locked out"
- * is precisely the answer that would get the flag flipped.
+ * A load failure is an explicit error, never a confident zero.
  */
 export default function SignInReadinessCard({ refreshKey = 0, onOpenMember }: { refreshKey?: number; onOpenMember?: (name: string) => void }) {
   const [data, setData] = useState<Readiness | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const flipped = isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -80,60 +75,48 @@ export default function SignInReadinessCard({ refreshKey = 0, onOpenMember }: { 
   }
   if (!data) return null;
   const locked = data.cannotSignIn.length;
-  if (flipped && locked === 0) return null;
+  if (locked === 0) return null;
 
   return (
     <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
       <CardHeader
         icon="key"
         title={title}
-        subtitle={
-          flipped
-            ? 'Members only is on. These members are locked out until you let them in.'
-            : 'Before members only goes on, everyone needs a way to sign in.'
-        }
+        subtitle="These members are locked out until you let them in."
       />
       <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>
         <strong>{data.ready}</strong> of {data.total} members can sign in.
       </p>
-      {locked === 0 ? (
-        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-          Everyone has a PIN, a password or Google. Nobody would be locked out.
-        </p>
-      ) : (
-        <>
-          <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-            {locked === 1 ? 'This member has' : `These ${locked} members have`} no PIN, password or Google yet. They can tap
-            &ldquo;I play here already&rdquo; to ask you, or set up a sign-in on Profile while they still can.
-            {onOpenMember ? ' Tap a name to give them a recovery code.' : ''}
-          </p>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-            {data.cannotSignIn.map((name) => (
-              <li key={name}>
-                {/* A name with nowhere to go was a list of problems with no
-                    fix attached; it opens the member, recovery code inside. */}
-                <button
-                  type="button"
-                  className="fs-sm"
-                  disabled={!onOpenMember}
-                  onClick={() => onOpenMember?.(name)}
-                  aria-label={onOpenMember ? `Open ${name} in the roster` : undefined}
-                  style={{
-                    padding: 'var(--space-1) var(--space-4)',
-                    borderRadius: 'var(--radius-pill)',
-                    background: 'var(--inner-card-bg)',
-                    border: '1px solid var(--inner-card-border)',
-                    color: 'var(--text-primary)',
-                    cursor: onOpenMember ? 'pointer' : 'default',
-                  }}
-                >
-                  {name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+        {locked === 1 ? 'This member has' : `These ${locked} members have`} no PIN, password or Google yet. They can tap
+        &ldquo;I play here already&rdquo; on the Log in page to ask you.
+        {onOpenMember ? ' Tap a name to give them a recovery code.' : ''}
+      </p>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+        {data.cannotSignIn.map((name) => (
+          <li key={name}>
+            {/* A name with nowhere to go was a list of problems with no
+                fix attached; it opens the member, recovery code inside. */}
+            <button
+              type="button"
+              className="fs-sm"
+              disabled={!onOpenMember}
+              onClick={() => onOpenMember?.(name)}
+              aria-label={onOpenMember ? `Open ${name} in the roster` : undefined}
+              style={{
+                padding: 'var(--space-1) var(--space-4)',
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--inner-card-bg)',
+                border: '1px solid var(--inner-card-border)',
+                color: 'var(--text-primary)',
+                cursor: onOpenMember ? 'pointer' : 'default',
+              }}
+            >
+              {name}
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

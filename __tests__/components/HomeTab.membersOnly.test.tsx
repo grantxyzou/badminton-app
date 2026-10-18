@@ -76,112 +76,32 @@ describe('Home sign-up card, members only', () => {
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/members/me'))).toBe(false);
   });
 
+  it('with no verified name, names the local identity — still no field to type into', async () => {
+    localStorage.setItem('badminton_identity', JSON.stringify({ name: 'Kento', sessionId: session.id }));
+    renderHome(null);
+    expect(await screen.findByText('Signing up as Kento')).toBeDefined();
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  it('with no name at all, offers no sign-up form rather than an anonymous one', async () => {
+    renderHome(null);
+    await screen.findByText(/spots? left/i);
+    expect(screen.queryByText(/Signing up as/)).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Sign up for this week/i })).toBeNull();
+  });
+
   it('signs up with one tap', async () => {
     renderHome('Lin');
     await screen.findByText('Signing up as Lin');
-    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
+    // Role queries skip the RevealSlot's `hidden` wrapper; the text query above
+    // does not, so await the button too (same race as #540).
+    fireEvent.click(await screen.findByRole('button', { name: /Sign up for this week/i }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([u, i]) => String(u).includes('/api/players') && (i as RequestInit)?.method === 'POST')).toBe(true),
     );
   });
 
-  it('flag off (no memberName): the name field is still there, exactly as before', async () => {
-    renderHome(null);
-    await waitFor(() => expect(screen.queryByText(/Signing up as/)).toBeNull());
-    expect(await screen.findByLabelText('Your name')).toBeDefined();
-  });
-});
-
-/**
- * MEMBERS ONLY, PART 4: the warning BEFORE the flip. Grant's decision was "warn
- * first, then request access" — a name with no PIN, password or Google gets
- * told, while there is still time, and offered the way in.
- */
-describe('the pre-flip sign-in warning', () => {
-  function probeAnswers(me: Record<string, unknown>) {
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes('/api/session')) return ok(session);
-      if (url.includes('/api/members/me')) return ok(me);
-      if (url.includes('/api/players/unpaid')) return ok({ totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] });
-      if (url.includes('/api/stringing/shop')) return ok({ open: false });
-      return ok([]);
-    });
-  }
-
-  function signedInLocallyAs(name: string) {
-    localStorage.setItem('badminton_identity', JSON.stringify({ name, sessionId: session.id }));
-  }
-
-  it('warns a name with no PIN and no live session on this device', async () => {
-    signedInLocallyAs('Kento');
-    probeAnswers({ createdAt: '2026-01-01', hasPin: false, authed: false });
-    renderHome(null);
-    expect(await screen.findByText('Set up a way to sign in', {}, { timeout: 2000 })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Ask to be let in' })).toBeDefined();
-  });
-
-  it('once signed up, the confirmation itself is the warning — amber, not a green thank-you', async () => {
-    signedInLocallyAs('Kento');
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes('/api/session')) return ok(session);
-      if (url.includes('/api/members/me')) return ok({ createdAt: '2026-01-01', hasPin: false, authed: false });
-      if (url.includes('/api/players/unpaid')) return ok({ totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] });
-      if (url.includes('/api/stringing/shop')) return ok({ open: false });
-      if (url.includes('/api/players')) return ok([{ name: 'Kento', waitlisted: false }]);
-      return ok([]);
-    });
-    renderHome(null);
-    expect(await screen.findByText("Kento, you're in this week", {}, { timeout: 2000 })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Ask to be let in' })).toBeDefined();
-    expect(screen.queryByText("Kento, you're in")).toBeNull();
-    // One warning, in the sign-up card — not a second copy down in the account group.
-    expect(screen.queryByText('Set up a way to sign in')).toBeNull();
-  });
-
-  it.each([
-    ['on the waitlist', { ...session, maxPlayers: 1 }, [{ name: 'Lin', waitlisted: false }, { name: 'Kento', waitlisted: true }]],
-    ['when the session is full', { ...session, maxPlayers: 1 }, [{ name: 'Lin', waitlisted: false }]],
-    ['when sign-ups are not open yet', { ...session, signupOpen: false }, []],
-  ])('warns %s too, not only on the open form', async (_label, s, players) => {
-    signedInLocallyAs('Kento');
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes('/api/session')) return ok(s);
-      if (url.includes('/api/members/me')) return ok({ createdAt: '2026-01-01', hasPin: false, authed: false });
-      if (url.includes('/api/players/unpaid')) return ok({ totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] });
-      if (url.includes('/api/stringing/shop')) return ok({ open: false });
-      if (url.includes('/api/players')) return ok(players);
-      return ok([]);
-    });
-    renderHome(null);
-    expect(await screen.findByText('Set up a way to sign in', {}, { timeout: 2000 })).toBeDefined();
-  });
-
-  it('does not warn a member with a PIN', async () => {
-    signedInLocallyAs('Lin');
-    probeAnswers({ createdAt: '2026-01-01', hasPin: true, authed: false });
-    renderHome(null);
-    await new Promise((r) => setTimeout(r, 900));
-    expect(screen.queryByText('Set up a way to sign in')).toBeNull();
-  });
-
-  it('does not warn a device holding a live session (an email or Google member)', async () => {
-    signedInLocallyAs('Carolina');
-    probeAnswers({ createdAt: '2026-01-01', hasPin: false, authed: true });
-    renderHome(null);
-    await new Promise((r) => setTimeout(r, 900));
-    expect(screen.queryByText('Set up a way to sign in')).toBeNull();
-  });
-
-  it('does not warn after the flip — the server already verified who this is', async () => {
-    probeAnswers({ createdAt: '2026-01-01', hasPin: false, authed: false });
-    renderHome('Kento');
-    await screen.findByText('Signing up as Kento');
-    await new Promise((r) => setTimeout(r, 900));
-    expect(screen.queryByText('Set up a way to sign in')).toBeNull();
-  });
 });
 
 /**
@@ -243,38 +163,3 @@ describe('signed in with nothing to sign in with next time', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
-
-/**
- * 2026-09-13 flow audit, finding 2 (members only OFF, today's app): typing a
- * no-PIN regular's name on a phone that holds no session used to switch the
- * form to "Create a PIN" — and that PIN was refused. They sign up by name.
- */
-describe('a no-PIN regular on a new phone, before the flip', () => {
-  function probe(me: Record<string, unknown>) {
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes('/api/session')) return ok(session);
-      if (url.includes('/api/members/me')) return ok(me);
-      return ok([]);
-    });
-  }
-
-  it('asks for no PIN — the name is enough, as the server allows', async () => {
-    probe({ createdAt: '2026-01-01', hasPin: false, authed: false });
-    renderHome(null);
-    const input = (await screen.findByLabelText('Your name')) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'Kento' } });
-    await new Promise((r) => setTimeout(r, 700)); // past the probe debounce
-    expect(screen.queryByLabelText('Create a PIN')).toBeNull();
-    expect((screen.getByRole('button', { name: /I'm in this week/i }) as HTMLButtonElement).disabled).toBe(false);
-  });
-
-  it('still offers "Create a PIN" on a phone that holds their session, where it works', async () => {
-    probe({ createdAt: '2026-01-01', hasPin: false, authed: true });
-    renderHome(null);
-    const input = (await screen.findByLabelText('Your name')) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'Kento' } });
-    expect(await screen.findByLabelText('Create a PIN', {}, { timeout: 2000 })).toBeDefined();
-  });
-});
-

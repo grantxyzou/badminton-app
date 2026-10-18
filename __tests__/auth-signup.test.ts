@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { resetMockStore, seedMember, getStore, makeRequest } from './helpers';
+import { resetMockStore, seedGroup, seedMember, getStore, makeRequest } from './helpers';
+import { mintInvite } from '../lib/invites';
 import { POST } from '../app/api/auth/signup/route';
 import { lookupIdentity } from '../lib/authIdentity';
 import { verifyPassword } from '../lib/passwordHash';
@@ -8,12 +9,12 @@ const URL_ = 'http://localhost:3000/bpm/api/auth/signup';
 
 beforeEach(() => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
+  // Members only: every new account needs an invite, so BPM must exist to mint one.
+  seedGroup('bpm', { name: 'BPM Badminton' });
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 function body(over: Record<string, unknown> = {}) {
@@ -25,9 +26,15 @@ function body(over: Record<string, unknown> = {}) {
   };
 }
 
+/** A sign-up body carrying a fresh one-time BPM invite (members only). */
+async function invited(over: Record<string, unknown> = {}) {
+  const invite = await mintInvite('bpm', 'owner');
+  return body({ inviteToken: invite!.token, ...over });
+}
+
 describe('POST /api/auth/signup', () => {
   it('creates the member, reserves the email, and signs them in', async () => {
-    const res = await POST(makeRequest('POST', URL_, body()));
+    const res = await POST(makeRequest('POST', URL_, await invited()));
     expect(res.status).toBe(201);
 
     const identity = await lookupIdentity('email', 'carolina@example.com');
@@ -45,7 +52,7 @@ describe('POST /api/auth/signup', () => {
   });
 
   it('never returns a secret in the response body', async () => {
-    const res = await POST(makeRequest('POST', URL_, body()));
+    const res = await POST(makeRequest('POST', URL_, await invited()));
     const text = JSON.stringify(await res.json());
     for (const secret of ['passwordHash', 'emailVerification', 'passwordReset', 'pinHash']) {
       expect(text).not.toContain(secret);
@@ -53,9 +60,9 @@ describe('POST /api/auth/signup', () => {
   });
 
   it('normalizes the email so case cannot create a second account', async () => {
-    await POST(makeRequest('POST', URL_, body()));
+    await POST(makeRequest('POST', URL_, await invited()));
     const res = await POST(
-      makeRequest('POST', URL_, body({ name: 'Someone Else', email: 'CAROLINA@Example.com' })),
+      makeRequest('POST', URL_, await invited({ name: 'Someone Else', email: 'CAROLINA@Example.com' })),
     );
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe('email_taken');
@@ -64,7 +71,7 @@ describe('POST /api/auth/signup', () => {
   it('refuses to attach to an existing name (names are enumerable, not proof)', async () => {
     seedMember('Lin', { pinHash: 'x' });
     const res = await POST(
-      makeRequest('POST', URL_, body({ name: 'lin', email: 'imposter@example.com' })),
+      makeRequest('POST', URL_, await invited({ name: 'lin', email: 'imposter@example.com' })),
     );
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe('name_taken');
@@ -73,9 +80,9 @@ describe('POST /api/auth/signup', () => {
   });
 
   it('rejects a weak password and a malformed email', async () => {
-    const weak = await POST(makeRequest('POST', URL_, body({ password: 'short' })));
+    const weak = await POST(makeRequest('POST', URL_, await invited({ password: 'short' })));
     expect(weak.status).toBe(400);
-    const bad = await POST(makeRequest('POST', URL_, body({ email: 'not-an-email' })));
+    const bad = await POST(makeRequest('POST', URL_, await invited({ email: 'not-an-email' })));
     expect(bad.status).toBe(400);
   });
 
@@ -103,14 +110,9 @@ describe('POST /api/auth/signup', () => {
       } as any;
     });
 
-    const res = await POST(makeRequest('POST', URL_, body({ email: 'orphan@example.com' })));
+    const res = await POST(makeRequest('POST', URL_, await invited({ email: 'orphan@example.com' })));
     expect(res.status).toBe(503);
     expect(await lookupIdentity('email', 'orphan@example.com')).toBeNull();
   });
 
-  it('404s when the flag is off, so a client flag flip cannot reach the database', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await POST(makeRequest('POST', URL_, body()));
-    expect(res.status).toBe(404);
-  });
 });

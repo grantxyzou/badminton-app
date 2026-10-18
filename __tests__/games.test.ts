@@ -15,12 +15,26 @@ function get(url: string): NextRequest {
  * on `ownsNameOrAdmin` — reading your own career history needs you to be you.
  */
 function getAs(name: string, url: string): NextRequest {
+  ensureMember(`m-${name.toLowerCase()}`, name);
   return new NextRequest(new URL(url, 'http://localhost/bpm'), {
     headers: {
       cookie: `member_session=${memberCookieValue(`m-${name.toLowerCase()}`, name)}`,
       'x-client-ip': `games-get-${Math.random()}`,
     },
   });
+}
+/**
+ * Every club-data GET needs a signed-in ACTIVE member (members-only is
+ * permanent), and the gate re-reads the Member by id — so the cookie's member
+ * must exist in the store.
+ */
+function ensureMember(memberId: string, name: string) {
+  const store = getStore();
+  if (!store['members']) store['members'] = [];
+  const rows = store['members'] as Array<{ id: string }>;
+  if (!rows.some((m) => m.id === memberId)) {
+    rows.push({ id: memberId, name, role: 'member', active: true, createdAt: new Date().toISOString() } as { id: string });
+  }
 }
 function memberCookieValue(memberId: string, name: string): string {
   const r = NextResponse.json({});
@@ -66,7 +80,7 @@ describe('/api/games', () => {
     const postRes = await POST(postAs('m-lin', 'Lin', validGame));
     expect(postRes.status).toBe(201);
 
-    const getRes = await GET(get('/api/games?sessionId=session-2026-05-21'));
+    const getRes = await GET(getAs('Lin', '/api/games?sessionId=session-2026-05-21'));
     const body = await getRes.json();
     expect(body.games.length).toBeGreaterThanOrEqual(1);
     const mine = body.games.find((g: { loggedBy: string }) => g.loggedBy === 'Lin');
@@ -144,11 +158,11 @@ describe('/api/games — sessionId override is admin-only (rule 7)', () => {
     expect(data.sessionId).toBe('session-archive');
   });
 
-  it('ignores a ?sessionId= override on an anonymous GET (reads the active session)', async () => {
+  it('ignores a ?sessionId= override on a non-admin member GET (reads the active session)', async () => {
     // Log into the active session as a member, then a foreign read attempt must
-    // not surface it under the foreign id — the anon GET resolves to active.
+    // not surface it under the foreign id — a non-admin GET resolves to active.
     await POST(postAs('m-lin', 'Lin', { ...validGame, sessionId: 'session-evil' }));
-    const res = await GET(get('/api/games?sessionId=session-evil'));
+    const res = await GET(getAs('Viktor', '/api/games?sessionId=session-evil'));
     const body = await res.json();
     expect(body.games.every((g: { sessionId: string }) => g.sessionId === 'session-active')).toBe(true);
   });
@@ -198,7 +212,7 @@ describe('/api/games — sessionId override is admin-only (rule 7)', () => {
 
     it('400s without a name rather than dumping the whole history', async () => {
       await seedAcrossSessions();
-      const res = await GET(get('/api/games?all=true'));
+      const res = await GET(getAs('Lin', '/api/games?all=true'));
       expect(res.status).toBe(400);
       expect((await res.json()).error).toBe('name_required');
     });
@@ -220,8 +234,10 @@ describe('/api/games — sessionId override is admin-only (rule 7)', () => {
      */
     it('refuses an ANONYMOUS all-time read — the roster is the enumeration', async () => {
       await seedAcrossSessions();
+      // Members-only is permanent: the anonymous caller is now refused at the
+      // read gate (401), before the name-ownership check (403) is reached.
       const res = await GET(get('/api/games?all=true&name=Lin'));
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401);
     });
 
     it("refuses another member's all-time read", async () => {

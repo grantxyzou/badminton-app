@@ -125,7 +125,6 @@ jobs:
           #
           # 2026-09-03: apple/start and apple/callback gained the same handoff
           # Google had -- Apple sign-in from the PWA was still hitting the split.
-          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'
           # ON as of 2026-08-27. This lights up the admin bench (job list, job
           # detail, intake form) and un-404s /api/stringing/*.
           #
@@ -151,7 +150,6 @@ jobs:
           # signed-out visitor sees no club data and every group-data route
           # 401s. Read server-side. Back out by setting 'false' — nothing is
           # migrated, so the flag is the whole rollback.
-          NEXT_PUBLIC_FLAG_MEMBERS_ONLY: 'true'
           # NOT a secret: the browser needs it for
           # pushManager.subscribe({ applicationServerKey }). It must live HERE
           # and not only in Azure App Settings, because NEXT_PUBLIC_* is inlined

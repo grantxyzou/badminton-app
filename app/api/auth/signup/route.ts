@@ -62,12 +62,6 @@ import { rosterNameHolder, addMembership } from '@/lib/groups';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // Flag gate FIRST: read server-side, because a client flag cannot protect the
-  // database — anyone with devtools can flip a bundle constant.
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   // Rate limit before auth and before body parsing, so it cannot be bypassed.
   const ip = getClientIp(req);
   if (!checkRateLimit(`auth-signup:${ip}`, 5, 60 * 60 * 1000)) {

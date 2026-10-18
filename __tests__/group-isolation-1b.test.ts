@@ -137,7 +137,7 @@ describe('clubSettings', () => {
     stamped(shopDocId('bpm'), { open: true }); // bare 'stringing', but theirs
     expect(await readShopOpen('bpm')).toBe(false);
     expect(await readShopOpen('other')).toBe(true);
-    const res = await shopGet(makeRequest('GET', 'http://x/api/stringing/shop'));
+    const res = await shopGet(makeAdminRequest('GET', 'http://x/api/stringing/shop'));
     expect(await res.json()).toEqual({ open: false });
   });
 
@@ -146,8 +146,8 @@ describe('clubSettings', () => {
     stamped(stringsDocId('bpm'), { strings: [MARKER] });
     stamped(pricingDocId('other'), { services: [{ label: MARKER, priceCents: 1 }] });
     stamped(pricingDocId('bpm'), { services: [{ label: MARKER, priceCents: 1 }] });
-    const strings = await (await stringsGet(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
-    const pricing = await (await pricingGet(makeRequest('GET', 'http://x/api/stringing/pricing'))).json();
+    const strings = await (await stringsGet(makeAdminRequest('GET', 'http://x/api/stringing/strings'))).json();
+    const pricing = await (await pricingGet(makeAdminRequest('GET', 'http://x/api/stringing/pricing'))).json();
     expect(strings).toEqual({ strings: [], links: {}, prices: {}, stock: {}, players: {} });
     expect(pricing).toEqual({ services: [], ownStringCents: null, note: '' });
   });

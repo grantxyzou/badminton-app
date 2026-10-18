@@ -13,7 +13,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { hashPassword, validatePasswordStrength } from '@/lib/passwordHash';
 import { checkToken } from '@/lib/authToken';
 import { completeSignIn } from '@/lib/authSession';
@@ -26,10 +25,6 @@ export const dynamic = 'force-dynamic';
 const BAD = () => NextResponse.json({ error: 'invalid_token' }, { status: 400 });
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   const ip = getClientIp(req);
   if (!checkRateLimit(`auth-reset:${ip}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });

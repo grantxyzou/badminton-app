@@ -199,7 +199,7 @@ Runbook + rollback: the `deploy-promotion` skill. Infrastructure: [`docs/azure.m
 
 ## API Routes
 
-A representative subset — there are ~100 route files under `app/api/` (auth, groups, stringing, payments, ledger, stats, push, kudos …). **With `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` on (production), every club-data `GET` requires a signed-in member**; `__tests__/members-only-coverage.test.ts` classifies each one.
+A representative subset — there are ~100 route files under `app/api/` (auth, groups, stringing, payments, ledger, stats, push, kudos …). **Every club-data `GET` requires a signed-in member** (members-only is permanent; its flag `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` retired 2026-10-17); `__tests__/members-only-coverage.test.ts` classifies each one.
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|

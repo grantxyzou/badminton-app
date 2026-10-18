@@ -79,18 +79,18 @@ afterEach(() => {
 describe('signing up', () => {
   it('says who else is in before you tap, newest first', async () => {
     renderHome();
-    expect(await screen.findByText('Kento, Akane and 1 other are in')).toBeDefined();
+    expect(await screen.findByText('Kento and 2 others have signed up')).toBeDefined();
   });
 
   it('confirms with the plan itself, without dropping Home into the skeleton', async () => {
     renderHome();
     await screen.findByText('Signing up as Lin');
-    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
 
-    expect(await screen.findByText("Lin, you're in")).toBeDefined();
+    expect(await screen.findByText('Lin, you have signed up for this week!')).toBeDefined();
     expect(screen.getByText(/ at Test Gym$/)).toBeDefined();
     // Lin is not in their own "who else" line.
-    expect(screen.getByText('Kento, Akane and 1 other are in')).toBeDefined();
+    expect(screen.getByText('Kento and 2 others have signed up')).toBeDefined();
     // All of that landed while the background refresh is still in flight
     // (reads hang after the POST), and Home never dropped into the skeleton.
     expect(fetchMock.mock.calls.filter(([u, i]) => String(u).endsWith('/api/players') && !(i as RequestInit)?.method).length).toBeGreaterThanOrEqual(2);
@@ -118,16 +118,16 @@ describe('signing up', () => {
   it('keeps the same wording once you are in', async () => {
     renderHome();
     await screen.findByText('Signing up as Lin');
-    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
-    await screen.findByText("Lin, you're in");
+    fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
+    await screen.findByText('Lin, you have signed up for this week!');
     expect(screen.getByText('8 spots left out of 12')).toBeDefined();
   });
 
   it('never carries the delete token into the roster it renders', async () => {
     renderHome();
     await screen.findByText('Signing up as Lin');
-    fireEvent.click(screen.getByRole('button', { name: /I'm in/i }));
-    await screen.findByText("Lin, you're in");
+    fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
+    await screen.findByText('Lin, you have signed up for this week!');
     expect(document.body.innerHTML).not.toContain('t'.repeat(32));
   });
 });

@@ -1,6 +1,6 @@
 # Replace `arctic` for the Google and Apple handshake
 
-**Track:** Store launch — Google and Apple sign-in are the store-listing credentials (`NEXT_PUBLIC_FLAG_AUTH_PROVIDERS`), and the library that performs their handshake is deprecated upstream.
+**Track:** Store launch — Google and Apple sign-in are the store-listing credentials (behind `NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` until it retired 2026-10-15), and the library that performs their handshake is deprecated upstream.
 **Status:** intent
 **Review on:** 2026-10-26 — Has `arctic` needed a fix we could not take, or has either provider changed an endpoint? If neither, is the hand-rolled handshake shipped behind the replayed-exchange tests below, or is this plan still a note?
 

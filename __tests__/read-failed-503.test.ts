@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { resetMockStore, makeGetRequest, setupAdminPin } from './helpers';
+import { resetMockStore, makeGetRequest, makeRequest, setupAdminPin, seedMember, memberCookieValue } from './helpers';
+
+/** A signed-in member's GET — club-data reads refuse an anonymous caller (401) first. */
+function memberGet(url: string) {
+  seedMember('Lin');
+  return makeRequest('GET', url, undefined, { Cookie: `member_session=${memberCookieValue('Lin')}` });
+}
 
 /**
  * A GET whose read throws answers 503 with `{ error }`, never a default or
@@ -29,7 +35,7 @@ describe('read failures answer 503, not a lying 200', () => {
       return { ...mod, getActiveSessionId: async () => { throw new Error('cosmos down'); } };
     });
     const { GET } = await import('../app/api/session/route');
-    const res = await GET(makeGetRequest('http://localhost/api/session'));
+    const res = await GET(memberGet('http://localhost/api/session'));
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: 'read_failed' });
   });
@@ -40,7 +46,7 @@ describe('read failures answer 503, not a lying 200', () => {
       return { ...mod, rosterMembers: async () => { throw new Error('cosmos down'); } };
     });
     const { GET } = await import('../app/api/members/route');
-    const res = await GET(makeGetRequest('http://localhost/api/members'));
+    const res = await GET(memberGet('http://localhost/api/members'));
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: 'read_failed' });
   });

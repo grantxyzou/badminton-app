@@ -6,8 +6,6 @@ import { NextRequest } from 'next/server';
 import { readActiveAnnouncements } from '@/lib/announcements';
 import { resolveGroupIdFromCookieHeader } from '@/lib/groupContext';
 import { configuredProviders } from '@/lib/oauthProviders';
-import { isFlagOn } from '@/lib/flags';
-import { membersOnlyOn } from '@/lib/auth';
 import { decidePage } from '@/lib/pageGate';
 
 // Force dynamic rendering — the announcement read hits Cosmos at request
@@ -37,7 +35,7 @@ export default async function Page() {
   // reads — no Cosmos, no network — so it costs nothing here, and resolving it
   // on the server is what lets the provider buttons LEAD without the card
   // painting form-first and jumping when a client probe returns.
-  const authProviders = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') ? configuredProviders() : [];
+  const authProviders = configuredProviders();
 
   /**
    * MEMBERS ONLY (docs/plans/members-only.md): THE SERVER DECIDES WHO IS SIGNED
@@ -46,7 +44,7 @@ export default async function Page() {
    * This page renders for every visitor, and a prop handed to a client
    * component is serialized into the HTML — so a read made here is published
    * to anyone with `curl`, however carefully the matching API route is gated.
-   * With the flag on, a visitor the gate refuses gets `SignedOutShell` and
+   * A visitor the gate refuses gets `SignedOutShell` and
    * NOTHING is read: no announcement, no tabs, no nav, no client fetch.
    *
    * The gate is the SAME `requireMember` every club-data route calls, handed a
@@ -61,23 +59,20 @@ export default async function Page() {
    * `__tests__/members-only-coverage.test.ts` pins the order: gate, early
    * return, and only then the read.
    */
-  let memberName: string | null = null;
-  if (membersOnlyOn()) {
-    const outcome = await decidePage(
-      new NextRequest('http://localhost/bpm', { headers: cookie ? { cookie } : {} }),
+  const outcome = await decidePage(
+    new NextRequest('http://localhost/bpm', { headers: cookie ? { cookie } : {} }),
+  );
+  if (outcome.kind !== 'app') {
+    return (
+      <OnlineProvider>
+        <SignedOutShell
+          authProviders={authProviders}
+          noClub={outcome.kind === 'no-club' ? { memberName: outcome.memberName, groups: outcome.groups } : undefined}
+        />
+      </OnlineProvider>
     );
-    if (outcome.kind !== 'app') {
-      return (
-        <OnlineProvider>
-          <SignedOutShell
-            authProviders={authProviders}
-            noClub={outcome.kind === 'no-club' ? { memberName: outcome.memberName, groups: outcome.groups } : undefined}
-          />
-        </OnlineProvider>
-      );
-    }
-    memberName = outcome.memberName;
   }
+  const memberName = outcome.memberName;
 
   const initialAnnouncement = (await readActiveAnnouncements(groupId))[0] ?? null;
   return (

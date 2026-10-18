@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
-import { resetMockStore, seedMember, getStore } from './helpers';
+import { resetMockStore, seedGroup, seedMember, getStore } from './helpers';
+import { mintInvite } from '../lib/invites';
 import { POST } from '../app/api/auth/complete-signup/route';
 import { setPendingSignup, PENDING_COOKIE, type PendingSignup } from '../lib/pendingSignup';
 import { lookupIdentity, reserveIdentity } from '../lib/authIdentity';
@@ -11,10 +12,8 @@ let ipSeq = 0;
 
 beforeEach(() => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
-});
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
+  // Members only: a new account needs an invite, so BPM must exist to mint one.
+  seedGroup('bpm', { name: 'BPM Badminton' });
 });
 
 /** Mint a real signed pending cookie by round-tripping through the setter. */
@@ -32,7 +31,14 @@ function pendingCookie(over: Partial<PendingSignup> = {}): string {
   return header.split(';')[0];
 }
 
-function req(body: Record<string, unknown>, cookie?: string): NextRequest {
+/**
+ * A request whose body carries a fresh one-time BPM invite — members only: a
+ * new account needs one. The no-invite refusal is pinned in
+ * `members-only-accounts.test.ts` and `invited-signup.test.ts`.
+ */
+async function req(body: Record<string, unknown>, cookie?: string): Promise<NextRequest> {
+  const invite = await mintInvite('bpm', 'owner');
+  body = { inviteToken: invite!.token, ...body };
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Client-IP': `10.9.${Math.floor(ipSeq / 250)}.${ipSeq++ % 250}`,
@@ -48,7 +54,7 @@ function members() {
 
 describe('POST /api/auth/complete-signup', () => {
   it('creates the member, links the provider, and claims the verified email', async () => {
-    const res = await POST(req({ name: 'Carolina' }, pendingCookie()));
+    const res = await POST(await req({ name: 'Carolina' }, pendingCookie()));
     expect(res.status).toBe(201);
 
     expect(members()).toHaveLength(1);
@@ -63,7 +69,7 @@ describe('POST /api/auth/complete-signup', () => {
 
   it('refuses a name that already belongs to someone, and reserves nothing', async () => {
     seedMember('Lin');
-    const res = await POST(req({ name: 'lin' }, pendingCookie({ sub: 'google-sub-2' })));
+    const res = await POST(await req({ name: 'lin' }, pendingCookie({ sub: 'google-sub-2' })));
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe('name_taken');
     expect(await lookupIdentity('google', 'google-sub-2')).toBeNull();
@@ -73,7 +79,7 @@ describe('POST /api/auth/complete-signup', () => {
     // Otherwise a provider account carrying an arbitrary unconfirmed address
     // could squat the real owner's future signup.
     const res = await POST(
-      req({ name: 'Kento' }, pendingCookie({ emailVerified: false, sub: 'google-sub-3' })),
+      await req({ name: 'Kento' }, pendingCookie({ emailVerified: false, sub: 'google-sub-3' })),
     );
     expect(res.status).toBe(201);
     expect(members()[0].email).toBeUndefined();
@@ -84,7 +90,7 @@ describe('POST /api/auth/complete-signup', () => {
     const other = seedMember('Someone');
     await reserveIdentity('email', 'carolina@example.com', other.id);
 
-    const res = await POST(req({ name: 'Akane' }, pendingCookie({ sub: 'google-sub-4' })));
+    const res = await POST(await req({ name: 'Akane' }, pendingCookie({ sub: 'google-sub-4' })));
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe('email_taken');
     // The provider key must not stay reserved for a member that was never made.
@@ -94,13 +100,13 @@ describe('POST /api/auth/complete-signup', () => {
   it('refuses a provider identity that is already linked elsewhere', async () => {
     const other = seedMember('Someone');
     await reserveIdentity('google', 'google-sub-5', other.id);
-    const res = await POST(req({ name: 'Viktor' }, pendingCookie({ sub: 'google-sub-5' })));
+    const res = await POST(await req({ name: 'Viktor' }, pendingCookie({ sub: 'google-sub-5' })));
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe('already_linked');
   });
 
   it('rejects a request with no pending cookie', async () => {
-    const res = await POST(req({ name: 'Nobody' }));
+    const res = await POST(await req({ name: 'Nobody' }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe('no_pending_signup');
   });
@@ -111,7 +117,7 @@ describe('POST /api/auth/complete-signup', () => {
     const forged = `${PENDING_COOKIE}=${Buffer.from(
       JSON.stringify({ v: { provider: 'google', sub: 'attacker' }, exp: 9999999999 }),
     ).toString('base64url')}.deadbeef`;
-    const res = await POST(req({ name: 'Attacker' }, forged));
+    const res = await POST(await req({ name: 'Attacker' }, forged));
     expect(res.status).toBe(400);
     expect(members()).toHaveLength(0);
   });
@@ -120,18 +126,13 @@ describe('POST /api/auth/complete-signup', () => {
     // Body carries the NAME and nothing else. A sub in the body must be ignored
     // in favour of the signed cookie's.
     const res = await POST(
-      req({ name: 'Sindhu', sub: 'attacker-sub', email: 'victim@example.com' }, pendingCookie()),
+      await req({ name: 'Sindhu', sub: 'attacker-sub', email: 'victim@example.com' }, pendingCookie()),
     );
     expect(res.status).toBe(201);
     expect(await lookupIdentity('google', 'attacker-sub')).toBeNull();
     expect((await lookupIdentity('google', 'google-sub-1'))).not.toBeNull();
   });
 
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    const res = await POST(req({ name: 'Carolina' }, pendingCookie()));
-    expect(res.status).toBe(404);
-  });
 });
 
 /**
@@ -145,7 +146,7 @@ describe('POST /api/auth/complete-signup — handoff return code', () => {
     const ref = handoffRef(id);
     await beginHandoff(ref, { state: 's', codeVerifier: 'v', native: true });
 
-    const res = await POST(req({ name: 'Carolina' }, pendingCookie({ handoff: ref })));
+    const res = await POST(await req({ name: 'Carolina' }, pendingCookie({ handoff: ref })));
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.returnCode).toMatch(/^[0-9a-f]{64}$/);
@@ -162,7 +163,7 @@ describe('POST /api/auth/complete-signup — handoff return code', () => {
     const ref = handoffRef(id);
     await beginHandoff(ref, { state: 's', codeVerifier: 'v' });
 
-    const res = await POST(req({ name: 'Carolina' }, pendingCookie({ handoff: ref })));
+    const res = await POST(await req({ name: 'Carolina' }, pendingCookie({ handoff: ref })));
     expect(res.status).toBe(201);
     expect((await res.json()).returnCode).toBeUndefined();
     expect((await claimHandoff(id)).status).toBe('code_required');
@@ -171,7 +172,7 @@ describe('POST /api/auth/complete-signup — handoff return code', () => {
 
 describe('POST /api/auth/complete-signup — signs in', () => {
   it('an ordinary flow signs in and says nothing about a handoff', async () => {
-    const res = await POST(req({ name: 'Kento' }, pendingCookie()));
+    const res = await POST(await req({ name: 'Kento' }, pendingCookie()));
     expect(res.status).toBe(201);
     expect((await res.json()).handedOff).toBeUndefined();
     expect(res.headers.getSetCookie().some((c) => /^member_session=[^;]+;/.test(c))).toBe(true);

@@ -17,7 +17,6 @@ const savedEnv = {
 beforeEach(() => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
   // Must look like a REAL credential: configuredProviders now rejects
   // placeholder shapes, so 'test-id' would (correctly) report google as
   // unconfigured and this file would be testing the wrong branch.
@@ -28,7 +27,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
   if (savedEnv.gid === undefined) delete process.env.GOOGLE_CLIENT_ID;
   else process.env.GOOGLE_CLIENT_ID = savedEnv.gid;
   if (savedEnv.gsec === undefined) delete process.env.GOOGLE_CLIENT_SECRET;
@@ -122,10 +120,6 @@ describe('GET /api/auth/methods', () => {
     expect(text).not.toContain('passwordHash');
   });
 
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    expect((await GET(req(METHODS))).status).toBe(404);
-  });
 });
 
 describe('POST /api/auth/nudge', () => {
@@ -157,8 +151,4 @@ describe('POST /api/auth/nudge', () => {
     expect(after.nudge).toBe(false);
   });
 
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    expect((await dismissNudge(req(NUDGE, undefined, 'POST'))).status).toBe(404);
-  });
 });

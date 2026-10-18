@@ -1,15 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GET } from '@/app/api/recommend/route';
-import { makeRequest, makeGetRequest, setupAdminPin, resetMockStore, getStore } from './helpers';
+import { makeRequest, makeGetRequest, setupAdminPin, resetMockStore, getStore, seedMember, seedAdminMember, memberCookieValue } from './helpers';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import * as cosmos from '@/lib/cosmos';
 import * as racketRecommend from '@/lib/racketRecommend';
 
+/** Lin herself is seeded in `beforeEach` (every read needs a signed-in caller). */
 function seedRatedLin() {
   const store = getStore();
-  store['members'] = [
-    { id: 'm-lin', name: 'Lin', role: 'member', active: true, sessionCount: 0, createdAt: new Date().toISOString() },
-  ];
   store['assessments'] = [
     {
       id: 'a-lin',
@@ -27,6 +25,10 @@ function seedRatedLin() {
   ];
 }
 
+function linCookie() {
+  return { Cookie: `member_session=${memberCookieValue('Lin', 'm-lin')}` };
+}
+
 describe('GET /api/recommend?category=', () => {
   beforeEach(async () => {
     resetMockStore();
@@ -38,6 +40,11 @@ describe('GET /api/recommend?category=', () => {
     __resetCatalogSeedForTests();
     setupAdminPin();
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
+    // Club-data reads need a signed-in caller (members-only is permanent): the
+    // admin cookie's Member is re-read on the gate, and Lin is the member the
+    // anonymous-shaped cases now sign in as.
+    seedAdminMember();
+    seedMember('Lin', { id: 'm-lin' });
   });
 
   afterEach(() => {
@@ -46,7 +53,7 @@ describe('GET /api/recommend?category=', () => {
 
   it('400s on an unrecognized category rather than coercing to racket', async () => {
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/recommend?name=Lin&category=shoes'),
+      makeRequest('GET', 'http://localhost:3000/api/recommend?name=Lin&category=shoes', undefined, linCookie()),
     );
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -93,7 +100,7 @@ describe('GET /api/recommend?category=', () => {
   it('does not return a racket for a non-racket category with the engine flag off', async () => {
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'false';
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/recommend?name=Lin&category=string'),
+      makeRequest('GET', 'http://localhost:3000/api/recommend?name=Lin&category=string', undefined, linCookie()),
     );
     expect(res.status).toBe(200);
     const body = await res.json();

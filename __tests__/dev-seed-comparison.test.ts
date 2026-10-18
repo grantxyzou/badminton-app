@@ -58,7 +58,12 @@ describe('SEED_DEV_SCENARIO — comparison + tally are reachable', () => {
     );
     bandsBody = await bandsRes.json();
 
-    const gearRes = await CLUB_GEAR(makeRequest('GET', 'http://localhost:3000/api/stats/club/gear'));
+    // Signed in as Lin too: club-data reads refuse an anonymous caller (401).
+    const gearRes = await CLUB_GEAR(
+      makeRequest('GET', 'http://localhost:3000/api/stats/club/gear', undefined, {
+        Cookie: `member_session=${memberCookieValue('Lin')}`,
+      }),
+    );
     gearBody = await gearRes.json();
   });
 

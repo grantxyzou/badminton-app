@@ -24,6 +24,7 @@ import { POST as signupPost } from '@/app/api/auth/signup/route';
 import { GET as bandsGet } from '@/app/api/stats/club/bands/route';
 import { memberCookieValue } from './helpers';
 import { POST as playersPost } from '@/app/api/players/route';
+import { mintInvite } from '@/lib/invites';
 import { GET as settingsGet, PATCH as settingsPatch } from '@/app/api/admin/settings/route';
 
 /**
@@ -130,8 +131,12 @@ describe('GET /api/members', () => {
     await addMembership({ groupId: 'bpm', memberId: ADMIN_MEMBER_ID, name: 'Test Admin', role: 'owner', joinedVia: 'backfill' });
     seedMembership('other', 'stranger', { name: 'Stranger' });
     seedMember('Stranger');
-    const anon = await membersGet(makeGetRequest('http://x/api/members'));
-    expect(await anon.json()).toEqual([{ name: 'Lin', active: true, avatar: null }, { name: 'Test Admin', active: true, avatar: null }]);
+    // A plain member (the roster is members-only) sees names, not docs.
+    const asLin = makeRequest('GET', 'http://x/api/members', undefined, {
+      Cookie: `member_session=${memberCookieValue('Lin', lin.id)}`,
+    });
+    const plain = await membersGet(asLin);
+    expect(await plain.json()).toEqual([{ name: 'Lin', active: true, avatar: null }, { name: 'Test Admin', active: true, avatar: null }]);
     const admin = await membersGet(makeGetRequest('http://x/api/members', true));
     const text = await admin.text();
     expect(text).toContain('"id"');
@@ -219,24 +224,25 @@ describe('GET /api/members/me?name= (the sign-up probe)', () => {
       Cookie: `member_session=${memberCookieValue('Lin', ours.id)}`,
     });
     expect(await (await meGet(asOurs)).json()).toMatchObject({ hasPin: true, role: 'admin' });
-    const nobody = await meGet(makeGetRequest('http://x/api/members/me?name=Unknown'));
+    // Asking about a name on no roster here needs standing to ask about
+    // someone else — an admin of this group.
+    const nobody = await meGet(makeGetRequest('http://x/api/members/me?name=Unknown', true));
     expect(await nobody.json()).toMatchObject({ hasPin: false, role: 'member' });
   });
 });
 
 describe('email sign-up joins the group (POST /api/auth/signup)', () => {
-  const PROVIDERS = 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS';
-  const providersBefore = process.env[PROVIDERS];
-  beforeEach(() => { process.env[PROVIDERS] = 'true'; });
-  afterEach(() => { if (providersBefore === undefined) delete process.env[PROVIDERS]; else process.env[PROVIDERS] = providersBefore; });
-
   it('flag ON: refuses a name whose reservation lingers, and joins a fresh account to this group', async () => {
     on();
+    // Members-only: a new account needs an invite, so both attempts carry one.
+    seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID });
     const gone = seedMember('Ghost', { active: false });
     await reserveRosterName('bpm', 'Ghost', gone.id);
-    const taken = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Ghost', email: 'ghost@example.com', password: 'correct-horse-battery' }));
+    const first = await mintInvite('bpm', ADMIN_MEMBER_ID);
+    const taken = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Ghost', email: 'ghost@example.com', password: 'correct-horse-battery', inviteToken: first!.token }));
     expect(taken.status).toBe(409);
-    const res = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Fresh', email: 'fresh@example.com', password: 'correct-horse-battery' }));
+    const second = await mintInvite('bpm', ADMIN_MEMBER_ID);
+    const res = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Fresh', email: 'fresh@example.com', password: 'correct-horse-battery', inviteToken: second!.token }));
     expect(res.status).toBe(201);
     const id = await resolveActiveMemberId('bpm', 'Fresh');
     expect(id).not.toBeNull();
@@ -276,16 +282,22 @@ describe('POST /api/players (the session sign-up invite gate)', () => {
     const lin = seedMember('Lin');
     await addMembership({ groupId: 'other', memberId: lin.id, name: 'Lin', joinedVia: 'link' });
     await addMembership({ groupId: 'bpm', memberId: ADMIN_MEMBER_ID, name: 'Test Admin', role: 'owner', joinedVia: 'backfill' });
-    const res = await playersPost(makeRequest('POST', 'http://x/api/players', { name: 'Lin' }));
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe('invite_list_not_found');
+    // A real account and a validly signed cookie that CLAIMS bpm — but Lin has
+    // no membership here, so the members-only gate refuses her (401) and no row is written.
+    const res = await playersPost(makeRequest('POST', 'http://x/api/players', { name: 'Lin' }, {
+      Cookie: `member_session=${memberCookieValue('Lin', lin.id, 3600, 'bpm')}`,
+    }));
+    expect(res.status).toBe(401);
+    expect(getStore()['players'] ?? []).toHaveLength(0);
   });
 
   it('flag ON: a member of THIS group signs up and the player row links to them', async () => {
     on();
     const lin = seedMember('Lin');
     await addMembership({ groupId: 'bpm', memberId: lin.id, name: 'Lin', joinedVia: 'backfill' });
-    const res = await playersPost(makeRequest('POST', 'http://x/api/players', { name: 'lin' }));
+    const res = await playersPost(makeRequest('POST', 'http://x/api/players', { name: 'lin' }, {
+      Cookie: `member_session=${memberCookieValue('Lin', lin.id, 3600, 'bpm')}`,
+    }));
     expect(res.status).toBe(201);
     expect((await res.json()).memberId).toBe(lin.id);
   });
@@ -314,14 +326,14 @@ describe('/api/admin/settings', () => {
     seedAdminOwnsBpm();
     seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID, settings: { skipDates: ['2026-12-25'], maxPlayers: 12 } });
     const got = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
-    expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-12-25'] });
+    expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-12-25'], lateCancelHours: null });
     const patched = await settingsPatch(makeAdminRequest('PATCH', 'http://x/api/admin/settings', { skipDates: ['2027-01-01'], eTransferRecipient: { name: 'Club', email: 'club@example.com' } }));
     expect(patched.status).toBe(200);
     expect((await readGroup('bpm'))?.settings).toMatchObject({ skipDates: ['2027-01-01'], eTransferRecipient: { name: 'Club' }, maxPlayers: 12 });
     const me = (getStore()['members'] as { id: string; skipDates?: string[] }[]).find((m) => m.id === ADMIN_MEMBER_ID);
     expect(me?.skipDates).toEqual(['2027-01-01']);
     const again = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
-    expect(await again.json()).toEqual({ eTransferRecipient: { name: 'Club', email: 'club@example.com' }, skipDates: ['2027-01-01'] });
+    expect(await again.json()).toEqual({ eTransferRecipient: { name: 'Club', email: 'club@example.com' }, skipDates: ['2027-01-01'], lateCancelHours: null });
   });
 
   it('flag ON with a group doc that has no recipient yet: the admin’s own recipient still answers', async () => {
@@ -332,7 +344,7 @@ describe('/api/admin/settings', () => {
     me.eTransferRecipient = { name: 'Grant', email: 'g@example.com' };
     me.skipDates = ['2026-11-11'];
     const got = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
-    expect(await got.json()).toEqual({ eTransferRecipient: { name: 'Grant', email: 'g@example.com' }, skipDates: ['2026-11-11'] });
+    expect(await got.json()).toEqual({ eTransferRecipient: { name: 'Grant', email: 'g@example.com' }, skipDates: ['2026-11-11'], lateCancelHours: null });
   });
 
   it('flag ON without a group doc (before the backfill): falls back to the admin’s Member doc', async () => {
@@ -341,7 +353,7 @@ describe('/api/admin/settings', () => {
     const me = (getStore()['members'] as { id: string; skipDates?: string[] }[]).find((m) => m.id === ADMIN_MEMBER_ID)!;
     me.skipDates = ['2026-10-01'];
     const got = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
-    expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-10-01'] });
+    expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-10-01'], lateCancelHours: null });
   });
 });
 

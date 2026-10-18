@@ -10,9 +10,8 @@ import { randomBytes, createHash, timingSafeEqual } from 'crypto';
  * path, with no way to ask from inside the app.
  *
  * WHY NOT EMAIL. `Member.email` is populated only by the OAuth and
- * email/password routes, all of which sit behind `NEXT_PUBLIC_FLAG_AUTH_PROVIDERS`
- * — which ships `false`. Nearly every member is PIN-only with no address on
- * file. Push is the channel that reaches this population; a reset link is not.
+ * email/password routes, which a PIN-only member never used. Nearly every
+ * member is PIN-only with no address on file. Push is the channel that reaches this population; a reset link is not.
  *
  * SHAPE. Modelled on `lib/memberRecoveryCode.ts` (stored hashed on the member
  * doc, so it survives the cold starts that killed the old in-memory map) and on

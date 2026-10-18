@@ -42,7 +42,7 @@ const COMPLETE = 'http://localhost:3000/bpm/api/auth/complete-signup';
 const GROUPS = 'http://localhost:3000/bpm/api/groups';
 const PLAYERS = 'http://localhost:3000/bpm/api/players';
 
-const FLAGS = ['NEXT_PUBLIC_FLAG_MEMBERS_ONLY', 'NEXT_PUBLIC_FLAG_MULTI_GROUP', 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'] as const;
+const FLAGS = ['NEXT_PUBLIC_FLAG_MULTI_GROUP'] as const;
 const saved: Record<string, string | undefined> = {};
 
 const membersNamed = (name: string) =>
@@ -84,8 +84,6 @@ beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   for (const f of FLAGS) saved[f] = process.env[f];
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
-  process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = 'true';
   delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
   await seedTestAdminMember();
   seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID, name: 'BPM Badminton' });
@@ -159,12 +157,6 @@ describe('a new account needs an invite', () => {
     expect(res.status).toBe(201);
   });
 
-  it('flag off: an uninvited sign-up is accepted, exactly as before', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
-    const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody()));
-    expect(res.status).toBe(201);
-  });
-
   describe('with multi-group on as well', () => {
     beforeEach(() => {
       process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
@@ -206,12 +198,6 @@ describe('the invite surfaces exist with only one club', () => {
     const res = await previewRoute(makeRequest('GET', `${GROUPS}/preview?token=${invite!.token}`));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ name: 'BPM Badminton' });
-  });
-
-  it('both flags off: the invite surfaces do not exist', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
-    expect((await inviteRoute(makeAdminRequest('GET', `${GROUPS}/invite`))).status).toBe(404);
-    expect((await previewRoute(makeRequest('GET', `${GROUPS}/preview?token=${'a'.repeat(32)}`))).status).toBe(404);
   });
 });
 
@@ -286,11 +272,5 @@ describe('a session sign-up needs an account', () => {
       statuses.push(res.status);
     }
     expect(statuses[10]).toBe(429);
-  });
-
-  it('flag off: a name-only sign-up for a member works, exactly as before', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
-    const res = await playersPOST(makeRequest('POST', PLAYERS, { name: 'Lin' }));
-    expect(res.status).toBe(201);
   });
 });

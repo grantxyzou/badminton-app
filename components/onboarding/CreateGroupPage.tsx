@@ -2,13 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import EmptyState from '@/components/primitives/EmptyState';
 import TopBar from '@/components/primitives/TopBar';
 import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
 import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
 import EmailSignInForm from '@/components/auth/EmailSignInForm';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
-import { isFlagOn } from '@/lib/flags';
 import { clearOnboardingResume, markOnboardingResume } from '@/lib/onboardingResume';
 import InviteShare from './InviteShare';
 
@@ -231,13 +229,6 @@ export default function CreateGroupPage({
     onBack();
   }
 
-  /**
-   * With the providers flag off this step can offer NOTHING: `authProviders` is
-   * empty and both signup routes 404. Rendering an email form guaranteed to
-   * fail is the lying-empty-state rule applied to a capability, so say the true
-   * thing instead — which is exactly what shipped before this step existed.
-   */
-  const canOfferCredential = authProviders.length > 0 || isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
 
   return (
     <div className="animate-fadeIn">
@@ -260,58 +251,46 @@ export default function CreateGroupPage({
               {t('auth.body')}
             </p>
 
-            {!canOfferCredential ? (
-              <>
-                {/* A refusal, not a failure: nothing broke, this path needs an account. */}
-                <EmptyState>{t('needsAccount')}</EmptyState>
-                <button type="button" onClick={handleBack} className="cc-btn cc-btn-ghost" style={{ width: '100%' }}>
-                  {t('backLabel')}
-                </button>
-              </>
-            ) : (
-              <>
-                {/* `onLeave` records the intent SYNCHRONOUSLY at the tap. The
-                    OAuth callback builds its return URL from scratch, so this
-                    record is the only thing that comes back with them. */}
-                <ProviderButtons
-                  mode="signin"
-                  available={authProviders}
-                  onLeave={() => markOnboardingResume('create')}
-                />
+              {/* `onLeave` records the intent SYNCHRONOUSLY at the tap. The
+                  OAuth callback builds its return URL from scratch, so this
+                  record is the only thing that comes back with them. */}
+              <ProviderButtons
+                mode="signin"
+                available={authProviders}
+                onLeave={() => markOnboardingResume('create')}
+              />
 
-                {authProviders.length > 0 && (
-                  /* A divider with nothing above it is just a line. */
-                  <p
-                    style={{
-                      margin: 0,
-                      textAlign: 'center',
-                      fontSize: 'var(--fs-sm)',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    {t('auth.or')}
-                  </p>
-                )}
-
-                {credMode === 'signup' ? (
-                  <EmailSignUpForm
-                    noGroup
-                    onSuccess={({ name: n, verificationSent }) => signedInHere(n, verificationSent)}
-                  />
-                ) : (
-                  <EmailSignInForm onSuccess={({ name: n }) => signedInHere(n)} />
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setCredMode((m) => (m === 'signup' ? 'signin' : 'signup'))}
-                  className="link-quiet"
-                  style={{ justifySelf: 'center' }}
+              {authProviders.length > 0 && (
+                /* A divider with nothing above it is just a line. */
+                <p
+                  style={{
+                    margin: 0,
+                    textAlign: 'center',
+                    fontSize: 'var(--fs-sm)',
+                    color: 'var(--text-muted)',
+                  }}
                 >
-                  {credMode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}
-                </button>
-              </>
-            )}
+                  {t('auth.or')}
+                </p>
+              )}
+
+              {credMode === 'signup' ? (
+                <EmailSignUpForm
+                  noGroup
+                  onSuccess={({ name: n, verificationSent }) => signedInHere(n, verificationSent)}
+                />
+              ) : (
+                <EmailSignInForm onSuccess={({ name: n }) => signedInHere(n)} />
+              )}
+
+              <button
+                type="button"
+                onClick={() => setCredMode((m) => (m === 'signup' ? 'signin' : 'signup'))}
+                className="link-quiet"
+                style={{ justifySelf: 'center' }}
+              >
+                {credMode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}
+              </button>
           </div>
         ) : created ? (
           // The club exists now — the one moment on this page worth marking.

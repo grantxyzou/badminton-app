@@ -87,11 +87,11 @@ describe('the sign-up tap and the shuttle burst', () => {
     // matches hidden text while `getByRole` (rightly) does not. On a slow
     // runner the text was in the DOM a beat before the slot had revealed,
     // and the synchronous role query found nothing (CI, 2026-10-15).
-    fireEvent.click(await screen.findByRole('button', { name: /I'm in/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Sign up for this week/i }));
 
     // The server has confirmed and the banner is up, but the morph is still
     // running: nothing felt, nothing flying.
-    expect(await screen.findByText("Lin, you're in")).toBeDefined();
+    expect(await screen.findByText('Lin, you have signed up for this week!')).toBeDefined();
     expect(morph.finish).not.toBeNull();
     expect(haptics.tapSuccess).not.toHaveBeenCalled();
     expect(document.querySelector('.shuttle-burst')).toBeNull();

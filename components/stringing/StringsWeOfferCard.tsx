@@ -12,15 +12,20 @@ import { useCatalog } from '@/components/stats/useCatalog';
 import { stringSpecLine } from '@/lib/gearSetup';
 import { canPlot } from '@/lib/stringMap';
 import {
+  AXIS_MAX,
+  MAP_AXES,
+  axisValueOf,
   bestForOf,
   controlOf,
   durabilityOf,
+  feelOf,
   isPlottable,
   parseShelf,
   powerOf,
   shelfPrice,
   sortShelf,
   stockColour,
+  type MapAxis,
   type Shelf,
   type ShelfEntry,
   type StockBand,
@@ -32,6 +37,7 @@ import { formatServicePrice } from '@/lib/stringingRateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const VIEW_KEY = 'bpm:strings-view';
+const AXIS_KEY = 'bpm:strings-axis';
 type View = 'map' | 'list';
 
 function readView(): View {
@@ -42,6 +48,16 @@ function readView(): View {
   }
 }
 
+/** The side axis the member last picked; power, the map's original, otherwise. */
+function readAxis(): MapAxis {
+  try {
+    const v = localStorage.getItem(AXIS_KEY);
+    return (MAP_AXES as readonly string[]).includes(v ?? '') ? (v as MapAxis) : 'power';
+  } catch {
+    return 'power';
+  }
+}
+
 /**
  * The strings the club offers, what each one is like, what a restring with it
  * costs and whether it is on the shelf (docs/design/strings-shelf-spec.md,
@@ -49,8 +65,12 @@ function readView(): View {
  * to be able to see the strings I provide with its attributes and qualities
  * etc. Educational stuff").
  *
- * Opens on the MAP: power against durability, one dot per string, so the
- * shelf reads as a set of trade-offs rather than a column of grey rows. The
+ * Opens on the MAP: durability along the bottom against the member's pick of
+ * power, control or feel up the side, one dot per string, so the shelf reads
+ * as a set of trade-offs rather than a column of grey rows. Power alone was
+ * near-diagonal — power and durability are mirror images in the catalog — so
+ * the switch is what lets a control string like Aerobite Boost stand out
+ * (docs/plans/string-inventory.md, Decisions, 2026-10-16). The
  * LIST is one tap away and is the full text equivalent — sorted by power,
  * with every string, including the ones the map cannot plot. Browsing only:
  * a request still starts from the Home card's request sheet.
@@ -88,6 +108,7 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
   // Read once on mount. The card renders nothing until its data arrives, so
   // there is no server markup for a stored choice to disagree with.
   const [view, setView] = useState<View>(() => (typeof window === 'undefined' ? 'map' : readView()));
+  const [axis, setAxis] = useState<MapAxis>(() => (typeof window === 'undefined' ? 'power' : readAxis()));
   /** Picked on the map; persists while the tab is mounted. */
   const [picked, setPicked] = useState<string | null>(null);
   // null = not read yet; 'failed' leaves the rows out rather than guess "Ask".
@@ -203,17 +224,30 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
     try { localStorage.setItem(VIEW_KEY, next); } catch { /* private mode: the choice lasts the visit */ }
   }
 
+  function pickAxis(next: MapAxis) {
+    setAxis(next);
+    try { localStorage.setItem(AXIS_KEY, next); } catch { /* private mode: the choice lasts the visit */ }
+  }
+
   function openRow(e: ShelfEntry) {
     if (!e.item) return;
     if (isPlottable(e)) setPicked(e.label);
     setOpen(e.label);
   }
 
-  const dots: MapDot[] = plotted.map((e) => ({
+  // An axis is offered only when enough strings are rated on it to plot — the
+  // same floor as the map itself. Power is every plotted string, so it is
+  // always there; a stored pick that no longer qualifies falls back to it.
+  const axes = MAP_AXES.filter((a) => canPlot(plotted.filter((e) => axisValueOf(a, e.item) !== null).length));
+  const shownAxis: MapAxis = axes.includes(axis) ? axis : 'power';
+  // A string the catalog rates for power but not for the picked axis has no
+  // place on this view; it is back the moment the member switches.
+  const onAxis = plotted.filter((e) => axisValueOf(shownAxis, e.item) !== null);
+  const dots: MapDot[] = onAxis.map((e) => ({
     key: e.label,
     model: e.item!.model,
-    ariaLabel: t('dotLabel', { name: name(e), power: powerOf(e.item)!, durability: durabilityOf(e.item)! }),
-    power: powerOf(e.item)!,
+    ariaLabel: t(`dotLabel_${shownAxis}`, { name: name(e), value: axisValueOf(shownAxis, e.item)!, max: AXIS_MAX[shownAxis], durability: durabilityOf(e.item)! }),
+    value: axisValueOf(shownAxis, e.item)!,
     durability: durabilityOf(e.item)!,
     band: bandOf(e.label),
   }));
@@ -316,7 +350,31 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
 
           {showMap ? (
             <>
-              <StringMap dots={dots} selected={selected?.label ?? null} onSelect={setPicked} />
+              {/* What runs up the side. Pressed buttons, not tabs, for the same
+                  reason as the Map/List pair above: nothing behind them is a
+                  tabpanel. */}
+              {axes.length > 1 && (
+                <div className="segment-control flex" role="group" aria-label={t('axisSwitchLabel')}>
+                  {axes.map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      aria-pressed={shownAxis === a}
+                      onClick={() => pickAxis(a)}
+                      className={`flex-1 fs-sm rounded-full ${shownAxis === a ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                    >
+                      {t(`axisName_${a}`)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <StringMap
+                dots={dots}
+                selected={selected?.label ?? null}
+                onSelect={setPicked}
+                yLabel={t(`axisUp_${shownAxis}`)}
+                mapLabel={t(`mapLabel_${shownAxis}`)}
+              />
               {anyBand && (
                 <div className="fs-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)', color: 'var(--text-muted)' }}>
                   {(['in', 'low', 'out'] as const).map((b) => (
@@ -357,9 +415,11 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
                     )}
                   </div>
                   <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {controlOf(selected.item) !== null
-                      ? t('numbers', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)!, control: controlOf(selected.item)! })
-                      : t('listLine', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)! })}
+                    {controlOf(selected.item) !== null && feelOf(selected.item) !== null
+                      ? t('numbersFeel', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)!, control: controlOf(selected.item)!, feel: feelOf(selected.item)! })
+                      : controlOf(selected.item) !== null
+                        ? t('numbers', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)!, control: controlOf(selected.item)! })
+                        : t('listLine', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)! })}
                   </span>
                   {bestForOf(selected.item) && (
                     <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{bestForOf(selected.item)}</p>

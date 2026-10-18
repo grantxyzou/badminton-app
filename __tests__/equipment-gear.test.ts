@@ -187,7 +187,9 @@ describe('/api/equipment/gear', () => {
     await PUT(putAs('m-lin', 'Lin', { name: 'Lin', item: racket }));
     await getContainer('members').items.upsert({ id: 'm-kento', name: 'Kento', active: true, stage: 4 });
 
-    expect((await GET(getAnon('/api/equipment/gear?name=Lin'))).status).toBe(403);
+    seedAdminMember();
+    // Members only: an anonymous caller is refused at the read gate, 401.
+    expect((await GET(getAnon('/api/equipment/gear?name=Lin'))).status).toBe(401);
     const other = await GET(getAnon('/api/equipment/gear?name=Lin', `member_session=${memberCookieValue('m-kento', 'Kento')}`));
     expect(other.status).toBe(403);
     expect(JSON.stringify(await other.json())).not.toContain('Astrox');
@@ -204,6 +206,7 @@ describe('/api/equipment/gear', () => {
   // sees the loaded-empty answer for an unknown member; the owner's own empty
   // bag is covered above.
   it('GET returns empty gear for an unknown member to an admin (loaded-empty, not error)', async () => {
+    seedAdminMember();
     const res = await GET(makeAdminRequest('GET', 'http://localhost/api/equipment/gear?name=Nobody'));
     const body = await res.json();
     expect(res.status).toBe(200);

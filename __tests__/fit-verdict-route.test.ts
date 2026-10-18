@@ -72,6 +72,9 @@ describe('GET /api/equipment/fit-verdict', () => {
     seedMember('Viktor');
     seedGear(lin.id);
     expect((await GET(asMember('Viktor', 'Lin'))).status).toBe(403);
+    // A real, active admin — the members-only read gate re-reads it, so the
+    // ownership refusal (403) is what answers rather than the gate (401).
+    await seedTestAdminMember();
     const admin = makeRequest('GET', `${BASE}?name=Lin`, undefined, { Cookie: `admin_session=${adminCookieValue()}` });
     expect((await GET(admin)).status).toBe(403);
     expect(mockCreate).not.toHaveBeenCalled();

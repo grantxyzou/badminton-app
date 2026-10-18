@@ -18,11 +18,11 @@ import AdminBackHeader from './AdminBackHeader';
 import InviteCard from './CommandCenter/InviteCard';
 import GiftCardsCard from './CommandCenter/GiftCardsCard';
 import type { FilterKey as RosterFilter } from './CommandCenter/RosterPage';
-import { invitesOn } from '@/lib/invitesOn';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
 import ETransferRecipientEditor from './CommandCenter/ETransferRecipientEditor';
 import SkipDatesEditor from './CommandCenter/SkipDatesEditor';
+import LateCancelEditor from './CommandCenter/LateCancelEditor';
 import { isFlagOn } from '@/lib/flags';
 
 /*
@@ -43,7 +43,7 @@ import { isFlagOn } from '@/lib/flags';
 const VIEW_KEY = 'badminton_admin_view';
 const RESTORABLE: ReadonlySet<AdminView> = new Set<AdminView>([
   'session-details', 'members', 'birds', 'releases', 'ledger', 'announcements', 'etransfer',
-  'skip-dates', 'past-sessions', 'stringing', 'catalog-gaps', 'metrics', 'invite', 'gift-cards',
+  'skip-dates', 'late-cancel', 'past-sessions', 'stringing', 'catalog-gaps', 'metrics', 'invite', 'gift-cards',
 ]);
 function storeView(v: AdminView | null) {
   try {
@@ -71,7 +71,6 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   // the filter it opens on (from Needs you's dormant row).
   const [rosterFocus, setRosterFocus] = useState<string | null>(null);
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>('all');
-  const inviteSurfaces = invitesOn();
   const { group } = useCurrentGroup();
 
   // Which way the last move went. A push slides the page in from the right;
@@ -174,11 +173,19 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
       </div>
     );
   }
+  if (view === 'late-cancel') {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="Late cancellations" />
+        <LateCancelEditor />
+      </div>
+    );
+  }
   if (view === 'invite') {
     return (
       <div className="animate-slideInRight space-y-3">
         <AdminBackHeader onBack={goBack} title="Invite someone" />
-        <InviteCard enabled={inviteSurfaces} groupName={group?.name} bare />
+        <InviteCard enabled groupName={group?.name} bare />
       </div>
     );
   }

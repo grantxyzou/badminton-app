@@ -1,6 +1,6 @@
 /**
  * The sign-up shuttle burst: fourteen brand shuttlecocks that fly off the
- * "I'm in this week" button once the server confirms a sign-up
+ * "Sign up for this week" button once the server confirms a sign-up
  * (docs/plans/signup-shuttle-burst.md).
  *
  * This file is the geometry only — pure, no DOM, no clock — so every random

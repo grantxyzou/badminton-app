@@ -74,7 +74,7 @@ Create → copy the **Client ID** and **Client secret**.
 
 ## Apple — being brought online (2026-09-15)
 
-> The code is merged and switched on (`NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'`).
+> The code is merged and always on (its flag, `NEXT_PUBLIC_FLAG_AUTH_PROVIDERS`, retired 2026-10-15).
 > What keeps the button hidden in production is only the four env vars below:
 > `configuredProviders()` omits Apple without them, and
 > `/api/auth/apple/start` answers a distinct 503. Setting them IS the launch —
@@ -225,7 +225,6 @@ APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIGT...\n-----END PRIVATE KEY---
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 APP_ORIGIN=http://localhost:3000
-NEXT_PUBLIC_FLAG_AUTH_PROVIDERS=true
 ```
 
 Apple's four variables can be left out locally — the Apple button hides itself
@@ -250,9 +249,8 @@ az webapp config appsettings set \
              APPLE_PRIVATE_KEY="..." APP_ORIGIN=https://bpm.grantzou.com
 ```
 
-`NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` is the exception: it **is** `NEXT_PUBLIC_`, so
-it is baked at build time and lives in `.github/workflows/deploy-next.yml`.
-It ships `'true'`: the release for each provider is its env vars, not the flag.
+There is no flag to set: `NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` retired on 2026-10-15,
+and the release for each provider is its env vars alone.
 
 ---
 

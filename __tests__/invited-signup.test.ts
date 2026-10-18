@@ -27,8 +27,10 @@ import { setPendingSignup, PENDING_COOKIE } from '../lib/pendingSignup';
  * assert the ABSENCE of a second membership, which is the half that regressed.
  *
  * The flag-off block is not ceremony either: with groups off no membership is
- * written at all, so a token in the body must change nothing rather than refuse
- * — a client on an older deployment should not start failing signups.
+ * written at all, so BPM's invite admits the account and writes no row.
+ *
+ * Members only (permanent): a sign-up with NO invite is refused on both
+ * terminals; the only invite-less account is multi-group's `noGroup`.
  */
 const FLAG = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 const SIGNUP = 'http://localhost:3000/bpm/api/auth/signup';
@@ -88,7 +90,6 @@ function body(over: Record<string, unknown> = {}) {
 
 beforeEach(async () => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
   process.env[FLAG] = 'true';
   await seedTestAdminMember();
   seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID, name: 'BPM Badminton' });
@@ -96,7 +97,6 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
   delete process.env[FLAG];
 });
 
@@ -134,10 +134,12 @@ describe('an invited email signup joins the club it was invited to', () => {
     expect(membershipsFor('Carolina').map((r) => r.groupId)).toEqual(['riverside']);
   });
 
-  it('still joins BPM when no invite came with the request', async () => {
+  it('refuses a sign-up with no invite at all — no fallback to BPM (members only)', async () => {
     const res = await signupRoute(makeRequest('POST', SIGNUP, body()));
-    expect(res.status).toBe(201);
-    expect(membershipsFor('Carolina').map((r) => r.groupId)).toEqual(['bpm']);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'invite_not_found' });
+    expect(members().some((m) => m.name === 'Carolina')).toBe(false);
+    expect(membershipsFor('Carolina')).toEqual([]);
   });
 });
 
@@ -202,12 +204,14 @@ describe('a token that does not resolve refuses rather than falling back', () =>
     expect(membershipsFor('Carolina')).toEqual([]);
   });
 
-  it('treats an explicit null as absent — `token ?? null` is an ordinary signup', async () => {
+  it('treats an explicit null as absent — `token ?? null` is not an attempted invite', async () => {
+    // An attempted-but-unusable invite refuses BEFORE noGroup is consulted, so
+    // a 201 here is what proves null reads as "no invite was sent".
     const res = await signupRoute(
-      makeRequest('POST', SIGNUP, body({ inviteToken: null, inviteCode: null })),
+      makeRequest('POST', SIGNUP, body({ inviteToken: null, inviteCode: null, noGroup: true })),
     );
     expect(res.status).toBe(201);
-    expect(membershipsFor('Carolina').map((r) => r.groupId)).toEqual(['bpm']);
+    expect(membershipsFor('Carolina')).toEqual([]);
   });
 
   it('refuses a token and a code together, the way join does', async () => {
@@ -220,8 +224,8 @@ describe('a token that does not resolve refuses rather than falling back', () =>
 });
 
 describe('flag off', () => {
-  it('ignores an invite token instead of refusing it', async () => {
-    const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
+  it('accepts BPM\'s invite and writes no membership — groups do not exist here', async () => {
+    const invite = await mintInvite('bpm', ADMIN_MEMBER_ID);
     delete process.env[FLAG];
     const res = await signupRoute(
       makeRequest('POST', SIGNUP, body({ inviteToken: invite!.token })),
@@ -242,10 +246,11 @@ describe('the Google terminus carries the invite too', () => {
     expect(membershipsFor('Carolina').map((r) => r.groupId)).toEqual(['riverside']);
   });
 
-  it('still joins BPM with no invite', async () => {
+  it('refuses with no invite — no fallback to BPM (members only)', async () => {
     const res = await completeSignupRoute(completeReq({ name: 'Carolina' }));
-    expect(res.status).toBe(201);
-    expect(membershipsFor('Carolina').map((r) => r.groupId)).toEqual(['bpm']);
+    expect(res.status).toBe(404);
+    expect(members().filter((m) => m.name === 'Carolina')).toEqual([]);
+    expect(membershipsFor('Carolina')).toEqual([]);
   });
 
   it('refuses a token that does not resolve', async () => {
@@ -313,13 +318,11 @@ describe('noGroup — signing up to create your own club', () => {
     expect(members().some((m) => m.name === 'Carolina')).toBe(false);
   });
 
-  it('is ignored with the flag OFF — one club, nothing to opt out of', async () => {
+  it('does not stand in for an invite with the flag OFF — one club, invite required', async () => {
     delete process.env[FLAG];
     const res = await signupRoute(makeRequest('POST', SIGNUP, body({ noGroup: true })));
-    expect(res.status).toBe(201);
-    // Flag off nothing writes memberships at all, so the assertion that means
-    // something is that signup still SUCCEEDED rather than refusing.
-    expect(members().some((m) => m.name === 'Carolina')).toBe(true);
+    expect(res.status).toBe(404);
+    expect(members().some((m) => m.name === 'Carolina')).toBe(false);
   });
 
   it('lets two clubs-to-be pick the same name — a roster name is per club', async () => {

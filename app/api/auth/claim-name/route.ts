@@ -32,7 +32,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
@@ -48,10 +47,6 @@ export const dynamic = 'force-dynamic';
 const FAIL = () => NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   const ip = getClientIp(req);
   // Rule 4 says rate-limit BEFORE body parsing, so the limiter cannot be
   // bypassed. But the real limit below is keyed per-identifier, which needs the

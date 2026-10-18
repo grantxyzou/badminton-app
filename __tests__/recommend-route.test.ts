@@ -9,9 +9,14 @@ import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { resetMockStore, getStore, seedMember, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
 
 // Unique IP per request — recommend is rate-limited 30/min; convention per helpers.ts.
-function get(url: string): NextRequest {
+// Signed in as the member asked about: every club-data read needs an active
+// member (members-only is permanent).
+function get(url: string, memberId: string, name: string): NextRequest {
   return new NextRequest(new URL(url, 'http://localhost/bpm'), {
-    headers: { 'x-client-ip': `rec-${Math.random()}` },
+    headers: {
+      'x-client-ip': `rec-${Math.random()}`,
+      cookie: `member_session=${memberCookieValue(name, memberId)}`,
+    },
   });
 }
 
@@ -30,6 +35,7 @@ async function seedAssessment(memberId: string, name: string, overall: number) {
 describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
   beforeEach(async () => {
     resetMockStore();
+    setupAdminPin(); // SESSION_SECRET, so the member cookies verify
     // Deliberately NOT resetting the catalog-seed cache here: after the first
     // test in this describe seeds it once, later tests rely on subsequent
     // calls being a no-op so the store (reset to just the 3 manually-upserted
@@ -44,7 +50,7 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
 
   it('returns an all-rounder for a member with no level signal at all', async () => {
     await getContainer('members').items.upsert({ id: 'm-anon', name: 'Anon', active: true });
-    const res = await GET(get('/api/recommend?name=Anon'));
+    const res = await GET(get('/api/recommend?name=Anon', 'm-anon', 'Anon'));
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.item.id).toBe('wide');
@@ -53,7 +59,7 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
 
   it('still honors a legacy Member.stage when there are no check-ins (back-compat)', async () => {
     await getContainer('members').items.upsert({ id: 'm-beg', name: 'Newbie', active: true, stage: 2 });
-    const res = await GET(get('/api/recommend?name=Newbie'));
+    const res = await GET(get('/api/recommend?name=Newbie', 'm-beg', 'Newbie'));
     const body = await res.json();
     expect(body.item.id).toBe('beg');
   });
@@ -63,7 +69,7 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
     // depends on the legacy field: a 4.5 self-rating → stage ~5 → the Pro.
     await getContainer('members').items.upsert({ id: 'm-rated', name: 'Rated', active: true });
     await seedAssessment('m-rated', 'Rated', 4.5);
-    const res = await GET(get('/api/recommend?name=Rated'));
+    const res = await GET(get('/api/recommend?name=Rated', 'm-rated', 'Rated'));
     const body = await res.json();
     expect(body.item.id).toBe('adv');
   });
@@ -82,7 +88,7 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
 
     // Decisive wins lift the observed level → stage 3 → no longer the Starter.
     _resetCalibrationCache();
-    const on = await (await GET(get('/api/recommend?name=Climber'))).json();
+    const on = await (await GET(get('/api/recommend?name=Climber', 'm-climb', 'Climber'))).json();
     expect(on.item.id).not.toBe('beg');
   });
 
@@ -134,14 +140,16 @@ describe('/api/recommend with the engine flag on', () => {
   });
 
   // D8: reasons quote private per-skill ratings, so this must not be public.
-  it('403s without a member cookie, so skill ratings cannot be probed by name', async () => {
+  it('401s without a member cookie, so skill ratings cannot be probed by name', async () => {
     seedMember('Lin');
     const res = await GET(makeRequest('GET', `${BASE}?name=Lin`));
-    expect(res.status).toBe(403);
+    // Refused at the members-only read gate, before the ownership check (403).
+    expect(res.status).toBe(401);
   });
 
   it('403s when the member cookie belongs to someone else', async () => {
     seedMember('Lin');
+    seedMember('Viktor'); // a real, active member — so the read gate passes and the ownership check answers
     const res = await GET(getAs('Lin', 'Viktor'));
     expect(res.status).toBe(403);
   });
@@ -166,10 +174,13 @@ describe('/api/recommend with the engine flag on', () => {
     expect(body.reasons.length).toBeGreaterThan(0);
   });
 
-  it('keeps the old public behaviour when the engine flag is off', async () => {
+  // The legacy branch carries no ownership check (it quotes no ratings), so any
+  // signed-in member — not only Lin — gets the old shape.
+  it('keeps the old un-owned behaviour when the engine flag is off', async () => {
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'false';
     seedMember('Lin');
-    const res = await GET(makeRequest('GET', `${BASE}?name=Lin`));
+    seedMember('Viktor');
+    const res = await GET(getAs('Lin', 'Viktor'));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.reasons).toBeUndefined();

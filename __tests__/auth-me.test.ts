@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { resetMockStore, setupAdminPin, memberCookieValue } from './helpers';
 import { GET } from '../app/api/auth/me/route';
@@ -15,10 +15,6 @@ let ipSeq = 0;
 beforeEach(() => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
-});
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 function req(cookie?: string, url = URL_): NextRequest {
@@ -63,11 +59,6 @@ describe('GET /api/auth/me', () => {
     for (const forbidden of ['memberId', 'member-lin', 'pinHash', 'passwordHash', 'email']) {
       expect(text).not.toContain(forbidden);
     }
-  });
-
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
-    expect((await GET(req())).status).toBe(404);
   });
 
   it('answers UNKNOWN, not signed-out, when throttled', async () => {

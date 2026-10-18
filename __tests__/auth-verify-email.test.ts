@@ -8,10 +8,8 @@ const BASE = 'http://localhost:3000/bpm/api/auth/verify-email';
 
 beforeEach(() => {
   resetMockStore();
-  process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
 });
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
 async function seedUnverified(ttl = VERIFICATION_TTL_MS) {
