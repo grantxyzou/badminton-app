@@ -1,15 +1,15 @@
 /**
- * WHO WOULD BE LOCKED OUT IF MEMBERS-ONLY WERE ON TODAY?
+ * WHO HAS NO WAY TO SIGN IN?
  *
- * docs/plans/members-only.md. With `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` on, a
- * visitor must sign in to see anything, and a session sign-up needs an
- * account. Many regulars have only ever typed their name: no PIN, no password,
- * no Google or Apple. The day the flag flips they reach the welcome screen with
- * no way past it except asking an admin.
+ * docs/plans/members-only.md. Members only is permanent (its flag retired
+ * 2026-10-17): a visitor must sign in to see anything, and a session sign-up
+ * needs an account. Some regulars have only ever typed their name: no PIN, no
+ * password, no Google or Apple, so they reach the welcome screen with no way
+ * past it except asking an admin.
  *
- * Grant's decision was "warn first, then request access", and the flip waits
- * until this list is short. So this is the measurement the flip is gated on,
- * and the list an admin works through before it.
+ * Before the flip this was the measurement it was gated on ("warn first, then
+ * request access", Grant). Now it is the list an admin works through so nobody
+ * is left relying on an admin to get back in.
  *
  * A member with a live `member_session` cookie but no credential is still
  * counted: the cookie expires in 30 days, and then they are locked out too.

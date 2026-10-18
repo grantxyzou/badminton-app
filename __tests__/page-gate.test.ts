@@ -22,10 +22,10 @@ import { BPM_GROUP_ID } from '@/lib/groupScope';
  *
  * Members only gives two answers; multi-group adds a third — a signed-in,
  * active member in no club — and the gate that decides it must stay the one
- * every club-data route calls. Both flags, both ways.
+ * every club-data route calls. Multi-group both ways (members only is
+ * permanent since its flag retired, 2026-10-17).
  */
 const GROUPS = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
-const MEMBERS = 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY';
 const saved: Record<string, string | undefined> = {};
 
 const asMember = (memberId: string, name: string, groupId: string | null = BPM_GROUP_ID) =>
@@ -37,15 +37,12 @@ beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   await seedTestAdminMember({ membership: true });
-  for (const f of [GROUPS, MEMBERS]) saved[f] = process.env[f];
-  process.env[MEMBERS] = 'true';
+  saved[GROUPS] = process.env[GROUPS];
   delete process.env[GROUPS];
 });
 afterEach(() => {
-  for (const f of [GROUPS, MEMBERS]) {
-    if (saved[f] === undefined) delete process.env[f];
-    else process.env[f] = saved[f];
-  }
+  if (saved[GROUPS] === undefined) delete process.env[GROUPS];
+  else process.env[GROUPS] = saved[GROUPS];
 });
 
 describe('members only ON, groups OFF — exactly what shipped', () => {

@@ -29,8 +29,8 @@ import { GET as fitVerdictGET } from '@/app/api/equipment/fit-verdict/route';
 import { GET as recommendGET } from '@/app/api/recommend/route';
 
 /**
- * MEMBERS ONLY (docs/plans/members-only.md): with `NEXT_PUBLIC_FLAG_MEMBERS_ONLY`
- * on, a signed-out visitor must get NO club data from any route.
+ * MEMBERS ONLY (docs/plans/members-only.md, permanent since the flag retired
+ * 2026-10-17): a signed-out visitor must get NO club data from any route.
  *
  * Hiding the UI was never the boundary. On 2026-09-13 a stranger could read the
  * roster — with who had paid and who owed — the session's date and location,
@@ -290,18 +290,18 @@ describe('behaviour of the gated routes', () => {
 
   for (const [key, handler, url] of CASES) {
     describe(key, () => {
-      it('flag on, no cookie: 401', async () => {
+      it('no cookie: 401', async () => {
         const res = await handler(makeRequest('GET', url));
         expect(res.status).toBe(401);
       });
 
-      it('flag on, a lapsed member cookie: 401', async () => {
+      it('a lapsed member cookie: 401', async () => {
         const cookie = `member_session=${memberCookieValue('Lin', 'member-lin', -60)}`;
         const res = await handler(makeRequest('GET', url, undefined, { Cookie: cookie }));
         expect(res.status).toBe(401);
       });
 
-      it('flag on, a REMOVED member with a live cookie: 401', async () => {
+      it('a REMOVED member with a live cookie: 401', async () => {
         // The case the cheap signature check would have let through for a month.
         resetMockStore();
         seedMember('Lin', { id: 'member-lin', active: false });
@@ -310,13 +310,13 @@ describe('behaviour of the gated routes', () => {
         expect(res.status).toBe(401);
       });
 
-      it('flag on, an active member cookie: not refused by the gate', async () => {
+      it('an active member cookie: not refused by the gate', async () => {
         const cookie = `member_session=${memberCookieValue('Lin', 'member-lin')}`;
         const res = await handler(makeRequest('GET', url, undefined, { Cookie: cookie }));
         expect(res.status).not.toBe(401);
       });
 
-      it('flag on, an admin-only cookie: not refused by the gate', async () => {
+      it('an admin-only cookie: not refused by the gate', async () => {
         // `POST /api/admin` mints only an admin_session.
         await seedTestAdminMember();
         const cookie = `admin_session=${adminCookieValue()}`;
@@ -328,21 +328,16 @@ describe('behaviour of the gated routes', () => {
 });
 
 describe('members/me answers a member only about themselves', () => {
-  const saved = process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
     seedMember('Lin', { id: 'member-lin', pinHash: 'x' });
     seedMember('Viktor', { id: 'member-viktor', pinHash: 'y' });
   });
-  afterEach(() => {
-    if (saved === undefined) delete process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
-    else process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY = saved;
-  });
 
   const asLin = { Cookie: `member_session=${memberCookieValue('Lin', 'member-lin')}` };
 
-  it('flag on: refuses another name (403) rather than confirming the account exists', async () => {
+  it('refuses another name (403) rather than confirming the account exists', async () => {
     const res = await membersMeGET(makeRequest('GET', 'http://localhost/api/members/me?name=Viktor', undefined, asLin));
     expect(res.status).toBe(403);
     const body = await res.json();
@@ -350,13 +345,13 @@ describe('members/me answers a member only about themselves', () => {
     expect(body).not.toHaveProperty('createdAt');
   });
 
-  it('flag on: answers for the caller, case-insensitively', async () => {
+  it('answers for the caller, case-insensitively', async () => {
     const res = await membersMeGET(makeRequest('GET', 'http://localhost/api/members/me?name=lin', undefined, asLin));
     expect(res.status).toBe(200);
     expect((await res.json()).hasPin).toBe(true);
   });
 
-  it('flag on: an admin may still ask about anyone', async () => {
+  it('an admin may still ask about anyone', async () => {
     await seedTestAdminMember();
     const res = await membersMeGET(
       makeRequest('GET', 'http://localhost/api/members/me?name=Viktor', undefined, { Cookie: `admin_session=${adminCookieValue()}` }),
