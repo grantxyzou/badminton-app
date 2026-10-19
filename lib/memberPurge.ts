@@ -37,6 +37,7 @@ import { ANON_LEDGER_ID, isSentinelLedgerId } from './ledgerMirror';
 import type { LedgerEntry } from './types';
 import { anonymizeFeedbackRows } from './feedback';
 import { ALIAS_KIND } from './aliases';
+import { invalidateLatestRatings } from './latestRatings';
 
 /** What an anonymized row says instead of a name. */
 export const TOMBSTONE_NAME = 'Former member';
@@ -349,6 +350,10 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
     summary.failed.push('kudos:given');
   }
 
+  // The club's bands are folded from a memo of everyone's latest check-in
+  // (lib/latestRatings.ts); a deleted person's ratings leave it now, not when
+  // it next expires.
+  invalidateLatestRatings();
   return summary;
 }
 

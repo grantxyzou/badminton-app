@@ -1,5 +1,6 @@
 'use client';
 
+import { sharedFetch } from '@/lib/sharedRead';
 import { useCallback, useEffect, useState } from 'react';
 import type { StatsPrivacy } from './statsPrivacy';
 
@@ -44,7 +45,11 @@ export function useStatsPrivacy(name: string | null): UseStatsPrivacy {
     }
     let live = true;
     setError(false);
-    fetch(`${BASE}/api/members/me?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
+    // `sharedFetch`, not `fetch`: Profile asks for this same path as it
+    // mounts, and two consent cards on Stats each hold this hook — one request
+    // in flight serves all of them. It shares only while the request is open,
+    // so the refetch after `save` still goes to the server.
+    sharedFetch(`/api/members/me?name=${encodeURIComponent(name)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (!live) return;

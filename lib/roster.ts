@@ -89,6 +89,35 @@ export async function rosterMembers(
 }
 
 /**
+ * The roster as a NON-ADMIN sees it: name, active and the picture they chose.
+ *
+ * `GET /api/members` runs on Home every visit, and for a member it returns
+ * only these three fields — but it read every active member's whole document
+ * to pick them (performance audit, 2026-10-19). With groups off this reads the
+ * three fields alone. `active` is re-checked here because the mock store does
+ * not apply the WHERE clause. With groups on it is the full roster, mapped:
+ * the names and statuses live on the memberships.
+ */
+export async function rosterPublicRows(groupId: string): Promise<Array<{ name: string; active: boolean; avatar?: unknown }>> {
+  if (!groupsOn()) {
+    const { resources } = await getContainer('members')
+      .items.query<{ name?: unknown; active?: unknown; avatar?: unknown }>({
+        query: 'SELECT c.name, c.active, c.avatar FROM c WHERE c.active = true ORDER BY c.name ASC',
+      })
+      .fetchAll();
+    return (resources ?? [])
+      .filter((r) => r && typeof r.name === 'string' && r.active === true)
+      .map((r) => ({ name: r.name as string, active: true, avatar: r.avatar }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return (await rosterMembers(groupId)).map((e) => ({
+    name: e.member.name,
+    active: e.membership ? e.membership.status === 'active' : e.member.active === true,
+    avatar: e.member.avatar,
+  }));
+}
+
+/**
  * AN ADMIN ADDS A NAME TO THIS ROSTER (flag on only; callers keep their
  * flag-off path). One owner for a decision three routes used to make with a
  * GLOBAL name scan — which, with groups on, would refuse a name that is free

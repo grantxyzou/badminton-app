@@ -67,9 +67,25 @@ export async function GET(req: NextRequest) {
       if (!ownsNameOrAdmin(req, rawName)) {
         return NextResponse.json({ error: 'forbidden' }, { status: 403 });
       }
-      // Every game in THIS group — "all-time" stops at the group's edge.
-      const every = await scope.query('gameResults');
+      // This player's games in THIS group — "all-time" stops at the group's
+      // edge. Narrowed in SQL to games naming them (performance audit,
+      // 2026-10-19): it used to read every game the club ever logged and
+      // filter here. The JS filter below stays the authority — the mock store
+      // ignores `@needle`, so tests see every row and the filter is what they
+      // check — and if this query shape is ever refused, the route logs it and
+      // reads every game as before rather than failing the Stats card.
       const needle = rawName.toLowerCase();
+      let every: unknown[];
+      try {
+        every = await scope.query('gameResults', {
+          where:
+            'EXISTS(SELECT VALUE n FROM n IN c.teamA WHERE LOWER(TRIM(n)) = @needle) OR EXISTS(SELECT VALUE n FROM n IN c.teamB WHERE LOWER(TRIM(n)) = @needle)',
+          params: [{ name: '@needle', value: needle }],
+        });
+      } catch (err) {
+        console.error('[games-all] narrowed read failed; reading every game:', err);
+        every = await scope.query('gameResults');
+      }
       // Games store player NAMES, never memberIds (see lib/levelStore.ts) — so
       // this join is name-based and case-insensitive, matching every other
       // name join in the app.

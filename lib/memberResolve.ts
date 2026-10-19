@@ -92,8 +92,39 @@ async function lookupIdInGroup(groupId: string, name: string): Promise<string | 
   return resource?.active === true ? m.memberId : null;
 }
 
-async function lookupId(groupId: string, name: string): Promise<string | null> {
+/**
+ * Who is signed in on this device, offered as a SHORTCUT — the `member_session`
+ * cookie's id and name (`verifyMemberAuth(req)`), or nothing.
+ *
+ * Every Stats read resolves the name it is asked about, and with groups off
+ * that was a case-insensitive scan of every member — a cross-partition read
+ * that cannot use the index, six of them on one Stats mount (performance
+ * audit, 2026-10-19). When the caller is asking about THEMSELVES the cookie
+ * already names the person, so one point read answers it. The hint only ever
+ * narrows: the read must find an ACTIVE member whose stored name is the one
+ * asked about, or the scan runs exactly as before. So a renamed or removed
+ * member, an admin asking about someone else, and a cookie naming somebody
+ * else all take the old path.
+ */
+export interface CallerHint {
+  memberId: string;
+  name: string;
+}
+
+const sameName = (a: string | undefined, b: string) => typeof a === 'string' && a.trim().toLowerCase() === b.toLowerCase();
+
+async function lookupCaller(name: string, caller: CallerHint | null | undefined): Promise<string | null> {
+  if (!caller || !sameName(caller.name, name)) return null;
+  const { resource } = await getContainer('members')
+    .item(caller.memberId, caller.memberId)
+    .read<{ id?: string; name?: string; active?: boolean }>();
+  return resource && resource.active === true && sameName(resource.name, name) ? caller.memberId : null;
+}
+
+async function lookupId(groupId: string, name: string, caller?: CallerHint | null): Promise<string | null> {
   if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) return lookupIdInGroup(groupId, name);
+  const own = await lookupCaller(name, caller);
+  if (own) return own;
   const { resources } = await getContainer('members')
     .items.query({
       query: 'SELECT c.id FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
@@ -107,10 +138,11 @@ async function lookupId(groupId: string, name: string): Promise<string | null> {
  * ACTIVE-ONLY, no fallback, errors propagate. For callers that own a WRITE
  * keyed on the id and must never invent one — `equipment/gear` (bag documents
  * live at `gear-<id>`) and `stats/insight` (which returns an empty payload for
- * a non-member rather than narrating one).
+ * a non-member rather than narrating one). `caller` is the optional shortcut
+ * above.
  */
-export async function resolveActiveMemberId(groupId: string, name: string): Promise<string | null> {
-  return lookupId(groupId, name.trim());
+export async function resolveActiveMemberId(groupId: string, name: string, caller?: CallerHint | null): Promise<string | null> {
+  return lookupId(groupId, name.trim(), caller);
 }
 
 /**
@@ -118,10 +150,10 @@ export async function resolveActiveMemberId(groupId: string, name: string): Prom
  * `gear-<memberId>` and so must resolve the SAME id the gear write path used,
  * but still wants to serve a non-member a deterministic recommendation.
  */
-export async function resolveActiveSubject(groupId: string, name: string): Promise<MemberSubject> {
+export async function resolveActiveSubject(groupId: string, name: string, caller?: CallerHint | null): Promise<MemberSubject> {
   const trimmed = name.trim();
   try {
-    const id = await lookupId(groupId, trimmed);
+    const id = await lookupId(groupId, trimmed, caller);
     if (id) return { memberId: id, name: trimmed, isMember: true };
   } catch {
     /* a failed read must not 500 a read-only surface — fall through */

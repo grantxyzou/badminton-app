@@ -46,6 +46,12 @@ import { join } from 'path';
 
 /** Files that scan a person container deployment-wide ON PURPOSE. */
 const DEPLOYMENT_WIDE: Record<string, string> = {
+  'lib/latestRatings.ts':
+    'A memo of every member\'s latest check-in, never handed to a client as is. Its one reader, ' +
+    '`stats/club/bands`, narrows the fold to `rosterMemberIds()` on EVERY request (and drops ' +
+    'invented `name:` subjects), so the aggregate it publishes is still the club\'s. Narrowing the ' +
+    'read itself would mean one memo per club for a container that is person-scoped anyway ' +
+    '(performance audit, 2026-10-19).',
   'lib/groupBackfill.ts':
     'The migration itself. It exists to visit every row in the deployment and stamp it; a roster ' +
     'narrowing would defeat the one thing it is for.',

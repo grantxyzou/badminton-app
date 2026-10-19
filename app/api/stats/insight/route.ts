@@ -5,7 +5,7 @@ import { getContainer, getActiveSessionId, ensureContainer, sessionIdFromDate } 
 import { groupScope, groupDocId, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { topPartners } from '@/lib/recommend';
-import { ownsNameOrAdmin } from '@/lib/auth';
+import { ownsNameOrAdmin, verifyMemberAuth } from '@/lib/auth';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import type { CanonicalLevel } from '@/lib/level';
@@ -241,12 +241,32 @@ export async function GET(req: NextRequest) {
   let member: { id: string; name: string } | null = null;
   let lookupFailed = false;
   try {
-    const { resources } = await membersContainer.items
-      .query({
-        query: 'SELECT c.id, c.name FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-        parameters: [{ name: '@name', value: name }],
-      })
-      .fetchAll();
+    // A member asking about THEMSELVES is read by their cookie's id; the scan
+    // below runs only when that read does not find them active under this name
+    // (performance audit, 2026-10-19; same rule as lib/memberResolve.ts).
+    const caller = verifyMemberAuth(req);
+    const own =
+      caller && caller.name?.trim().toLowerCase() === name.toLowerCase()
+        ? (
+            await membersContainer.items
+              .query({
+                query: 'SELECT c.id, c.name, c.active FROM c WHERE c.id = @id AND c.active = true',
+                parameters: [{ name: '@id', value: caller.memberId }],
+              })
+              .fetchAll()
+          ).resources.filter(
+            (m: { id?: string; name?: string; active?: boolean }) =>
+              m.id === caller.memberId && m.active === true && m.name?.trim().toLowerCase() === name.toLowerCase(),
+          )
+        : [];
+    const { resources } = own.length > 0
+      ? { resources: own }
+      : await membersContainer.items
+          .query({
+            query: 'SELECT c.id, c.name FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+            parameters: [{ name: '@name', value: name }],
+          })
+          .fetchAll();
     const m = resources[0] as { id?: string; name?: string } | undefined;
     if (m && typeof m.id === 'string' && typeof m.name === 'string') member = { id: m.id, name: m.name };
   } catch (err) {

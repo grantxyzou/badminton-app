@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { getContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { ownsNameOrAdmin } from '@/lib/auth';
+import { ownsNameOrAdmin, verifyMemberAuth } from '@/lib/auth';
 import { computeClubBands, MIN_COHORT } from '@/lib/clubBands';
 import { normalizeStatsPrivacy, isComparisonRevealed } from '@/lib/statsPrivacy';
-import type { Rating, StoredAssessment } from '@/lib/assessment';
+import type { Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
 import { rosterMemberIds } from '@/lib/roster';
+import { latestRatingsByMember } from '@/lib/latestRatings';
 import { isFlagOn } from '@/lib/flags';
 
 /**
@@ -39,10 +40,6 @@ import { isFlagOn } from '@/lib/flags';
 
 export const dynamic = 'force-dynamic';
 
-interface AssessmentDoc extends StoredAssessment {
-  memberId?: string;
-}
-
 /**
  * THE CLUB IS THE ROSTER, not the deployment. `assessments` is PERSON-scoped —
  * one account, many groups — so an aggregate over it must be narrowed to the
@@ -69,44 +66,27 @@ interface AssessmentDoc extends StoredAssessment {
  * it — that is flag-gated, and the flag is off in production, so nothing else
  * excludes them today.
  */
-async function latestRatingsByMember(groupId: string, viewerId: string): Promise<Map<string, Rating[]>> {
-  await ensureContainer('assessments', '/memberId');
-  const roster = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') ? await rosterMemberIds(groupId) : null;
-  // With a roster in hand the scan is narrowed IN SQL too (the container is
-  // partitioned by `/memberId`, so this is one read per roster partition
-  // instead of every partition in the account). The viewer is added so their
-  // own row survives the narrowing — see the admission rule in the loop. The
-  // mock ignores `@memberIds`, so the JS check below is still what tests see.
-  const { resources } = await getContainer('assessments')
-    .items.query(
-      roster
-        ? {
-            query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c WHERE ARRAY_CONTAINS(@memberIds, c.memberId)',
-            parameters: [{ name: '@memberIds', value: [...roster, viewerId] }],
-          }
-        : { query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c' },
-    )
-    .fetchAll();
-
-  const latestAt = new Map<string, string>();
+async function clubRatings(groupId: string, viewerId: string): Promise<Map<string, Rating[]>> {
+  // The fold of every member's latest check-in is memoized process-wide and
+  // cleared by every assessment writer (lib/latestRatings.ts). Who COUNTS is
+  // decided here, on each request, from that fold.
+  const [roster, all] = await Promise.all([
+    isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') ? rosterMemberIds(groupId) : Promise.resolve(null),
+    latestRatingsByMember(),
+  ]);
   const latest = new Map<string, Rating[]>();
-  for (const doc of resources as AssessmentDoc[]) {
-    if (!doc || typeof doc.memberId !== 'string' || typeof doc.takenAt !== 'string') continue;
+  for (const [memberId, { ratings }] of all) {
     // A synthetic `name:` subject is not a club member and gets no vote on the
     // median (see the docstring). The viewer keeps their own row.
-    if (doc.memberId !== viewerId && doc.memberId.startsWith('name:')) continue;
+    if (memberId !== viewerId && memberId.startsWith('name:')) continue;
     // THE VIEWER IS ALWAYS ADMITTED, roster or not. The filter answers "who is
     // the club", and the viewer's own band is not a club statistic — dropping
     // it renders their own row as "no data" while the cohort around it paints.
     // Two ways to be off the roster and still be looking at this page: a
     // membership set `removed` while a 30-day `member_session` is still valid,
     // and a synthetic `name:` subject (an admin viewing an unclaimed player).
-    if (roster && doc.memberId !== viewerId && !roster.has(doc.memberId)) continue;
-    if (!Array.isArray(doc.ratings)) continue;
-    const seen = latestAt.get(doc.memberId);
-    if (seen && seen >= doc.takenAt) continue;
-    latestAt.set(doc.memberId, doc.takenAt);
-    latest.set(doc.memberId, doc.ratings);
+    if (roster && memberId !== viewerId && !roster.has(memberId)) continue;
+    latest.set(memberId, ratings);
   }
   return latest;
 }
@@ -140,8 +120,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const groupId = resolveGroupId(req);
-    const memberId = (await resolveActiveSubject(groupId, name)).memberId;
-    const [privacy, byMember] = await Promise.all([readPrivacy(memberId), latestRatingsByMember(groupId, memberId)]);
+    const memberId = (await resolveActiveSubject(groupId, name, verifyMemberAuth(req))).memberId;
+    const [privacy, byMember] = await Promise.all([readPrivacy(memberId), clubRatings(groupId, memberId)]);
 
     const viewer = byMember.get(memberId) ?? [];
     const others: Rating[][] = [];
