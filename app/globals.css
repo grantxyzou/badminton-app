@@ -5847,15 +5847,10 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
 }
 .setup-line-sub--accent { color: var(--accent); }
 .setup-line-spare { font-size: var(--fs-md); font-weight: 400; color: var(--text-secondary); }
-/* "Add a spare racket": a line that asks, in the accent, under the main racket. */
-.setup-line-add {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  color: var(--accent);
-}
+/* The Set-up card's footer: "Add a spare racket" and "Your fit", two optional
+   extras at the same quiet weight, one at each end. */
+.setup-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.setup-footer-link { display: inline-flex; align-items: center; gap: var(--space-05); color: var(--text-secondary); }
 /* A hybrid on the Strings line: mains over crosses, each row its own role,
    name and figure. The role is the label column's type at body size, so the
    two names still start on one vertical. */
@@ -6194,7 +6189,7 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .setup-next-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4);
   width: 100%;
   padding: 0;
@@ -6205,16 +6200,31 @@ button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); 
   color: inherit;
 }
 button.setup-next-row { cursor: pointer; }
-.setup-next-img { flex: 0 0 auto; width: 42px; height: 124px; object-fit: contain; }
-.setup-next-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
-/* The pick's price, its own row under the racket (Stats canvas, 2026-10-19).
-   An inner row (12/12, `--radius-lg`); as a link to the maker's site it gets
-   the list-row press, and the site name is the one accent on the card. */
+.setup-next-img { flex: 0 0 auto; width: 54px; height: 156px; object-fit: contain; }
+.setup-next-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+/* The name is the door to the pick's detail; the chevron rides on it. */
+.setup-next-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-05);
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+/* The pick's price, its own row under the description (Stats canvas,
+   2026-10-19). An inner row (`--radius-lg`); as a link to the maker's site it
+   gets the list-row press, and the site name is the one accent on the card. */
 .setup-price-row {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
   color: inherit;
@@ -6274,7 +6284,11 @@ a.setup-price-row:active { background: var(--press-bg); }
 /* ── Your fit (design "Equipment redesign", Turn 3, 3a) ──────────────────── */
 
 .fit-page { display: flex; flex-direction: column; gap: var(--space-5); }
-.fit-counter { font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
+.fit-counter { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
+/* One dot per fit question, lit as it is answered. */
+.fit-counter-dots { display: inline-flex; gap: var(--space-05); }
+.fit-counter-dot { width: 6px; height: 6px; border-radius: 50%; background: color-mix(in srgb, var(--text-primary) 14%, transparent); }
+.fit-counter-dot.is-on { background: var(--accent); }
 .fit-section-label { padding: 0 var(--space-05); }
 .fit-section-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 var(--space-05); }
 
@@ -6374,19 +6388,41 @@ a.setup-price-row:active { background: var(--press-bg); }
 .fit-tile[aria-checked="true"] .fit-tile-desc { color: var(--accent); }
 .fit-tile-mm { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-muted); }
 
-/* The swing diagram: apex height is contact height. Drawn in currentColor so
-   the selected tile's accent reaches the arc and both dots. */
-.fit-arc { display: block; width: 100%; height: 52px; overflow: visible; color: var(--text-muted); }
-.fit-tile[aria-checked="true"] .fit-arc { color: var(--accent); }
-.fit-arc-base { stroke: var(--divider); stroke-width: 1; }
-.fit-arc-path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-.fit-arc-origin { fill: currentColor; }
-.fit-arc-contact { fill: currentColor; stroke: var(--page-bg); stroke-width: 2; }
+/* The swing diagram: the court from the side, and where your clear lands.
+   The flight and the shuttle take currentColor so the selected tile's accent
+   reaches them; the court itself stays in the divider tones. */
+.fit-court { display: block; width: 100%; height: 42px; overflow: visible; color: var(--text-muted); }
+.fit-tile[aria-checked="true"] .fit-court { color: var(--accent); }
+.fit-court-floor { stroke: var(--divider); stroke-width: 1.5; }
+.fit-court-net { stroke: var(--text-muted); stroke-width: 2; }
+.fit-court-line { stroke: var(--text-muted); stroke-width: 1.5; }
+.fit-court-path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-dasharray: 3 2; stroke-linecap: round; }
+.fit-court-shuttle path { fill: color-mix(in srgb, currentColor 25%, transparent); stroke: currentColor; stroke-width: 0.8; }
+.fit-court-shuttle circle { fill: currentColor; }
+.fit-court-label { font-family: var(--font-sans); font-size: 7px; fill: var(--text-muted); }
 
 /* The grip tile: the handle end-on, to scale. flex: 0 0 auto and
    border-box are load-bearing — without them the circles squash to ovals
    and the 2px border inflates the small sizes. */
-.fit-grip-tile { height: 110px; padding: var(--space-3); align-items: center; justify-content: flex-end; text-align: center; gap: var(--space-1); }
+.fit-grip-tile { position: relative; overflow: visible; height: 110px; padding: var(--space-3); align-items: center; justify-content: flex-end; text-align: center; gap: var(--space-1); }
+/* STANDARD on the size most rackets ship in: a badge on the tile's top edge,
+   so it takes no room inside and the four circles stay level. */
+.fit-grip-standard {
+  position: absolute;
+  top: calc(-1 * var(--space-3));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-hair) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--highlight-green);
+  color: var(--accent);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+[data-theme="light"] .fit-grip-standard { color: var(--accent-dark); }
 .fit-grip-circle {
   box-sizing: border-box;
   flex: 0 0 auto;
@@ -6412,6 +6448,8 @@ a.setup-price-row:active { background: var(--press-bg); }
   font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
+.fit-overgrips-text { display: flex; flex-direction: column; gap: var(--space-05); min-width: 0; }
+.fit-overgrips-label { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 
 .fit-sore-list { display: flex; flex-direction: column; gap: var(--space-2); }
 .fit-sore-option {
@@ -6605,8 +6643,15 @@ a.setup-price-row:active { background: var(--press-bg); }
 .frame-log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-secondary); }
 
 /* The pick's thumbs: square 44px ghost buttons, the glyph at icon-lg. */
-.pick-rate-btn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
-.pick-rate-btn .material-icons { font-size: var(--icon-lg); }
+/* The pick sheet's thumbs: small quiet icons after the question, each still a
+   44px-tall tap target. The "Where to buy" link under the action is the
+   secondary button with the icon inline. */
+.pick-rate-row { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; margin-top: var(--space-3); }
+.pick-rate-row > span:first-child { margin-right: var(--space-1); }
+.pick-rate-btn { width: 36px; height: 44px; min-height: 44px; padding: 0; border: none; background: transparent; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; }
+.pick-rate-btn .material-icons { font-size: var(--icon-md); }
+.pick-rate-btn:active { transform: scale(0.94); }
+.pick-buy-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); margin-top: var(--space-2); text-decoration: none; }
 
 /* ── Admin: Missing from the catalog ─────────────────────────────────────── */
 .catalog-gap { padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }

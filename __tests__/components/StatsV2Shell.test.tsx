@@ -70,6 +70,12 @@ describe('StatsV2Shell', () => {
     expect(tabs.length).toBe(4);
   });
 
+  it('orders the registers You, Equipment, Play, Learn', () => {
+    renderShell();
+    const tabs = screen.getAllByRole('button').map((b) => b.textContent ?? '').filter((n) => ['You', 'Play', 'Learn', 'Equipment'].includes(n));
+    expect(tabs).toEqual(['You', 'Equipment', 'Play', 'Learn']);
+  });
+
   it('opens on You', () => {
     renderShell();
     expect(screen.getByText('you-content')).toBeTruthy();

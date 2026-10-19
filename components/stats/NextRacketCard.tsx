@@ -84,36 +84,43 @@ export default function NextRacketCard({ gear, picks, onOpen, onOpenFit }: NextR
   }
 
   // The engine's own headline, which is already relative to the racket in
-  // play. The price is its own row below, not a tail on this sentence.
+  // play. The price is its own row under it, in the text column.
   const sub = pick.reasons[0] ?? '';
   const price = priceCadPoint(pick.item);
   const site = brandSite(pick.item.brand);
+  const priceRow = price !== null && (site ? (
+    <a className="setup-price-row" href={site} target="_blank" rel="noopener noreferrer">
+      <PriceParts label={t('priceLabel')} price={price} />
+      <span className="setup-price-site">
+        {t('brandSite', { brand: pick.item.brand })}
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>open_in_new</span>
+      </span>
+    </a>
+  ) : (
+    <div className="setup-price-row">
+      <PriceParts label={t('priceLabel')} price={price} />
+    </div>
+  ));
 
   return (
     <div className="glass-card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <p className="setup-eyebrow">{t('nextTitle')}</p>
-      <button type="button" className="setup-next-row" onClick={onOpen} aria-label={`${pick.item.brand} ${pick.item.model} — ${t('nextOpen')}`}>
+      {/* A row, not one big button: the price row below links OUT to the
+          maker, and a link cannot sit inside a button. The NAME is the door to
+          the pick's detail, with the chevron on it, and the text starts at the
+          frame's tip (Stats canvas, 2026-10-19). */}
+      <div className="setup-next-row">
         {/* eslint-disable-next-line @next/next/no-img-element -- the model's drawing as an SVG data URL; see lib/racketLook.ts. */}
         <img src={racketSrc(pick.item.id)} alt="" className="setup-next-img" width={240} height={624} loading="lazy" decoding="async" />
         <span className="setup-next-body">
-          <span className="fs-lg" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pick.item.model}</span>
-          {sub && <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{sub}</span>}
+          <button type="button" className="setup-next-name" onClick={onOpen} aria-label={`${pick.item.brand} ${pick.item.model} — ${t('nextOpen')}`}>
+            <span className="fs-lg" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pick.item.model}</span>
+            <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>chevron_right</span>
+          </button>
+          {sub && <span className="fs-sm" style={{ color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{sub}</span>}
+          {priceRow}
         </span>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>chevron_right</span>
-      </button>
-      {price !== null && (site ? (
-        <a className="setup-price-row" href={site} target="_blank" rel="noopener noreferrer">
-          <PriceParts label={t('priceLabel')} price={price} />
-          <span className="setup-price-site">
-            {t('brandSite', { brand: pick.item.brand })}
-            <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>open_in_new</span>
-          </span>
-        </a>
-      ) : (
-        <div className="setup-price-row">
-          <PriceParts label={t('priceLabel')} price={price} />
-        </div>
-      ))}
+      </div>
     </div>
   );
 }

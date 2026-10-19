@@ -187,7 +187,10 @@ export default function StringTensionCard({ activeName, gear, suppressed, suppre
   };
 
   return (
-    <div className="glass-card p-5 space-y-3">
+    /* flex+gap, not space-y-3: the two <p> at the bottom carry an inline
+       `margin: '0'`, which beat the utility and sat them hard on the scale
+       labels (Grant, Stats canvas, 2026-10-19: "spacing looks tight"). */
+    <div className="glass-card p-5 flex flex-col gap-3">
       <CardHeader icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} />
 
       <div className="segment-control flex w-full">
@@ -267,10 +270,14 @@ export default function StringTensionCard({ activeName, gear, suppressed, suppre
         </span>
       </div>
 
-      <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-        {t(TENSION_REASON_COPY[advice.reasonKey])}
-      </p>
-      <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tensionAdvisory')}</p>
+      {/* The reading, then the advisory as its footnote: 16 above the pair
+          (the gap plus a rung), 8 between them. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-1)' }}>
+        <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+          {t(TENSION_REASON_COPY[advice.reasonKey])}
+        </p>
+        <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tensionAdvisory')}</p>
+      </div>
     </div>
   );
 }

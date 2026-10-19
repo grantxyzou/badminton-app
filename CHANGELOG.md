@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Stats canvas, second pass: registers, the fit page, the pick sheet (2026-10-19)
+
+Stats now runs You · Equipment · Play · Learn. On Equipment: "Add a spare racket" is a footer link beside "Your fit" until a spare exists; "Racket to try next" draws a bigger frame with the name as the door and the price row under the description; the pick sheet reads brand → name → typical price, keeps each alternative's price difference beside its price, has a "Where to buy · {brand} site" link under the action and smaller thumbs, and drops the "not a verdict" footnote; the String tension card's three level lines are reworded in the app's voice and spaced properly. Your fit asks swing speed as how far your clear goes (Gentle / Medium / Hard, with a court per tile), marks G5 as the standard grip, says what the overgrip switch means, and counts "n of 5 answered". The engines read the same values as before. `docs/plans/equipment-setup-card.md`.
+
 ### Equipment copy and layout from the Stats canvas (2026-10-19)
 
 On Stats → Equipment, the Set-up card's racket line is "Main racket" with no In-play pill, and adding a spare is a line on the card under it ("Add a spare racket") instead of an action buried in the racket's sheet. An untensioned string says "+ String tension", and its club fact reads "3 others in this group use this string". The racket sheet says "Change racket", "3D rendering" (marked Preview) and "Delete this racket", and a typed-in racket's feel questions fold behind "Share more about this racket". The suggestion card is "Racket to try next": its reason line no longer carries the price, which has its own row linking to the maker's site for Yonex and Victor, and the "not a verdict" note is gone. `docs/plans/equipment-setup-card.md`.

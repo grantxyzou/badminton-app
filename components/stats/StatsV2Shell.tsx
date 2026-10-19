@@ -9,7 +9,7 @@ import { StatsTakeoverContext } from './statsTakeover';
 import type { UseCheckIn } from './useCheckIn';
 
 /**
- * Stats v2 shell — the You / Play / Learn / Gear arrangement.
+ * Stats v2 shell — the You / Equipment / Play / Learn arrangement.
  *
  * Deliberately a SEPARATE component from `StatsPlaceholder` rather than
  * another branch inside it. v1 already carries four mutually-exclusive
@@ -28,7 +28,9 @@ import type { UseCheckIn } from './useCheckIn';
 
 export type StatsView = 'you' | 'play' | 'learn' | 'gear';
 
-const VIEWS: StatsView[] = ['you', 'play', 'learn', 'gear'];
+/** Equipment second (Grant, Stats canvas, 2026-10-19): after You, the register
+ *  members come back to most. Play and Learn follow. */
+const VIEWS: StatsView[] = ['you', 'gear', 'play', 'learn'];
 
 export interface StatsV2ShellProps {
   activeName: string | null;

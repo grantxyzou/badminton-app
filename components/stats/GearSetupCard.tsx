@@ -45,8 +45,9 @@ export interface GearSetupCardProps {
    *  the slot is not drawn — a chip that opens nothing is a dead button. */
   onAddTension?: (item: GearItem) => void;
   /** "Add a spare racket": the add sheet, NOT as the one in play. It lived in
-   *  the racket's line sheet until 2026-10-19; it is a line on the card now,
-   *  under the main racket. Omitted, the line is not drawn. */
+   *  the racket's line sheet until 2026-10-19; it is a quiet link in the
+   *  card's footer now, beside "Your fit" — an empty spare is an offer, not a
+   *  line of gear. Omitted, the link is not drawn. */
   onAddSpare?: () => void;
 }
 
@@ -192,19 +193,6 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
               </div>
             ))}
 
-            {/* The way to add one, once there is a racket to be a spare TO. */}
-            {racket && onAddSpare && (
-              <button type="button" className="setup-line" onClick={onAddSpare} disabled={!gear.online}>
-                <span className="setup-line-label">{spares.length === 0 ? ts('spare') : ''}</span>
-                <span className="setup-line-body">
-                  <span className="setup-line-add">
-                    <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>add</span>
-                    {ts('addSpare')}
-                  </span>
-                </span>
-              </button>
-            )}
-
             {/* Strings. A hybrid is still ONE line: mains and crosses stacked,
                 each with its own figure, and the whole line opens the sheet
                 where both tensions are set. */}
@@ -286,11 +274,25 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
         </>
       )}
 
-      {onOpenFit && (
-        <button type="button" className="setup-link" onClick={onOpenFit} style={{ alignSelf: 'flex-start', color: 'var(--text-secondary)' }}>
-          {t('fitTitle')}
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)', verticalAlign: 'middle' }}>chevron_right</span>
-        </button>
+      {/* The footer: two optional extras at one quiet weight. "Add a spare"
+          only once there is a racket to be a spare TO, and never over a bag
+          that failed to load; "Your fit" ALWAYS, outside the error fork (the
+          always-there door rule). */}
+      {(onOpenFit || (racket && onAddSpare && !gear.loadError)) && (
+        <div className="setup-footer">
+          {racket && onAddSpare && !gear.loadError ? (
+            <button type="button" className="setup-link setup-footer-link" onClick={onAddSpare} disabled={!gear.online}>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>add</span>
+              {ts('addSpare')}
+            </button>
+          ) : <span />}
+          {onOpenFit && (
+            <button type="button" className="setup-link setup-footer-link" onClick={onOpenFit}>
+              {t('fitTitle')}
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>chevron_right</span>
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

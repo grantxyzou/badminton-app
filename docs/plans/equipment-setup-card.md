@@ -67,6 +67,36 @@ flag's retirement.
   price without a link), and the "not a verdict, borrow one" note under the card
   is gone. The check-in-only reason reads "This suggestion is based on your skill
   check-in. Answer the fit questions for a sharper pick."
+- **The second canvas pass (Grant, 2026-10-19, later the same day).** Registers
+  run You · Equipment · Play · Learn. Set-up card: an empty spare is an OFFER,
+  not a line — "+ Add a spare racket" sits in the card's footer beside "Your fit",
+  both at the same quiet weight; a spare that exists still gets its SPARE line.
+  "Racket to try next": the frame is 54×156, the text starts at its tip, the
+  price row sits under the description in the text column, and the NAME is the
+  door (chevron on it) because the price row links out and a link cannot live
+  inside a button. Pick sheet: the preference sentence is the header's subtext
+  under WE RECOMMEND; the body opens BRAND → name → "~$276 · typical price"
+  (a bold price beside the name outweighed it); "Or consider" rows keep money on
+  the right — the `diff.cheaper`/`diff.pricier` fragment leaves the "differs by"
+  line and the row shows `±$` against the racket ON SHOW under its price; the
+  thumbs lost their outlined 44px tiles (36px wide, 18px glyph, still 44 tall)
+  and moved under the action with "Where to buy · {brand} site"
+  (`lib/brandSites.ts`, the same table as the card); the "not a verdict, borrow
+  one" footnote is gone and only `provenance` remains, when true. String tension
+  card: the three level lines rewritten in the app's voice
+  (`docs/voice-and-tone.md`) and the card made a flex column — its two
+  paragraphs carried an inline `margin: 0` that beat `space-y-3` and sat them on
+  the scale labels. Fit page: swing speed is asked as the LENGTH OF YOUR CLEAR
+  ("How hard do you hit? Picture a clear from the back of the court." —
+  Gentle / Medium / Hard, lands mid-court / reaches the back / goes deep) with a
+  side-view court per tile (You · Net · Back, a shuttle where it lands) in place
+  of the contact-height arcs and their caption; the stored values are still
+  `slow` / `medium` / `fast`, so `pairTension`, `recommendTension` and the fit
+  engine read exactly what they did. G5 carries a STANDARD tag floating on the
+  tile's top edge (inside the tile it pushed G5's circle out of line) and the
+  circles' caption is gone; the overgrip switch says what it means ("I wrap two
+  overgrips on it" — the answer is stored, nothing reads it yet); the counter
+  reads "n of 5 answered" with five dots.
 
 ## Shape
 

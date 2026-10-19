@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import GearSetupCard from '../../components/stats/GearSetupCard';
 import type { UseGear } from '../../components/stats/useGear';
@@ -195,9 +195,16 @@ describe('GearSetupCard — complete, with a spare', () => {
 });
 
 describe('GearSetupCard — adding a spare is a line on the card', () => {
-  it('under a main racket, "Add a spare racket" opens the add sheet', () => {
+  it('under a main racket, "Add a spare racket" is a footer link beside Your fit and opens the add sheet', () => {
     const onAddSpare = vi.fn();
-    renderCard(fakeGear(doc([AF79], 'r1')), { onAddSpare });
+    const { container } = renderCard(fakeGear(doc([AF79], 'r1')), { onAddSpare });
+    // No SPARE line while there is no spare: the offer lives in the footer
+    // (Stats canvas, 2026-10-19), at the same weight as "Your fit".
+    expect(screen.queryByText('Spare')).toBeNull();
+    const footer = container.querySelector('.setup-footer')!;
+    const links = within(footer as HTMLElement).getAllByRole('button').map((b) => b.textContent);
+    expect(links[0]).toContain('Add a spare racket');
+    expect(links[1]).toContain('Your fit');
     fireEvent.click(screen.getByRole('button', { name: /Add a spare racket/ }));
     expect(onAddSpare).toHaveBeenCalled();
   });

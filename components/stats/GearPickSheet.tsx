@@ -13,6 +13,7 @@ import { budgetWords, type UseGear } from './useGear';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { priceCadPoint } from '@/lib/catalogPrice';
+import { brandSite } from '@/lib/brandSites';
 import Collapse from '@/components/primitives/Collapse';
 
 export interface GearPickSheetProps {
@@ -165,9 +166,25 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   const rest = reasons.slice(1);
   const warnings = shownAlt ? [] : (pick?.warnings ?? []);
   // The other candidates: whichever of top + alternatives is not on show.
+  // Money goes in the price column (Stats canvas, 2026-10-19), so the
+  // "differs by" line drops its price fragment and the row shows the
+  // difference against the racket ON SHOW beside its price.
+  const priceDiff = new Set(['diff.cheaper', 'diff.pricier']);
+  const specOnly = (a: { differsBy?: { key: string }[]; differsByText?: string[] }) => {
+    const keys = a.differsBy ?? [];
+    const text = a.differsByText ?? [];
+    if (keys.length !== text.length) return text.filter((frag) => !/\$\d/.test(frag)).join(t('diffJoin'));
+    return text.filter((_, i) => !priceDiff.has(keys[i].key)).join(t('diffJoin'));
+  };
+  const shownPrice = item ? priceCadPoint(item) : null;
+  const deltaOf = (other: CatalogItem): string | null => {
+    const p = priceCadPoint(other);
+    if (p === null || shownPrice === null || p === shownPrice) return null;
+    return p > shownPrice ? `+$${p - shownPrice}` : `-$${shownPrice - p}`;
+  };
   const others = pick
     ? [{ index: null as number | null, item: pick.item, line: t('pickSheetWeRecommend') },
-       ...alternatives.map((a, i) => ({ index: i as number | null, item: a.item, line: (a.differsByText ?? []).join(t('diffJoin')) }))]
+       ...alternatives.map((a, i) => ({ index: i as number | null, item: a.item, line: specOnly(a) }))]
       .filter((o) => o.index !== altIndex)
     : [];
   // The event payload's category is the two the engines score; a beacon from
@@ -228,14 +245,87 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     else setAddError(t('pickSheetAddError'));
   }
 
+  const showPrefs = recommenderOn && category === 'racket';
+
+  /* A failed or pending gear read means the preferences are UNKNOWN, and the
+     summary sentence must not be written from the `??` fallbacks — it would
+     state a format and a budget the server never reported.
+
+     But the CONTROLS still have to be reachable exactly then. They are what
+     writes the gear doc, so they are also what can leave a member with a
+     budget they cannot change back, and the rail card behind this sheet is a
+     non-interactive div in its error state. So an unknown-preferences sheet
+     opens with the controls already expanded, rather than folded behind a
+     Change link next to a sentence there is no honest way to write. */
+  const prefsUnknown = showPrefs && (playFormat === null || budgetMaxCad === undefined);
+  const controlsVisible = prefsOpen || prefsUnknown;
+
+  /* One line, above the answer, saying what produced it — with the controls
+     folded behind Change. Format and budget are set once or twice a year;
+     two labelled segment controls standing open competed with the answer the
+     sheet exists to give. */
+  const prefSummary = showPrefs ? (
+    <div className="fs-sm" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+      {!prefsUnknown && (
+        <span style={{ color: 'var(--text-secondary)' }}>
+          {fitGoal
+            ? t('pickSheetPrefSummaryFit', {
+                format: t(`formatLower_${playFormat}`),
+                budget: budgetWords(t, budgetMaxCad as number | null),
+                goal: t(`fitGoalLower_${fitGoal}`),
+              })
+            : t('pickSheetPrefSummary', {
+                format: t(`formatLower_${playFormat}`),
+                budget: budgetWords(t, budgetMaxCad as number | null),
+              })}
+        </span>
+      )}
+      {!prefsUnknown && (
+        <button
+          type="button"
+          onClick={() => setPrefsOpen((v) => !v)}
+          aria-expanded={prefsOpen}
+          className="fs-sm"
+          style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' }}
+        >
+          {t('pickSheetChange')}
+        </button>
+      )}
+      {/* The questionnaire is a second door, not more controls here — see
+          FitProfilePage. Rendered even when the preferences are unknown: the
+          fit page handles that state itself, and it is also the only place
+          an already-stored comfort answer can be cleared. */}
+      {onOpenFit && (
+        <button
+          type="button"
+          // Through close(): this is an exit route like any other, and the
+          // sheet stays mounted for the rail's life — a Change block or spec
+          // table left expanded, or a stale error pill, would otherwise be on
+          // screen at the next opening.
+          onClick={() => { close(); onOpenFit(); }}
+          className="fs-sm"
+          style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' }}
+        >
+          {t('pickSheetFit')}
+        </button>
+      )}
+    </div>
+  ) : null;
+
   const header = (
     <BottomSheetHeader>
-      <span
-        className="fs-2xs"
-        style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}
-      >
-        {t('pickSheetWeRecommend')}
-      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)', minWidth: 0 }}>
+        <span
+          className="fs-2xs"
+          style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}
+        >
+          {t('pickSheetWeRecommend')}
+        </span>
+        {/* What the pick was made for, as the eyebrow's subtext (Stats canvas,
+            2026-10-19): the header says what this is and what it was picked
+            for, and the body opens on the racket. */}
+        {prefSummary}
+      </div>
       <button
         type="button"
         onClick={close}
@@ -256,7 +346,6 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     </BottomSheetHeader>
   );
 
-  const showPrefs = recommenderOn && category === 'racket';
 
 
   /* The two segment controls, revealed by the Change link rather than shown
@@ -326,78 +415,13 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     </>
   ) : null;
 
-  /* A failed or pending gear read means the preferences are UNKNOWN, and the
-     summary sentence must not be written from the `??` fallbacks — it would
-     state a format and a budget the server never reported.
 
-     But the CONTROLS still have to be reachable exactly then. They are what
-     writes the gear doc, so they are also what can leave a member with a
-     budget they cannot change back, and the rail card behind this sheet is a
-     non-interactive div in its error state. So an unknown-preferences sheet
-     opens with the controls already expanded, rather than folded behind a
-     Change link next to a sentence there is no honest way to write. */
-  const prefsUnknown = showPrefs && (playFormat === null || budgetMaxCad === undefined);
-  const controlsVisible = prefsOpen || prefsUnknown;
-
-  /* One line, above the answer, saying what produced it — with the controls
-     folded behind Change. Format and budget are set once or twice a year;
-     two labelled segment controls standing open competed with the answer the
-     sheet exists to give. */
-  const prefSummary = showPrefs ? (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-      {!prefsUnknown && (
-        <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
-          {fitGoal
-            ? t('pickSheetPrefSummaryFit', {
-                format: t(`formatLower_${playFormat}`),
-                budget: budgetWords(t, budgetMaxCad as number | null),
-                goal: t(`fitGoalLower_${fitGoal}`),
-              })
-            : t('pickSheetPrefSummary', {
-                format: t(`formatLower_${playFormat}`),
-                budget: budgetWords(t, budgetMaxCad as number | null),
-              })}
-        </span>
-      )}
-      {!prefsUnknown && (
-        <button
-          type="button"
-          onClick={() => setPrefsOpen((v) => !v)}
-          aria-expanded={prefsOpen}
-          className="fs-sm"
-          style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' }}
-        >
-          {t('pickSheetChange')}
-        </button>
-      )}
-      {/* The questionnaire is a second door, not more controls here — see
-          FitProfilePage. Rendered even when the preferences are unknown: the
-          fit page handles that state itself, and it is also the only place
-          an already-stored comfort answer can be cleared. */}
-      {onOpenFit && (
-        <button
-          type="button"
-          // Through close(): this is an exit route like any other, and the
-          // sheet stays mounted for the rail's life — a Change block or spec
-          // table left expanded, or a stale error pill, would otherwise be on
-          // screen at the next opening.
-          onClick={() => { close(); onOpenFit(); }}
-          className="fs-sm"
-          style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' }}
-        >
-          {t('pickSheetFit')}
-        </button>
-      )}
-    </div>
-  ) : null;
-
-  /* The caveat paragraph. Three sentences that used to be in three places —
-     an orange line inside the WHY THIS card, and a disclaimer at the very
-     bottom of the scroll. `provenance` is conditional (13 of 46 strings carry
-     community-estimated ratings), so it is appended rather than baked into the
-     footnote copy: the other rows ARE manufacturer-published and saying
-     otherwise about them would be a false claim, not a cautious one. */
-  const caveat = [t('pickSheetFootnote'), pick?.provenance].filter(Boolean).join(' ');
+  /* The "not a verdict, borrow one" footnote left on 2026-10-19 (Grant, Stats
+     canvas). What stays is `provenance`, and only when it is TRUE: 13 of 46
+     strings carry community-estimated ratings, and the line says so for those
+     rows alone — the others ARE manufacturer-published, and saying otherwise
+     about them would be a false claim, not a cautious one. */
+  const caveat = pick?.provenance ?? null;
 
   // The pick this sheet was opened for is no longer resolvable — a refetch
   // triggered by the controls came back empty, throttled or failed. The sheet
@@ -429,12 +453,15 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
             price and reasons at once, and a crossfade says the subject changed
             rather than that the same card redrew. */}
         <div key={item?.id ?? 'none'} className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {prefSummary}
           {controlsVisible && controls}
 
-          {/* The name, then the price. A racket at $309 is the decision being
-              made; it was 14px grey next to the brand, read as a footnote. */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {/* Brand, then the name, then the price (Stats canvas, 2026-10-19:
+              "hierarchy is off"). The eye goes brand → racket → cost; a bold
+              price right after the name outweighed it. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+            <span className="fs-2xs" style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
+              {item.brand}
+            </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               <span
                 className="fs-stat-lg"
@@ -449,14 +476,11 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               </span>
               {shownOwned && <StatusBadge variant="accent">{t('railInKit')}</StatusBadge>}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-              {priceCadPoint(item) !== null && (
-                <span className="fs-lg" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                  ${priceCadPoint(item)}
-                </span>
-              )}
-              <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{item.brand}</span>
-            </span>
+            {shownPrice !== null && (
+              <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                {t('pickSheetTypicalPrice', { cad: shownPrice })}
+              </span>
+            )}
           </div>
 
           {/* The reason, at the top of the type scale for this body — it is
@@ -484,32 +508,6 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                     {r}
                   </p>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* The feedback loop's "was it right" — only on an engine pick
-              (`engineVersion` is set), said once per open. Two ghost buttons,
-              not a star row: a yes or a no. Thumbs (Grant, 2026-09-14), with the
-              words as each button's accessible name. */}
-          {pick?.engineVersion && !shownAlt && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
-                {rated ? t('pickSheetRated') : t('pickSheetRateLabel')}
-              </span>
-              {!rated && (['up', 'down'] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className="cc-btn cc-btn-ghost pick-rate-btn"
-                  aria-label={t(r === 'up' ? 'pickSheetRateUp' : 'pickSheetRateDown')}
-                  onClick={() => {
-                    setRated(r);
-                    void recordEngagement('pick_rated', { catalogId: item!.id, rating: r, ...beaconMeta });
-                  }}
-                >
-                  <span className="material-icons" aria-hidden="true">{r === 'up' ? 'thumb_up' : 'thumb_down'}</span>
-                </button>
               ))}
             </div>
           )}
@@ -574,7 +572,10 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                     title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{o.item.model}</span>}
                     subtitle={o.line || o.item.brand}
                     trailing={priceCadPoint(o.item) !== null ? (
-                      <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>${priceCadPoint(o.item)}</span>
+                      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontFamily: 'var(--font-mono)' }}>
+                        <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>${priceCadPoint(o.item)}</span>
+                        {deltaOf(o.item) && <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>{deltaOf(o.item)}</span>}
+                      </span>
                     ) : undefined}
                   />
                 ))}
@@ -680,9 +681,52 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
             {t('pickSheetAdd')}
           </button>
         )}
-        <p className="fs-sm" style={{ margin: 'var(--space-4) 0 0', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>
-          {caveat}
-        </p>
+        {/* The maker's site, under the action and quieter than it (Grant,
+            2026-10-19: "where do buy link?"). The brand's home page — the
+            catalog has no per-model address — and only for a brand whose
+            address has been checked (`lib/brandSites.ts`). */}
+        {brandSite(item.brand) && (
+          <a
+            className="cc-btn cc-btn-secondary w-full pick-buy-link"
+            href={brandSite(item.brand)!}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('pickSheetWhereToBuy', { brand: item.brand })}
+            <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>open_in_new</span>
+          </a>
+        )}
+        {/* The feedback loop's "was it right" — only on an engine pick
+            (`engineVersion` is set), said once per open. Two small thumbs, not
+            a star row: a yes or a no, with the words as each button's
+            accessible name. Under the action since 2026-10-19 (Stats canvas),
+            and slimmer: the outlined 44px tiles read as two more buttons. */}
+          {pick?.engineVersion && !shownAlt && (
+            <div className="pick-rate-row">
+              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+                {rated ? t('pickSheetRated') : t('pickSheetRateLabel')}
+              </span>
+              {!rated && (['up', 'down'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className="pick-rate-btn"
+                  aria-label={t(r === 'up' ? 'pickSheetRateUp' : 'pickSheetRateDown')}
+                  onClick={() => {
+                    setRated(r);
+                    void recordEngagement('pick_rated', { catalogId: item!.id, rating: r, ...beaconMeta });
+                  }}
+                >
+                  <span className="material-icons" aria-hidden="true">{r === 'up' ? 'thumb_up' : 'thumb_down'}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        {caveat && (
+          <p className="fs-sm" style={{ margin: 'var(--space-4) 0 0', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>
+            {caveat}
+          </p>
+        )}
       </BottomSheetFooter>
     </BottomSheet>
   );

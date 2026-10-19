@@ -443,13 +443,32 @@ describe('GearPickSheet — alternatives and the feedback loop', () => {
   beforeEach(() => { process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true'; });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER; });
 
-  it('lists the two alternatives with their "differs by" line and price, under "Or consider"', async () => {
+  it('lists the two alternatives under "Or consider": spec on the left, price and difference on the right', async () => {
     mockAll(gearDoc());
     renderFit();
     expect(await screen.findByText('Or consider')).toBeTruthy();
-    expect(screen.getByText('softer · $60 less')).toBeTruthy();
+    // The price fragment leaves the "differs by" line for the price column
+    // (Stats canvas, 2026-10-19), where the difference sits under the price.
+    expect(screen.getByText('softer')).toBeTruthy();
+    expect(screen.queryByText(/\$60 less/)).toBeNull();
     expect(screen.getByText('more head-light')).toBeTruthy();
     expect(screen.getByText('$249')).toBeTruthy();
+    expect(screen.getByText('-$60')).toBeTruthy();
+    expect(screen.getByText('$199')).toBeTruthy();
+    expect(screen.getByText('-$110')).toBeTruthy();
+  });
+
+  it('reads brand, then name, then the typical price — and links to the maker under the action', async () => {
+    mockAll(gearDoc());
+    renderFit();
+    await screen.findByText('Or consider');
+    expect(screen.getByText('Yonex')).toBeTruthy();
+    expect(screen.getByText('~$309 · typical price')).toBeTruthy();
+    const buy = screen.getByRole('link', { name: /Where to buy · Yonex site/ });
+    expect(buy.getAttribute('href')).toBe('https://www.yonex.com/');
+    expect(buy.getAttribute('target')).toBe('_blank');
+    // The old "not a verdict, borrow one" footnote is gone.
+    expect(screen.queryByText(/not a verdict/)).toBeNull();
   });
 
   it('tapping an alternative swaps the subject — name, price, reasons and the Add action follow; the top pick\'s warnings clear', async () => {
