@@ -1349,7 +1349,7 @@
       "bandTop": "Top third",
       "bandMiddle": "Middle third",
       "bandBottom": "Bottom third",
-      "footnote": "This shows your current skill positioning and how it compares to the players in the group.",
+      "footnote": "Based on your latest check-in. You can <link>turn this off</link> in Profile.",
       "private": "Private",
       "footnotePrivate": "Your place is private. Nothing about your skills was ever shown to other players.",
       "error": "Couldn't load where you sit."

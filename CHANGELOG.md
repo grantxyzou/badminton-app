@@ -50,7 +50,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### "Where you sit" is two compact rows (2026-10-19)
 
-The Stats card that places your sharpest and weakest skill in the group drops the sentence that repeated its bars. Each skill is now one row: the name, three dots with your third lit, and the third in words, in green for the top third, blue for the middle and neutral for the bottom (never red). "in the group" sits in the header, and the footnote is new copy: "This shows your current skill positioning and how it compares to the players in the group." The private state keeps both rows unlit. `docs/plans/where-you-sit-rows.md`.
+The Stats card that places your sharpest and weakest skill in the group drops the sentence that repeated its bars. Each skill is now one row: the name, three dots with your third lit, and the third in words, in green for the top third, blue for the middle and neutral for the bottom (never red). "in the group" sits in the header, and the footnote is new copy: "Based on your latest check-in. You can turn this off in Profile.", where "turn this off" opens Profile straight on Stats & privacy The private state keeps both rows unlit. `docs/plans/where-you-sit-rows.md`.
 
 ### The fit page and racket pages are permanent, and fit answers can be cleared again (2026-10-19)
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSkillText } from '@/lib/useSkillText';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -50,9 +50,12 @@ export interface WhereYouSitCardProps {
   /** The single check-in owner — supplies this card's own ratings without a
    *  second read of the history. See the note at the call site. */
   checkIn?: UseCheckIn;
+  /** Where the footnote's "turn this off" goes: Profile → Stats & privacy.
+   *  Absent (a card rendered on its own), the words stay plain text. */
+  onOpenPrivacy?: () => void;
 }
 
-export default function WhereYouSitCard({ activeName, promptOpen = false, checkIn }: WhereYouSitCardProps) {
+export default function WhereYouSitCard({ activeName, promptOpen = false, checkIn, onOpenPrivacy }: WhereYouSitCardProps) {
   const t = useTranslations('stats.club');
   const signInLink = useSignInLink();
   const [bands, setBands] = useState<ClubBands | null>(null);
@@ -259,7 +262,18 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
       </div>
 
       <p style={{ margin: '0', fontSize: 'var(--fs-sm)', lineHeight: 1.5, color: 'var(--text-muted)' }}>
-        {revealed ? t('footnote') : t('footnotePrivate')}
+        {revealed
+          ? t.rich('footnote', {
+              link: (chunks: ReactNode) =>
+                onOpenPrivacy ? (
+                  <button type="button" className="state-link" onClick={onOpenPrivacy}>
+                    {chunks}
+                  </button>
+                ) : (
+                  <>{chunks}</>
+                ),
+            })
+          : t('footnotePrivate')}
       </p>
     </div>
   );

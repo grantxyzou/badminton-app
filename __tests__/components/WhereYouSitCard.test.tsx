@@ -118,11 +118,31 @@ describe('WhereYouSitCard', () => {
     expect(screen.queryByText(/You're in the/)).toBeNull();
   });
 
+  it('links "turn this off" to the privacy screen when a destination is given', async () => {
+    mockFetchByUrl([bandsResponse()]);
+    const onOpenPrivacy = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <WhereYouSitCard activeName="Lin" checkIn={stubCheckIn()} onOpenPrivacy={onOpenPrivacy} />
+      </NextIntlClientProvider>,
+    );
+    const link = await screen.findByRole('button', { name: 'turn this off' });
+    link.click();
+    expect(onOpenPrivacy).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps "turn this off" as plain words with nowhere to go', async () => {
+    mockFetchByUrl([bandsResponse()]);
+    renderCard();
+    await waitFor(() => expect(screen.getByText(/turn this off/)).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'turn this off' })).toBeNull();
+  });
+
   it('shows the footnote when revealed', async () => {
     mockFetchByUrl([bandsResponse()]);
     renderCard();
     await waitFor(() =>
-      expect(screen.getByText(/how it compares to the players in the group/)).toBeTruthy(),
+      expect(screen.getByText(/Based on your latest check-in/)).toBeTruthy(),
     );
   });
 

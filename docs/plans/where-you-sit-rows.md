@@ -24,7 +24,8 @@ None of its own. The card's job, and the reading that would take it off the scre
 - **Tone per band, set once on the row.** `.sit-row[data-band]` sets `--sit-tone`, which both the lit dot and the label read, so they cannot disagree. Top = accent, middle = `--sev-low-text` (the calm blue from the canvas), bottom = `--text-secondary`. Never red: a position is not a score, the rule the old bar already followed.
 - **"in the group" moves to the header** as the trailing label, so the rows need not repeat it. It is absent in the private state, where the header carries the Private pill instead.
 - **The private state keeps its rows** with no dot lit and no label: the member still sees their own sharpest and weakest skill, as before.
-- **The footnote is Grant's line** from the canvas: "This shows your current skill positioning and how it compares to the players in the group." Two tighter rewrites were offered in the canvas thread that keep the off switch; swap `stats.club.footnote` if one is picked. It no longer mentions the Profile off switch.
+- **The footnote says where the data comes from and how to turn it off**, nothing else: "Based on your latest check-in. You can turn this off in Profile." Grant first wrote "This shows your current skill positioning and how it compares to the players in the group." on the canvas, then settled on this shorter line in the canvas thread. "in the group" already sits in the header, so the footnote does not repeat it.
+- **"turn this off" is a link** (Grant, canvas thread): it opens Profile on the Stats & privacy screen, not the top of Profile. `SkillsTab` writes a one-shot sessionStorage marker (`lib/profileView.ts`, the `OFFER_PIN_KEY` shape) and switches tab; `ProfileTab` consumes it once an identity exists. Rendered without a destination, the words stay plain text, like the locked cards' "Sign in".
 
 ## Shape
 
@@ -34,4 +35,5 @@ None of its own. The card's job, and the reading that would take it off the scre
 | Row styles | `app/globals.css` (`.sit-row*`, `.sit-dot*`) |
 | Copy | `messages/{en,zh-CN}.json` → `stats.club` |
 | Loading height (211 at 390px) | `components/TabFallbacks.tsx` → `STATS_HEIGHTS.whereYouSit` |
-| Tests | `__tests__/components/WhereYouSitCard.test.tsx` |
+| "turn this off" → Stats & privacy | `lib/profileView.ts`, `components/SkillsTab.tsx`, `components/ProfileTab.tsx` |
+| Tests | `__tests__/components/WhereYouSitCard.test.tsx`, `__tests__/profile-view.test.ts` |

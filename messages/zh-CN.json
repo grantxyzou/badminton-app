@@ -1349,7 +1349,7 @@
       "bandTop": "前三分之一",
       "bandMiddle": "中间三分之一",
       "bandBottom": "后三分之一",
-      "footnote": "这里显示你目前的技能位置，以及和群组里其他球友相比的情况。",
+      "footnote": "根据你最近一次自评。可以在「我的」里<link>关掉</link>。",
       "private": "私密",
       "footnotePrivate": "你的位置是私密的。你的技能从未展示给其他球友。",
       "error": "位置加载失败。"
