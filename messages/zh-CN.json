@@ -1345,12 +1345,11 @@
     "club": {
       "locked": "<link>登录</link>后查看你在群组里的位置。",
       "title": "你的位置",
-      "ledeOne": "在{skill}上，你处于群组的<hi>{band}</hi>。",
-      "ledeTwo": "在{skill1}上，你处于群组的<hi>{band1}</hi>；在{skill2}上处于{band2}。",
+      "inGroup": "在群组里",
       "bandTop": "前三分之一",
       "bandMiddle": "中间三分之一",
       "bandBottom": "后三分之一",
-      "footnote": "只显示区间。没有姓名，也没有排行榜，可以在「我的」里关掉。",
+      "footnote": "这里显示你目前的技能位置，以及和群组里其他球友相比的情况。",
       "private": "私密",
       "footnotePrivate": "你的位置是私密的。你的技能从未展示给其他球友。",
       "error": "位置加载失败。"

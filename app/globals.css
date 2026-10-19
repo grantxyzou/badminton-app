@@ -5246,6 +5246,57 @@ html:root[data-theme="light"] {
 }
 
 
+/* ── Where you sit: compact rows (docs/plans/where-you-sit-rows.md) ──────
+   One inner row per skill: name, three dots with the member's third lit, the
+   third in words. The tone is set once on the row from its band and read by
+   both the lit dot and the label, so the two cannot disagree. Top = accent,
+   middle = the calm blue, bottom = neutral: never red, a position is not a
+   score. A row with no band (the private state) lights nothing. */
+.sit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sit-row {
+  --sit-tone: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+}
+.sit-row[data-band="top"] { --sit-tone: var(--accent); }
+.sit-row[data-band="middle"] { --sit-tone: var(--sev-low-text); }
+.sit-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.sit-dots {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+.sit-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+.sit-dot.is-on { background: var(--sit-tone); }
+/* Fixed width so the dots line up down the column whatever the label says. */
+.sit-row-band {
+  width: 6.5em;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--sit-tone);
+}
+
 /* ── Home skill lead (docs/plans/home-skill-lead.md) ─────────────────────
    A whole card that is one button, selling the Stats tab from Home. A surface
    you can see the edges of SCALES on press (the ladder below: cards 0.98);

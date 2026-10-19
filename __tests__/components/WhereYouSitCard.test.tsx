@@ -92,15 +92,37 @@ describe('WhereYouSitCard', () => {
     mockFetchByUrl([bandsResponse()]);
     renderCard();
     await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
-    expect(screen.getByText(/top third/)).toBeTruthy();
-    expect(screen.getByText(/bottom third/)).toBeTruthy();
+    expect(screen.getByText(/top third/i)).toBeTruthy();
+    expect(screen.getByText(/bottom third/i)).toBeTruthy();
   });
 
-  it('shows the reassuring footnote when revealed', async () => {
+  /**
+   * Compact rows (canvas option C, 2026-10-19): one row per skill carrying
+   * its own band, the lit dot in the band's position, and no sentence above
+   * repeating what the rows already say.
+   */
+  it('draws one row per skill with the matching dot lit', async () => {
+    mockFetchByUrl([bandsResponse()]);
+    const { container } = renderCard();
+    await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
+    const rows = Array.from(container.querySelectorAll('.sit-row'));
+    expect(rows.map((r) => r.getAttribute('data-band'))).toEqual(['top', 'bottom']);
+    expect(rows[0].textContent).toContain('Consistency');
+    expect(rows[0].textContent).toContain('Top third');
+    // Dots run bottom → top, so the top third is the last dot.
+    const lit = (r: Element) =>
+      Array.from(r.querySelectorAll('.sit-dot')).map((d) => d.classList.contains('is-on'));
+    expect(lit(rows[0])).toEqual([false, false, true]);
+    expect(lit(rows[1])).toEqual([true, false, false]);
+    expect(screen.getByText('in the group')).toBeTruthy();
+    expect(screen.queryByText(/You're in the/)).toBeNull();
+  });
+
+  it('shows the footnote when revealed', async () => {
     mockFetchByUrl([bandsResponse()]);
     renderCard();
     await waitFor(() =>
-      expect(screen.getByText(/No names, no leaderboard/)).toBeTruthy(),
+      expect(screen.getByText(/how it compares to the players in the group/)).toBeTruthy(),
     );
   });
 
@@ -118,13 +140,18 @@ describe('WhereYouSitCard', () => {
     // must still render — the member owns their sharpest/weakest skills, and
     // vanishing would make "Keep it private" look like it deleted something.
     mockFetchByUrl([bandsResponse({ skills: [] })]);
-    renderCard();
+    const { container } = renderCard();
     await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
     expect(screen.getByText('Private')).toBeTruthy();
     expect(screen.getByText(/Your place is private/)).toBeTruthy();
+    // The rows stay, with no dot lit and no tone to read from.
+    expect(container.querySelectorAll('.sit-row')).toHaveLength(2);
+    expect(container.querySelector('.sit-dot.is-on')).toBeNull();
+    expect(container.querySelector('.sit-row[data-band]')).toBeNull();
+    expect(screen.queryByText('in the group')).toBeNull();
     // No band is claimed anywhere.
-    expect(screen.queryByText(/top third/)).toBeNull();
-    expect(screen.queryByText(/bottom third/)).toBeNull();
+    expect(screen.queryByText(/top third/i)).toBeNull();
+    expect(screen.queryByText(/bottom third/i)).toBeNull();
     // ...but the member's own skills are still named.
     expect(screen.getByText('Consistency')).toBeTruthy();
   });
@@ -135,7 +162,7 @@ describe('WhereYouSitCard', () => {
     mockFetchByUrl([bandsResponse()]);
     renderCard(true);
     await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
-    expect(screen.queryByText(/top third/)).toBeNull();
+    expect(screen.queryByText(/top third/i)).toBeNull();
     expect(screen.getByText('Private')).toBeTruthy();
     expect(screen.getByText(/Your place is private/)).toBeTruthy();
   });
@@ -175,7 +202,7 @@ describe('WhereYouSitCard', () => {
       snapshots: [],
     });
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeNull());
-    expect(screen.queryByText(/top third/)).toBeNull();
+    expect(screen.queryByText(/top third/i)).toBeNull();
     // A skeleton, not an absence: something holds the slot.
     expect(container.firstChild).not.toBeNull();
   });
@@ -198,10 +225,9 @@ describe('WhereYouSitCard', () => {
   it('renders one band when the best and worst skill are the same', async () => {
     mockFetchByUrl([bandsResponse({ skills: [{ skillKey: 'consistency', band: 'middle' }] })]);
     // One rated skill, so sharpest and weakest are the same row.
-    renderCard(false, stubCheckIn([{ skillKey: 'consistency', value: 3 }]));
-    await waitFor(() => expect(screen.getByText(/middle third/)).toBeTruthy());
-    // The lede must be the single-skill sentence, not "and the ... at ...".
-    expect(screen.queryByText(/, and the/)).toBeNull();
+    const { container } = renderCard(false, stubCheckIn([{ skillKey: 'consistency', value: 3 }]));
+    await waitFor(() => expect(screen.getByText(/middle third/i)).toBeTruthy());
+    expect(container.querySelectorAll('.sit-row')).toHaveLength(1);
   });
 
   it('renders nothing — never throws — on a 200 with an unreadable body', async () => {

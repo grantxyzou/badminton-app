@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSkillText } from '@/lib/useSkillText';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -12,11 +12,14 @@ import type { UseCheckIn } from './useCheckIn';
 import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
 import { useRevealReady } from '@/components/primitives/Reveal';
+import { STATS_HEIGHTS } from '@/components/TabFallbacks';
 
 
 /**
- * "Where you sit" — the member's sharpest and weakest rated skills, each shown
- * as one filled third of a three-segment bar.
+ * "Where you sit" — the member's sharpest and weakest rated skills, one compact
+ * row each: the skill, a three-dot meter with the member's third lit, and the
+ * third named in words (option C on the Stats design canvas, 2026-10-19). The
+ * row says it once; the sentence that used to repeat it above the bars is gone.
  *
  * Thirds only, on purpose. In a club this size a precise rank is a
  * de-anonymising fact; "top third" is not. The server enforces both halves of
@@ -116,7 +119,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
       </LockedCard>
     );
   }
-  if (status === 'loading' || historyStatus === 'loading') return <CardSkeleton height={180} />;
+  if (status === 'loading' || historyStatus === 'loading') return <CardSkeleton height={STATS_HEIGHTS.whereYouSit} />;
   if (status === 'error' || historyStatus === 'error') {
     // A failed read is NOT the same as "too few people" — say so out loud
     // rather than silently vanishing, which would look identical to the
@@ -190,9 +193,6 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
   const bandLabel = (b: Band) =>
     b === 'top' ? t('bandTop') : b === 'middle' ? t('bandMiddle') : t('bandBottom');
 
-  const emphasis = (chunks: ReactNode) => (
-    <b style={{ color: 'var(--accent)', fontWeight: 600 }}>{chunks}</b>
-  );
 
   return (
     /* Not revealed => the design's `locked` material, which drops backdrop-filter
@@ -210,6 +210,13 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
       <CardHeader
         icon="groups"
         title={t('title')}
+        action={
+          revealed ? (
+            <span style={{ alignSelf: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              {t('inGroup')}
+            </span>
+          ) : undefined
+        }
         badge={
           revealed ? undefined : (
             <span
@@ -237,70 +244,42 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
         }
       />
 
-      {revealed && (
-        <p style={{ margin: '0', fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>
-          {picked.length === 1
-            ? t.rich('ledeOne', {
-                band: bandLabel(bandOf.get(picked[0]) as Band),
-                skill: skillText.label(picked[0]),
-                hi: emphasis,
-              })
-            : t.rich('ledeTwo', {
-                band1: bandLabel(bandOf.get(picked[0]) as Band),
-                skill1: skillText.label(picked[0]),
-                band2: bandLabel(bandOf.get(picked[1]) as Band),
-                skill2: skillText.label(picked[1]),
-                hi: emphasis,
-              })}
-        </p>
-      )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        {picked.map((key) => (
-          <div key={key}>
-            <p style={{ margin: '0 0 var(--space-2)', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-              {skillText.label(key)}
-            </p>
-            <BandBar band={revealed ? (bandOf.get(key) as Band) : null} />
-          </div>
-        ))}
+      <div className="sit-rows">
+        {picked.map((key) => {
+          const band = revealed ? (bandOf.get(key) as Band) : null;
+          return (
+            <div key={key} className="sit-row" data-band={band ?? undefined}>
+              <span className="sit-row-name">{skillText.label(key)}</span>
+              <BandDots band={band} />
+              {band && <span className="sit-row-band">{bandLabel(band)}</span>}
+            </div>
+          );
+        })}
       </div>
 
-      <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+      <p style={{ margin: '0', fontSize: 'var(--fs-sm)', lineHeight: 1.5, color: 'var(--text-muted)' }}>
         {revealed ? t('footnote') : t('footnotePrivate')}
       </p>
     </div>
   );
 }
 
-/** Three segments; `null` fills none — the unrevealed / club-spread state. */
-function BandBar({ band }: { band: Band | null }) {
+/**
+ * Three dots, bottom → top; `null` lights none — the unrevealed state.
+ *
+ * The lit dot takes its row's tone from CSS (`.sit-row[data-band]`): the top
+ * third wears the accent, the middle the calm blue, the bottom a neutral. Never
+ * red — this is a position, not a score, and colouring a bottom third as a
+ * failure would make an honest self-rating feel punished.
+ */
+function BandDots({ band }: { band: Band | null }) {
   const cells: Band[] = ['bottom', 'middle', 'top'];
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-1)', height: 10 }}>
-      {cells.map((cell, i) => {
-        const filled = band === cell;
-        return (
-          <span
-            key={cell}
-            style={{
-              flex: 1,
-              // Only the top third gets the accent. Middle and bottom fill in a
-              // neutral tone: this is a position, not a score, and colouring a
-              // bottom third red would make an honest self-rating feel punished.
-              background: filled
-                ? cell === 'top'
-                  ? 'var(--accent)'
-                  : 'color-mix(in srgb, var(--text-primary) 35%, transparent)'
-                : 'var(--inner-card-bg)',
-              borderTopLeftRadius: i === 0 ? 'var(--radius-pill)' : undefined,
-              borderBottomLeftRadius: i === 0 ? 'var(--radius-pill)' : undefined,
-              borderTopRightRadius: i === cells.length - 1 ? 'var(--radius-pill)' : undefined,
-              borderBottomRightRadius: i === cells.length - 1 ? 'var(--radius-pill)' : undefined,
-            }}
-          />
-        );
-      })}
-    </div>
+    <span className="sit-dots" aria-hidden="true">
+      {cells.map((cell) => (
+        <span key={cell} className={`sit-dot${band === cell ? ' is-on' : ''}`} />
+      ))}
+    </span>
   );
 }
