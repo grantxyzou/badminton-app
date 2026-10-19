@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { consumeOnboardingResume, pruneStaleOnboardingResume } from '@/lib/onboardingResume';
@@ -29,6 +29,7 @@ import { useClientValue } from '@/lib/useClientValue';
 import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
 import { useInAppNavigation } from '@/lib/inAppNavigate';
 import { useEverOpened } from '@/lib/useEverOpened';
+import { prewarmInsight } from '@/lib/useInsight';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
 const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
@@ -206,6 +207,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   const online = useOnline();
   const reportFetchFailure = useReportFetchFailure();
   const tAuth = useTranslations('profile.auth');
+  const locale = useLocale();
 
   // The URL-param effect below strips what it reads, so it must run ONCE.
   // Under React StrictMode (dev) effects mount twice: the second run found no
@@ -607,24 +609,23 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   }, [refreshAdminAccess]);
 
   // Passive insight pre-warm: on first app entry for a logged-in account,
-  // fire-and-forget the insight endpoint so the account-gated recap+focus are
-  // generated/cached server-side BEFORE the user reaches the Stats tab. The
-  // endpoint dedupes by (member, active session), so this is at most one Claude
-  // call per member per session-cycle no matter how often it's pinged. No CTA.
-  // Its 403 once drove a "sign in to see your stats" banner; the refusal now
-  // lives on each locked Stats card instead, where the member is looking.
+  // ask for the insight so the account-gated recap+focus are generated/cached
+  // server-side BEFORE the user reaches the Stats tab. The endpoint dedupes by
+  // (member, active session), so this is at most one Claude call per member per
+  // session-cycle no matter how often it's pinged. It goes through
+  // `prewarmInsight`, into the same memo the Stats cards read, so opening Stats
+  // reuses this request instead of making a second one. No CTA: a refusal is
+  // shown by the Stats cards themselves, a network failure by the offline banner.
   useEffect(() => {
-    function prewarmInsight() {
+    function prewarm() {
       const name = getIdentity()?.name;
       if (!name) return;
-      // Warm-up only: nothing renders from the answer. A refusal is shown by
-      // the Stats cards themselves, a network failure by the offline banner.
-      fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' }).catch(() => {});
+      prewarmInsight(name, locale);
     }
-    prewarmInsight();
-    window.addEventListener(IDENTITY_EVENT, prewarmInsight);
-    return () => window.removeEventListener(IDENTITY_EVENT, prewarmInsight);
-  }, []);
+    prewarm();
+    window.addEventListener(IDENTITY_EVENT, prewarm);
+    return () => window.removeEventListener(IDENTITY_EVENT, prewarm);
+  }, [locale]);
 
   // 7-tap easter egg on title — opens the demo mode overlay. (Previously
   // unlocked admin, but admin now flows through Profile sign-in for actual

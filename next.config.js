@@ -62,6 +62,23 @@ const nextConfig = {
           },
         ],
       },
+      // Images and icons in public/. Next serves public/ with `max-age=0`, so a
+      // phone re-asked for every racket picture, icon and the launch-screen
+      // shuttle on every launch — a 304, but one round trip each (performance
+      // audit, 2026-10-19). These names are NOT content-hashed, so a day, not a
+      // year: a redrawn racket reaches everyone by the next day, and sooner
+      // for anyone whose copy is past a day (stale-while-revalidate serves the
+      // old one once and fetches the new one behind it). sw.js, the manifest,
+      // payments/ and the changelog stay uncached on purpose.
+      ...['/rackets/:path*', '/brand/:path*', '/icons/:path*'].map((source) => ({
+        source,
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: isDev ? 'no-cache, no-store, must-revalidate' : 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      })),
       {
         source: '/:path*',
         headers: [

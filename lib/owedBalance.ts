@@ -116,14 +116,19 @@ export async function computeOwed(
 ): Promise<OwedBalance> {
   // Only an EXCLUSION comparand here (the active session is not yet a debt);
   // a group with no session excludes nothing, which is right.
-  const activeSessionId = await getActiveSessionId(scope.groupId);
   const now = Date.now();
 
   // PLAYER-FIRST (lib/owedRows.ts): this person's rows, then only the
-  // sessions they name, then the roster of only the unsettled ones.
-  const { players, sessionById, activeCountBySession } = await loadOwedInputs(scope, identity);
+  // sessions they name, then the roster of only the unsettled ones. The
+  // pointer and the stringing charges depend on none of that, so all three
+  // run at once rather than one after another (performance audit, 2026-10-19).
+  const [activeSessionId, { players, sessionById, activeCountBySession }, stringing] = await Promise.all([
+    getActiveSessionId(scope.groupId),
+    loadOwedInputs(scope, identity),
+    chargesFor(scope, identity.memberId),
+  ]);
   const sessions = unpaidSessionsFrom(players, sessionById, activeCountBySession, { activeSessionId: activeSessionId ?? '', now });
-  return { sessions, stringing: await chargesFor(scope, identity.memberId) };
+  return { sessions, stringing };
 }
 
 export interface RosterOwed {

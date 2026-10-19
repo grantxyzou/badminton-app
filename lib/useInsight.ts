@@ -89,6 +89,27 @@ function load(name: string, locale: string): Promise<InsightLoad> {
   return promise;
 }
 
+/**
+ * Start the insight request early, into the SAME memo `useInsight` reads.
+ *
+ * Home warms the insight so Stats opens with it ready. It used to do that with
+ * a raw `fetch`, which this module never saw: Stats then asked again, a second
+ * request against the same 30-per-hour limit (performance audit, 2026-10-19).
+ * Going through `load` means the Stats tab finds the request already made.
+ *
+ * A warm-up that FAILS is forgotten at once. Nobody saw it fail, so keeping it
+ * would hand Stats an error it never had the chance to retry — before this,
+ * Stats always made its own request, and a brief 503 or 429 at launch healed
+ * by the time anyone opened the tab.
+ */
+export function prewarmInsight(name: string, locale: string): void {
+  const key = cacheKey(name, locale);
+  const promise = load(name, locale);
+  void promise.then((res) => {
+    if (res.data === null && cache.get(key)?.promise === promise) cache.delete(key);
+  });
+}
+
 export interface UseInsight {
   data: InsightData | null;
   loading: boolean;

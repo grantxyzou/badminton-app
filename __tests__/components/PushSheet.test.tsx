@@ -6,9 +6,9 @@ import rawMessages from '../../messages/en.json';
 import { brandMessages } from '../../i18n/request';
 
 /* The provider is handed BRANDED messages, because that is what production
-   hands it: `app/layout.tsx` passes `getMessages()`, which comes from
-   `getRequestConfig` with `brandMessages` already applied. Rendering the raw
-   JSON here would assert against copy no user ever sees -- the literal
+   hands it: `components/intl/IntlProvider.tsx` builds its tree with
+   `brandMessages`, the same pass the server applies. Rendering the raw JSON
+   here would assert against copy no user ever sees -- the literal
    `%APP_SHORT%` sentinel rather than the product's name. */
 const enMessages = brandMessages(rawMessages);
 import PushSheet from '../../components/PushSheet';

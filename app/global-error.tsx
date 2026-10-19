@@ -17,7 +17,7 @@ import { APP_NAME } from '@/lib/brand';
  * `error.tsx` renders INSIDE the root layout, so it can only catch throws from
  * the page tree beneath it. A throw in `app/layout.tsx` itself escapes — and
  * that layout does the riskiest work in the app on every single request:
- * `getLocale()` and `getMessages()`, which resolve through `i18n/request.ts`
+ * `getLocale()` and `getTranslations()`, which resolve through `i18n/request.ts`
  * into `cookies()`, `headers()`, a dynamic `await import()` of a locale JSON,
  * and a recursive `deepMerge`. A malformed messages file or an unexpected
  * shape there takes out the whole document.

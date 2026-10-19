@@ -302,3 +302,36 @@ describe('archived stringing jobs still count as owed', () => {
     expect((await res.json()).totalOwed).toBe(0);
   });
 });
+
+/**
+ * A member asking about themselves is resolved by the id in their cookie, not
+ * by a scan of every member's name (performance audit, 2026-10-19). The case
+ * that tells the two apart: the member was renamed after signing in, so their
+ * cookie (and Home's request) still carries the old name. A name lookup finds
+ * nobody under it; the id still finds them and their rows.
+ */
+describe('GET /api/players/unpaid — resolved by the cookie id', () => {
+  it('finds a renamed member’s rows through the id their cookie carries', async () => {
+    seedMember('Lin Dan', { id: 'member-lindan' });
+    seedPlayer(OLDER, 'Lin Dan', { memberId: 'member-lindan', owedAmount: 10, paid: false });
+
+    const res = await GET(makeRequest('GET', `${URL}?name=Lin`, undefined, {
+      Cookie: `member_session=${memberCookieValue('Lin', 'member-lindan')}`,
+    }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.totalOwed).toBe(10);
+    expect(data.sessionCount).toBe(1);
+  });
+
+  it('still counts rows under the asked-for name when the stored name differs', async () => {
+    seedMember('Lin Dan', { id: 'member-lindan' });
+    // A legacy row: the old name, no memberId.
+    seedPlayer(OLDER, 'Lin', { owedAmount: 7, paid: false });
+
+    const res = await GET(makeRequest('GET', `${URL}?name=Lin`, undefined, {
+      Cookie: `member_session=${memberCookieValue('Lin', 'member-lindan')}`,
+    }));
+    expect((await res.json()).totalOwed).toBe(7);
+  });
+});

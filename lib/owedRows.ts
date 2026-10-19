@@ -44,25 +44,26 @@ export async function loadOwedInputs(
     for (const p of rows) if (p && typeof p.id === 'string' && matchesIdentity(p, identity)) byId.set(p.id, p);
   };
 
-  if (identity.memberId) {
-    keep(
-      await scope.query<Player>('players', {
-        where: 'c.memberId = @memberId',
-        params: [{ name: '@memberId', value: identity.memberId }],
-      }),
-    );
-  }
-  // Legacy rows carry a name and no memberId; alias-linked names are a
-  // different name on the same person. `names` is already lowercased.
+  // Two queries, never one with `OR` (see above) — but independent, so they
+  // run at once. Legacy rows carry a name and no memberId; alias-linked names
+  // are a different name on the same person. `names` is already lowercased.
   const names = [...identity.names];
-  if (names.length > 0) {
-    keep(
-      await scope.query<Player>('players', {
-        where: 'ARRAY_CONTAINS(@names, LOWER(c.name))',
-        params: [{ name: '@names', value: names }],
-      }),
-    );
-  }
+  const [byMemberId, byName] = await Promise.all([
+    identity.memberId
+      ? scope.query<Player>('players', {
+          where: 'c.memberId = @memberId',
+          params: [{ name: '@memberId', value: identity.memberId }],
+        })
+      : Promise.resolve([] as Player[]),
+    names.length > 0
+      ? scope.query<Player>('players', {
+          where: 'ARRAY_CONTAINS(@names, LOWER(c.name))',
+          params: [{ name: '@names', value: names }],
+        })
+      : Promise.resolve([] as Player[]),
+  ]);
+  keep(byMemberId);
+  keep(byName);
   const players = [...byId.values()];
 
   const sessionIds = [...new Set(players.map((p) => p.sessionId).filter((s): s is string => typeof s === 'string'))];
