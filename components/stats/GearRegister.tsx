@@ -182,6 +182,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
         onShare={() => setShareOpen(true)}
         onOpenFit={openFitPage}
         onAddTension={() => openLine('string')}
+        onAddSpare={() => openAdd('racket', false)}
       />
       </RevealSlot>
       <RevealSlot canBeEmpty placeholder={<CardSkeleton height={GEAR_HEIGHTS.nextRacket} />}>
@@ -252,7 +253,6 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
           // A racket change keeps the old frame as a visible spare; a string
           // change replaces, because the card has no spare line for strings.
           onChange={() => openAdd(sheet.category, true, sheet.category === 'string' ? setupLines(gear.gear).string?.id : undefined)}
-          onAddSpare={() => openAdd('racket', false)}
           onCrosses={sheet.category === 'string' ? () => {
             const mainsId = setupLines(gear.gear).string?.id;
             if (mainsId) openAdd('string', false, undefined, mainsId);

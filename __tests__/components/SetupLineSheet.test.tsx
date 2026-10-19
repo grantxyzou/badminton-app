@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, within, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import SetupLineSheet from '../../components/stats/SetupLineSheet';
 import type { UseGear } from '../../components/stats/useGear';
@@ -26,10 +26,10 @@ function fakeGear(items: GearItem[], overrides: Partial<UseGear> = {}): UseGear 
   } as UseGear;
 }
 
-function renderSheet(category: 'racket' | 'string', gear: UseGear, handlers: { onChange?: () => void; onAddSpare?: () => void; onClose?: () => void; onCrosses?: () => void } = {}) {
+function renderSheet(category: 'racket' | 'string', gear: UseGear, handlers: { onChange?: () => void; onClose?: () => void; onCrosses?: () => void } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <SetupLineSheet open category={category} gear={gear} onClose={handlers.onClose ?? vi.fn()} onChange={handlers.onChange ?? vi.fn()} onAddSpare={handlers.onAddSpare ?? vi.fn()} onCrosses={handlers.onCrosses} />
+      <SetupLineSheet open category={category} gear={gear} onClose={handlers.onClose ?? vi.fn()} onChange={handlers.onChange ?? vi.fn()} onCrosses={handlers.onCrosses} />
     </NextIntlClientProvider>,
   );
 }
@@ -44,27 +44,56 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('SetupLineSheet — one sheet about one line', () => {
-  it('the racket line: in play, change, spare — and full specs from the catalog', async () => {
+  it('the racket line: in play, change — and full specs from the catalog', async () => {
     const onChange = vi.fn();
-    const onAddSpare = vi.fn();
-    renderSheet('racket', fakeGear([RACKET]), { onChange, onAddSpare });
+    renderSheet('racket', fakeGear([RACKET]), { onChange });
     expect(await screen.findByText('Li-Ning · 4U · even · medium')).toBeTruthy();
     expect(screen.getByText('The one you play')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /Change the model/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Add another racket as a spare/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Change racket/ }));
     expect(onChange).toHaveBeenCalled();
-    expect(onAddSpare).toHaveBeenCalled();
+    // Adding a spare moved to the Set-up card (2026-10-19).
+    expect(screen.queryByRole('button', { name: /spare/i })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Full specs/ }));
     expect(screen.getByText('Medium')).toBeTruthy();
   });
 
-  it('Remove asks once before it acts', async () => {
+  it('a typed racket folds its feel questions behind "Share more about this racket"', async () => {
+    const typed: GearItem = { id: 'r1', catalogId: null, category: 'racket', label: 'My old Carlton' };
+    const setFeel = vi.fn(async () => ({ ok: true as const }));
+    renderSheet('racket', fakeGear([typed], { setFeel } as Partial<UseGear>));
+    const toggle = await screen.findByRole('button', { name: /Share more about this racket/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('group', { name: 'Balance' })).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(within(screen.getByRole('group', { name: 'Balance' })).getByRole('button', { name: 'Even' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(setFeel).toHaveBeenCalledWith('r1', expect.objectContaining({ balance: expect.anything() })));
+  });
+
+  it('a catalog racket has no feel questions — the catalog already knows it', async () => {
+    renderSheet('racket', fakeGear([RACKET]));
+    await screen.findByText('Li-Ning · 4U · even · medium');
+    expect(screen.queryByRole('button', { name: /Share more about this racket/ })).toBeNull();
+  });
+
+  it('3D rendering is marked as a preview', async () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <SetupLineSheet open category="racket" gear={fakeGear([RACKET])} onClose={vi.fn()} onChange={vi.fn()} onViewLook={vi.fn()} />
+      </NextIntlClientProvider>,
+    );
+    const row = await screen.findByRole('button', { name: /3D rendering/ });
+    expect(row.textContent).toContain('Preview');
+  });
+
+  it('Delete asks once before it acts', async () => {
     const gear = fakeGear([RACKET]);
     const onClose = vi.fn();
     renderSheet('racket', gear, { onClose });
-    fireEvent.click(await screen.findByRole('button', { name: /Remove from my equipment/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Delete this racket/ }));
     expect(gear.remove).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(gear.remove).toHaveBeenCalledWith('r1'));
     expect(onClose).toHaveBeenCalled();
   });
@@ -73,8 +102,8 @@ describe('SetupLineSheet — one sheet about one line', () => {
     const gear = fakeGear([RACKET], { remove: vi.fn(async () => ({ ok: false as const, reason: 'rate_limited' as const })) });
     const onClose = vi.fn();
     renderSheet('racket', gear, { onClose });
-    fireEvent.click(await screen.findByRole('button', { name: /Remove from my equipment/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Delete this racket/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
   });

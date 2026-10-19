@@ -51,6 +51,22 @@ flag's retirement.
   truncated (head only).
 - **Shared gear is gear only, by type**: `SetupShare` has no field for a level, a
   game or a kudos, so the sheet's promise is kept by what can be passed to it.
+- **The Stats-canvas pass (Grant, 2026-10-19, design comments on the Equipment
+  boards).** The racket line is labelled "Main racket" and loses its In-play pill;
+  "Add a spare racket" left the racket's line sheet for a line on the card under
+  the main racket (shown once there is a racket to be a spare to); the empty
+  tension slot reads "+ String tension"; the string's club fact reads "N others in
+  this group use this string" (the racket keeps "N others play it"). On the line
+  sheet: "Change racket", "3D rendering" with a Preview badge, "Delete this
+  racket" / "Delete this string" (confirm says Delete), and a typed racket's feel
+  questions fold behind "Share more about this racket" — the member knows the
+  racket best, so it is theirs to add, not a form. "Where you'd go next" became
+  "Racket to try next": the price left the reason line for its own row linking to
+  the maker's site (`lib/brandSites.ts`: brand home pages only, since the catalog
+  has no per-model address; Li-Ning has no checked address yet, so it shows the
+  price without a link), and the "not a verdict, borrow one" note under the card
+  is gone. The check-in-only reason reads "This suggestion is based on your skill
+  check-in. Answer the fit questions for a sharper pick."
 
 ## Shape
 

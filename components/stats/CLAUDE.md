@@ -171,7 +171,7 @@ conditional.
     test fails on a look with no image or an image with no look.
   - **Live 3D only on big views**: `Racket3D` (falls back to the image without
     WebGL; no autorotate under reduced motion) inside `RacketLookSheet`
-    ("See it in 3D" on the racket's line sheet). The share card draws a still
+    ("3D rendering", marked Preview, on the racket's line sheet). The share card draws a still
     of the model in the member's colours (`lib/racketSnapshot.ts`).
   - **Paint comes from the catalog; a member dresses it** (`lib/racketCustom.ts`,
     `GearItem.look`, PATCH `itemLook`): string and wrap colour on any racket,

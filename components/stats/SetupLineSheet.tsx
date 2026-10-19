@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
+import StatusBadge from '@/components/primitives/StatusBadge';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import TensionField, { ratedRange } from './TensionField';
 import { useClubTension } from './useClubTension';
@@ -21,11 +22,10 @@ export interface SetupLineSheetProps {
   onClose: () => void;
   category: SetupCategory;
   gear: UseGear;
-  /** "Change the model" / "Change the string" — the add sheet, as the one in play. */
+  /** "Change racket" / "Change the string" — the add sheet, as the one in play.
+   *  Adding a spare is not here: it is a line on the Set-up card (2026-10-19). */
   onChange: () => void;
-  /** "Add another racket as a spare" — the add sheet, NOT as the one in play. */
-  onAddSpare: () => void;
-  /** "See it in 3D" — the racket's own look sheet (swaps with this one). */
+  /** "3D rendering" — the racket's own look sheet (swaps with this one). */
   onViewLook?: (item: GearItem, title: string) => void;
   /** The racket's own page. Only a catalog racket has one. */
   onViewFrame?: (catalogId: string) => void;
@@ -44,13 +44,14 @@ export interface SetupLineSheetProps {
  *
  * Mount with a fresh `key` per opening; its state describes one visit.
  */
-export default function SetupLineSheet({ open, onClose, category, gear, onChange, onAddSpare, onViewLook, onViewFrame, onCrosses }: SetupLineSheetProps) {
+export default function SetupLineSheet({ open, onClose, category, gear, onChange, onViewLook, onViewFrame, onCrosses }: SetupLineSheetProps) {
   const t = useTranslations('stats.gear.setup');
   const tGear = useTranslations('stats.gear');
   const tHub = useTranslations('valueHub');
   const tRecovery = useTranslations('recovery');
   const catalog = useCatalog(category);
   const [specsOpen, setSpecsOpen] = useState(false);
+  const [feelOpen, setFeelOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   /** The tension typed on this visit: undefined = untouched (the saved one
    *  shows), null = cleared while retyping (the field shows empty, not the
@@ -132,8 +133,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                   </div>
                   <ActionRow icon="swap_horiz" label={t('changeModel')} onClick={onChange} disabled={!gear.online} />
                   {onViewFrame && item.catalogId && <ActionRow icon="fact_check" label={t('viewFrame')} onClick={() => onViewFrame(item.catalogId!)} />}
-                  {onViewLook && <ActionRow icon="sports_tennis" label={t('viewIn3d')} onClick={() => onViewLook(item, title)} />}
-                  <ActionRow icon="add" label={t('addSpare')} onClick={onAddSpare} disabled={!gear.online} />
+                  {onViewLook && <ActionRow icon="sports_tennis" label={t('viewIn3d')} badge={t('preview')} onClick={() => onViewLook(item, title)} />}
                 </>
               ) : (
                 <>
@@ -226,26 +226,45 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                   </button>
                 </div>
               ) : (
-                <ActionRow icon="delete_outline" label={t('remove')} onClick={() => setConfirmRemove(true)} disabled={!gear.online} />
+                <ActionRow icon="delete_outline" label={category === 'racket' ? t('removeRacket') : t('removeString')} onClick={() => setConfirmRemove(true)} disabled={!gear.online} />
               )}
             </div>
           )}
 
+          {/* The member knows this racket best (Grant, 2026-10-19): folded
+              behind one row and framed as theirs to add, not a form to fill. */}
           {typedRacket && item && (
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }} aria-label={t('feelTitle')}>
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)' }}>
-                <span className="fs-md" style={{ flex: 1, color: 'var(--text-primary)', fontWeight: 600 }}>{t('feelTitle')}</span>
-                <button
-                  type="button"
-                  className="setup-link"
-                  disabled={!feelChanged || gear.busy || !gear.online}
-                  onClick={() => { if (feel) void run(() => gear.setFeel(item.id, feel), () => setFeel(null)); }}
-                >
-                  {t('saveFeel')}
-                </button>
-              </span>
-              <span className="fs-sm" style={{ color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t('feelHelp')}</span>
-              <RacketFeelChips value={shownFeel} onChange={setFeel} disabled={gear.busy || !gear.online} />
+            <section className="setup-feel-share" aria-label={t('feelShareTitle')}>
+              <button
+                type="button"
+                className="setup-feel-share-toggle"
+                onClick={() => setFeelOpen((v) => !v)}
+                aria-expanded={feelOpen}
+                aria-controls="setup-line-feel"
+              >
+                <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--accent)' }}>edit</span>
+                <span className="setup-feel-share-text">
+                  <span className="fs-md" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{t('feelShareTitle')}</span>
+                  <span className="fs-sm" style={{ color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t('feelShareHelp')}</span>
+                </span>
+                <span className="material-icons motion-chevron" data-open={feelOpen ? 'true' : 'false'} aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
+                  expand_more
+                </span>
+              </button>
+              <Collapse open={feelOpen} id="setup-line-feel" spaceAbove="var(--space-4)">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                  <RacketFeelChips value={shownFeel} onChange={setFeel} disabled={gear.busy || !gear.online} />
+                  <button
+                    type="button"
+                    className="setup-link"
+                    style={{ alignSelf: 'flex-end' }}
+                    disabled={!feelChanged || gear.busy || !gear.online}
+                    onClick={() => { if (feel) void run(() => gear.setFeel(item.id, feel), () => setFeel(null)); }}
+                  >
+                    {t('saveFeel')}
+                  </button>
+                </div>
+              </Collapse>
             </section>
           )}
 
@@ -295,11 +314,14 @@ function feelKey(f: RacketFeel): string {
   return [f.balance ?? '', f.flex ?? '', f.weight ?? ''].join('|');
 }
 
-function ActionRow({ icon, label, onClick, disabled }: { icon: string; label: string; onClick: () => void; disabled?: boolean }) {
+function ActionRow({ icon, label, badge, onClick, disabled }: { icon: string; label: string; badge?: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button type="button" className="setup-action" onClick={onClick} disabled={disabled}>
       <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>{icon}</span>
-      <span className="setup-action-label">{label}</span>
+      <span className="setup-action-label">
+        {label}
+        {badge && <> <StatusBadge>{badge}</StatusBadge></>}
+      </span>
       <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>chevron_right</span>
     </button>
   );

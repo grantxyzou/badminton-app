@@ -9,6 +9,7 @@ import type { UseGear } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
 import { setupLines } from '@/lib/gearSetup';
 import { priceCadPoint } from '@/lib/catalogPrice';
+import { brandSite } from '@/lib/brandSites';
 
 export interface NextRacketCardProps {
   gear: UseGear;
@@ -20,7 +21,8 @@ export interface NextRacketCardProps {
 }
 
 /**
- * "Where you'd go next" (claude.ai/design "Equipment redesign", screen 06).
+ * "Racket to try next" (claude.ai/design "Equipment redesign", screen 06; the
+ * Stats canvas, 2026-10-19, gave the price its own row linking to the maker).
  *
  * The racket engine's answer once a racket is on the card: it excludes what
  * the member owns, so its pick is a NEXT racket, and its headline reason
@@ -82,9 +84,10 @@ export default function NextRacketCard({ gear, picks, onOpen, onOpenFit }: NextR
   }
 
   // The engine's own headline, which is already relative to the racket in
-  // play; the price follows it, as in the design.
-  const headline = (pick.reasons[0] ?? '').replace(/\.\s*$/, '');
-  const sub = [headline || null, priceCadPoint(pick.item) !== null ? `~$${priceCadPoint(pick.item)}` : null].filter(Boolean).join(' · ');
+  // play. The price is its own row below, not a tail on this sentence.
+  const sub = pick.reasons[0] ?? '';
+  const price = priceCadPoint(pick.item);
+  const site = brandSite(pick.item.brand);
 
   return (
     <div className="glass-card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -98,7 +101,29 @@ export default function NextRacketCard({ gear, picks, onOpen, onOpenFit }: NextR
         </span>
         <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>chevron_right</span>
       </button>
-      <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>{t('nextNote')}</p>
+      {price !== null && (site ? (
+        <a className="setup-price-row" href={site} target="_blank" rel="noopener noreferrer">
+          <PriceParts label={t('priceLabel')} price={price} />
+          <span className="setup-price-site">
+            {t('brandSite', { brand: pick.item.brand })}
+            <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>open_in_new</span>
+          </span>
+        </a>
+      ) : (
+        <div className="setup-price-row">
+          <PriceParts label={t('priceLabel')} price={price} />
+        </div>
+      ))}
     </div>
+  );
+}
+
+/** The row's label and figure: the catalog's typical price in CAD (`priceCadPoint`). */
+function PriceParts({ label, price }: { label: string; price: number }) {
+  return (
+    <>
+      <span className="setup-price-label">{label}</span>
+      <span className="setup-price-value">~${price}</span>
+    </>
   );
 }

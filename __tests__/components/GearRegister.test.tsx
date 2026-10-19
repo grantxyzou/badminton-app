@@ -56,7 +56,7 @@ describe('GearRegister — the Set-up card', () => {
 describe('GearRegister — one door per line', () => {
   /**
    * The routing table: a blank line NAMES itself (the add sheet, as the one in
-   * play), a filled line is MANAGED (its own sheet), and the dashed "Add lb"
+   * play), a filled line is MANAGED (its own sheet), and the dashed "+ String tension"
    * slot belongs to a FILLED string — so it opens the line sheet, never the
    * catalog. Each sheet is tested alone; this is the decision between them.
    */
@@ -96,12 +96,12 @@ describe('GearRegister — one door per line', () => {
     expect(screen.queryByText('Add a racket')).toBeNull();
   });
 
-  it('"Add lb" on a string with no tension opens the string\'s line sheet', async () => {
+  it('"+ String tension" on a string with no tension opens the string\'s line sheet', async () => {
     mountWithBag([
       { id: 'r1', catalogId: null, category: 'racket', label: 'Li-Ning Air Force 79' },
       { id: 's1', catalogId: null, category: 'string', label: 'Yonex BG65' },
     ]);
-    const chip = await screen.findByRole('button', { name: 'Add lb' });
+    const chip = await screen.findByRole('button', { name: '+ String tension' });
     act(() => { chip.click(); });
     expect(await screen.findByText('Tension')).toBeTruthy();
     expect(screen.queryByText('Add strings')).toBeNull();
