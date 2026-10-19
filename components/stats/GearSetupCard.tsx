@@ -44,6 +44,10 @@ export interface GearSetupCardProps {
   /** The empty tension slot on a string with no recorded tension. Omitted,
    *  the slot is not drawn — a chip that opens nothing is a dead button. */
   onAddTension?: (item: GearItem) => void;
+  /** "Add a spare racket": the add sheet, NOT as the one in play. It lived in
+   *  the racket's line sheet until 2026-10-19; it is a line on the card now,
+   *  under the main racket. Omitted, the line is not drawn. */
+  onAddSpare?: () => void;
 }
 
 /**
@@ -60,7 +64,7 @@ export interface GearSetupCardProps {
  * must not read as an empty one — dashed slots over a bag that failed to load
  * invite logging a racket that is already logged.
  */
-export default function GearSetupCard({ activeName, gear, picks, club, onOpenLine, onShare, onOpenFit, onAddTension }: GearSetupCardProps) {
+export default function GearSetupCard({ activeName, gear, picks, club, onOpenLine, onShare, onOpenFit, onAddTension, onAddSpare }: GearSetupCardProps) {
   const t = useTranslations('stats.gear');
   const ts = useTranslations('stats.gear.setup');
   const tErr = useTranslations('valueHub');
@@ -102,7 +106,7 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
   function stringSub(item: GearItem): string | null {
     const spec = item.catalogId ? stringSpecLine(catalog.get(item.catalogId), (k) => ts(k)) : null;
     const others = clubOthers(tally, item);
-    return [spec, others ? ts('othersPlay', { count: others }) : null].filter(Boolean).join(' · ') || null;
+    return [spec, others ? ts('othersString', { count: others }) : null].filter(Boolean).join(' · ') || null;
   }
 
   // The pairing for a BLANK strings line — one rule, shared with the
@@ -151,22 +155,55 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
       ) : (
         <>
           <div className="setup-lines">
-            {/* Racket */}
+            {/* Main racket. No pill on a filled line: the label already says
+                which racket this is (Stats canvas, 2026-10-19). */}
             <button
               type="button"
               className={`setup-line${racket ? '' : ' setup-line--blank'}`}
               onClick={() => onOpenLine('racket')}
               disabled={!gear.online}
             >
-              <span className="setup-line-label">{t('catRacket')}</span>
+              <span className="setup-line-label">{ts('mainRacket')}</span>
               <span className="setup-line-body">
                 <span className="setup-line-value">{racket ? racket.label : ts('tapToName')}</span>
                 {racket && racketSub(racket) && <span className="setup-line-sub">{racketSub(racket)}</span>}
               </span>
-              {racket
-                ? <StatusBadge>{ts('inPlay')}</StatusBadge>
-                : <EditGlyph />}
+              {!racket && <EditGlyph />}
             </button>
+
+            {/* Spares — a line each, never a nested list, under the racket they
+                stand in for. "Swap in" makes one the main racket; it is the
+                whole of managing a bag of more than one from the card itself. */}
+            {spares.map((spare) => (
+              <div key={spare.id} className="setup-line">
+                <span className="setup-line-label">{ts('spare')}</span>
+                <span className="setup-line-body">
+                  <span className="setup-line-value setup-line-spare">{spare.label}</span>
+                </span>
+                <button
+                  type="button"
+                  className="setup-link"
+                  onClick={() => { void swapIn(spare.id); }}
+                  disabled={gear.busy}
+                  aria-label={`${ts('swapIn')} — ${spare.label}`}
+                >
+                  {ts('swapIn')}
+                </button>
+              </div>
+            ))}
+
+            {/* The way to add one, once there is a racket to be a spare TO. */}
+            {racket && onAddSpare && (
+              <button type="button" className="setup-line" onClick={onAddSpare} disabled={!gear.online}>
+                <span className="setup-line-label">{spares.length === 0 ? ts('spare') : ''}</span>
+                <span className="setup-line-body">
+                  <span className="setup-line-add">
+                    <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>add</span>
+                    {ts('addSpare')}
+                  </span>
+                </span>
+              </button>
+            )}
 
             {/* Strings. A hybrid is still ONE line: mains and crosses stacked,
                 each with its own figure, and the whole line opens the sheet
@@ -237,27 +274,6 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
                 ) : null}
               </button>
             )}
-
-            {/* Spares — a line each, never a nested list. "Swap in" moves the
-                In play pill; it is the whole of managing a bag of more than one
-                from the card itself. */}
-            {spares.map((spare) => (
-              <div key={spare.id} className="setup-line">
-                <span className="setup-line-label">{ts('spare')}</span>
-                <span className="setup-line-body">
-                  <span className="setup-line-value setup-line-spare">{spare.label}</span>
-                </span>
-                <button
-                  type="button"
-                  className="setup-link"
-                  onClick={() => { void swapIn(spare.id); }}
-                  disabled={gear.busy}
-                  aria-label={`${ts('swapIn')} — ${spare.label}`}
-                >
-                  {ts('swapIn')}
-                </button>
-              </div>
-            ))}
           </div>
 
           {filled === 0 && (

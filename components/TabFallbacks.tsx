@@ -62,7 +62,8 @@ export const STATS_HEIGHTS = {
   // 240 empty (a first-time member's "rate your skills") to 680+ with data:
   // no one height fits, and the empty case is the first impression.
   trend: 320,
-  whereYouSit: 192,
+  // Compact rows (2026-10-19): two rows and a two-line footnote, 211 at 390px.
+  whereYouSit: 211,
   kudosReceived: 140,
   record: 201,
   playWith: 212,

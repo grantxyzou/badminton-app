@@ -63,7 +63,7 @@ function fakePicks(stringPick: UseGearPicks['view']['string'] = { status: 'parke
 
 const noClub: UseClubGear = { entries: [], status: 'ready', retry: vi.fn() };
 
-function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubGear; onOpenLine?: (c: string) => void; onAddTension?: (i: GearItem) => void; onShare?: () => void } = {}) {
+function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubGear; onOpenLine?: (c: string) => void; onAddTension?: (i: GearItem) => void; onShare?: () => void; onAddSpare?: () => void } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <GearSetupCard
@@ -75,6 +75,7 @@ function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubG
         onOpenFit={vi.fn()}
         onShare={opts.onShare}
         onAddTension={opts.onAddTension}
+        onAddSpare={opts.onAddSpare}
       />
     </NextIntlClientProvider>,
   );
@@ -130,11 +131,13 @@ describe('GearSetupCard — filling it in', () => {
     expect(onOpenLine).toHaveBeenCalledWith('string');
   });
 
-  it('one of two: the racket is in play with its spec, and the string line quotes a READY pairing', async () => {
+  it('one of two: the main racket with its spec, and the string line quotes a READY pairing', async () => {
     const pick = { status: 'ready' as const, pick: { item: { ...CATALOG.string[0], model: 'BG65 Ti' }, reasons: [], tensionLbs: 26, pairedWith: { label: 'Li-Ning Air Force 79', source: 'owned' as const } } };
     renderCard(fakeGear(doc([AF79], 'r1')), { picks: fakePicks(pick) });
     expect(screen.getByText('1 of 2')).toBeTruthy();
-    expect(screen.getByText('In play')).toBeTruthy();
+    // Labelled "Main racket", with no In-play pill beside it (2026-10-19).
+    expect(screen.getByText('Main racket')).toBeTruthy();
+    expect(screen.queryByText('In play')).toBeNull();
     expect(screen.getByText("For this frame we'd pair BG65 Ti at 26 lb")).toBeTruthy();
     expect(await screen.findByText('4U · even')).toBeTruthy();
     expect(screen.queryByText(/Two lines is the whole card/)).toBeNull();
@@ -186,8 +189,28 @@ describe('GearSetupCard — complete, with a spare', () => {
     const onAddTension = vi.fn();
     renderCard(fakeGear(doc([AF79, BG65], 'r1')), { onAddTension });
     expect(screen.queryByText('0')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Add lb' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ String tension' }));
     expect(onAddTension).toHaveBeenCalledWith(BG65);
+  });
+});
+
+describe('GearSetupCard — adding a spare is a line on the card', () => {
+  it('under a main racket, "Add a spare racket" opens the add sheet', () => {
+    const onAddSpare = vi.fn();
+    renderCard(fakeGear(doc([AF79], 'r1')), { onAddSpare });
+    fireEvent.click(screen.getByRole('button', { name: /Add a spare racket/ }));
+    expect(onAddSpare).toHaveBeenCalled();
+  });
+
+  it('not before there is a racket to be a spare to', () => {
+    renderCard(fakeGear(doc([])), { onAddSpare: vi.fn() });
+    expect(screen.queryByRole('button', { name: /Add a spare racket/ })).toBeNull();
+  });
+
+  it('the string line counts the group in its own words', async () => {
+    const club: UseClubGear = { entries: [{ category: 'string', label: 'Yonex BG65', count: 4 }], status: 'ready', retry: vi.fn() };
+    renderCard(fakeGear(doc([AF79, { ...BG65, tensionLbs: 26 }], 'r1')), { club });
+    expect(await screen.findByText(/3 others in this group use this string/)).toBeTruthy();
   });
 });
 

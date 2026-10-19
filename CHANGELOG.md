@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment copy and layout from the Stats canvas (2026-10-19)
+
+On Stats → Equipment, the Set-up card's racket line is "Main racket" with no In-play pill, and adding a spare is a line on the card under it ("Add a spare racket") instead of an action buried in the racket's sheet. An untensioned string says "+ String tension", and its club fact reads "3 others in this group use this string". The racket sheet says "Change racket", "3D rendering" (marked Preview) and "Delete this racket", and a typed-in racket's feel questions fold behind "Share more about this racket". The suggestion card is "Racket to try next": its reason line no longer carries the price, which has its own row linking to the maker's site for Yonex and Victor, and the "not a verdict" note is gone. `docs/plans/equipment-setup-card.md`.
+
+### "Where you sit" is two compact rows (2026-10-19)
+
+The Stats card that places your sharpest and weakest skill in the group drops the sentence that repeated its bars. Each skill is now one row: the name, three dots with your third lit, and the third in words, in green for the top third, blue for the middle and neutral for the bottom (never red). "in the group" sits in the header, and the footnote is new copy: "Based on your latest check-in. You can turn this off in Profile.", where "turn this off" opens Profile straight on Stats & privacy The private state keeps both rows unlit. `docs/plans/where-you-sit-rows.md`.
+
 ### The fit page and racket pages are permanent, and fit answers can be cleared again (2026-10-19)
 
 `NEXT_PUBLIC_FLAG_GEAR_PAGES` and `NEXT_PUBLIC_FLAG_FIT_VERDICT` retired with their ON branches, after the racket-fit review read `picks.engagedMembers` at 2. The old fit sheet (`GearFitSheet`) and its tests are gone, "Your fit" and a racket's name always open their pages, and the verdict route words the facts whenever an API key is configured. The sheet was also the only thing that could clear a fit answer, which the privacy policy promises and which nothing on screen had done since the pages went on in September, so "Your fit" gains a "Clear my fit answers" action (one confirm, every answer including the older arm question blanked in one write) and the policy now says "from that page" (both locales).

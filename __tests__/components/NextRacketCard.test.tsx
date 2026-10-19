@@ -45,10 +45,23 @@ describe('NextRacketCard', () => {
   it('a ready pick: the model, the engine headline and the price, and a tap opens its detail', () => {
     const onOpen = vi.fn();
     renderCard(gearWith([RACKET]), picks(ready), { onOpen });
-    expect(screen.getByText("Where you'd go next")).toBeTruthy();
-    expect(screen.getByText('A step up in power from your Air Force 79 · ~$309')).toBeTruthy();
+    expect(screen.getByText('Racket to try next')).toBeTruthy();
+    expect(screen.getByText('A step up in power from your Air Force 79.')).toBeTruthy();
+    // The price is its own row, linking to the maker (Stats canvas, 2026-10-19).
+    const site = screen.getByRole('link', { name: /Yonex site/ });
+    expect(site.getAttribute('href')).toBe('https://www.yonex.com/');
+    expect(site.getAttribute('target')).toBe('_blank');
+    expect(site.textContent).toContain('~$309');
+    expect(screen.queryByText(/not a verdict/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Astrox 88S Pro/ }));
     expect(onOpen).toHaveBeenCalled();
+  });
+
+  it('a brand with no checked site shows its price with no link', () => {
+    const lining = { status: 'ready' as const, pick: { item: { ...NEXT, brand: 'Li-Ning', model: 'Axforce 80' }, reasons: ['Lighter.'] } };
+    renderCard(gearWith([RACKET]), picks(lining));
+    expect(screen.getByText('~$309')).toBeTruthy();
+    expect(screen.queryByRole('link')).toBeNull();
   });
 
   it('parked on the fit questions is a door to them', () => {

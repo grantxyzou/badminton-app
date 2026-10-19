@@ -5246,6 +5246,57 @@ html:root[data-theme="light"] {
 }
 
 
+/* ── Where you sit: compact rows (docs/plans/where-you-sit-rows.md) ──────
+   One inner row per skill: name, three dots with the member's third lit, the
+   third in words. The tone is set once on the row from its band and read by
+   both the lit dot and the label, so the two cannot disagree. Top = accent,
+   middle = the calm blue, bottom = neutral: never red, a position is not a
+   score. A row with no band (the private state) lights nothing. */
+.sit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sit-row {
+  --sit-tone: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+}
+.sit-row[data-band="top"] { --sit-tone: var(--accent); }
+.sit-row[data-band="middle"] { --sit-tone: var(--sev-low-text); }
+.sit-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.sit-dots {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+.sit-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+.sit-dot.is-on { background: var(--sit-tone); }
+/* Fixed width so the dots line up down the column whatever the label says. */
+.sit-row-band {
+  width: 6.5em;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--sit-tone);
+}
+
 /* ── Home skill lead (docs/plans/home-skill-lead.md) ─────────────────────
    A whole card that is one button, selling the Stats tab from Home. A surface
    you can see the edges of SCALES on press (the ladder below: cards 0.98);
@@ -5768,7 +5819,8 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
 }
 .setup-line-hit:disabled { opacity: 0.5; pointer-events: none; }
 .setup-line-label {
-  width: 74px;
+  /* Wide enough for "Main racket" on one line (2026-10-19). */
+  width: 88px;
   flex: 0 0 auto;
   font-size: var(--fs-2xs);
   font-weight: 700;
@@ -5795,6 +5847,15 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
 }
 .setup-line-sub--accent { color: var(--accent); }
 .setup-line-spare { font-size: var(--fs-md); font-weight: 400; color: var(--text-secondary); }
+/* "Add a spare racket": a line that asks, in the accent, under the main racket. */
+.setup-line-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+}
 /* A hybrid on the Strings line: mains over crosses, each row its own role,
    name and figure. The role is the label column's type at body size, so the
    two names still start on one vertical. */
@@ -6068,6 +6129,30 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 .setup-action--current { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--text-primary); }
 .setup-action-label { flex: 1; min-width: 0; }
 
+/* "Share more about this racket": the typed racket's feel questions, folded
+   behind one row the member opens (2026-10-19). The row is an inner row like
+   the actions above it; the chips open under it. */
+.setup-feel-share {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+}
+.setup-feel-share-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.setup-feel-share-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+
 /* "How does it feel?" — three optional questions about a racket the catalog
    does not have. A pressed chip takes the saved panel's green; "Don't know"
    is a chip like the others, because it is an answer, not an absence. */
@@ -6105,7 +6190,7 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 /* Before the canvas lands: the card's night ground at its usual proportions. */
 .setup-share-preview--pending { aspect-ratio: 360 / 300; background: var(--bpm-night); }
 
-/* "Where you'd go next": the whole frame, large, beside the pick. */
+/* "Racket to try next": the whole frame, large, beside the pick. */
 button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .setup-next-row {
   display: flex;
@@ -6122,6 +6207,47 @@ button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); 
 button.setup-next-row { cursor: pointer; }
 .setup-next-img { flex: 0 0 auto; width: 42px; height: 124px; object-fit: contain; }
 .setup-next-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+/* The pick's price, its own row under the racket (Stats canvas, 2026-10-19).
+   An inner row (12/12, `--radius-lg`); as a link to the maker's site it gets
+   the list-row press, and the site name is the one accent on the card. */
+.setup-price-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  color: inherit;
+  text-decoration: none;
+}
+a.setup-price-row {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--duration-press) var(--ease-glass);
+}
+a.setup-price-row:active { background: var(--press-bg); }
+.setup-price-label {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.setup-price-value {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.setup-price-site {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
 
 /* Share, in the card's header once both lines are filled. Quiet on purpose:
    accent on this tab marks what the member is asked to do next, and sharing

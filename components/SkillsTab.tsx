@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
+import { requestProfileView } from '@/lib/profileView';
 import ClubConsentSheet from '@/components/stats/ClubConsentSheet';
 import YourRecordCard from '@/components/stats/YourRecordCard';
 import WhoYouPlayWithCard from '@/components/stats/WhoYouPlayWithCard';
@@ -96,6 +97,13 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
 
   // Where every locked card's Sign in goes (LockedCard reads it from context).
   const goSignIn = onTabChange ? () => onTabChange('profile') : null;
+  // "Turn this off" on Where you sit: Profile, opened on Stats & privacy.
+  const goPrivacy = onTabChange
+    ? () => {
+        requestProfileView('stats-privacy');
+        onTabChange('profile');
+      }
+    : undefined;
 
   return (
     <StatsSignInContext.Provider value={goSignIn}>
@@ -132,6 +140,7 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
               activeName={activeName}
               promptOpen={promptOpen}
               checkIn={checkIn}
+              onOpenPrivacy={goPrivacy}
             />
           </RevealSlot>
           <RevealSlot canBeEmpty placeholder={<CardSkeleton height={STATS_HEIGHTS.kudosReceived} />}>
