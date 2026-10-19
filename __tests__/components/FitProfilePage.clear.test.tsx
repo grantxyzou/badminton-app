@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import FitProfilePage from '../../components/stats/FitProfilePage';
 import enMessages from '../../messages/en.json';
@@ -35,6 +35,44 @@ function renderPage(doc: PlayerGear, setPrefs = vi.fn(async (_p: GearPrefs) => (
   );
   return setPrefs;
 }
+
+describe('FitProfilePage — the questions as the Stats canvas put them (2026-10-19)', () => {
+  beforeEach(() => {
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+      ok: true, status: 200,
+      json: async () => ({ facts: { state: 'insufficient', answered: 0, frame: null, currentTensionLbs: null, tensionRange: null, sorenessMovedRange: false, goal: null, prospective: false, reasons: [] }, copy: null, checkInLevel: null }),
+    } as Response)) as unknown as typeof fetch);
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it('asks how hard you hit, by where your clear lands, and still stores slow / medium / fast', async () => {
+    const setPrefs = renderPage(base);
+    expect(await screen.findByText('How hard do you hit?')).toBeTruthy();
+    expect(screen.getByText('Picture a clear from the back of the court.')).toBeTruthy();
+    const group = screen.getByRole('radiogroup', { name: 'How hard do you hit?' });
+    const options = within(group).getAllByRole('radio').map((r) => r.textContent);
+    expect(options).toEqual(['YouNetBackGentleLands mid-court', 'YouNetBackMediumReaches the back', 'YouNetBackHardGoes deep, easily']);
+    fireEvent.click(within(group).getByRole('radio', { name: /Gentle/ }));
+    // The wording changed; the value the engines read did not.
+    await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitSwing: 'slow' }));
+    fireEvent.click(within(group).getByRole('radio', { name: /Hard/ }));
+    await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitSwing: 'fast' }));
+  });
+
+  it('marks G5 as the standard grip, says what the overgrip switch means, and counts answers', async () => {
+    renderPage({ ...base, fitGrip: 'G5', fitSwing: 'medium' } as PlayerGear);
+    expect(await screen.findByText('Standard')).toBeTruthy();
+    const g5 = screen.getByRole('radio', { name: /G5/ });
+    expect(g5.textContent).toContain('Standard');
+    expect(screen.getByRole('radio', { name: /G4/ }).textContent).not.toContain('Standard');
+    expect(screen.getByText('I wrap two overgrips on it')).toBeTruthy();
+    expect(screen.getByText(/a little thicker than the size above/)).toBeTruthy();
+    // Two of five answered (grip, swing): the count says so in words.
+    expect(screen.getByText('2 of 5 answered')).toBeTruthy();
+    expect(screen.queryByText(/Circles are the handle/)).toBeNull();
+  });
+});
 
 describe('FitProfilePage — clearing every fit answer', () => {
   beforeEach(() => {

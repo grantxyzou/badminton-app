@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import NextRacketCard from '../../components/stats/NextRacketCard';
 import type { UseGear } from '../../components/stats/useGear';
@@ -53,6 +53,11 @@ describe('NextRacketCard', () => {
     expect(site.getAttribute('target')).toBe('_blank');
     expect(site.textContent).toContain('~$309');
     expect(screen.queryByText(/not a verdict/)).toBeNull();
+    // The price row sits in the text column, beside the frame, not under it;
+    // and the name is the door, with the chevron on it (Stats canvas, 2026-10-19).
+    const body = site.parentElement!;
+    expect(body.className).toContain('setup-next-body');
+    expect(within(body).getByRole('button', { name: /Astrox 88S Pro/ }).textContent).toContain('chevron_right');
     fireEvent.click(screen.getByRole('button', { name: /Astrox 88S Pro/ }));
     expect(onOpen).toHaveBeenCalled();
   });

@@ -146,7 +146,17 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
 
       <div className="fit-section-head">
         <p className="setup-eyebrow">{t('builtOn')}</p>
-        {known && <span className="fit-counter">{t('counter', { n: answers.answered })}</span>}
+        {known && (
+          <span className="fit-counter">
+            {/* One dot per question, lit as it is answered: the count says how
+                many, the dots say how far along (Grant, 2026-10-19: "where is
+                the 1 of 5?"). */}
+            <span className="fit-counter-dots" aria-hidden="true">
+              {[0, 1, 2, 3, 4].map((i) => <span key={i} className={`fit-counter-dot${i < answers.answered ? ' is-on' : ''}`} />)}
+            </span>
+            {t('counter', { n: answers.answered })}
+          </span>
+        )}
       </div>
 
       {failed && (
@@ -205,8 +215,8 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
               <span className="fit-q-label">{t('swing')}</span>
               {value('fitSwing') && <span className="fit-q-value">{t(`swing_${value('fitSwing')}`)}</span>}
             </div>
+            <p className="fit-caption">{t('swingHint')}</p>
             <SwingSpeedPicker value={value('fitSwing') ?? null} onChange={(v) => answer({ fitSwing: v })} disabled={disabled} label={t('swing')} />
-            <p className="fit-caption">{t('swingCaption')}</p>
             {/* Same rule as the soreness line below: only when the answer
                 actually moved the range, and it says which way. */}
             {value('fitSwing') && verdict.data?.facts.swingMovedRange && (
@@ -219,9 +229,13 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
           <section className="fit-group">
             <span className="fit-q-label">{t('grip')}</span>
             <GripSizePicker value={value('fitGrip') ?? null} onChange={(v) => answer({ fitGrip: v })} disabled={disabled} label={t('grip')} />
-            <p className="fit-caption">{t('gripCaption')}</p>
+            {/* Says what the switch means (Grant, 2026-10-19: "what does plus
+                two mean?"). The answer is stored; nothing reads it yet. */}
             <div className="fit-overgrips">
-              <span id="fit-overgrips-label">{t('overgrips')}</span>
+              <span className="fit-overgrips-text">
+                <span id="fit-overgrips-label" className="fit-overgrips-label">{t('overgrips')}</span>
+                <span className="fit-caption">{t('overgripsHelp')}</span>
+              </span>
               <Switch checked={value('fitOvergrips') === 2} onChange={(on) => answer({ fitOvergrips: on ? 2 : 0 })} ariaLabel={t('overgrips')} disabled={disabled} />
             </div>
           </section>
