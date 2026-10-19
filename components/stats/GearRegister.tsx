@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 
-import GearFitSheet from './GearFitSheet';
 import FitProfilePage from './FitProfilePage';
 import FrameDetailPage from './FrameDetailPage';
 import FrameViewSheet from './FrameViewSheet';
@@ -16,7 +15,6 @@ import RacketLookSheet from './RacketLookSheet';
 import NextRacketCard from './NextRacketCard';
 import GearPickSheet from './GearPickSheet';
 import { recordEngagement } from '@/lib/engagement';
-import { isFlagOn } from '@/lib/flags';
 import StringTensionCard from './StringTensionCard';
 import ClubGearCard from './ClubGearCard';
 import { useGear } from './useGear';
@@ -61,14 +59,12 @@ const GEAR_HEIGHTS = { setup: 226, nextRacket: 226, tension: 257, club: 160 } as
 
 export default function GearRegister({ activeName }: GearRegisterProps) {
   const gear = useGear(activeName);
-  const [openFit, setOpenFit] = useState(false);
-  // Pages in the register (NEXT_PUBLIC_FLAG_GEAR_PAGES): rendered in place of
+  // Pages in the register: rendered in place of
   // the cards, with the shell's chrome hidden (statsTakeover.ts). A STACK,
   // because a frame page opens another frame, and back should walk back
   // through them. The fit page replaces the fit SHEET as the door to the questions.
   const [pages, setPages] = useState<GearPage[]>([]);
   const page = pages[pages.length - 1] ?? null;
-  const pagesOn = isFlagOn('NEXT_PUBLIC_FLAG_GEAR_PAGES');
   const popPage = () => setPages((s) => s.slice(0, -1));
   const openFrame = (frameId: string) => setPages((s) => [...s, { kind: 'frame', frameId }]);
   // Back to the fit page already underneath rather than a second copy on top.
@@ -76,11 +72,10 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
     const i = s.findIndex((p) => p.kind === 'fit');
     return i >= 0 ? s.slice(0, i + 1) : [...s, { kind: 'fit' }];
   });
-  const openFitDoor = () => (pagesOn ? openFitPage() : setOpenFit(true));
   const [view3d, setView3d] = useState<{ item: GearItem | null; row: CatalogItem; key: number } | null>(null);
-  // Held while the questions are open, sheet or page: answered at a human
+  // Held while the fit page is open: answered at a human
   // pace, every tap would otherwise re-ask /api/recommend against its limit.
-  const picks = useGearPicks(activeName, gear, { holdFitRefetch: openFit || pages.some((p) => p.kind === 'fit') });
+  const picks = useGearPicks(activeName, gear, { holdFitRefetch: pages.some((p) => p.kind === 'fit') });
   const club = useClubGear();
   const catalogRackets = useCatalog('racket');
   const racketIds = useMemo(() => racketIdsByTallyKey(catalogRackets.items), [catalogRackets.items]);
@@ -185,7 +180,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
         club={club}
         onOpenLine={openLine}
         onShare={() => setShareOpen(true)}
-        onOpenFit={openFitDoor}
+        onOpenFit={openFitPage}
         onAddTension={() => openLine('string')}
       />
       </RevealSlot>
@@ -200,7 +195,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
           // append-only series stays continuous.
           void recordEngagement('rec_card_tap');
         }}
-        onOpenFit={openFitDoor}
+        onOpenFit={openFitPage}
       />
       </RevealSlot>
       <RevealSlot canBeEmpty placeholder={<CardSkeleton height={GEAR_HEIGHTS.tension} />}>
@@ -219,15 +214,14 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
       <ClubGearCard
         club={club}
         mine={gear.loaded && !gear.loadError ? gear.gear : undefined}
-        // A racket row opens that racket's page (pages on). The catalog read is
+        // A racket row opens that racket's page. The catalog read is
         // the register's shared, module-cached one — no second request.
-        onOpenRacket={pagesOn ? openFrame : undefined}
+        onOpenRacket={openFrame}
         racketIds={racketIds}
       />
       </RevealSlot>
       </RevealGroup>
       </div>
-      <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
       <GearPickSheet
         open={pickOpen}
         onClose={() => setPickOpen(false)}
@@ -236,7 +230,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
         owned={picks.isOwned('racket', picks.view.racket.pick?.item ?? null)}
         gear={gear}
         // Swap, never stack — the same rule as the rail's sheet.
-        onOpenFit={() => { setPickOpen(false); openFitDoor(); }}
+        onOpenFit={() => { setPickOpen(false); openFitPage(); }}
       />
       {shareOpen && (
         <SetupShareSheet
@@ -264,7 +258,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
             if (mainsId) openAdd('string', false, undefined, mainsId);
           } : undefined}
           onViewLook={(item, title) => setSheet((s) => ({ kind: 'look', itemId: item.id, title, key: (s?.key ?? 0) + 1 }))}
-          onViewFrame={pagesOn ? (catalogId) => { setSheet(null); openFrame(catalogId); } : undefined}
+          onViewFrame={(catalogId) => { setSheet(null); openFrame(catalogId); }}
         />
       )}
       {sheet?.kind === 'look' && (() => {

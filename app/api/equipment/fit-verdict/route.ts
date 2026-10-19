@@ -3,7 +3,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { verifyMemberAuth, requireMember, isAdminAuthedWithMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope, groupDocId } from '@/lib/groupScope';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
@@ -33,10 +32,10 @@ import type { CatalogItem, PlayerGear } from '@/lib/types';
  * without it, the racket in play. `checkInLevel` rides along so the page can
  * pre-fill its level row without a second read (null once they set their own).
  *
- * Words: with NEXT_PUBLIC_FLAG_FIT_VERDICT on and a key configured, the model
+ * Words: with a key configured, the model
  * phrases the decided state, cached per member per frame in `insights` and
  * keyed on the facts, the language and the prompt version — a changed answer
- * writes new words, an unchanged one never calls the model again. Flag off, no
+ * writes new words, an unchanged one never calls the model again. No
  * key, a failure, or a reply off the contract: `copy: null`, and the page words
  * the same facts from its own strings. Nothing to judge (`insufficient`) never
  * calls the model at all.
@@ -156,7 +155,7 @@ export async function GET(req: NextRequest) {
 
     const facts: FitFacts = computeFitFacts({ gear, frameRow, stringRow, profile, checkInLevel, prospective });
 
-    if (facts.state === 'insufficient' || !isFlagOn('NEXT_PUBLIC_FLAG_FIT_VERDICT') || !process.env.ANTHROPIC_API_KEY) {
+    if (facts.state === 'insufficient' || !process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json({ facts, checkInLevel, copy: null });
     }
 

@@ -37,6 +37,18 @@ const RANK_SETTLE_MS = 2500;
 
 const FORMAT_OF: Record<FitPlayStyle, 'singles' | 'doubles' | 'both'> = { doubles: 'doubles', singles: 'singles', mixed: 'both', any: 'both' };
 
+/** Every stored fit ANSWER. `playFormat` and the budgets are pairing
+ *  preferences, set elsewhere, and stay. */
+const FIT_ANSWER_KEYS = [
+  'fitGoal', 'fitSwing', 'fitGrip', 'fitPlayStyle', 'fitSoreness', 'fitLevelOverride', 'fitOvergrips',
+] as const;
+/** The page's questions plus `fitArmComfort`, the older sheet's arm answer,
+ *  which this page never asks but a member may still have stored. */
+const CLEARED_ANSWERS: GearPrefs = {
+  ...Object.fromEntries(FIT_ANSWER_KEYS.map((k) => [k, null])),
+  fitArmComfort: null,
+};
+
 /**
  * "Your fit" (design "Equipment redesign", Turn 3, 3a) — five questions and
  * the verdict they add up to, as a page in the Gear register.
@@ -60,6 +72,7 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
   const verdict = useFitVerdict(activeName, doc, known);
 
   const [pending, setPending] = useState<Partial<GearPrefs>>({});
+  const [confirmClear, setConfirmClear] = useState(false);
   const [failed, setFailed] = useState<{ prefs: GearPrefs; message: string } | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
@@ -119,6 +132,10 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
   const answers = fitAnswers(known ? shown : null, verdict.data?.checkInLevel ?? null);
   const level = value('fitLevelOverride') ?? nearestLevelOption(verdict.data?.checkInLevel ?? null);
   const disabled = !known || !gear.online;
+  // The privacy policy promises every fit answer can be cleared; this page is
+  // where they live, so it is where they are cleared. Shown only while one is
+  // stored (or stripped from this device's view, which still means stored).
+  const hasAnswers = known && (doc?.fitArmComfortRedacted === true || (doc?.fitArmComfort != null && !('fitArmComfort' in pending)) || FIT_ANSWER_KEYS.some((k) => value(k) != null));
 
   return (
     <div className="animate-slideInRight fit-page">
@@ -234,6 +251,27 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
           </section>
         </div>
       )}
+
+      {hasAnswers && (confirmClear ? (
+        <div className="glass-card p-5 flex flex-col gap-3 motion-fade" role="group" aria-label={t('clearAll')}>
+          <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>{t('clearConfirm')}</p>
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button
+              type="button"
+              className="cc-btn cc-btn-danger"
+              disabled={disabled}
+              onClick={() => { setConfirmClear(false); answer(CLEARED_ANSWERS); }}
+            >
+              {t('clearYes')}
+            </button>
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setConfirmClear(false)}>{t('clearNo')}</button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="setup-link" style={{ alignSelf: 'flex-start', color: 'var(--text-secondary)' }} disabled={disabled} onClick={() => setConfirmClear(true)}>
+          {t('clearAll')}
+        </button>
+      ))}
 
       <p className="setup-eyebrow fit-section-label">{t('replaceTitle')}</p>
       <RankedFrames picks={picks} ready={!!answers.swing && !!answers.grip} onOpenFrame={onOpenFrame} />

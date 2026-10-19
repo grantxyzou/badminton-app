@@ -31,9 +31,8 @@ export interface GearPickSheetProps {
    *  every other gear surface, which is why the rail card flips to IN YOUR KIT
    *  and the kit row fills in without a reload. */
   gear: UseGear;
-  /** Opens the fit questionnaire (`GearFitSheet`). The rail owns that sheet
-   *  the same way it owns this one; this sheet only asks for it. Absent means
-   *  the link is not rendered. */
+  /** Opens the fit page (`FitProfilePage`). The register owns that page;
+   *  this sheet only asks for it. Absent means the link is not rendered. */
   onOpenFit?: () => void;
 }
 
@@ -372,8 +371,8 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
         </button>
       )}
       {/* The questionnaire is a second door, not more controls here — see
-          GearFitSheet. Rendered even when the preferences are unknown: the
-          fit sheet handles that state itself, and it is also the only place
+          FitProfilePage. Rendered even when the preferences are unknown: the
+          fit page handles that state itself, and it is also the only place
           an already-stored comfort answer can be cleared. */}
       {onOpenFit && (
         <button

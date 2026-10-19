@@ -75,8 +75,6 @@ jobs:
           # Equipment Turn 3 pages and the AI fit verdict. On since 2026-09-14;
           # revert either to 'false' to go back to the fit sheet (pages) or to
           # the fixed verdict wording (verdict). See lib/flags.ts.
-          NEXT_PUBLIC_FLAG_GEAR_PAGES: 'true'
-          NEXT_PUBLIC_FLAG_FIT_VERDICT: 'true'
           # E-transfer auto-detection (docs/plans/payments.md). ON since
           # 2026-10-03, after a real notification's headers confirmed the
           # anti-spoof check. Inert until an admin mints a key and installs

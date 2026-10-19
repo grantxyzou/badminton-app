@@ -60,11 +60,9 @@ describe('GET /api/equipment/fit-verdict', () => {
     setupAdminPin();
     mockCreate.mockReset();
     process.env.ANTHROPIC_API_KEY = 'test-key';
-    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'true';
   });
   afterAll(() => {
     delete process.env.ANTHROPIC_API_KEY;
-    delete process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT;
   });
 
   it('is owner only — another member and an admin both get 403', async () => {
@@ -81,7 +79,7 @@ describe('GET /api/equipment/fit-verdict', () => {
   });
 
   it('an admin signed in only through the admin login still reads their OWN verdict', async () => {
-    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'false';
+    delete process.env.ANTHROPIC_API_KEY;
     await seedTestAdminMember();
     seedGear('member-test-admin');
     const req = makeRequest('GET', `${BASE}?name=${encodeURIComponent(getTestAdminName())}`, undefined, { Cookie: `admin_session=${adminCookieValue()}` });
@@ -97,8 +95,8 @@ describe('GET /api/equipment/fit-verdict', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('with the flag off, returns the facts and no words, and calls nothing', async () => {
-    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'false';
+  it('with no API key, returns the facts and no words, and calls nothing', async () => {
+    delete process.env.ANTHROPIC_API_KEY;
     const lin = seedMember('Lin');
     seedGear(lin.id);
     const body = await (await GET(asMember('Lin', 'Lin'))).json();
@@ -110,10 +108,10 @@ describe('GET /api/equipment/fit-verdict', () => {
   it('writes the words once, serves them from the cache, and rewrites when a fact moves', async () => {
     const lin = seedMember('Lin');
     seedGear(lin.id);
-    // Read the facts with the words off, to size a reply that meets the contract.
-    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'false';
+    // Read the facts with the words off (no key), to size a reply that meets the contract.
+    delete process.env.ANTHROPIC_API_KEY;
     const facts = (await (await GET(asMember('Lin', 'Lin'))).json()).facts as FitFacts;
-    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'true';
+    process.env.ANTHROPIC_API_KEY = 'test-key';
     mockCreate.mockResolvedValue(goodReplyFor(facts));
 
     const first = await (await GET(asMember('Lin', 'Lin'))).json();
@@ -145,9 +143,9 @@ describe('GET /api/equipment/fit-verdict', () => {
   it('a lone miss asks once more and keeps the words that pass', async () => {
     const lin = seedMember('Lin');
     seedGear(lin.id);
-    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'false';
+    delete process.env.ANTHROPIC_API_KEY;
     const facts = (await (await GET(asMember('Lin', 'Lin'))).json()).facts as FitFacts;
-    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'true';
+    process.env.ANTHROPIC_API_KEY = 'test-key';
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockCreate
       .mockResolvedValueOnce(reply({ headline: 'x'.repeat(71), body: 'y', reasons: [] }))
@@ -215,7 +213,7 @@ describe('GET /api/equipment/fit-verdict', () => {
   it('judges a frame the member does not own, with no current tension', async () => {
     const lin = seedMember('Lin');
     seedGear(lin.id);
-    process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT = 'false';
+    delete process.env.ANTHROPIC_API_KEY;
     const other = 'racket-yonex-astrox-88d-pro';
     const res = await GET(makeRequest('GET', `${BASE}?name=Lin&frame=${other}`, undefined, {
       Cookie: `member_session=${memberCookieValue('Lin')}`,

@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The fit page and racket pages are permanent, and fit answers can be cleared again (2026-10-19)
+
+`NEXT_PUBLIC_FLAG_GEAR_PAGES` and `NEXT_PUBLIC_FLAG_FIT_VERDICT` retired with their ON branches, after the racket-fit review read `picks.engagedMembers` at 2. The old fit sheet (`GearFitSheet`) and its tests are gone, "Your fit" and a racket's name always open their pages, and the verdict route words the facts whenever an API key is configured. The sheet was also the only thing that could clear a fit answer, which the privacy policy promises and which nothing on screen had done since the pages went on in September, so "Your fit" gains a "Clear my fit answers" action (one confirm, every answer including the older arm question blanked in one write) and the policy now says "from that page" (both locales).
+
 ### Fewer member scans, and the club's ratings read once a minute (2026-10-19)
 
 The rest of the performance audit. Stats reads resolve the member they are asked about, and with groups off each was a case-insensitive scan of every member; a member asking about THEMSELVES is now one read by the id in their cookie (`lib/memberResolve.ts`, plus the copies in `members/me` and `stats/insight`), falling back to the scan whenever that read does not find them active under that name. The club bands no longer read every check-in ever stored on each request: `lib/latestRatings.ts` keeps everyone's latest for a minute against real Cosmos, cleared by a new check-in and by account deletion. A player's all-time games are filtered in the query instead of after reading every game (with a fallback to the full read if the query is refused), and a member's roster read fetches three fields instead of whole documents. Profile asks for `/api/members/me` once instead of twice. Not done, on purpose: keeping answers across tab switches, which `lib/sharedRead.ts` rules out because a refetch after a sign-up or payment must not see the answer from before it.

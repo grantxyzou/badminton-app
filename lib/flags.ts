@@ -22,8 +22,6 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
   | 'NEXT_PUBLIC_FLAG_RACKET_FIT'
-  | 'NEXT_PUBLIC_FLAG_GEAR_PAGES'
-  | 'NEXT_PUBLIC_FLAG_FIT_VERDICT'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
   | 'NEXT_PUBLIC_FLAG_STORE_CREDIT'
   | 'NEXT_PUBLIC_FLAG_USAGE_METRICS'
@@ -87,18 +85,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-10-23',
     note: 'Retiring this flag means deleting the OFF branch: recommendRackets, its seven scorers and lib/recommend.ts\'s stage-derived fallback (Phase 4 of the plan), plus the transitional English renderer lib/fitReasonText.ts once the client reads reason KEYS. Pull GEAR_RECOMMENDER forward at the same time — it will have no off branch left.',
   },
-  NEXT_PUBLIC_FLAG_GEAR_PAGES: {
-    description: 'Equipment redesign Turn 3: "Your fit" and a racket\'s name open full pages inside Stats → Equipment (the fit profile, 3a; the frame page, 3d) instead of sheets. Client-only: the pages write through the same /api/equipment/gear verbs.',
-    owner: 'grant',
-    plannedRemoval: '2026-10-19',
-    note: 'Retiring it means deleting the OFF branch: GearFitSheet and its doors in GearRegister and GearPickSheet (the flag-off register that also used the sheet retired on 2026-10-14, so this flag is its only remaining user), plus the `pagesOn` forks in GearRegister.',
-  },
-  NEXT_PUBLIC_FLAG_FIT_VERDICT: {
-    description: 'The fit verdict ("Your Air Force 79 is fighting you slightly") written by Claude from facts computed in lib/fitVerdict.ts. Read SERVER-side by /api/equipment/fit-verdict: off, the route returns the facts with no AI copy and the page shows the fixed wording for each state.',
-    owner: 'grant',
-    plannedRemoval: '2026-10-19',
-    note: 'On in production since 2026-09-14, on Grant\'s sign-off. The state is decided by lib/fitVerdict.ts, never by the model; with ANTHROPIC_API_KEY unset or a reply off the contract the page falls back to the fixed wording.',
-  },
   NEXT_PUBLIC_FLAG_LEDGER_MIRROR: {
     description:
       'Phase 2 of docs/plans/payments.md, stage 1: every charge and payment ALSO writes an append-only `ledger` entry beside the fields the app reads (Player.paid, owedAmount, StringingJob.paidAt stay the truth). Read SERVER-side by lib/ledgerMirror.ts; off, the mirror is a no-op and the backfill route 404s. Nothing visible changes either way.',
@@ -143,10 +129,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
     case 'NEXT_PUBLIC_FLAG_RACKET_FIT':
       return process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
-    case 'NEXT_PUBLIC_FLAG_GEAR_PAGES':
-      return process.env.NEXT_PUBLIC_FLAG_GEAR_PAGES;
-    case 'NEXT_PUBLIC_FLAG_FIT_VERDICT':
-      return process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT;
     case 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO':
       return process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
     case 'NEXT_PUBLIC_FLAG_STORE_CREDIT':

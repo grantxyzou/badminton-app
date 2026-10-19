@@ -1208,7 +1208,11 @@
          "privacy": "Your answers stay on your account. The group tally only ever sees the frame, never your arm history.",
          "saveError": "Couldn't save that. Tap to try again.",
          "loadError": "Couldn't load your verdict just now.",
-         "retry": "Try again"
+         "retry": "Try again",
+         "clearAll": "Clear my fit answers",
+         "clearConfirm": "This removes every answer above, including the sore-arm one. Your rackets and strings stay.",
+         "clearYes": "Clear them",
+         "clearNo": "Keep them"
        },
        "pickSheetFit": "Fit",
        "pickSheetPrefSummaryFit": "For {format} · {budget} · {goal}",
@@ -2018,7 +2022,7 @@
             "• **A push token**, if you turn on notifications, for that device. It identifies the device to Apple, Google, or your browser — not you.",
             "• **A problem report**, only when you tap \"Report a problem\": your message, your name if you add it, the screen you were on, and your internet address (used only to stop the form being flooded).",
             "• **How you use the app**: when you open it, which tab you look at, and when you sign in, sign up for or cancel a session, give kudos, request stringing, or turn notifications on or off. It's linked to your account, it stays in this app's own database, and the organiser sees it only as group totals (for example, \"18 members opened the app this week\") — never as a list of what one person did.",
-            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear any of it at any time from that sheet — it's also deleted with your account."
+            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear all of it at any time from that page — it's also deleted with your account."
           ]
         },
         {
