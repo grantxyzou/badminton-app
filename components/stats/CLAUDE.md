@@ -183,11 +183,16 @@ conditional.
     accent, grip, optional `pattern` / `shape`). It is presentation, so it stays
     off `CatalogItem`; an unknown id uses `DEFAULT_LOOK`.
 
-- **Your fit is a PAGE** (`NEXT_PUBLIC_FLAG_GEAR_PAGES`, Turn 3 `3a`): `FitProfilePage`,
+- **Your fit is a PAGE** (Turn 3 `3a`; its flag `NEXT_PUBLIC_FLAG_GEAR_PAGES` retired 2026-10-19): `FitProfilePage`,
   rendered IN PLACE by `GearRegister` (it owns the data), with the shell's
   chrome hidden through `components/stats/statsTakeover.ts` — hidden, not unmounted, or the
-  register holding the page's state would go with it. Flag off, the same doors
-  open `GearFitSheet`. Answers autosave through `gear.setPrefs`, QUEUED one
+  register holding the page's state would go with it. Every door opens it; the
+  old `GearFitSheet` was deleted with the flag. **The page is where every fit
+  answer is cleared** ("Clear my fit answers", one confirm, ONE write of nulls,
+  `fitArmComfort` included though the page never asks it): the privacy policy
+  promises it, the deleted sheet kept that promise with a Clear per answer, and
+  for the month the flag was on in production nothing on screen did.
+  Answers autosave through `gear.setPrefs`, QUEUED one
   after another (the PATCH is read-modify-write, so racing taps would each keep
   only their own field), shown optimistically and reverted with a retry on a
   refusal. New answers on `PlayerGear`: `fitLevelOverride`, `fitPlayStyle`
@@ -211,7 +216,8 @@ conditional.
     explains only when it did (the `sorenessMovedRange` rule).
   - **`GET /api/equipment/fit-verdict` is OWNER ONLY** — no admin-on-behalf,
     because the facts carry soreness; an admin cookie counts only as that admin.
-    With `NEXT_PUBLIC_FLAG_FIT_VERDICT` on, Claude words the decided facts
+    With an API key configured, Claude words the decided facts (its flag
+    `NEXT_PUBLIC_FLAG_FIT_VERDICT` retired 2026-10-19)
     (`lib/fitVerdictCopy.ts`): strict JSON, length caps, and NO DIGITS except
     inside the racket's own name. Off-contract means `copy: null` and the page's
     own strings, never a repair. Cached per member per frame in `insights`,
@@ -220,7 +226,7 @@ conditional.
   - The page keeps the previous verdict while re-asking (`useFitVerdict`), and
     re-asks the racket pick once answers have been still for 2.5 s — the
     register holds fit refetches while the page is open.
-- **A racket's page is `FrameDetailPage`** (same flag, Turn 3 `3d`). The
+- **A racket's page is `FrameDetailPage`** (Turn 3 `3d`). The
   register keeps a PAGE STACK (`GearPage[]`): a frame opens another frame, back
   pops, and opening Your fit returns to one already underneath rather than
   stacking a second. Its rules are `lib/frameDetail.ts`, pure: `specCells`
@@ -392,7 +398,10 @@ racket and never excluded what they owned).
   and member names are enumerable via `GET /api/members`, so the flag-on branch
   gates on a `member_session` cookie for that name or admin (same gate as
   `/api/stats/level`). Rate limiting stays first (security rule 4).
-- **The fit questionnaire is its own sheet — `GearFitSheet`** (racket-fit
+- **The fit questionnaire WAS its own sheet — `GearFitSheet`** (DELETED
+  2026-10-19 when `NEXT_PUBLIC_FLAG_GEAR_PAGES` retired; `FitProfilePage` asks the
+  questions now, so read what follows as the history of rules that page
+  inherits, not as a live component) (racket-fit
   Phase 1, 2026-09-08; spec `docs/superpowers/specs/2026-09-07-racket-fit-design.md`).
   Five optional answers on `PlayerGear` — `fitGoal`, `fitSwing`,
   `fitArmComfort`, `fitGrip`, `stringBudgetMaxCad` — plus `fitUpdatedAt`,
@@ -461,8 +470,8 @@ racket and never excluded what they owned).
     the change stays on screen; and a PARKED category is skipped only when it
     parked on `no_engine` — `needsFit`, `needsCheckIn` and a string with no
     frame are THIS member's state and un-park when their answers change.
-    **A fit-driven refetch is HELD while the fit sheet is open**
-    (`holdFitRefetch`, from `GearRegister`'s `openFit`): answered at a human
+    **A fit-driven refetch is HELD while the fit page is open**
+    (`holdFitRefetch`, from a `fit` entry on `GearRegister`'s page stack): answered at a human
     pace, five controls were eleven calls inside a minute against the 10/min
     limit, and the card is under the sheet anyway. Nothing about the bag is an
     effect dependency: keyed on it, adding the recommended racket re-scored

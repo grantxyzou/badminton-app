@@ -27,7 +27,7 @@ export interface SetupLineSheetProps {
   onAddSpare: () => void;
   /** "See it in 3D" — the racket's own look sheet (swaps with this one). */
   onViewLook?: (item: GearItem, title: string) => void;
-  /** The racket's own page (NEXT_PUBLIC_FLAG_GEAR_PAGES). Only a catalog racket has one. */
+  /** The racket's own page. Only a catalog racket has one. */
   onViewFrame?: (catalogId: string) => void;
   /** A hybrid's crosses string, to add or change: the add sheet in crosses mode. */
   onCrosses?: () => void;
