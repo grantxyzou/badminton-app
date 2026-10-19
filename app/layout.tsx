@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import IntlProvider from '@/components/intl/IntlProvider';
 import PreviewBanner from '@/components/PreviewBanner';
 import LaunchScreen from '@/components/launch/LaunchScreen';
 import { launchLoopCss } from '@/lib/launchMotion';
-import { APP_TIME_ZONE } from '@/i18n/request';
+import { APP_TIME_ZONE, DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/i18n/request';
 import { APP_NAME, APP_SHORT_NAME } from '@/lib/brand';
 import './globals.css';
 
@@ -160,9 +160,13 @@ export const viewport: Viewport = {
 // Constant, so built once per process rather than on every request.
 const LAUNCH_LOOP_CSS = launchLoopCss();
 
+/** Every supported locale, else the default — the provider is typed by `Locale`. */
+function asLocale(value: string): Locale {
+  return (SUPPORTED_LOCALES as readonly string[]).includes(value) ? (value as Locale) : DEFAULT_LOCALE;
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
-  const messages = await getMessages();
   // The splash renders outside NextIntlClientProvider, so its one string is
   // resolved here on the server.
   const tagline = (await getTranslations('signedOut'))('tagline');
@@ -225,9 +229,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="aurora-blob-2" />
           <div className="aurora-blob-3" />
         </div>
-        <NextIntlClientProvider locale={locale} messages={messages} timeZone={APP_TIME_ZONE}>
+        {/* No `messages` prop: a prop here is serialized into every page's no-store
+            HTML. The provider carries the strings in cached script chunks
+            instead — see components/intl/IntlProvider.tsx. */}
+        <IntlProvider locale={asLocale(locale)} timeZone={APP_TIME_ZONE}>
           {children}
-        </NextIntlClientProvider>
+        </IntlProvider>
       </body>
     </html>
   );

@@ -71,24 +71,28 @@ export async function resolveIdentity(
 ): Promise<ResolvedIdentity> {
   const membersContainer = getContainer('members');
 
-  let member: Member | null = null;
-  if (arg.memberId) {
-    const { resource } = await membersContainer.item(arg.memberId, arg.memberId).read<Member>();
-    member = resource ?? null;
-  } else if (arg.name) {
-    // STRINGEQUALS(..., true) = case-insensitive on real Cosmos; the mock store
-    // filters on the `@name` param (also case-insensitive).
-    const { resources } = await membersContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE STRINGEQUALS(c.name, @name, true)',
-        parameters: [{ name: '@name', value: arg.name }],
-      })
-      .fetchAll();
-    member = (resources[0] as Member | undefined) ?? null;
-  }
+  const readMember = async (): Promise<Member | null> => {
+    if (arg.memberId) {
+      const { resource } = await membersContainer.item(arg.memberId, arg.memberId).read<Member>();
+      return resource ?? null;
+    }
+    if (arg.name) {
+      // STRINGEQUALS(..., true) = case-insensitive on real Cosmos; the mock store
+      // filters on the `@name` param (also case-insensitive).
+      const { resources } = await membersContainer.items
+        .query({
+          query: 'SELECT * FROM c WHERE STRINGEQUALS(c.name, @name, true)',
+          parameters: [{ name: '@name', value: arg.name }],
+        })
+        .fetchAll();
+      return (resources[0] as Member | undefined) ?? null;
+    }
+    return null;
+  };
+  // Independent reads, so one round trip rather than two in a row.
+  const [member, aliasRows] = await Promise.all([readMember(), readAliases(groupScope(groupId))]);
 
   const baseName = (member?.name ?? arg.name ?? '').trim();
-  const aliasRows = await readAliases(groupScope(groupId));
   const names = baseName ? expandAliasNames(baseName, aliasRows) : new Set<string>();
 
   return { member, memberId: member?.id ?? null, names };

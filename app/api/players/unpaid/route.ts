@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { ownsNameOrAdmin } from '@/lib/auth';
+import { ownsNameOrAdmin, verifyMemberAuth } from '@/lib/auth';
 import { resolveIdentity } from '@/lib/playerIdentity';
 import { computeOwed } from '@/lib/owedBalance';
 import { stringingTotal } from '@/lib/stringingBilling';
@@ -60,7 +60,16 @@ export async function GET(req: NextRequest) {
 
   try {
     const scope = groupScope(resolveGroupId(req));
-    const identity = await resolveIdentity({ name }, scope.groupId);
+    // A member asking about THEMSELVES is resolved by the id their cookie
+    // carries: one point read instead of a case-insensitive scan of every
+    // member, on a route Home calls on every visit (performance audit,
+    // 2026-10-19). An admin asking about someone else still goes by name.
+    const session = verifyMemberAuth(req);
+    const self = session && session.name?.trim().toLowerCase() === name.toLowerCase() ? session.memberId : null;
+    const identity = await resolveIdentity(self ? { memberId: self, name } : { name }, scope.groupId);
+    // The name path always matched rows under the asked-for name; keep that
+    // when the member's stored name differs from it (a rename since sign-in).
+    identity.names.add(name.toLowerCase());
 
     // One owner for "what does this person owe" (lib/owedBalance.ts), shared
     // with the e-transfer matcher so a payment of exactly this total matches.
