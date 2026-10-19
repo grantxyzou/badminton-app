@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureKudos();
-    const subject = await resolveActiveSubject(resolveGroupId(req), name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
     /* `raterName` is selected here, which is a DELIBERATE change and the only
        place it is read back. `visibleNotes` is what makes it safe: it drops
        every kudos without a note, so a bare tag can never become attributable

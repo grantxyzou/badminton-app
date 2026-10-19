@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { ownsNameOrAdmin } from '@/lib/auth';
+import { ownsNameOrAdmin, verifyMemberAuth } from '@/lib/auth';
 import { drillPicksFor } from '@/lib/drills';
 import { drillDocId, readDone, weekKeyFor, type DrillCompletionDoc } from '@/lib/drillsDone';
 import { resolveActiveSubject } from '@/lib/memberResolve';
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subject = await resolveActiveSubject(resolveGroupId(req), name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
     const groupId = resolveGroupId(req);
     const [drills, rotationSeed] = await Promise.all([
       drillPicksFor(subject, groupId),

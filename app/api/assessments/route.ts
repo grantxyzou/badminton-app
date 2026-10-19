@@ -7,6 +7,7 @@ import { SKILLS, scoreAssessment, placePhase, type Rating } from '@/lib/assessme
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
 import { invalidateGroupCalibration } from '@/lib/levelStore';
+import { invalidateLatestRatings } from '@/lib/latestRatings';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +107,8 @@ export async function POST(req: NextRequest) {
     // A check-in is a self-seed for the level fold (lib/levelStore.ts). The
     // container is PERSON-scoped, so every group's memo is dropped.
     invalidateGroupCalibration();
+    // ...and a new latest rating for the club's bands (lib/latestRatings.ts).
+    invalidateLatestRatings();
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST assessments error:', error);
@@ -143,7 +146,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureAssessments();
-    const subject = await resolveActiveSubject(resolveGroupId(req), name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
     const { resources } = await getContainer('assessments')
       .items.query({
         query: 'SELECT * FROM c WHERE c.memberId = @memberId',

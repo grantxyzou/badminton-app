@@ -43,7 +43,13 @@ describe('read failures answer 503, not a lying 200', () => {
   it('GET /api/members', async () => {
     vi.doMock('@/lib/roster', async (importOriginal) => {
       const mod = await importOriginal<typeof import('@/lib/roster')>();
-      return { ...mod, rosterMembers: async () => { throw new Error('cosmos down'); } };
+      // A member reads the roster through rosterPublicRows (three fields), an
+      // admin through rosterMembers: both must fail the same way.
+      return {
+        ...mod,
+        rosterMembers: async () => { throw new Error('cosmos down'); },
+        rosterPublicRows: async () => { throw new Error('cosmos down'); },
+      };
     });
     const { GET } = await import('../app/api/members/route');
     const res = await GET(memberGet('http://localhost/api/members'));

@@ -231,7 +231,7 @@ export async function GET(req: NextRequest) {
     const caller = verifyMemberAuth(req);
     const admin = isAdminAuthed(req);
     if (!caller && !admin) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+    const memberId = await resolveActiveMemberId(resolveGroupId(req), name, verifyMemberAuth(req));
     if (!memberId) {
       return admin ? NextResponse.json({ gear: null }) : NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }

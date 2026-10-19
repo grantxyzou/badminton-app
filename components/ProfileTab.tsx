@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useLayoutEffect, useState } from 'react';
+import { sharedFetch } from '@/lib/sharedRead';
 import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
@@ -259,7 +260,11 @@ export default function ProfileTab({
     // Previously these were chained (members/me -> players) under one catch, so
     // a transient players rejection wiped a perfectly good pinIsSet=true,
     // mislabeling the PIN row (audit silent-failure cluster).
-    fetch(`${BASE}/api/members/me?name=${encodeURIComponent(identity.name)}`, { cache: 'no-store' })
+    // `sharedFetch`: the Stats-privacy hook asks for this same path as Profile
+    // mounts, and one request in flight serves both (performance audit,
+    // 2026-10-19). It shares only while the request is open, so a refetch
+    // after a PIN change still goes to the server.
+    sharedFetch(`/api/members/me?name=${encodeURIComponent(identity.name)}`)
       .then(async (r) => {
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { ownsNameOrAdmin } from '@/lib/auth';
+import { ownsNameOrAdmin, verifyMemberAuth } from '@/lib/auth';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import { resolveGroupId } from '@/lib/groupContext';
 import { resolveActiveSubject } from '@/lib/memberResolve';
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subject = await resolveActiveSubject(resolveGroupId(req), name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
     const level = await getCanonicalLevel(subject, resolveGroupId(req));
     return NextResponse.json({ level });
   } catch (error) {

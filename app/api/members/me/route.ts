@@ -89,7 +89,20 @@ export async function GET(req: NextRequest) {
     // the role is the membership's. Flag off: the name scan it always was.
     const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
     const groupMemberId = groupsOn ? await resolveActiveMemberId(groupId, name) : null;
-    const probe = groupsOn
+    // Flag off, a member asking about THEMSELVES is read by the id the gate
+    // already verified (it re-read that Member and its name) instead of a
+    // case-insensitive scan of every member (performance audit, 2026-10-19).
+    // Anyone asking about another name — only an admin can — still scans.
+    const selfId =
+      !groupsOn && gate.member && gate.member.name.trim().toLowerCase() === name.toLowerCase()
+        ? gate.member.memberId
+        : null;
+    const probe = selfId
+      ? {
+          query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',
+          parameters: [{ name: '@id', value: selfId }],
+        }
+      : groupsOn
       ? groupMemberId
         ? {
             query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',

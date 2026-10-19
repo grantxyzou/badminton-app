@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
       }
 
       await ensureCatalogSeeded();
-      const subject = await resolveActiveSubject(resolveGroupId(req), name);
+      const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
       const { resources: assessments } = await getContainer('assessments')
         .items.query({
           query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c WHERE c.memberId = @memberId',
@@ -374,7 +374,7 @@ export async function GET(req: NextRequest) {
     // nothing from the private CanonicalLevel leaks through this public route.
     let stage: number | undefined;
     if (name) {
-      const subject = await resolveActiveSubject(resolveGroupId(req), name);
+      const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
       const canonical = await getCanonicalLevel(subject, resolveGroupId(req));
       stage = typeof canonical.stage === 'number' ? canonical.stage : undefined;
     }
