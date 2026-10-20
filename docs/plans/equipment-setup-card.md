@@ -97,6 +97,29 @@ flag's retirement.
   circles' caption is gone; the overgrip switch says what it means ("I wrap two
   overgrips on it" — the answer is stored, nothing reads it yet); the counter
   reads "n of 5 answered" with five dots.
+- **2026-10-20 — the overgrip question left Your fit** (Grant, on the canvas:
+  "b", of "make the racket pick read it, or drop it until something does"). It
+  was stored and read by no engine, so asking it was a question with no answer
+  behind it, and the grip question already asks the size your hand wants. The
+  field stays on `PlayerGear` (additive schema; a rollback still reads it) and
+  "Clear my fit answers" still blanks a stored one.
+- **2026-10-20 — "Mostly you play" is five court tiles** (Grant: "does it have
+  to be a pill? … Double, Singles, Mixed (front/back court), and all around").
+  Each tile is the court from above with the member as the green dot. Mixed
+  splits into `mixed_front` / `mixed_back` (additive `FitPlayStyle` values; the
+  route accepts the old `mixed`, the page never writes it and counts it as
+  unasked, so a member who answered "Mixed" is asked which side). Every mixed
+  answer and All-around map to `both` exactly as `mixed` / `any` did — the
+  side of the court is stored and not yet read by the racket engine, which is
+  the obvious next use (front court wants head-light, back court head-heavy).
+- **2026-10-20 — "Your kudos" page in Play** (Stats canvas board "Play › Your
+  kudos (all of them)"). `GET /api/kudos` gained additive `months` and `people`
+  (`kudosByMonth`, `distinctGivers` in `lib/kudos.ts`). A bare tag reaches the
+  page only as a COUNT in its month — no date and no order inside the month,
+  because either would narrow an anonymous tag to the handful of people played
+  with that night; the canvas drew a dated row per tag, and this is the one
+  place the build departs from it. The badge versions on the canvas were left
+  out on purpose (Grant: "leave out the badge").
 
 ## Shape
 

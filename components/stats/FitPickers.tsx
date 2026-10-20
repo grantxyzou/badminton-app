@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { FIT_GRIPS, FIT_SORENESS, FIT_SWINGS, type FitGrip, type FitSoreness, type FitSwing } from '@/lib/types';
+import { FIT_GRIPS, FIT_PLAY_STYLE_CHOICES, FIT_SORENESS, FIT_SWINGS, type FitGrip, type FitPlayStyle, type FitSoreness, type FitSwing } from '@/lib/types';
 
 /**
  * The fit page's three drawn questions (design "Equipment redesign", Turn 3,
@@ -58,6 +58,56 @@ export function SwingSpeedPicker({ value, onChange, disabled, label }: PickerPro
             </svg>
             <span className="fit-tile-label">{t(`swing_${s}`)}</span>
             <span className="fit-tile-desc">{t(`swingDesc_${s}`)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Where everyone stands, top-down: our half on the left of the net (x 60),
+ *  the other side on the right. `you` is drawn in the accent, `mate` muted,
+ *  `them` faint. */
+const STANDS: Record<FitPlayStyle, { you: [number, number]; mate?: [number, number]; them: [number, number][] }> = {
+  doubles: { you: [28, 18], mate: [28, 38], them: [[88, 18], [88, 38]] },
+  singles: { you: [30, 28], them: [[90, 28]] },
+  mixed_front: { you: [50, 28], mate: [18, 28], them: [[70, 28], [102, 28]] },
+  mixed_back: { you: [18, 28], mate: [50, 28], them: [[70, 28], [102, 28]] },
+  // Never offered (see FIT_PLAY_STYLE_CHOICES); here so the record is total.
+  mixed: { you: [30, 28], them: [] },
+  any: { you: [30, 28], them: [] },
+};
+
+/**
+ * "Mostly you play" as five tiles, each a court from above with you on it
+ * (Grant, Stats canvas, 2026-10-20: "does it have to be a pill?"). Mixed is
+ * split by where you stand, front or back, because that is the half of mixed
+ * that changes what a racket should do. All-around spans the row.
+ */
+export function PlayStylePicker({ value, onChange, disabled, label }: PickerProps<FitPlayStyle>) {
+  const t = useTranslations('stats.gear.fitPage');
+  return (
+    <div className="fit-tiles fit-tiles--2" role="radiogroup" aria-label={label}>
+      {FIT_PLAY_STYLE_CHOICES.map((s) => {
+        const st = STANDS[s];
+        const wide = s === 'any';
+        return (
+          <button key={s} type="button" role="radio" aria-checked={value === s} className={`fit-tile${wide ? ' fit-tile--wide' : ''}`} disabled={disabled} onClick={() => onChange(s)}>
+            <svg className="fit-court-top" viewBox="0 0 120 56" aria-hidden="true">
+              <rect x="4" y="4" width="112" height="48" rx="2" className="fit-court-top-floor" />
+              {wide && <rect x="4" y="4" width="56" height="48" className="fit-court-top-half" />}
+              <path d="M4 9 H116 M4 47 H116 M46 4 V52 M74 4 V52" className="fit-court-top-line" />
+              {s === 'singles' && <path d="M4 9 H60 M4 47 H60" className="fit-court-top-singles" />}
+              <line x1="60" y1="1" x2="60" y2="55" className="fit-court-net" />
+              {wide && <path d="M16 16 C30 6, 50 10, 50 28 C50 46, 26 50, 16 40" className="fit-court-path" />}
+              {st.them.map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r="3.5" className="fit-dot-them" />)}
+              {st.mate && <circle cx={st.mate[0]} cy={st.mate[1]} r="4.5" className="fit-dot-mate" />}
+              <circle cx={st.you[0]} cy={st.you[1]} r="5" className="fit-dot-you" />
+            </svg>
+            <span className="fit-tile-text">
+              <span className="fit-tile-label">{t(`style_${s}`)}</span>
+              <span className="fit-tile-desc">{t(`styleDesc_${s}`)}</span>
+            </span>
           </button>
         );
       })}

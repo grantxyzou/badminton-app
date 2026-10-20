@@ -34,7 +34,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * with the POST that enforces it — the previous split is how the list and the
  * rule drifted apart.
  */
-export default function GiveKudosCard() {
+export default function GiveKudosCard({ onOpenAll }: { onOpenAll?: () => void } = {}) {
   const t = useTranslations('stats.kudos');
   const tStats = useTranslations('stats');
   const [attempt, setAttempt] = useState(0);
@@ -161,6 +161,15 @@ export default function GiveKudosCard() {
             <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('offline')}</p>
           )}
         </>
+      )}
+
+      {/* The door to every kudos received (Stats canvas, 2026-10-19). Signed
+          in only: the page reads the member's own kudos. */}
+      {onOpenAll && activeName && load !== 'needsSignIn' && (
+        <button type="button" className="setup-link kudos-all-link" onClick={onOpenAll}>
+          {t('allLink')}
+          <span className="material-icons" aria-hidden="true">chevron_right</span>
+        </button>
       )}
 
       <GiveKudosSheet

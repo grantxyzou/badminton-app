@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Stats canvas, third pass: Your kudos, play style as courts, no overgrips (2026-10-20)
+
+Play has a "Your kudos" page, opened from "All your kudos" on the Send kudos card: how many kudos and from how many people, a bar per tag with your most-noticed one, then every month — signed notes with their dates, and tags on their own as counts with no date and no name. Your fit asks "Mostly you play" as five court tiles (Doubles, Singles, Mixed · front, Mixed · back, All-around) with you as the green dot; an older plain "Mixed" answer is asked again, and the engines still read every mixed answer and All-around as singles and doubles alike. The "I wrap two overgrips on it" switch is gone: the answer was saved and nothing used it, and "Clear my fit answers" still clears a stored one. `docs/plans/equipment-setup-card.md`.
+
 ### Stats canvas, second pass: registers, the fit page, the pick sheet (2026-10-19)
 
 Stats now runs You · Equipment · Play · Learn. On Equipment: "Add a spare racket" is a footer link beside "Your fit" until a spare exists; "Racket to try next" draws a bigger frame with the name as the door and the price row under the description; the pick sheet reads brand → name → typical price, keeps each alternative's price difference beside its price, has a "Where to buy · {brand} site" link under the action and smaller thumbs, and drops the "not a verdict" footnote; the String tension card's three level lines are reworded in the app's voice and spaced properly. Your fit asks swing speed as how far your clear goes (Gentle / Medium / Hard, with a court per tile), marks G5 as the standard grip, says what the overgrip switch means, and counts "n of 5 answered". The engines read the same values as before. `docs/plans/equipment-setup-card.md`.

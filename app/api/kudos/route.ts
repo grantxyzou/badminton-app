@@ -5,7 +5,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, verifyMemberAuth, ownsNameOrAdmin } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { aggregateKudos, isKudosTag, normalizeNote, isoWeekKey, visibleNotes, type KudosDoc } from '@/lib/kudos';
+import { aggregateKudos, distinctGivers, isKudosTag, kudosByMonth, normalizeNote, isoWeekKey, visibleNotes, type KudosDoc } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { playedTogetherIn, playedTogetherRecently } from '@/lib/kudosEligibility';
@@ -159,7 +159,14 @@ export async function GET(req: NextRequest) {
     });
     // JS-filtered by recipient too, for mock/real parity.
     const mine = resources.filter((d) => d.recipientMemberId === subject.memberId);
-    return NextResponse.json({ kudos: aggregateKudos(mine), notes: visibleNotes(mine) });
+    // `months` and `people` feed the "Your kudos" page (additive): a bare tag
+    // reaches it only as a count in its month, never with a date or a name.
+    return NextResponse.json({
+      kudos: aggregateKudos(mine),
+      notes: visibleNotes(mine),
+      months: kudosByMonth(mine),
+      people: distinctGivers(mine),
+    });
   } catch (error) {
     console.error('GET kudos error:', error);
     return NextResponse.json({ error: 'load_failed' }, { status: 500 });

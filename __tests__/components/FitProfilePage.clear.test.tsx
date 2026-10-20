@@ -60,17 +60,51 @@ describe('FitProfilePage — the questions as the Stats canvas put them (2026-10
     await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitSwing: 'fast' }));
   });
 
-  it('marks G5 as the standard grip, says what the overgrip switch means, and counts answers', async () => {
+  it('marks G5 as the standard grip, no longer asks about overgrips, and counts answers', async () => {
     renderPage({ ...base, fitGrip: 'G5', fitSwing: 'medium' } as PlayerGear);
     expect(await screen.findByText('Standard')).toBeTruthy();
     const g5 = screen.getByRole('radio', { name: /G5/ });
     expect(g5.textContent).toContain('Standard');
     expect(screen.getByRole('radio', { name: /G4/ }).textContent).not.toContain('Standard');
-    expect(screen.getByText('I wrap two overgrips on it')).toBeTruthy();
-    expect(screen.getByText(/a little thicker than the size above/)).toBeTruthy();
+    // Asked, stored and read by nothing: the question left (2026-10-20).
+    expect(screen.queryByText(/overgrip/i)).toBeNull();
     // Two of five answered (grip, swing): the count says so in words.
     expect(screen.getByText('2 of 5 answered')).toBeTruthy();
     expect(screen.queryByText(/Circles are the handle/)).toBeNull();
+  });
+});
+
+describe('FitProfilePage — "Mostly you play" as court tiles (2026-10-20)', () => {
+  beforeEach(() => {
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+      ok: true, status: 200,
+      json: async () => ({ facts: { state: 'insufficient', answered: 0, frame: null, currentTensionLbs: null, tensionRange: null, sorenessMovedRange: false, goal: null, prospective: false, reasons: [] }, copy: null, checkInLevel: null }),
+    } as Response)) as unknown as typeof fetch);
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it('offers five tiles, mixed split by front and back court, and says which dot is you', async () => {
+    renderPage(base);
+    const group = await screen.findByRole('radiogroup', { name: 'Mostly you play' });
+    const labels = within(group).getAllByRole('radio').map((r) => r.querySelector('.fit-tile-label')?.textContent);
+    expect(labels).toEqual(['Doubles', 'Singles', 'Mixed · front', 'Mixed · back', 'All-around']);
+    expect(screen.getByText('The green dot is you.')).toBeTruthy();
+  });
+
+  it('stores the side of the court, and every mixed answer reads as both formats', async () => {
+    const setPrefs = renderPage(base);
+    const group = await screen.findByRole('radiogroup', { name: 'Mostly you play' });
+    fireEvent.click(within(group).getByRole('radio', { name: /Mixed · front/ }));
+    await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitPlayStyle: 'mixed_front', playFormat: 'both' }));
+    fireEvent.click(within(group).getByRole('radio', { name: /Singles/ }));
+    await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitPlayStyle: 'singles', playFormat: 'singles' }));
+  });
+
+  it('a bare "mixed" from before the split lights no tile and is asked again', async () => {
+    renderPage({ ...base, fitPlayStyle: 'mixed' } as PlayerGear);
+    const group = await screen.findByRole('radiogroup', { name: 'Mostly you play' });
+    expect(within(group).getAllByRole('radio').some((r) => r.getAttribute('aria-checked') === 'true')).toBe(false);
   });
 });
 

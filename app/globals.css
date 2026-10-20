@@ -6359,6 +6359,7 @@ a.setup-price-row:active { background: var(--press-bg); }
 .fit-tiles { display: grid; gap: var(--space-3); }
 .fit-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .fit-tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fit-tiles--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fit-tile {
   display: flex;
   flex-direction: column;
@@ -6401,6 +6402,40 @@ a.setup-price-row:active { background: var(--press-bg); }
 .fit-court-shuttle circle { fill: currentColor; }
 .fit-court-label { font-family: var(--font-sans); font-size: 7px; fill: var(--text-muted); }
 
+/* "Your kudos" (Play › All your kudos): the tally as bars, then each month's
+   signed notes and its bare tags as counts. */
+.kudos-all-link { display: inline-flex; align-items: center; gap: var(--space-05); align-self: flex-start; }
+.kudos-all-link .material-icons { font-size: var(--icon-sm); }
+.kudos-tally { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-3); }
+.kudos-tally-row { display: flex; align-items: center; gap: var(--space-3); }
+.kudos-tag { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-05) var(--space-3); border-radius: var(--radius-pill); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+.kudos-tag .material-icons { font-size: var(--icon-xs); }
+.kudos-bar { flex: 1; height: 6px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-primary) 8%, transparent); overflow: hidden; }
+.kudos-bar > span { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--accent); }
+.kudos-tally-n { min-width: 18px; text-align: right; font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
+.kudos-month { display: flex; flex-direction: column; gap: var(--space-3); }
+.kudos-month-label { margin: var(--space-1) 0 0; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.kudos-note { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--inner-card-bg); border: 1px solid var(--inner-card-border); }
+.kudos-note-meta { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); font-size: var(--fs-sm); color: var(--text-muted); }
+.kudos-bare { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); background: var(--inner-card-bg); }
+.kudos-bare-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* The play-style tiles: the court from above, you on it. "You" is always the
+   accent (the caption says "the green dot is you"), whatever the selection;
+   the selection takes the tile, as on every other fit tile. */
+.fit-court-top { display: block; width: 100%; height: 48px; color: var(--text-muted); }
+.fit-tile[aria-checked="true"] .fit-court-top { color: var(--accent); }
+.fit-court-top-floor { fill: var(--inner-card-bg); stroke: var(--divider); stroke-width: 1; }
+.fit-court-top-half { fill: var(--highlight-green); }
+.fit-court-top-line { fill: none; stroke: var(--divider); stroke-width: 0.8; }
+.fit-court-top-singles { fill: none; stroke: currentColor; stroke-width: 1.2; }
+.fit-dot-you { fill: var(--accent); stroke: var(--page-bg); stroke-width: 1.5; }
+.fit-dot-mate { fill: var(--text-muted); stroke: var(--page-bg); stroke-width: 1.5; }
+.fit-dot-them { fill: var(--divider); }
+.fit-tile-text { display: flex; flex-direction: column; gap: var(--space-05); }
+.fit-tile--wide { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: var(--space-4); }
+.fit-tile--wide .fit-court-top { flex: 0 0 136px; width: 136px; }
+
 /* The grip tile: the handle end-on, to scale. flex: 0 0 auto and
    border-box are load-bearing — without them the circles squash to ovals
    and the 2px border inflates the small sizes. */
@@ -6435,21 +6470,6 @@ a.setup-price-row:active { background: var(--press-bg); }
 .fit-grip-circle--G5 { width: 32px; height: 32px; }
 .fit-grip-circle--G6 { width: 26px; height: 26px; }
 .fit-tile[aria-checked="true"] .fit-grip-circle { border-color: var(--accent); background: var(--highlight-green); }
-
-.fit-overgrips {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-.fit-overgrips-text { display: flex; flex-direction: column; gap: var(--space-05); min-width: 0; }
-.fit-overgrips-label { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 
 .fit-sore-list { display: flex; flex-direction: column; gap: var(--space-2); }
 .fit-sore-option {

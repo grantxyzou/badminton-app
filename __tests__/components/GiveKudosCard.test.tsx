@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import GiveKudosCard from '../../components/stats/GiveKudosCard';
 import { OnlineProvider } from '../../lib/useOnline';
@@ -39,11 +39,11 @@ function mockEligible(impl: () => Promise<Response>) {
   );
 }
 
-function wrap() {
+function wrap(onOpenAll?: () => void) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <OnlineProvider>
-        <GiveKudosCard />
+        <GiveKudosCard onOpenAll={onOpenAll} />
       </OnlineProvider>
     </NextIntlClientProvider>,
   );
@@ -84,6 +84,14 @@ describe('GiveKudosCard — always present', () => {
     // (the loading rule — CLAUDE.md, loading-canary).
     expect(document.querySelector('.glass-card .shimmer-line')).toBeTruthy();
     expect(screen.queryByText(/loading/i)).toBeNull();
+  });
+
+  it('opens "All your kudos" from the card, even with nobody to thank yet', async () => {
+    mockEligible(() => json({ names: [] }));
+    const onOpenAll = vi.fn();
+    wrap(onOpenAll);
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(K.allLink) }));
+    expect(onOpenAll).toHaveBeenCalled();
   });
 
   it('offers the action when there ARE co-players', async () => {

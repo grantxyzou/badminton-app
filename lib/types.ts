@@ -743,8 +743,11 @@ export type FitSwing = 'slow' | 'medium' | 'fast';
 export type FitArmComfort = 'fine' | 'sometimes_sore' | 'often_sore';
 export type FitGrip = 'G3' | 'G4' | 'G5' | 'G6';
 /** "Mostly you play" (fit profile, Turn 3). Doubles / singles also set
- *  `playFormat`; mixed and "whatever's free" leave the engines on `both`. */
-export type FitPlayStyle = 'doubles' | 'singles' | 'mixed' | 'any';
+ *  `playFormat`; the mixed answers and "all-around" leave the engines on
+ *  `both`. Mixed splits into front and back court (Grant, Stats canvas,
+ *  2026-10-20); a bare `mixed` from before the split is still read, never
+ *  written, and the page asks it again. */
+export type FitPlayStyle = 'doubles' | 'singles' | 'mixed' | 'mixed_front' | 'mixed_back' | 'any';
 /** "Anything sore?" — HEALTH-ADJACENT, same handling as `fitArmComfort`. */
 export type FitSoreness = 'elbow' | 'shoulder' | 'wrist' | 'none';
 /** The fit profile's level scale. Pre-filled from the check-in level; stored
@@ -754,7 +757,10 @@ export const FIT_GOALS: readonly FitGoal[] = ['happy', 'more_power', 'more_contr
 export const FIT_SWINGS: readonly FitSwing[] = ['slow', 'medium', 'fast'];
 export const FIT_ARM_COMFORTS: readonly FitArmComfort[] = ['fine', 'sometimes_sore', 'often_sore'];
 export const FIT_GRIPS: readonly FitGrip[] = ['G3', 'G4', 'G5', 'G6'];
-export const FIT_PLAY_STYLES: readonly FitPlayStyle[] = ['doubles', 'singles', 'mixed', 'any'];
+/** Every value the gear route accepts, the legacy `mixed` included. */
+export const FIT_PLAY_STYLES: readonly FitPlayStyle[] = ['doubles', 'singles', 'mixed', 'mixed_front', 'mixed_back', 'any'];
+/** What the page asks, in order. */
+export const FIT_PLAY_STYLE_CHOICES: readonly FitPlayStyle[] = ['doubles', 'singles', 'mixed_front', 'mixed_back', 'any'];
 export const FIT_SORENESS: readonly FitSoreness[] = ['elbow', 'shoulder', 'wrist', 'none'];
 export const FIT_LEVEL_OPTIONS: readonly FitLevelOption[] = ['2.0', '2.5', '2.8', '3.2', '3.5+'];
 

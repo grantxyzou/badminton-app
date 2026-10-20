@@ -145,6 +145,56 @@ export function aggregateKudos(docs: { tag: string }[]): KudosCount[] {
   return KUDOS_TAGS.filter((t) => (counts.get(t) ?? 0) > 0).map((tag) => ({ tag, count: counts.get(tag) as number }));
 }
 
+/** One calendar month of kudos, as the recipient's "Your kudos" page shows it. */
+export interface KudosMonth {
+  /** `YYYY-MM`, in the club's time zone. */
+  month: string;
+  /** Signed notes, newest first — `visibleNotes`, so the only path with a name. */
+  notes: KudosNote[];
+  /** Bare tags (no note) counted per tag. No date and no order inside the
+   *  month: a day, or a place between two dated notes, would narrow an
+   *  anonymous tag to the few people played with that night. */
+  tags: KudosCount[];
+}
+
+/** Display zone for the month key; the app pins session times to Vancouver. */
+const KUDOS_TZ = 'America/Vancouver';
+
+function monthKey(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: KUDOS_TZ, year: 'numeric', month: '2-digit' }).formatToParts(d);
+  const y = parts.find((p) => p.type === 'year')?.value;
+  const m = parts.find((p) => p.type === 'month')?.value;
+  return y && m ? `${y}-${m}` : null;
+}
+
+/**
+ * Every kudos by month, newest month first (Grant, Stats canvas, 2026-10-19:
+ * "show me what all the kudos looks like"). A noted kudos keeps its date and
+ * its signature; a bare tag becomes a count in its month and nothing more.
+ */
+export function kudosByMonth(docs: KudosDoc[]): KudosMonth[] {
+  const byMonth = new Map<string, KudosDoc[]>();
+  for (const d of docs) {
+    if (!d || !isKudosTag(d.tag) || typeof d.createdAt !== 'string') continue;
+    const key = monthKey(d.createdAt);
+    if (!key) continue;
+    byMonth.set(key, [...(byMonth.get(key) ?? []), d]);
+  }
+  return [...byMonth.keys()].sort().reverse().map((month) => {
+    const inMonth = byMonth.get(month) as KudosDoc[];
+    const bare = inMonth.filter((d) => !(typeof d.note === 'string' && d.note.trim().length > 0));
+    return { month, notes: visibleNotes(inMonth), tags: aggregateKudos(bare) };
+  });
+}
+
+/** How many different people gave these kudos. A count, never a list; the
+ *  rater's name is the only key the recipient's read selects. */
+export function distinctGivers(docs: { raterName?: string }[]): number {
+  return new Set(docs.map((d) => d?.raterName?.trim().toLowerCase()).filter(Boolean)).size;
+}
+
 /**
  * Tag → Material Symbols glyph.
  *
