@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { GET } from '../app/api/stats/club/bands/route';
 import { resetMockStore, setupAdminPin, seedMember, makeRequest, memberCookieValue, getStore } from './helpers';
-import { median, bandFor, computeClubBands, MIN_COHORT } from '../lib/clubBands';
+import { median, bandFor, computeClubBands, quantile, MIN_COHORT } from '../lib/clubBands';
 import { SKILLS, type Rating } from '../lib/assessment';
 
 const URL_BASE = 'http://localhost:3000/api/stats/club/bands';
@@ -310,5 +310,26 @@ describe('GET /api/stats/club/bands', () => {
     const res = await GET(getAs('Lin'));
     const body = await res.json();
     expect(body.skills[0].band).toBe('top');
+  });
+});
+
+describe('dimensionSpread (Where you sit › By side, 2026-10-20)', () => {
+  it('interpolates quantiles between closest ranks', () => {
+    expect(quantile([1, 2, 3, 4, 5], 0.25)).toBe(2);
+    expect(quantile([1, 2, 3, 4], 0.75)).toBeCloseTo(3.25, 10);
+    expect(quantile([], 0.5)).toBeNull();
+  });
+
+  it('gives each side the middle half of the club, under the cohort rule', () => {
+    const others = [1, 2, 3, 4, 5].map((v) => [{ skillKey: 'drops', value: v }]);
+    const r = computeClubBands({ viewer: [{ skillKey: 'drops', value: 3 }], others, minCohort: 5 });
+    expect(r.dimensionSpread.technical).toEqual({ p25: 2, p75: 4 });
+    // Nobody rated a physical skill: no spread, never a guess.
+    expect(r.dimensionSpread.physical).toBeNull();
+  });
+
+  it('gives no spread below the cohort minimum', () => {
+    const r = computeClubBands({ viewer: [], others: [[{ skillKey: 'drops', value: 3 }]], minCohort: 5 });
+    expect(r.dimensionSpread).toEqual({ technical: null, physical: null, mental: null });
   });
 });

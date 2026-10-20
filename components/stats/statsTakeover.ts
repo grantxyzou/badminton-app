@@ -22,3 +22,15 @@ export function useStatsTakeover(on: boolean): void {
     return () => set(false);
   }, [on, set]);
 }
+
+/**
+ * Switch the Stats register from inside one (Stats canvas, 2026-10-20: "Work
+ * on next" ends in "Open this week's focus in Learn"). The shell owns the
+ * switch; a card asks it, the same way a page asks it to step aside. Outside a
+ * shell (a card rendered on its own) the request is a no-op.
+ */
+export const StatsRegisterContext = createContext<((view: 'you' | 'play' | 'learn' | 'gear') => void) | null>(null);
+
+export function useOpenStatsRegister() {
+  return useContext(StatsRegisterContext);
+}

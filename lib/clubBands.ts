@@ -27,7 +27,16 @@ export interface ClubBandsResult {
   cohort: number;
   minCohort: number;
   dimensionMedians: Record<Dimension, number | null>;
+  /** The middle half of the club per dimension (25th–75th percentile), under
+   *  the same per-dimension cohort rule as the median. Additive, 2026-10-20:
+   *  "Where you sit" draws it as the band the member's dot sits against. */
+  dimensionSpread: Record<Dimension, DimensionSpread | null>;
   skills: { skillKey: string; band: Band }[];
+}
+
+export interface DimensionSpread {
+  p25: number;
+  p75: number;
 }
 
 const DIMENSIONS: Dimension[] = ['technical', 'physical', 'mental'];
@@ -38,6 +47,20 @@ export function median(values: number[]): number | null {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * The q-th quantile (0–1) by linear interpolation between closest ranks; null
+ * when empty. A spread, not a position: it says where the club's middle half
+ * sits, never who sits where.
+ */
+export function quantile(values: number[], q: number): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
 }
 
 /**
@@ -64,6 +87,8 @@ export function bandFor(value: number, others: number[]): Band {
   return 'middle';
 }
 
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
 function ratingMap(ratings: Rating[]): Map<string, number> {
   const m = new Map<string, number>();
   for (const r of ratings) {
@@ -85,7 +110,7 @@ export interface ComputeClubBandsInput {
 /**
  * Bands per skill plus the club's median per dimension.
  *
- * `dimensionMedians` is the CLUB SPREAD and is returned whenever the cohort is
+ * `dimensionMedians` (and `dimensionSpread`, its middle half) is the CLUB SPREAD and is returned whenever the cohort is
  * large enough — including when the viewer has opted out of comparison. That is
  * deliberate and not an oversight: opting out hides the member's own band and
  * nothing else. Taking the spread away too would make a privacy choice cost
@@ -99,14 +124,16 @@ export function computeClubBands({
   const cohort = others.length;
   const empty: Record<Dimension, number | null> = { technical: null, physical: null, mental: null };
 
+  const noSpread: Record<Dimension, DimensionSpread | null> = { technical: null, physical: null, mental: null };
   if (cohort < minCohort) {
-    return { cohort, minCohort, dimensionMedians: empty, skills: [] };
+    return { cohort, minCohort, dimensionMedians: empty, dimensionSpread: noSpread, skills: [] };
   }
 
   const otherMaps = others.map(ratingMap);
   const viewerMap = ratingMap(viewer);
 
   const dimensionMedians = { ...empty };
+  const dimensionSpread = { ...noSpread };
   for (const dim of DIMENSIONS) {
     const scores = others
       .map((r) => scoreAssessment(r).dimensionScores[dim])
@@ -114,6 +141,9 @@ export function computeClubBands({
     // Per-dimension cohort is checked separately — a dimension only two people
     // have rated is as identifying as a skill only two people have rated.
     dimensionMedians[dim] = scores.length >= minCohort ? median(scores) : null;
+    dimensionSpread[dim] = scores.length >= minCohort
+      ? { p25: round1(quantile(scores, 0.25)!), p75: round1(quantile(scores, 0.75)!) }
+      : null;
   }
 
   const skills: { skillKey: string; band: Band }[] = [];
@@ -127,5 +157,5 @@ export function computeClubBands({
     skills.push({ skillKey: skill.key, band: bandFor(mine, theirs) });
   }
 
-  return { cohort, minCohort, dimensionMedians, skills };
+  return { cohort, minCohort, dimensionMedians, dimensionSpread, skills };
 }

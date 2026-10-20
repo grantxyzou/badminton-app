@@ -1391,7 +1391,12 @@
       "footnote": "根据你最近一次自评。可以在「我的」里<link>关掉</link>。",
       "private": "私密",
       "footnotePrivate": "你的位置是私密的。你的技能从未展示给其他球友。",
-      "error": "位置加载失败。"
+      "error": "位置加载失败。",
+      "subtitle": "你与俱乐部其他 {count} 人相比",
+      "bySide": "按方面",
+      "standOut": "突出的技能",
+      "spreadKey": "俱乐部中间一半 · 中位数",
+      "spreadAria": "{side} {value}。俱乐部中间一半在 {lo} 到 {hi} 之间，中位数 {median}。"
     },
     "overview": {
       "level": "水平",
@@ -1479,7 +1484,7 @@
     },
     "assess": {
       "locked": "<link>登录</link>后查看你的技术变化。",
-      "heroTitle": "你的球技变化",
+      "heroTitle": "你的技能",
       "checkIn": "自评",
       "rateSkills": "技能自评",
       "trendTitle": "你的水平变化",
@@ -1495,15 +1500,12 @@
       "now": "现在",
       "strengths": "强项",
       "workOn": "下一步提升",
-      "strengthsHint": "你评分最高的技能。",
-      "workOnHint": "“学习”会根据这些挑选练习。",
       "dotsOf": "5 分中的 {value} 分",
       "allSkills": "全部技能",
       "hideSkills": "收起",
       "notRated": "还没评分",
       "empty": "还没有数据。每周自评一次，记录你的进步。",
       "baseline": "已记录起点，打几场后再自评一次，看看变化。",
-      "medianLegend": "刻度线是群组中位数",
       "review": "查看",
       "stopHere": "就到这里，去查看",
       "startOver": "重新开始",
@@ -1549,12 +1551,21 @@
         "mental": "心理"
       },
       "phase": {
-        "foundation": "起步",
-        "exploration": "探索",
-        "switch": "转折点",
-        "commitment": "投入",
-        "advanced": "进阶"
-      }
+        "foundation": "初学",
+        "exploration": "提高",
+        "switch": "中级",
+        "commitment": "高级",
+        "advanced": "竞技"
+      },
+      "heroSubtitle": "共 {count} 次自评 · 最近一次 {date}",
+      "sidesTitle": "三个方面",
+      "sidesSince": "自 {date} 起的变化",
+      "listsLead": "这三项得分由你的 {count} 项技能组成。以下是最高和最低的三项。",
+      "openLearn": "在「学习」中打开本周重点",
+      "allSkillsCount": "全部 {count} 项技能",
+      "trendSince": "{arrow} {delta}，自 {date} 起",
+      "phaseNow": "你目前是<b>{phase}</b>，距离{next}还差 {gap}。",
+      "phaseTop": "你目前是<b>{phase}</b>，已是最高一档。"
     }
   },
   "players": {

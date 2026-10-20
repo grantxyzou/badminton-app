@@ -4,8 +4,8 @@ import { useTranslations } from 'next-intl';
 import type { Dimension } from '@/lib/assessment';
 
 /**
- * Three dimension bars — Technical / Physical / Mental — with optional club
- * median ticks. Replaces the 14-axis recharts radar.
+ * Three dimension bars — Technical / Physical / Mental — for "Your skills".
+ * Replaces the 14-axis recharts radar.
  *
  * Why bars beat the radar here:
  *   - The radar needed `recharts`, which was the single largest thing in the
@@ -14,15 +14,16 @@ import type { Dimension } from '@/lib/assessment';
  *   - recharts sets stroke and fill as SVG ATTRIBUTES, where `var()` cannot
  *     resolve, so the colours had to be hardcoded hex and re-read at runtime
  *     through a `MutationObserver` on `data-theme` just to survive a theme
- *     toggle. All of that goes away: these are CSS gradients on divs, so the
- *     tokens simply work, in both themes, with no JS.
+ *     toggle. These are CSS on divs, so the tokens simply work, in both themes.
  *   - A 14-axis radar of self-rated 1-5 values is close to unreadable at phone
  *     width; three bars answer "where am I strong" at a glance.
  *
- * The median ticks and their legend render ONLY when the club comparison is
- * revealed AND the cohort is large enough. There is no ghost tick and no
- * apology line explaining an absent comparison — an absent comparison should
- * look like bars, not like something broken.
+ * YOU AGAINST YOURSELF ONLY (Stats canvas, 2026-10-20). The club median ticks
+ * that used to sit on these bars moved to "Where you sit" (`SideSpread`), the
+ * one card that compares you with the club — and the one that is
+ * consent-gated, so every club figure now lives behind the same answer. Each
+ * row is a label, then the bar with its score and the change since the last
+ * check-in on the same line.
  */
 
 const ORDER: Dimension[] = ['technical', 'physical', 'mental'];
@@ -32,14 +33,11 @@ const ORDER: Dimension[] = ['technical', 'physical', 'mental'];
  * A literal here would be one value for both themes; light mode wants flatter,
  * quieter fills than dark.
  */
-const FILL: Record<Dimension, string> = {
+export const DIM_FILL: Record<Dimension, string> = {
   technical: 'var(--dim-fill-technical)',
   physical: 'var(--dim-fill-physical)',
   mental: 'var(--dim-fill-mental)',
 };
-
-/** Theme-aware tick colour — a dark tick in light mode, a light one in dark. */
-const TICK = 'color-mix(in srgb, var(--text-primary) 50%, transparent)';
 
 const MAX = 5;
 
@@ -49,123 +47,41 @@ export interface DimensionBarsProps {
   scores: Partial<Record<Dimension, number | null>>;
   /** Previous snapshot, for the per-row delta. Omit on a first check-in. */
   prevScores?: Partial<Record<Dimension, number | null>>;
-  /** Club medians. Ticks render only when a dimension has one AND `showTicks`. */
-  medians?: Partial<Record<Dimension, number | null>> | null;
-  /** False when comparison is off, unanswered, or the cohort is too small. */
-  showTicks?: boolean;
 }
 
-export default function DimensionBars({
-  scores,
-  prevScores,
-  medians,
-  showTicks = false,
-}: DimensionBarsProps) {
+export default function DimensionBars({ scores, prevScores }: DimensionBarsProps) {
   const t = useTranslations('stats.assess');
-
-  const anyTick =
-    showTicks && ORDER.some((d) => typeof medians?.[d] === 'number');
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <div className="dim-rows">
       {ORDER.map((dim) => {
         const value = scores[dim];
         const prev = prevScores?.[dim];
-        const median = showTicks ? medians?.[dim] : null;
-        const delta =
-          typeof value === 'number' && typeof prev === 'number' ? value - prev : null;
-
+        const delta = typeof value === 'number' && typeof prev === 'number' ? value - prev : null;
         return (
           <div key={dim}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                marginBottom: 'var(--space-2)',
-                gap: 'var(--space-2)',
-              }}
-            >
-              <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>
-                {t(`dim.${dim}`)}
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 'var(--fs-md)',
-                    fontWeight: 700,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {typeof value === 'number' ? value.toFixed(1) : '—'}
-                </span>
-                <Delta value={delta} />
-              </span>
-            </div>
-
-            <div
-              style={{
-                position: 'relative',
-                height: 8,
-                borderRadius: 'var(--radius-pill)',
-                background: 'var(--inner-card-bg)',
-              }}
-            >
-              {typeof value === 'number' && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: pct(value),
-                    background: FILL[dim],
-                    borderRadius: 'var(--radius-pill)',
-                    // Recipe 5 (Fill): a new check-in moves the bar rather than
-                    // redrawing it. A transition runs on CHANGE only, so first
-                    // paint still lands at full width on every register switch.
-                    transition: 'width var(--duration-slow) var(--ease-out-quart)',
-                  }}
-                />
-              )}
-              {typeof median === 'number' && (
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    left: pct(median),
-                    transition: 'left var(--duration-slow) var(--ease-out-quart)',
-                    top: -3,
-                    height: 14,
-                    width: 2,
-                    background: TICK,
-                  }}
-                />
-              )}
+            <span className="dim-row-label">{t(`dim.${dim}`)}</span>
+            <div className="dim-row-line">
+              <div className="dim-track">
+                {typeof value === 'number' && (
+                  <span
+                    className="dim-fill"
+                    style={{
+                      width: pct(value),
+                      background: DIM_FILL[dim],
+                      // Recipe 5 (Fill): a new check-in moves the bar rather than
+                      // redrawing it. A transition runs on CHANGE only, so first
+                      // paint still lands at full width on every register switch.
+                      transition: 'width var(--duration-slow) var(--ease-out-quart)',
+                    }}
+                  />
+                )}
+              </div>
+              <span className="dim-row-score">{typeof value === 'number' ? value.toFixed(1) : '—'}</span>
+              <span className="dim-row-delta"><Delta value={delta} /></span>
             </div>
           </div>
         );
       })}
-
-      {anyTick && (
-        <p
-          style={{
-            margin: '0',
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-2)',
-          }}
-        >
-          <span
-            aria-hidden="true"
-            style={{ width: 2, height: 11, background: TICK, display: 'inline-block' }}
-          />
-          {t('medianLegend')}
-        </p>
-      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup, within, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import SkillTrendCard from '../../components/stats/SkillTrendCard';
+import { StatsRegisterContext } from '../../components/stats/statsTakeover';
 import type { UseCheckIn } from '../../components/stats/useCheckIn';
 import enMessages from '../../messages/en.json';
 import { resetSharedReads } from '../../lib/sharedRead';
@@ -53,7 +54,31 @@ describe('Strengths / Work on next panels', () => {
     const low = within(workOn).getByRole('img', { name: '1 of 5' });
     expect(low.querySelectorAll('.skill-dot.is-on')).toHaveLength(1);
 
-    expect(within(strengths).getByText(enMessages.stats.assess.strengthsHint)).toBeTruthy();
-    expect(within(workOn).getByText(enMessages.stats.assess.workOnHint)).toBeTruthy();
+    // Standalone (no Stats shell) there is no register to open: no dead link.
+    expect(within(workOn).queryByText(enMessages.stats.assess.openLearn)).toBeNull();
+  });
+
+  it('ends Work on next with the way into Learn, inside the Stats shell', () => {
+    const openRegister = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <StatsRegisterContext.Provider value={openRegister}>
+          <SkillTrendCard checkIn={checkIn()} />
+        </StatsRegisterContext.Provider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: enMessages.stats.assess.openLearn }));
+    expect(openRegister).toHaveBeenCalledWith('learn');
+  });
+
+  it('heads the card with how many check-ins are behind it, and no club figure', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <SkillTrendCard checkIn={checkIn()} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText(enMessages.stats.assess.heroTitle)).toBeTruthy();
+    expect(screen.getByText(/From 1 check-in · last on/)).toBeTruthy();
+    expect(screen.queryByText(/median/i)).toBeNull();
   });
 });

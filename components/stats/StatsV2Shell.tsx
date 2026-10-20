@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
 import RegisterSwitch from '@/components/primitives/RegisterSwitch';
 import OverviewStrip from './OverviewStrip';
-import { StatsTakeoverContext } from './statsTakeover';
+import { StatsRegisterContext, StatsTakeoverContext } from './statsTakeover';
 import type { UseCheckIn } from './useCheckIn';
 
 /**
@@ -67,6 +67,7 @@ export default function StatsV2Shell({
 
   return (
     <StatsTakeoverContext.Provider value={setTakeover}>
+    <StatsRegisterContext.Provider value={setView}>
     <div className="space-y-5 w-full">
       {/* PageHeader must stay a direct child of the tall scroll root or its
           `position: sticky` un-sticks. Subhead is pinned tight to the title
@@ -94,6 +95,7 @@ export default function StatsV2Shell({
         {slots[view]}
       </div>
     </div>
+    </StatsRegisterContext.Provider>
     </StatsTakeoverContext.Provider>
   );
 }

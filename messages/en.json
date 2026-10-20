@@ -1394,6 +1394,11 @@
       "offline": "You're offline — this needs a connection."
     },
     "club": {
+      "spreadAria": "{side} {value}. The club’s middle half is {lo} to {hi}, median {median}.",
+      "spreadKey": "Middle half of the club · median",
+      "standOut": "Skills that stand out",
+      "bySide": "By side",
+      "subtitle": "You against {count, plural, one {# other} other {# others}} in the club",
       "locked": "<link>Sign in</link> to see where you sit in the group.",
       "title": "Where you sit",
       "inGroup": "in the group",
@@ -1490,8 +1495,17 @@
       "aiBadge": "AI"
     },
     "assess": {
+      "phaseTop": "You're <b>{phase}</b>, the top band.",
+      "phaseNow": "You're <b>{phase}</b>, {gap} from {next}.",
+      "trendSince": "{arrow} {delta} since {date}",
+      "allSkillsCount": "All {count} skills",
+      "openLearn": "Open this week's focus in Learn",
+      "listsLead": "Your {count} skills make up those three scores. Here are your top and bottom three.",
+      "sidesSince": "change since {date}",
+      "sidesTitle": "Three sides of your game",
+      "heroSubtitle": "From {count, plural, one {# check-in} other {# check-ins}} · last on {date}",
       "locked": "<link>Sign in</link> to see how your skills are moving.",
-      "heroTitle": "Your game over time",
+      "heroTitle": "Your skills",
       "checkIn": "Check in",
       "rateSkills": "Rate your skills",
       "trendTitle": "Your level over time",
@@ -1507,15 +1521,12 @@
       "now": "Now",
       "strengths": "Strengths",
       "workOn": "Work on next",
-      "strengthsHint": "Your best-rated skills.",
-      "workOnHint": "Learn picks drills from these.",
       "dotsOf": "{value} of 5",
       "allSkills": "All skills",
       "hideSkills": "Hide skills",
       "notRated": "Not rated yet",
       "empty": "No data yet — rate your skills weekly to keep track of your progress.",
       "baseline": "Baseline saved — check in again after a few sessions to watch it move.",
-      "medianLegend": "tick marks are the group median",
       "review": "Review",
       "stopHere": "Stop here and review",
       "startOver": "Start over",
@@ -1561,11 +1572,11 @@
         "mental": "Mental"
       },
       "phase": {
-        "foundation": "Foundation",
-        "exploration": "Exploration",
-        "switch": "The Switch",
-        "commitment": "Commitment",
-        "advanced": "Advanced"
+        "foundation": "Beginner",
+        "exploration": "Improver",
+        "switch": "Intermediate",
+        "commitment": "Advanced",
+        "advanced": "Competitive"
       }
     }
   },
