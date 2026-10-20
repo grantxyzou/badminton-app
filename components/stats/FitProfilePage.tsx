@@ -177,12 +177,12 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
       ) : (
         <div className="glass-card p-5 fit-questions">
           <section className="fit-group">
-            <div className="fit-group-head">
-              <span className="fit-q-label">{t('level')}</span>
-              {value('fitLevelOverride')
-                ? <span className="fit-q-hint">{t('levelYours')}</span>
-                : verdict.data?.checkInLevel != null && <span className="fit-q-hint">{t('levelFromCheckIn')}</span>}
-            </div>
+            {/* Where the level came from sits UNDER the label, as every other
+                question's hint does (Stats canvas, 2026-10-20). */}
+            <span className="fit-q-label">{t('level')}</span>
+            {value('fitLevelOverride')
+              ? <p className="fit-caption">{t('levelYours')}</p>
+              : verdict.data?.checkInLevel != null && <p className="fit-caption">{t('levelFromCheckIn')}</p>}
             <div className="segment-control flex w-full" role="radiogroup" aria-label={t('level')}>
               {FIT_LEVEL_OPTIONS.map((o) => (
                 <button key={o} type="button" role="radio" aria-checked={level === o} disabled={disabled}
@@ -230,6 +230,9 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
 
           <section className="fit-group">
             <span className="fit-q-label">{t('sore')}</span>
+            {/* Says what the answer is for (Grant: "why is this an important
+                measurement point?"): tension and the frame's ceilings. */}
+            <p className="fit-caption">{t('soreHint')}</p>
             <SorenessPicker value={value('fitSoreness') ?? null} onChange={(v) => answer({ fitSoreness: v })} disabled={disabled} label={t('sore')} />
             {/* Only when the answer actually moved the range: a line explaining
                 a change that did not happen would be a small lie. */}
@@ -240,15 +243,19 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
 
           <section className="fit-group">
             <span className="fit-q-label">{t('goal')}</span>
-            <div className="setup-feel-chips" role="radiogroup" aria-label={t('goal')}>
-              {FIT_GOALS.map((g) => {
-                const on = value('fitGoal') === g;
-                return (
-                  <button key={g} type="button" role="radio" aria-checked={on} className="setup-feel-chip" disabled={disabled} onClick={() => answer({ fitGoal: g })}>
-                    {tGear(`fitGoal_${g}`)}
-                  </button>
-                );
-              })}
+            <p className="fit-caption">{t('goalHint')}</p>
+            {/* Tiles that say what you NOTICE on court, never what the racket
+                should become (Grant, 2026-10-20: no image "that introduces
+                bias of what a racket should be"). The engines read the same
+                five values; "happy" spans the row. */}
+            <div className="fit-tiles fit-tiles--2" role="radiogroup" aria-label={t('goal')}>
+              {FIT_GOALS.map((g) => (
+                <button key={g} type="button" role="radio" aria-checked={value('fitGoal') === g}
+                  className={`fit-tile fit-goal-tile${g === 'happy' ? ' fit-goal-tile--wide' : ''}`} disabled={disabled} onClick={() => answer({ fitGoal: g })}>
+                  <span className="fit-tile-label">{tGear(`fitGoal_${g}`)}</span>
+                  <span className="fit-tile-desc">{t(`goalDesc_${g}`)}</span>
+                </button>
+              ))}
             </div>
           </section>
         </div>

@@ -120,6 +120,18 @@ flag's retirement.
   with that night; the canvas drew a dated row per tag, and this is the one
   place the build departs from it. The badge versions on the canvas were left
   out on purpose (Grant: "leave out the badge").
+- **2026-10-20 — the rest of the canvas's Equipment and You comments.** Your
+  fit: "What would you change?" is five tiles that describe what a member
+  NOTICES on court ("My clears and smashes fall short"), never a racket
+  property, so the answer cannot be steered by what a racket is supposed to
+  be (Grant: no imagery that introduces bias); "How hard do you hit?" is now
+  "How's your clear?"; "Anything sore?" says what the answer changes. The pick
+  sheet's "differs by" sentence became attribute chips with the differences
+  marked. The tension card's footnote became a stringing request at its own
+  number (shop open only). Stats › You draws Strengths / Work on next as two
+  tinted panels with five-dot ratings. Not done: the racket engine still does
+  not read `mixed_front` / `mixed_back`, and "Tonight's games / Confirm a
+  score" needs court-rotation data and wants its own plan doc first.
 
 ## Shape
 

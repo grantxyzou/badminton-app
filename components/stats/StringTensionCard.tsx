@@ -9,6 +9,7 @@ import type { UseGear } from './useGear';
 import LockedCard, { useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
 import { useRevealReady } from '@/components/primitives/Reveal';
+import { useStringingShop } from '@/lib/useStringingShop';
 
 
 /**
@@ -42,6 +43,11 @@ export interface StringTensionCardProps {
   /** Whether `suppressed` is settled yet — the pairing it depends on loads
    *  after the gear doc. Defaults to true for a caller with no pairing. */
   suppressionKnown?: boolean;
+  /** Opens a stringing request at this tension (Stats canvas, 2026-10-20).
+   *  Shown in place of the advisory footnote while the club's stringing shop
+   *  is open; without it, or with the shop closed or unknown, the footnote
+   *  stays — a door to a closed shop is a dead end. */
+  onRequestStringing?: (lbs: number) => void;
 }
 
 /** The sentence under the number, by what decided it. Every key the advice
@@ -55,8 +61,9 @@ const TENSION_REASON_COPY: Record<TensionAdvice['reasonKey'], string> = {
   fastSwing: 'tensionFastSwing',
 };
 
-export default function StringTensionCard({ activeName, gear, suppressed, suppressionKnown = true }: StringTensionCardProps) {
+export default function StringTensionCard({ activeName, gear, suppressed, suppressionKnown = true, onRequestStringing }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
+  const shop = useStringingShop();
   const signInLink = useSignInLink();
   const tStats = useTranslations('stats');
   // The bag-write failure vocabulary, shared with both gear sheets so one
@@ -276,7 +283,18 @@ export default function StringTensionCard({ activeName, gear, suppressed, suppre
         <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
           {t(TENSION_REASON_COPY[advice.reasonKey])}
         </p>
-        <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tensionAdvisory')}</p>
+        {onRequestStringing && shop.open === true ? (
+          <button type="button" className="tension-strung-row" onClick={() => onRequestStringing(advice.lb)}>
+            <span className="material-icons tension-strung-icon" aria-hidden="true">grid_4x4</span>
+            <span className="tension-strung-text">
+              <span className="tension-strung-title">{t('tensionRequestTitle', { lb: advice.lb })}</span>
+              <span className="tension-strung-hint">{t('tensionRequestHint')}</span>
+            </span>
+            <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>chevron_right</span>
+          </button>
+        ) : (
+          <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tensionAdvisory')}</p>
+        )}
       </div>
     </div>
   );

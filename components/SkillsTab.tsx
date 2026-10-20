@@ -10,6 +10,7 @@ import YourRecordCard from '@/components/stats/YourRecordCard';
 import WhoYouPlayWithCard from '@/components/stats/WhoYouPlayWithCard';
 import LearnRegister from '@/components/stats/LearnRegister';
 import GearRegister from '@/components/stats/GearRegister';
+import { requestStringingAt } from '@/lib/stringingIntent';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
 import StatsSignedOut from '@/components/stats/StatsSignedOut';
 import { StatsFallback, STATS_HEIGHTS } from '@/components/TabFallbacks';
@@ -177,7 +178,12 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
         </div>
       )}
       learnSlot={<LearnRegister activeName={activeName} checkIn={checkIn} />}
-      gearSlot={<GearRegister activeName={activeName} />}
+      gearSlot={
+        <GearRegister
+          activeName={activeName}
+          onRequestStringing={onTabChange ? (lbs) => { requestStringingAt(lbs); onTabChange('stringing'); } : undefined}
+        />
+      }
     />
     {/* ONE mount, a sibling of the shell rather than inside a register.
         `BottomSheet` portals to `body`, so position here is irrelevant to where

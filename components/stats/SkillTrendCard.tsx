@@ -226,8 +226,8 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
 
       {/* Strengths / work-on legends, side by side below the bars. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-        <Legend title={t('assess.strengths')} items={strengths} nowMap={nowMap} accent />
-        <Legend title={t('assess.workOn')} items={workOn} nowMap={nowMap} />
+        <Legend title={t('assess.strengths')} hint={t('assess.strengthsHint')} items={strengths} nowMap={nowMap} accent />
+        <Legend title={t('assess.workOn')} hint={t('assess.workOnHint')} items={workOn} nowMap={nowMap} />
       </div>
 
       {/* The then/now key is gone with the radar — each bar now carries its own
@@ -283,29 +283,47 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   );
 }
 
+/**
+ * Strengths / Work on next as two tinted panels (Stats canvas, 2026-10-20):
+ * each skill's 1–5 rating drawn as five dots with the number beside them, and
+ * one line under each saying what the list is for. The tone is set once on the
+ * panel and read by the icon, label and dots, so they cannot disagree.
+ */
 function Legend({
-  title, items, nowMap, accent,
+  title, hint, items, nowMap, accent,
 }: {
   title: string;
+  hint: string;
   items: Rating[];
   nowMap: Map<string, number>;
   accent?: boolean;
 }) {
   const skillText = useSkillText();
+  const t = useTranslations('stats');
   return (
-    <div className="space-y-1">
-      <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: '0' }}>{title}</p>
+    <div className={`skill-panel${accent ? '' : ' skill-panel--warn'}`}>
+      <div className="skill-panel-head">
+        <span className="material-icons icon-sm" aria-hidden="true">{accent ? 'trending_up' : 'flag'}</span>
+        <p className="skill-panel-label">{title}</p>
+      </div>
       {items.map((r) => {
         const skill = SKILL_BY_KEY.get(r.skillKey);
         if (!skill) return null;
         const v = nowMap.get(r.skillKey) ?? r.value;
+        const lit = Math.round(Math.max(0, Math.min(5, v)));
         return (
-          <div key={r.skillKey} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{skillText.label(skill.key)}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-muted)' }}>{v}</span>
+          <div key={r.skillKey} className="skill-panel-row">
+            <span className="skill-panel-name">{skillText.label(skill.key)}</span>
+            <span className="skill-dots" role="img" aria-label={t('assess.dotsOf', { value: v })}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span key={n} className={`skill-dot${n <= lit ? ' is-on' : ''}`} aria-hidden="true" />
+              ))}
+              <span className="skill-dots-n" aria-hidden="true">{v}</span>
+            </span>
           </div>
         );
       })}
+      <p className="skill-panel-hint">{hint}</p>
     </div>
   );
 }
