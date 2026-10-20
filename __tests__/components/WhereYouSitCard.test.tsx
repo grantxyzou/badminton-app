@@ -114,7 +114,7 @@ describe('WhereYouSitCard', () => {
       Array.from(r.querySelectorAll('.sit-dot')).map((d) => d.classList.contains('is-on'));
     expect(lit(rows[0])).toEqual([false, false, true]);
     expect(lit(rows[1])).toEqual([true, false, false]);
-    expect(screen.getByText('You against 8 others in the club')).toBeTruthy();
+    expect(screen.getByText('You against the club · 9 members rated')).toBeTruthy();
     expect(screen.queryByText(/You're in the/)).toBeNull();
   });
 
@@ -142,7 +142,7 @@ describe('WhereYouSitCard', () => {
     mockFetchByUrl([bandsResponse()]);
     renderCard();
     await waitFor(() =>
-      expect(screen.getByText(/Based on your latest check-in/)).toBeTruthy(),
+      expect(screen.getByText(/Bands only. No names, no leaderboard/)).toBeTruthy(),
     );
   });
 

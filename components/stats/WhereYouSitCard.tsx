@@ -239,7 +239,9 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
       <CardHeader
         icon="groups"
         title={t('title')}
-        subtitle={revealed ? t('subtitle', { count: bands.cohort }) : undefined}
+        // `cohort` counts the OTHER rated members; the viewer is rated too (a
+        // revealed card has their bands), so "members rated" adds them back.
+        subtitle={revealed ? t('subtitle', { count: bands.cohort + 1 }) : undefined}
         badge={
           revealed ? undefined : (
             <span
@@ -320,7 +322,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
         </div>
       </div>
 
-      <p style={{ margin: '0', fontSize: 'var(--fs-sm)', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+      <p style={{ margin: '0', fontSize: 'var(--fs-xs)', lineHeight: 1.5, color: 'var(--text-muted)' }}>
         {revealed
           ? t.rich('footnote', {
               link: (chunks: ReactNode) =>
