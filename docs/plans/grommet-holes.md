@@ -114,7 +114,7 @@ Every source found says 76 for Victor; none disagreed. The stringer counting one
 
 ## Phase 3 result (2026-10-20)
 
-Grant's two calls, 2026-10-20: the entry point is a **"String holes" card on the bench's Set-up screen** (Strings, stock & prices), not the racket page; and a count is **per club**.
+Grant's two calls, 2026-10-20: the entry point is a **"String holes" card on the bench's Set-up screen** (renamed "Strings, stock, prices & holes" the same day so the card can be found), not the racket page; and a count is **per club**.
 
 **What it does:**
 - **What can be counted:** any offered racket with no sourced count. That is 90 today: every Li-Ning, plus the Yonex and Victor blanks. Search, pick, type the number, Save.

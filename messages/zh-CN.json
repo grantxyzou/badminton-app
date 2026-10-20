@@ -1641,7 +1641,7 @@
       },
       "whoseJobs": "谁的穿线单",
       "benchTitle": "穿线工作台",
-      "setupRow": "球线、库存与价格",
+      "setupRow": "球线、库存、价格与孔数",
       "holes": {
         "title": "穿线孔数",
         "subtitle": "{count, plural, other {# 支球拍}}没有厂商提供的孔数。在穿线机上数一次，会员就能在该球拍页面看到。",

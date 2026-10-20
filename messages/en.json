@@ -1653,7 +1653,7 @@
       },
         "whoseJobs": "Whose jobs",
         "benchTitle": "Stringing bench",
-        "setupRow": "Strings, stock & prices",
+        "setupRow": "Strings, stock, prices & holes",
         "holes": {
           "title": "String holes",
           "subtitle": "{count, plural, one {# racket has} other {# rackets have}} no hole count from the maker. Count one on the machine and your members see it on that racket's page.",

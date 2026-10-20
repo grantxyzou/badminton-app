@@ -736,7 +736,7 @@ describe('the bench lists first', () => {
     respondBench();
     wrap(<StringingPage onBack={() => {}} />);
     const row = await screen.findByText('J-0042');
-    const setup = screen.getByRole('button', { name: 'Strings, stock & prices' });
+    const setup = screen.getByRole('button', { name: 'Strings, stock, prices & holes' });
     expect(row.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText('Other prices')).toBeNull();
     fireEvent.click(setup);
@@ -750,7 +750,7 @@ describe('the bench lists first', () => {
     // "Nested cards are always wrong" (DESIGN.md #12).
     respondBench();
     wrap(<StringingPage onBack={() => {}} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock & prices' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock, prices & holes' }));
     const prices = (await screen.findByText('Other prices')).closest('.glass-card') as HTMLElement;
     expect(prices).not.toBeNull();
     expect(prices.parentElement?.closest('.glass-card')).toBeNull();
@@ -795,7 +795,7 @@ describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', ()
     respondEmbedded();
     const onTakeover = vi.fn();
     wrap(<StringingPage embedded onBack={() => {}} onTakeover={onTakeover} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock & prices' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock, prices & holes' }));
     await screen.findByText('Other prices');
     expect(onTakeover).toHaveBeenLastCalledWith(true);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
