@@ -1655,6 +1655,23 @@
         "whoseJobs": "Whose jobs",
         "benchTitle": "Stringing bench",
         "setupRow": "Strings, stock & prices",
+        "holes": {
+          "title": "String holes",
+          "subtitle": "{count, plural, one {# racket has} other {# rackets have}} no hole count from the maker. Count one on the machine and your members see it on that racket's page.",
+          "holesValue": "{count} holes",
+          "remove": "Remove",
+          "removeLabel": "Remove the count for {name}",
+          "countFor": "Holes on the {name}",
+          "placeholder": "e.g. 76",
+          "invalid": "Enter the number of holes, between 60 and 100.",
+          "save": "Save",
+          "cancel": "Cancel",
+          "find": "Add a count",
+          "findPlaceholder": "Search rackets",
+          "noMatch": "No racket without a count matches that.",
+          "saveError": "Couldn't save that. Give it another go.",
+          "loadError": "Couldn't load your hole counts."
+        },
         "otherPrices": {
           "title": "Other prices",
           "subtitle": "Each string's restring price is set in its row above. These show under the strings on the Stringing tab.",

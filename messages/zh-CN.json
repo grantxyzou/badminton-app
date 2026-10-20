@@ -1643,6 +1643,23 @@
       "whoseJobs": "谁的穿线单",
       "benchTitle": "穿线工作台",
       "setupRow": "球线、库存与价格",
+      "holes": {
+        "title": "穿线孔数",
+        "subtitle": "{count, plural, other {# 支球拍}}没有厂商提供的孔数。在穿线机上数一次，会员就能在该球拍页面看到。",
+        "holesValue": "{count} 孔",
+        "remove": "删除",
+        "removeLabel": "删除 {name} 的孔数",
+        "countFor": "{name} 的孔数",
+        "placeholder": "例如 76",
+        "invalid": "请输入 60 到 100 之间的孔数。",
+        "save": "保存",
+        "cancel": "取消",
+        "find": "添加孔数",
+        "findPlaceholder": "搜索球拍",
+        "noMatch": "没有符合的未记录球拍。",
+        "saveError": "保存失败，请再试一次。",
+        "loadError": "无法加载孔数。"
+      },
       "otherPrices": {
         "title": "其他价格",
         "subtitle": "每种球线的穿线价格在上方各行设置。以下内容显示在穿线页的球线列表下方。",

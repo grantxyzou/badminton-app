@@ -43,7 +43,7 @@ const num = (row: CatalogItem, key: string): number | null => {
 const slashes = (s: string) => s.split('/').map((p) => p.trim()).filter(Boolean).join(' · ');
 
 /** The spec grid, in the design's order, with any cell the row cannot fill left out. */
-export function specCells(row: CatalogItem): SpecCell[] {
+export function specCells(row: CatalogItem, clubHoles: number | null = null): SpecCell[] {
   const cells: SpecCell[] = [];
   const weight = str(row, 'weight');
   if (weight) {
@@ -61,8 +61,9 @@ export function specCells(row: CatalogItem): SpecCell[] {
   const tLo = num(row, 'tensionMinLbs');
   const tHi = num(row, 'tensionMaxLbs');
   if (tLo !== null || tHi !== null) cells.push({ key: 'rated', value: '', bounds: [tLo, tHi] });
-  // From the racket's stringing pattern, only where a source we trust states it.
-  const holes = grommetHoles(row);
+  // From the racket's stringing pattern, only where a source we trust states
+  // it; else the club stringer's own count (lib/holeCounts.ts), never both.
+  const holes = grommetHoles(row) ?? clubHoles;
   if (holes !== null) cells.push({ key: 'holes', value: String(holes) });
   const grip = str(row, 'gripSize');
   if (grip) cells.push({ key: 'grip', value: slashes(grip) });

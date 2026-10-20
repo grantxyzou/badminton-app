@@ -22,6 +22,7 @@ import { GET as gearGET } from '@/app/api/equipment/gear/route';
 import { GET as shopGET } from '@/app/api/stringing/shop/route';
 import { GET as stringsGET } from '@/app/api/stringing/strings/route';
 import { GET as pricingGET } from '@/app/api/stringing/pricing/route';
+import { GET as holesGET } from '@/app/api/stringing/holes/route';
 import { GET as clubGearGET } from '@/app/api/stats/club/gear/route';
 import { GET as clubTensionGET } from '@/app/api/stats/club/tension/route';
 import { GET as shareCardGET } from '@/app/api/equipment/share-card/route';
@@ -70,6 +71,8 @@ const ROUTES: Record<string, Entry> = {
   // The string inventory (docs/plans/string-inventory.md): read-only admin summary.
   'stringing/stock': admin('isAdminAuthed'),
   'stringing/pricing': GATED,
+  // A stringer's grommet counts (docs/plans/grommet-holes.md): the racket page reads them.
+  'stringing/holes': GATED,
   'stats/club/gear': GATED,
   'stats/club/tension': GATED,
   'equipment/share-card': GATED,
@@ -276,6 +279,7 @@ describe('behaviour of the gated routes', () => {
     ['stringing/shop', shopGET as Handler, 'http://localhost/api/stringing/shop'],
     ['stringing/strings', stringsGET as Handler, 'http://localhost/api/stringing/strings'],
     ['stringing/pricing', pricingGET as Handler, 'http://localhost/api/stringing/pricing'],
+    ['stringing/holes', holesGET as Handler, 'http://localhost/api/stringing/holes'],
     ['stats/club/gear', clubGearGET as Handler, 'http://localhost/api/stats/club/gear'],
     ['stats/club/tension', clubTensionGET as Handler, 'http://localhost/api/stats/club/tension?frame=racket-yonex-astrox-100zz'],
     ['equipment/share-card', shareCardGET as Handler, 'http://localhost/api/equipment/share-card?name=Lin'],
