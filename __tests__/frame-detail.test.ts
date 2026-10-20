@@ -28,6 +28,11 @@ describe('specCells', () => {
     expect(specCells(bare)[2].bounds).toEqual([null, 28]);
   });
 
+  it('shows one figure, not a range, when both ends round to the same price', () => {
+    const one = { ...AF79, attributes: { ...AF79.attributes, priceMinUSD: 290, priceMaxUSD: 290 } } as unknown as CatalogItem;
+    expect(specCells(one).find((c) => c.key === 'price')?.value).toBe('$400');
+  });
+
   it('rounds a CAD range to five dollars and refuses an inverted one', () => {
     expect(cadRange(AF79)).toEqual([125, 165]);
     expect(cadRange({ ...AF79, attributes: { priceMinUSD: 120, priceMaxUSD: 90 } } as unknown as CatalogItem)).toBeNull();

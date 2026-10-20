@@ -67,7 +67,8 @@ export function specCells(row: CatalogItem): SpecCell[] {
   const grip = str(row, 'gripSize');
   if (grip) cells.push({ key: 'grip', value: slashes(grip) });
   const price = cadRange(row);
-  if (price) cells.push({ key: 'price', value: `$${price[0]}–$${price[1]}` });
+  // A range whose ends round to the same $5 is one figure, not "$400–$400".
+  if (price) cells.push({ key: 'price', value: price[0] === price[1] ? `$${price[0]}` : `$${price[0]}–$${price[1]}` });
   return cells;
 }
 
