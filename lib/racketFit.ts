@@ -1,4 +1,5 @@
 import type { CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip } from './types';
+import type { CourtSide } from './courtSide';
 import { isOffered } from './catalogOffer';
 import type { PlayerProfile } from './racketProfile';
 
@@ -54,6 +55,16 @@ import type { PlayerProfile } from './racketProfile';
  * golden set — the stringer's rated list is Medium rows, so the engine does
  * not claim more than that yet.
  *
+ * fit-4 (2026-10-20) — THE SIDE OF A MIXED COURT. A mixed-doubles player
+ * who takes the net lives on fast, flat exchanges and wants the head light
+ * enough to get back in time; one who hits from the back is clearing and
+ * smashing and wants the head's weight behind it. Grant asked why the answer
+ * was stored and ignored. With no racket to anchor on, the side sets the
+ * starting balance (front head-light, back head-heavy) the way the level
+ * sets the rest; a SLOW swing keeps even balance on the back court, for the
+ * fit-3 reason, and so does an arm that is often sore. With an anchor, the racket they play is the better evidence
+ * and the side only earns a matching balance the format bonus.
+ *
  * Pure: no fetch, no DB, no clock, no randomness. Every reason is an i18n KEY
  * with params, never a sentence — English-only reasons were one of the
  * defects. `FIT_REASON_KEYS` is exported so a test can assert every key the
@@ -61,7 +72,7 @@ import type { PlayerProfile } from './racketProfile';
  * dynamic `t(reason.key)`.
  */
 
-export const FIT_ENGINE_VERSION = 'fit-3';
+export const FIT_ENGINE_VERSION = 'fit-4';
 
 export type FitState = 'anchored' | 'anchored_default' | 'unanchored' | 'level_only' | 'needsFit';
 export type FitLevel = 'Beginner' | 'Intermediate' | 'Advanced';
@@ -79,6 +90,9 @@ export interface FitInput {
   armComfort?: FitArmComfort;
   grip?: FitGrip;
   format: 'singles' | 'doubles' | 'both';
+  /** Mixed doubles: which half of the court (`lib/courtSide.ts`). Absent for
+   *  everyone else, and for anyone who chose Doubles or Singles outright. */
+  courtSide?: CourtSide | null;
   budgetMaxCad?: number;
   /** From RATED skills only; null below three rated. */
   level: FitLevel | null;
@@ -312,7 +326,7 @@ export function buildTarget(input: FitInput, anchorAxes: Axes | null): TargetSpe
   const anchored = anchorAxes !== null;
   const base = anchored
     ? { balance: anchorAxes.balance, flex: anchorAxes.flex, weight: anchorAxes.weight ?? LEVEL_BASE[input.level ?? 'null'].weight, tier: anchorAxes.tier }
-    : LEVEL_BASE[input.level ?? 'null'];
+    : { ...LEVEL_BASE[input.level ?? 'null'], balance: sideBalance(input) ?? LEVEL_BASE[input.level ?? 'null'].balance };
 
   const goal: FitGoal = input.goal ?? 'happy';
   const delta = goalDelta(goal, input.swing);
@@ -351,6 +365,16 @@ export function buildTarget(input: FitInput, anchorAxes: Axes | null): TargetSpe
     balance, flex, weight, tier: base.tier, style, flexCeil, weightCeil, balanceCeil,
     sigma: Math.round(sigma * 100) / 100, anchored, swingKnown,
   };
+}
+
+/** fit-4: the starting balance a mixed court side asks for, or null when it
+ *  says nothing — no side; a slow swing on the back court, which a heavy head
+ *  would slow down rather than power; or an arm that is often sore, whose
+ *  head-heavy ceiling the start must not aim past. */
+export function sideBalance(input: Pick<FitInput, 'courtSide' | 'swing' | 'armComfort'>): number | null {
+  if (input.courtSide === 'front') return 1;
+  if (input.courtSide === 'back') return input.swing === 'slow' || input.armComfort === 'often_sore' ? null : 3;
+  return null;
 }
 
 /** The anchor is two or more flex steps above what the swing wants: the
@@ -418,7 +442,9 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
 
   let secondary = 0;
   const sub = canon(axes.subType);
-  if (input.format === 'doubles' && sub === 'doubles') secondary += SECONDARY.format;
+  const side = sideBalance(input);
+  if (side !== null && anchorAxes && axes.balance === side) secondary += SECONDARY.format;
+  else if (input.format === 'doubles' && sub === 'doubles') secondary += SECONDARY.format;
   else if (input.format === 'singles' && sub === 'singles') secondary += SECONDARY.format;
   else if (input.format === 'both' && (sub === 'all-round' || canon(axes.style) === 'all-round')) secondary += SECONDARY.formatBoth;
   if (target.style && canon(axes.style) === canon(target.style)) secondary += SECONDARY.style;
@@ -472,7 +498,8 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   // must not be told it has room.
   if (target.swingKnown && dFlex === 0) reasons.push({ key: 'reason.flexFitsSwing', params: { flex: FLEX_NAME[axes.flex] } });
   else if (target.swingKnown && axes.flex === target.flexCeil - 1 && axes.flex <= target.flex) reasons.push({ key: 'reason.flexHeadroom', params: { flex: FLEX_NAME[axes.flex] } });
-  if (input.format === 'doubles' && sub === 'doubles') reasons.push({ key: 'reason.doublesBuilt' });
+  if (side !== null && axes.balance === side) reasons.push({ key: input.courtSide === 'front' ? 'reason.frontCourt' : 'reason.backCourt' });
+  else if (input.format === 'doubles' && sub === 'doubles') reasons.push({ key: 'reason.doublesBuilt' });
   else if (input.format === 'singles' && axes.balance === 3) reasons.push({ key: 'reason.singlesRear' });
   else if (input.format === 'both' && axes.balance === 2) reasons.push({ key: 'reason.evenVersatile' });
   if (typeof input.budgetMaxCad === 'number' && typeof item.msrp === 'number' && !overBudget) {
@@ -623,7 +650,7 @@ export function recommendFit(input: FitInput, catalog: CatalogItem[]): FitResult
 export const FIT_REASON_KEYS = [
   'reason.likeYours', 'reason.powerStep', 'reason.controlStep', 'reason.speedStep', 'reason.fatigueStep',
   'reason.flexFitsSwing', 'reason.flexHeadroom',
-  'reason.doublesBuilt', 'reason.singlesRear', 'reason.evenVersatile',
+  'reason.doublesBuilt', 'reason.singlesRear', 'reason.evenVersatile', 'reason.frontCourt', 'reason.backCourt',
   'reason.withinBudget', 'reason.gripMatch', 'reason.weightUnknown',
   'reason.anchoredDefault', 'reason.unanchored', 'reason.levelOnly', 'reason.clubPlays',
   'reason.swingUnanswered', 'reason.anchorStifferThanSwing', 'reason.slowSwingPower',

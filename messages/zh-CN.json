@@ -1034,6 +1034,8 @@
         "doublesBuilt": "为双打而设计。",
         "singlesRear": "头重，适合单打后场。",
         "evenVersatile": "平衡型，单双打都合适。",
+        "frontCourt": "头轻，混双网前跟得上节奏。",
+        "backCourt": "头重，混双后场更有力量。",
         "withinBudget": "在你 ${cad} 的预算内。",
         "gripMatch": "有 {grip} 握柄。",
         "weightUnknown": "重量未公布，我们按平衡、中杆和档次来评分。",

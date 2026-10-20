@@ -132,11 +132,18 @@ describe('computeFitFacts', () => {
     expect(f.tensionRange).toEqual([24, 25]);
   });
 
-  it('front- and back-court mixed read as both formats too', () => {
-    for (const fitPlayStyle of ['mixed_front', 'mixed_back'] as const) {
-      const f = computeFitFacts({ gear: gear({ fitPlayStyle, playFormat: 'singles' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
-      expect(f.tensionRange).toEqual([24, 25]);
-    }
+  // fit-4: the side reads as doubles at the net and singles at the back —
+  // the tension card's own rule (`sideFormat`), so the two print one number.
+  it('front-court mixed reads as doubles, back-court as singles', () => {
+    const front = computeFitFacts({ gear: gear({ fitPlayStyle: 'mixed_front', playFormat: 'both' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    const back = computeFitFacts({ gear: gear({ fitPlayStyle: 'mixed_back', playFormat: 'both' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    expect(front.tensionRange).toEqual([24, 25]);
+    expect(back.tensionRange).toEqual([25, 26]);
+  });
+
+  it('an explicit Doubles tap on the tension card wins over the side', () => {
+    const f = computeFitFacts({ gear: gear({ fitPlayStyle: 'mixed_back', playFormat: 'doubles' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+    expect(f.tensionRange).toEqual([24, 25]);
   });
 
   it('a prospective frame is judged from its row, with no current tension', () => {

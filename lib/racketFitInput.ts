@@ -4,6 +4,7 @@ import { activeRacket, rackets } from './activeRacket';
 import { fitLevel, isScorable, canon, type FitInput } from './racketFit';
 import { feelAnchor } from './racketFeel';
 import { effectiveArmComfort } from './fitProfile';
+import { courtSideOf } from './courtSide';
 import type { CatalogItem, PlayerGear } from './types';
 import type { Rating } from './assessment';
 
@@ -46,6 +47,7 @@ export function buildFitInput(
     // missing on every frame and sinking every pick by the same penalty.
     grip: gear?.fitGrip === 'G3' ? 'G4' : gear?.fitGrip,
     format: gear?.playFormat ?? 'both',
+    courtSide: courtSideOf(gear),
     budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,
     level,
     hasRatings: ratings.length > 0,

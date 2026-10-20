@@ -77,6 +77,14 @@ describe('StringTensionCard — no number without something behind it', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  // fit-4: a back-court mixed answer reads as singles until a format is tapped.
+  it('reads a back-court mixed player as singles, and lights Singles', async () => {
+    mockLevel(200, { level: { level: 3 } });
+    renderCard(fakeGear({ gear: { name: 'Lin', items: [], playFormat: 'both', fitPlayStyle: 'mixed_back' } as never }));
+    await waitFor(() => expect(screen.getByText('26')).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Singles' }).className).toContain('segment-tab-active');
+  });
+
   it('picks the singles number when the stored format says singles', async () => {
     mockLevel(200, { level: { level: 3 } });
     renderCard(fakeGear({ gear: { name: 'Lin', items: [], playFormat: 'singles' } as never }));

@@ -1,6 +1,7 @@
 import type { Rating } from './assessment';
 import type { PlayerGear } from './types';
 import { activeRacket } from './activeRacket';
+import { sideFormat } from './courtSide';
 
 /**
  * The recommender's view of a player. Field names follow the supplied scoring
@@ -79,7 +80,9 @@ export function buildProfile(input: {
     drives: DEFAULT_SKILL, smashes: DEFAULT_SKILL, grip: DEFAULT_SKILL,
     footwork: DEFAULT_SKILL, court_coverage: DEFAULT_SKILL, stamina: DEFAULT_SKILL,
     game_reading: DEFAULT_SKILL, consistency: DEFAULT_SKILL, rules: DEFAULT_SKILL, mindset: DEFAULT_SKILL,
-    format: input.gear?.playFormat ?? 'both',
+    // A mixed court side reads as doubles (front) or singles (back) here —
+    // the string engine's format branches already say the right thing for it.
+    format: sideFormat(input.gear),
     ratedKeys: [],
   };
 

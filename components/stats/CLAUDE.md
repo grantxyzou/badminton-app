@@ -209,8 +209,11 @@ conditional.
   refusal. New answers on `PlayerGear`: `fitLevelOverride`, `fitPlayStyle`
   (doubles/singles also write `playFormat`; asked as five court tiles,
   `PlayStylePicker`, with mixed split into `mixed_front` / `mixed_back` since
-  2026-10-20 — every mixed answer and `any` are `both` to the engines, and a
-  legacy bare `mixed` counts as unasked), `fitSoreness` (stripped for
+  2026-10-20 — `any` is `both` to the engines; a mixed side is read by
+  `lib/courtSide.ts` since `fit-4`: the racket engine starts front head-light
+  and back head-heavy, the string and tension engines read front as doubles
+  and back as singles, and an explicit Doubles / Singles tap wins; a legacy
+  bare `mixed` counts as unasked), `fitSoreness` (stripped for
   non-owners like `fitArmComfort`; `effectiveArmComfort` in `lib/fitProfile.ts`
   is how the engines read it), and `G3`. `fitOvergrips` stays on the type and
   is still blanked by "Clear my fit answers", but the page stopped asking it on

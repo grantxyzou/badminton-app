@@ -1046,6 +1046,8 @@
          "doublesBuilt": "Built for doubles.",
          "singlesRear": "Head-heavy for the singles rear court.",
          "evenVersatile": "Even balance for singles and doubles alike.",
+         "frontCourt": "Head-light, to keep up with the net in mixed.",
+         "backCourt": "Head-heavy, for power from the back in mixed.",
          "withinBudget": "Within your ${cad} budget.",
          "gripMatch": "Comes in {grip}.",
          "weightUnknown": "Weight not published — we scored it on balance, flex and tier.",
