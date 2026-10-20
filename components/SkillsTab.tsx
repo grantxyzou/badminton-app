@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
 import { requestProfileView } from '@/lib/profileView';
@@ -29,6 +29,7 @@ import type { Tab } from '@/components/HomeShell';
 const SkillTrendCard = dynamic(() => import('@/components/stats/SkillTrendCard'), { ssr: false });
 const KudosReceivedCard = dynamic(() => import('@/components/stats/KudosReceivedCard'), { ssr: false });
 const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), { ssr: false });
+const KudosAllPage = dynamic(() => import('@/components/stats/KudosAllPage'), { ssr: false });
 
 /**
  * The Stats tab: the You / Play / Learn / Gear registers.
@@ -45,6 +46,9 @@ const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), 
  * load errors). This layout is now simply the layout.
  */
 export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) => void }) {
+  // A page inside the Play register ("Your kudos"), shown in place of its
+  // cards with the shell's chrome hidden, the way Equipment shows Your fit.
+  const [playPage, setPlayPage] = useState<'kudos' | null>(null);
   // Identity for the signed-out empty state, from the module that owns the
   // chain. `resolved` carries "not known yet" so the first paint doesn't flash
   // the signed-out state at a signed-in member — unknown is not known-absent.
@@ -155,7 +159,9 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
           />
         </>
       }
-      playSlot={
+      playSlot={playPage === 'kudos' ? (
+        <KudosAllPage onBack={() => setPlayPage(null)} />
+      ) : (
         <div className="flex flex-col gap-5">
         <RevealGroup>
           <RevealSlot placeholder={<CardSkeleton height={STATS_HEIGHTS.record} />}>
@@ -165,11 +171,11 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
             <WhoYouPlayWithCard activeName={activeName} />
           </RevealSlot>
           <RevealSlot placeholder={<CardSkeleton height={STATS_HEIGHTS.giveKudos} />}>
-            <GiveKudosCard />
+            <GiveKudosCard onOpenAll={() => setPlayPage('kudos')} />
           </RevealSlot>
         </RevealGroup>
         </div>
-      }
+      )}
       learnSlot={<LearnRegister activeName={activeName} checkIn={checkIn} />}
       gearSlot={<GearRegister activeName={activeName} />}
     />

@@ -103,12 +103,13 @@ function rangeAround(target: number, [lo, hi]: [number, number]): [number, numbe
   return t + 1 <= hi ? [t, t + 1] : [Math.max(lo, t - 1), t];
 }
 
-/** The page's play-style answer as the engines' format. Mixed and "any" are
- *  both; an older `playFormat` counts only while the question is unanswered. */
+/** The page's play-style answer as the engines' format. Every mixed answer
+ *  and "any" are both; an older `playFormat` counts only while the question
+ *  is unanswered. */
 function formatOf(gear: PlayerGear | null): PlayFormat {
   const style = gear?.fitPlayStyle;
   if (style === 'singles' || style === 'doubles') return style;
-  if (style === 'mixed' || style === 'any') return 'both';
+  if (style) return 'both';
   return gear?.playFormat ?? 'both';
 }
 

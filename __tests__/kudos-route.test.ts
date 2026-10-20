@@ -223,6 +223,28 @@ describe('/api/kudos — the redesign', () => {
     expect(JSON.stringify(body)).not.toContain('raterMemberId');
   });
 
+  it('groups every kudos by month for the "Your kudos" page: a bare tag is a count, never a date or a name', async () => {
+    seedMember('Viktor');
+    seedMember('Akane');
+    seedMember('Lin');
+    seedRoster(['Viktor', 'Akane', 'Lin']);
+    await POST(postAs('Viktor', { recipientName: 'Lin', tag: 'most_improved', note: 'sharper net play' }));
+    await POST(postAs('Viktor', { recipientName: 'Lin', tag: 'clutch' }));
+    await POST(postAs('Akane', { recipientName: 'Lin', tag: 'clutch' }));
+
+    const body = await (await GET(getAs('Lin'))).json();
+    expect(body.people).toBe(2);
+    expect(body.months).toHaveLength(1);
+    const [month] = body.months;
+    expect(month.month).toMatch(/^\d{4}-\d{2}$/);
+    expect(month.notes).toHaveLength(1);
+    expect(month.notes[0].raterName).toBe('Viktor');
+    expect(month.tags).toEqual([{ tag: 'clutch', count: 2 }]);
+    // The bare tags carry nothing but their tag and how many.
+    expect(Object.keys(month.tags[0]).sort()).toEqual(['count', 'tag']);
+    expect(JSON.stringify(body.months)).not.toContain('Akane');
+  });
+
   /**
    * DEDUPE MOVED FROM PER-SESSION TO PER ISO WEEK, and this test only means
    * something if the ACTIVE SESSION ACTUALLY CHANGES between the two posts —

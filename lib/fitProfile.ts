@@ -56,7 +56,9 @@ export interface FitAnswers {
  */
 export function fitAnswers(gear: PlayerGear | null | undefined, checkInLevel: number | null | undefined): FitAnswers {
   const level = gear?.fitLevelOverride ?? nearestLevelOption(checkInLevel);
-  const playStyle = gear?.fitPlayStyle ?? null;
+  // A bare `mixed` predates front/back: the page has no tile for it, so it
+  // counts as unasked rather than showing "5 of 5" over a blank question.
+  const playStyle = gear?.fitPlayStyle && gear.fitPlayStyle !== 'mixed' ? gear.fitPlayStyle : null;
   const swing = gear?.fitSwing ?? null;
   const grip = gear?.fitGrip ?? null;
   const soreness = gear?.fitSoreness ?? null;

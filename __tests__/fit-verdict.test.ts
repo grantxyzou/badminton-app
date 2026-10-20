@@ -52,6 +52,11 @@ describe('fitProfile', () => {
     expect(fitAnswers(bare, 3).answered).toBe(1);
     expect(fitAnswers(gear(), null).answered).toBe(5);
   });
+
+  it('asks a bare "mixed" again: the page splits mixed into front and back court', () => {
+    expect(fitAnswers(gear({ fitPlayStyle: 'mixed' }), null).answered).toBe(4);
+    expect(fitAnswers(gear({ fitPlayStyle: 'mixed_back' }), null).answered).toBe(5);
+  });
 });
 
 describe('computeFitFacts', () => {
@@ -125,6 +130,13 @@ describe('computeFitFacts', () => {
   it('mixed doubles does not inherit an older singles format', () => {
     const f = computeFitFacts({ gear: gear({ fitPlayStyle: 'mixed', playFormat: 'singles' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
     expect(f.tensionRange).toEqual([24, 25]);
+  });
+
+  it('front- and back-court mixed read as both formats too', () => {
+    for (const fitPlayStyle of ['mixed_front', 'mixed_back'] as const) {
+      const f = computeFitFacts({ gear: gear({ fitPlayStyle, playFormat: 'singles' }, 24), frameRow: EVEN_MEDIUM, checkInLevel: null });
+      expect(f.tensionRange).toEqual([24, 25]);
+    }
   });
 
   it('a prospective frame is judged from its row, with no current tension', () => {

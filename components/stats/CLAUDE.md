@@ -196,7 +196,10 @@ conditional.
   after another (the PATCH is read-modify-write, so racing taps would each keep
   only their own field), shown optimistically and reverted with a retry on a
   refusal. New answers on `PlayerGear`: `fitLevelOverride`, `fitPlayStyle`
-  (doubles/singles also write `playFormat`), `fitSoreness` (stripped for
+  (doubles/singles also write `playFormat`; asked as five court tiles,
+  `PlayStylePicker`, with mixed split into `mixed_front` / `mixed_back` since
+  2026-10-20 — every mixed answer and `any` are `both` to the engines, and a
+  legacy bare `mixed` counts as unasked), `fitSoreness` (stripped for
   non-owners like `fitArmComfort`; `effectiveArmComfort` in `lib/fitProfile.ts`
   is how the engines read it), and `G3`. `fitOvergrips` stays on the type and
   is still blanked by "Clear my fit answers", but the page stopped asking it on

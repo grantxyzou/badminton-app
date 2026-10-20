@@ -190,6 +190,11 @@ fixes the person and hides the picker.
   without a note, so an unsigned tag can never become attributable by sitting
   next to one that is. The `KudosNote` type has no `raterMemberId` field at
   all — it is structurally impossible to leak one through it.
+- **"Your kudos" is a page in Play** (`KudosAllPage`, opened from "All your
+  kudos" on `GiveKudosCard`, shown in place of the register's cards like Your
+  fit). It reads the same `GET /api/kudos`, whose additive `months` field
+  carries a bare tag only as a count in its month — never a date, an order or
+  a name (`kudosByMonth` in `lib/kudos.ts`).
 - **Dedupe is per ISO WEEK** (`isoWeekKey`), not per session. Per-session
   stopped meaning anything once eligibility left the session behind.
 

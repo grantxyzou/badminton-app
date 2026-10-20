@@ -48,9 +48,9 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
-### Your fit stops asking about overgrips (2026-10-20)
+### Stats canvas, third pass: Your kudos, play style as courts, no overgrips (2026-10-20)
 
-The "I wrap two overgrips on it" switch is gone from Your fit: the answer was saved and nothing used it. A stored answer is still cleared by "Clear my fit answers". `docs/plans/equipment-setup-card.md`.
+Play has a "Your kudos" page, opened from "All your kudos" on the Send kudos card: how many kudos and from how many people, a bar per tag with your most-noticed one, then every month — signed notes with their dates, and tags on their own as counts with no date and no name. Your fit asks "Mostly you play" as five court tiles (Doubles, Singles, Mixed · front, Mixed · back, All-around) with you as the green dot; an older plain "Mixed" answer is asked again, and the engines still read every mixed answer and All-around as singles and doubles alike. The "I wrap two overgrips on it" switch is gone: the answer was saved and nothing used it, and "Clear my fit answers" still clears a stored one. `docs/plans/equipment-setup-card.md`.
 
 ### Stats canvas, second pass: registers, the fit page, the pick sheet (2026-10-19)
 

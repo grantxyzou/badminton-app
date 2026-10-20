@@ -10,13 +10,13 @@ import { recordEngagement } from '@/lib/engagement';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { fitAnswers, nearestLevelOption } from '@/lib/fitProfile';
 import { racketSrc } from '@/lib/racketLook';
-import { FIT_GOALS, FIT_LEVEL_OPTIONS, FIT_PLAY_STYLES, type FitPlayStyle, type PlayerGear } from '@/lib/types';
+import { FIT_GOALS, FIT_LEVEL_OPTIONS, type FitPlayStyle, type PlayerGear } from '@/lib/types';
 import type { FitFacts } from '@/lib/fitVerdict';
 import type { UseGear, GearPrefs } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
 import { useFitVerdict, type FitVerdictData } from './useFitVerdict';
 import { useStatsTakeover } from './statsTakeover';
-import { GripSizePicker, SorenessPicker, SwingSpeedPicker } from './FitPickers';
+import { GripSizePicker, PlayStylePicker, SorenessPicker, SwingSpeedPicker } from './FitPickers';
 
 export interface FitProfilePageProps {
   activeName: string | null;
@@ -34,7 +34,7 @@ type Answerable = keyof Pick<GearPrefs, 'fitLevelOverride' | 'fitPlayStyle' | 'p
 /** How long the answers must be still before the ranking is re-asked. */
 const RANK_SETTLE_MS = 2500;
 
-const FORMAT_OF: Record<FitPlayStyle, 'singles' | 'doubles' | 'both'> = { doubles: 'doubles', singles: 'singles', mixed: 'both', any: 'both' };
+const FORMAT_OF: Record<FitPlayStyle, 'singles' | 'doubles' | 'both'> = { doubles: 'doubles', singles: 'singles', mixed: 'both', mixed_front: 'both', mixed_back: 'both', any: 'both' };
 
 /** Every stored fit ANSWER. `playFormat` and the budgets are pairing
  *  preferences, set elsewhere, and stay. */
@@ -196,19 +196,15 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
 
           <section className="fit-group">
             <span className="fit-q-label">{t('playStyle')}</span>
-            <div className="setup-feel-chips" role="radiogroup" aria-label={t('playStyle')}>
-              {FIT_PLAY_STYLES.map((s) => {
-                const on = value('fitPlayStyle') === s;
-                return (
-                  <button key={s} type="button" role="radio" aria-checked={on} className="setup-feel-chip" disabled={disabled}
-                    // Doubles and singles are what the engines call a format;
-                    // mixed and "whatever's free" are both.
-                    onClick={() => answer({ fitPlayStyle: s, playFormat: FORMAT_OF[s] })}>
-                    {t(`style_${s}`)}
-                  </button>
-                );
-              })}
-            </div>
+            <p className="fit-caption">{t('playStyleHint')}</p>
+            {/* Doubles and singles are what the engines call a format; every
+                mixed answer and "all-around" are both. */}
+            <PlayStylePicker
+              value={value('fitPlayStyle') === 'mixed' ? null : value('fitPlayStyle') ?? null}
+              onChange={(s) => answer({ fitPlayStyle: s, playFormat: FORMAT_OF[s] })}
+              disabled={disabled}
+              label={t('playStyle')}
+            />
           </section>
 
           <section className="fit-group">

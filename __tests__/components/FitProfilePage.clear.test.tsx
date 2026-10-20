@@ -74,6 +74,40 @@ describe('FitProfilePage — the questions as the Stats canvas put them (2026-10
   });
 });
 
+describe('FitProfilePage — "Mostly you play" as court tiles (2026-10-20)', () => {
+  beforeEach(() => {
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+      ok: true, status: 200,
+      json: async () => ({ facts: { state: 'insufficient', answered: 0, frame: null, currentTensionLbs: null, tensionRange: null, sorenessMovedRange: false, goal: null, prospective: false, reasons: [] }, copy: null, checkInLevel: null }),
+    } as Response)) as unknown as typeof fetch);
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it('offers five tiles, mixed split by front and back court, and says which dot is you', async () => {
+    renderPage(base);
+    const group = await screen.findByRole('radiogroup', { name: 'Mostly you play' });
+    const labels = within(group).getAllByRole('radio').map((r) => r.querySelector('.fit-tile-label')?.textContent);
+    expect(labels).toEqual(['Doubles', 'Singles', 'Mixed · front', 'Mixed · back', 'All-around']);
+    expect(screen.getByText('The green dot is you.')).toBeTruthy();
+  });
+
+  it('stores the side of the court, and every mixed answer reads as both formats', async () => {
+    const setPrefs = renderPage(base);
+    const group = await screen.findByRole('radiogroup', { name: 'Mostly you play' });
+    fireEvent.click(within(group).getByRole('radio', { name: /Mixed · front/ }));
+    await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitPlayStyle: 'mixed_front', playFormat: 'both' }));
+    fireEvent.click(within(group).getByRole('radio', { name: /Singles/ }));
+    await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitPlayStyle: 'singles', playFormat: 'singles' }));
+  });
+
+  it('a bare "mixed" from before the split lights no tile and is asked again', async () => {
+    renderPage({ ...base, fitPlayStyle: 'mixed' } as PlayerGear);
+    const group = await screen.findByRole('radiogroup', { name: 'Mostly you play' });
+    expect(within(group).getAllByRole('radio').some((r) => r.getAttribute('aria-checked') === 'true')).toBe(false);
+  });
+});
+
 describe('FitProfilePage — clearing every fit answer', () => {
   beforeEach(() => {
     window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
