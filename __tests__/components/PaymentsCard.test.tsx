@@ -73,15 +73,18 @@ describe('<PaymentsCard />', () => {
     await waitFor(() => {
       expect(screen.getByText('Daisy')).toBeTruthy();
       expect(screen.getByText('Mei')).toBeTruthy();
-      // 'Removed' name is rendered inside a collapsed section. Open the
-      // collapsible to confirm presence is intentional, not an active row.
-      // For this assertion, just verify Removed isn't rendered as an
-      // active row (i.e. next to a paid pill).
-      expect(screen.queryByText('Waitlist')).toBeTruthy(); // shows in waitlist section
     });
+    // The waitlisted and removed players sit behind the footer's Show — one
+    // line ("1 waitlisted · 1 removed"), neither of them money to collect.
+    expect(screen.queryByText('Waitlist')).toBeNull();
+    expect(screen.queryByText('Removed')).toBeNull();
+    expect(screen.getByText('1 waitlisted · 1 removed')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Show/ }));
+    expect(await screen.findByText('Waitlist')).toBeTruthy();
+    expect(screen.getByText('Removed')).toBeTruthy();
   });
 
-  it('no longer renders the "X of Y paid" header (removed by design); per-row paid state still shows', async () => {
+  it('the hero carries "N of M paid"; the card keeps a plain "Payments" title', async () => {
     fetchPlayers([
       { id: 'p1', name: 'Daisy', paid: true },
       { id: 'p2', name: 'Mei', paid: true },
@@ -93,10 +96,13 @@ describe('<PaymentsCard />', () => {
     await waitFor(() => {
       expect(screen.getByText('Daisy')).toBeTruthy();
     });
-    // The old "X of Y paid" summary line is gone — the strip + per-row
-    // pills carry payment state now. The card keeps a plain "Payments" title.
-    expect(screen.queryByText(/of 3 paid/i)).toBeNull();
+    // The count left the header in 2026-06 and came back in the hero block
+    // with the redesign (canvas board 10f, 2026-10-20): one line under the
+    // progress bar, beside the still-owed sum once the bill is out.
+    expect(screen.getByText('2 of 3 paid')).toBeTruthy();
     expect(screen.getByText('Payments')).toBeTruthy();
+    // Unsettled: no frozen money, so no "still owed" amount is invented.
+    expect(screen.queryByText(/still owed/)).toBeNull();
   });
 
   it('toggles paid optimistically and PATCHes the API', async () => {
@@ -130,8 +136,9 @@ describe('<PaymentsCard />', () => {
     });
     expect(getCount).toBeGreaterThan(0);
 
-    const pill = screen.getByRole('button', { name: 'Pending' });
-    fireEvent.click(pill);
+    // An unpaid player is a "Still owed" row with a Mark paid target.
+    expect(screen.getByText(/Still owed · 1/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Daisy paid' }));
 
     await waitFor(() => {
       expect(patchedBody).not.toBeNull();
@@ -170,16 +177,17 @@ describe('<PaymentsCard />', () => {
     }
 
 
-    it('shows per-row owedAmount when flag on; no Sent badge (removed by design)', async () => {
+    it('shows per-row owedAmount on the still-owed rows; no Sent badge (removed by design)', async () => {
       fetchSettledPlayers([
-        { id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 },
+        { id: 'p1', name: 'Daisy', paid: false, owedAmount: 15 },
         { id: 'p2', name: 'Mei', paid: false, owedAmount: 15 },
       ]);
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
       expect(screen.queryByText(/Sent · \$15/)).toBeNull();
-      // Two rows × $15 = two matching texts
+      // Two still-owed rows × $15 = two matching texts
       expect(screen.getAllByText('$15').length).toBe(2);
+      expect(screen.getByText(/\$30 still owed/)).toBeTruthy();
     });
 
     it('hides per-row $ once the session is unsettled, even if owedAmount lingers on player docs', async () => {
@@ -196,18 +204,25 @@ describe('<PaymentsCard />', () => {
       expect(screen.queryByText('$19.28')).toBeNull();
     });
 
-    it('summary header: shows players · % paid · $ each for the viewed session', async () => {
+    it('hero: shows players · $ each · N of M paid · still owed for the viewed session', async () => {
       fetchSettledPlayers([
         { id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 },
         { id: 'p2', name: 'Mei', paid: false, owedAmount: 15 },
       ]);
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-      expect(screen.getByText(/2 players.*50% paid/)).toBeTruthy();
+      expect(screen.getByText(/2 players/)).toBeTruthy();
+      expect(screen.getByText('1 of 2 paid')).toBeTruthy();
+      // Frozen money only: the still-owed sum is the unpaid rows' owedAmount.
+      expect(screen.getByText(/\$15 still owed/)).toBeTruthy();
       // The amount is a single "$15 each" node — it must NOT inflate the
-      // per-row exact-'$15' count (still 2 rows).
+      // exact-'$15' count: Mei's row and the Still-owed heading's sum.
       expect(screen.getByText('$15 each')).toBeTruthy();
       expect(screen.getAllByText('$15').length).toBe(2);
+      // Daisy has paid, so she is a chip (Paid · 1), not a row.
+      expect(screen.getByText(/Paid · 1/)).toBeTruthy();
+      // The viewed chip counts its live roster.
+      expect(screen.getByRole('tab').textContent).toMatch(/1 owing/);
     });
 
 
@@ -323,8 +338,9 @@ describe('<PaymentsCard />', () => {
       ]);
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('LateAdd')).toBeTruthy());
-      // Only one $15 row visible
-      expect(screen.getAllByText('$15').filter((el) => el.tagName !== 'SPAN' || el.classList.length > 0).length).toBeGreaterThanOrEqual(1);
+      // LateAdd owes with no frozen amount: a still-owed row with no $ beside it.
+      expect(screen.getByRole('button', { name: 'Mark LateAdd paid' })).toBeTruthy();
+      expect(screen.queryByText('$15')).toBeNull();
     });
   });
 });

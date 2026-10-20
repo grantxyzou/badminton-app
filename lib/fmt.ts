@@ -60,3 +60,13 @@ export function fmtDeadline(iso: string | undefined): string {
     return iso.slice(0, 10);
   }
 }
+
+/** Time of day only — '7:00 PM'. Beside `fmtSessionLabel` on the console's session card. */
+export function fmtTime(iso: string | undefined): string {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return iso.slice(11, 16);
+  }
+}

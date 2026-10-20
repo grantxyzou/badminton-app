@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { fmtSessionLabel as fmtDate, fmtDeadline } from '@/lib/fmt';
+import { fmtSessionLabel as fmtDate, fmtDeadline, fmtTime } from '@/lib/fmt';
 import { shareSignup } from '@/lib/signupShare';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
+import Switch from '@/components/primitives/Switch';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { sharedFetch } from '@/lib/sharedRead';
@@ -18,6 +19,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 interface Session {
   id: string;
   title?: string;
+  locationName?: string;
   datetime?: string;
   deadline?: string;
   courts?: number;
@@ -313,96 +315,122 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
 
   return (
     <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Next session">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="bpm-h3">{fmtDate(session.datetime)}</h3>
-          <p className="fs-sm text-gray-400 mt-0.5">{session.title ?? 'Session'}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {isSettled && (
-            <span
-              className="cc-pill cc-pill-purple"
-              title={`Bill sent — $${session.settled?.costPerPerson} each`}
-            >
-              Sent · ${session.settled?.costPerPerson}
-            </span>
+      {/* Redesigned 2026-10-20 (the onboarding canvas, board 6d): the week's
+          facts first — what, when, where — then two tiles (headcount,
+          deadline), a LABELLED switch for sign-ups, the two things to tap, and
+          the end-of-night pair as a quiet footer. The old header put the
+          toggle beside the date as a bare "Signup open" pill, which read as a
+          status chip, not a control. */}
+      <header className="flex items-start justify-between gap-3">
+        <div style={{ minWidth: 0 }}>
+          <p className="section-label-muted" style={{ margin: 0, fontSize: 'var(--fs-2xs)' }}>
+            {session.title ?? 'Session'}
+          </p>
+          {/* The bare hero heading takes .bpm-h2 (the inner-content reference's
+              rule for a card's one headline), never an inline size. */}
+          <h3 className="bpm-h2" style={{ margin: 0 }}>
+            {fmtDate(session.datetime)} · {fmtTime(session.datetime)}
+          </h3>
+          {session.locationName && (
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>{session.locationName}</p>
           )}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={open}
-            onClick={toggleSignup}
-            disabled={togglingSignup}
-            className={open ? 'cc-pill cc-pill-success' : 'cc-pill cc-pill-muted'}
-            style={{ cursor: 'pointer', font: 'inherit' }}
-            title={open ? 'Sign-ups are open — tap to close' : 'Sign-ups are closed — tap to open'}
-          >
-            {/* Keyed so the label crossfades with the pill's colour change —
-                this toggle decides whether players can join and pushes to the
-                roster, so it should be seen to change. */}
-            <span key={open ? 'open' : 'closed'} className="motion-fade">
-              {open ? 'Signup open' : 'Signup closed'}
-            </span>
-          </button>
         </div>
+        {isSettled && (
+          <span
+            className="cc-pill cc-pill-purple flex-shrink-0"
+            title={`Bill sent — $${session.settled?.costPerPerson} each`}
+          >
+            Sent · ${session.settled?.costPerPerson}
+          </span>
+        )}
       </header>
 
-      <div className="space-y-2">
-        <div className="flex items-baseline justify-between fs-md">
-          <span key={activeCount} className="text-gray-300 animate-count-tick">{activeCount} / {cap} signed up</span>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="cc-tile cc-tile-static">
+          <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>Signed up</span>
+          <span
+            key={activeCount}
+            className="animate-count-tick"
+            style={{ fontFamily: 'var(--font-mono), ui-monospace, monospace', fontSize: 'var(--fs-stat)', fontWeight: 700, lineHeight: 1, color: 'var(--text-primary)' }}
+          >
+            {activeCount}
+            <span className="fs-base" style={{ fontWeight: 500, color: 'var(--text-muted)' }}> / {cap}</span>
+          </span>
+          <div className="h-1.5 rounded-full overflow-hidden cc-progress-track">
+            {/* The Fill recipe: the bar travels to its value by scaleX, so a
+                sign-up moves a transform, not the layout, and the travel shows
+                how much changed. */}
+            <div
+              className="h-full w-full motion-fill"
+              style={{
+                transform: `scaleX(${capacityPct / 100})`,
+                background: capacityPct >= 100 ? 'var(--sev-crit-text)' : capacityPct >= 80 ? 'var(--sev-med-text)' : 'var(--sev-good-text)',
+              }}
+            />
+          </div>
           {waitlistCount > 0 && (
-            <span className="fs-sm text-gray-400">+{waitlistCount} waitlist</span>
+            <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>+{waitlistCount} waitlist</span>
           )}
         </div>
-        <div className="h-1.5 rounded-full overflow-hidden cc-progress-track">
-          {/* The Fill recipe: the bar travels to its value by scaleX, so a
-              sign-up moves a transform, not the layout, and the travel shows
-              how much changed. */}
-          <div
-            className="h-full w-full motion-fill"
-            style={{
-              transform: `scaleX(${capacityPct / 100})`,
-              background: capacityPct >= 100 ? 'var(--sev-crit-text)' : capacityPct >= 80 ? 'var(--sev-med-text)' : 'var(--sev-good-text)',
-            }}
-          />
+        <div className="cc-tile cc-tile-static">
+          <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>Deadline</span>
+          <span className="fs-md" style={{ fontWeight: 600, lineHeight: 1.2, color: 'var(--text-primary)' }}>
+            {fmtDeadline(session.deadline)}
+          </span>
+          {countdown && (
+            <span className="fs-sm" style={{ color: countdown === 'closed' ? 'var(--text-muted)' : 'var(--text-secondary)' }}>
+              {countdown === 'closed' ? 'Passed' : `${countdown} left`}
+            </span>
+          )}
         </div>
       </div>
 
-      {countdown && (
-        <p className="fs-sm text-gray-400">
-          Sign up deadline: <span className="text-gray-200">
-            {fmtDeadline(session.deadline)}{countdown === 'closed' ? ' (Passed)' : ` (${countdown} left)`}
-          </span>
-        </p>
-      )}
+      {/* One setting, two places: this switch and the one on Edit details both
+          write `signupOpen` through PUT /api/session, and the first flip to
+          open is what pushes the roster (the route de-dupes on
+          `signupOpenNotifiedAt`). Labelled, so it reads as the control it is. */}
+      <div
+        className="cc-mini-card flex items-center justify-between"
+        style={{ gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)' }}
+      >
+        <div style={{ minWidth: 0 }}>
+          {/* Keyed so the words crossfade with the switch — this decides
+              whether players can join, so it should be seen to change. */}
+          <div key={open ? 'open' : 'closed'} className="motion-fade">
+            <p className="fs-md" style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>
+              {open ? 'Sign-ups open' : 'Sign-ups closed'}
+            </p>
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              {open ? 'Players can join now. The roster was notified.' : 'Open to let players in and notify the roster.'}
+            </p>
+          </div>
+        </div>
+        <Switch checked={open} onChange={() => void toggleSignup()} ariaLabel="Sign-ups open" disabled={togglingSignup} />
+      </div>
 
-      <div className="flex flex-wrap gap-2 pt-1">
-        {/* Post-settle: re-share the frozen bill. Settling itself moved to
-            the footer "Finalize cost" action, beside Advance. */}
+      <div className="grid grid-cols-2 gap-2">
+        {/* Post-settle: re-share the frozen bill. Settling itself lives in the
+            footer "Finalize cost" action, beside Advance. */}
         {isSettled && onShareCost ? (
-            <button
-              type="button"
-              onClick={onShareCost}
-              className="cc-btn cc-btn-primary"
-            >
-              <span className="material-icons fs-lg align-middle">share</span>
-              Share again — ${session.settled?.costPerPerson} each
-            </button>
-        ) : null}
-        {onEdit && (
-          <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
-            Edit details
+          <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
+            <span className="material-icons fs-lg align-middle">share</span>
+            Share again — ${session.settled?.costPerPerson} each
           </button>
-        )}
+        ) : null}
         <button
           type="button"
           onClick={shareSignupLink}
-          className="cc-btn cc-btn-secondary"
+          className={isSettled && onShareCost ? 'cc-btn cc-btn-secondary' : 'cc-btn cc-btn-primary'}
           title="Copy/share a sign-up invite link for the group chat."
         >
           <span className="material-icons fs-lg align-middle">share</span>
           {shareCopied ? 'Copied ✓' : 'Share sign-up'}
         </button>
+        {onEdit && (
+          <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
+            Edit details
+          </button>
+        )}
         {isSettled && (
           <button
             type="button"
@@ -417,24 +445,28 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       </div>
 
       {/* End-of-night actions live apart from the action row: finalize the
-          cost, then start next week. Advance is ghost-weight + a confirm sheet
-          since it's hard to reverse (a stray tap must not archive the week). */}
+          cost, then start next week. Both ghost-weight and centred — the
+          week's decisions are above; these close it out. Advance keeps its
+          confirm sheet since it's hard to reverse (a stray tap must not
+          archive the week). */}
       {(!isSettled || onAdvance) && (
         <div
-          className="flex justify-end items-center gap-2 pt-3 mt-1"
-          style={{ borderTop: '1px solid var(--divider)' }}
+          className="flex justify-center items-center flex-wrap"
+          style={{ gap: 'var(--space-1)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
         >
           {!isSettled && (
             <button
               type="button"
               onClick={sendBill}
               disabled={settling}
-              className="cc-btn cc-btn-primary"
+              className="cc-btn cc-btn-ghost fs-sm"
               title="Locks tonight's cost and opens the share sheet for the group chat."
             >
-              <span className="material-icons fs-lg align-middle">send</span>
               {settling ? 'Finalizing…' : 'Finalize cost'}
             </button>
+          )}
+          {!isSettled && onAdvance && (
+            <span className="fs-sm" style={{ color: 'var(--text-muted)' }} aria-hidden="true">·</span>
           )}
           {onAdvance && (
             <button

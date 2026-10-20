@@ -67,16 +67,16 @@ describe('StatsPrivacyScreen', () => {
     expect(screen.getByText('Profile')).toBeTruthy();
   });
 
-  it('reflects the ON state in both the switch and the live line', () => {
+  it('reflects the ON state in the switch, under the one privacy note', () => {
     renderScreen();
     expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByText(/you'll see your band on every compared skill/)).toBeTruthy();
+    expect(screen.getByText(enMessages.stats.privacy.privacyNote)).toBeTruthy();
   });
 
-  it('reflects the OFF state', () => {
+  it('reflects the OFF state — same note, the switch says which', () => {
     renderScreen(state({ privacy: { clubComparison: false, promptedAt: '2026-08-01T00:00:00.000Z' } }));
     expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByText(/you'll still see the group spread/)).toBeTruthy();
+    expect(screen.getByText(enMessages.stats.privacy.privacyNote)).toBeTruthy();
   });
 
   it('saves the new value when toggled', () => {
@@ -113,8 +113,7 @@ describe('StatsPrivacyScreen', () => {
     // Muted, not an alert: the read worked, it reported no answer (state rule, 2026-09-14).
     expect(screen.getByText(enMessages.stats.privacy.unknown)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.queryByText(/you'll see your band on every compared skill/)).toBeNull();
-    expect(screen.queryByText(/you'll still see the group spread/)).toBeNull();
+    expect(screen.queryByText(enMessages.stats.privacy.privacyNote)).toBeNull();
   });
 
   it('offers a re-read rather than a refresh for the unknown state', () => {

@@ -64,14 +64,14 @@ export async function GET(req: NextRequest) {
 
     // Batched player fetch; the mock ignores IN() and returns everything, so
     // post-filter by the id set (same contract as sessions/recent).
-    type PlayerRow = { sessionId: string; name: string; paid?: boolean; removed?: boolean; waitlisted?: boolean };
+    type PlayerRow = { sessionId: string; name: string; paid?: boolean; removed?: boolean; waitlisted?: boolean; writtenOff?: boolean };
     const sessionIds = sessions.map((s) => s.id);
     const sessionIdSet = new Set(sessionIds);
     const playersBySession = new Map<string, PlayerRow[]>();
     if (sessionIds.length > 0) {
       const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
       const rawPlayers = await scope.query<PlayerRow>('players', {
-        select: 'c.sessionId, c.name, c.paid, c.removed, c.waitlisted',
+        select: 'c.sessionId, c.name, c.paid, c.removed, c.waitlisted, c.writtenOff',
         where: `c.sessionId IN (${placeholders})`,
         params: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
       });
@@ -90,6 +90,10 @@ export async function GET(req: NextRequest) {
       const active = roster.filter((p) => !p.removed && !p.waitlisted);
       const paidCount = active.filter((p) => p.paid === true).length;
       const paidPercent = active.length > 0 ? Math.round((paidCount / active.length) * 100) : 0;
+      // Who still owes: not paid and not covered. The Payments card's session
+      // chips read this ("2 owing" / "all paid") so a past session says what
+      // is left to collect without being opened.
+      const unpaidCount = active.filter((p) => p.paid !== true && !p.writtenOff).length;
 
       const recipient = s.eTransferRecipient ?? globalRecipient;
       const build = buildReceiptInput(s, roster, recipient);
@@ -99,6 +103,7 @@ export async function GET(req: NextRequest) {
         date: s.datetime ?? '',
         attendanceCount: active.length,
         paidPercent,
+        unpaidCount,
         costPerPerson: build.costPerPerson,
         receipt: build.input,
         ...(build.error ? { receiptError: build.error } : {}),

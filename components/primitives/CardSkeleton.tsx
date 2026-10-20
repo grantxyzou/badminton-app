@@ -82,13 +82,18 @@ export function TabSkeleton({ announcement }: { announcement?: React.ReactNode }
  * code so this file — which everyone downloads — imports nothing from it.
  */
 export const CONSOLE_HEIGHTS = {
-  nextSession: 274,
+  // Re-measured 2026-10-20 at 430px after the redesign (eyebrow + headline +
+  // two tiles + the labelled switch + two buttons + the footer pair); the
+  // same with 0 or 4 signed up, no waitlist line.
+  nextSession: 358,
   tile: 109,
   // The e-transfer inbox in its "Set up" state, which is production's until
   // the Gmail script is installed; re-measure the configured one-line status
   // card then. Flag off, the slot closes at once and this is never drawn.
   inbox: 190,
-  payments: 351,
+  // Re-measured 2026-10-20 at 430px after the redesign: hero block, two
+  // still-owed rows, a paid-chips row and the add field (4 players, 2 owing).
+  payments: 541,
   invite: 343,
   // The grouped lists (People / Money / Club / More, eyebrows included) since
   // the admin regroup (measured 2026-10-12, 430px, all flags on).

@@ -8,7 +8,7 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { isNoActiveSession } from '@/lib/apiFetch';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
-import StatusBanner from '../primitives/StatusBanner';
+import { showTopToast } from '@/lib/topToast';
 import ErrorState from '../primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import { StateLink } from '@/components/primitives/StateCard';
@@ -223,6 +223,15 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         // the sign-up link right away — the whole point of creating it. They
         // dismiss explicitly via "Done".
         setSuccess(true);
+        // The confirmation is a MOMENT, so it is the app's top toast (the same
+        // notice as "You're in" and "Email confirmed"), not a banner parked in
+        // the form: it drops in, its ring counts down, and it leaves on its own.
+        showTopToast({
+          tone: 'success',
+          icon: 'check_circle',
+          title: 'Session created!',
+          body: `${firstSession ? '' : 'Previous session archived. '}Sign-up is closed by default — open it, then share the link.`,
+        });
       } else {
         const data = await res.json().catch(() => ({}));
         setAdvanceError(data.error ?? 'Failed to advance. Please try again.');
@@ -482,15 +491,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
           {success ? (
             <div className="space-y-3">
-              {/* Rare and consequential — the week just moved — so this is one
-                  of the few places the celebrate entrance is earned. */}
-              <StatusBanner
-                tone="success"
-                icon="check_circle"
-                celebrate
-                title="Session created!"
-                body={`${firstSession ? '' : 'Previous session archived. '}Sign-up is closed by default — open it, then share the link.`}
-              />
+              {/* The "Session created!" notice is the top toast (raised above);
+                  the form keeps only what is left to do — share, then Done. */}
               <button
                 type="button"
                 onClick={shareSignupLink}
