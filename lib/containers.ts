@@ -50,7 +50,7 @@ export const CONTAINERS = {
   birds: { pk: '/id', scope: 'group', provisioned: true, reason: "shuttle purchases and stock adjustments — one club's inventory" },
   kudos: { pk: '/recipientMemberId', scope: 'group', provisioned: true, reason: 'eligibility is co-play on one roster, and raterName is a roster name' },
   stringingJobs: { pk: '/memberId', scope: 'group', provisioned: true, reason: "the bench is a club service; a job carries that club's rate card" },
-  clubSettings: { pk: '/id', scope: 'group', provisioned: true, reason: "shop sign, stocked strings, rate card, gift cards, string purchases and the e-transfer aliases (kind 'alias') — per club, per-group ids" },
+  clubSettings: { pk: '/id', scope: 'group', provisioned: true, reason: "shop sign, stocked strings, rate card, gift cards, string purchases, the stringer's grommet hole counts (kind 'holeCount') and the e-transfer aliases (kind 'alias') — per club, per-group ids" },
   events: { pk: '/memberId', scope: 'group', provisioned: true, reason: "an engagement happens inside one group's tabs; slice0 is a per-group readout" },
   insights: { pk: '/memberId', scope: 'group', provisioned: true, reason: 'narrates group play (partners, kudos); one cache doc per group per member' },
   ledger: { pk: '/memberId', scope: 'group', provisioned: false, reason: "store credit a club gave one of its members, and what it paid; a person's balance in one club is that club's to give" },

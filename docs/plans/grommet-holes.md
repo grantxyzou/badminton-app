@@ -1,7 +1,7 @@
 # Grommet hole counts on the racket catalog
 
 **Track:** ROADMAP North Star — Value-Hub Track 2 (Equipment: the frame page is "a reference you can check courtside") and the stringing service (`admin.stringing`: the stringer is the person who needs the number).
-**Status:** in-flight — Phase 1 (Yonex) shipped 2026-10-20 (#658); Phase 2 (Victor) built 2026-10-20
+**Status:** in-flight — Phase 1 (Yonex) shipped 2026-10-20 (#658); Phase 2 (Victor) shipped 2026-10-20 (#660); Phase 3 (counted at the bench) built 2026-10-20
 **Review on:** 2026-11-20 — did Phase 1 (Yonex, from the maker's pattern sheet) ship, and has the stringer looked up a hole count in the app instead of on the frame? If neither, drop Phases 2–3.
 
 ## Problem
@@ -112,11 +112,36 @@ Source: Yonex's stringing sheet, May 2025 (https://us.yonex.com/pages/stringing-
 
 Every source found says 76 for Victor; none disagreed. The stringer counting one frame of each would fill most of the blanks. Phase 3's bench entry is the place for that.
 
+## Phase 3 result (2026-10-20)
+
+Grant's two calls, 2026-10-20: the entry point is a **"String holes" card on the bench's Set-up screen** (Strings, stock & prices), not the racket page; and a count is **per club**.
+
+**What it does:**
+- **What can be counted:** any offered racket with no sourced count. That is 90 today: every Li-Ning, plus the Yonex and Victor blanks. Search, pick, type the number, Save.
+- **What members see:** the number shows on that racket's page, in the same "String holes" cell, to that club's members only.
+- **Range:** the route refuses a count outside 60–100.
+- **No second opinions:** a racket the maker or a pattern sheet already answers for is refused with `already_known` (409). If a counted racket later gains a sourced count, the stored count gives way on read.
+
+| Piece | File |
+|---|---|
+| Storage: a `kind: 'holeCount'` row in `clubSettings`, id `holes:<catalogId>` (prefixed outside BPM); validate, read, set, clear | `lib/holeCounts.ts` |
+| `GET` (any member: the racket page) / `PUT` / `DELETE` (admin) | `app/api/stringing/holes/route.ts` |
+| Bench card | `components/admin/CommandCenter/HoleCountsCard.tsx`, on `StringingPage`'s Set-up screen |
+| Racket page: asks only when no source answers | `components/stats/useClubHoleCount.ts`, `specCells(row, clubHoles)` |
+| Tests | `__tests__/group-hole-counts.test.ts` (two clubs, auth, validation), `__tests__/components/HoleCountsCard.test.tsx` |
+
+**Why per club, in `clubSettings`:**
+- One club's admin can never change what another club's members read. The multi-group rule is that a GROUP-scoped write is stamped and read by group.
+- The account is at Cosmos's container cap, so a new kind goes into an existing container.
+- A count is a physical fact, so a second club counting the same frame repeats work. That is the price of not letting one club write for all.
+
+**Only an admin enters a count.** The Set-up screen is admin-only. A stringer who is not an admin sees only their assigned jobs (`docs/roles.md`), and nothing here changes that.
+
 ## Phases
 
 1. **Yonex from the official sheet.** Map each offered Yonex row to a model code on the sheet, then the code's pattern family to its count (Type 1/2 → 76, Nanoflare 800 Pro → 78, trainers → 72), stored as `pattern`. Rows with no code on the sheet stay blank. This is about 54 rows, and the only phase with an official source.
 2. **Victor where the maker page names the tech.** Done: "SEVEN SIX 76" on Victor's own page → 76, stored as `maker` (see Phase 2 result). Everything else stays blank.
-3. **Li-Ning and the rest: counted at the bench.** The club strings these frames. A stringer counting a frame once is a better source than any web page, and it is the only route Li-Ning has. This needs a small admin "Holes" entry on the frame page; scope it after Phase 1 shows the cell is used.
+3. **Li-Ning and the rest: counted at the bench.** Done: a "String holes" card on the bench's Set-up screen, per club (see Phase 3 result). A stringer counting a frame once is a better source than any web page, and it is the only route Li-Ning has.
 
 ## Decisions
 

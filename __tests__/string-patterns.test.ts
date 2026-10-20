@@ -84,4 +84,11 @@ describe('string patterns', () => {
     expect(keys('racket-yonex-astrox-99-pro')).not.toContain('holes');
     expect(keys('racket-li-ning-axforce-80')).not.toContain('holes');
   });
+
+  it('shows the club stringer’s count only where no source answers, never over one', () => {
+    const counted = specCells(byId('racket-li-ning-axforce-80'), 76);
+    expect(counted.find((c) => c.key === 'holes')?.value).toBe('76');
+    // The pattern's 76 wins; a club figure never replaces a sourced one.
+    expect(specCells(byId('racket-yonex-astrox-100zz'), 72).find((c) => c.key === 'holes')?.value).toBe('76');
+  });
 });

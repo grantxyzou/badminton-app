@@ -25,6 +25,10 @@ import type { CatalogItem } from './types';
  * the one retailer covering most frames was wrong on 2 of 12.
  */
 
+/** A club count outside this is a typo, not a frame (lib/holeCounts.ts and the bench share it). */
+export const MIN_HOLES = 60;
+export const MAX_HOLES = 100;
+
 export type HolesSource = 'maker' | 'pattern' | 'retailers' | 'counted';
 
 export interface StringPattern {

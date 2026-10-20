@@ -17,6 +17,7 @@ import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
 import StringShelfCard from './StringShelfCard';
 import OtherPricesCard from './OtherPricesCard';
+import HoleCountsCard from './HoleCountsCard';
 import { StateLink } from '@/components/primitives/StateCard';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import RegisterSwitch from '@/components/primitives/RegisterSwitch';
@@ -588,6 +589,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
         <div className="flex flex-col gap-4 pb-6">
           <StringShelfCard />
           <OtherPricesCard />
+          <HoleCountsCard />
         </div>
       </div>
     );

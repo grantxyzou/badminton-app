@@ -16,6 +16,8 @@ import type { UseGear } from './useGear';
 import { useCatalog } from './useCatalog';
 import { useClubTension } from './useClubTension';
 import { useFitVerdict } from './useFitVerdict';
+import { useClubHoleCount } from './useClubHoleCount';
+import { grommetHoles } from '@/lib/stringPatterns';
 import { useStatsTakeover } from './statsTakeover';
 
 export interface FrameDetailPageProps {
@@ -57,6 +59,8 @@ export default function FrameDetailPage({ activeName, gear, frameId, onBack, onO
   const history = useMemo(() => frameHistory(known ? gear.gear : null, frameId), [known, gear.gear, frameId]);
   const verdict = useFitVerdict(activeName, known ? gear.gear : null, known, frameId);
   const club = useClubTension(frameId);
+  // Asked only for a frame no maker or pattern sheet answers for.
+  const clubHoles = useClubHoleCount(frameId, row !== null && grommetHoles(row) === null);
   const close = useMemo(() => (row ? closeToFrame(row, rackets.items) : []), [row, rackets.items]);
   const [open, setOpen] = useState<Section | null>(null);
 
@@ -102,7 +106,7 @@ export default function FrameDetailPage({ activeName, gear, frameId, onBack, onO
             </div>
           </div>
         </div>
-        <SpecGrid cells={specCells(row)} />
+        <SpecGrid cells={specCells(row, clubHoles)} />
         {row.attributes?.priceMinUSD !== undefined && <p className="fit-caption">{t('priceCaption')}</p>}
       </div>
 
