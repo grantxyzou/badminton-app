@@ -328,7 +328,8 @@
     "priceMaxUSD": 230.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-thruster-f-claw",
@@ -374,7 +375,8 @@
     "priceMaxUSD": 230.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-auraspeed-fantome",
@@ -420,7 +422,8 @@
     "priceMaxUSD": 210.0,
     "tier": "Mid-range",
     "lastVerified": "2026-10-20",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-hypernano-x-900x",
@@ -443,7 +446,8 @@
     "priceMaxUSD": 200.0,
     "tier": "Mid-range",
     "lastVerified": "2026-10-20",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-drivex-10-metallic",
@@ -489,7 +493,8 @@
     "priceMaxUSD": 160.0,
     "tier": "Mid-range",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-jetspeed-s-011",
@@ -1090,7 +1095,8 @@
     "priceMaxUSD": 210.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-auraspeed-hyper-sonic-hs",
@@ -1113,7 +1119,8 @@
     "priceMaxUSD": 220.0,
     "tier": "Premium",
     "lastVerified": "2026-10-20",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-hypernano-x-800",
@@ -2103,7 +2110,8 @@
     "priceMaxUSD": 220.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-auraspeed-90f",
@@ -2126,7 +2134,8 @@
     "priceMaxUSD": 220.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-auraspeed-90k-metallic",
@@ -2149,7 +2158,8 @@
     "priceMaxUSD": 240.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-auraspeed-hs-plus",
@@ -2172,7 +2182,8 @@
     "priceMaxUSD": 230.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-auraspeed-90s",
@@ -2195,7 +2206,8 @@
     "priceMaxUSD": 180.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-auraspeed-99",
@@ -2241,7 +2253,8 @@
     "priceMaxUSD": 220.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-thruster-f-c-ultra-cx",
@@ -2310,7 +2323,8 @@
     "priceMaxUSD": 120.0,
     "tier": "Mid-range",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-thruster-f-ultra",
@@ -2333,7 +2347,8 @@
     "priceMaxUSD": 230.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-thruster-f-enhanced-hs",
@@ -2379,7 +2394,8 @@
     "priceMaxUSD": 189.99,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-thruster-ryuga-ii-pro",
@@ -2402,7 +2418,8 @@
     "priceMaxUSD": 230.0,
     "tier": "Premium",
     "lastVerified": "2026-10-20",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-76-retailers"
   },
   {
     "id": "victor-thruster-ryuga-metallic",
@@ -2448,7 +2465,8 @@
     "priceMaxUSD": 170.0,
     "tier": "Mid-range",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-thruster-ryuga-muse",
@@ -2471,7 +2489,8 @@
     "priceMaxUSD": 180.0,
     "tier": "Premium",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-thruster-k-280-ex",
@@ -2494,7 +2513,8 @@
     "priceMaxUSD": 85.0,
     "tier": "Entry-level",
     "lastVerified": "2026-09-14",
-    "partitionKey": "Victor"
+    "partitionKey": "Victor",
+    "stringPattern": "victor-seven-six-76"
   },
   {
     "id": "victor-thruster-k-100k",

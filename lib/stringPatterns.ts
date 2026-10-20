@@ -14,7 +14,9 @@ import type { CatalogItem } from './types';
  * share family 5 (78 holes); the 800 Play is in family 2 (76). A family is
  * whatever the maker's sheet says it is, model code by model code.
  *
- * No maker prints a hole count as a spec, so every count says how we know it:
+ * Every count says how we know it:
+ * - `maker`     — the maker's own product page states the number for that model
+ *                 (Victor's "SEVEN SIX 76" grommet mark).
  * - `pattern`   — an earlier edition of the maker's instructions, with text
  *                 identical to this family's, labels the pattern with its count.
  * - `retailers` — two or more independent retailers agree.
@@ -23,13 +25,14 @@ import type { CatalogItem } from './types';
  * the one retailer covering most frames was wrong on 2 of 12.
  */
 
-export type HolesSource = 'pattern' | 'retailers' | 'counted';
+export type HolesSource = 'maker' | 'pattern' | 'retailers' | 'counted';
 
 export interface StringPattern {
   brand: string;
-  /** The maker's sheet that groups these models. */
-  sheetUrl: string;
-  /** The model codes the sheet lists, verbatim — the audit trail for a row's mapping. */
+  /** The maker's sheet that groups these models, when there is one. */
+  sheetUrl?: string;
+  /** The audit trail for a row's mapping: the model codes a sheet lists,
+   *  verbatim, or for Victor the product-page slugs that were read. */
   codes: string[];
   /** Null when no source we trust states it. */
   holes: number | null;
@@ -85,6 +88,27 @@ export const STRING_PATTERNS: Record<string, StringPattern> = {
     brand: 'Yonex', sheetUrl: YONEX_SHEET,
     codes: ['AX02A', 'AX02C', 'AX02F', 'AXE13', 'NF-002A', 'NF002C', 'NF002F', 'NF-001A', 'NF-001C', 'NF-001F', 'NF-E13', 'ISO-TR1', 'ISO-TR0', 'ISOL3', 'MP8LT', 'MP5LT', 'MP2', 'MP1', 'MP2JR', 'B7000MDM', 'B4000'],
     holes: 72, holesSource: 'pattern', holesUrls: [YONEX_EARLIER_EDITION],
+  },
+  // Victor publishes no pattern sheet. Each of these frames' own page on
+  // ca.victorsport.com (https://ca.victorsport.com/product/<code>) carries
+  // Victor's "SEVEN SIX 76" grommet mark, read 2026-10-20. A page WITHOUT the
+  // mark proves nothing — colourway pages of one frame disagree on showing it —
+  // so a frame with no marked page of its own is left blank, never inferred.
+  'victor-seven-six-76': {
+    brand: 'Victor',
+    codes: ['thruster-ryuga-ii-j', 'thruster-f-c', 'auraspeed-90k-h', 'js-12ii-r', 'drivex-9x-b', 'thruster-f', 'ars-80x-c', 'hypernano-x-900x', 'jetspeed-s-12-m', 'thruster-ryuga-d', 'auraspeed-hypersonic-b', 'auraspeed-100x-ultra-c', 'auraspeed-90f-m', 'auraspeed-90k-metallic-r', 'auraspeed-hs-plus-c', 'auraspeed-90s-j', 'auraspeed-fantme-f-ac', 'drivex-3h-r', 'thruster-f--ultra-c', 'legend', 'thruster-raptor-c', 'thruster-ryuga-muse-f', 'thruster-k-280-ex'],
+    holes: 76, holesSource: 'maker',
+    holesUrls: ['https://dkjulgymkya8y.cloudfront.net/victor/ca/tech-tech_mark_81.webp'],
+  },
+  // Victor's own page for the base Ryuga II Pro does not show the mark.
+  'victor-76-retailers': {
+    brand: 'Victor',
+    codes: ['TK-RYUGA II PRO'],
+    holes: 76, holesSource: 'retailers',
+    holesUrls: [
+      'https://badminton-shop.com/product/victor-thruster-ryuga-ii-pro',
+      'https://www.badmintonalley.com/Victor_Thruster_Ryuga_2_Pro_Badminton_Racket_p/racket-victor-tk-ryuga2pro-b.htm',
+    ],
   },
 };
 
