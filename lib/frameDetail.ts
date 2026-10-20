@@ -3,6 +3,7 @@ import { isOffered } from './catalogOffer';
 import { axesOf, buildTarget, compareFit, isScorable, scoreFit, type FitInput } from './racketFit';
 import { scalePosition } from './tension';
 import { cadRange } from './catalogPrice';
+import { grommetHoles } from './stringPatterns';
 import type { CatalogItem, GearItem, PlayerGear, StringLogEntry } from './types';
 
 /**
@@ -18,7 +19,7 @@ import type { CatalogItem, GearItem, PlayerGear, StringLogEntry } from './types'
 // The one price source, re-exported where the frame page has always imported it.
 export { USD_TO_CAD, cadRange } from './catalogPrice';
 
-export type SpecKey = 'weight' | 'balance' | 'shaft' | 'rated' | 'grip' | 'price';
+export type SpecKey = 'weight' | 'balance' | 'shaft' | 'rated' | 'holes' | 'grip' | 'price';
 
 export interface SpecCell {
   key: SpecKey;
@@ -60,10 +61,14 @@ export function specCells(row: CatalogItem): SpecCell[] {
   const tLo = num(row, 'tensionMinLbs');
   const tHi = num(row, 'tensionMaxLbs');
   if (tLo !== null || tHi !== null) cells.push({ key: 'rated', value: '', bounds: [tLo, tHi] });
+  // From the racket's stringing pattern, only where a source we trust states it.
+  const holes = grommetHoles(row);
+  if (holes !== null) cells.push({ key: 'holes', value: String(holes) });
   const grip = str(row, 'gripSize');
   if (grip) cells.push({ key: 'grip', value: slashes(grip) });
   const price = cadRange(row);
-  if (price) cells.push({ key: 'price', value: `$${price[0]}–$${price[1]}` });
+  // A range whose ends round to the same $5 is one figure, not "$400–$400".
+  if (price) cells.push({ key: 'price', value: price[0] === price[1] ? `$${price[0]}` : `$${price[0]}–$${price[1]}` });
   return cells;
 }
 

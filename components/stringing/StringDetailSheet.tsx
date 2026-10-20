@@ -197,7 +197,7 @@ export default function StringDetailSheet({
               {/* The shop's typical range only when the club has no price of
                   its own — beside a real price it is a second number to
                   compare against for no reason. */}
-              {!hasPrice && shopRange && <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('typicalPrice', { range: `$${shopRange[0]}–${shopRange[1]}` })}</p>}
+              {!hasPrice && shopRange && <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('typicalPrice', { range: shopRange[0] === shopRange[1] ? `$${shopRange[0]}` : `$${shopRange[0]}–${shopRange[1]}` })}</p>}
             </section>
           </div>
         )}

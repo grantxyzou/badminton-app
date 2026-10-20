@@ -54,6 +54,7 @@ function mapRecord(raw) {
   put('priceMaxUSD', raw.priceMaxUSD);
   put('lastVerified', raw.lastVerified);
   put('notes', raw.notes);
+  put('stringPattern', raw.stringPattern); // lib/stringPatterns.ts
 
   const item = {
     id: `racket-${raw.id}`,
