@@ -72,6 +72,9 @@ describe('unlisted catalog rows', () => {
       'racket-li-ning-axforce-90-dragon': 'duplicate',
       'racket-yonex-nanoflare-700': 'discontinued',
       'racket-li-ning-air-force-79': 'discontinued',
+      // 2026-10-20 re-check: no maker or retailer page anywhere. `not_found`,
+      // not `not_a_model` — we could not find it, which is not proof it never was.
+      'racket-victor-arrow-speed-88-as-88': 'not_found',
     });
   });
 });

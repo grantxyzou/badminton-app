@@ -38,7 +38,7 @@ The Ignite 8 and Brave Sword rows also carry the old curated text fields `weight
 
 ## For Grant
 
-- **Arrow Speed 88 (AS-88) has no trace** on Victor's sites or any retailer in this pass. The 09-14 check filed it under "real, but old". It stays offered until someone decides; withdrawing it would follow the `unlisted` precedent.
+- **Arrow Speed 88 (AS-88) has no trace** on Victor's sites or any retailer in this pass. The 09-14 check filed it under "real, but old". **Withdrawn with `unlisted: 'not_found'` (Grant, 2026-10-20).** The reason says we could not find it, not that it never existed. The row stays, so a bag that points at it still resolves.
 - **No longer sold:** Auraspeed 80X, HyperNano X 800 / 900X and the original Jetspeed S 12 are marked discontinued at UK/US retailers. The Nanoflare Nextage is sold out on Yonex US. They stay in the catalog because a member's bag may point at them.
 - **Brave Sword 1500** is an India-market beginner racket. Its US$75–110 price has no current source; the price is advisory and was kept.
 
