@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
-import LevelTrendChart, { plottable } from '../../components/stats/LevelTrendChart';
+import LevelTrendChart, { plottable, phaseReading } from '../../components/stats/LevelTrendChart';
 import type { UseCheckIn, CheckInSnapshot } from '../../components/stats/useCheckIn';
 
 /**
@@ -134,5 +134,43 @@ describe('LevelTrendChart', () => {
     expect(plottable([{ takenAt: undefined, overall: 3 }])).toHaveLength(0);
     expect(plottable([{ takenAt: '2026-04-10T00:00:00.000Z', overall: null }])).toHaveLength(0);
     expect(plottable([{ takenAt: 'not-a-date', overall: 3 }])).toHaveLength(0);
+  });
+
+  // ── The phase reading (Stats canvas, 2026-10-20) ──────────────────────────
+  it('names the phase the latest check-in sits in, and how far the next one is', () => {
+    renderChart(stub(TWO));
+    // 2.9 sits in 2.6–3.4: Intermediate, 0.5 from Advanced.
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === "You're Intermediate, 0.5 from Advanced.")).toBeTruthy();
+    // Every phase is named down the side, plain words only.
+    for (const name of ['Beginner', 'Improver', 'Intermediate', 'Advanced', 'Competitive']) {
+      expect(screen.getAllByText(name).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('says how far the level moved since the first check-in', () => {
+    renderChart(stub(TWO));
+    expect(screen.getByText('▲ 0.4 since Apr 10')).toBeTruthy();
+  });
+
+  it('labels each check-in with its value', () => {
+    const { container } = renderChart(stub(TWO));
+    expect(Array.from(container.querySelectorAll('.level-chart-value')).map((e) => e.textContent)).toEqual(['2.5', '2.9']);
+  });
+});
+
+describe('phaseReading', () => {
+  it.each([
+    [1.0, 'foundation', 'exploration', 0.8],
+    [2.6, 'switch', 'commitment', 0.8],
+    [3.39, 'switch', 'commitment', 0.01],
+    [4.3, 'advanced', null, null],
+  ] as const)('%s → %s', (level, phase, next, gap) => {
+    const r = phaseReading(level);
+    expect(r.phase).toBe(phase);
+    if (next === null) expect(r.next).toBeNull();
+    else {
+      expect(r.next!.phase).toBe(next);
+      expect(r.next!.gap).toBeCloseTo(gap!, 5);
+    }
   });
 });

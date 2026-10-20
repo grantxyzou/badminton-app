@@ -3,6 +3,8 @@
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
+import { useId } from 'react';
+import { PHASE_BANDS, type Phase } from '@/lib/assessment';
 import type { UseCheckIn, CheckInSnapshot } from './useCheckIn';
 
 /**
@@ -31,6 +33,13 @@ import type { UseCheckIn, CheckInSnapshot } from './useCheckIn';
  * inline SVG, which is also why `var()` tokens are safe here: recharts wrote
  * stroke and fill as SVG *attributes*, where `var()` does not resolve. These
  * are CSS properties on real elements.
+ *
+ * THE PHASE BANDS ARE THE READING (Stats canvas, 2026-10-20). Behind the line,
+ * the five phases from `PHASE_BANDS` (Beginner … Competitive), named in a left
+ * gutter, with the latest check-in's band shaded; each check-in carries its
+ * value; and a sentence under the plot says which phase that is and how far
+ * the next one sits. The labels are HTML, not SVG text, because the plot
+ * stretches to the card's width and stretched SVG text would distort.
  */
 
 /** The level scale, fixed. NEVER auto-scale this to the data: a 0.1 wobble
@@ -39,21 +48,22 @@ const Y_MIN = 1;
 const Y_MAX = 5;
 
 const VIEW_W = 300;
-const VIEW_H = 96;
+const VIEW_H = 112;
 /**
  * The height every state reserves: the plot, its gap, and the one-line date
  * axis under it. NOT just the plot — measured in the browser, reserving only
- * `VIEW_H` left the empty and failed states 16px shorter than a drawn one,
+ * the plot left the empty and failed states 16px shorter than a drawn one,
  * because the axis row exists in one and not the others. The point of the
  * reservation is that the card is the same size whatever came back, so the
- * bars and legends below it do not jump on each read; getting it 16px wrong
- * just moves the jump somewhere less obvious.
+ * bars and legends below it do not jump on each read.
  */
 const AXIS_ROW_H = 16;
 const BODY_GAP = 6; // --space-2
 const BODY_H = VIEW_H + BODY_GAP + AXIS_ROW_H;
-const PAD_X = 6;
+const PAD_X = 8;
 const PAD_Y = 8;
+/** Value labels on every point up to this many; beyond it, first and last. */
+const LABEL_ALL_UP_TO = 5;
 
 interface Point {
   x: number;
@@ -73,30 +83,40 @@ export function plottable(snapshots: CheckInSnapshot[]): Array<{ at: number; ove
     .sort((a, b) => a.at - b.at);
 }
 
+const yOf = (level: number) => {
+  const clamped = Math.min(Y_MAX, Math.max(Y_MIN, level));
+  return PAD_Y + (1 - (clamped - Y_MIN) / (Y_MAX - Y_MIN)) * (VIEW_H - PAD_Y * 2);
+};
+
 function layout(rows: Array<{ at: number; overall: number }>): Point[] {
   const first = rows[0].at;
   const last = rows[rows.length - 1].at;
   // All points on one day (or a single point) would divide by zero; centre them.
   const span = last - first;
   const usableW = VIEW_W - PAD_X * 2;
-  const usableH = VIEW_H - PAD_Y * 2;
   return rows.map((r, i) => {
     const tx = span > 0 ? (r.at - first) / span : rows.length > 1 ? i / (rows.length - 1) : 0.5;
-    const clamped = Math.min(Y_MAX, Math.max(Y_MIN, r.overall));
-    const ty = (clamped - Y_MIN) / (Y_MAX - Y_MIN);
-    return {
-      x: PAD_X + tx * usableW,
-      y: PAD_Y + (1 - ty) * usableH,
-      at: r.at,
-      overall: r.overall,
-    };
+    return { x: PAD_X + tx * usableW, y: yOf(r.overall), at: r.at, overall: r.overall };
   });
 }
 
+/** The five phases as bands on the 1–5 axis, lowest first. */
+const BANDS: Array<{ phase: Phase; lo: number; hi: number }> = [...PHASE_BANDS]
+  .sort((a, b) => a.min - b.min)
+  .map((b, i, all) => ({ phase: b.phase, lo: Math.max(Y_MIN, b.min), hi: all[i + 1]?.min ?? Y_MAX }));
+
+/** Which phase a level sits in, and the next one up (null at the top). */
+export function phaseReading(level: number): { phase: Phase; next: { phase: Phase; gap: number } | null } {
+  let i = BANDS.length - 1;
+  while (i > 0 && level < BANDS[i].lo) i -= 1;
+  const next = BANDS[i + 1];
+  return { phase: BANDS[i].phase, next: next ? { phase: next.phase, gap: Math.max(0, next.lo - level) } : null };
+}
+
 /**
- * Every state wears the same frame: the title, then a body of exactly one plot
- * height. The chart must not change the card's size depending on what came
- * back, or the bars and legends below it jump on every read.
+ * Every state wears the same frame: an inset panel, the title, then a body of
+ * exactly one plot height. The chart must not change the card's size depending
+ * on what came back, or the bars and lists below it jump on every read.
  *
  * What the frame does NOT do is make the states look alike. Loaded-empty and
  * load-failed stay visually distinct — `EmptyState`'s muted body copy against
@@ -104,18 +124,14 @@ function layout(rows: Array<{ at: number; overall: number }>): Point[] {
  * nothing when the backend is broken is the exact failure the house rule names.
  * Same box, different message.
  */
-function Frame({ title, children }: { title: string; children: React.ReactNode }) {
+function Frame({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      <p className="section-label-muted" style={{ margin: 0 }}>{title}</p>
-      <div
-        style={{
-          minHeight: BODY_H,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-        }}
-      >
+    <div className="you-panel">
+      <div className="you-panel-head">
+        <p className="you-panel-label">{title}</p>
+        {aside}
+      </div>
+      <div className="you-panel-body" style={{ minHeight: BODY_H }}>
         {children}
       </div>
     </div>
@@ -126,6 +142,7 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
   const t = useTranslations('stats.assess');
   const tStats = useTranslations('stats');
   const format = useFormatter();
+  const gradientId = useId();
 
   // A failed read is NOT an empty history. Saying "one check-in so far" to a
   // member with years of them, because their network blipped, is exactly the
@@ -145,8 +162,8 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
       </Frame>
     );
   }
-  // Loading reserves the space silently — a spinner for a 96px strip is noise,
-  // and the height is already held.
+  // Loading reserves the space silently — a spinner for a strip is noise, and
+  // the height is already held.
   if (checkIn.status === 'loading') return <Frame title={t('trendTitle')}>{null}</Frame>;
 
   const rows = plottable(checkIn.snapshots);
@@ -164,14 +181,8 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
    * The YEAR appears as soon as the history crosses one.
    *
    * Month-and-day alone renders a year of check-ins as "Sep 13 … Aug 31", which
-   * reads as running BACKWARDS — a reader has no way to tell those are twelve
-   * months apart rather than two weeks the wrong way round. Found by looking at
-   * it: every structural assertion passed, because the polyline had the right
-   * points and the label was still a string. Only a person reading it can see
-   * that it says the wrong thing.
-   *
-   * Kept off the short ranges deliberately — "Apr 9, 2026" on both ends of a
-   * four-month span is noise that tells the reader nothing they did not have.
+   * reads as running BACKWARDS. Kept off the short ranges deliberately — "Apr 9,
+   * 2026" on both ends of a four-month span is noise.
    */
   const first = new Date(pts[0].at);
   const last = new Date(pts[pts.length - 1].at);
@@ -181,60 +192,101 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
       ? { year: 'numeric', month: 'short', day: 'numeric' }
       : { month: 'short', day: 'numeric' });
 
+  const latest = pts[pts.length - 1];
+  const reading = phaseReading(latest.overall);
+  // Below 0.05 a change is not one the member can perceive (the strip's rule).
+  const change = pts.length > 1 ? latest.overall - pts[0].overall : 0;
+  const aside = Math.abs(change) >= 0.05 ? (
+    <span className={`you-change${change < 0 ? ' is-down' : ''}`}>
+      {t('trendSince', { arrow: change > 0 ? '▲' : '▼', delta: Math.abs(change).toFixed(1), date: dateOf(pts[0].at) })}
+    </span>
+  ) : undefined;
+  const labelled = (i: number) => pts.length <= LABEL_ALL_UP_TO || i === 0 || i === pts.length - 1;
+  const area = pts.length > 1
+    ? `${pts[0].x},${VIEW_H - PAD_Y} ${pts.map((p) => `${p.x},${p.y}`).join(' ')} ${latest.x},${VIEW_H - PAD_Y}`
+    : null;
+
   return (
-    <Frame title={t('trendTitle')}>
-      <svg
-        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        preserveAspectRatio="none"
-        style={{ width: '100%', height: 96, display: 'block', overflow: 'visible' }}
-        role="img"
-        /* One point has no "from … to …" to describe, and the plural form of
-           the count matters to anyone reading by ear. */
-        aria-label={pts.length === 1
-          ? t('trendAriaOne', { date: dateOf(pts[0].at) })
-          : t('trendAria', {
-              count: pts.length,
-              first: dateOf(pts[0].at),
-              last: dateOf(pts[pts.length - 1].at),
-            })}
-      >
-        {/* Midline at level 3, so the line is read against something. Not a
-            full grid: four more rules would out-weigh the one mark that moves. */}
-        <line
-          x1={PAD_X}
-          x2={VIEW_W - PAD_X}
-          y1={PAD_Y + (VIEW_H - PAD_Y * 2) / 2}
-          y2={PAD_Y + (VIEW_H - PAD_Y * 2) / 2}
-          stroke="var(--border-subtle)"
-          strokeWidth={1}
-          strokeDasharray="3 4"
-        />
-
-        {pts.length > 1 && (
-          <polyline
-            points={pts.map((p) => `${p.x},${p.y}`).join(' ')}
-            fill="none"
-            stroke="var(--accent)"
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        )}
-
-        {/* One marker per check-in — the reader can count what the line is
-            made of, rather than trusting a smooth curve through two points. */}
-        {pts.map((p) => (
-          <circle
-            key={p.at}
-            cx={p.x}
-            cy={p.y}
-            r={3}
-            fill="var(--accent)"
-            stroke="var(--page-bg)"
-            strokeWidth={1.5}
-          />
-        ))}
-      </svg>
+    <Frame title={t('trendTitle')} aside={aside}>
+      <div className="level-chart">
+        {/* The phase names, lowest at the bottom, each centred on its band. */}
+        <div className="level-chart-gutter" aria-hidden="true">
+          {BANDS.map((b) => (
+            <span
+              key={b.phase}
+              className={`level-chart-phase${b.phase === reading.phase ? ' is-current' : ''}`}
+              style={{ top: (yOf(b.lo) + yOf(b.hi)) / 2 }}
+            >
+              {t(`phase.${b.phase}`)}
+            </span>
+          ))}
+        </div>
+        <div className="level-chart-plot">
+          <svg
+            viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+            preserveAspectRatio="none"
+            style={{ width: '100%', height: VIEW_H, display: 'block', overflow: 'visible' }}
+            role="img"
+            /* One point has no "from … to …" to describe, and the plural form of
+               the count matters to anyone reading by ear. */
+            aria-label={pts.length === 1
+              ? t('trendAriaOne', { date: dateOf(pts[0].at) })
+              : t('trendAria', {
+                  count: pts.length,
+                  first: dateOf(pts[0].at),
+                  last: dateOf(pts[pts.length - 1].at),
+                })}
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="var(--accent)" stopOpacity={0.22} />
+                <stop offset="1" stopColor="var(--accent)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            {/* The current phase, shaded; every boundary a quiet dashed rule. */}
+            {BANDS.map((b) => b.phase === reading.phase && (
+              <rect key={b.phase} x={0} y={yOf(b.hi)} width={VIEW_W} height={yOf(b.lo) - yOf(b.hi)} style={{ fill: 'color-mix(in srgb, var(--accent) 8%, transparent)' }} />
+            ))}
+            {BANDS.slice(1).map((b) => (
+              <line key={b.phase} x1={0} x2={VIEW_W} y1={yOf(b.lo)} y2={yOf(b.lo)} stroke="var(--border-subtle)" strokeWidth={1} strokeDasharray="3 4" />
+            ))}
+            {area && <polygon points={area} style={{ fill: `url(#${gradientId})` }} />}
+            {pts.length > 1 && (
+              <polyline
+                points={pts.map((p) => `${p.x},${p.y}`).join(' ')}
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            )}
+            {/* One marker per check-in — the reader can count what the line is
+                made of, rather than trusting a smooth curve through two points. */}
+            {pts.map((p, i) => (
+              <circle
+                key={p.at}
+                cx={p.x}
+                cy={p.y}
+                r={i === pts.length - 1 ? 4 : 3}
+                fill="var(--accent)"
+                stroke="var(--page-bg)"
+                strokeWidth={1.5}
+              />
+            ))}
+          </svg>
+          {pts.map((p, i) => labelled(i) && (
+            <span
+              key={p.at}
+              aria-hidden="true"
+              className={`level-chart-value${i === pts.length - 1 ? ' is-latest' : ''}`}
+              style={{ left: `${(p.x / VIEW_W) * 100}%`, top: p.y }}
+            >
+              {p.overall.toFixed(1)}
+            </span>
+          ))}
+        </div>
+      </div>
 
       {/* One point is not a trend, and saying so is the whole invitation. It
           states a fact about the data rather than making a demand of the
@@ -242,14 +294,16 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
       {pts.length === 1 ? (
         <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('trendOnePoint')}</p>
       ) : (
-        <div
-          className="fs-sm"
-          style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}
-        >
+        <div className="level-chart-dates fs-sm">
           <span>{dateOf(pts[0].at)}</span>
           <span>{dateOf(pts[pts.length - 1].at)}</span>
         </div>
       )}
+      <p className="level-chart-reading">
+        {reading.next
+          ? t.rich('phaseNow', { phase: t(`phase.${reading.phase}`), gap: reading.next.gap.toFixed(1), next: t(`phase.${reading.next.phase}`), b: (c) => <b>{c}</b> })
+          : t.rich('phaseTop', { phase: t(`phase.${reading.phase}`), b: (c) => <b>{c}</b> })}
+      </p>
     </Frame>
   );
 }

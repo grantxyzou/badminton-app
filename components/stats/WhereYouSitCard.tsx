@@ -7,7 +7,9 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { SKILLS, topStrengths, workOnNext, type Rating } from '@/lib/assessment';
-import type { Band } from '@/lib/clubBands';
+import type { Band, DimensionSpread } from '@/lib/clubBands';
+import type { Dimension } from '@/lib/assessment';
+import { DIM_FILL } from './DimensionBars';
 import type { UseCheckIn } from './useCheckIn';
 import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
@@ -26,6 +28,13 @@ import { STATS_HEIGHTS } from '@/components/TabFallbacks';
  * that (a cohort minimum, and the consent invariant) — this card renders what
  * it is given and never infers a band the API withheld.
  *
+ * YOU AGAINST THE CLUB (Stats canvas, 2026-10-20). Every club figure on the
+ * You register lives here, behind the one consent answer: "By side" draws each
+ * of the three sides as the club's middle half with its median and the member
+ * as a dot (it moved here from "Your skills", whose bars carried the median
+ * ticks), then "Skills that stand out" holds the rows above. By side needs the
+ * comparison revealed — a dot against the club IS a comparison.
+ *
  * The card does NOT render at all below the cohort minimum. That is a
  * deliberate choice over an empty state: "not enough people yet" is not
  * interesting to be told every week, and a permanent apology card trains
@@ -36,7 +45,12 @@ interface ClubBands {
   cohort: number;
   minCohort: number;
   skills: { skillKey: string; band: Band }[];
+  dimensionMedians?: Partial<Record<Dimension, number | null>>;
+  /** Additive (2026-10-20); absent from an older server, and then By side is not drawn. */
+  dimensionSpread?: Partial<Record<Dimension, DimensionSpread | null>>;
 }
+
+const SIDES: Dimension[] = ['technical', 'physical', 'mental'];
 
 type Load = 'loading' | 'ready' | 'error' | 'forbidden';
 
@@ -193,6 +207,18 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
   }
   if (picked.length === 0) return null;
 
+  /** By side: a side is drawn only with the member's own score, the club's
+   *  middle half and its median all present — never a dot against nothing. */
+  const own = checkIn?.latest?.dimensionScores as Partial<Record<Dimension, number | null>> | undefined;
+  const sides = revealed
+    ? SIDES.flatMap((dim) => {
+        const value = own?.[dim];
+        const spread = bands.dimensionSpread?.[dim];
+        const median = bands.dimensionMedians?.[dim];
+        return typeof value === 'number' && spread && typeof median === 'number' ? [{ dim, value, spread, median }] : [];
+      })
+    : [];
+
   const bandLabel = (b: Band) =>
     b === 'top' ? t('bandTop') : b === 'middle' ? t('bandMiddle') : t('bandBottom');
 
@@ -213,13 +239,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
       <CardHeader
         icon="groups"
         title={t('title')}
-        action={
-          revealed ? (
-            <span style={{ alignSelf: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-              {t('inGroup')}
-            </span>
-          ) : undefined
-        }
+        subtitle={revealed ? t('subtitle', { count: bands.cohort }) : undefined}
         badge={
           revealed ? undefined : (
             <span
@@ -247,18 +267,57 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
         }
       />
 
-
-      <div className="sit-rows">
-        {picked.map((key) => {
-          const band = revealed ? (bandOf.get(key) as Band) : null;
-          return (
-            <div key={key} className="sit-row" data-band={band ?? undefined}>
-              <span className="sit-row-name">{skillText.label(key)}</span>
-              <BandDots band={band} />
-              {band && <span className="sit-row-band">{bandLabel(band)}</span>}
+      {sides.length > 0 && (
+        <div className="you-panel">
+          <p className="you-panel-label">{t('bySide')}</p>
+          {sides.map(({ dim, value, spread, median }) => (
+            <div key={dim}>
+              <span className="dim-row-label">{tStats(`assess.dim.${dim}`)}</span>
+              <div className="dim-row-line">
+                <div
+                  className="side-strip"
+                  role="img"
+                  aria-label={t('spreadAria', {
+                    side: tStats(`assess.dim.${dim}`),
+                    value: value.toFixed(1),
+                    lo: spread.p25.toFixed(1),
+                    hi: spread.p75.toFixed(1),
+                    median: median.toFixed(1),
+                  })}
+                >
+                  <span className="side-strip-track" />
+                  <span className="side-strip-band" style={{ left: scalePct(spread.p25), width: `calc(${scalePct(spread.p75)} - ${scalePct(spread.p25)})` }} />
+                  <span className="side-strip-median" style={{ left: scalePct(median) }} />
+                  <span className="side-strip-you" style={{ left: scalePct(value), background: DIM_FILL[dim] }} />
+                </div>
+                <span className="dim-row-score">{value.toFixed(1)}</span>
+              </div>
             </div>
-          );
-        })}
+          ))}
+          <span className="side-strip-key">
+            <span className="side-strip-key-mark" aria-hidden="true">
+              <span className="side-strip-key-band" />
+              <span className="side-strip-key-tick" />
+            </span>
+            {t('spreadKey')}
+          </span>
+        </div>
+      )}
+
+      <div className="you-panel">
+        {sides.length > 0 && <p className="you-panel-label">{t('standOut')}</p>}
+        <div className="sit-rows">
+          {picked.map((key) => {
+            const band = revealed ? (bandOf.get(key) as Band) : null;
+            return (
+              <div key={key} className="sit-row" data-band={band ?? undefined}>
+                <span className="sit-row-name">{skillText.label(key)}</span>
+                <BandDots band={band} />
+                {band && <span className="sit-row-band">{bandLabel(band)}</span>}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <p style={{ margin: '0', fontSize: 'var(--fs-sm)', lineHeight: 1.5, color: 'var(--text-muted)' }}>
@@ -278,6 +337,9 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
     </div>
   );
 }
+
+/** A level on the fixed 1–5 scale as a CSS left offset. */
+const scalePct = (v: number) => `${(Math.max(1, Math.min(5, v)) - 1) / 4 * 100}%`;
 
 /**
  * Three dots, bottom → top; `null` lights none — the unrevealed state.

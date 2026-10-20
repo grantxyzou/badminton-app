@@ -152,7 +152,7 @@ describe('CheckInSheet — v2 behaviour', () => {
 
     await waitFor(() => expect(screen.getByText('Your level now')).toBeTruthy());
     expect(screen.getByText('3.1')).toBeTruthy();
-    expect(screen.getByText('The Switch')).toBeTruthy();
+    expect(screen.getByText('Intermediate')).toBeTruthy();
     // The tab behind is told immediately, but the sheet stays put.
     expect(onSaved).toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();

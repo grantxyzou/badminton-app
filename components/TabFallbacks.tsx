@@ -62,8 +62,11 @@ export const STATS_HEIGHTS = {
   // 240 empty (a first-time member's "rate your skills") to 680+ with data:
   // no one height fits, and the empty case is the first impression.
   trend: 320,
-  // Compact rows (2026-10-19): two rows and a two-line footnote, 211 at 390px.
-  whereYouSit: 211,
+  // With By side (2026-10-20): three side strips, two stand-out rows and the
+  // footnote in two panels, 468 at 390px with the comparison revealed. A
+  // private card has no By side panel and is shorter; revealed is the common
+  // case once the question is answered.
+  whereYouSit: 468,
   kudosReceived: 140,
   record: 201,
   playWith: 212,

@@ -26,14 +26,31 @@ None of its own. The card's job, and the reading that would take it off the scre
 - **The private state keeps its rows** with no dot lit and no label: the member still sees their own sharpest and weakest skill, as before.
 - **The footnote says where the data comes from and how to turn it off**, nothing else: "Based on your latest check-in. You can turn this off in Profile." Grant first wrote "This shows your current skill positioning and how it compares to the players in the group." on the canvas, then settled on this shorter line in the canvas thread. "in the group" already sits in the header, so the footnote does not repeat it.
 - **"turn this off" is a link** (Grant, canvas thread): it opens Profile on the Stats & privacy screen, not the top of Profile. `SkillsTab` writes a one-shot sessionStorage marker (`lib/profileView.ts`, the `OFFER_PIN_KEY` shape) and switches tab; `ProfileTab` consumes it once an identity exists. Rendered without a destination, the words stay plain text, like the locked cards' "Sign in".
+- **2026-10-20 — you against yourself, you against the club** (Stats canvas,
+  Grant: "the skill card and where you sit seems either grouping is needed or
+  overlapping is confusing"). Both cards compared you with the club: the
+  "Your skills" bars carried the club median ticks, and this card carried the
+  per-skill thirds. Now "Your skills" is you against yourself only — level over
+  time with the phases named, the three sides with their change, the top and
+  bottom three skills — and every club figure lives here, behind the one
+  consent answer. **By side** draws each side as the club's middle half
+  (`dimensionSpread`, an additive 25th–75th percentile from
+  `lib/clubBands.ts`, under the same per-dimension cohort rule as the median)
+  with the median tick and the member as a dot; it is drawn only once the
+  comparison is revealed, because a dot against the club IS a comparison. The
+  rows sit under **Skills that stand out**. "in the group" became the subtitle
+  "You against N others in the club". The phases were renamed in plain club
+  words (Beginner, Improver, Intermediate, Advanced, Competitive; Grant: "Switch
+  sounds so corny") — the stored keys are unchanged.
 
 ## Shape
 
 | Piece | File |
 |---|---|
 | Card | `components/stats/WhereYouSitCard.tsx` |
+| Club spread per side | `lib/clubBands.ts` (`dimensionSpread`), `app/api/stats/club/bands/route.ts` |
 | Row styles | `app/globals.css` (`.sit-row*`, `.sit-dot*`) |
 | Copy | `messages/{en,zh-CN}.json` → `stats.club` |
-| Loading height (211 at 390px) | `components/TabFallbacks.tsx` → `STATS_HEIGHTS.whereYouSit` |
+| Loading height (468 at 390px, revealed) | `components/TabFallbacks.tsx` → `STATS_HEIGHTS.whereYouSit` |
 | "turn this off" → Stats & privacy | `lib/profileView.ts`, `components/SkillsTab.tsx`, `components/ProfileTab.tsx` |
 | Tests | `__tests__/components/WhereYouSitCard.test.tsx`, `__tests__/profile-view.test.ts` |

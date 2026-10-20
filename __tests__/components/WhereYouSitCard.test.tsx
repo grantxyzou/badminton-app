@@ -114,7 +114,7 @@ describe('WhereYouSitCard', () => {
       Array.from(r.querySelectorAll('.sit-dot')).map((d) => d.classList.contains('is-on'));
     expect(lit(rows[0])).toEqual([false, false, true]);
     expect(lit(rows[1])).toEqual([true, false, false]);
-    expect(screen.getByText('in the group')).toBeTruthy();
+    expect(screen.getByText('You against 8 others in the club')).toBeTruthy();
     expect(screen.queryByText(/You're in the/)).toBeNull();
   });
 
@@ -259,6 +259,41 @@ describe('WhereYouSitCard', () => {
     mockFetchByUrl([['/api/stats/club/bands', () => jsonResponse({})]]);
     const { container } = renderCard();
     await waitFor(() => expect(container.textContent).toBe(''));
+  });
+
+  // ── By side (Stats canvas, 2026-10-20) ────────────────────────────────
+  // The club comparison moved here from Your skills: each side as the club's
+  // middle half, its median, and the member as a dot.
+  const SIDES_CHECKIN = (): UseCheckIn => {
+    const c = stubCheckIn();
+    const latest = { ...c.latest!, dimensionScores: { technical: 3.3, physical: 3.3, mental: 3.8 } };
+    return { ...c, latest, snapshots: [latest] } as UseCheckIn;
+  };
+  const SPREAD = { technical: { p25: 2.6, p75: 3.4 }, physical: { p25: 1.8, p75: 2.8 }, mental: { p25: 3.2, p75: 4.2 } };
+
+  it('draws each side against the club when the comparison is revealed', async () => {
+    mockFetchByUrl([bandsResponse({ dimensionSpread: SPREAD })]);
+    const { container } = renderCard(false, SIDES_CHECKIN());
+    await waitFor(() => expect(screen.getByText('By side')).toBeTruthy());
+    expect(container.querySelectorAll('.side-strip')).toHaveLength(3);
+    expect(screen.getByRole('img', { name: /Technical 3\.3\. The club’s middle half is 2\.6 to 3\.4, median 3\.0/ })).toBeTruthy();
+    expect(screen.getByText(enMessages.stats.club.spreadKey)).toBeTruthy();
+    expect(screen.getByText('Skills that stand out')).toBeTruthy();
+  });
+
+  it('draws no side strip while the comparison is private', async () => {
+    mockFetchByUrl([bandsResponse({ dimensionSpread: SPREAD, skills: [] })]);
+    const { container } = renderCard(false, SIDES_CHECKIN());
+    await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
+    expect(container.querySelector('.side-strip')).toBeNull();
+    expect(screen.queryByText('By side')).toBeNull();
+  });
+
+  it('draws no side strip when an older server sends no spread', async () => {
+    mockFetchByUrl([bandsResponse()]);
+    const { container } = renderCard(false, SIDES_CHECKIN());
+    await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
+    expect(container.querySelector('.side-strip')).toBeNull();
   });
 
   it('renders nothing without an active name', () => {

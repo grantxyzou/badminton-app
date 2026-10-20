@@ -6402,9 +6402,105 @@ a.setup-price-row:active { background: var(--press-bg); }
 .tension-strung-title { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .tension-strung-hint { font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
 
-/* Strengths / Work on next (Stats › You, canvas 2026-10-20): two tinted
-   panels, each skill's rating as five dots. `--panel-tone` is set once on the
-   panel; the icon, label, dots and number all read it. Inner-row spec. */
+/* ── Stats › You (canvas, 2026-10-20) ───────────────────────────────────
+   "Your skills" is you against yourself; "Where you sit" is you against the
+   club. Both are built from the same inset panel, so the two cards read as
+   stacked blocks of one kind. Inner-row spec: 12 radius, 12–16 padding. */
+.you-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+}
+.you-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.you-panel-label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.you-panel-aside { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
+.you-change { font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--accent); white-space: nowrap; }
+.you-change.is-down { color: var(--accent-amber); }
+.you-panel-body { display: flex; flex-direction: column; justify-content: center; gap: var(--space-2); }
+/* Inside a panel the stand-out rows are lines, not cards of their own. */
+.you-panel .sit-row { padding: var(--space-1) 0; background: transparent; }
+.you-lead { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-muted); }
+/* Update, top right of the card: a small tinted pill, not a full button. */
+.you-update {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.you-update:active { transform: scale(0.97); }
+.you-update:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Level over time: phase names in a left gutter, the plot beside them. The
+   labels are HTML on purpose — the plot stretches to the card's width. */
+.level-chart { display: flex; gap: var(--space-3); }
+.level-chart-gutter { position: relative; width: 76px; flex-shrink: 0; }
+.level-chart-phase {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.level-chart-phase.is-current { color: var(--accent); }
+.level-chart-plot { position: relative; flex: 1; min-width: 0; }
+.level-chart-value {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 6px));
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.level-chart-value.is-latest { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); }
+.level-chart-dates { display: flex; justify-content: space-between; margin-left: calc(76px + var(--space-3)); color: var(--text-muted); }
+.level-chart-reading { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.level-chart-reading b { font-weight: 600; color: var(--text-primary); }
+
+/* Three sides: the label, then the bar with its score and change on one line. */
+.dim-rows { display: flex; flex-direction: column; gap: var(--space-3); }
+.dim-row-label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.dim-row-line { display: flex; align-items: center; gap: var(--space-3); }
+.dim-track { position: relative; flex: 1; height: 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
+.dim-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--radius-pill); }
+.dim-row-score { min-width: 28px; text-align: right; font-family: var(--font-mono); font-size: var(--fs-md); font-weight: 700; color: var(--text-primary); }
+.dim-row-delta { min-width: 40px; text-align: right; }
+
+/* Strengths / Work on next: full-width tinted lists, one line per skill, its
+   1–5 rating as five dots. `--panel-tone` is set once on the panel; the icon,
+   label, dots, number and the closing link all read it. */
 .skill-panel {
   --panel-tone: var(--accent);
   display: flex;
@@ -6426,13 +6522,48 @@ a.setup-price-row:active { background: var(--press-bg); }
   text-transform: uppercase;
   color: var(--panel-tone);
 }
-.skill-panel-row { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.skill-panel-name { font-size: var(--fs-base); line-height: var(--lh-snug); color: var(--text-primary); }
-.skill-dots { display: flex; align-items: center; gap: 3px; }
+.skill-panel-row { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.skill-panel-name { flex: 1; min-width: 0; font-size: var(--fs-md); line-height: var(--lh-snug); color: var(--text-primary); }
+.skill-dots { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
 .skill-dot { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--panel-tone) 18%, transparent); }
 .skill-dot.is-on { background: var(--panel-tone); }
-.skill-dots-n { margin-left: var(--space-1); font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--panel-tone); }
-.skill-panel-hint { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-muted); }
+.skill-dots-n { margin-left: var(--space-2); min-width: 8px; font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 700; color: var(--panel-tone); }
+.skill-panel-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-3) 0 0;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--panel-tone) 16%, transparent);
+  background: transparent;
+  color: var(--panel-tone);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.skill-panel-link:focus-visible { outline: 2px solid var(--panel-tone); outline-offset: 2px; }
+
+/* Where you sit › By side: the club's middle half as a band on the 1–5 scale,
+   the median as a tick, the member as a dot in their side's colour. */
+.side-strip { position: relative; flex: 1; height: 14px; }
+.side-strip-track { position: absolute; left: 0; right: 0; top: 4px; height: 6px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
+.side-strip-band { position: absolute; top: 4px; height: 6px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-primary) 16%, transparent); }
+.side-strip-median { position: absolute; top: 1px; width: 2px; height: 12px; margin-left: -1px; border-radius: 1px; background: color-mix(in srgb, var(--text-primary) 50%, transparent); }
+.side-strip-you {
+  position: absolute;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--page-bg), 0 1px 3px color-mix(in srgb, var(--text-primary) 25%, transparent);
+}
+.side-strip-key { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-xs); color: var(--text-muted); }
+.side-strip-key-mark { position: relative; width: 28px; height: 6px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
+.side-strip-key-band { position: absolute; left: 6px; width: 16px; top: 0; height: 6px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-primary) 16%, transparent); }
+.side-strip-key-tick { position: absolute; left: 13px; top: -3px; width: 2px; height: 12px; border-radius: 1px; background: color-mix(in srgb, var(--text-primary) 50%, transparent); }
 /* What would you change: words only, so the tile is text-sized. */
 .fit-goal-tile { gap: var(--space-1); padding: var(--space-3) var(--space-4); }
 .fit-goal-tile--wide { grid-column: 1 / -1; }

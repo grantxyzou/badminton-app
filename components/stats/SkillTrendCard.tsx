@@ -1,14 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useState } from 'react';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useSkillText } from '@/lib/useSkillText';
 import { useActiveName } from '@/lib/useActiveName';
 import DimensionBars from './DimensionBars';
 import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Phase } from '@/lib/assessment';
-import { useInsight } from '@/lib/useInsight';
-import InsightChip from '@/components/stats/InsightChip';
-import StatCard, { type StatTone } from '@/components/stats/StatCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import LevelTrendChart from './LevelTrendChart';
 import type { UseCheckIn } from './useCheckIn';
@@ -19,17 +16,9 @@ import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
 import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
-import { sharedRead } from '@/lib/sharedRead';
 import Collapse from '@/components/primitives/Collapse';
+import { useOpenStatsRegister } from './statsTakeover';
 
-
-/** Response shape of GET /api/stats/club/bands. */
-interface ClubBands {
-  cohort: number;
-  minCohort: number;
-  dimensionMedians: Partial<Record<Dimension, number | null>>;
-  skills: { skillKey: string; band: 'top' | 'middle' | 'bottom' }[];
-}
 
 /** A persisted assessment snapshot (mirrors the /api/assessments doc). */
 interface Snapshot {
@@ -43,15 +32,9 @@ interface Snapshot {
 
 const SKILL_BY_KEY = new Map(SKILLS.map((s) => [s.key, s]));
 const DIMENSIONS: Dimension[] = ['technical', 'physical', 'mental'];
-// Dimension → gradient tone for the Technical / Physical / Mental tiles.
-const DIM_TONE: Record<Dimension, StatTone> = { technical: 'blue', physical: 'accent', mental: 'amber' };
 
 function ratingMap(snap: Snapshot | undefined): Map<string, number> {
   return new Map((snap?.ratings ?? []).map((r) => [r.skillKey, r.value]));
-}
-
-function fmt(n: number | null): string {
-  return n === null ? '—' : n.toFixed(1);
 }
 
 function Delta({ value }: { value: number }) {
@@ -88,28 +71,13 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   const loaded = checkIn ? checkIn.status !== 'loading' : true;
   useRevealReady(loaded);
   const loadError = checkIn?.status === 'error';
-  // Distributed AI insight — a short, non-obvious chip about the skill trend.
-  const { data: insight } = useInsight();
+  const format = useFormatter();
+  const openRegister = useOpenStatsRegister();
 
   const latest = snapshots[snapshots.length - 1];
   const prev = snapshots.length > 1 ? snapshots[snapshots.length - 2] : undefined;
 
   const [showAll, setShowAll] = useState(false);
-
-  // Club medians for the bar ticks. This read is deliberately allowed to fail
-  // quietly: the comparison is an enhancement, and a member's own dimension
-  // scores must render whether or not the club context is available. `null`
-  // means "no ticks", which looks like plain bars — not like a broken card.
-  const [bands, setBands] = useState<ClubBands | null>(null);
-  useEffect(() => {
-    if (!activeName) return;
-    let live = true;
-    // Shared with `WhereYouSitCard`, which reads the same bands on this screen.
-    sharedRead(`/api/stats/club/bands?name=${encodeURIComponent(activeName)}`)
-      .then((d) => live && setBands(d as ClubBands))
-      .catch(() => live && setBands(null));
-    return () => { live = false; };
-  }, [activeName]);
 
   // The radar's `radarColors` MutationObserver lived here. It existed only
   // because recharts writes stroke/fill as SVG attributes, where `var()`
@@ -150,32 +118,33 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   // fade smooth the gentle downward settle for data-rich users.
   if (!loaded) return <CardSkeleton height={320} />;
 
-  // Card chrome wraps every state so the section reads consistently.
-  const Frame = ({ children }: { children: React.ReactNode }) => (
-    <div className="glass-card p-5 space-y-3">
-      <CardHeader
-        icon="trending_up"
-        title={t('assess.heroTitle')}
-        action={latest ? (
-          <button type="button" onClick={() => checkIn?.openFrom('trend')} className="cc-btn cc-btn-ghost" style={{ whiteSpace: 'nowrap' }}>
-            {t('assess.reRate')}
-          </button>
-        ) : undefined}
-      />
-      {children}
-    </div>
+  // Card chrome wraps every state so the section reads consistently: the
+  // title, how much is behind it, and Update as a small pill top right.
+  const lastDate = latest ? format.dateTime(new Date(latest.takenAt), { month: 'short', day: 'numeric' }) : null;
+  const header = (
+    <CardHeader
+      icon="trending_up"
+      title={t('assess.heroTitle')}
+      subtitle={latest && lastDate ? t('assess.heroSubtitle', { count: snapshots.length, date: lastDate }) : undefined}
+      action={latest ? (
+        <button type="button" onClick={() => checkIn?.openFrom('trend')} className="you-update">
+          <span className="material-icons icon-sm" aria-hidden="true">edit</span>
+          {t('assess.reRate')}
+        </button>
+      ) : undefined}
+    />
   );
 
   // Empty — no check-in yet.
   if (!latest) {
     return (
       <>
-        <Frame>
+        <CardFrame header={header}>
           <EmptyState icon="trending_up">{t('assess.empty')}</EmptyState>
           <button type="button" onClick={() => checkIn?.openFrom('trend')} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
             {t('assess.rateSkills')}
           </button>
-        </Frame>
+        </CardFrame>
       </>
     );
   }
@@ -184,96 +153,74 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   const thenMap = ratingMap(prev);
   const strengths = topStrengths(latest.ratings);
   const workOn = workOnNext(latest.ratings);
+  const prevDate = prev ? format.dateTime(new Date(prev.takenAt), { month: 'short', day: 'numeric' }) : null;
 
   return (
-    // The read + level live in the Level card; here a single card holds the
-    // always-on radar with strengths / work-on as legends on the right.
+    /* YOU AGAINST YOURSELF (Stats canvas, 2026-10-20). Level over time, the
+       three sides with their change, and the top and bottom three skills —
+       no club figure anywhere: comparing with the club is "Where you sit",
+       the one consent-gated card. The dimension tiles that repeated the bars'
+       numbers, the trend AI chip (the greeting above carries that voice) and
+       the two-button footer are gone. */
     <div className="space-y-3">
-      <div className="glass-card p-5 space-y-3">
-      {/* Dimension tiles — Technical / Physical / Mental averages, in-card above the radar. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
-        {DIMENSIONS.map((dim) => (
-          <StatCard
-            key={dim}
-            tone={DIM_TONE[dim]}
-            size="tile"
-            label={t(`assess.dim.${dim}`)}
-            value={fmt(latest.dimensionScores?.[dim] ?? null)}
-          />
-        ))}
-      </div>
-
-      {/* Your level over time. Placed directly under the three dimension
-          tiles and above the bars: the level is the headline number, so its
-          history belongs beside it rather than at the foot of the card. It
-          renders nothing at all when there is no usable history — see the
-          component for the four states it distinguishes. */}
+      <CardFrame header={header}>
       {checkIn && <LevelTrendChart checkIn={checkIn} />}
 
-      {/* Dimension bars, full width — replaces the 14-axis radar. */}
-      <DimensionBars
-        scores={latest.dimensionScores ?? {}}
-        prevScores={prev?.dimensionScores ?? undefined}
-        medians={bands?.dimensionMedians ?? null}
-        // Ticks require BOTH a revealed comparison and a big enough cohort.
-        // The server already withholds `skills` unless the prompt was answered
-        // and the preference is on, so a non-empty `skills` array is the
-        // client-side proof that a comparison is legitimately visible — the
-        // medians alone are not, since the club spread is returned even to
-        // members who opted out.
-        showTicks={!!bands && bands.cohort >= bands.minCohort && bands.skills.length > 0}
-      />
-
-      {/* Strengths / work-on legends, side by side below the bars. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-        <Legend title={t('assess.strengths')} hint={t('assess.strengthsHint')} items={strengths} nowMap={nowMap} accent />
-        <Legend title={t('assess.workOn')} hint={t('assess.workOnHint')} items={workOn} nowMap={nowMap} />
+      <div className="you-panel">
+        <div className="you-panel-head">
+          <p className="you-panel-label">{t('assess.sidesTitle')}</p>
+          {prevDate && (
+            <span className="you-panel-aside"><span className="you-change" aria-hidden="true">▲</span> {t('assess.sidesSince', { date: prevDate })}</span>
+          )}
+        </div>
+        <DimensionBars scores={latest.dimensionScores ?? {}} prevScores={prev?.dimensionScores ?? undefined} />
       </div>
 
-      {/* The then/now key is gone with the radar — each bar now carries its own
-          delta arrow, so a separate colour key would explain nothing. The
-          first-rating hint stays. */}
+      {/* The first-rating hint stays: with one check-in there is no change to show. */}
       {!prev && (
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0', textAlign: 'center' }}>{t('assess.baseline')}</p>
       )}
 
-      {insight?.trend && <InsightChip {...insight.trend} />}
+      <p className="you-lead">{t('assess.listsLead', { count: SKILLS.length })}</p>
+      <div className="flex flex-col gap-2">
+        <Legend title={t('assess.strengths')} items={strengths} nowMap={nowMap} accent />
+        <Legend
+          title={t('assess.workOn')}
+          items={workOn}
+          nowMap={nowMap}
+          footer={openRegister ? (
+            <button type="button" className="skill-panel-link" onClick={() => openRegister('learn')}>
+              <span>{t('assess.openLearn')}</span>
+              <span className="material-icons icon-md" aria-hidden="true">chevron_right</span>
+            </button>
+          ) : undefined}
+        />
+      </div>
 
-      {/* Actions — Update (re-rate) + All skills toggle share one row, same level. */}
-      <div className="space-y-3">
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-          <button
-            type="button"
-            onClick={() => checkIn?.openFrom('trend')}
-            className="cc-btn cc-btn-ghost"
-            style={{ flex: 1, justifyContent: 'center', whiteSpace: 'nowrap' }}
-          >
-            {t('assess.reRate')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
-            aria-expanded={showAll}
-            className="cc-btn cc-btn-ghost"
-            style={{ flex: 1, justifyContent: 'center' }}
-          >
-            {showAll ? t('assess.hideSkills') : t('assess.allSkills')}
-          </button>
+      <button
+        type="button"
+        onClick={() => setShowAll((v) => !v)}
+        aria-expanded={showAll}
+        className="bpm-row-link"
+      >
+        <span className="fs-md" style={{ fontWeight: 600 }}>
+          {showAll ? t('assess.hideSkills') : t('assess.allSkillsCount', { count: SKILLS.length })}
+        </span>
+        <span className="material-icons icon-md motion-chevron" aria-hidden="true">expand_more</span>
+      </button>
+      <Collapse open={showAll}>
+        <div className="space-y-3">
+          {DIMENSIONS.map((dim) => {
+            const dimItems = SKILLS.filter((s) => s.dimension === dim && nowMap.has(s.key)).map(
+              (s) => ({ skillKey: s.key, value: nowMap.get(s.key)! }),
+            );
+            return (
+              <SkillList key={dim} title={t(`assess.dim.${dim}`)} items={dimItems} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
+            );
+          })}
         </div>
-        <Collapse open={showAll} spaceAbove="var(--space-3)">
-          <div className="space-y-3">
-            {DIMENSIONS.map((dim) => {
-              const dimItems = SKILLS.filter((s) => s.dimension === dim && nowMap.has(s.key)).map(
-                (s) => ({ skillKey: s.key, value: nowMap.get(s.key)! }),
-              );
-              return (
-                <SkillList key={dim} title={t(`assess.dim.${dim}`)} items={dimItems} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
-              );
-            })}
-          </div>
-        </Collapse>
-      </div>
-      </div>
+      </Collapse>
+      </CardFrame>
 
       {sheetSkill && (
         <SkillAnchorSheet skillKey={sheetSkill} value={nowMap.get(sheetSkill) ?? 0} onClose={() => setSheetSkill(null)} />
@@ -283,20 +230,32 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   );
 }
 
+/** The card's chrome in every state. At module scope on purpose: a component
+ *  declared during render is a new type each render, and React remounts its
+ *  whole subtree — the chart, the open skill list — on every state change. */
+function CardFrame({ header, children }: { header: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="glass-card p-5 flex flex-col gap-3">
+      {header}
+      {children}
+    </div>
+  );
+}
+
 /**
- * Strengths / Work on next as two tinted panels (Stats canvas, 2026-10-20):
- * each skill's 1–5 rating drawn as five dots with the number beside them, and
- * one line under each saying what the list is for. The tone is set once on the
- * panel and read by the icon, label and dots, so they cannot disagree.
+ * Strengths / Work on next (Stats canvas, 2026-10-20): full-width tinted lists,
+ * one line per skill — the name, then its 1–5 rating as five dots with the
+ * number. The tone is set once on the panel and read by the icon, label and
+ * dots, so they cannot disagree. Work on next ends in the way to its drills.
  */
 function Legend({
-  title, hint, items, nowMap, accent,
+  title, items, nowMap, accent, footer,
 }: {
   title: string;
-  hint: string;
   items: Rating[];
   nowMap: Map<string, number>;
   accent?: boolean;
+  footer?: React.ReactNode;
 }) {
   const skillText = useSkillText();
   const t = useTranslations('stats');
@@ -323,7 +282,7 @@ function Legend({
           </div>
         );
       })}
-      <p className="skill-panel-hint">{hint}</p>
+      {footer}
     </div>
   );
 }

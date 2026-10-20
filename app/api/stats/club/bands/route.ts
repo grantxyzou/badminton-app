@@ -28,7 +28,7 @@ import { isFlagOn } from '@/lib/flags';
  *     first-run prompt has been ANSWERED. Returning bands to an unasked member
  *     would let the card paint one behind the consent sheet's translucent
  *     backdrop, leaking the answer to the question being asked.
- *   - `dimensionMedians` (the club spread) is returned regardless, because
+ *   - `dimensionMedians` and `dimensionSpread` (the club spread) are returned regardless, because
  *     opting out is not reciprocal: it hides your own place, not everyone
  *     else's. Withholding the spread would make a privacy choice cost
  *     something.
@@ -137,6 +137,7 @@ export async function GET(req: NextRequest) {
       cohort: result.cohort,
       minCohort: result.minCohort,
       dimensionMedians: result.dimensionMedians,
+      dimensionSpread: result.dimensionSpread,
       skills: revealed ? result.skills : [],
     });
   } catch (error) {
