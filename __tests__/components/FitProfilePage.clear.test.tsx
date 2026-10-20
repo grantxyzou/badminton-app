@@ -48,9 +48,9 @@ describe('FitProfilePage — the questions as the Stats canvas put them (2026-10
 
   it('asks how hard you hit, by where your clear lands, and still stores slow / medium / fast', async () => {
     const setPrefs = renderPage(base);
-    expect(await screen.findByText('How hard do you hit?')).toBeTruthy();
-    expect(screen.getByText('Picture a clear from the back of the court.')).toBeTruthy();
-    const group = screen.getByRole('radiogroup', { name: 'How hard do you hit?' });
+    expect(await screen.findByText("How's your clear?")).toBeTruthy();
+    expect(screen.getByText('Hit from the back of the court: where does it land?')).toBeTruthy();
+    const group = screen.getByRole('radiogroup', { name: "How's your clear?" });
     const options = within(group).getAllByRole('radio').map((r) => r.textContent);
     expect(options).toEqual(['YouNetBackGentleLands mid-court', 'YouNetBackMediumReaches the back', 'YouNetBackHardGoes deep, easily']);
     fireEvent.click(within(group).getByRole('radio', { name: /Gentle/ }));
@@ -105,6 +105,35 @@ describe('FitProfilePage — "Mostly you play" as court tiles (2026-10-20)', () 
     renderPage({ ...base, fitPlayStyle: 'mixed' } as PlayerGear);
     const group = await screen.findByRole('radiogroup', { name: 'Mostly you play' });
     expect(within(group).getAllByRole('radio').some((r) => r.getAttribute('aria-checked') === 'true')).toBe(false);
+  });
+});
+
+describe('FitProfilePage — "What would you change?" in court words (2026-10-20)', () => {
+  beforeEach(() => {
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+      ok: true, status: 200,
+      json: async () => ({ facts: { state: 'insufficient', answered: 0, frame: null, currentTensionLbs: null, tensionRange: null, sorenessMovedRange: false, goal: null, prospective: false, reasons: [] }, copy: null, checkInLevel: null }),
+    } as Response)) as unknown as typeof fetch);
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it('describes each goal by what you notice, never by what the racket should be, and stores the same values', async () => {
+    const setPrefs = renderPage(base);
+    const group = await screen.findByRole('radiogroup', { name: 'What would you change?' });
+    const tiles = within(group).getAllByRole('radio');
+    expect(tiles.map((r) => r.querySelector('.fit-tile-desc')?.textContent)).toEqual([
+      'It already feels right', 'My clears and smashes fall short', 'My shots drift long or wide',
+      "I'm late on drives and defence", 'My arm tires by the end of the night',
+    ]);
+    expect(group.textContent).not.toMatch(/head-heavy|head-light|heavier|lighter|stiff/i);
+    fireEvent.click(within(group).getByRole('radio', { name: /More power/ }));
+    await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitGoal: 'more_power' }));
+  });
+
+  it('says why it asks about soreness', async () => {
+    renderPage(base);
+    expect(await screen.findByText(/If something hurts, we string a little looser/)).toBeTruthy();
   });
 });
 

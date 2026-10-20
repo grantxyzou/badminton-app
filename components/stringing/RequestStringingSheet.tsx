@@ -56,6 +56,12 @@ interface Props {
    * exactly as it did before this existed.
    */
   gear: UseGear | null;
+  /**
+   * Opens the form at this mains tension instead of 26 lb — the String
+   * tension card's "Get it strung at 24 lb" row (`lib/stringingIntent.ts`).
+   * Crosses follow at the usual +2.
+   */
+  initialTension?: number | null;
 }
 
 /**
@@ -91,7 +97,7 @@ interface Props {
  * back to the custom path rather than presenting an empty dropdown. An empty
  * select is a dead end; a text box is not.
  */
-export default function RequestStringingSheet({ open, onClose, onRequested, gear }: Props) {
+export default function RequestStringingSheet({ open, onClose, onRequested, gear, initialTension = null }: Props) {
   const t = useTranslations('home.stringing');
   // `close` lives in the shared namespace — every sheet in the app uses it.
   const tCommon = useTranslations('recovery');
@@ -159,10 +165,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     setOwnLabel('');
     setPickedColour('');
     setCustomString('');
-    setTension(26);
-    setCrosses(28);
+    setTension(initialTension ?? 26);
+    setCrosses(initialTension ? crossesFor(initialTension) : 28);
     setCustom(false);
-  }, [open]);
+  }, [open, initialTension]);
 
   // The own-string price (docs/plans/bench-redesign.md, PR 2). Unread or
   // failed reads as "Ask", which is what the row said before it existed.

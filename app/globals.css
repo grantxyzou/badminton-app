@@ -6360,6 +6360,82 @@ a.setup-price-row:active { background: var(--press-bg); }
 .fit-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .fit-tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .fit-tiles--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* A racket's four attribute chips (pick sheet, lib/racketChips.ts). Muted by
+   default; a chip where the row differs from the pick on show takes accent. */
+.racket-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-2); }
+.racket-chip { display: inline-flex; align-items: center; padding: var(--space-05) var(--space-3); border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-primary) 6%, transparent); color: var(--text-secondary); font-size: var(--fs-xs); line-height: var(--lh-snug); white-space: nowrap; }
+.racket-chip.is-diff { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-weight: 600; }
+
+/* String tension → stringing request (Stats canvas, 2026-10-20). An inner row
+   in the accent's own tint: the one way out of the card, so it carries the
+   colour the footnote it replaces never did. Inner-row spec: 12 radius, 12
+   padding. */
+.tension-strung-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tension-strung-row:active { background: var(--press-bg); transform: scale(0.98); }
+.tension-strung-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tension-strung-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: var(--icon-md);
+}
+.tension-strung-text { display: flex; flex-direction: column; gap: var(--space-05); flex: 1; min-width: 0; }
+.tension-strung-title { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
+.tension-strung-hint { font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+
+/* Strengths / Work on next (Stats › You, canvas 2026-10-20): two tinted
+   panels, each skill's rating as five dots. `--panel-tone` is set once on the
+   panel; the icon, label, dots and number all read it. Inner-row spec. */
+.skill-panel {
+  --panel-tone: var(--accent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--panel-tone) 8%, transparent);
+}
+.skill-panel--warn { --panel-tone: var(--sev-warn); }
+.skill-panel-head { display: flex; align-items: center; gap: var(--space-2); color: var(--panel-tone); }
+.skill-panel-label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--panel-tone);
+}
+.skill-panel-row { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.skill-panel-name { font-size: var(--fs-base); line-height: var(--lh-snug); color: var(--text-primary); }
+.skill-dots { display: flex; align-items: center; gap: 3px; }
+.skill-dot { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--panel-tone) 18%, transparent); }
+.skill-dot.is-on { background: var(--panel-tone); }
+.skill-dots-n { margin-left: var(--space-1); font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--panel-tone); }
+.skill-panel-hint { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-muted); }
+/* What would you change: words only, so the tile is text-sized. */
+.fit-goal-tile { gap: var(--space-1); padding: var(--space-3) var(--space-4); }
+.fit-goal-tile--wide { grid-column: 1 / -1; }
 .fit-tile {
   display: flex;
   flex-direction: column;

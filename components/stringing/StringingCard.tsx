@@ -9,6 +9,7 @@ import Collapse from '@/components/primitives/Collapse';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { useStringingShop } from '@/lib/useStringingShop';
+import { takeStringingIntent } from '@/lib/stringingIntent';
 import { restringDueWeeks } from '@/lib/restring';
 import RequestStringingSheet from './RequestStringingSheet';
 import { useGear } from '@/components/stats/useGear';
@@ -78,6 +79,8 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
   // they have never used it.
   const [shopStrungAt, setShopStrungAt] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // The tension the String tension card sent us here with (lib/stringingIntent.ts).
+  const [prefillTension, setPrefillTension] = useState<number | null>(null);
   // Above every early return — this component has several, and a hook
   // after one of them is a Rules-of-Hooks violation that only shows up when
   // the branch flips (here: the shop opening).
@@ -129,6 +132,19 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
   useEffect(() => {
     if (open === true) loadJobs();
   }, [open, loadJobs]);
+
+  // Arrived from Stats' "Get it strung at 24 lb": open the form at that
+  // number. Waits for the shop's answer and for the identity, which the tab
+  // reads after mount (a child's effect runs before its parent's, so the first
+  // pass can see `false` for a signed-in member). A closed shop consumes the
+  // marker without opening anything, so it cannot open a form on a later visit.
+  useEffect(() => {
+    if (open === null || !hasIdentity) return;
+    const lbs = takeStringingIntent();
+    if (lbs === null || open !== true) return;
+    setPrefillTension(lbs);
+    setSheetOpen(true);
+  }, [open, hasIdentity]);
 
   // The Stringing tab's RevealSlot holds this place until the card can draw its
   // final shape: the shop has answered and, when it is open for a signed-in
@@ -412,7 +428,7 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
 
         <button
           type="button"
-          onClick={() => setSheetOpen(true)}
+          onClick={() => { setPrefillTension(null); setSheetOpen(true); }}
           // Refused means the request would be refused too — no button that fails.
           disabled={!hasIdentity || !online || jobsProblem === 'refused'}
           className="bpm-row-link"
@@ -449,6 +465,7 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
         onClose={() => setSheetOpen(false)}
         onRequested={loadJobs}
         gear={activeName.name ? gear : null}
+        initialTension={prefillTension}
       />
 
       {pendingJob && (

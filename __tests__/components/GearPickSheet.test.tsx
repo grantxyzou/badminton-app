@@ -47,7 +47,7 @@ const ITEM = {
   brand: 'Yonex',
   model: 'Astrox 99 Pro',
   skillRange: [3, 6] as [number, number],
-  attributes: { weight: '4U', balance: 'head-heavy' },
+  attributes: { weight: '4U', balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium' },
 };
 
 function gearDoc(extra: Partial<PlayerGear> = {}): PlayerGear {
@@ -398,8 +398,8 @@ describe('GearPickSheet — the fit goal joins the summary line', () => {
 });
 
 describe('GearPickSheet — alternatives and the feedback loop', () => {
-  const ALT1 = { ...ITEM, id: 'r2', model: 'Nanoflare 800 Pro', msrp: 249 };
-  const ALT2 = { ...ITEM, id: 'r3', model: 'Auraspeed 90K', msrp: 199 };
+  const ALT1 = { ...ITEM, id: 'r2', model: 'Nanoflare 800 Pro', msrp: 249, attributes: { ...ITEM.attributes, flex: 'Medium-Stiff' } };
+  const ALT2 = { ...ITEM, id: 'r3', model: 'Auraspeed 90K', msrp: 199, attributes: { ...ITEM.attributes, balance: 'Head-light', tier: 'Mid-range' } };
   const fitPick = {
     item: { ...ITEM, msrp: 309 },
     reasons: ['A step up in power from your Astrox 88D Pro.', 'Built for doubles.'],
@@ -443,15 +443,17 @@ describe('GearPickSheet — alternatives and the feedback loop', () => {
   beforeEach(() => { process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true'; });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER; });
 
-  it('lists the two alternatives under "Or consider": spec on the left, price and difference on the right', async () => {
+  it('lists the two alternatives under "Or consider": chips on the left, price and difference on the right', async () => {
     mockAll(gearDoc());
     renderFit();
     expect(await screen.findByText('Or consider')).toBeTruthy();
-    // The price fragment leaves the "differs by" line for the price column
-    // (Stats canvas, 2026-10-19), where the difference sits under the price.
-    expect(screen.getByText('softer')).toBeTruthy();
+    // Every racket carries the same four chips (Stats canvas, 2026-10-20),
+    // marked where the row differs from the pick on show.
+    const marked = [...document.querySelectorAll('.racket-chip.is-diff')].map((c) => c.firstChild?.textContent);
+    expect(marked).toEqual(['Medium-stiff shaft', 'Head-light', 'Mid-range']);
+    // The pick's own chips mark nothing.
+    expect(screen.getAllByText('Stiff shaft').length).toBeGreaterThan(0);
     expect(screen.queryByText(/\$60 less/)).toBeNull();
-    expect(screen.getByText('more head-light')).toBeTruthy();
     expect(screen.getByText('$249')).toBeTruthy();
     expect(screen.getByText('-$60')).toBeTruthy();
     expect(screen.getByText('$199')).toBeTruthy();

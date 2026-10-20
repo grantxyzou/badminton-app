@@ -43,6 +43,8 @@ type GearPage = { kind: 'fit' } | { kind: 'frame'; frameId: string };
 
 export interface GearRegisterProps {
   activeName: string | null;
+  /** The tension card's "Get it strung at 24 lb" row; absent hides it. */
+  onRequestStringing?: (lbs: number) => void;
 }
 
 /**
@@ -57,7 +59,7 @@ export interface GearRegisterProps {
  *  skeleton, or its measured height at 400px (2026-10-03) where it had none. */
 const GEAR_HEIGHTS = { setup: 226, nextRacket: 226, tension: 257, club: 160 } as const;
 
-export default function GearRegister({ activeName }: GearRegisterProps) {
+export default function GearRegister({ activeName, onRequestStringing }: GearRegisterProps) {
   const gear = useGear(activeName);
   // Pages in the register: rendered in place of
   // the cards, with the shell's chrome hidden (statsTakeover.ts). A STACK,
@@ -209,6 +211,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
         // no number at all.
         suppressed={!gear.loadError && tensionOnScreen(setupLines(gear.gear), picks.view.string)}
         suppressionKnown={gear.loaded && (gear.loadError || picks.view.string.status !== 'loading')}
+        onRequestStringing={onRequestStringing}
       />
       </RevealSlot>
       <RevealSlot placeholder={<CardSkeleton height={GEAR_HEIGHTS.club} />}>

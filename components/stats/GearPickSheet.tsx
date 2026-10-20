@@ -15,6 +15,7 @@ import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { priceCadPoint } from '@/lib/catalogPrice';
 import { brandSite } from '@/lib/brandSites';
 import Collapse from '@/components/primitives/Collapse';
+import { racketChips, type RacketChip } from '@/lib/racketChips';
 
 export interface GearPickSheetProps {
   open: boolean;
@@ -35,6 +36,23 @@ export interface GearPickSheetProps {
   /** Opens the fit page (`FitProfilePage`). The register owns that page;
    *  this sheet only asks for it. Absent means the link is not rendered. */
   onOpenFit?: () => void;
+}
+
+/** The four attribute chips (`lib/racketChips.ts`). A chip where the row
+ *  differs from the pick on show is marked, and says so to a screen reader. */
+function ChipRow({ chips }: { chips: RacketChip[] }) {
+  const t = useTranslations('stats.gear');
+  if (chips.length === 0) return null;
+  return (
+    <span className="racket-chips">
+      {chips.map((c) => (
+        <span key={c.axis} className={`racket-chip${c.differs ? ' is-diff' : ''}`}>
+          {c.key ? t(c.key) : c.value}
+          {c.differs && <span className="sr-only">{` (${t('chipDiffers')})`}</span>}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 /** Fallback for a category with no curated list — the old behaviour. */
@@ -458,7 +476,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
           {/* Brand, then the name, then the price (Stats canvas, 2026-10-19:
               "hierarchy is off"). The eye goes brand → racket → cost; a bold
               price right after the name outweighed it. */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
             <span className="fs-2xs" style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
               {item.brand}
             </span>
@@ -481,6 +499,9 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                 {t('pickSheetTypicalPrice', { cad: shownPrice })}
               </span>
             )}
+            {/* The same four chips every racket row carries, so the pick and
+                each alternative compare on one ruler (Stats canvas, 2026-10-20). */}
+            <ChipRow chips={racketChips(item)} />
           </div>
 
           {/* The reason, at the top of the type scale for this body — it is
@@ -570,7 +591,11 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                     onClick={() => { setAltIndex(o.index); setSpecsOpen(false); }}
                     ariaLabel={`${o.item.brand} ${o.item.model}`}
                     title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{o.item.model}</span>}
-                    subtitle={o.line || o.item.brand}
+                    // A racket shows its four chips, marked where it differs
+                    // from the racket ON SHOW; a string keeps its line.
+                    subtitle={o.item.category === 'racket' && racketChips(o.item).length > 0
+                      ? <ChipRow chips={racketChips(o.item, item)} />
+                      : (o.line || o.item.brand)}
                     trailing={priceCadPoint(o.item) !== null ? (
                       <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontFamily: 'var(--font-mono)' }}>
                         <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>${priceCadPoint(o.item)}</span>

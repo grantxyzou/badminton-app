@@ -65,6 +65,17 @@ What survived that arrangement, and the rules that came with it:
   aggregated "what the club plays" tally (`lib/clubGear.ts`, cohort-guarded
   at `CLUB_GEAR_MIN_COHORT` before any label can identify fewer than that
   many people).
+- **"Get it strung at 24 lb"** replaces the tension card's advisory footnote
+  only while the stringing shop answers `open: true` (a door to a closed shop
+  is a dead end). The tap writes a one-shot sessionStorage marker
+  (`lib/stringingIntent.ts`) and switches to Stringing; `StringingTab` shows
+  the Racket register and `StringingCard` consumes the marker once the shop and
+  identity are known, opening the request at that mains tension (crosses +2).
+  A closed shop consumes it without opening anything.
+- **Racket chips** (`lib/racketChips.ts`): balance · shaft · weight · tier
+  under the pick and on each Or-consider row, an attribute that differs from
+  the pick marked. Values outside the controlled vocabulary are dropped, never
+  printed raw.
 - **The catalog's vocabulary is pinned by a test.** Every racket row must pass
   `isScorable` and carry `balance`/`flex`/`playStyle`/`tier` values from the
   controlled vocabulary (`__tests__/equipment-catalog-data.test.ts`). The
