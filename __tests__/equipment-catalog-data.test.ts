@@ -117,8 +117,9 @@ describe('equipment catalog data', () => {
     const withoutCeiling = rackets().filter((r) => typeof r.attributes?.tensionMaxLbs !== 'number');
     // 11 before the 2026-09-14 check. That check found a published range for 5
     // of them, and added 38 new models whose makers print none — without one,
-    // by the same rule (11 − 5 + 38).
-    expect(withoutCeiling.length).toBe(44);
+    // by the same rule (11 − 5 + 38). The 2026-10-20 re-check found Victor's
+    // own ceilings for Thruster Ryuga II, Jetspeed S 12 II and DriveX 9X (44 − 3).
+    expect(withoutCeiling.length).toBe(41);
   });
 
   it('imports new rackets with converted pricing and derived skillRange', () => {

@@ -204,7 +204,8 @@
         "tier": "Premium",
         "weightMinG": 80,
         "weightMaxG": 89,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-10-20",
+        "tensionMaxLbs": 32
       },
       "sources": [
         {
@@ -295,14 +296,15 @@
       "attributes": {
         "weight": "3U/4U",
         "balance": "Head-light",
-        "flex": "Medium",
+        "flex": "Stiff",
         "playStyle": "Speed",
         "notes": "fast swings + drives",
         "subType": "doubles",
         "tier": "Premium",
         "weightMinG": 80,
         "weightMaxG": 89,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-10-20",
+        "tensionMaxLbs": 30
       },
       "sources": [
         {
@@ -326,14 +328,15 @@
       "attributes": {
         "weight": "3U/4U",
         "balance": "Even",
-        "flex": "Medium",
+        "flex": "Stiff",
         "playStyle": "All-round",
         "notes": "all-rounder",
         "subType": "all-round",
         "tier": "Mid-range",
         "weightMinG": 80,
         "weightMaxG": 89,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-10-20",
+        "tensionMaxLbs": 29
       },
       "sources": [
         {
@@ -951,7 +954,7 @@
         "series": "Auraspeed",
         "playStyle": "Speed",
         "balance": "Head-light",
-        "flex": "Stiff",
+        "flex": "Medium-Stiff",
         "weight": "3U/4U",
         "weightGrams": "83",
         "frameMaterial": "HRM Graphite + Nano Aerogel + PBO + Hard Cored Tech",
@@ -964,7 +967,7 @@
         "tensionMaxLbs": 30,
         "priceMinUSD": 190,
         "priceMaxUSD": 220,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-10-20"
       },
       "seeded": true,
       "msrp": 262
@@ -981,7 +984,7 @@
       "attributes": {
         "series": "Auraspeed",
         "playStyle": "Speed",
-        "balance": "Head-light",
+        "balance": "Even",
         "flex": "Stiff",
         "weight": "3U/4U",
         "weightGrams": "80-89",
@@ -996,7 +999,7 @@
         "tensionMaxLbs": 30,
         "priceMinUSD": 180,
         "priceMaxUSD": 210,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-10-20"
       },
       "seeded": true,
       "msrp": 248
@@ -1028,7 +1031,7 @@
         "tensionMaxLbs": 31,
         "priceMinUSD": 200,
         "priceMaxUSD": 200,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-10-20"
       },
       "seeded": true,
       "msrp": 276
@@ -1174,21 +1177,21 @@
         "playStyle": "Control",
         "balance": "Even",
         "flex": "Medium",
-        "weight": "4U/5U",
-        "weightGrams": "75-84",
+        "weight": "4U",
+        "weightGrams": "80-84",
         "frameMaterial": "Standard composite",
-        "stringTensionLbs": "19-25",
+        "stringTensionLbs": "19-24",
         "gripSize": "G5",
         "notes": "Budget control-oriented option",
         "subType": "beginner",
-        "weightMinG": 75,
+        "weightMinG": 80,
         "weightMaxG": 84,
         "tier": "Entry-level",
         "tensionMinLbs": 19,
-        "tensionMaxLbs": 25,
+        "tensionMaxLbs": 24,
         "priceMinUSD": 75,
         "priceMaxUSD": 110,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-10-20"
       },
       "seeded": true,
       "msrp": 103
@@ -1634,20 +1637,20 @@
         "balance": "Head-heavy",
         "flex": "Flexible",
         "weight": "5U",
-        "weightGrams": "75-82",
+        "weightGrams": "75-79",
         "frameMaterial": "Basic composite frame",
-        "stringTensionLbs": "18-24",
+        "stringTensionLbs": "18-30",
         "gripSize": "G6",
         "notes": "True beginner racket, often pre-strung",
         "subType": "beginner",
         "weightMinG": 75,
-        "weightMaxG": 82,
+        "weightMaxG": 79,
         "tier": "Entry-level",
         "tensionMinLbs": 18,
         "tensionMaxLbs": 30,
         "priceMinUSD": 40,
         "priceMaxUSD": 70,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-10-20"
       },
       "seeded": true,
       "msrp": 55
@@ -1760,8 +1763,8 @@
         "balance": "Head-light",
         "flex": "Medium",
         "weight": "4U",
-        "weightMinG": 78,
-        "weightMaxG": 83,
+        "weightMinG": 80,
+        "weightMaxG": 84,
         "tier": "Mid-range",
         "frameMaterial": "Wide Profile Frame + Sonic Flare System",
         "tensionMinLbs": 20,
@@ -1769,7 +1772,7 @@
         "gripSize": "G5",
         "priceMinUSD": 165,
         "priceMaxUSD": 165,
-        "lastVerified": "2026-09-14",
+        "lastVerified": "2026-10-20",
         "notes": "Speed counterpart to Astrox Nextage for developing players"
       },
       "seeded": true,
@@ -1906,18 +1909,18 @@
         "series": "Auraspeed",
         "playStyle": "Speed",
         "subType": "doubles",
-        "balance": "Head-light",
+        "balance": "Even",
         "flex": "Medium-Stiff",
         "weight": "3U/4U",
         "weightMinG": 80,
         "weightMaxG": 89,
         "tier": "Premium",
         "frameMaterial": "HRM Graphite + Nano Aerogel",
-        "tensionMaxLbs": 28,
+        "tensionMaxLbs": 29,
         "gripSize": "G5",
         "priceMinUSD": 190,
         "priceMaxUSD": 220,
-        "lastVerified": "2026-09-14",
+        "lastVerified": "2026-10-20",
         "notes": "Hendra Setiawan signature line, tuned for doubles speed exchanges"
       },
       "seeded": true,
@@ -1943,12 +1946,12 @@
         "weightMaxG": 84,
         "tier": "Premium",
         "frameMaterial": "Nanotech-enhanced composite frame",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 28,
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 27,
         "gripSize": "G5",
         "priceMinUSD": 220,
         "priceMaxUSD": 230,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-10-20",
         "notes": "Mid-high all-round option, one step below the 900X flagship"
       },
       "seeded": true,
@@ -5484,7 +5487,7 @@
         "gripSize": "G5/G6",
         "priceMinUSD": 230,
         "priceMaxUSD": 230,
-        "lastVerified": "2026-09-14",
+        "lastVerified": "2026-10-20",
         "notes": "Head-heavy, stiff Ryuga upgrade with a 6.6 shaft"
       },
       "seeded": true,

@@ -60,6 +60,33 @@ describe('v2 racket import', () => {
     expect(astrox?.attributes?.balance).toBe('Head-heavy');
   });
 
+  // The importer is re-runnable, so a correction made to the catalog alone is
+  // undone by the next run. The 2026-10-09 Astrox 88S relabel was, for eleven
+  // days: Even in the catalog, Head-heavy in the source. Every field the
+  // importer writes must already agree with the catalog.
+  it('agrees with the catalog on every field the importer writes, so a re-run reverts nothing', () => {
+    const FIELDS: Array<[string, string]> = [
+      ['series', 'series'], ['category', 'playStyle'], ['subType', 'subType'],
+      ['balance', 'balance'], ['flex', 'flex'], ['weightClass', 'weight'],
+      ['weightMinG', 'weightMinG'], ['weightMaxG', 'weightMaxG'], ['tier', 'tier'],
+      ['frameMaterial', 'frameMaterial'], ['tensionMinLbs', 'tensionMinLbs'],
+      ['tensionMaxLbs', 'tensionMaxLbs'], ['gripSize', 'gripSize'],
+      ['priceMinUSD', 'priceMinUSD'], ['priceMaxUSD', 'priceMaxUSD'],
+      ['lastVerified', 'lastVerified'], ['notes', 'notes'],
+    ];
+    const byId = new Map(items.map((i) => [i.id, i]));
+    const drift: string[] = [];
+    for (const raw of source as unknown as Array<Record<string, unknown>>) {
+      const row = byId.get(`racket-${raw.id}`);
+      for (const [from, to] of FIELDS) {
+        const v = raw[from];
+        if (v === undefined || v === null || v === '') continue;
+        if (row?.attributes?.[to] !== v) drift.push(`${raw.id}.${to}: source ${String(v)}, catalog ${String(row?.attributes?.[to])}`);
+      }
+    }
+    expect(drift).toEqual([]);
+  });
+
   it('leaves the 11 legacy-only rackets in place', () => {
     const sourceIds = new Set((source as RacketDatabaseV2Record[]).map((r) => `racket-${r.id}`));
     const legacy = items.filter((i) => !sourceIds.has(i.id));
