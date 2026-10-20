@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Your fit stops asking about overgrips (2026-10-20)
+
+The "I wrap two overgrips on it" switch is gone from Your fit: the answer was saved and nothing used it. A stored answer is still cleared by "Clear my fit answers". `docs/plans/equipment-setup-card.md`.
+
 ### Stats canvas, second pass: registers, the fit page, the pick sheet (2026-10-19)
 
 Stats now runs You · Equipment · Play · Learn. On Equipment: "Add a spare racket" is a footer link beside "Your fit" until a spare exists; "Racket to try next" draws a bigger frame with the name as the door and the price row under the description; the pick sheet reads brand → name → typical price, keeps each alternative's price difference beside its price, has a "Where to buy · {brand} site" link under the action and smaller thumbs, and drops the "not a verdict" footnote; the String tension card's three level lines are reworded in the app's voice and spaced properly. Your fit asks swing speed as how far your clear goes (Gentle / Medium / Hard, with a court per tile), marks G5 as the standard grip, says what the overgrip switch means, and counts "n of 5 answered". The engines read the same values as before. `docs/plans/equipment-setup-card.md`.

@@ -198,7 +198,9 @@ conditional.
   refusal. New answers on `PlayerGear`: `fitLevelOverride`, `fitPlayStyle`
   (doubles/singles also write `playFormat`), `fitSoreness` (stripped for
   non-owners like `fitArmComfort`; `effectiveArmComfort` in `lib/fitProfile.ts`
-  is how the engines read it), `fitOvergrips`, and `G3`.
+  is how the engines read it), and `G3`. `fitOvergrips` stays on the type and
+  is still blanked by "Clear my fit answers", but the page stopped asking it on
+  2026-10-20: it was stored and nothing read it.
   - **The verdict's judgement is `lib/fitVerdict.ts`, and only there**: state,
     reasons, range, all deterministic. It borrows the engines' opinions rather
     than holding its own — `GOAL_DELTA`'s balance axis, `pairTension` when frame,

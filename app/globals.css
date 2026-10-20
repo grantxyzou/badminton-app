@@ -6436,21 +6436,6 @@ a.setup-price-row:active { background: var(--press-bg); }
 .fit-grip-circle--G6 { width: 26px; height: 26px; }
 .fit-tile[aria-checked="true"] .fit-grip-circle { border-color: var(--accent); background: var(--highlight-green); }
 
-.fit-overgrips {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-.fit-overgrips-text { display: flex; flex-direction: column; gap: var(--space-05); min-width: 0; }
-.fit-overgrips-label { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
-
 .fit-sore-list { display: flex; flex-direction: column; gap: var(--space-2); }
 .fit-sore-option {
   display: flex;

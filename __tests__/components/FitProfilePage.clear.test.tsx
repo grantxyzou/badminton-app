@@ -60,14 +60,14 @@ describe('FitProfilePage — the questions as the Stats canvas put them (2026-10
     await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitSwing: 'fast' }));
   });
 
-  it('marks G5 as the standard grip, says what the overgrip switch means, and counts answers', async () => {
+  it('marks G5 as the standard grip, no longer asks about overgrips, and counts answers', async () => {
     renderPage({ ...base, fitGrip: 'G5', fitSwing: 'medium' } as PlayerGear);
     expect(await screen.findByText('Standard')).toBeTruthy();
     const g5 = screen.getByRole('radio', { name: /G5/ });
     expect(g5.textContent).toContain('Standard');
     expect(screen.getByRole('radio', { name: /G4/ }).textContent).not.toContain('Standard');
-    expect(screen.getByText('I wrap two overgrips on it')).toBeTruthy();
-    expect(screen.getByText(/a little thicker than the size above/)).toBeTruthy();
+    // Asked, stored and read by nothing: the question left (2026-10-20).
+    expect(screen.queryByText(/overgrip/i)).toBeNull();
     // Two of five answered (grip, swing): the count says so in words.
     expect(screen.getByText('2 of 5 answered')).toBeTruthy();
     expect(screen.queryByText(/Circles are the handle/)).toBeNull();

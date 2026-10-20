@@ -97,6 +97,12 @@ flag's retirement.
   circles' caption is gone; the overgrip switch says what it means ("I wrap two
   overgrips on it" — the answer is stored, nothing reads it yet); the counter
   reads "n of 5 answered" with five dots.
+- **2026-10-20 — the overgrip question left Your fit** (Grant, on the canvas:
+  "b", of "make the racket pick read it, or drop it until something does"). It
+  was stored and read by no engine, so asking it was a question with no answer
+  behind it, and the grip question already asks the size your hand wants. The
+  field stays on `PlayerGear` (additive schema; a rollback still reads it) and
+  "Clear my fit answers" still blanks a stored one.
 
 ## Shape
 

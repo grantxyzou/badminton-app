@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import TopBar from '@/components/primitives/TopBar';
-import Switch from '@/components/primitives/Switch';
 import ErrorState from '@/components/primitives/ErrorState';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import AIBadge from '@/components/primitives/AIBadge';
@@ -39,6 +38,8 @@ const FORMAT_OF: Record<FitPlayStyle, 'singles' | 'doubles' | 'both'> = { double
 
 /** Every stored fit ANSWER. `playFormat` and the budgets are pairing
  *  preferences, set elsewhere, and stay. */
+// `fitOvergrips` is no longer asked (Grant, 2026-10-20: nothing read it), but
+// a member may still have one stored, so clearing still blanks it.
 const FIT_ANSWER_KEYS = [
   'fitGoal', 'fitSwing', 'fitGrip', 'fitPlayStyle', 'fitSoreness', 'fitLevelOverride', 'fitOvergrips',
 ] as const;
@@ -229,15 +230,6 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
           <section className="fit-group">
             <span className="fit-q-label">{t('grip')}</span>
             <GripSizePicker value={value('fitGrip') ?? null} onChange={(v) => answer({ fitGrip: v })} disabled={disabled} label={t('grip')} />
-            {/* Says what the switch means (Grant, 2026-10-19: "what does plus
-                two mean?"). The answer is stored; nothing reads it yet. */}
-            <div className="fit-overgrips">
-              <span className="fit-overgrips-text">
-                <span id="fit-overgrips-label" className="fit-overgrips-label">{t('overgrips')}</span>
-                <span className="fit-caption">{t('overgripsHelp')}</span>
-              </span>
-              <Switch checked={value('fitOvergrips') === 2} onChange={(on) => answer({ fitOvergrips: on ? 2 : 0 })} ariaLabel={t('overgrips')} disabled={disabled} />
-            </div>
           </section>
 
           <section className="fit-group">
