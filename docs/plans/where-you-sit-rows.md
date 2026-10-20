@@ -42,6 +42,14 @@ None of its own. The card's job, and the reading that would take it off the scre
   "You against N others in the club". The phases were renamed in plain club
   words (Beginner, Improver, Intermediate, Advanced, Competitive; Grant: "Switch
   sounds so corny") — the stored keys are unchanged.
+- **2026-10-20 — the board's copy, second pass.** The subtitle is the
+  board's "You against the club · N members rated", and N counts the member
+  too (`cohort` is the OTHERS; a revealed card means the member is rated). The
+  footnote says what the card withholds — "Bands only. No names, no
+  leaderboard — and you can turn this off in Profile." — at `--fs-xs`, as
+  drawn. The board still draws the skill rows as the older sentence over
+  three-segment bars; the compact rows from the 10-19 decision above stay,
+  since that decision removed exactly that sentence for repeating the bars.
 
 ## Shape
 
