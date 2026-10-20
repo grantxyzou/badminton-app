@@ -153,6 +153,20 @@ because they are correct regardless of uptake.
   whether Flexible should be preferred is the next question for the golden
   set, not a claim to make ahead of it. g01 is the first RATED case; g02 and
   g03 stay drafts.
+- **`fit-4`: the side of a mixed court** (2026-10-20). The Fit page split
+  Mixed into Mixed · front and Mixed · back on 2026-10-20, and both were read
+  as `both` — the same racket as All-around. Grant: "mixed selection why is it
+  ignored?" Now (`lib/courtSide.ts`): with no racket to anchor on, the side
+  sets the starting balance — front head-light, back head-heavy — the way the
+  level sets the rest; a slow swing or an often-sore arm keeps the back court
+  at even, for the fit-3 reason and the comfort ceiling. With an anchor, the
+  racket they play stays the start and a frame matching the side earns the
+  format bonus. The string and tension engines read front as doubles and back
+  as singles (`sideFormat`), which already say the right thing ("quick off the
+  strings for flat exchanges" / "hold length from the rear court"); back court
+  therefore reads a pound tighter. An explicit Doubles / Singles tap on the
+  tension card wins over the side. No golden case plays mixed, so the rated
+  picks are unchanged.
 - **g02 and g03 rated, and the 88S rows relabelled Even** (2026-10-09). The
   two drafts were checked against published reviews before the stringer
   confirmed them ("02 and 03 looks good for now"). The check exposed a

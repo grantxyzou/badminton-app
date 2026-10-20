@@ -10,6 +10,7 @@ import LockedCard, { useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import { useStringingShop } from '@/lib/useStringingShop';
+import { sideFormat } from '@/lib/courtSide';
 
 
 /**
@@ -108,7 +109,10 @@ export default function StringTensionCard({ activeName, gear, suppressed, suppre
     };
   }, [activeName, attempt]);
 
-  const format = (gear.gear?.playFormat ?? 'doubles') as PlayFormat;
+  // A mixed court side (Your fit) reads as doubles at the net and singles at
+  // the back until the member taps a format here (`lib/courtSide.ts`); the
+  // toggle shows the format the number was worked out for.
+  const format = (gear.gear ? sideFormat(gear.gear) : 'doubles') as PlayFormat;
   // The fit page's swing answer picks the band when it is known
   // (docs/plans/tension-follows-swing.md); the same `useGear` doc the format
   // comes from, so the two cannot disagree about whose answer this is.

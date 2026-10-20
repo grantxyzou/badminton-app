@@ -1,6 +1,7 @@
+import { courtSideOf, sideFormat } from './courtSide';
 import { activeRacket } from './activeRacket';
 import { effectiveArmComfort, fitAnswers, levelOptionValue } from './fitProfile';
-import { BALANCE_AXIS, goalDelta, comfortTensionDeltaLb } from './racketFit';
+import { BALANCE_AXIS, goalDelta, comfortTensionDeltaLb, sideBalance } from './racketFit';
 import type { PlayerProfile } from './racketProfile';
 import { pairTension } from './stringPair';
 import { MAX_LB, MIN_LB, ratedRange, recommendTension, type PlayFormat } from './tension';
@@ -103,12 +104,14 @@ function rangeAround(target: number, [lo, hi]: [number, number]): [number, numbe
   return t + 1 <= hi ? [t, t + 1] : [Math.max(lo, t - 1), t];
 }
 
-/** The page's play-style answer as the engines' format. Every mixed answer
- *  and "any" are both; an older `playFormat` counts only while the question
- *  is unanswered. */
+/** The page's play-style answer as the engines' format. A mixed side reads
+ *  through `sideFormat`, the tension card's own rule, so the two print the
+ *  same number; "any" and a bare legacy "mixed" are both. An older
+ *  `playFormat` counts only while the question is unanswered. */
 function formatOf(gear: PlayerGear | null): PlayFormat {
   const style = gear?.fitPlayStyle;
   if (style === 'singles' || style === 'doubles') return style;
+  if (style === 'mixed_front' || style === 'mixed_back') return sideFormat(gear);
   if (style) return 'both';
   return gear?.playFormat ?? 'both';
 }
@@ -163,12 +166,14 @@ export function computeFitFacts(input: FitFactsInput): FitFacts {
   const flex = canon(frame?.flex);
 
   // What the member asked for, against the frame's balance — on the fit
-  // engine's own axis: every level starts even (2) and the goal moves it,
+  // engine's own axis: every level starts even (2), a mixed court side starts
+  // where the engine starts it (`sideBalance`, fit-4), and the goal moves it,
   // read with the swing the engine reads it with.
   const axis = BALANCE_AXIS[balance];
   if (goal && goal !== 'happy' && axis !== undefined) {
     const delta = goalDelta(goal, answers.swing ?? undefined).balance;
-    const wanted = delta === 'toward2' ? 2 : 2 + delta;
+    const start = sideBalance({ courtSide: courtSideOf(gear), swing: answers.swing ?? undefined, armComfort: effectiveArmComfort(gear) }) ?? 2;
+    const wanted = delta === 'toward2' ? 2 : Math.max(1, Math.min(3, start + delta));
     const off = Math.abs(axis - wanted);
     if (off === 0) reasons.push({ key: 'goalWithBalance', polarity: 'plus' });
     else {

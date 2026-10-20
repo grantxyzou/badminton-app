@@ -129,9 +129,9 @@ flag's retirement.
   sheet's "differs by" sentence became attribute chips with the differences
   marked. The tension card's footnote became a stringing request at its own
   number (shop open only). Stats › You draws Strengths / Work on next as two
-  tinted panels with five-dot ratings. Not done: the racket engine still does
-  not read `mixed_front` / `mixed_back`, and "Tonight's games / Confirm a
-  score" needs court-rotation data and wants its own plan doc first.
+  tinted panels with five-dot ratings. Not done: "Tonight's games / Confirm a
+  score" needs court-rotation data and wants its own plan doc first. (The
+  mixed side is read since `fit-4`, the same day — `docs/plans/racket-fit-engine.md`.)
 
 ## Shape
 
