@@ -1,7 +1,7 @@
 # Grommet hole counts on the racket catalog
 
 **Track:** ROADMAP North Star — Value-Hub Track 2 (Equipment: the frame page is "a reference you can check courtside") and the stringing service (`admin.stringing`: the stringer is the person who needs the number).
-**Status:** in-flight — Phase 1 (Yonex) built 2026-10-20 in PR #658, not yet merged
+**Status:** in-flight — Phase 1 (Yonex) shipped 2026-10-20 (#658); Phase 2 (Victor) built 2026-10-20
 **Review on:** 2026-11-20 — did Phase 1 (Yonex, from the maker's pattern sheet) ship, and has the stringer looked up a hole count in the app instead of on the frame? If neither, drop Phases 2–3.
 
 ## Problem
@@ -84,10 +84,38 @@ Source: Yonex's stringing sheet, May 2025 (https://us.yonex.com/pages/stringing-
 
 **The sheet disproves sibling inference.** The Nanoflare 800 Play is in family 2 (76) while the 800 Pro, Tour and Game are in family 5 (78). A retailer lists the 800 Play at 76 independently.
 
+## Phase 2 result (2026-10-20)
+
+**Victor publishes no stringing sheet.** No Victor document mapping models to patterns or counts was found. The Victor Europe stringing PDF now redirects to a 404. What Victor does publish is a per-model mark on its product pages:
+
+- The image `tech-tech_mark_81.webp` reads **"SEVEN SIX 76"** (viewed 2026-10-20).
+- It always sits beside the caption "The single-pass grommet hole construction…".
+- That is the maker stating 76 for that model, so its source is `maker`.
+
+| Pattern | Rackets | Holes | How we know |
+|---|---|---|---|
+| `victor-seven-six-76` | 23 frames, each with its own ca.victorsport.com page carrying the mark. Every page was fetched and its title checked against the catalog row on 2026-10-20. | 76 | `maker` |
+| `victor-76-retailers` | Thruster Ryuga II Pro (its own page shows no mark) | 76 | `retailers` (badminton-shop.com, badmintonalley) |
+
+**Coverage:** 24 of 39 offered Victor rackets.
+
+**Rules applied:**
+- **A page without the mark proves nothing.** Colourway pages of one frame disagree on showing it (the 90F M page has it, the 90F J page does not).
+- **A frame's own page or nothing.** It is never inferred from a sibling or a special edition.
+
+**Left blank (15):**
+- **Marked only on a special edition:** Thruster Ryuga Metallic (CPS capsule), DriveX 12 (ZSW collab).
+- **Identity uncertain:** Thruster F Enhanced HS (the marked page is titled only "THRUSTER F HS").
+- **A sibling is marked, this frame's page is silent:** Thruster F C Ultra CX.
+- **One retailer only:** Auraspeed Fantome, Auraspeed 90K II, Auraspeed 99, DriveX 10 Metallic.
+- **Nothing found:** Thruster F Claw, Jetspeed S 011, Brave Sword 1500, Brave Sword 12, HyperNano X 800, Thruster K 100K, Thruster K 6.
+
+Every source found says 76 for Victor; none disagreed. The stringer counting one frame of each would fill most of the blanks. Phase 3's bench entry is the place for that.
+
 ## Phases
 
 1. **Yonex from the official sheet.** Map each offered Yonex row to a model code on the sheet, then the code's pattern family to its count (Type 1/2 → 76, Nanoflare 800 Pro → 78, trainers → 72), stored as `pattern`. Rows with no code on the sheet stay blank. This is about 54 rows, and the only phase with an official source.
-2. **Victor where the maker page names the tech.** "Seven-Six 76" on Victor's own page → 76, stored as `pattern`. Everything else stays blank.
+2. **Victor where the maker page names the tech.** Done: "SEVEN SIX 76" on Victor's own page → 76, stored as `maker` (see Phase 2 result). Everything else stays blank.
 3. **Li-Ning and the rest: counted at the bench.** The club strings these frames. A stringer counting a frame once is a better source than any web page, and it is the only route Li-Ning has. This needs a small admin "Holes" entry on the frame page; scope it after Phase 1 shows the cell is used.
 
 ## Decisions

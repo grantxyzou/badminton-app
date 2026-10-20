@@ -208,7 +208,8 @@
         "weightMinG": 80,
         "weightMaxG": 89,
         "lastVerified": "2026-10-20",
-        "tensionMaxLbs": 32
+        "tensionMaxLbs": 32,
+        "stringPattern": "victor-seven-six-76"
       },
       "sources": [
         {
@@ -239,7 +240,8 @@
         "tier": "Premium",
         "weightMinG": 80,
         "weightMaxG": 89,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "victor-seven-six-76"
       },
       "sources": [
         {
@@ -275,7 +277,8 @@
         "priceMinUSD": 175,
         "priceMaxUSD": 230,
         "lastVerified": "2026-09-14",
-        "notes": "Reference speed/defense/counter-attack racket"
+        "notes": "Reference speed/defense/counter-attack racket",
+        "stringPattern": "victor-seven-six-76"
       },
       "sources": [
         {
@@ -307,7 +310,8 @@
         "weightMinG": 80,
         "weightMaxG": 89,
         "lastVerified": "2026-10-20",
-        "tensionMaxLbs": 30
+        "tensionMaxLbs": 30,
+        "stringPattern": "victor-seven-six-76"
       },
       "sources": [
         {
@@ -339,7 +343,8 @@
         "weightMinG": 80,
         "weightMaxG": 89,
         "lastVerified": "2026-10-20",
-        "tensionMaxLbs": 29
+        "tensionMaxLbs": 29,
+        "stringPattern": "victor-seven-six-76"
       },
       "sources": [
         {
@@ -916,7 +921,8 @@
         "tensionMaxLbs": 32,
         "priceMinUSD": 200,
         "priceMaxUSD": 230,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 276
@@ -1010,7 +1016,8 @@
         "tensionMaxLbs": 30,
         "priceMinUSD": 180,
         "priceMaxUSD": 210,
-        "lastVerified": "2026-10-20"
+        "lastVerified": "2026-10-20",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 248
@@ -1042,7 +1049,8 @@
         "tensionMaxLbs": 31,
         "priceMinUSD": 200,
         "priceMaxUSD": 200,
-        "lastVerified": "2026-10-20"
+        "lastVerified": "2026-10-20",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 276
@@ -1105,7 +1113,8 @@
         "tensionMaxLbs": 30,
         "priceMinUSD": 140,
         "priceMaxUSD": 160,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 193
@@ -1906,7 +1915,8 @@
         "priceMinUSD": 180,
         "priceMaxUSD": 210,
         "lastVerified": "2026-09-14",
-        "notes": "Closest Victor equivalent to Astrox 99 for maximum smash power"
+        "notes": "Closest Victor equivalent to Astrox 99 for maximum smash power",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 248
@@ -1936,7 +1946,8 @@
         "priceMinUSD": 190,
         "priceMaxUSD": 220,
         "lastVerified": "2026-10-20",
-        "notes": "Hendra Setiawan signature line, tuned for doubles speed exchanges"
+        "notes": "Hendra Setiawan signature line, tuned for doubles speed exchanges",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 262
@@ -5149,7 +5160,8 @@
         "priceMinUSD": 220,
         "priceMaxUSD": 220,
         "lastVerified": "2026-09-14",
-        "notes": "Stiff, head-light speed frame with a slim 5.8 shaft"
+        "notes": "Stiff, head-light speed frame with a slim 5.8 shaft",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 304
@@ -5178,7 +5190,8 @@
         "priceMinUSD": 220,
         "priceMaxUSD": 220,
         "lastVerified": "2026-09-14",
-        "notes": "Light head-light speed racket with a thin G6 grip"
+        "notes": "Light head-light speed racket with a thin G6 grip",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 304
@@ -5207,7 +5220,8 @@
         "priceMinUSD": 220,
         "priceMaxUSD": 240,
         "lastVerified": "2026-09-14",
-        "notes": "Metallic-fibre update of the 90K for fast attacking exchanges"
+        "notes": "Metallic-fibre update of the 90K for fast attacking exchanges",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 304
@@ -5236,7 +5250,8 @@
         "priceMinUSD": 230,
         "priceMaxUSD": 230,
         "lastVerified": "2026-09-14",
-        "notes": "Compact-head, stiff speed racket for quick doubles exchanges"
+        "notes": "Compact-head, stiff speed racket for quick doubles exchanges",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 317
@@ -5265,7 +5280,8 @@
         "priceMinUSD": 180,
         "priceMaxUSD": 180,
         "lastVerified": "2026-09-14",
-        "notes": "Head-light, stiff frame that swings quickly in drives and defence"
+        "notes": "Head-light, stiff frame that swings quickly in drives and defence",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 248
@@ -5323,7 +5339,8 @@
         "priceMinUSD": 220,
         "priceMaxUSD": 220,
         "lastVerified": "2026-09-14",
-        "notes": "Ultra-slim Fantome frame tuned with a head-heavy balance"
+        "notes": "Ultra-slim Fantome frame tuned with a head-heavy balance",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 304
@@ -5410,7 +5427,8 @@
         "priceMinUSD": 120,
         "priceMaxUSD": 120,
         "lastVerified": "2026-09-14",
-        "notes": "Affordable even-balanced all-rounder with a firm shaft"
+        "notes": "Affordable even-balanced all-rounder with a firm shaft",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 166
@@ -5440,7 +5458,8 @@
         "priceMinUSD": 230,
         "priceMaxUSD": 230,
         "lastVerified": "2026-09-14",
-        "notes": "Head-heavy, stiff smash racket with a slim 5.8 shaft"
+        "notes": "Head-heavy, stiff smash racket with a slim 5.8 shaft",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 317
@@ -5498,7 +5517,8 @@
         "priceMinUSD": 189.99,
         "priceMaxUSD": 189.99,
         "lastVerified": "2026-09-14",
-        "notes": "Head-heavy offensive racket for full smashes"
+        "notes": "Head-heavy offensive racket for full smashes",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 262
@@ -5527,7 +5547,8 @@
         "priceMinUSD": 230,
         "priceMaxUSD": 230,
         "lastVerified": "2026-10-20",
-        "notes": "Head-heavy, stiff Ryuga upgrade with a 6.6 shaft"
+        "notes": "Head-heavy, stiff Ryuga upgrade with a 6.6 shaft",
+        "stringPattern": "victor-76-retailers"
       },
       "seeded": true,
       "msrp": 317
@@ -5585,7 +5606,8 @@
         "priceMinUSD": 170,
         "priceMaxUSD": 170,
         "lastVerified": "2026-09-14",
-        "notes": "Mid-priced head-heavy attacker with a stiff shaft"
+        "notes": "Mid-priced head-heavy attacker with a stiff shaft",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 235
@@ -5614,7 +5636,8 @@
         "priceMinUSD": 180,
         "priceMaxUSD": 180,
         "lastVerified": "2026-09-14",
-        "notes": "Light 5U Ryuga that keeps a head-heavy feel"
+        "notes": "Light 5U Ryuga that keeps a head-heavy feel",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 248
@@ -5643,7 +5666,8 @@
         "priceMinUSD": 85,
         "priceMaxUSD": 85,
         "lastVerified": "2026-09-14",
-        "notes": "Budget head-heavy racket that makes power easy"
+        "notes": "Budget head-heavy racket that makes power easy",
+        "stringPattern": "victor-seven-six-76"
       },
       "seeded": true,
       "msrp": 117

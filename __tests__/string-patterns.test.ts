@@ -20,10 +20,11 @@ describe('string patterns', () => {
     }
   });
 
-  it('maps the 38 Yonex rackets whose code is on Yonex’s sheet, and no one else', () => {
+  it('maps 38 Yonex rackets from Yonex’s sheet and 24 Victor rackets, and no one else', () => {
     const mapped = rackets.filter((r) => r.attributes?.stringPattern !== undefined);
-    expect(mapped).toHaveLength(38);
-    expect(mapped.every((r) => r.brand === 'Yonex')).toBe(true);
+    expect(mapped.filter((r) => r.brand === 'Yonex')).toHaveLength(38);
+    expect(mapped.filter((r) => r.brand === 'Victor')).toHaveLength(24);
+    expect(mapped).toHaveLength(62);
   });
 
   it('every count says how it is known, and a retailer count needs two retailers', () => {
@@ -60,6 +61,19 @@ describe('string patterns', () => {
     expect(byId('racket-yonex-astrox-99-pro-3rd-gen').attributes?.stringPattern).toBeUndefined();
     // Known pattern, no trusted count.
     expect(grommetHoles(byId('racket-yonex-astrox-99-pro'))).toBeNull();
+  });
+
+  it('takes Victor’s count only from a frame’s own marked page, never a sibling or a special edition', () => {
+    expect(grommetHoles(byId('racket-victor-auraspeed-90s'))).toBe(76);
+    expect(STRING_PATTERNS['victor-seven-six-76'].holesSource).toBe('maker');
+    // Two retailers agree; Victor's own page for the base frame shows no mark.
+    expect(grommetHoles(byId('racket-victor-thruster-ryuga-ii-pro'))).toBe(76);
+    // Marked only on its CPS capsule edition: a different product page.
+    expect(byId('racket-victor-thruster-ryuga-metallic').attributes?.stringPattern).toBeUndefined();
+    // Marked page titled "THRUSTER F HS": not certainly this frame.
+    expect(byId('racket-victor-thruster-f-enhanced-hs').attributes?.stringPattern).toBeUndefined();
+    // Its sibling F C Ultra X is marked; this frame's page is silent.
+    expect(byId('racket-victor-thruster-f-c-ultra-cx').attributes?.stringPattern).toBeUndefined();
   });
 
   it('shows the count on the frame page right after the rated tension, and only when known', () => {
