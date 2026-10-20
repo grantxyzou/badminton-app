@@ -36,7 +36,9 @@ describe('<PaymentsCard /> — late cancellations', () => {
     ]);
     render(<PaymentsCard />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /2 removed/ }));
+    // Removed players sit behind the footer's Show, with the waitlist.
+    expect(await screen.findByText('2 removed')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Show/ }));
     expect(await screen.findByText('Late · 20h')).toBeDefined();
     expect(screen.getByLabelText('Cancelled late, 20 hours before the session')).toBeDefined();
     expect(screen.getAllByText(/Late ·/)).toHaveLength(1);

@@ -8,6 +8,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
+import StatusBadge from '@/components/primitives/StatusBadge';
 import { useOnline } from '@/lib/useOnline';
 import type { UseStatsPrivacy } from '@/lib/useStatsPrivacy';
 
@@ -136,11 +137,16 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
             >
               visibility
             </span>
+            {/* One sentence whichever way the switch sits (Grant, 2026-10-20):
+                the promise is the same on and off, and the switch itself says
+                which. It used to read "On — you'll see your band…" / "Off —
+                you'll still see…", a description of the control over the
+                control. */}
             <p
               id="stats-privacy-state"
               style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.45, color: 'var(--text-secondary)' }}
             >
-              {on ? t('stateOn') : t('stateOff')}
+              {t('privacyNote')}
             </p>
           </div>
 
@@ -158,10 +164,10 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
             opposite ("Always — kudos are signed"), which would have reversed a
             documented strip-canary invariant in lib/kudos.ts. That reversal was
             declined, so this row reads Never and the copy matches the code. */}
-        <VisibilityRow icon="volunteer_activism" label={t('kudosLabel')} body={t('kudosBody')} verdict={t('verdictNever')} first />
-        <VisibilityRow icon="lock" label={t('ratingsLabel')} body={t('ratingsBody')} verdict={t('verdictNever')} />
-        <VisibilityRow icon="lock" label={t('levelLabel')} body={t('levelBody')} verdict={t('verdictNever')} />
-        <VisibilityRow icon="inventory_2" label={t('kitLabel')} body={t('kitBody')} verdict={t('verdictCounted')} />
+        <VisibilityRow icon="volunteer_activism" label={t('kudosLabel')} body={t('kudosBody')} verdict={t('verdictNever')} tone="never" first />
+        <VisibilityRow icon="lock" label={t('ratingsLabel')} body={t('ratingsBody')} verdict={t('verdictNever')} tone="never" />
+        <VisibilityRow icon="lock" label={t('levelLabel')} body={t('levelBody')} verdict={t('verdictNever')} tone="never" />
+        <VisibilityRow icon="inventory_2" label={t('kitLabel')} body={t('kitBody')} verdict={t('verdictCounted')} tone="counted" />
       </div>
 
       <div
@@ -189,12 +195,15 @@ function VisibilityRow({
   label,
   body,
   verdict,
+  tone,
   first = false,
 }: {
   icon: string;
   label: string;
   body: string;
   verdict: string;
+  /** `never` is the green pill (nothing leaves); `counted` the amber one (a tally does). */
+  tone: 'never' | 'counted';
   first?: boolean;
 }) {
   return (
@@ -227,16 +236,14 @@ function VisibilityRow({
           {body}
         </p>
       </div>
-      <span
-        style={{
-          fontSize: 'var(--fs-sm)',
-          color: 'var(--text-secondary)',
-          fontWeight: 600,
-          whiteSpace: 'nowrap',
-          marginTop: 'var(--space-05)',
-        }}
-      >
-        {verdict}
+      {/* The verdict is a filled pill, not grey text (Grant, 2026-10-20:
+          "make it stand out the status"): the canonical `.pill-*` shape, green
+          for Never and amber for Counted, so the one row that differs reads
+          as different. */}
+      <span style={{ marginTop: 'var(--space-05)' }}>
+        <StatusBadge variant="state" tone={tone === 'counted' ? 'waitlist' : 'paid'}>
+          {verdict}
+        </StatusBadge>
       </span>
     </div>
   );

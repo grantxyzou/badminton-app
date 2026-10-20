@@ -53,6 +53,7 @@ describe('GET /api/sessions/history', () => {
     expect(row.receipt.playerNames).toEqual(['Lin', 'Kento', 'Sindhu', 'Akane']);
     expect(row.paidPercent).toBe(50); // 1 of 2 active roster paid
     expect(row.attendanceCount).toBe(2);
+    expect(row.unpaidCount).toBe(1); // Kento — the Payments card's chip reads "1 owing"
   });
 
   it('no recipient: row still shows cost, receipt null with a reason', async () => {

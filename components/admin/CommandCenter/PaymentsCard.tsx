@@ -9,7 +9,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
 import EmptyState from '@/components/primitives/EmptyState';
 import ActionRow from '@/components/primitives/ActionRow';
-import { fmtSessionLabel } from '@/lib/fmt';
+import { fmtSessionLabel, fmtShortDate } from '@/lib/fmt';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import { resettleSession, RESETTLE_FAILED } from '@/lib/resettleSession';
@@ -61,6 +61,44 @@ export function canCover(
   );
 }
 
+interface HistoryRow {
+  sessionId: string;
+  attendanceCount?: number;
+  unpaidCount?: number;
+}
+interface HistoryCount {
+  unpaid: number;
+  players: number;
+}
+
+/**
+ * What a session chip says under its date. The viewed session counts its own
+ * (live) roster, so a "Mark paid" tap moves the chip; the rest read the
+ * history list; a session neither has answered for keeps the state word.
+ */
+export function chipCaption(
+  sessionId: string,
+  liveOwed: number | null,
+  livePlayers: number | null,
+  history: Map<string, HistoryCount>,
+  isActive: boolean,
+  sent: boolean,
+): { text: string; owing: boolean } {
+  const counts =
+    liveOwed != null && livePlayers != null
+      ? { unpaid: liveOwed, players: livePlayers }
+      : history.get(sessionId) ?? null;
+  if (!counts) return { text: isActive ? 'Current' : sent ? 'Sent' : 'Past', owing: false };
+  if (counts.players === 0) return { text: 'no players', owing: false };
+  if (counts.unpaid > 0) return { text: `${counts.unpaid} owing`, owing: true };
+  return { text: 'all paid', owing: false };
+}
+
+/** Money for a status line: whole dollars stay whole, cents keep two places. */
+function fmtMoney(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
 interface PaymentsCardProps {
   refreshKey?: number;
   onOpenPlayer?: (memberId: string, name: string) => void;
@@ -96,7 +134,12 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
 
   // Per-row pending action
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [removedCollapsed, setRemovedCollapsed] = useState(true);
+  // The waitlist and the removed list sit behind one "Show" (the footer).
+  const [extrasOpen, setExtrasOpen] = useState(false);
+  // Per-session "who still owes" for the chips, from GET /api/sessions/history.
+  // Absent (not yet answered, or the read failed) means a chip falls back to
+  // Current / Sent / Past — a label, not a count, and still true.
+  const [historyCounts, setHistoryCounts] = useState<Map<string, HistoryCount>>(() => new Map());
 
   // Action sheet state — per-row actions
   const [actionTarget, setActionTarget] = useState<Player | null>(null);
@@ -224,6 +267,31 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     return () => { cancelled = true; };
   }, [refreshKey]);
 
+  // Per-session owing counts for the chips. Best-effort: a failure leaves the
+  // map empty and the chips fall back to their state words — never a load
+  // error, because the roster and the money this card acts on are elsewhere.
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await sharedFetch(`/api/sessions/history?limit=${Math.min(24, Math.max(1, sessions.length))}`);
+        if (!res.ok) return;
+        const data = (await res.json().catch(() => null)) as { sessions?: HistoryRow[] } | null;
+        const rows = Array.isArray(data?.sessions) ? data.sessions : [];
+        if (cancelled) return;
+        const next = new Map<string, HistoryCount>();
+        for (const r of rows) {
+          if (typeof r?.sessionId !== 'string') continue;
+          if (typeof r.unpaidCount !== 'number' || typeof r.attendanceCount !== 'number') continue;
+          next.set(r.sessionId, { unpaid: r.unpaidCount, players: r.attendanceCount });
+        }
+        setHistoryCounts(next);
+      } catch { /* chips keep their fallback words */ }
+    })();
+    return () => { cancelled = true; };
+  }, [sessions, refreshKey]);
+
   // Auto-dismiss the paid-toggle error after 4.5s. Without this, the banner
   // sticks around until the next toggle attempt, which can read as
   // "still failing" after a successful retry. Closes #62.
@@ -246,12 +314,21 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       const bt = b.removedAt ? new Date(b.removedAt).getTime() : 0;
       return bt - at;
     });
-    return { active, waitlisted, removed };
+    // Who still owes comes first on the card; paid and covered fold into chips.
+    const owed = active.filter((p) => p.paid !== true && !p.writtenOff);
+    const paid = active.filter((p) => p.paid === true);
+    const covered = active.filter((p) => p.paid !== true && !!p.writtenOff);
+    return { active, waitlisted, removed, owed, paid, covered };
   }, [allPlayers]);
 
   const total = lists.active.length;
   const paidCount = lists.active.filter((p) => p.paid === true).length;
   const paidPercent = total > 0 ? Math.round((paidCount / total) * 100) : 0;
+  // Frozen money only: the sum of the still-owed rows' `owedAmount`, which
+  // exists once the bill went out. Unsettled, there is no number to show.
+  const stillOwedTotal = viewedSession?.settled
+    ? lists.owed.reduce((sum, p) => sum + (typeof p.owedAmount === 'number' ? p.owedAmount : 0), 0)
+    : null;
 
   // Single resolver — the SAME one behind /api/sessions/history and
   // PastSessionsPage — so the header's "$Y each" and the receipt agree with
@@ -539,37 +616,50 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {/* Session selector — horizontal chips replace the old prev/next
           chevrons AND the standalone RecentSessionsStrip card (merged here).
           Built from the already-loaded `sessions` list (newest-first by id),
-          so every past session stays reachable with no extra fetch. The
-          "Payments / X of Y paid" header was removed by design — per-row
-          Paid/Pending pills already carry that signal. */}
+          so every past session stays reachable with no extra fetch. Each chip
+          says what is left to collect ("2 owing" / "all paid", canvas board
+          10f, 2026-10-20): the viewed session counts its live roster, the
+          others read `GET /api/sessions/history`; a session that list has not
+          answered for falls back to Current / Sent / Past, which is still true. */}
       {sessions.length > 0 && (
-        <div
-          role="tablist"
-          aria-label="Session"
-          className="cc-no-scrollbar flex gap-2 overflow-x-auto -mx-1 px-1 pb-1"
-        >
-          {sessions.map((s) => {
-            const selected = s.id === viewedSessionId;
-            const isActive = s.id === activeSessionId;
-            const sent = !!s.settled;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={selected ? 'true' : 'false'}
-                onClick={() => setViewedSessionId(s.id)}
-                className="cc-session-chip flex-shrink-0"
-              >
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, display: 'block' }}>
-                  {fmtSessionLabel(s.datetime)}
-                </span>
-                <span style={{ fontSize: 'var(--fs-xs)', display: 'block', marginTop: 'var(--space-05)', opacity: 0.7 }}>
-                  {isActive ? 'Current' : sent ? 'Sent' : 'Past'}
-                </span>
-              </button>
-            );
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <p
+            className="section-label-muted"
+            style={{ margin: 0, fontSize: 'var(--fs-2xs)' }}
+            id="cc-payments-session-label"
+          >
+            Session
+          </p>
+          <div
+            role="tablist"
+            aria-labelledby="cc-payments-session-label"
+            className="flex flex-wrap gap-2"
+          >
+            {sessions.map((s) => {
+              const selected = s.id === viewedSessionId;
+              const isActive = s.id === activeSessionId;
+              const sent = !!s.settled;
+              const caption = chipCaption(s.id, selected && playersReady ? lists.owed.length : null, selected && playersReady ? total : null, historyCounts, isActive, sent);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected ? 'true' : 'false'}
+                  onClick={() => setViewedSessionId(s.id)}
+                  className="cc-session-chip flex-shrink-0"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-2) var(--space-4)', borderRadius: 'var(--radius-pill)' }}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{ width: 'var(--space-2)', height: 'var(--space-2)', borderRadius: 'var(--radius-pill)', background: caption.owing ? 'var(--amber)' : 'var(--text-muted)', flexShrink: 0 }}
+                  />
+                  <span className="fs-sm" style={{ fontWeight: 600 }}>{fmtShortDate(s.datetime)}</span>
+                  <span className="fs-xs" style={{ color: caption.owing ? 'var(--amber)' : 'var(--text-muted)' }}>{caption.text}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -581,8 +671,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       )}
 
       {/* Empty state — kept distinct from loadError (lying-empty-state
-          rule). The "X of Y paid" count was removed by design; this is
-          the no-roster case, not the count.
+          rule). This is the no-roster case, not the count.
 
           STANDING, not inline: with no roster, emptiness is the whole of what
           this card is currently saying, which is the condition <EmptyState>'s
@@ -611,155 +700,210 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         </p>
       )}
 
-      {/* Per-session summary header — mirrors the Past sessions row for the
-          viewed chip. Line 1 is cost-independent; line 2 (amount + Share)
-          appears once the session is settled, like the dollar surfaces below. */}
-      {/* `total > 0`: with nobody signed up this block said "Sat, Aug 29 ·
-          0 players" (which the empty state above already says) over "$—
-          each" and a disabled Share receipt -- an action offered with nothing
-          behind it. Same rule as the stringing rail: a summary waits until
-          there is something to summarise. */}
+      {/* THE HERO: the three numbers that used to be scattered — what each
+          person owes, how many have paid, what is still out — plus the receipt
+          button and a progress bar. `total > 0`: with nobody signed up this
+          said "0 players" over "$— each" and a disabled Share receipt, an
+          action offered with nothing behind it. A summary waits until there is
+          something to summarise. */}
       {!loadError && !playersError && viewedSession && total > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-          <p key={`${viewedSession.id}:${paidPercent}`} className="fs-sm animate-count-tick" style={{ color: 'var(--text-muted)', margin: '0' }}>
-            {[
-              fmtSessionLabel(viewedSession.datetime),
-              `${total} player${total === 1 ? '' : 's'}`,
-              total > 0 ? `${paidPercent}% paid` : '',
-            ].filter(Boolean).join(' · ')}
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-            <span
-              className="fs-md"
-              style={{
-                color: 'var(--text-primary)',
-                fontFamily: 'var(--font-mono), ui-monospace, monospace',
-                fontWeight: 600,
-              }}
-            >
-              {receiptBuild?.costPerPerson != null ? `$${receiptBuild.costPerPerson} each` : '—'}
-            </span>
+        <div
+          className="cc-mini-card"
+          style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-3)' }}>
+            <div style={{ minWidth: 0 }}>
+              <p className="section-label-muted" style={{ margin: 0, fontSize: 'var(--fs-2xs)' }}>
+                {`${fmtSessionLabel(viewedSession.datetime)} · ${total} player${total === 1 ? '' : 's'}`}
+              </p>
+              <p
+                style={{
+                  margin: 'var(--space-05) 0 0',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-mono), ui-monospace, monospace',
+                  fontWeight: 700,
+                  fontSize: 'var(--fs-stat-lg)',
+                  lineHeight: 1,
+                }}
+              >
+                {receiptBuild?.costPerPerson != null ? `$${receiptBuild.costPerPerson} each` : '—'}
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => openReceiptSheet('group')}
               disabled={receiptBuild?.costPerPerson == null}
               className="cc-btn cc-btn-secondary"
-              style={{ fontSize: 'var(--fs-sm)', padding: 'var(--space-1) var(--space-4)' }}
+              style={{ fontSize: 'var(--fs-sm)', padding: 'var(--space-1) var(--space-4)', flexShrink: 0 }}
             >
               Share receipt
             </button>
           </div>
+          <div className="h-1.5 rounded-full overflow-hidden cc-progress-track">
+            {/* The Fill recipe: a paid tap moves a transform, not the layout. */}
+            <div
+              className="h-full w-full motion-fill"
+              style={{ transform: `scaleX(${paidPercent / 100})`, background: 'var(--sev-good-text)' }}
+            />
+          </div>
+          <p
+            key={`${viewedSession.id}:${paidPercent}`}
+            className="fs-sm animate-count-tick"
+            style={{ margin: 0, display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}
+          >
+            <span>{`${paidCount} of ${total} paid`}</span>
+            {stillOwedTotal != null && stillOwedTotal > 0 && (
+              <span style={{ color: 'var(--amber)' }}>{`· $${fmtMoney(stillOwedTotal)} still owed`}</span>
+            )}
+            {!!viewedSession.settled?.coveredTotal && (
+              <span style={{ color: 'var(--violet)' }} title="What you absorbed by covering players this session">
+                {`· $${viewedSession.settled.coveredTotal} covered`}
+              </span>
+            )}
+          </p>
         </div>
       )}
 
-      {/* What the admin absorbed by covering players this session. */}
-      {!!viewedSession?.settled?.coveredTotal && (
-        <p
-          className="fs-sm"
-          style={{ color: 'var(--violet)', margin: '0', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--icon-sm)' }} aria-hidden="true">volunteer_activism</span>
-          You&apos;ve covered ${viewedSession.settled.coveredTotal} this session
-        </p>
-      )}
-
-      {/* Active list */}
-      {total > 0 && (
-        <ul className="space-y-1" role="list">
-          {lists.active.map((player) => (
-            <li key={player.id} className="flex items-center justify-between gap-3 py-2">
-              <span className="fs-md flex items-center gap-2 flex-1 min-w-0">
-                <MemberAvatar name={player.name} size={24} />
-                {onOpenPlayer && player.memberId ? (
-                  <button
-                    type="button"
-                    onClick={() => onOpenPlayer(player.memberId!, player.name)}
-                    className="text-left hover:underline truncate"
-                  >
-                    {player.name}
-                  </button>
-                ) : (
-                  <span className="truncate">{player.name}</span>
-                )}
-                {player.selfReportedPaid && !player.paid && (
-                  <span className="fs-sm flex-shrink-0" style={{ color: 'var(--sev-med-text)' }}>self-reported</span>
-                )}
+      {/* STILL OWED, first — who the admin has to chase is the card's job.
+          Full rows, each with a "Mark paid" tap target, the receipt and the
+          ⋯ menu. */}
+      {lists.owed.length > 0 && (
+        <div>
+          <p
+            className="section-label-muted"
+            style={{ margin: '0 var(--space-05) var(--space-1)', fontSize: 'var(--fs-2xs)', color: 'var(--amber)', display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}
+          >
+            <span>Still owed · {lists.owed.length}</span>
+            {stillOwedTotal != null && stillOwedTotal > 0 && (
+              <span style={{ fontFamily: 'var(--font-mono), ui-monospace, monospace', letterSpacing: 0, textTransform: 'none' }}>
+                ${fmtMoney(stillOwedTotal)}
               </span>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {!!viewedSession?.settled && typeof player.owedAmount === 'number' && !player.writtenOff && (
-                  <span
-                    className="fs-sm font-medium px-2"
-                    style={{
-                      color: 'var(--violet)',
-                      fontFamily: 'var(--font-mono), ui-monospace, monospace',
-                    }}
-                    title="What they owe — frozen when the bill went out."
-                  >
-                    ${player.owedAmount}
+            )}
+          </p>
+          <ul role="list" style={{ display: 'flex', flexDirection: 'column' }}>
+            {lists.owed.map((player, i) => (
+              <li
+                key={player.id}
+                className="flex items-center justify-between gap-3"
+                style={{ padding: 'var(--space-2) var(--space-05)', borderTop: i === 0 ? 'none' : '1px solid var(--divider)' }}
+              >
+                <span className="fs-md flex items-center gap-2 flex-1 min-w-0">
+                  <MemberAvatar name={player.name} size={28} />
+                  <span className="flex flex-col min-w-0">
+                    {onOpenPlayer && player.memberId ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenPlayer(player.memberId!, player.name)}
+                        className="text-left hover:underline truncate"
+                      >
+                        {player.name}
+                      </button>
+                    ) : (
+                      <span className="truncate">{player.name}</span>
+                    )}
+                    {player.selfReportedPaid && (
+                      <span className="fs-xs" style={{ color: 'var(--sev-med-text)' }}>Says they&apos;ve sent it</span>
+                    )}
                   </span>
-                )}
-                {player.writtenOff ? (
-                  <span
-                    className="fs-sm font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1"
-                    style={{ background: 'rgba(216,180,254,0.12)', color: 'var(--violet)' }}
-                    title={player.coverMode === 'resplit'
-                      ? "You're covering this — split across the others"
-                      : "You're covering this — it's on you"}
-                  >
-                    <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">
-                      volunteer_activism
+                </span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {!!viewedSession?.settled && typeof player.owedAmount === 'number' && (
+                    <span
+                      className="fs-sm font-medium px-2"
+                      style={{
+                        color: 'var(--violet)',
+                        fontFamily: 'var(--font-mono), ui-monospace, monospace',
+                      }}
+                      title="What they owe — frozen when the bill went out."
+                    >
+                      ${player.owedAmount}
                     </span>
-                    Covered
-                  </span>
-                ) : (
+                  )}
                   <button
                     type="button"
                     onClick={() => togglePaid(player)}
                     disabled={togglingId === player.id}
-                    className={`fs-sm font-medium px-3 py-1.5 rounded-full transition-colors inline-flex items-center gap-1 ${player.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
-                    aria-pressed={player.paid === true}
+                    className="cc-btn fs-sm"
+                    style={{ borderStyle: 'dashed', borderColor: 'var(--glass-border)', borderRadius: 'var(--radius-pill)', padding: 'var(--space-1) var(--space-4)', color: 'var(--text-secondary)' }}
+                    aria-label={`Mark ${player.name} paid`}
                     aria-busy={togglingId === player.id || undefined}
                   >
-                    {/* The optimistic label stays while the request runs; the
-                        disabled dim says it is in flight. Swapping the text to
-                        "…" read Pending → … → Paid, a flicker on the most
-                        frequent tap in admin. */}
-                    {player.paid ? (
-                      <>
-                        <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">
-                          check_circle
-                        </span>
-                        Paid
-                      </>
-                    ) : (
-                      'Pending'
-                    )}
+                    Mark paid
                   </button>
-                )}
-                {receiptBuild?.costPerPerson != null && (
+                  {receiptBuild?.costPerPerson != null && (
+                    <button
+                      type="button"
+                      onClick={() => openReceiptSheet('individual', player.name)}
+                      className="fs-sm text-gray-400 hover:text-gray-200 px-2 py-1"
+                      aria-label={`Send receipt to ${player.name}`}
+                      title="Send individual receipt"
+                    >
+                      <span className="material-icons fs-lg align-middle">receipt_long</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => openReceiptSheet('individual', player.name)}
-                    className="fs-sm text-gray-400 hover:text-gray-200 px-2 py-1"
-                    aria-label={`Send receipt to ${player.name}`}
-                    title="Send individual receipt"
+                    onClick={() => { setActionTarget(player); setActionError(''); }}
+                    className="fs-sm text-gray-400 hover:text-gray-200 px-1 py-1"
+                    aria-label={`More actions for ${player.name}`}
+                    title="More"
                   >
-                    <span className="material-icons fs-lg align-middle">receipt_long</span>
+                    <span className="material-icons fs-lg align-middle">more_vert</span>
                   </button>
-                )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* PAID and COVERED fold into one row of chips: nothing more is needed
+          from them. A chip opens the same action sheet the ⋯ did (undo paid,
+          receipt, remove, recovery code, clear PIN). */}
+      {(lists.paid.length > 0 || lists.covered.length > 0) && (
+        <div>
+          <p
+            className="section-label-muted"
+            style={{ margin: '0 var(--space-05) var(--space-1)', fontSize: 'var(--fs-2xs)', display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}
+          >
+            <span>Paid · {lists.paid.length}</span>
+            {lists.covered.length > 0 && <span>Covered · {lists.covered.length}</span>}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[...lists.paid, ...lists.covered].map((player) => {
+              const covered = !player.paid && !!player.writtenOff;
+              return (
                 <button
+                  key={player.id}
                   type="button"
                   onClick={() => { setActionTarget(player); setActionError(''); }}
-                  className="fs-sm text-gray-400 hover:text-gray-200 px-1 py-1"
-                  aria-label={`More actions for ${player.name}`}
-                  title="More"
+                  className={covered ? 'fs-sm font-medium inline-flex items-center' : 'pill-paid fs-sm'}
+                  style={{
+                    gap: 'var(--space-2)',
+                    padding: 'var(--space-1) var(--space-3) var(--space-1) var(--space-1)',
+                    borderRadius: 'var(--radius-pill)',
+                    border: 0,
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    fontSize: 'var(--fs-sm)',
+                    letterSpacing: 0,
+                    ...(covered ? { background: 'rgba(216,180,254,0.12)', color: 'var(--violet)' } : {}),
+                  }}
+                  aria-label={`More actions for ${player.name} (${covered ? 'covered' : 'paid'})`}
+                  title={covered
+                    ? (player.coverMode === 'resplit' ? "You're covering this — split across the others" : "You're covering this — it's on you")
+                    : 'Paid — tap for more'}
                 >
-                  <span className="material-icons fs-lg align-middle">more_vert</span>
+                  <MemberAvatar name={player.name} size={24} />
+                  <span>{player.name}</span>
+                  <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">
+                    {covered ? 'volunteer_activism' : 'check_circle'}
+                  </span>
                 </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Add player (current session only). No hard divider — visual
@@ -793,84 +937,102 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       )}
       {addError && <p role="alert" className="field-error">{addError}</p>}
 
-      {/* Waitlist */}
-      {lists.waitlisted.length > 0 && (
-        <div style={{ marginTop: 'var(--space-1)' }}>
-          <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--amber)', margin: 'var(--space-4) var(--space-05) var(--space-2)' }}>
-            {lists.waitlisted.length} waitlisted
-          </p>
-          <ul role="list" style={{ display: 'flex', flexDirection: 'column' }}>
-            {lists.waitlisted.map((p) => (
-              <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
-                <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{p.name}</span>
-                {isCurrentSession && (
-                  <button
-                    type="button"
-                    onClick={() => handlePromote(p)}
-                    disabled={busyId === p.id}
-                    className="cc-btn cc-btn-secondary"
-                    style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)' }}
-                  >
-                    {busyId === p.id ? '…' : 'Promote'}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Removed (collapsible) */}
-      {lists.removed.length > 0 && (
-        <div style={{ marginTop: 'var(--space-1)' }}>
-          <button
-            type="button"
-            onClick={() => setRemovedCollapsed((v) => !v)}
-            style={{ background: 'transparent', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: 'var(--space-3) var(--space-05)', color: 'var(--text-secondary)' }}
-            aria-expanded={!removedCollapsed}
+      {/* Waitlist + removed live behind one footer line — "2 waitlisted · 1
+          removed" and a Show — because neither is money to collect. */}
+      {(lists.waitlisted.length > 0 || lists.removed.length > 0) && (
+        <div>
+          <div
+            className="flex items-center justify-between"
+            style={{ gap: 'var(--space-3)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
           >
-            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              {lists.removed.length} removed
+            <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+              {[
+                lists.waitlisted.length > 0 ? `${lists.waitlisted.length} waitlisted` : '',
+                lists.removed.length > 0 ? `${lists.removed.length} removed` : '',
+              ].filter(Boolean).join(' · ')}
             </span>
-            <span className="material-icons motion-chevron" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
-              expand_more
-            </span>
-          </button>
-          <Collapse open={!removedCollapsed}>
-            <ul role="list">
-              {lists.removed.map((p) => (
-                <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
-                  <span style={{ flex: 1, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{p.name}</span>
-                  {/* A cancel inside the club's window (docs/plans/late-cancel-fee.md).
-                      Amber, the attention tone — a fee is the admin's call, not a failure. */}
-                  {p.lateCancel && (
-                    <StatusBadge
-                      variant="state"
-                      tone="waitlist"
-                      ariaLabel={`Cancelled late, ${p.lateCancelHoursBefore ?? 0} hours before the session`}
-                    >
-                      Late · {p.lateCancelHoursBefore ?? 0}h
-                    </StatusBadge>
-                  )}
-                  {p.removedAt && (
-                    <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
-                      {p.cancelledBySelf ? 'cancelled' : 'removed'} {fmtSessionLabel(p.removedAt)}
-                    </span>
-                  )}
-                  {isCurrentSession && (
-                    <button
-                      type="button"
-                      onClick={() => handleRestore(p)}
-                      disabled={busyId === p.id}
-                      className="cc-btn cc-btn-secondary"
-                      style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)' }}
-                    >
-                      {busyId === p.id ? '…' : 'Restore'}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <button
+              type="button"
+              onClick={() => setExtrasOpen((v) => !v)}
+              className="cc-btn cc-btn-ghost fs-sm"
+              aria-expanded={extrasOpen}
+              aria-controls="cc-payments-extras"
+            >
+              {extrasOpen ? 'Hide' : 'Show'}
+              <span className="material-icons motion-chevron" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }} data-open={extrasOpen ? 'true' : 'false'}>
+                expand_more
+              </span>
+            </button>
+          </div>
+          <Collapse open={extrasOpen}>
+            <div id="cc-payments-extras" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {lists.waitlisted.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--amber)', margin: 'var(--space-3) var(--space-05) var(--space-2)' }}>
+                    {lists.waitlisted.length} waitlisted
+                  </p>
+                  <ul role="list" style={{ display: 'flex', flexDirection: 'column' }}>
+                    {lists.waitlisted.map((p) => (
+                      <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
+                        <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{p.name}</span>
+                        {isCurrentSession && (
+                          <button
+                            type="button"
+                            onClick={() => handlePromote(p)}
+                            disabled={busyId === p.id}
+                            className="cc-btn cc-btn-secondary"
+                            style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)' }}
+                          >
+                            {busyId === p.id ? '…' : 'Promote'}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {lists.removed.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 'var(--space-3) var(--space-05) var(--space-2)' }}>
+                    {lists.removed.length} removed
+                  </p>
+                  <ul role="list">
+                    {lists.removed.map((p) => (
+                      <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
+                        <span style={{ flex: 1, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{p.name}</span>
+                        {/* A cancel inside the club's window (docs/plans/late-cancel-fee.md).
+                            Amber, the attention tone — a fee is the admin's call, not a failure. */}
+                        {p.lateCancel && (
+                          <StatusBadge
+                            variant="state"
+                            tone="waitlist"
+                            ariaLabel={`Cancelled late, ${p.lateCancelHoursBefore ?? 0} hours before the session`}
+                          >
+                            Late · {p.lateCancelHoursBefore ?? 0}h
+                          </StatusBadge>
+                        )}
+                        {p.removedAt && (
+                          <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
+                            {p.cancelledBySelf ? 'cancelled' : 'removed'} {fmtSessionLabel(p.removedAt)}
+                          </span>
+                        )}
+                        {isCurrentSession && (
+                          <button
+                            type="button"
+                            onClick={() => handleRestore(p)}
+                            disabled={busyId === p.id}
+                            className="cc-btn cc-btn-secondary"
+                            style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)' }}
+                          >
+                            {busyId === p.id ? '…' : 'Restore'}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </Collapse>
         </div>
       )}
@@ -898,6 +1060,23 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
               <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
                 {actionError}
               </p>
+            )}
+            {/* A paid player is a chip now, not a row with a Paid pill, so
+                the undo lives here; the receipt too, for paid and covered. */}
+            {actionTarget?.paid && (
+              <ActionRow
+                icon="restore"
+                label="Mark as unpaid"
+                hint="They go back to Still owed"
+                onClick={() => { const p = actionTarget; setActionTarget(null); void togglePaid(p); }}
+              />
+            )}
+            {actionTarget && (actionTarget.paid || actionTarget.writtenOff) && receiptBuild?.costPerPerson != null && (
+              <ActionRow
+                icon="receipt_long"
+                label="Send receipt"
+                onClick={() => { const name = actionTarget.name; setActionTarget(null); openReceiptSheet('individual', name); }}
+              />
             )}
             {actionTarget && canCover(actionTarget) && (
               <ActionRow

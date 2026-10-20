@@ -78,15 +78,16 @@ describe('<NextSessionCard />', () => {
     render(<NextSessionCard />);
 
     await waitFor(() => {
-      expect(screen.getByText(/3 \/ 12 signed up/)).toBeTruthy();
+      // The headcount tile: "3" with " / 12" beside it (two text nodes).
+      expect(screen.getByText('Signed up').parentElement?.textContent).toMatch(/3 \/ 12/);
       expect(screen.getByText(/\+1 waitlist/)).toBeTruthy();
-      expect(screen.getByText(/Signup open/)).toBeTruthy();
-      expect(screen.getByText(/Sign up deadline/)).toBeTruthy();
+      expect(screen.getByText('Sign-ups open')).toBeTruthy();
+      expect(screen.getByText('Deadline')).toBeTruthy();
       expect(screen.getByText(/left/)).toBeTruthy();
     });
   });
 
-  it('shows "Signup closed" when session.signupOpen is false', async () => {
+  it('shows "Sign-ups closed" when session.signupOpen is false', async () => {
     const future = new Date(Date.now() + 3 * 86_400_000).toISOString();
     mockFetch(makeFetcher(
       { id: 's', title: 'Wednesday', datetime: future, deadline: future, courts: 2, maxPlayers: 12, signupOpen: false },
@@ -96,11 +97,12 @@ describe('<NextSessionCard />', () => {
     render(<NextSessionCard />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Signup closed/)).toBeTruthy();
+      expect(screen.getByText('Sign-ups closed')).toBeTruthy();
+      expect(screen.getByText(/Open to let players in and notify the roster/)).toBeTruthy();
     });
   });
 
-  it('the signup pill toggles sign-ups: optimistic flip + PUT { signupOpen }', async () => {
+  it('the sign-ups switch toggles sign-ups: optimistic flip + PUT { signupOpen }', async () => {
     const future = new Date(Date.now() + 3 * 86_400_000).toISOString();
     let putBody: { signupOpen?: boolean } | null = null;
     global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -120,11 +122,14 @@ describe('<NextSessionCard />', () => {
     }) as typeof fetch;
 
     render(<NextSessionCard />);
-    const pill = await screen.findByRole('switch', { name: 'Signup open' });
-    fireEvent.click(pill);
+    // The switch is labelled by the setting, not its state (it is the same
+    // control as the one on Edit details); the words beside it say the state.
+    const sw = await screen.findByRole('switch', { name: 'Sign-ups open' });
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(sw);
 
     // Optimistic flip in the UI…
-    await waitFor(() => expect(screen.getByText('Signup closed')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Sign-ups closed')).toBeTruthy());
     // …and the persisted PUT.
     await waitFor(() => expect(putBody).not.toBeNull());
     expect((putBody as unknown as { signupOpen: boolean }).signupOpen).toBe(false);

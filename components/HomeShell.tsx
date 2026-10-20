@@ -21,6 +21,7 @@ import type { Announcement } from '@/lib/types';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { useUsageBeacons } from '@/lib/useUsageBeacons';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
+import { useTopToastBus } from '@/lib/topToast';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import { consumeRecentExcursion } from '@/lib/excursion';
 import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
@@ -186,6 +187,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * queue nobody would see the back of.
    */
   const [authNotice, setAuthNotice] = useState<AuthNotice | null>(null);
+  // Messages raised from anywhere in the tree (the advance form's "Session
+  // created!"); the bus owns their timer.
+  const { toast: appToast, dismiss: dismissAppToast } = useTopToastBus();
   /** Set by `?signedIn=1`; consumed once by the whoami effect below. */
   const [signedInPending, setSignedInPending] = useState<{
     provider: 'google' | 'apple' | null;
@@ -742,10 +746,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
         <LanguageToggle />
         <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
           {/* Moments float at the top (TopToast): offline for as long as it is
-              true, with no ✕ because reconnecting is what clears it, and the
-              sign-in notices on their own timer. Offline wins while both
-              apply — it explains why whatever the notice promised may not
-              load. */}
+              true, with no ✕ because reconnecting is what clears it, the
+              sign-in notices on their own timer, and anything a card raised
+              through `showTopToast()` (lib/topToast.ts) last. Offline wins
+              while several apply — it explains why whatever the notice
+              promised may not load. */}
           <TopToast
             content={
               !online
@@ -765,9 +770,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
                       body: tAuth(noticeBanner(authNotice).bodyKey),
                       durationMs: noticeTimeoutMs(authNotice),
                     }
-                  : null
+                  : appToast
             }
-            onClose={online && authNotice ? () => setAuthNotice(null) : undefined}
+            onClose={online && authNotice ? () => setAuthNotice(null) : online && appToast ? dismissAppToast : undefined}
           />
           {/* No "sign in to see your stats" banner (removed 2026-09-14). Each
               Stats card a device may not fill now locks itself with its own
