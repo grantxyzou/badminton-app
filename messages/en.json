@@ -1128,6 +1128,7 @@
          "spec_balance": "Balance",
          "spec_shaft": "Shaft",
          "spec_rated": "Rated",
+         "spec_holes": "String holes",
          "spec_grip": "Grip",
          "spec_price": "Typical price",
          "ratedRange": "{low}–{high} lb",

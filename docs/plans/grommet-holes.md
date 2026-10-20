@@ -1,7 +1,7 @@
 # Grommet hole counts on the racket catalog
 
 **Track:** ROADMAP North Star — Value-Hub Track 2 (Equipment: the frame page is "a reference you can check courtside") and the stringing service (`admin.stringing`: the stringer is the person who needs the number).
-**Status:** intent
+**Status:** in-flight — Phase 1 (Yonex) built 2026-10-20 in PR #658, not yet merged
 **Review on:** 2026-11-20 — did Phase 1 (Yonex, from the maker's pattern sheet) ship, and has the stringer looked up a hole count in the app instead of on the frame? If neither, drop Phases 2–3.
 
 ## Problem
@@ -41,25 +41,48 @@ The conclusion: a bare number is cheap to scrape and wrong about one time in six
 - **No stringing-job link to the catalog in this item.** `StringingJob.racketLabel` is free text by design (types.ts: a job is a snapshot). Showing holes on the bench needs a catalog id on the job; that is its own decision.
 - **No string-length-per-job model.** Stock already counts one set per job (`lib/stringStockMath.ts`). Hole count does not change how much string a job uses in practice.
 
-## Shape (proposed)
+## Shape
 
-Three additive, optional `attributes` on a racket row, which is schema-safe under the rollback rule:
+As built in Phase 1. The proposal had three per-row fields (`grommetHoles`, `grommetSource`, `grommetUrl`); see Decisions for why it changed.
 
-| Field | Type | Meaning |
-|---|---|---|
-| `grommetHoles` | number | e.g. 76 |
-| `grommetSource` | `'maker' \| 'pattern' \| 'counted' \| 'retailer'` | `maker` = the maker states the number; `pattern` = derived from the maker's official stringing pattern; `counted` = the club's stringer counted a frame; `retailer` = one retailer's table |
-| `grommetUrl` | string | Where it was read; absent for `counted` |
-
-Plus `stringPatternFamily` (string, Yonex only), the sheet's family label. That is what the stringer uses at the machine, and it is official where the count is not.
+- **A racket row carries one additive, optional attribute, `stringPattern`** (e.g. `'yonex-1'`): the family Yonex's sheet puts its model code in.
+- **The count lives on the family**, in `lib/stringPatterns.ts`, with how it is known and where.
 
 | Piece | File |
 |---|---|
-| Data | `scripts/data/equipment-catalog.json` and `racket-database-v2.json` (both, so a re-import cannot revert it) |
-| Importer passes the fields through | `scripts/import-racket-db-v2.mjs` |
-| Seed refresh | none needed: `ensureCatalogSeeded` already rewrites a seeded row whose fields changed |
-| Frame page cell `holes`, shown for `maker` / `pattern` / `counted` only | `lib/frameDetail.ts` `specCells`, plus a `stats.gear` label in both locales |
-| Data test: holes ∈ {68…90}, source in the union, URL present unless `counted`, no `retailer` value rendered | `__tests__/equipment-catalog-data.test.ts`, `__tests__/frame-detail.test.ts` |
+| Families: the sheet's model codes, count, `HolesSource` (`pattern` / `retailers` / `counted`), URLs; `grommetHoles(item)` | `lib/stringPatterns.ts` |
+| Data: `stringPattern` on 38 Yonex rows | `scripts/data/equipment-catalog.json` and `racket-database-v2.json` (both, so a re-import cannot revert it) |
+| Importer passes it through | `scripts/import-racket-db-v2.mjs` |
+| Seed refresh | none needed: `ensureCatalogSeeded` rewrites a seeded row whose fields changed |
+| Frame page cell "String holes", after "Rated", only when the count is known | `lib/frameDetail.ts` `specCells`; `stats.gear.framePage.spec_holes` in both locales |
+| Tests | `__tests__/string-patterns.test.ts`, plus the field list in `__tests__/racket-db-v2-import.test.ts` |
+
+## Phase 1 result (2026-10-20)
+
+Source: Yonex's stringing sheet, May 2025 (https://us.yonex.com/pages/stringing-instructions; Grant supplied the same PDF). It has six pattern families, listed by model code, and **gives no hole counts.**
+
+| Family | What the sheet says | Holes | How we know |
+|---|---|---|---|
+| `yonex-1` | Mains skip A7, A9 & A11 (ArcSaber 11 / 7 Pro & Tour, Astrox 100ZZ & 100 Tour, the 3rd-gen 88S / 88D line, 88 Play, 77 Pro, 70) | 76 | `pattern` |
+| `yonex-2` | Mains skip A8 & A10 (Nanoflare 1000 line, 800 Play, the 700 Pro / Tour / Game / Play line, Nextage; Astrox 100 Game, 77 Tour & Play, 01; ArcSaber 7 Play, 2) | 76 | `pattern` |
+| `yonex-3` | The 2021 Astrox 99 line (`AX99-*`) | — | not confirmed |
+| `yonex-4` | Astrox Nextage | — | not confirmed |
+| `yonex-5` | Nanoflare 800 Pro / Tour / Game: the "78 Grommets System", 22 × 22 | 78 | `retailers` (badmintonbay ×2, Decathlon) |
+| `yonex-6` | Trainers and entry frames (Nanoflare 001, Astrox 02, …) | 72 | `pattern` |
+
+**`pattern` means** an earlier edition of Yonex's instructions, reproduced at https://www.badmintonbay.com/yonex-stringing-method.html, labels a pattern with its count. Its "Type 1: 76 holes", "Type 2: 76 holes" and "Type 3: 72 holes" match families 1, 2 and 6 word for word: main start, skips, tie-offs, cross start. The same instructions through the same holes means the same holes.
+
+**Coverage:**
+- 38 of the 53 offered Yonex rackets are mapped, and 36 of those show a count (68%). The kill criterion's "fewer than half" was not met.
+- **Not mapped (15), because their code is not on the sheet:**
+  - Astrox 88S Pro (2nd Gen), Astrox 99 Pro (3rd Gen) — the 2025 frame is `3AX99-P`, launched after the sheet.
+  - Astrox 99 Tour / Game / Play — the sheet's `AX99-*` codes are the 2021 line, and these rows do not say which generation they are.
+  - Astrox 100VA ZZ / Tour / Game, Nanoflare X5 / X7, Astrox Lite 43i, Voltric Lite 35i, ArcSaber 71 Light, Astrox Attack 9, Nanoflare Speed 7.
+- **Judgement calls:**
+  - `Astrox 88D Pro` (no generation in its name) is read as the 3rd-gen frame Yonex sells now, `3AX88D-P`.
+  - `ArcSaber 2 Clear` is read as `ARC2C`.
+
+**The sheet disproves sibling inference.** The Nanoflare 800 Play is in family 2 (76) while the 800 Pro, Tour and Game are in family 5 (78). A retailer lists the 800 Play at 76 independently.
 
 ## Phases
 
@@ -71,3 +94,13 @@ Plus `stringPatternFamily` (string, Yonex only), the sheet's family label. That 
 
 - **Provenance on every value, beat a bare number:** the research's 1-in-6 conflict rate makes a bare number indistinguishable from a wrong one.
 - **Hide `retailer` values rather than show them with a caveat:** the frame page's standing rule is "a fact the app does not actually hold is not shown".
+- **The count lives on the pattern family, not the row (Phase 1).**
+  - The proposal had three per-row fields.
+  - The sheet groups models, so per-row counts would let two rows Yonex says are strung identically disagree.
+  - It also means one stringer count fills a whole family.
+- **A single retailer's count is not stored at all, rather than stored and hidden.** Nothing would read it, and a hidden wrong value is still a wrong value waiting for a renderer.
+- **`retailers` (two or more independent retailers agree) replaces `maker` for now.** No maker states a count as a spec.
+  - `maker` can be added the day one does.
+  - The test checks for at least two distinct hostnames.
+- **A pattern is not derived from string counts.** Yonex's "22 × 21" is 76 holes, not 86, because outer strings share holes. So families 3 and 4 stay blank until a source states a count or the stringer counts one frame.
+

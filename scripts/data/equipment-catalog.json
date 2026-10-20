@@ -34,7 +34,8 @@
         "priceMinUSD": 290,
         "priceMaxUSD": 290,
         "lastVerified": "2026-09-14",
-        "notes": "Doubles back-court power racket"
+        "notes": "Doubles back-court power racket",
+        "stringPattern": "yonex-1"
       },
       "sources": [
         {
@@ -104,7 +105,8 @@
         "tensionMinLbs": 20,
         "tensionMaxLbs": 29,
         "priceMinUSD": 290,
-        "priceMaxUSD": 290
+        "priceMaxUSD": 290,
+        "stringPattern": "yonex-3"
       },
       "sources": [
         {
@@ -173,7 +175,8 @@
         "priceMinUSD": 285,
         "priceMaxUSD": 320,
         "lastVerified": "2026-09-14",
-        "notes": "Elite control/placement racket"
+        "notes": "Elite control/placement racket",
+        "stringPattern": "yonex-1"
       },
       "sources": [
         {
@@ -510,7 +513,8 @@
         "tensionMinLbs": 20,
         "tensionMaxLbs": 27,
         "priceMinUSD": 50,
-        "priceMaxUSD": 65
+        "priceMaxUSD": 65,
+        "stringPattern": "yonex-6"
       },
       "sources": [
         {
@@ -548,7 +552,8 @@
         "tensionMaxLbs": 29,
         "priceMinUSD": 295,
         "priceMaxUSD": 295,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 407
@@ -612,7 +617,8 @@
         "tensionMaxLbs": 29,
         "priceMinUSD": 285,
         "priceMaxUSD": 285,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 393
@@ -644,7 +650,8 @@
         "tensionMaxLbs": 28,
         "priceMinUSD": 275,
         "priceMaxUSD": 275,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 379
@@ -676,7 +683,8 @@
         "tensionMaxLbs": 29,
         "priceMinUSD": 275,
         "priceMaxUSD": 275,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "yonex-5"
       },
       "seeded": true,
       "msrp": 379
@@ -709,7 +717,8 @@
         "tensionMaxLbs": 27,
         "priceMinUSD": 255,
         "priceMaxUSD": 255,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 352
@@ -775,7 +784,8 @@
         "tensionMaxLbs": 28,
         "priceMinUSD": 79,
         "priceMaxUSD": 100,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 109
@@ -874,7 +884,8 @@
         "tensionMaxLbs": 28,
         "priceMinUSD": 80,
         "priceMaxUSD": 100,
-        "lastVerified": "2026-09-14"
+        "lastVerified": "2026-09-14",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 110
@@ -1712,7 +1723,8 @@
         "priceMinUSD": 290,
         "priceMaxUSD": 290,
         "lastVerified": "2026-10-09",
-        "notes": "Control-oriented sibling to 88D Pro; sharper placement, less raw power Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step."
+        "notes": "Control-oriented sibling to 88D Pro; sharper placement, less raw power Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 400
@@ -1743,7 +1755,8 @@
         "priceMinUSD": 165,
         "priceMaxUSD": 165,
         "lastVerified": "2026-09-14",
-        "notes": "Bridges beginner and pro Astrox tiers; softer feel than 100ZZ"
+        "notes": "Bridges beginner and pro Astrox tiers; softer feel than 100ZZ",
+        "stringPattern": "yonex-4"
       },
       "seeded": true,
       "msrp": 228
@@ -1774,7 +1787,8 @@
         "priceMinUSD": 165,
         "priceMaxUSD": 165,
         "lastVerified": "2026-10-20",
-        "notes": "Speed counterpart to Astrox Nextage for developing players"
+        "notes": "Speed counterpart to Astrox Nextage for developing players",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 228
@@ -2161,7 +2175,8 @@
         "priceMinUSD": 260,
         "priceMaxUSD": 260,
         "lastVerified": "2026-09-14",
-        "notes": "Advanced-elite tier of the 77 line; used by Chen Yu Fei, An Se Young. Slimmest shaft in head-heavy Astrox lineup."
+        "notes": "Advanced-elite tier of the 77 line; used by Chen Yu Fei, An Se Young. Slimmest shaft in head-heavy Astrox lineup.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 359
@@ -4246,7 +4261,8 @@
         "priceMinUSD": 220,
         "priceMaxUSD": 220,
         "lastVerified": "2026-09-14",
-        "notes": "Extra-stiff, head-heavy smash frame one step below the 100ZZ."
+        "notes": "Extra-stiff, head-heavy smash frame one step below the 100ZZ.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 304
@@ -4275,7 +4291,8 @@
         "priceMinUSD": 160,
         "priceMaxUSD": 160,
         "lastVerified": "2026-09-14",
-        "notes": "Head-heavy attacking frame with a friendlier medium shaft."
+        "notes": "Head-heavy attacking frame with a friendlier medium shaft.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 221
@@ -4421,7 +4438,8 @@
         "priceMinUSD": 200,
         "priceMaxUSD": 200,
         "lastVerified": "2026-10-09",
-        "notes": "Front-court doubles frame Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step."
+        "notes": "Front-court doubles frame Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 276
@@ -4451,7 +4469,8 @@
         "priceMinUSD": 135,
         "priceMaxUSD": 135,
         "lastVerified": "2026-10-09",
-        "notes": "Front-court doubles frame with an easier medium shaft. Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step."
+        "notes": "Front-court doubles frame with an easier medium shaft. Relabelled Even 2026-10-09 (stringer, option 1): the 88S line is the FRONT-COURT sibling of the 88D, lighter at the top; Yonex calls it head-heavy on its own chart, but as head-heavy/Stiff/Premium/doubles the engine could not tell it from a 99 Pro and served it as a rear-court power step.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 186
@@ -4480,7 +4499,8 @@
         "priceMinUSD": 200,
         "priceMaxUSD": 200,
         "lastVerified": "2026-09-14",
-        "notes": "Back-court doubles power, stiff and head-heavy."
+        "notes": "Back-court doubles power, stiff and head-heavy.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 276
@@ -4510,7 +4530,8 @@
         "priceMinUSD": 135,
         "priceMaxUSD": 135,
         "lastVerified": "2026-09-14",
-        "notes": "Back-court doubles frame with a medium shaft."
+        "notes": "Back-court doubles frame with a medium shaft.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 186
@@ -4540,7 +4561,8 @@
         "priceMinUSD": 85,
         "priceMaxUSD": 85,
         "lastVerified": "2026-09-14",
-        "notes": "Pre-strung head-heavy 88 for players starting out."
+        "notes": "Pre-strung head-heavy 88 for players starting out.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 117
@@ -4569,7 +4591,8 @@
         "priceMinUSD": 180,
         "priceMaxUSD": 190,
         "lastVerified": "2026-09-14",
-        "notes": "Accessible head-heavy power with a medium shaft."
+        "notes": "Accessible head-heavy power with a medium shaft.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 248
@@ -4599,7 +4622,8 @@
         "priceMinUSD": 260,
         "priceMaxUSD": 260,
         "lastVerified": "2026-09-14",
-        "notes": "Flexible, comfortable head-heavy frame for easy clears."
+        "notes": "Flexible, comfortable head-heavy frame for easy clears.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 359
@@ -4630,7 +4654,8 @@
         "priceMinUSD": 65,
         "priceMaxUSD": 65,
         "lastVerified": "2026-09-14",
-        "notes": "Budget pre-strung head-heavy frame with a whippy shaft."
+        "notes": "Budget pre-strung head-heavy frame with a whippy shaft.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 90
@@ -4689,7 +4714,8 @@
         "priceMinUSD": 220,
         "priceMaxUSD": 220,
         "lastVerified": "2026-09-14",
-        "notes": "Fast head-light 1000 frame below the 1000Z."
+        "notes": "Fast head-light 1000 frame below the 1000Z.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 304
@@ -4719,7 +4745,8 @@
         "priceMinUSD": 160,
         "priceMaxUSD": 160,
         "lastVerified": "2026-09-14",
-        "notes": "Head-light speed frame with a medium shaft."
+        "notes": "Head-light speed frame with a medium shaft.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 221
@@ -4750,7 +4777,8 @@
         "priceMinUSD": 79.99,
         "priceMaxUSD": 110,
         "lastVerified": "2026-09-14",
-        "notes": "Pre-strung head-light racket for recreational players."
+        "notes": "Pre-strung head-light racket for recreational players.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 110
@@ -4779,7 +4807,8 @@
         "priceMinUSD": 185,
         "priceMaxUSD": 185,
         "lastVerified": "2026-09-14",
-        "notes": "Head-light doubles speed frame, stiff shaft."
+        "notes": "Head-light doubles speed frame, stiff shaft.",
+        "stringPattern": "yonex-5"
       },
       "seeded": true,
       "msrp": 255
@@ -4809,7 +4838,8 @@
         "priceMinUSD": 150,
         "priceMaxUSD": 150,
         "lastVerified": "2026-09-14",
-        "notes": "Head-light speed frame for intermediate doubles."
+        "notes": "Head-light speed frame for intermediate doubles.",
+        "stringPattern": "yonex-5"
       },
       "seeded": true,
       "msrp": 207
@@ -4840,7 +4870,8 @@
         "priceMinUSD": 79.99,
         "priceMaxUSD": 100,
         "lastVerified": "2026-09-14",
-        "notes": "Pre-strung head-light 800 for newer players."
+        "notes": "Pre-strung head-light 800 for newer players.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 110
@@ -4870,7 +4901,8 @@
         "priceMinUSD": 185,
         "priceMaxUSD": 190,
         "lastVerified": "2026-09-14",
-        "notes": "Light, head-light frame for effortless clears and quick defence."
+        "notes": "Light, head-light frame for effortless clears and quick defence.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 255
@@ -4900,7 +4932,8 @@
         "priceMinUSD": 150,
         "priceMaxUSD": 150,
         "lastVerified": "2026-09-14",
-        "notes": "Flexible head-light frame that makes clears easy."
+        "notes": "Flexible head-light frame that makes clears easy.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 207
@@ -4959,7 +4992,8 @@
         "priceMinUSD": 175,
         "priceMaxUSD": 175,
         "lastVerified": "2026-09-14",
-        "notes": "Even-balance control frame with the 11 Pro's stiff feel."
+        "notes": "Even-balance control frame with the 11 Pro's stiff feel.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 241
@@ -4990,7 +5024,8 @@
         "priceMinUSD": 79.99,
         "priceMaxUSD": 110,
         "lastVerified": "2026-09-14",
-        "notes": "Pre-strung even-balance control racket."
+        "notes": "Pre-strung even-balance control racket.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 110
@@ -5020,7 +5055,8 @@
         "priceMinUSD": 145,
         "priceMaxUSD": 145,
         "lastVerified": "2026-09-14",
-        "notes": "All-round even-balance frame for placement."
+        "notes": "All-round even-balance frame for placement.",
+        "stringPattern": "yonex-1"
       },
       "seeded": true,
       "msrp": 200
@@ -5051,7 +5087,8 @@
         "priceMinUSD": 79.99,
         "priceMaxUSD": 100,
         "lastVerified": "2026-09-14",
-        "notes": "Pre-strung even-balance racket with a forgiving shaft."
+        "notes": "Pre-strung even-balance racket with a forgiving shaft.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 110
@@ -5082,7 +5119,8 @@
         "priceMinUSD": 65,
         "priceMaxUSD": 65,
         "lastVerified": "2026-09-14",
-        "notes": "Budget pre-strung even-balance racket."
+        "notes": "Budget pre-strung even-balance racket.",
+        "stringPattern": "yonex-2"
       },
       "seeded": true,
       "msrp": 90

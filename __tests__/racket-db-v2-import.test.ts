@@ -72,7 +72,7 @@ describe('v2 racket import', () => {
       ['frameMaterial', 'frameMaterial'], ['tensionMinLbs', 'tensionMinLbs'],
       ['tensionMaxLbs', 'tensionMaxLbs'], ['gripSize', 'gripSize'],
       ['priceMinUSD', 'priceMinUSD'], ['priceMaxUSD', 'priceMaxUSD'],
-      ['lastVerified', 'lastVerified'], ['notes', 'notes'],
+      ['lastVerified', 'lastVerified'], ['notes', 'notes'], ['stringPattern', 'stringPattern'],
     ];
     const byId = new Map(items.map((i) => [i.id, i]));
     const drift: string[] = [];

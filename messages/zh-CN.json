@@ -1116,6 +1116,7 @@
         "spec_balance": "平衡点",
         "spec_shaft": "中杆",
         "spec_rated": "建议磅数",
+        "spec_holes": "穿线孔数",
         "spec_grip": "握柄",
         "spec_price": "常见价格",
         "ratedRange": "{low}–{high} 磅",
