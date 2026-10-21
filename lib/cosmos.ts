@@ -594,8 +594,17 @@ function getMockContainer(name: string) {
                   r.name.toLowerCase() === String(params['@name']).toLowerCase()
               );
             }
+            // `@id` honours the OPERATOR in the query text, like the
+            // `c.removed != true` checks above. `PATCH /api/members` asks
+            // `… AND c.id != @id` — "does anyone ELSE hold this name?" — and
+            // an equality here answered with the member being renamed and
+            // nobody else, so the rename-collision 409 could never fire in a
+            // test. A new inequality on another parameter needs the same.
             if ('@id' in params) {
-              results = results.filter((r) => r.id === params['@id']);
+              const excludes = /c\.id\s*(?:!=|<>)\s*@id\b/.test(q.query);
+              results = results.filter((r) =>
+                excludes ? r.id !== params['@id'] : r.id === params['@id'],
+              );
             }
             // `@groupId` — see lib/groupScope.ts. Honoured here so a group
             // isolation test cannot pass vacuously (an unrecognised name means

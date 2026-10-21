@@ -10,7 +10,7 @@ import {
   memberCookieValue,
   ADMIN_MEMBER_ID,
 } from './helpers';
-import { GET, POST } from '@/app/api/members/route';
+import { GET, POST, PATCH } from '@/app/api/members/route';
 import { GET as ME_GET, PATCH as ME_PATCH } from '@/app/api/members/me/route';
 import { hashPin, verifyPin } from '@/lib/recoveryHash';
 import { setMemberCookie } from '@/lib/auth';
@@ -134,6 +134,41 @@ describe('POST /api/members', () => {
 
     // ASSERT
     expect(res.status).toBe(401);
+  });
+});
+
+describe('PATCH /api/members — rename collisions', () => {
+  // Groups are off in vitest, so this is the `LOWER(c.name) … AND c.id != @id`
+  // scan branch. The 409 below was unreachable until the mock honoured the
+  // `!=` on `@id` (mock-store-neq.test.ts): the clash query answered with the
+  // member being renamed and nobody else, so a real collision passed in CI.
+  let bobId: string;
+  beforeEach(() => {
+    resetMockStore();
+    seedAdminMember();
+    bobId = seedMember('Bob').id;
+    seedMember('Carol');
+  });
+
+  const rename = (id: string, name: string) =>
+    PATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/members', { id, name }));
+
+  it("renaming onto another active member's name → 409 name_taken (case-insensitive)", async () => {
+    const res = await rename(bobId, 'carol');
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('name_taken');
+  });
+
+  it('a case change of your OWN name is not a collision', async () => {
+    const res = await rename(bobId, 'BOB');
+    expect(res.status).toBe(200);
+    expect((await res.json()).name).toBe('BOB');
+  });
+
+  it('a free name goes through', async () => {
+    const res = await rename(bobId, 'Dave');
+    expect(res.status).toBe(200);
+    expect((await res.json()).name).toBe('Dave');
   });
 });
 
