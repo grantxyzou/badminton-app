@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### One live estimate for an unsettled week (2026-10-21)
+
+From the code review of money accuracy. Three live estimates existed for a session that was not yet settled: Home's balance line and the advance snapshot each divided the total by the active count, while the receipt (and settle, which freezes the bill) used `costSplit`, which drops a resplit-covered player from the denominator. Cover someone with "resplit" before settling and Home showed one figure for the week while the receipt showed another.
+
+- **Every live per-person figure now comes from `costSplit`**: `classifyOwed` takes the session's rows instead of a count, the per-person owed read projects two more fields from the one roster query it already made (no extra read on the Home path), the whole-roster read and the admin owed audit hand over the same rows, and the advance route's `prevCostPerPerson` fallback splits over every row of the outgoing session.
+- No change to settled sessions: a frozen `owedAmount` was never recomputed.
+
 ### The session editor refuses a bad datetime instead of saving nothing (2026-10-21)
 
 From the code review of logic. `PUT /api/session` turned any datetime it could not store — unparseable, truncated, or without a timezone offset — into an empty string and answered 200. For the deadline, an empty string means "no deadline", so a client bug would have silently left sign-ups open for ever; for the session time it was a session with no time.

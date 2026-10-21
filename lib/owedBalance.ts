@@ -13,6 +13,7 @@ import { classifyOwed, expandAliasNames, matchesIdentity, type ResolvedIdentity 
 import { loadOwedInputs } from './owedRows';
 import { isFlagOn } from './flags';
 import { rosterMembers } from './roster';
+import type { SplitPlayer } from './sessionCost';
 import { stringingCharges, type StringingCharge } from './stringingBilling';
 import type { Player, Session, StringingJob } from './types';
 import { readAliases } from './aliases';
@@ -81,7 +82,7 @@ async function chargesFor(scope: GroupScope, memberId: string | null): Promise<S
 export function unpaidSessionsFrom(
   players: Player[],
   sessionById: Map<string, Session>,
-  activeCountBySession: Map<string, number>,
+  rosterBySession: Map<string, SplitPlayer[]>,
   ctx: { activeSessionId: string; now: number },
 ): UnpaidSession[] {
   const sessions: UnpaidSession[] = [];
@@ -91,7 +92,7 @@ export function unpaidSessionsFrom(
     const result = classifyOwed(p, session, {
       activeSessionId: ctx.activeSessionId,
       now: ctx.now,
-      activeCount: activeCountBySession.get(p.sessionId) ?? 0,
+      roster: rosterBySession.get(p.sessionId) ?? [],
     });
     if (result.counted) {
       sessions.push({
@@ -122,12 +123,12 @@ export async function computeOwed(
   // sessions they name, then the roster of only the unsettled ones. The
   // pointer and the stringing charges depend on none of that, so all three
   // run at once rather than one after another (performance audit, 2026-10-19).
-  const [activeSessionId, { players, sessionById, activeCountBySession }, stringing] = await Promise.all([
+  const [activeSessionId, { players, sessionById, rosterBySession }, stringing] = await Promise.all([
     getActiveSessionId(scope.groupId),
     loadOwedInputs(scope, identity),
     chargesFor(scope, identity.memberId),
   ]);
-  const sessions = unpaidSessionsFrom(players, sessionById, activeCountBySession, { activeSessionId: activeSessionId ?? '', now });
+  const sessions = unpaidSessionsFrom(players, sessionById, rosterBySession, { activeSessionId: activeSessionId ?? '', now });
   return { sessions, stringing };
 }
 
@@ -158,11 +159,13 @@ export async function computeOwedForRoster(scope: GroupScope, now: number = Date
   const sessionById = new Map<string, Session>();
   for (const s of await scope.query<Session>('sessions')) if (s && typeof s.id === 'string') sessionById.set(s.id, s);
 
-  const activeCountBySession = new Map<string, number>();
+  // Every row of each unsettled session, for `costSplit` (which drops the
+  // removed and waitlisted itself and honours a resplit cover).
+  const rosterBySession = new Map<string, SplitPlayer[]>();
   for (const p of allPlayers) {
     const s = sessionById.get(p.sessionId);
-    if (!s || s.settled || p.removed === true || p.waitlisted === true) continue;
-    activeCountBySession.set(p.sessionId, (activeCountBySession.get(p.sessionId) ?? 0) + 1);
+    if (!s || s.settled) continue;
+    rosterBySession.set(p.sessionId, [...(rosterBySession.get(p.sessionId) ?? []), p]);
   }
 
   const jobsByMember = new Map<string, StringingJob[]>();
@@ -181,7 +184,7 @@ export async function computeOwedForRoster(scope: GroupScope, now: number = Date
       memberId: member.id,
       name: member.name,
       balance: {
-        sessions: unpaidSessionsFrom(mine, sessionById, activeCountBySession, { activeSessionId, now }),
+        sessions: unpaidSessionsFrom(mine, sessionById, rosterBySession, { activeSessionId, now }),
         stringing: stringingCharges(jobsByMember.get(member.id) ?? []),
       },
     });

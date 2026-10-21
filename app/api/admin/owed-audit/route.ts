@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
 
     // Player-first (lib/owedRows.ts), shared with /api/players/unpaid so the
     // audit and the balance card read the same rows the same way.
-    const { players, sessionById, activeCountBySession } = await loadOwedInputs(scope, identity);
+    const { players, sessionById, rosterBySession } = await loadOwedInputs(scope, identity);
 
     const linkedNames = new Set<string>();
     const rows: AuditRow[] = [];
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       const result = classifyOwed(p, session, {
         activeSessionId: activeSessionId ?? '',
         now,
-        activeCount: activeCountBySession.get(p.sessionId) ?? 0,
+        roster: rosterBySession.get(p.sessionId) ?? [],
       });
 
       rows.push({

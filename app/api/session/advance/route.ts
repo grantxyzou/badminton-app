@@ -5,10 +5,9 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
 import { resolveBirdUsages } from '@/lib/birdWrite';
-import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
-import { sessionCostTotals } from '@/lib/sessionCost';
+import { costSplit } from '@/lib/sessionCost';
 import { detectSettingsDrift } from '@/lib/anomalies';
-import type { BirdUsage, Session } from '@/lib/types';
+import type { BirdUsage, Player, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,22 +100,23 @@ export async function POST(req: NextRequest) {
 
       // Prefer the frozen settle snapshot when present — it's the canonical
       // cost-per-person at the moment the admin closed the books, immune to
-      // any retro edits to courts/birds since. Falls back to live compute for
-      // legacy sessions that were never settled.
+      // any retro edits to courts/birds since. Falls back to the live
+      // `costSplit` for a session that was never settled — EVERY row of it,
+      // because the split drops the removed and waitlisted itself and must
+      // see a `resplit` cover; dividing by the active count here was a
+      // denominator the receipt did not share (2026-10-21).
       if (currentSession.settled) {
         prevCostPerPerson = currentSession.settled.costPerPerson;
         prevSessionDate = currentSession.datetime;
       } else {
-        const { totalCost } = sessionCostTotals(currentSession);
-        if (totalCost > 0) {
-          const prevPlayers = await scope.query('players', {
-            where: ACTIVE_PLAYERS_WHERE,
-            params: [{ name: '@sessionId', value: currentSession.id }],
-          });
-          if (prevPlayers.length > 0) {
-            prevCostPerPerson = Math.round((totalCost / prevPlayers.length) * 100) / 100;
-            prevSessionDate = currentSession.datetime;
-          }
+        const prevPlayers = await scope.query<Player>('players', {
+          where: 'c.sessionId = @sessionId',
+          params: [{ name: '@sessionId', value: currentSession.id }],
+        });
+        const { costPerPerson } = costSplit(currentSession, prevPlayers.filter((p) => p.sessionId === currentSession.id));
+        if (costPerPerson > 0) {
+          prevCostPerPerson = costPerPerson;
+          prevSessionDate = currentSession.datetime;
         }
       }
 
