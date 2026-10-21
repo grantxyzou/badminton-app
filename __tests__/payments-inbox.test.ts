@@ -157,6 +157,32 @@ describe('matching', () => {
     expect(inbox.review[0].suggestions[0].proposed.map((a: { ref: string }) => a.ref)).toEqual([row1.id]);
   });
 
+  it("an unsettled past session's estimate is never auto-matched; an admin may still assign it by hand", async () => {
+    // A past session nobody has settled: $20 across Lin and one other → $10 each, live.
+    const S3 = 'session-2026-10-05';
+    seedSession(S3, { datetime: '2026-10-05T19:00:00-04:00', costPerCourt: 20, courts: 1 });
+    const row3 = seedPlayer(S3, 'Lin', { memberId: lin.id });
+    seedPlayer(S3, 'Viktor', { memberId: seedMember('Viktor').id });
+
+    const res = await post(email('Lin', '10.00'));
+    expect((await res.json()).status).toBe('review');
+    expect(rowById(row3.id).paid).toBe(false);
+    const payment = (getStore()['payments'] as Array<{ id: string; reason: string }>)[0];
+    expect(payment.reason).toBe('amount_mismatch');
+    // The whole Home total ($12 + $15 + $10) waits too: it includes the estimate.
+    expect((await (await post(email('Lin', '37.00'))).json()).status).toBe('review');
+    // The frozen lines still match on their own.
+    expect((await (await post(email('Lin', '27.00'))).json()).status).toBe('matched');
+    expect(rowById(row1.id).paid).toBe(true);
+    expect(rowById(row2.id).paid).toBe(true);
+    expect(rowById(row3.id).paid).toBe(false);
+
+    // A person deciding may pick the estimate by name.
+    const ok = await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: payment.id, action: 'assign', memberId: lin.id, refs: [row3.id] }));
+    expect(ok.status).toBe(200);
+    expect(rowById(row3.id)).toMatchObject({ paid: true, paidVia: 'etransfer' });
+  });
+
   it('an amount matching no clean set of lines waits for a person', async () => {
     await post(email('Lin', '20.00'));
     expect(rowById(row1.id).paid).toBe(false);

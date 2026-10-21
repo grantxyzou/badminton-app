@@ -272,6 +272,18 @@ describe('Pay with credit', () => {
     expect(paidCents).toBe(2000 - left);
   });
 
+  it("never pays an unsettled session's live estimate", async () => {
+    seedSession('session-2026-10-05', { datetime: '2026-10-05T19:00:00-04:00', costPerCourt: 20, courts: 1 });
+    const live = seedPlayer('session-2026-10-05', 'Lin', { memberId: lin.id });
+    row(row1.id).paid = true;
+    row(row2.id).paid = true;
+    await giveLin(5000);
+    // Only the estimate is left: nothing frozen to pay.
+    expect((await pay()).status).toBe(409);
+    expect(row(live.id).paid).toBe(false);
+    expect(await balance()).toBe(5000);
+  });
+
   it('nothing owed or no credit → 409, nothing moves', async () => {
     expect((await pay()).status).toBe(409);
     await giveLin(1000);

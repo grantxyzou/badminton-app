@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A payment is matched to frozen money only (2026-10-21)
+
+From the code review of money accuracy (PR 3 of 5). An unsettled past session's live share is what Home shows, but it moves until settle: a no-show removed on Wednesday raises Thursday's figure. A member who paid the estimate was marked paid, settle then stamped a higher `owedAmount` on a row already `paid: true`, and the difference was never collected and never shown.
+
+- **The e-transfer auto-match and "Pay with credit" read settled lines only** (`settledLines` in `lib/owedBalance.ts`); a payment that includes an estimate goes to "Needs a look" as an amount mismatch, with the frozen lines proposed. An admin assigning a queued payment by ref may still pick any line — a person deciding is the rule.
+
 ### The ledger dates money by its own clock, and a week's early payments reach it at settle (2026-10-21)
 
 From the code review of money accuracy (PR 2 of 5). Three gaps in the mirror, none in the arithmetic:

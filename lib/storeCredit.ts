@@ -23,7 +23,7 @@ import { createHash, randomBytes } from 'crypto';
 import { ensureContainer } from './cosmos';
 import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
-import { computeOwed, owedLines } from './owedBalance';
+import { computeOwed, settledLines } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
 import type { LedgerAccount, LedgerEntry, Player, StringingJob } from './types';
 import { mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
@@ -318,7 +318,9 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
   const scope = groupScope(groupId);
   let ledger = await ledgerFor(scope, memberId);
   const identity = await resolveIdentity({ memberId }, groupId);
-  const lines = owedLines(await computeOwed(scope, identity), identity.memberId);
+  // Frozen lines only (`settledLines`): credit spent on a live estimate is
+  // credit spent on a number that can still move.
+  const lines = settledLines(await computeOwed(scope, identity), identity.memberId);
   if (lines.length === 0) throw new CreditError('nothing_to_pay');
 
   let paid = 0;
