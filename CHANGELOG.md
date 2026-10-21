@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The admin Payments card reads the roster once (2026-10-21)
+
+From the code review of efficiency (PR 5 of 5). The card's "would remind" and "would hold" previews each walked the whole roster through the per-person owed path — about four serial database round trips a member, twice, on every Command Center open and every payment tap. Both previews, and the daily reminder run, now come from the one whole-roster read the reconcile already uses (`computeOwedForRoster`): four queries instead of several hundred. Same classification functions, so Home and the card still agree.
+
 ### A read-modify-write cannot overwrite a change it never saw (2026-10-21)
 
 From the code review of money accuracy (PR 4 of 5). `groupScope.replace` verified that the doc still existed but not that it was unchanged, so two taps that both read "unpaid" both wrote, and a credit spend racing an e-transfer ingest could charge a member twice.

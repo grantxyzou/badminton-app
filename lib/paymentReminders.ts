@@ -22,9 +22,7 @@
  *     front of whoever is standing there (the stringing-notification rule).
  */
 import { groupScope, type GroupScope } from './groupScope';
-import { computeOwed, type UnpaidSession } from './owedBalance';
-import { resolveIdentity } from './playerIdentity';
-import { rosterMembers } from './roster';
+import { computeOwedForRoster, type RosterOwed, type UnpaidSession } from './owedBalance';
 import { sendPushToMembers, type PushPayload } from './push';
 import type { Player } from './types';
 
@@ -77,16 +75,24 @@ export interface DueReminder {
   lines: UnpaidSession[];
 }
 
-/** Everyone on the roster with at least one line due now. */
-export async function dueReminders(scope: GroupScope, now: number): Promise<DueReminder[]> {
+/** Everyone with at least one line due now, from a roster read already in hand. Pure. */
+export function dueRemindersFrom(owed: RosterOwed[], now: number): DueReminder[] {
   const out: DueReminder[] = [];
-  for (const { member } of await rosterMembers(scope.groupId)) {
-    const identity = await resolveIdentity({ memberId: member.id }, scope.groupId);
-    const { sessions } = await computeOwed(scope, identity);
-    const lines = sessions.filter((s) => reminderDue(s, now));
-    if (lines.length > 0) out.push({ memberId: member.id, name: member.name, lines });
+  for (const { memberId, name, balance } of owed) {
+    const lines = balance.sessions.filter((s) => reminderDue(s, now));
+    if (lines.length > 0) out.push({ memberId, name, lines });
   }
   return out;
+}
+
+/**
+ * Everyone on the roster with at least one line due now. ONE whole-roster
+ * read (`computeOwedForRoster`: four queries), not the per-person path once
+ * per member — that was ~4 serial round trips × every member, and the admin
+ * Payments card ran it twice on every open and every tap (review, 2026-10-21).
+ */
+export async function dueReminders(scope: GroupScope, now: number): Promise<DueReminder[]> {
+  return dueRemindersFrom(await computeOwedForRoster(scope, now), now);
 }
 
 export interface ReminderRun {

@@ -22,10 +22,10 @@ import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
 import { parseInteracEmail, type RawInteracEmail } from './etransferParse';
 import { decideMatch, allocateAmount, type MatchCandidate } from './etransferMatch';
-import { computeOwed, owedLines, settledLines, type OwedLine } from './owedBalance';
+import { computeOwed, computeOwedForRoster, owedLines, settledLines, type OwedLine, type RosterOwed, type UnpaidSession } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
 import { rosterMembers } from './roster';
-import { dueReminders } from './paymentReminders';
+import { dueRemindersFrom } from './paymentReminders';
 import { mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
 import type { Mismatch } from './ledgerReconcile';
 import { isFlagOn } from './flags';
@@ -434,6 +434,11 @@ export async function inboxSummary(groupId: string) {
   const since = Date.now() - 28 * 24 * 60 * 60 * 1000;
   const window = sorted.filter((p) => Date.parse(p.receivedAt) >= since);
   const threshold = settings?.holdAfterUnpaid ?? DEFAULT_HOLD_AFTER_UNPAID;
+  // ONE roster read feeds both previews below. Each used to walk the roster
+  // through the per-person owed path — ~4 serial round trips a member, twice,
+  // on every Command Center open and every payment tap (review, 2026-10-21).
+  const now = Date.now();
+  const owed = await computeOwedForRoster(scope, now);
   return {
     configured: !!settings?.keyHash,
     keyCreatedAt: settings?.keyCreatedAt ?? null,
@@ -451,13 +456,13 @@ export async function inboxSummary(groupId: string) {
       on: settings?.remindersOn === true,
       lastRunAt: settings?.lastReminderRunAt ?? null,
       // Who the next run would nudge — shown before the switch is pressed.
-      wouldRemind: (await dueReminders(scope, Date.now())).map((d) => d.name),
+      wouldRemind: dueRemindersFrom(owed, now).map((d) => d.name),
     },
     hold: {
       threshold,
       suggested: SUGGESTED_HOLD_AFTER_UNPAID,
       // Who it holds now, or — while off — who it WOULD hold if switched on.
-      names: await wouldHold(groupId, threshold > 0 ? threshold : SUGGESTED_HOLD_AFTER_UNPAID),
+      names: wouldHoldFrom(owed, threshold > 0 ? threshold : SUGGESTED_HOLD_AFTER_UNPAID),
     },
     // The ledger check (Phase 2 stage 2): counts only; the admin route names the rows.
     // `null` with the mirror off — there is nothing to check against.
@@ -498,21 +503,23 @@ export async function signupHeldForUnpaid(scope: GroupScope, memberId: string): 
  * "I've sent it" gets the benefit of the doubt until the money is matched —
  * otherwise a slow match would hold exactly the people who paid.
  */
+/** The lines that count toward the hold: settled, and not self-reported. One rule for the sign-up and the preview. */
+export const heldLines = (sessions: UnpaidSession[]): number => sessions.filter((s) => s.settled && !s.selfReported).length;
+
 export async function holdCount(scope: GroupScope, memberId: string): Promise<number> {
   const identity = await resolveIdentity({ memberId }, scope.groupId);
   const { sessions } = await computeOwed(scope, identity);
-  return sessions.filter((s) => s.settled && !s.selfReported).length;
+  return heldLines(sessions);
 }
 
-/** Who a threshold WOULD hold today — shown before the admin switches it on. */
+/** Who a threshold WOULD hold, from a roster read already in hand. Pure. */
+export function wouldHoldFrom(owed: RosterOwed[], threshold: number): string[] {
+  return owed.filter((o) => heldLines(o.balance.sessions) >= threshold).map((o) => o.name);
+}
+
+/** Who a threshold WOULD hold today — shown before the admin switches it on. One roster read. */
 export async function wouldHold(groupId: string, threshold: number): Promise<string[]> {
-  const scope = groupScope(groupId);
-  const roster = await rosterMembers(groupId);
-  const out: string[] = [];
-  for (const { member } of roster) {
-    if ((await holdCount(scope, member.id)) >= threshold) out.push(member.name);
-  }
-  return out;
+  return wouldHoldFrom(await computeOwedForRoster(groupScope(groupId)), threshold);
 }
 
 /** Merge fields into the club's payments settings doc (creating it if absent). */
