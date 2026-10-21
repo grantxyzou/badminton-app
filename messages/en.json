@@ -619,6 +619,7 @@
       "statsPrivacy": "Stats & privacy",
       "statsPrivacyOn": "On",
       "statsPrivacyOff": "Private",
+      "version": "Version {sha}",
       "releaseNotes": "What's new",
       "logout": "Log out",
       "reportProblem": "Report a problem",
