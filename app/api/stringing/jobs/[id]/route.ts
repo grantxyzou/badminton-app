@@ -195,6 +195,23 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
        * price, and copy saying the player is neither asked nor told. Asking
        * keeps the filled button.
        */
+      /**
+       * A PAID BILL CANNOT BE RE-PRICED, `force` or not.
+       *
+       * Money received is money received. The ledger's payment entry is
+       * `payment:<job>:<ms(paidAt)>` at the price paid, and its id is derived,
+       * so re-pricing the job underneath it leaves that entry standing at the
+       * old amount beside a new charge: the owed account for the job nets to
+       * new − old while the row says paid, and the daily reconcile reports it
+       * forever (the backfill computes the same ids, so nothing repairs it).
+       * The path to a correction is unpaid → re-price → paid: the void, the
+       * new charge and a new payment under a new `paidAt` then all follow from
+       * the transitions. `paid: false` in the SAME body counts — the mirror
+       * reads prev against next and sees both moves at once.
+       */
+      if (job.paidAt && p !== job.priceCents && body.paid !== false) {
+        return NextResponse.json({ error: 'job_paid' }, { status: 409 });
+      }
       if (job.priceCents !== null && p !== job.priceCents && body.force !== true) {
         return NextResponse.json({ error: 'confirm_required' }, { status: 409 });
       }
@@ -222,6 +239,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       const proposal = parseProposal(body.propose, job, now, actorId);
       if ('error' in proposal) {
         return NextResponse.json({ error: proposal.error }, { status: 400 });
+      }
+      // The same rule as the direct write above: asking the player to agree
+      // to a new price on a bill they have already paid is still re-pricing a
+      // paid bill. `parseProposal` keeps only fields that differ, so a
+      // `priceCents` here IS a change.
+      if (job.paidAt && proposal.value.priceCents !== undefined && body.paid !== false) {
+        return NextResponse.json({ error: 'job_paid' }, { status: 409 });
       }
       next.pendingEdit = proposal.value;
       // A fresh ask clears the last refusal: the bench should say "waiting on
