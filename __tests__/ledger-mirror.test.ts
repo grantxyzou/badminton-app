@@ -96,6 +96,27 @@ describe('settle / unsettle', () => {
     expect(charges[0].id).not.toBe(charges[1].id);
   });
 
+  it('a row ticked paid BEFORE settle gets its payment at settle, under the id the backfill computes', async () => {
+    const id = String(linRow().id);
+    // Paid during the week: the row has no owedAmount yet, so nothing is mirrored.
+    await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: true }));
+    expect(ledger().filter((e) => e.kind === 'payment')).toHaveLength(0);
+    const paidAt = String(linRow().paidAt);
+
+    await doSettle();
+    const p = ledger().find((e) => e.id === `payment:${id}:${Date.parse(paidAt)}`);
+    expect(p).toMatchObject({ account: 'member_owed', kind: 'payment', amountCents: -3000, meta: { via: 'manual' }, createdAt: paidAt });
+    // Lin's owed account is square: the charge and the payment cancel.
+    const owed = ledger().filter((e) => e.memberId === lin.id && e.account === 'member_owed').reduce((s, e) => s + e.amountCents, 0);
+    expect(owed).toBe(0);
+
+    // Unsettle keeps the payment (the row stays paid); re-settle does not write it twice.
+    await doUnsettle();
+    await new Promise((r) => setTimeout(r, 2));
+    await doSettle();
+    expect(ledger().filter((e) => e.kind === 'payment' && e.ref?.id === id)).toHaveLength(1);
+  });
+
   it('a resplit-covered row writes no charge (zero owed)', async () => {
     const row = linRow();
     row.writtenOff = true;
@@ -138,7 +159,8 @@ describe('paid / unpaid / cover', () => {
     const ms = Date.parse(String(linRow().settledAt));
     await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, writtenOff: true, coverMode: 'absorb' }));
     const c = `cover:${id}:${ms}:0`;
-    expect(ledger().find((e) => e.id === c)).toMatchObject({ kind: 'cover', amountCents: -3000, meta: { coverMode: 'absorb' } });
+    // Dated by the settle it reverses, not by the tap (a backfill would otherwise date it the day it ran).
+    expect(ledger().find((e) => e.id === c)).toMatchObject({ kind: 'cover', amountCents: -3000, meta: { coverMode: 'absorb' }, createdAt: String(linRow().settledAt) });
     await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, writtenOff: false }));
     expect(ledger().some((e) => e.id === `void:${c}`)).toBe(true);
     // Covering again is the NEXT cover, not a 409'd repeat of the first.
@@ -200,6 +222,9 @@ describe('stringing', () => {
     const r1 = await patch({ status: 'ready' });
     expect(r1.status).toBe(200);
     expect(ledger().find((e) => e.id === 'charge:job-1:0')).toMatchObject({ account: 'member_owed', amountCents: 3000, ref: { kind: 'stringing' } });
+    // Dated by the job's own clock, so a backfilled charge lands in the month the racket was done.
+    const readyAt = (getStore()['stringingJobs'] as Array<{ updatedAt: string }>)[0].updatedAt;
+    expect(ledger().find((e) => e.id === 'charge:job-1:0')!.createdAt).toBe(readyAt);
 
     await patch({ priceCents: 3500, force: true });
     expect(ledger().some((e) => e.id === 'void:charge:job-1:0')).toBe(true);
@@ -231,7 +256,7 @@ describe('shuttles', () => {
     const { id } = await res.json();
     expect(ledger().find((e) => e.id === `shuttles:${id}`)).toMatchObject({ memberId: CLUB_LEDGER_ID, account: 'club_outlay', kind: 'shuttle_purchase', amountCents: 25000 });
     await patchPurchase(makeAdminRequest('PATCH', `${BASE}/birds`, { id, totalCost: 260 }));
-    expect(ledger().find((e) => e.id === `shuttles:${id}:adj:0`)).toMatchObject({ kind: 'shuttle_adj', amountCents: 1000 });
+    expect(ledger().find((e) => e.id === `shuttles:${id}:adj:0`)).toMatchObject({ kind: 'shuttle_adj', amountCents: 1000, meta: { date: '2026-10-01' } });
     await deletePurchase(makeAdminRequest('DELETE', `${BASE}/birds`, { id }));
     const outlay = ledger().filter((e) => e.account === 'club_outlay').reduce((s, e) => s + e.amountCents, 0);
     expect(outlay).toBe(0);

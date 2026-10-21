@@ -25,17 +25,7 @@
  * memberId goes under `~unlinked`; the reconcile reports those.
  */
 import { groupScope, type GroupScope } from './groupScope';
-import {
-  appendEntry,
-  chargeEntry,
-  coverEntry,
-  courtCostEntry,
-  paymentEntry,
-  shuttlePurchaseEntry,
-  stringingChargeEntry,
-  stringingPaymentEntry,
-  type NewEntry,
-} from './ledgerMirror';
+import { appendEntry, chargeEntry, coverEntry, courtCostEntry, shuttlePurchaseEntry, stringingChargeEntry, stringingPaymentEntry, type NewEntry, paymentEntryAtSettle } from './ledgerMirror';
 import { ensureLedger } from './storeCredit';
 import type { BirdPurchase, LedgerEntry, Player, Session, StringingJob } from './types';
 
@@ -79,10 +69,9 @@ export function sessionEntries(session: Session, rows: Player[]): NewEntry[] {
     if (!row.settledAt) continue;
     const c = chargeEntry(row, session);
     if (c) out.push(c);
-    if (row.paid === true) {
-      const p = paymentEntry({ ...row, paidAt: row.paidAt ?? row.settledAt });
-      if (p) out.push({ ...p, ...(row.paidAt ? {} : { id: `payment:${row.id}:legacy`, createdAt: row.settledAt }) });
-    }
+    // The same builder settle uses, so a live settle and a backfill agree.
+    const p = paymentEntryAtSettle(row);
+    if (p) out.push(p);
     if (row.writtenOff === true && (row.coverMode ?? 'absorb') === 'absorb') {
       const cv = coverEntry(row, 0);
       if (cv) out.push(cv);
