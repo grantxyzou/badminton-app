@@ -152,7 +152,26 @@ export function coverEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | '
     note: 'Covered by the admin',
     ref: { kind: 'session', id: row.id, pk: row.sessionId },
     meta: { coverMode: row.coverMode ?? 'absorb' },
+    // Dated by the settle whose charge it reverses, like a void: a backfill
+    // used to stamp every cover with the day it ran, so a year of covers
+    // landed inside that month's window (review, 2026-10-21).
+    ...(row.settledAt ? { createdAt: row.settledAt } : {}),
   };
+}
+
+/**
+ * The payment for a row that was ALREADY paid when the bill was frozen —
+ * ticked during the week, settled on Thursday, the common flow. `mirrorPaid`
+ * wrote nothing for it (an unsettled row has no `owedAmount`), and
+ * `mirrorSettle` wrote only the charge, so `collected` ran short by every
+ * such row until a backfill. Settle writes it now, with the SAME id and date
+ * the backfill computes, so the two agree and the second 409s.
+ */
+export function paymentEntryAtSettle(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'owedAmount' | 'paid' | 'paidAt' | 'paidVia' | 'paymentId' | 'settledAt'>): NewEntry | null {
+  if (row.paid !== true) return null;
+  const p = paymentEntry({ ...row, paidAt: row.paidAt ?? row.settledAt });
+  if (!p) return null;
+  return row.paidAt ? p : { ...p, id: `payment:${row.id}:legacy`, ...(row.settledAt ? { createdAt: row.settledAt } : {}) };
 }
 
 /** The club's court outlay for a settled session, from the frozen snapshot. */
@@ -182,6 +201,9 @@ export function stringingChargeEntry(job: Pick<StringingJob, 'id' | 'memberId' |
     amountCents: Math.round(job.priceCents),
     note: `Stringing · ${job.racketLabel}`,
     ref: { kind: 'stringing', id: job.id, pk: job.memberId },
+    // The job's own clock, not the mirror's: a backfilled charge dated the
+    // day the backfill ran put a year of stringing income into one month.
+    ...(job.updatedAt ? { createdAt: job.updatedAt } : {}),
   };
 }
 
@@ -291,6 +313,9 @@ export async function mirrorSettle(scope: GroupScope, session: Pick<Session, 'id
         const c = coverEntry(row, 0);
         if (c) await appendEntry(scope, c);
       }
+      // A row ticked paid BEFORE the bill was frozen gets its payment now.
+      const p = paymentEntryAtSettle(row);
+      if (p) await appendEntry(scope, p);
     }
     const court = courtCostEntry(session, snapshot);
     if (court) await appendEntry(scope, court);
@@ -442,6 +467,9 @@ export async function mirrorShuttleAdjusted(scope: GroupScope, prev: BirdPurchas
       amountCents: delta,
       note: 'Purchase cost changed',
       ref: { kind: 'purchase', id: next.id, pk: next.id },
+      // The purchase's day, like its base entry, so the money view buckets
+      // the correction with the purchase it corrects.
+      meta: { date: next.date },
     });
   } catch (err) {
     mirrorFailures += 1;

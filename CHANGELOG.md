@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The ledger dates money by its own clock, and a week's early payments reach it at settle (2026-10-21)
+
+From the code review of money accuracy (PR 2 of 5). Three gaps in the mirror, none in the arithmetic:
+
+- **A row ticked paid before settle now gets its payment entry at settle.** An unsettled row has no `owedAmount`, so marking it paid mirrored nothing, and settle wrote only the charge: `collected` ran short by every row paid during the week, and the reconcile reported `missing_payment` daily until a backfill. Settle and the backfill share one builder (`paymentEntryAtSettle`), so they compute the same id and the second is a no-op.
+- **Covers are dated by the settle they reverse, stringing charges by the job's own clock, and a shuttle cost correction by the purchase's day.** A backfill used to stamp all three with the day it ran, so a year of covers and stringing income landed inside that month's window on the money view.
+
 ### A settled session is frozen: nothing can add a row to it (2026-10-21)
 
 From the code review of money accuracy and logic. Settle stamps each row's bill, so any row that arrived AFTER settle owed nothing and was invisible to the balance card, reminders, the hold, the reconcile and the ledger.
