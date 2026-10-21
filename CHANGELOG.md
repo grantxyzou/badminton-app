@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The Command Center reads the roster, the birds and the bench once (2026-10-21)
+
+From the code review of efficiency. The admin landing mounts its cards in one commit, and three of them asked for the same thing: the Needs-you card and the stat tiles each read `/api/members` and `/api/birds`, and the Needs-you card and the bench menu row each read `/api/stringing/jobs`. Three extra round trips on every open of the admin screen, for answers already on their way.
+
+- **Those reads go through `sharedFetch`** (`lib/sharedRead.ts`), the in-flight dedupe the session and roster reads on the same screen already use: one request per path while it is open, nothing after, so a refetch after a payment or a move on the bench still reaches the server. Each card keeps its own error handling.
+- The review's grep named `/api/admin/settings`, `/api/admin/expenses`, `/api/admin/credit` and `/api/releases` as the duplicates; on reading, none is. Every second read of the last three is a write, and every other reader of the settings is its own admin page or a tap, with the Payments card already on `sharedFetch`. Left as they are.
+
 ### Kudos reads every recent roster at once (2026-10-21)
 
 From the code review of efficiency. Who you may thank is anyone you shared a roster with in the last eight sessions, and both the card that lists them and the send that checks them read those rosters one session at a time — up to nine database round trips in series on every GiveKudosCard mount, and the send asked each session for its game log too before moving to the next. The rule is unchanged; the reads now go out together.

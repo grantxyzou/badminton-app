@@ -7,8 +7,7 @@ import { StateLink } from '@/components/primitives/StateCard';
 import { isRefused } from '@/lib/apiFetch';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import { isDormant, type DormantInput } from '@/lib/dormant';
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+import { sharedFetch } from '@/lib/sharedRead';
 
 interface AdminDashTilesProps {
   onOpenBirds: () => void;
@@ -52,9 +51,12 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
     let cancelled = false;
 
     void (async () => {
+      // The Needs-you card reads both of these in the same commit;
+      // `sharedFetch` makes that one request each while it is in flight
+      // (lib/sharedRead.ts). Try again runs alone, so it reaches the server.
       const [birdsRes, membersRes] = await Promise.allSettled([
-        fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/members`, { cache: 'no-store' }),
+        sharedFetch('/api/birds'),
+        sharedFetch('/api/members'),
       ]);
       if (cancelled) return;
 

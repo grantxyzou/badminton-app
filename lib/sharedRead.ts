@@ -42,9 +42,12 @@ export function resetSharedReads(): void {
  * handling: Home's shell and tab both ask for `/api/session` on mount, the
  * tab and the avatar store both ask for `/api/members`, every
  * `useCurrentGroup()` instance asks for both group endpoints, and the admin
- * landing's cards each ask for the session and its roster. Each caller gets
- * its own clone of the one response, so a 404 is still a 404 to the caller
- * that knows what a 404 means on its screen.
+ * landing's cards each ask for the session and its roster — and, in that
+ * same commit, the Needs-you card and the stat tiles both ask for
+ * `/api/members` and `/api/birds`, and the Needs-you card and the bench
+ * menu row both ask for `/api/stringing/jobs`. Each caller gets its own
+ * clone of the one response, so a 404 is still a 404 to the caller that
+ * knows what a 404 means on its screen.
  *
  * NO freshness tail, on purpose. These callers also refetch right after a
  * mutation (a sign-up, a paid toggle, a cover), and even a two-second window

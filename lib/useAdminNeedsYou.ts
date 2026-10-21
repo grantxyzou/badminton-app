@@ -3,6 +3,7 @@
 import { birdReorder, type BirdReorder } from './birdRunway';
 import { useEffect, useState } from 'react';
 import { isNoActiveSession } from '@/lib/apiFetch';
+import { sharedFetch } from '@/lib/sharedRead';
 import { isDormant, type DormantInput } from '@/lib/dormant';
 import { dueFor, todayIso } from '@/lib/stringingDue';
 
@@ -85,11 +86,15 @@ export function useAdminNeedsYou(enabled: boolean, refreshKey = 0): AdminNeedsYo
 
     void (async () => {
       try {
+        // The stat tiles read the birds and the roster, and the bench menu row
+        // reads the jobs, in the same commit as this card; `sharedFetch` makes
+        // that one request each while it is in flight (lib/sharedRead.ts).
+        // Nothing else on the screen asks for the whole-history players path.
         const [playersRes, birdsRes, membersRes, benchRes] = await Promise.all([
           fetch(`${BASE}/api/players?all=true`, { cache: 'no-store' }),
-          fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
-          fetch(`${BASE}/api/members`, { cache: 'no-store' }),
-          fetch(`${BASE}/api/stringing/jobs`, { cache: 'no-store' }),
+          sharedFetch('/api/birds'),
+          sharedFetch('/api/members'),
+          sharedFetch('/api/stringing/jobs'),
         ]);
         if (cancelled) return;
         // A new group has no session yet: nobody can be unpaid, and that is
