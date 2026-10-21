@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/react';
 import PaymentsCard from '@/components/admin/CommandCenter/PaymentsCard';
 
 const originalFetch = global.fetch;
+
+/** An element whose whole text is `text`, however it is split into spans —
+ *  the innermost one, so a parent holding the same text does not match too. */
+function byWholeText(text: string) {
+  return screen.getByText((_, el) => !!el && el.textContent === text && ![...el.children].some((c) => c.textContent === text));
+}
 
 const ACTIVE_SESSION = { id: 'session-2026-05-13', datetime: '2026-05-13T20:00:00-04:00', maxPlayers: 12 };
 
@@ -99,10 +105,10 @@ describe('<PaymentsCard />', () => {
     // The count left the header in 2026-06 and came back in the hero block
     // with the redesign (canvas board 10f, 2026-10-20): one line under the
     // progress bar, beside the still-owed sum once the bill is out.
-    expect(screen.getByText('2 of 3 paid')).toBeTruthy();
+    expect(byWholeText('2 of 3 paid')).toBeTruthy();
     expect(screen.getByText('Payments')).toBeTruthy();
-    // Unsettled: no frozen money, so no "still owed" amount is invented.
-    expect(screen.queryByText(/still owed/)).toBeNull();
+    // Unsettled: no frozen money, so no owed amount is invented.
+    expect(screen.queryByText(/owed$/)).toBeNull();
   });
 
   it('toggles paid optimistically and PATCHes the API', async () => {
@@ -136,8 +142,7 @@ describe('<PaymentsCard />', () => {
     });
     expect(getCount).toBeGreaterThan(0);
 
-    // An unpaid player is a "Still owed" row with a Mark paid target.
-    expect(screen.getByText(/Still owed · 1/)).toBeTruthy();
+    // An unpaid player is an owing row with a Mark paid target.
     fireEvent.click(screen.getByRole('button', { name: 'Mark Daisy paid' }));
 
     await waitFor(() => {
@@ -185,9 +190,9 @@ describe('<PaymentsCard />', () => {
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
       expect(screen.queryByText(/Sent · \$15/)).toBeNull();
-      // Two still-owed rows × $15 = two matching texts
-      expect(screen.getAllByText('$15').length).toBe(2);
-      expect(screen.getByText(/\$30 still owed/)).toBeTruthy();
+      // Two owing rows, each with its frozen $15 beside Mark paid.
+      expect(screen.getAllByTitle(/What they owe/).map((e) => e.textContent)).toEqual(['$15', '$15']);
+      expect(byWholeText('$30 owed')).toBeTruthy();
     });
 
     it('hides per-row $ once the session is unsettled, even if owedAmount lingers on player docs', async () => {
@@ -211,18 +216,18 @@ describe('<PaymentsCard />', () => {
       ]);
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-      expect(screen.getByText(/2 players/)).toBeTruthy();
-      expect(screen.getByText('1 of 2 paid')).toBeTruthy();
-      // Frozen money only: the still-owed sum is the unpaid rows' owedAmount.
-      expect(screen.getByText(/\$15 still owed/)).toBeTruthy();
-      // The amount is a single "$15 each" node — it must NOT inflate the
-      // exact-'$15' count: Mei's row and the Still-owed heading's sum.
-      expect(screen.getByText('$15 each')).toBeTruthy();
-      expect(screen.getAllByText('$15').length).toBe(2);
-      // Daisy has paid, so she is a chip (Paid · 1), not a row.
-      expect(screen.getByText(/Paid · 1/)).toBeTruthy();
-      // The viewed chip counts its live roster.
-      expect(screen.getByRole('tab').textContent).toMatch(/1 owing/);
+      // The date is the stepper's; the hero says what each person owes.
+      expect(screen.getByText('Per player')).toBeTruthy();
+      expect(byWholeText('1 of 2 paid')).toBeTruthy();
+      // Frozen money only: the owed sum is the unpaid rows' owedAmount.
+      expect(byWholeText('$15 owed')).toBeTruthy();
+      // Mei owes — her row leads with Mark paid. Daisy has paid — her row is
+      // the dimmed button to her actions, after the owing ones.
+      expect(screen.getByRole('button', { name: 'Mark Mei paid' })).toBeTruthy();
+      const daisy = screen.getByRole('button', { name: 'More actions for Daisy (paid)' });
+      expect(within(daisy).getByText('Paid')).toBeTruthy();
+      const order = [...document.querySelectorAll('li')].map((li) => li.textContent ?? '');
+      expect(order.findIndex((t) => t.includes('Mei'))).toBeLessThan(order.findIndex((t) => t.includes('Daisy')));
     });
 
 
@@ -231,7 +236,7 @@ describe('<PaymentsCard />', () => {
       fetchPlayers([{ id: 'p1', name: 'Daisy', paid: false }]);
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-      const share = screen.getByRole('button', { name: 'Share receipt' });
+      const share = screen.getByRole('button', { name: 'Receipt' });
       expect((share as HTMLButtonElement).disabled).toBe(true);
       expect(screen.getByText('—')).toBeTruthy();
     });
@@ -241,7 +246,7 @@ describe('<PaymentsCard />', () => {
       fetchSettledPlayers([{ id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 }]);
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-      const share = screen.getByRole('button', { name: 'Share receipt' });
+      const share = screen.getByRole('button', { name: 'Receipt' });
       expect((share as HTMLButtonElement).disabled).toBe(false);
       fireEvent.click(share);
       await waitFor(() => expect(screen.getByText(/e-transfer recipient/i)).toBeTruthy());
@@ -265,11 +270,11 @@ describe('<PaymentsCard />', () => {
       });
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-      fireEvent.click(screen.getByRole('button', { name: 'Share receipt' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Receipt' }));
       await waitFor(() => expect(screen.getByText('Share session cost')).toBeTruthy());
     });
 
-    it('per-row receipt icon opens the individual receipt for the VIEWED session', async () => {
+    it('the ⋯ Send receipt opens the individual receipt for the VIEWED session', async () => {
       urlFetch(async (url) => {
         if (url.includes('/api/admin/settings')) {
           return new Response(JSON.stringify({ eTransferRecipient: { name: 'Grant', email: 'g@x.com' } }), { status: 200 });
@@ -290,8 +295,9 @@ describe('<PaymentsCard />', () => {
       });
       render(<PaymentsCard />);
       await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-      // Icon renders locally now (no onSendIndividualReceipt prop needed).
-      fireEvent.click(screen.getByLabelText('Send receipt to Mei'));
+      // The individual receipt lives in the row's ⋯ actions now.
+      fireEvent.click(screen.getByRole('button', { name: 'More actions for Mei' }));
+      fireEvent.click(await screen.findByText('Send receipt'));
       await waitFor(() => expect(screen.getByText('Share session cost')).toBeTruthy());
       // Individual mode, preset to the tapped player — proves it's THIS
       // session's receipt, not the active-session delegation.
@@ -340,7 +346,78 @@ describe('<PaymentsCard />', () => {
       await waitFor(() => expect(screen.getByText('LateAdd')).toBeTruthy());
       // LateAdd owes with no frozen amount: a still-owed row with no $ beside it.
       expect(screen.getByRole('button', { name: 'Mark LateAdd paid' })).toBeTruthy();
-      expect(screen.queryByText('$15')).toBeNull();
+      expect(screen.queryAllByTitle(/What they owe/)).toHaveLength(0);
+    });
+  });
+
+  // Today first (docs/plans/payments-today-first.md): one session at a time,
+  // stepped with ‹ ›, and a date that opens a calendar of session days.
+  describe('the session stepper and date picker', () => {
+    const OLDER = { id: 'session-2026-05-06', datetime: '2026-05-06T20:00:00-04:00', maxPlayers: 12 };
+    const OLDEST = { id: 'session-2026-03-04', datetime: '2026-03-04T20:00:00-05:00', maxPlayers: 12 };
+
+    function fetchHistory(historyUrls: string[] = []) {
+      urlFetch(async (url) => {
+        if (url.includes('/api/sessions/history')) {
+          historyUrls.push(url);
+          return new Response(JSON.stringify({ sessions: [
+            { sessionId: OLDER.id, attendanceCount: 4, unpaidCount: 0 },
+            { sessionId: OLDEST.id, attendanceCount: 4, unpaidCount: 2 },
+          ] }), { status: 200 });
+        }
+        if (url.includes('/api/session') && !url.includes('/sessions')) {
+          return new Response(JSON.stringify(ACTIVE_SESSION), { status: 200 });
+        }
+        if (url.includes('/api/sessions')) {
+          return new Response(JSON.stringify([OLDER, OLDEST]), { status: 200 });
+        }
+        if (url.includes('/api/players')) {
+          const sid = new URL(url, 'http://x').searchParams.get('sessionId');
+          const name = sid === OLDER.id ? 'Viktor' : 'Daisy';
+          return new Response(JSON.stringify([{ id: `p-${sid}`, name, paid: false }]), { status: 200 });
+        }
+        return new Response('not found', { status: 404 });
+      });
+    }
+
+    it('opens on the current session and steps back one at a time', async () => {
+      fetchHistory();
+      render(<PaymentsCard />);
+      await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+      // The newest session: nothing later to step to.
+      expect((screen.getByRole('button', { name: 'Later session' }) as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.click(screen.getByRole('button', { name: 'Earlier session' }));
+      await waitFor(() => expect(screen.getByText('Viktor')).toBeTruthy());
+      expect((screen.getByRole('button', { name: 'Later session' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it("asks for every session's counts, not the newest 24", async () => {
+      const urls: string[] = [];
+      fetchHistory(urls);
+      render(<PaymentsCard />);
+      await waitFor(() => expect(urls.length).toBeGreaterThan(0));
+      expect(urls[0]).toContain('counts=1');
+    });
+
+    it('marks each session day by its money and jumps to a picked one', async () => {
+      fetchHistory();
+      render(<PaymentsCard />);
+      await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+      fireEvent.click(screen.getByRole('button', { name: /pick another session/ }));
+      const dialog = await screen.findByRole('dialog', { name: 'Pick a session' });
+      // May: the current session (viewed) and an all-paid one.
+      const current = within(dialog).getByRole('button', { name: 'May 13, current session' });
+      expect(current.getAttribute('aria-pressed')).toBe('true');
+      expect(within(dialog).getByRole('button', { name: 'May 6, all paid' })).toBeTruthy();
+      // March still owes: ‹ says so in May and in April, until it is reached.
+      fireEvent.click(within(dialog).getByRole('button', { name: /Previous month, an earlier session still owes/ }));
+      fireEvent.click(within(dialog).getByRole('button', { name: /Previous month, an earlier session still owes/ }));
+      expect(within(dialog).getByText('March 2026')).toBeTruthy();
+      expect((within(dialog).getByRole('button', { name: 'Previous month' }) as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.click(within(dialog).getByRole('button', { name: 'March 4, still owing' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect((screen.getByRole('button', { name: 'Later session' }) as HTMLButtonElement).disabled).toBe(false);
+      expect((screen.getByRole('button', { name: 'Earlier session' }) as HTMLButtonElement).disabled).toBe(true);
     });
   });
 });
