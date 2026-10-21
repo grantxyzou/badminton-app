@@ -22,7 +22,7 @@ import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
 import { parseInteracEmail, type RawInteracEmail } from './etransferParse';
 import { decideMatch, allocateAmount, type MatchCandidate } from './etransferMatch';
-import { computeOwed, owedLines, type OwedLine } from './owedBalance';
+import { computeOwed, owedLines, settledLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
 import { rosterMembers } from './roster';
 import { dueReminders } from './paymentReminders';
@@ -173,7 +173,10 @@ export async function candidatesFor(
     byPerson.set(key, {
       memberId: identity.memberId,
       name: rosterHit?.member.name ?? name,
-      lines: owedLines(balance, identity.memberId),
+      // Frozen lines only: an unsettled estimate is never paid without a
+      // person looking (`settledLines`). A payment of the whole Home total
+      // that includes one goes to the queue as an amount mismatch.
+      lines: settledLines(balance, identity.memberId),
     });
   }
   return [...byPerson.values()];
@@ -377,16 +380,20 @@ export async function resolvePayment(
   if (!action.memberId && !action.name) throw new AssignError('unknown_person');
   const identity = await resolveIdentity(action.memberId ? { memberId: action.memberId } : { name: action.name }, groupId);
   if (action.memberId && !identity.memberId) throw new AssignError('unknown_person');
-  const lines = owedLines(await computeOwed(scope, identity), identity.memberId);
+  const balance = await computeOwed(scope, identity);
 
   let chosen: OwedLine[];
   if (action.refs && action.refs.length > 0) {
+    // The admin named the lines: any line the person owes, an unsettled
+    // estimate included — that is a person deciding, which is the rule.
     const wanted = new Set(action.refs);
-    chosen = lines.filter((l) => wanted.has(l.ref));
+    chosen = owedLines(balance, identity.memberId).filter((l) => wanted.has(l.ref));
     if (chosen.length !== wanted.size) throw new AssignError('not_owed');
   } else {
     // A payment that half-applied before landing in the queue has already
-    // paid some rows; only what is left of it is the amount to allocate.
+    // paid some rows; only what is left of it is the amount to allocate —
+    // against frozen lines only, as the automatic path does.
+    const lines = settledLines(balance, identity.memberId);
     const remaining = payment.amountCents !== null ? payment.amountCents - appliedCents(payment) : null;
     chosen = remaining !== null && remaining > 0 ? allocateAmount(lines, remaining) ?? [] : [];
     if (chosen.length === 0) throw new AssignError('not_owed');

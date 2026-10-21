@@ -189,6 +189,20 @@ export async function computeOwedForRoster(scope: GroupScope, now: number = Date
   return out;
 }
 
+/**
+ * The lines a payment may be applied to WITHOUT a person looking: FROZEN
+ * money only. An unsettled past session's live share is what Home shows, but
+ * it moves until settle — a no-show removed on Wednesday raises Thursday's
+ * figure — and a row paid at the estimate is then stamped a different
+ * `owedAmount` with `paid: true` already on it, so the difference is never
+ * collected and never shown (review, 2026-10-21). Auto-match and "pay with
+ * credit" read this; an admin's explicit assignment may still pick any line.
+ * A stringing charge is frozen by construction (billable = done and priced).
+ */
+export function settledLines(balance: OwedBalance, memberId: string | null): OwedLine[] {
+  return owedLines({ ...balance, sessions: balance.sessions.filter((s) => s.settled) }, memberId);
+}
+
 /** The balance as payable lines, OLDEST first — the order a payment settles them in. */
 export function owedLines(balance: OwedBalance, memberId: string | null): OwedLine[] {
   const lines: OwedLine[] = [
