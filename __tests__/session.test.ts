@@ -122,6 +122,85 @@ describe('PUT /api/session', () => {
     expect(res.status).toBe(401);
   });
 
+  // A datetime the editor cannot store is REFUSED, never written as ''. For
+  // `deadline`, '' means "no deadline", so a malformed value used to leave
+  // sign-ups open for ever with a 200. Clearing is `null` or '' (what
+  // `withLocalTz` sends for an empty input); `datetime` cannot be cleared.
+  describe('datetime fields: clear vs invalid', () => {
+    const SID = 'session-2026-04-05';
+    const readDoc = () =>
+      (getStore().sessions ?? []).find((s) => (s as { id?: string }).id === SID) as Record<string, unknown>;
+
+    beforeEach(() => {
+      // The outer block already seeded SID; `seedSession` appends, so start
+      // over rather than leave two docs under one id.
+      resetMockStore();
+      seedAdminMember();
+      seedPointer(SID);
+      seedSession(SID, {
+        title: 'Original Title',
+        datetime: '2026-04-05T19:00:00-07:00',
+        deadline: '2026-04-03T19:00:00-07:00',
+      });
+    });
+
+    it('refuses an unparseable deadline with 400 invalid_datetime and writes nothing', async () => {
+      const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+        title: 'Changed', deadline: 'not a date',
+      }));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: 'invalid_datetime', field: 'deadline' });
+      const doc = readDoc();
+      expect(doc.deadline).toBe('2026-04-03T19:00:00-07:00');
+      expect(doc.title).toBe('Original Title');
+    });
+
+    it('refuses a datetime without a timezone offset', async () => {
+      const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+        datetime: '2026-10-22T19:00:00',
+      }));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: 'invalid_datetime', field: 'datetime' });
+      expect(readDoc().datetime).toBe('2026-04-05T19:00:00-07:00');
+    });
+
+    it('refuses an empty datetime — a session cannot lose its time', async () => {
+      const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', { datetime: '' }));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: 'invalid_datetime', field: 'datetime' });
+      expect(readDoc().datetime).toBe('2026-04-05T19:00:00-07:00');
+    });
+
+    it('clears the deadline on null', async () => {
+      const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', { deadline: null }));
+      expect(res.status).toBe(200);
+      expect(readDoc().deadline).toBe('');
+    });
+
+    it("clears the deadline on '' (what withLocalTz sends for an empty input)", async () => {
+      const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', { deadline: '', endDatetime: '' }));
+      expect(res.status).toBe(200);
+      expect(readDoc().deadline).toBe('');
+      expect(readDoc().endDatetime).toBe('');
+    });
+
+    it('stores a valid offset datetime verbatim', async () => {
+      const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+        datetime: '2026-10-22T19:00:00-07:00',
+        deadline: '2026-10-20T12:00:00Z',
+      }));
+      expect(res.status).toBe(200);
+      expect(readDoc().datetime).toBe('2026-10-22T19:00:00-07:00');
+      expect(readDoc().deadline).toBe('2026-10-20T12:00:00Z');
+    });
+
+    it('leaves a datetime field the body does not carry untouched', async () => {
+      const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', { title: 'Only title' }));
+      expect(res.status).toBe(200);
+      expect(readDoc().deadline).toBe('2026-04-03T19:00:00-07:00');
+    });
+  });
+
   it('saves a single bird usage in the birdUsages array', async () => {
     const birdRes = await CREATE_BIRD(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
       name: 'Victor Master No.3', tubes: 4, totalCost: 80,

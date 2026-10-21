@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The session editor refuses a bad datetime instead of saving nothing (2026-10-21)
+
+From the code review of logic. `PUT /api/session` turned any datetime it could not store — unparseable, truncated, or without a timezone offset — into an empty string and answered 200. For the deadline, an empty string means "no deadline", so a client bug would have silently left sign-ups open for ever; for the session time it was a session with no time.
+
+- **Clear and invalid are different answers now.** `null` or `''` still clears `deadline` / `endDatetime` (`''` is what the editor sends for an empty input); a non-empty value that does not parse as an ISO datetime with an offset answers 400 `invalid_datetime` naming the field, and nothing is written. `datetime` can never be cleared.
+- The Setup page shows that refusal as a sentence ("The sign-up deadline isn't a valid date and time.") rather than the raw code.
+- The acceptance rule itself is unchanged (`toValidIso`); the advance route keeps its behaviour.
+
 ### The mock store reads the operator on `@id`, so a rename collision is testable (2026-10-21)
 
 From the code review of logic and test fidelity. `PATCH /api/members` refuses a rename onto another active member's name with 409 `name_taken` by asking "does anyone ELSE hold this name?" (`… AND c.id != @id`). The in-memory mock filters by parameter name alone and read every `@id` as equality, so that query answered with the member being renamed and nobody else: the 409 could not fire in a test, and a real collision passed CI silently.
