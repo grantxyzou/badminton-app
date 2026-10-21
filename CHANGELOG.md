@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The mock store reads the operator on `@id`, so a rename collision is testable (2026-10-21)
+
+From the code review of logic and test fidelity. `PATCH /api/members` refuses a rename onto another active member's name with 409 `name_taken` by asking "does anyone ELSE hold this name?" (`… AND c.id != @id`). The in-memory mock filters by parameter name alone and read every `@id` as equality, so that query answered with the member being renamed and nobody else: the 409 could not fire in a test, and a real collision passed CI silently.
+
+- **The mock now honours `!=` / `<>` on `@id`** by reading the query text, the way it already does for `c.removed != true` and the `@groupId` tolerance; a plain `c.id = @id` still selects only that row (`__tests__/mock-store-neq.test.ts`).
+- The rename-collision 409 and the two non-collisions (a case change of your own name, a free name) are now covered in `__tests__/members.test.ts`; the first failed on the old mock.
+
 ### The admin Payments card reads the roster once (2026-10-21)
 
 From the code review of efficiency (PR 5 of 5). The card's "would remind" and "would hold" previews each walked the whole roster through the per-person owed path — about four serial database round trips a member, twice, on every Command Center open and every payment tap. Both previews, and the daily reminder run, now come from the one whole-roster read the reconcile already uses (`computeOwedForRoster`): four queries instead of several hundred. Same classification functions, so Home and the card still agree.
