@@ -624,13 +624,23 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     lastAdminCheck.current = Date.now();
     let netFailed = false;
     const NET_FAIL = Symbol('net-fail');
+    // The server could not answer: `members/me` answers a thrown read with a
+    // 503 `read_failed` (and a throttled probe with a 429), neither of which
+    // says anything about the member. Distinct from NET_FAIL because the
+    // server was reached, so this is not an offline signal.
+    const UNKNOWN = Symbol('unknown');
     Promise.all([
       fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => NET_FAIL),
       (() => {
         const name = getIdentity()?.name ?? null;
         if (!name) return Promise.resolve({ role: 'member' });
         return fetch(`${BASE}/api/members/me?name=${encodeURIComponent(name)}`)
-          .then(r => r.json()).catch(() => NET_FAIL);
+          // A 401 (no live cookie) or 403 (not this person) IS a verdict —
+          // that caller holds no admin role here. Anything else non-ok is
+          // not: the body carries no `role` and reading it as "not admin"
+          // took a Cosmos outage for a demotion.
+          .then(r => (r.ok || r.status === 401 || r.status === 403 ? r.json() : UNKNOWN))
+          .catch(() => NET_FAIL);
       })(),
     ]).then(([auth, member]) => {
       // A network failure on EITHER probe means we can't make an
@@ -642,6 +652,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
         reportFetchFailure();
         return; // preserve last-known showAdmin — do NOT downgrade
       }
+      // Unknown ≠ known-false: the same preservation, without the offline flag.
+      if (member === UNKNOWN) return;
       setShowAdmin(
         (auth as { authed?: boolean }).authed === true ||
         (member as { role?: string }).role === 'admin',

@@ -179,8 +179,16 @@ export async function GET(req: NextRequest) {
     const avatar = normalizeAvatar(me?.avatar);
     return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar });
   } catch (error) {
+    // A thrown read is a 503, never a 200 of defaults (the server half of the
+    // lying-empty-state rule, `__tests__/read-failed-503.test.ts`). The
+    // default body this used to send — `hasPin: false`, `statsPrivacy: null`,
+    // no `authed` — read on the client as "no PIN, never consented, not
+    // signed in on this device": Profile's PIN row, the first-PIN gate and
+    // the consent sheet all took a Cosmos outage for a fact about the member.
+    // Every reader treats a non-ok status as UNKNOWN; only the status can say
+    // so.
     console.error('GET members/me error:', error);
-    return NextResponse.json({ role: 'member', hasPin: false, createdAt: null, statsPrivacy: null, avatar: null });
+    return NextResponse.json({ error: 'read_failed' }, { status: 503 });
   }
 }
 

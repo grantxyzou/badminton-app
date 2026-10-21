@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, act } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
 
@@ -228,5 +228,51 @@ describe('?reset', () => {
     renderShell();
     await waitFor(() => expect(screen.getByTestId('home-tab')).toBeDefined());
     expect(window.location.search).toContain('email=');
+  });
+});
+
+describe('the admin verdict when members/me cannot answer', () => {
+  // `GET /api/members/me` answers a thrown read with a 503 `read_failed` (it
+  // used to be a 200 of defaults). The body carries no `role`, and reading
+  // that as "not admin" took a Cosmos outage for a demotion: `adminKnown`
+  // flipped true with `showAdmin` false, and the admin tab bounced to Home.
+  // Unknown ≠ known-false — the verdict stays undecided, and the admin tab
+  // keeps its loading frame instead of leaving.
+  function shellOnAdminTab(memberStatus: number) {
+    localStorage.setItem(
+      'badminton_identity',
+      JSON.stringify({ name: 'Lin', token: 't', sessionId: 's' }),
+    );
+    at('?tab=admin');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/members/me')) return json({ error: 'read_failed' }, memberStatus);
+        if (url.includes('/api/admin')) return json({ authed: false });
+        if (url.includes('/api/session')) return json({ id: 'session-1' });
+        return json({});
+      }),
+    );
+    renderShell();
+  }
+  const adminPanel = () => document.querySelector('[data-tab-panel="admin"]');
+  const probed = () =>
+    (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some((c) =>
+      String(c[0]).includes('/api/members/me'),
+    );
+
+  it('a 503 leaves the verdict unknown: the admin tab is not bounced', async () => {
+    shellOnAdminTab(503);
+    await waitFor(() => expect(probed()).toBe(true));
+    // Let the probe's promise chain settle before looking.
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+    expect(adminPanel()).not.toBeNull();
+  });
+
+  it('a 401 is a verdict: no live cookie, so the admin tab bounces', async () => {
+    shellOnAdminTab(401);
+    await waitFor(() => expect(probed()).toBe(true));
+    await waitFor(() => expect(adminPanel()).toBeNull());
   });
 });

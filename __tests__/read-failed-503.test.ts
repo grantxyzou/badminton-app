@@ -86,4 +86,48 @@ describe('read failures answer 503, not a lying 200', () => {
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: 'read_failed' });
   });
+
+  // The probe answered a thrown read with a 200 of defaults until 2026-10-21:
+  // `hasPin: false`, `statsPrivacy: null`, no `authed`. Profile's PIN row, the
+  // first-PIN gate and the consent sheet all read that as a fact about the
+  // member. Only the member's own PROBE throws here — the gate's point read
+  // (`item().read()`) still works, so this is the signed-in member's read
+  // failing, not a refused caller.
+  describe('GET /api/members/me', () => {
+    function mockMembersQueryThrows() {
+      vi.doMock('@/lib/cosmos', async (importOriginal) => {
+        const mod = await importOriginal<typeof import('@/lib/cosmos')>();
+        return {
+          ...mod,
+          getContainer: (name: string) => {
+            const real = mod.getContainer(name);
+            if (name !== 'members') return real;
+            return {
+              ...real,
+              items: {
+                ...real.items,
+                query: () => ({ fetchAll: async () => { throw new Error('cosmos down'); } }),
+              },
+            } as unknown as ReturnType<typeof mod.getContainer>;
+          },
+        };
+      });
+    }
+
+    it('a thrown read answers 503, not hasPin: false', async () => {
+      mockMembersQueryThrows();
+      const { GET } = await import('../app/api/members/me/route');
+      const res = await GET(memberGet('http://localhost/api/members/me?name=Lin'));
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ error: 'read_failed' });
+    });
+
+    it('no ?name is still the anonymous shape with a 200 — nothing was read', async () => {
+      mockMembersQueryThrows();
+      const { GET } = await import('../app/api/members/me/route');
+      const res = await GET(memberGet('http://localhost/api/members/me'));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ role: 'member', hasPin: false, statsPrivacy: null });
+    });
+  });
 });
