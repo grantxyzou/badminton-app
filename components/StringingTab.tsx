@@ -9,6 +9,7 @@ import CardSkeleton, { AdminPageSkeleton } from '@/components/primitives/CardSke
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import StringingCard from '@/components/stringing/StringingCard';
 import { hasStringingIntent } from '@/lib/stringingIntent';
+import { useTabActive } from '@/lib/tabActivity';
 import StringerJobsCard from '@/components/stringing/StringerJobsCard';
 import StringsWeOfferCard from '@/components/stringing/StringsWeOfferCard';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -60,10 +61,13 @@ export default function StringingTab({ isAdmin = false, view: controlled, onView
   const setView = onViewChange ?? setUncontrolled;
   // Sent here to request a stringing (Stats' tension card): the form lives on
   // Racket, so that is the register to show, whichever one was open last.
+  // On each ARRIVAL, not on mount: the tab is kept, and is often mounted
+  // before anyone taps the link (lib/tabActivity.ts).
+  const onScreen = useTabActive();
   useEffect(() => {
-    if (hasStringingIntent()) setView('racket');
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival
-  }, []);
+    if (onScreen && hasStringingIntent()) setView('racket');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on arrival
+  }, [onScreen]);
   // A bench sub-screen (a job, intake, the archive, set-up) stands in for the
   // whole tab: the header and switch hide, the Bench register stays mounted
   // underneath so the bench keeps its data.

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
 import { requestProfileView } from '@/lib/profileView';
+import { useTabActive } from '@/lib/tabActivity';
 import ClubConsentSheet from '@/components/stats/ClubConsentSheet';
 import YourRecordCard from '@/components/stats/YourRecordCard';
 import WhoYouPlayWithCard from '@/components/stats/WhoYouPlayWithCard';
@@ -68,13 +69,19 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
    * tab's wrapper on `refreshNonce`, so a pull-to-refresh remounts and fires
    * again. That is a property of the metric, not a caveat on it.
    *
+   * Fired on each VISIT, not on mount: the tab is kept once visited and
+   * mounted early behind the launch screen (lib/tabActivity.ts), so a mount
+   * is no longer someone opening Stats. A preloaded Stats nobody opened
+   * records nothing.
+   *
    * Fire-and-forget by design: an anonymous viewer holds no `member_session`,
    * gets a 401, and is correctly uncounted. Nothing the member sees depends on
    * this call.
    */
+  const onScreen = useTabActive();
   useEffect(() => {
-    if (identResolved && activeName) void recordEngagement('stats_open');
-  }, [identResolved, activeName]);
+    if (onScreen && identResolved && activeName) void recordEngagement('stats_open');
+  }, [onScreen, identResolved, activeName]);
 
   /**
    * SINGLE OWNER of the check-in — its history, its sheet, and the one beacon

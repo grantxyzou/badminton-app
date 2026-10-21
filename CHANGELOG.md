@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Tabs stay where you left them, and the app opens complete (2026-10-21)
+
+- **A tab you leave is kept, not rebuilt.** Going back to Home, Stats, Stringing or Profile shows what you left at once — no skeleton, and no data request (the usage beacon is the only one). A tab away for 10 seconds or more re-checks quietly in the background: Home's sign-ups and announcement, your balance, your rackets and the bench. Each tab keeps its own scroll position. Before, every tap rebuilt the tab from nothing: five to ten requests and up to a second of skeletons, even for a tab seen seconds earlier.
+- **The launch animation plays through for a signed-in member, and the app loads behind it.** The splash lifts once the shot has landed and Home has finished loading (at most 2.5 seconds after the shot), and the other three tabs open, hidden, in the meantime. Measured on a phone profile: the splash lifts at 2.3 seconds onto a finished Home. Skipped when the browser asks to save data; a reload still skips the shot.
+- **Pull-to-refresh refreshes the tab you are on**, not every tab.
+- Sheets left open on a tab you switch away from stay with that tab; "Get it strung" from Stats and "turn this off" links still land on the right screen; `stats_open` counts visits, so a Stats opened in the background counts nothing.
+
 ### Stats canvas, third pass: Your kudos, play style as courts, no overgrips (2026-10-20)
 
 Play has a "Your kudos" page, opened from "All your kudos" on the Send kudos card: how many kudos and from how many people, a bar per tag with your most-noticed one, then every month — signed notes with their dates, and tags on their own as counts with no date and no name. Your fit asks "Mostly you play" as five court tiles (Doubles, Singles, Mixed · front, Mixed · back, All-around) with you as the green dot; an older plain "Mixed" answer is asked again, and the engines still read every mixed answer and All-around as singles and doubles alike. The "I wrap two overgrips on it" switch is gone: the answer was saved and nothing used it, and "Clear my fit answers" still clears a stored one. `docs/plans/equipment-setup-card.md`.

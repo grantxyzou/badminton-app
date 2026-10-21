@@ -9,6 +9,7 @@ import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import Collapse from './primitives/Collapse';
 import { useRevealReady } from './primitives/Reveal';
+import { useTabReturn } from '@/lib/tabActivity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
@@ -88,6 +89,9 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   // would be a false instruction; refreshing never fixes it.
   const [forbidden, setForbidden] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+  // Back on this tab after a while: an admin may have marked a line paid, or
+  // a session settled. Re-read quietly; the figure stays while it does.
+  useTabReturn(() => setRefreshNonce((n) => n + 1));
   const isHome = variant === 'home';
 
   const online = useOnline();

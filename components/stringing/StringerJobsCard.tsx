@@ -13,6 +13,7 @@ import StatusBadge from '@/components/primitives/StatusBadge';
 import { STATUS_TONE } from '@/components/stringing/statusTone';
 import type { StringerJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
+import { useTabReturn } from '@/lib/tabActivity';
 import { useHoleLookup } from '@/components/stringing/useHoleLookup';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -96,6 +97,8 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   }, [hasIdentity]);
 
   useEffect(() => { void load(); }, [load]);
+  // Back on the bench after a while: a new request may have come in.
+  useTabReturn(() => { void load(); });
 
   async function advance(job: StringerJob, status: StringingStatus, undo = false) {
     if (busy || !online) return;

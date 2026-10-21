@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { StrictMode, useEffect } from 'react';
 import { render, cleanup, act } from '@testing-library/react';
 import LaunchScreen, { launchDecision } from '@/components/launch/LaunchScreen';
-import { HARD_TIMEOUT_MS, WELCOME_HANDOFF_MS } from '@/lib/launchMotion';
+import { APP_SETTLE_WAIT_MS, HARD_TIMEOUT_MS, WELCOME_HANDOFF_MS } from '@/lib/launchMotion';
 
 /* jsdom has no CSS animations, so `getAnimations` is absent and the screen
    treats the loop as sitting on a boundary — which is exactly the case these
@@ -11,9 +11,9 @@ import { HARD_TIMEOUT_MS, WELCOME_HANDOFF_MS } from '@/lib/launchMotion';
 
 /** `welcome`: the signed-out Welcome. `app`: HomeShell, as the server renders it for a member. */
 function mount(page?: 'welcome' | 'app') {
-  const el = document.createElement(page === 'app' ? 'main' : 'div');
+  const el = document.createElement('div');
   if (page === 'welcome') el.setAttribute('data-signed-out-welcome', '');
-  if (page === 'app') el.setAttribute('data-page-shell', '');
+  if (page === 'app') el.setAttribute('data-app-shell', '');
   document.body.appendChild(el);
   return render(<LaunchScreen tagline="Weekly badminton with your group." />);
 }
@@ -24,9 +24,9 @@ describe('launchDecision', () => {
   afterEach(() => (document.body.innerHTML = ''));
   it('reads where the server sent this visitor', () => {
     expect(launchDecision(document)).toBe('none');
-    // A signed-in member's page is ready at hydration: no final shot to sit through.
-    document.body.innerHTML = '<main data-page-shell></main>';
-    expect(launchDecision(document)).toBe('none');
+    // A signed-in member: the shot plays while Home loads behind it.
+    document.body.innerHTML = '<div data-app-shell></div>';
+    expect(launchDecision(document)).toBe('app');
     document.body.innerHTML = '<div data-signed-out-welcome></div>';
     expect(launchDecision(document)).toBe('welcome');
   });
@@ -68,14 +68,53 @@ describe('LaunchScreen', () => {
     expect(container.querySelector('.splash')).toBeNull();
   });
 
-  it('does not keep a signed-in member waiting: the app is ready, so it leaves at hydration', () => {
-    // "its done loading faster than 1.5s" — a final shot here was a wait, not a loader.
+  it('plays a signed-in member the whole shot, then lifts onto a finished Home', () => {
+    // Grant, 2026-10-21: "let the full animation play end to end at least once
+    // and use that time to preload". Home has no skeleton showing here.
     const { container } = mount('app');
+    expect(launch()).toBe('resolving');
+    expect(container.querySelector('.launch-canvas--resolving')).not.toBeNull();
+    act(() => vi.advanceTimersByTime(WELCOME_HANDOFF_MS - 100));
+    expect(launch()).toBe('resolving');
+    act(() => vi.advanceTimersByTime(200));
     expect(launch()).toBe('done');
-    expect(container.querySelector('.launch-canvas--resolving')).toBeNull();
     act(() => vi.advanceTimersByTime(400));
     // Unmounted, not hidden: nothing keeps animating for the session.
     expect(container.querySelector('.splash')).toBeNull();
+  });
+
+  /** A Home card still on its skeleton, as the launch screen would see it. */
+  function homeStillLoading() {
+    const shell = document.querySelector('[data-app-shell]')!;
+    shell.innerHTML = '<div data-tab-panel="home"><div class="shimmer-line"></div></div>';
+    const line = shell.querySelector('.shimmer-line') as HTMLElement;
+    line.getClientRects = () => [{}] as unknown as DOMRectList;
+    return line;
+  }
+
+  it('waits on a Home still loading, and lifts the moment it finishes', () => {
+    mount('app');
+    const line = homeStillLoading();
+    act(() => vi.advanceTimersByTime(WELCOME_HANDOFF_MS + 500));
+    expect(launch()).toBe('resolving');
+    line.remove();
+    act(() => vi.advanceTimersByTime(50));
+    expect(launch()).toBe('done');
+  });
+
+  it('never waits on Home for long: a slow card shows its own skeleton', () => {
+    mount('app');
+    homeStillLoading();
+    act(() => vi.advanceTimersByTime(WELCOME_HANDOFF_MS + APP_SETTLE_WAIT_MS - 100));
+    expect(launch()).toBe('resolving');
+    act(() => vi.advanceTimersByTime(200));
+    expect(launch()).toBe('done');
+  });
+
+  it('a signed-in reload still lifts at once: signing in reloads, and that is not a cold start', () => {
+    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([{ type: 'reload' } as unknown as PerformanceEntry]);
+    mount('app');
+    expect(launch()).toBe('done');
   });
 
   it('hands a signed-out visitor to Welcome once the lockup has landed', () => {
