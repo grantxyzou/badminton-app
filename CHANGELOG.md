@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Usage records are permanent (2026-10-21)
+
+`NEXT_PUBLIC_FLAG_USAGE_METRICS` retired with its ON branch: sign-ins, app opens and tab views are recorded for the Metrics page without a switch. The 404 that `POST /api/events` answered for those kinds with the flag off, the matching check in `recordSignIn`, the client gate in `useUsageBeacons` and their flag-off tests are gone, and the flag left `lib/flags.ts`, both workflows, `.env.local.example` and `dev:next`. Stopping the beacons is now a code change.
+
 ### Tabs stay where you left them, and the app opens complete (2026-10-21)
 
 - **A tab you leave is kept, not rebuilt.** Going back to Home, Stats, Stringing or Profile shows what you left at once — no skeleton, and no data request (the usage beacon is the only one). A tab away for 10 seconds or more re-checks quietly in the background: Home's sign-ups and announcement, your balance, your rackets and the bench. Each tab keeps its own scroll position. Before, every tap rebuilt the tab from nothing: five to ten requests and up to a second of skeletons, even for a tab seen seconds earlier.

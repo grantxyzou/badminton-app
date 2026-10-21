@@ -39,8 +39,7 @@ export const CLIENT_KINDS = [
   'verdict_shown',
   'frame_page_opened',
   'frame_section_expanded',
-  // Usage (docs/plans/usage-metrics.md): recorded only with
-  // NEXT_PUBLIC_FLAG_USAGE_METRICS on. See USAGE_KINDS below.
+  // Usage (docs/plans/usage-metrics.md). See USAGE_KINDS below.
   'app_open',
   'tab_view',
 ] as const;
@@ -68,9 +67,6 @@ export const SERVER_KINDS = ['pick_served', 'sign_in'] as const;
  * report wants — sign-ups, cancels, kudos, stringing, notifications — is
  * already a record in its own container, and is read from there rather than
  * copied here, so the two can never disagree.
- *
- * Gated by NEXT_PUBLIC_FLAG_USAGE_METRICS, read on the server: off, `sign_in`
- * is not written and `POST /api/events` 404s the two client kinds.
  */
 export const USAGE_CLIENT_KINDS = ['app_open', 'tab_view'] as const;
 export const USAGE_KINDS = [...USAGE_CLIENT_KINDS, 'sign_in'] as const;
@@ -84,9 +80,6 @@ export const USAGE_PLATFORMS = ['web', 'installed', 'ios', 'android'] as const;
 export const SIGN_IN_VIAS = ['pin', 'password', 'google', 'apple', 'recovery', 'reset', 'handoff', 'migrate'] as const;
 export type SignInVia = (typeof SIGN_IN_VIAS)[number];
 
-export function isUsageKind(v: string): v is UsageKind {
-  return (USAGE_KINDS as readonly string[]).includes(v);
-}
 export const PICK_KINDS = ['pick_served', 'pick_added', 'pick_tried', 'pick_rated'] as const;
 
 /**

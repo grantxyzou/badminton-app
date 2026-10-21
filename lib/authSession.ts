@@ -38,8 +38,8 @@
  * HOW THEY SIGNED IN (docs/plans/usage-metrics.md): `via` is REQUIRED, so a new
  * sign-in path cannot forget to be counted — the type checker refuses the call.
  * `null` means a re-mint that is not a sign-in (creating, joining or switching
- * a club), which records nothing. Recorded for the group actually minted, and
- * only with NEXT_PUBLIC_FLAG_USAGE_METRICS on; it never fails the sign-in.
+ * a club), which records nothing. Recorded for the group actually minted; it
+ * never fails the sign-in.
  */
 import { NextResponse } from 'next/server';
 import { setMemberCookie, setAdminCookie, clearAdminCookie } from '@/lib/auth';

@@ -1,7 +1,7 @@
 # Usage metrics — first-party tracking, an admin Metrics page, weekly reports
 
 **Track:** critical path — "prove engagement (kill-criteria)". The value-hub gate needs a number for "do members come back between sessions?", and today that number can only be read for Stats/Gear beacons.
-**Status:** in-flight — tracking switched on 2026-10-07 (flag retires 2026-10-21)
+**Status:** in-flight — tracking switched on 2026-10-07; its flag retired 2026-10-21 (ON branch kept), so "stop the beacons" below now means a code change: delete `useUsageBeacons` and `recordSignIn`'s write
 **Review on:** 2026-12-09 — has any weekly metrics or UX report changed a decision? If none has, stop the beacons and the two report helpers.
 
 ## Problem
@@ -35,7 +35,7 @@ At the 2026-12-09 review: if no weekly metrics report and no UX report has led t
 - **First-party, server-written where possible.** Sign-up, cancel, sign-in, account creation, kudos, stringing requests, push opt-in/out and problem reports are written by the route that already does the work, after it succeeds. A client beacon can be forged or blocked; the server knows the outcome. Only `app_open` and `tab_view` are client beacons, because only the client knows them.
 - **Only what no record already holds is recorded** (decided building step 5, 2026-10-07). The first cut listed ten server events. Seven of them would have copied a record that already exists — a sign-up or cancel is a `players` row with its own `timestamp` and `removedAt`, a kudos is a `kudos` doc, a stringing request a `stringingJobs` doc, notifications a `pushSubscriptions` doc, a problem report a `feedback` doc — and a copy is a second answer that can drift from the first. So the usage kinds are three: `sign_in` (server, with how), `app_open` and `tab_view` (client beacons). Everything else is read from where it already lives, which is what `clubMetrics()` does.
 - **`completeSignIn` gains a REQUIRED `via` argument** rather than each sign-in route writing its own event, so a new sign-in path cannot forget to count itself — the type checker refuses it.
-- **One flag, server-read: `NEXT_PUBLIC_FLAG_USAGE_METRICS`.** Every merge deploys, and tracking must not begin before the privacy text and the store labels say it happens. Off: no new kinds are written and the beacon hook does nothing. The metrics that need no tracking work regardless.
+- **One flag, server-read: `NEXT_PUBLIC_FLAG_USAGE_METRICS`** (retired 2026-10-21 after two weeks of plausible numbers: by 19 Oct, 210 `app_open` and 809 `tab_view` from 19 members, 22 `sign_in` from 12). Every merge deploys, and tracking must not begin before the privacy text and the store labels say it happens. Off: no new kinds are written and the beacon hook does nothing. The metrics that need no tracking work regardless.
 - **One metrics owner.** `lib/metrics.ts` `clubMetrics()` is called by both the admin route and the report route, so the page and the weekly report cannot disagree — the `buildReceiptInput` lesson.
 - **A tracking-based metric with no data says so.** "Starts when usage tracking is on", never `0`. A zero that means "not measured" is the lying-empty-state rule.
 - **A read-only reports key, separate from the payments key.** Same machinery (`<groupId>.<hex>`, sha256 at rest, `timingSafeEqual`) extracted into `lib/clubKey.ts`, but a leaked reports key must not be able to mark anyone paid, and a leaked payments key must not read feedback.
