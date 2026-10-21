@@ -1,7 +1,7 @@
 # Grommet hole counts on the racket catalog
 
 **Track:** ROADMAP North Star — Value-Hub Track 2 (Equipment: the frame page is "a reference you can check courtside") and the stringing service (`admin.stringing`: the stringer is the person who needs the number).
-**Status:** in-flight — Phase 1 (Yonex) shipped 2026-10-20 (#658); Phase 2 (Victor) shipped 2026-10-20 (#660); Phase 3 (counted at the bench) built 2026-10-20
+**Status:** in-flight — Phase 1 (Yonex) shipped 2026-10-20 (#658); Phase 2 (Victor) shipped 2026-10-20 (#660); Phase 3 (counted at the bench) shipped 2026-10-20 (#662); Phase 4 with 4b (the count on the stringing job) built 2026-10-21
 **Review on:** 2026-11-20 — did Phase 1 (Yonex, from the maker's pattern sheet) ship, and has the stringer looked up a hole count in the app instead of on the frame? If neither, drop Phases 2–3.
 
 ## Problem
@@ -137,7 +137,7 @@ Grant's two calls, 2026-10-20: the entry point is a **"String holes" card on the
 
 **Only an admin enters a count.** The Set-up screen is admin-only. A stringer who is not an admin sees only their assigned jobs (`docs/roles.md`), and nothing here changes that.
 
-## Phase 4 scope: the count on the stringing job (2026-10-21, not started)
+## Phase 4: the count on the stringing job (2026-10-21; built with 4b, Grant's call)
 
 Grant, 2026-10-21, after Phase 3: "So the hole count UI show up so we can add it? thats all?" The count reaches the member's racket page, but not the place the stringer is standing: the job on the bench.
 
@@ -162,6 +162,25 @@ Grant, 2026-10-21, after Phase 3: "So the hole count UI show up so we can add it
 **Kill criterion.** If, a month in, most open jobs still show no count because their labels don't match, the read-time match is not enough. Then the job needs a stored `racketCatalogId`, set when the racket is picked.
 
 **Non-goals.** No change to what a player sees, no stored field, and no fuzzy matching. A near-miss name ("Astrox 88D" for "Astrox 88D Pro") is a different racket, and a wrong count is worse than none.
+
+### Phase 4 as built
+
+| Piece | File |
+|---|---|
+| Label → catalog id, exactly as the tally keys | `racketIdForLabel` in `lib/gearSetup.ts` |
+| The one lookup: catalog plus club counts, gated by `enabled` | `components/stringing/useHoleLookup.ts` |
+| Bench row "· 76 holes"; reloads on leaving Set-up | `components/admin/CommandCenter/StringingPage.tsx` |
+| Job detail "Holes" row, or "Add a hole count" for a known, uncounted racket | `StringingJobDetail.tsx` (`holesFor`, `onAddHoles`) |
+| Set-up card opens on that racket, scrolled into view, the number field focused | `HoleCountsCard.tsx` (`preset`) |
+| Stringer's card | `components/stringing/StringerJobsCard.tsx`, reading nothing while the member has no assigned job |
+| 4b: catalog names under the intake's racket field; picking one writes the exact name | `StringingIntake.tsx` |
+| Tests | `__tests__/components/StringingJobHoles.test.tsx`, `HoleCountsCard.test.tsx` |
+
+**Checked on screen** (mock store, 430 px, seeded admin):
+1. Logged a job for Lin by typing "100zz" and picking "Yonex Astrox 100ZZ". The bench row read "· 76 holes".
+2. Logged a Li-Ning AxForce 80 job, which showed no count.
+3. Its detail offered "Add a hole count", which opened the Set-up card on that racket.
+4. Saved 76 there; back on the bench, the row read "· 76 holes".
 
 ## Phases
 

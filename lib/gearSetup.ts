@@ -244,6 +244,14 @@ export function racketIdsByTallyKey(rackets: Array<{ id: string; category: strin
   return out;
 }
 
+/** The catalog racket a free-text racket label names, matched exactly as the
+ *  tally matches ("Brand Model", case and surrounding spaces aside), or null. A stringing
+ *  job's `racketLabel` comes from the player's kit, where a catalog racket is
+ *  labelled exactly that way; a near miss is a different racket, never a match. */
+export function racketIdForLabel(label: string, ids: Map<string, string>): string | null {
+  return ids.get(normalise(label)) ?? null;
+}
+
 export function tallyEntryRacketId(entry: ClubGearEntry, ids: Map<string, string>): string | null {
   return entry.category === 'racket' ? ids.get(normalise(entry.label)) ?? null : null;
 }

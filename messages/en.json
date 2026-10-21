@@ -1804,7 +1804,9 @@
           "racket": "Racket",
           "string": "String",
           "tension": "Tension",
-          "method": "Method"
+          "method": "Method",
+          "holes": "Holes",
+          "addHoles": "Add a hole count"
         },
         "quoted": "Your price",
         "readyBy": "Ready by {date}",
@@ -1832,6 +1834,7 @@
         "searchMembers": "Search by name",
         "theRacket": "The racket",
         "racketPlaceholder": "Racket, e.g. Astrox 99 Pro",
+        "racketSuggest": "Catalog rackets that match",
         "stringPlaceholder": "String, e.g. BG80 white",
         "tension": "Tension",
         "mains": "Mains",

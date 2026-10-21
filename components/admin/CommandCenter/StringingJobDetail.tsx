@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
+import type { JobHoles } from '@/components/stringing/useHoleLookup';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
 import DatePicker from '@/components/DatePicker';
@@ -23,6 +24,10 @@ interface Props {
   /** The header's crumb, from whichever screen opened the bench. */
   crumb?: string;
   onChanged: () => void;
+  /** A racket label's grommet holes (`useHoleLookup`). */
+  holesFor?: (racketLabel: string) => JobHoles;
+  /** Open the Set-up screen's hole-count card on this racket. */
+  onAddHoles?: (catalogId: string) => void;
 }
 
 /**
@@ -38,7 +43,7 @@ interface Props {
  * never seeing that figure — so the one screen where the exact number lives is
  * the right place to show, continuously, what the other side is reading.
  */
-export default function StringingJobDetail({ job, onBack, onChanged, crumb }: Props) {
+export default function StringingJobDetail({ job, onBack, onChanged, crumb, holesFor, onAddHoles }: Props) {
   const t = useTranslations('admin.stringing');
   const online = useOnline();
   const [busy, setBusy] = useState(false);
@@ -223,8 +228,21 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb }: Pr
     }
   }
 
-  const specRows: [string, string][] = [
+  // The holes row follows the racket as it stands on screen (a proposed change
+  // is not the racket on the bench yet), so it is looked up from `local`.
+  const holes = holesFor?.(local.racketLabel);
+  const holesCell: ReactNode = holes?.holes != null
+    ? t('holes.holesValue', { count: holes.holes })
+    : holes?.catalogId && onAddHoles
+      ? (
+        <button type="button" className="setup-link" onClick={() => onAddHoles(holes.catalogId as string)}>
+          {t('spec.addHoles')}
+        </button>
+      )
+      : null;
+  const specRows: [string, ReactNode][] = [
     [t('spec.racket'), local.racketLabel],
+    ...(holesCell !== null ? [[t('spec.holes'), holesCell] as [string, ReactNode]] : []),
     [t('spec.string'), local.stringColor ? `${local.stringLabel} · ${local.stringColor}` : local.stringLabel],
     [t('spec.tension'), `${local.tensionMains} / ${local.tensionCrosses} lb`],
     [t('spec.method'), local.method],

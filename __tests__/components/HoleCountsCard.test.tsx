@@ -78,6 +78,16 @@ describe('hole counts card', () => {
     await waitFor(() => expect(screen.queryByText('72 holes')).toBeNull());
   });
 
+  it('opens on the racket a job asked to count, ready for the number', async () => {
+    respond({});
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <HoleCountsCard preset="racket-li-ning-axforce-80" />
+      </NextIntlClientProvider>,
+    );
+    expect(await screen.findByLabelText('Holes on the Li-Ning AxForce 80')).toBeDefined();
+  });
+
   it('a failed read is an error, never an empty list', async () => {
     respond({}, false);
     wrap();
