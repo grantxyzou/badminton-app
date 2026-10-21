@@ -45,6 +45,37 @@ describe('attributeCredit', () => {
     expect(attributeCredit([gift, spend, refund])).toHaveLength(1);
   });
 
+  it('a bounced spend and its refund in the same millisecond leave the card unused', () => {
+    // payWithCredit writes both within one request; `'refund:…' < 'spend:…'`
+    // alphabetically, so an id tie-break alone reversed the refund before
+    // the spend and the card read as used.
+    const at = '2026-10-02T00:00:00.000Z';
+    const gift = entry({ id: 'gift:a', kind: 'gift_redeem', amountCents: 3000, createdAt: '2026-10-01T00:00:00Z' });
+    const spend = entry({ id: 'spend:r1:0', kind: 'credit_spend', amountCents: -2000, createdAt: at, ref: { kind: 'session', id: 'r1', pk: 's' } });
+    const refund = entry({ id: 'refund:r1:0', kind: 'credit_refund', amountCents: 2000, createdAt: at, ref: { kind: 'session', id: 'r1', pk: 's' } });
+    const out = attributeCredit([refund, spend, gift]);
+    expect(out).toHaveLength(1); // the refund is not a second source
+    expect(out[0]).toMatchObject({ id: 'gift:a', usedCents: 0, remainingCents: 3000 });
+    expect(out[0].uses).toEqual([expect.objectContaining({ entryId: 'spend:r1:0', amountCents: 2000, reversed: true })]);
+  });
+
+  it('a refund one millisecond after its spend gives the same answer', () => {
+    const gift = entry({ id: 'gift:a', kind: 'gift_redeem', amountCents: 3000, createdAt: '2026-10-01T00:00:00Z' });
+    const spend = entry({ id: 'spend:r1:0', kind: 'credit_spend', amountCents: -2000, createdAt: '2026-10-02T00:00:00.000Z', ref: { kind: 'session', id: 'r1', pk: 's' } });
+    const refund = entry({ id: 'refund:r1:0', kind: 'credit_refund', amountCents: 2000, createdAt: '2026-10-02T00:00:00.001Z', ref: { kind: 'session', id: 'r1', pk: 's' } });
+    const out = attributeCredit([refund, spend, gift]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ id: 'gift:a', usedCents: 0, remainingCents: 3000 });
+  });
+
+  it('a grant and a spend in the same millisecond see the grant first', () => {
+    const at = '2026-10-02T00:00:00.000Z';
+    const grant = entry({ id: 'grant:z', kind: 'credit_grant', amountCents: 1000, createdAt: at });
+    const spend = entry({ id: 'spend:r1:0', kind: 'credit_spend', amountCents: -1000, createdAt: at, ref: { kind: 'session', id: 'r1', pk: 's' } });
+    const [top] = attributeCredit([spend, grant]);
+    expect(top).toMatchObject({ id: 'grant:z', usedCents: 1000, remainingCents: 0 });
+  });
+
   it('an admin taking credit back is a drain like any other', () => {
     const gift = entry({ id: 'gift:a', kind: 'gift_redeem', amountCents: 2000, createdAt: '2026-10-01T00:00:00Z' });
     const back = entry({ id: 'grant:c', kind: 'credit_grant', amountCents: -500, createdAt: '2026-10-02T00:00:00Z', note: 'Oops' });

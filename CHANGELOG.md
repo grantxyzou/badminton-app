@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A bounced credit spend no longer reads as a used gift card (2026-10-21)
+
+From the code review of money accuracy. "Pay with credit" writes a spend and, when the balance comes up short or the row cannot be marked, the refund that reverses it — both within one request, so often in the same millisecond. A card's record is a reading over those entries in time order, and the tie-break was the id: `refund:…` sorts before `spend:…`, so the refund was processed first, found nothing to give back, and the spend that followed drew from the card. The card then showed that money as used although the member still had it.
+
+- **Within one timestamp a source comes first, then a drain, then a refund** (`lib/creditAttribution.ts`), so a refund always finds the spend it reverses. A grant and a spend in the same millisecond see the grant first.
+- **A refund carries its own timestamp** rather than the request's, so real history reads in the order it happened; the tie-break stays, because two writes can still land in one ms.
+- A refund whose spend is genuinely missing from the history still counts as a source — the balance already holds that amount — and the docblock now says so.
+
 ### One live estimate for an unsettled week (2026-10-21)
 
 From the code review of money accuracy. Three live estimates existed for a session that was not yet settled: Home's balance line and the advance snapshot each divided the total by the active count, while the receipt (and settle, which freezes the bill) used `costSplit`, which drops a resplit-covered player from the denominator. Cover someone with "resplit" before settling and Home showed one figure for the week while the receipt showed another.

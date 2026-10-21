@@ -337,7 +337,11 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
         amountCents: line.amountCents,
         note,
         ref: { kind: line.kind, id: line.ref, pk: line.pk },
-        createdAt: now,
+        // Its own clock, not the request's `now`: a refund dated the same ms
+        // as its spend reads in the history as if it came first. The
+        // attribution tie-breaks by kind as well, because two writes can
+        // still land in one ms.
+        createdAt: new Date().toISOString(),
         createdBy: memberId,
       });
     } catch (err) {

@@ -190,6 +190,23 @@ describe('gift cards', () => {
     expect(JSON.stringify(cards)).not.toContain(code);
   });
 
+  it("a spend that bounced in the same millisecond as its refund leaves the admin's record unused", async () => {
+    // payWithCredit writes the spend and its refund within one request. The
+    // reading sorts by createdAt, and `refund:` < `spend:` by id, so without a
+    // kind tie-break the refund ran first and the card read as used.
+    const { code } = await mintOne(3000, 'Raffle');
+    await redeemAs(code);
+    const at = new Date(Date.now() + 60_000).toISOString(); // after the redemption, which is stamped now
+    for (const [id, kind, amountCents] of [[`spend:${row1.id}:0`, 'credit_spend', -2000], [`refund:${row1.id}:0`, 'credit_refund', 2000]] as const) {
+      seedDoc('ledger', { id, groupId: 'bpm', memberId: lin.id, account: 'member_credit', kind, amountCents, note: '', createdAt: at, createdBy: lin.id, ref: { kind: 'session', id: row1.id, pk: 'session-2026-09-24' } });
+    }
+    const { cards } = await (await listCards(makeAdminRequest('GET', `${BASE}/admin/giftcards`))).json();
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ usedCents: 0, remainingCents: 3000 });
+    expect(cards[0].uses).toEqual([expect.objectContaining({ amountCents: 2000, reversed: true })]);
+    expect(await balance()).toBe(3000);
+  });
+
   it('an older card with no redeemedBy is still attributed through its ledger entry', async () => {
     const { code } = await mintOne(1000);
     await redeemAs(code);
