@@ -82,12 +82,49 @@ describe('detectSettingsDrift', () => {
     expect(detectSettingsDrift(session, makeSnapshot({ deadlineOffsetHours: -23 }))).toEqual([]);
   });
 
-  it('does not flag a session with no deadline set', () => {
-    // Absent is not "moved" — a session that never had one has nothing to
-    // compare, and inventing a drift would be a lying warning.
+  /**
+   * THE OTHER DIRECTION, found in review on 2026-10-21. The first cut
+   * compared only when BOTH sides had a deadline, so a deadline that was
+   * there last week and is gone this week — sign-ups that used to close now
+   * stay open — was never mentioned. Presence against absence fires with no
+   * tolerance: the tolerance exists for DST, and nothing about DST removes a
+   * deadline.
+   */
+  it('flags a deadline removed since the snapshot', () => {
     const session = makeSession({ deadline: undefined });
     expect(detectSettingsDrift(session, makeSnapshot({ deadlineOffsetHours: -23 })))
+      .toContain('deadline_changed');
+  });
+
+  it('flags a deadline added since a snapshot that recorded none', () => {
+    // 2h before — inside the tolerance, which must not apply here: last week
+    // there was nothing to be within 6h of.
+    expect(detectSettingsDrift(makeSession(), makeSnapshot({ deadlineOffsetHours: null })))
+      .toContain('deadline_changed');
+  });
+
+  it('reads a legacy snapshot offset of 0 as "no deadline"', () => {
+    // Before 2026-10-21 the advance route wrote 0 for a missing deadline, and
+    // a deadline at the session's own start closes nothing anyway.
+    expect(detectSettingsDrift(makeSession(), makeSnapshot({ deadlineOffsetHours: 0 })))
+      .toContain('deadline_changed');
+    expect(detectSettingsDrift(makeSession({ deadline: undefined }), makeSnapshot({ deadlineOffsetHours: 0 })))
       .not.toContain('deadline_changed');
+  });
+
+  it('does not flag a snapshot that never recorded the offset', () => {
+    // undefined is "not recorded", not "recorded as none" — a doc from before
+    // the field existed has nothing to compare, and inventing a drift would be
+    // a lying warning.
+    const snapshot = makeSnapshot();
+    delete (snapshot as Partial<PrevSessionSnapshot>).deadlineOffsetHours;
+    expect(detectSettingsDrift(makeSession(), snapshot)).not.toContain('deadline_changed');
+    expect(detectSettingsDrift(makeSession({ deadline: undefined }), snapshot)).not.toContain('deadline_changed');
+  });
+
+  it('does not flag no deadline on either side', () => {
+    const session = makeSession({ deadline: undefined });
+    expect(detectSettingsDrift(session, makeSnapshot({ deadlineOffsetHours: null }))).toEqual([]);
   });
 
   it('handles missing snapshot gracefully (returns [])', () => {
@@ -121,6 +158,32 @@ describe('detectSkipDate', () => {
   it('returns false when skipDates is empty or undefined', () => {
     expect(detectSkipDate('2026-05-13T20:00:00-04:00', [])).toBe(false);
     expect(detectSkipDate('2026-05-13T20:00:00-04:00', undefined)).toBe(false);
+  });
+});
+
+describe('evaluateAnomalies — deadline_changed message', () => {
+  const run = (session: Session, snapshot: PrevSessionSnapshot) =>
+    evaluateAnomalies({ session, prevSnapshot: snapshot, prevSessionDatetime: undefined, skipDates: undefined, dismissed: [] })
+      .find((a) => a.code === 'deadline_changed')?.message ?? '';
+
+  it('says how far it moved when both weeks had one', () => {
+    const session = makeSession({ datetime: '2026-09-03T20:00:00-07:00', deadline: '2026-09-01T21:00:00-07:00' });
+    const msg = run(session, makeSnapshot({ deadlineOffsetHours: -23 }));
+    expect(msg).toBe('Sign-ups close 47h before this session, was 23h last week.');
+  });
+
+  it('says last week stayed open when a deadline was added', () => {
+    const msg = run(makeSession(), makeSnapshot({ deadlineOffsetHours: null }));
+    expect(msg).toContain('close 2h before');
+    expect(msg).toContain('stayed open');
+    expect(msg).not.toContain('NaN');
+  });
+
+  it('says this week stays open when a deadline was removed', () => {
+    const msg = run(makeSession({ deadline: undefined }), makeSnapshot({ deadlineOffsetHours: -23 }));
+    expect(msg).toContain('stay open this week');
+    expect(msg).toContain('23h');
+    expect(msg).not.toContain('NaN');
   });
 });
 

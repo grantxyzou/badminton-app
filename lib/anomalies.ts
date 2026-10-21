@@ -39,15 +39,35 @@ const MS_PER_HOUR = 3_600_000;
 const DEADLINE_DRIFT_TOLERANCE_HOURS = 6;
 
 /** Hours from session start to deadline. Negative when the deadline is
- *  before the session, which is the normal case. Mirrors
- *  `calculateOffsetHours` in app/api/session/advance/route.ts, which is what
- *  wrote the snapshot value this is compared against. */
-function deadlineOffsetHours(session: Session): number | null {
+ *  before the session, which is the normal case. `null` when the session has
+ *  no deadline (or one that does not parse). The advance route writes this
+ *  same function's answer into the snapshot, so the two sides of the
+ *  comparison below cannot be computed two ways. */
+export function deadlineOffsetHours(session: Session): number | null {
   if (!session.datetime || !session.deadline) return null;
   const start = new Date(session.datetime).getTime();
   const deadline = new Date(session.deadline).getTime();
   if (!Number.isFinite(start) || !Number.isFinite(deadline)) return null;
   return (deadline - start) / MS_PER_HOUR;
+}
+
+/**
+ * What the snapshot says about last week's deadline. Three answers, and the
+ * first two are not the same thing:
+ *
+ * - `undefined` — the snapshot never recorded it (a doc written before the
+ *   field existed, or built by hand). Nothing to compare, so nothing fires.
+ * - `null` — recorded as NONE: sign-ups stayed open. Written as `null` since
+ *   2026-10-21; before that the advance route wrote `0` for a missing
+ *   deadline, and a deadline AT the session's own start closes nothing, so a
+ *   stored `0` reads as none on either side of that date.
+ * - a number — hours from start to the deadline it had.
+ */
+function snapshotDeadlineOffset(snapshot: PrevSessionSnapshot): number | null | undefined {
+  const raw = snapshot.deadlineOffsetHours;
+  if (raw === undefined) return undefined;
+  if (raw === null || !Number.isFinite(raw) || raw === 0) return null;
+  return raw;
 }
 
 export function detectSettingsDrift(
@@ -65,14 +85,22 @@ export function detectSettingsDrift(
      2026-09-03 session closed sign-ups on a Tuesday when every prior week
      closed on a Wednesday, and the only anomaly raised was maxPlayers going
      11 -> 12. A day less to sign up is a bigger deal to a player than one
-     extra spot. */
+     extra spot.
+
+     The comparison is SYMMETRIC. A deadline that was there last week and is
+     gone this week means sign-ups that used to close now stay open, and the
+     first cut (2026-08-28) never said so — it compared only when both sides
+     had one. Presence against absence fires with no tolerance: the tolerance
+     exists for DST moving an offset an hour, and there is no DST story for
+     "removed". A snapshot that never recorded the offset fires nothing. */
   const offset = deadlineOffsetHours(session);
-  if (
-    offset !== null &&
-    Number.isFinite(snapshot.deadlineOffsetHours) &&
-    Math.abs(offset - snapshot.deadlineOffsetHours) >= DEADLINE_DRIFT_TOLERANCE_HOURS
-  ) {
-    codes.push('deadline_changed');
+  const was = snapshotDeadlineOffset(snapshot);
+  if (was !== undefined) {
+    if (offset === null || was === null) {
+      if (offset !== was) codes.push('deadline_changed');
+    } else if (Math.abs(offset - was) >= DEADLINE_DRIFT_TOLERANCE_HOURS) {
+      codes.push('deadline_changed');
+    }
   }
 
   return codes;
@@ -189,10 +217,19 @@ function messageFor(code: AnomalyCode, session: Session, snapshot: PrevSessionSn
          admin has to decode, and the thing they need to judge is how much
          notice their friends get. */
       const now = deadlineOffsetHours(session);
+      const prev = snapshotDeadlineOffset(snapshot);
       const before = now === null ? null : Math.round(-now);
-      const was = Math.round(-snapshot.deadlineOffsetHours);
-      if (before === null) return 'Sign-ups now close at a different time than last week.';
-      return `Sign-ups close ${before}h before this session, was ${was}h last week.`;
+      const was = prev === null || prev === undefined ? null : Math.round(-prev);
+      if (before !== null && was !== null) {
+        return `Sign-ups close ${before}h before this session, was ${was}h last week.`;
+      }
+      if (before !== null) {
+        return `Sign-ups close ${before}h before this session; last week they stayed open.`;
+      }
+      if (was !== null) {
+        return `Sign-ups stay open this week; last week they closed ${was}h before the session.`;
+      }
+      return 'Sign-ups now close at a different time than last week.';
     }
     default:
       return code;

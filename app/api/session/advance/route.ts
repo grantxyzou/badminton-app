@@ -6,25 +6,10 @@ import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
 import { resolveBirdUsages } from '@/lib/birdWrite';
 import { costSplit } from '@/lib/sessionCost';
-import { detectSettingsDrift } from '@/lib/anomalies';
+import { detectSettingsDrift, deadlineOffsetHours } from '@/lib/anomalies';
 import type { BirdUsage, Player, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Calculate hours between session start and deadline.
- * Negative if deadline is before session start (which shouldn't happen in practice).
- */
-function calculateOffsetHours(sessionDatetime: string | undefined, deadline: string | undefined): number {
-  if (!sessionDatetime || !deadline) return 0;
-  try {
-    const sessionTime = new Date(sessionDatetime).getTime();
-    const deadlineTime = new Date(deadline).getTime();
-    return (deadlineTime - sessionTime) / (1000 * 60 * 60);
-  } catch {
-    return 0;
-  }
-}
 
 /**
  * Calculate hours before session start that signup was opened.
@@ -43,7 +28,9 @@ type PrevSnapshot = {
   courtCount: number;
   costPerCourt: number;
   maxPlayers: number;
-  deadlineOffsetHours: number;
+  /** `null` = recorded as having no deadline. Before 2026-10-21 this wrote
+   *  `0` for none, which `detectSettingsDrift` still reads as none. */
+  deadlineOffsetHours: number | null;
   signupOpensOffsetHours: number;
 };
 
@@ -94,7 +81,9 @@ export async function POST(req: NextRequest) {
         courtCount: currentSession.courts ?? 0,
         costPerCourt: currentSession.costPerCourt ?? 0,
         maxPlayers: currentSession.maxPlayers ?? 0,
-        deadlineOffsetHours: calculateOffsetHours(currentSession.datetime, currentSession.deadline),
+        // The same function the drift check reads the NEW session with, so
+        // the two sides of that comparison cannot be computed two ways.
+        deadlineOffsetHours: deadlineOffsetHours(currentSession),
         signupOpensOffsetHours: calculateSignupOpensOffset(currentSession),
       };
 

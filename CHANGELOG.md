@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Removing a sign-up deadline is an anomaly too (2026-10-21)
+
+From the code review of logic. The settings-drift check compared the sign-up deadline only when BOTH this week and last week had one, so a deadline that was there last week and is gone this week — sign-ups that used to close now staying open — was never mentioned to the admin, while adding one was.
+
+- **Presence against absence always flags `deadline_changed`**, with no tolerance: the 6-hour tolerance exists for a DST crossing moving the offset, and nothing about DST removes a deadline. Both weeks having one keeps the tolerance.
+- The anomaly's message now says which happened: moved ("close 47h before this session, was 23h last week"), added ("last week they stayed open") or removed ("stay open this week; last week they closed 23h before the session").
+- The advance snapshot records a session with no deadline as `null` (it wrote `0`, which also meant "at the session's start"; a stored `0` still reads as none), and a snapshot that never recorded the offset at all fires nothing. The route reads the offset with the same function the check does, so the two sides cannot be computed two ways.
+
 ### A paid stringing job cannot be re-priced (2026-10-21)
 
 From the code review of money accuracy. "Change without asking" on a job the player had already paid voided the old charge and wrote a new one at the new price, but the payment entry — keyed on when it was paid, at the amount paid — stayed where it was, so the ledger said the member owed the difference while the job said paid, and the daily reconcile flagged it every morning with nothing able to repair it.
