@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A paid stringing job cannot be re-priced (2026-10-21)
+
+From the code review of money accuracy. "Change without asking" on a job the player had already paid voided the old charge and wrote a new one at the new price, but the payment entry — keyed on when it was paid, at the amount paid — stayed where it was, so the ledger said the member owed the difference while the job said paid, and the daily reconcile flagged it every morning with nothing able to repair it.
+
+- **`PATCH /api/stringing/jobs/[id]` answers 409 `job_paid`** to a differing price on a paid job, with `force` or as a proposal to the player. The correction is mark unpaid → change the price → mark paid again; the ledger then holds the void, the new charge, the voided old payment and a new payment at the new amount, and the job nets to zero. A single PATCH carrying both `paid: false` and the new price is accepted, because the mirror reads the job before against the job after and records both moves.
+- The bench's "Change this job" names the refusal instead of "That didn't save. Try again."
+
 ### A bounced credit spend no longer reads as a used gift card (2026-10-21)
 
 From the code review of money accuracy. "Pay with credit" writes a spend and, when the balance comes up short or the row cannot be marked, the refund that reverses it — both within one request, so often in the same millisecond. A card's record is a reading over those entries in time order, and the tie-break was the id: `refund:…` sorts before `spend:…`, so the refund was processed first, found nothing to give back, and the spend that followed drew from the card. The card then showed that money as used although the member still had it.

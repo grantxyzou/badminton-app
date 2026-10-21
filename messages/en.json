@@ -1738,6 +1738,7 @@
           "forceGo": "Change it",
           "forceKeep": "Cancel",
           "forceError": "That didn't save. Try again.",
+          "jobPaid": "This job is already paid, so its price can't change. Mark it unpaid first, change the price, then mark it paid again.",
           "hint": "Anything you change here is sent to {name} to confirm. The bill stays as it is until they do.",
           "price": "Price",
           "string": "String",

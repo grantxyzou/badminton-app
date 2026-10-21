@@ -91,11 +91,14 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
   const [statusOpen, setStatusOpen] = useState(false);
   const [changeOpen, setChangeOpen] = useState(false);
   const [proposeBusy, setProposeBusy] = useState(false);
-  const [proposeError, setProposeError] = useState(false);
+  /* `'job_paid'` is the one refusal with its own line: the server will not
+     re-price a bill that has been paid (unpaid → re-price → paid is the way),
+     and "try again" would send the admin round the same wall. */
+  const [proposeError, setProposeError] = useState<null | 'failed' | 'job_paid'>(null);
   /* The force path: an ellipsis beside Send, then a confirm. Two taps, because
      it is the one control that moves somebody's bill without telling them. */
   const [forceOpen, setForceOpen] = useState(false);
-  const [forceError, setForceError] = useState(false);
+  const [forceError, setForceError] = useState<null | 'failed' | 'job_paid'>(null);
   /* Who can be assigned. `null` = not loaded or unreachable; the picker then
      stays out of the way rather than rendering an empty select, the same
      null-vs-empty rule the offered-strings control follows. */
@@ -107,7 +110,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
     setProposeString(local.stringLabel);
     setProposeMains(String(local.tensionMains));
     setProposeCrosses(String(local.tensionCrosses));
-    setProposeError(false);
+    setProposeError(null);
   }
 
   useEffect(() => {
@@ -167,10 +170,17 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
    *  "$30 → $30" diff for those would be noise. */
   const priceDrafted = parsedCents !== undefined && parsedCents !== local.priceCents;
 
+  /** The server's `error` code for a refused price write, or the status when
+   *  the body carries none. `job_paid` is the one the screen names. */
+  async function refusal(res: Response, what: string): Promise<string> {
+    const code = await res.json().then((b: { error?: unknown }) => b?.error).catch(() => null);
+    return typeof code === 'string' ? code : `${what} ${res.status}`;
+  }
+
   async function sendProposal() {
     if (proposeBusy || !online || !proposalDirty || parsedCents === undefined) return;
     setProposeBusy(true);
-    setProposeError(false);
+    setProposeError(null);
     try {
       const res = await fetch(`${BASE}/api/stringing/jobs/${local.id}`, {
         method: 'PATCH',
@@ -185,11 +195,11 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
           },
         }),
       });
-      if (!res.ok) throw new Error(`propose ${res.status}`);
+      if (!res.ok) throw new Error(await refusal(res, 'propose'));
       setLocal((await res.json()).job);
       onChanged();
-    } catch {
-      setProposeError(true);
+    } catch (err) {
+      setProposeError(err instanceof Error && err.message === 'job_paid' ? 'job_paid' : 'failed');
     } finally {
       setProposeBusy(false);
     }
@@ -206,7 +216,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
   async function forceChange() {
     if (proposeBusy || !online || parsedCents === undefined) return;
     setProposeBusy(true);
-    setForceError(false);
+    setForceError(null);
     try {
       const res = await fetch(`${BASE}/api/stringing/jobs/${local.id}`, {
         method: 'PATCH',
@@ -217,12 +227,12 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
           force: true,
         }),
       });
-      if (!res.ok) throw new Error(`force ${res.status}`);
+      if (!res.ok) throw new Error(await refusal(res, 'force'));
       setLocal((await res.json()).job);
       setForceOpen(false);
       onChanged();
-    } catch {
-      setForceError(true);
+    } catch (err) {
+      setForceError(err instanceof Error && err.message === 'job_paid' ? 'job_paid' : 'failed');
     } finally {
       setProposeBusy(false);
     }
@@ -570,7 +580,11 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
               {t('propose.hint', { name: local.memberName })}
             </p>
 
-            {proposeError && <p className="field-error" role="alert">{t('propose.error')}</p>}
+            {proposeError && (
+              <p className="field-error" role="alert">
+                {proposeError === 'job_paid' ? t('propose.jobPaid') : t('propose.error')}
+              </p>
+            )}
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
               <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('propose.price')}</span>
@@ -658,7 +672,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                 disabled={proposeBusy || !online || parsedCents === undefined}
                 onClick={() => {
                   setForceOpen((v) => !v);
-                  setForceError(false);
+                  setForceError(null);
                 }}
                 /* NO inline borderRadius. I added one to match the button
                    beside it and it did the opposite: an inline style beats
@@ -694,7 +708,11 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                   border: '1px solid var(--inner-card-border)',
                 }}
               >
-                {forceError && <p className="field-error" role="alert">{t('propose.forceError')}</p>}
+                {forceError && (
+                  <p className="field-error" role="alert">
+                    {forceError === 'job_paid' ? t('propose.jobPaid') : t('propose.forceError')}
+                  </p>
+                )}
                 <div>
                   <div className="fs-md" style={{ fontWeight: 600 }}>
                     {t('propose.forceLabel')}
