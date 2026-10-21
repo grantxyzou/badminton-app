@@ -14,6 +14,7 @@ import { STATUS_TONE } from '@/components/stringing/statusTone';
 import type { StringerJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
 import { useTabReturn } from '@/lib/tabActivity';
+import { useHoleLookup } from '@/components/stringing/useHoleLookup';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -72,6 +73,8 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   // Bench words for the due line; the stringer is working the bench.
   const tAdmin = useTranslations('admin.stringing');
   const today = todayIso();
+  // Read only once there is a job to show (docs/plans/grommet-holes.md, Phase 4).
+  const holes = useHoleLookup(!!jobs && jobs.length > 0);
 
   const load = useCallback(async () => {
     if (!hasIdentity) return;
@@ -201,6 +204,10 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
                 <span style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
                   {job.tensionMains}/{job.tensionCrosses} {tAdmin('lb')}
                 </span>
+                {(() => {
+                  const n = holes.forLabel(job.racketLabel).holes;
+                  return n !== null ? <>{' · '}{tAdmin('holes.holesValue', { count: n })}</> : null;
+                })()}
                 {' · '}
                 {t('stringerFor', { name: job.memberName })}
               </span>

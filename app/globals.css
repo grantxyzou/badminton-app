@@ -4930,6 +4930,222 @@ html:root[data-theme="light"] {
   background: rgba(0, 0, 0, 0.08);
 }
 
+/* ── Payments card: today first, any session by date ──
+   docs/plans/payments-today-first.md. The stepper (‹ date ›) replaced a grid
+   of every session as a chip; the date opens .pay-cal, a month calendar where
+   only session days are buttons and each carries its money as a dot. Every
+   value resolves through an existing token. */
+.pay-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.pay-step-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(var(--glass-tint), 0.06);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.pay-step-btn:active { background: var(--press-bg); }
+.pay-step-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.pay-date-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--fs-stat);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pay-date-btn .material-icons {
+  font-size: var(--icon-sm);
+  color: var(--text-muted);
+}
+
+.pay-cal {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  /* Solid, not --glass-bg: that is a 3% tint that leans on its blur, and the
+     roster rows read straight through a calendar laid over them. */
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.pay-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pay-cal-month {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.pay-cal-nav {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(var(--glass-tint), 0.06);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.pay-cal-nav .material-icons { font-size: var(--icon-md); }
+.pay-cal-nav:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+/* An earlier month still owes. */
+.pay-cal-nav-dot {
+  position: absolute;
+  top: var(--space-05);
+  right: var(--space-05);
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--amber);
+}
+.pay-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+}
+.pay-cal-dow {
+  text-align: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+/* A day with no session: a number, not a target. */
+.pay-cal-day {
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-05);
+  font-size: var(--fs-base);
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.pay-cal-day[data-today="true"] {
+  opacity: 1;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pay-cal-day.is-session {
+  opacity: 1;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: rgba(var(--glass-tint), 0.08);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+.pay-cal-day.is-session:active { background: var(--press-bg); }
+/* The session being viewed. */
+.pay-cal-day.is-session[aria-pressed="true"] {
+  background: var(--inner-card-green-bg);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.pay-cal-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-pill);
+}
+.pay-cal-dot[data-state="owe"] { background: var(--amber); }
+.pay-cal-dot[data-state="paid"] { background: var(--text-muted); }
+.pay-cal-dot[data-state="current"] { background: var(--accent); }
+.pay-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.pay-cal-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.pay-cal-legend .pay-cal-dot {
+  width: 8px;
+  height: 8px;
+}
+
+/* The hero's bar: paid in green, then covered in violet, on one track. */
+.pay-split {
+  display: flex;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.pay-split > span {
+  transition: width var(--duration-slow) var(--ease-out-quart);
+}
+.pay-split-paid { background: var(--sev-good-text); }
+.pay-split-covered { background: var(--violet); }
+
+/* A row nothing more is needed from: paid or covered, dimmed, opens the
+   per-player actions. Its background lives on the class so :active can
+   flash it (CLAUDE.md, the Press recipe). */
+.pay-row-done {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-05);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pay-row-done:active { background: var(--press-bg); }
+.pay-row-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  min-width: 76px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.pay-row-status .material-icons { font-size: var(--icon-sm); }
+
 /* Dashboard 2-up grid for Birds + Roster cards on the admin home */
 .cc-dgrid {
   display: grid;

@@ -1792,7 +1792,9 @@
         "racket": "球拍",
         "string": "拍线",
         "tension": "磅数",
-        "method": "穿法"
+        "method": "穿法",
+        "holes": "孔数",
+        "addHoles": "添加孔数"
       },
       "quoted": "报价",
       "readyBy": "{date} 前完成",
@@ -1820,6 +1822,7 @@
       "searchMembers": "按名字搜索",
       "theRacket": "球拍",
       "racketPlaceholder": "球拍，例如 Astrox 99 Pro",
+      "racketSuggest": "匹配的球拍",
       "stringPlaceholder": "拍线，例如 BG80 白色",
       "tension": "磅数",
       "mains": "竖线",

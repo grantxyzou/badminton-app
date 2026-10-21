@@ -12,6 +12,9 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_LIMIT = 8;
 const MAX_LIMIT = 24;
+/** `counts=1` builds no receipts, so it can answer for every session the
+ *  Payments calendar shows (docs/plans/payments-today-first.md). */
+const MAX_COUNTS_LIMIT = 200;
 
 /**
  * GET /api/sessions/history — admin-only list of recent sessions, each row
@@ -25,8 +28,12 @@ export async function GET(req: NextRequest) {
   if (!auth.authed) return unauthorized();
 
   const params = new URL(req.url).searchParams;
+  // Counts only: who still owes per session, without the receipts or the
+  // recipient read. The Payments card's date picker marks an owing day from
+  // it, for every session rather than the newest 24.
+  const countsOnly = params.get('counts') === '1';
   const requested = parseInt(params.get('limit') ?? '', 10);
-  const limit = Math.max(1, Math.min(MAX_LIMIT, Number.isFinite(requested) ? requested : DEFAULT_LIMIT));
+  const limit = Math.max(1, Math.min(countsOnly ? MAX_COUNTS_LIMIT : MAX_LIMIT, Number.isFinite(requested) ? requested : DEFAULT_LIMIT));
 
   try {
     const scope = groupScope(resolveGroupId(req));
@@ -35,11 +42,13 @@ export async function GET(req: NextRequest) {
     // The club's recipient is the default (the group doc's, else the calling
     // admin's own — the same answer the settings screen shows and members are
     // told, lib/payTo.ts); a session may override it.
-    const { resource: adminMember } = await membersContainer
-      .item(auth.memberId, auth.memberId)
-      .read<Member>();
-    const globalRecipient: ETransferRecipient | null =
-      recipientOf(await readGroup(scope.groupId)) ?? adminMember?.eTransferRecipient ?? null;
+    let globalRecipient: ETransferRecipient | null = null;
+    if (!countsOnly) {
+      const { resource: adminMember } = await membersContainer
+        .item(auth.memberId, auth.memberId)
+        .read<Member>();
+      globalRecipient = recipientOf(await readGroup(scope.groupId)) ?? adminMember?.eTransferRecipient ?? null;
+    }
 
     // The currently-active session is owned by the Command Center's live
     // receipt — this list is for PAST (archived) sessions only. Exclude it
@@ -90,10 +99,13 @@ export async function GET(req: NextRequest) {
       const active = roster.filter((p) => !p.removed && !p.waitlisted);
       const paidCount = active.filter((p) => p.paid === true).length;
       const paidPercent = active.length > 0 ? Math.round((paidCount / active.length) * 100) : 0;
-      // Who still owes: not paid and not covered. The Payments card's session
-      // chips read this ("2 owing" / "all paid") so a past session says what
-      // is left to collect without being opened.
+      // Who still owes: not paid and not covered. The Payments card's date
+      // picker dots each session's day from this (amber owing, grey all paid)
+      // so a past session says what is left to collect without being opened.
       const unpaidCount = active.filter((p) => p.paid !== true && !p.writtenOff).length;
+      if (countsOnly) {
+        return { sessionId: s.id, date: s.datetime ?? '', attendanceCount: active.length, unpaidCount };
+      }
 
       const recipient = s.eTransferRecipient ?? globalRecipient;
       const build = buildReceiptInput(s, roster, recipient);

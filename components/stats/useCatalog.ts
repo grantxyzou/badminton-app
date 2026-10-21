@@ -13,7 +13,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  */
 const cache = new Map<EquipmentCategory, Promise<CatalogItem[]>>();
 
-function load(category: EquipmentCategory): Promise<CatalogItem[]> {
+/** The shared, cached read itself: for a caller that must decide WHETHER to read (`useHoleLookup`). */
+export function loadCatalog(category: EquipmentCategory): Promise<CatalogItem[]> {
   let p = cache.get(category);
   if (!p) {
     // Default cache mode on purpose: the route answers `Cache-Control:
@@ -52,7 +53,7 @@ export function useCatalog(category: EquipmentCategory): UseCatalog {
 
   useEffect(() => {
     let live = true;
-    load(category)
+    loadCatalog(category)
       .then((items) => { if (live) setState({ category, items, loaded: true, loadError: false }); })
       .catch(() => { if (live) setState({ category, items: [], loaded: true, loadError: true }); });
     return () => { live = false; };
