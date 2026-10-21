@@ -7,16 +7,10 @@ import { POST } from '@/app/api/events/route';
 import { resetMockStore, getStore, setupAdminPin } from './helpers';
 
 /**
- * The usage records (docs/plans/usage-metrics.md): off by flag until the
- * store privacy labels say so, and never able to fail the thing they record.
- *
- * Both halves of the flag are pinned, because the OFF branch is what runs in
- * production today: a regression there would start recording before the
- * privacy text and the store labels allow it.
+ * The usage records (docs/plans/usage-metrics.md): always on since their flag
+ * retired on 2026-10-21, bounded in what they store, and never able to fail
+ * the thing they record.
  */
-
-const FLAG = 'NEXT_PUBLIC_FLAG_USAGE_METRICS';
-const before = process.env[FLAG];
 
 const events = () => (getStore()['events'] ?? []) as Array<Record<string, unknown>>;
 
@@ -41,34 +35,23 @@ beforeEach(() => {
   setupAdminPin();
 });
 afterEach(() => {
-  if (before === undefined) delete process.env[FLAG];
-  else process.env[FLAG] = before;
   vi.doUnmock('@/lib/events');
   vi.restoreAllMocks();
 });
 
 describe('sign_in, written by completeSignIn', () => {
-  it('records nothing with the flag off', async () => {
-    process.env[FLAG] = 'false';
-    await completeSignIn(NextResponse.json({}), { id: 'm1', name: 'Lin', role: 'member' }, 'bpm', 'pin');
-    expect(events()).toHaveLength(0);
-  });
-
-  it('records the method and the minted group with the flag on', async () => {
-    process.env[FLAG] = 'true';
+  it('records the method and the minted group', async () => {
     await completeSignIn(NextResponse.json({}), { id: 'm1', name: 'Lin', role: 'member' }, 'bpm', 'google');
     expect(events()).toHaveLength(1);
     expect(events()[0]).toMatchObject({ memberId: 'm1', kind: 'sign_in', via: 'google', groupId: 'bpm' });
   });
 
   it('records nothing for a re-mint (via null)', async () => {
-    process.env[FLAG] = 'true';
     await completeSignIn(NextResponse.json({}), { id: 'm1', name: 'Lin', role: 'member' }, 'bpm', null);
     expect(events()).toHaveLength(0);
   });
 
   it('never fails the sign-in when the record cannot be written', async () => {
-    process.env[FLAG] = 'true';
     vi.resetModules();
     vi.doMock('@/lib/events', async (importOriginal) => {
       const mod = await importOriginal<typeof import('@/lib/events')>();
@@ -84,16 +67,7 @@ describe('sign_in, written by completeSignIn', () => {
 });
 
 describe('app_open and tab_view, through POST /api/events', () => {
-  it('404s both with the flag off and writes nothing', async () => {
-    process.env[FLAG] = 'false';
-    const lin = memberCookie('m1', 'Lin');
-    expect((await POST(beacon({ kind: 'app_open', platform: 'ios' }, lin))).status).toBe(404);
-    expect((await POST(beacon({ kind: 'tab_view', tab: 'home' }, lin))).status).toBe(404);
-    expect(events()).toHaveLength(0);
-  });
-
-  it('records them with a bounded payload when on', async () => {
-    process.env[FLAG] = 'true';
+  it('records them with a bounded payload', async () => {
     const lin = memberCookie('m1', 'Lin');
     expect((await POST(beacon({ kind: 'app_open', platform: 'installed', url: '/bpm?join=secret' }, lin))).status).toBe(201);
     expect((await POST(beacon({ kind: 'tab_view', tab: 'skills' }, lin))).status).toBe(201);
@@ -107,13 +81,11 @@ describe('app_open and tab_view, through POST /api/events', () => {
   });
 
   it('refuses sign_in from a client — it is a server kind', async () => {
-    process.env[FLAG] = 'true';
     const res = await POST(beacon({ kind: 'sign_in', via: 'pin' }, memberCookie('m1', 'Lin')));
     expect(res.status).toBe(400);
   });
 
   it('limits one member across many addresses', async () => {
-    process.env[FLAG] = 'true';
     const lin = memberCookie('m-flood', 'Lin');
     let limited = false;
     for (let i = 0; i < 130; i++) {

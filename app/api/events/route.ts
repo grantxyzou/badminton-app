@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, isUsageKind, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS } from '@/lib/events';
-import { usageOn } from '@/lib/usage';
+import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS } from '@/lib/events';
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -104,13 +103,6 @@ export async function POST(req: NextRequest) {
   // Order is load-bearing: rate limit (rule 4) and auth (rule 12) both still
   // run FIRST. Hoisting the kind parse above them to decide the gate earlier
   // would put body parsing in front of authentication.
-  //
-  // The usage kinds (app_open, tab_view) are the one gated family today:
-  // nothing about how members use the app is recorded until the privacy
-  // labels say so (docs/plans/usage-metrics.md).
-  if (isUsageKind(body.kind) && !usageOn()) {
-    return NextResponse.json({ error: 'not_enabled' }, { status: 404 });
-  }
   try {
     const resource = await writeEvent(
       {

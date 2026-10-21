@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { isFlagOn } from './flags';
 import { recordEngagement } from './engagement';
 import { nativePlatform } from './native';
 import { isStandalone } from './standalone';
@@ -27,13 +26,12 @@ const COUNTED_TABS: readonly string[] = ['home', 'stringing', 'skills', 'profile
  * launch — and again after the app has been away for half an hour — and
  * `tab_view` on each change of tab. Mounted ONCE, in HomeShell.
  *
- * Off with NEXT_PUBLIC_FLAG_USAGE_METRICS off, and silent for anyone not
- * signed in: the server refuses both (flag off → 404, no cookie → 401), but
- * not sending is cheaper than being refused. The admin tab is not usage.
+ * Silent for anyone not signed in: the server refuses both (no cookie →
+ * 401), but not sending is cheaper than being refused. The admin tab is not usage.
  * Fire-and-forget through `recordEngagement`, like every other beacon.
  */
 export function useUsageBeacons(activeTab: string, signedIn: boolean): void {
-  const on = isFlagOn('NEXT_PUBLIC_FLAG_USAGE_METRICS') && signedIn;
+  const on = signedIn;
   const opened = useRef(false);
   const lastTab = useRef<string | null>(null);
 
