@@ -45,6 +45,8 @@ import AvatarSheet from './profile/AvatarSheet';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+/** The deployed commit, baked in at build time (`deploy-next.yml`); `dev` locally. */
+const BUILD_SHA = (process.env.NEXT_PUBLIC_GIT_SHA || 'dev').slice(0, 7);
 
 interface Props {
   sessionId: string;
@@ -923,6 +925,14 @@ export default function ProfileTab({
       >
         {tDelete('link')}
       </button>
+
+      {/* Which build this phone is running: the deploy's commit, the same id
+          the page carries in its `bpm-build` meta tag. A member can read it
+          off when something looks old, and "what does yours say?" answers
+          whether a fix has reached them. Quiet, last, and not a control. */}
+      <p className="fs-xs text-center" style={{ margin: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+        {tSettings('version', { sha: BUILD_SHA })}
+      </p>
 
       {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
 

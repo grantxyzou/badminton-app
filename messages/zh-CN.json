@@ -619,6 +619,7 @@
       "statsPrivacy": "数据与隐私",
       "statsPrivacyOn": "已开启",
       "statsPrivacyOff": "私密",
+      "version": "版本 {sha}",
       "releaseNotes": "更新日志",
       "logout": "退出登录",
       "reportProblem": "反馈问题",

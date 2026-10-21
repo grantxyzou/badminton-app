@@ -127,6 +127,15 @@ describe('ProfileTab — hierarchy pass', () => {
     expect(container.querySelector('ul')).not.toBeNull();
   });
 
+  // Which build the phone is running, so "has the fix reached you?" has an answer.
+  it('ends with the version this phone is running', async () => {
+    signedIn();
+    renderWith();
+    await screen.findByText('Michael');
+    // No build sha in tests, so it reads `dev`, as it does locally.
+    expect(screen.getByText('Version dev')).toBeDefined();
+  });
+
   // #1 — admin becomes one row. The count survives; the tiles and the
   // full-width CTA do not.
   it('renders the admin console as one row carrying the count, not a hero', async () => {
