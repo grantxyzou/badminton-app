@@ -6,6 +6,9 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import ActionRow from '@/components/primitives/ActionRow';
 import ErrorState from '@/components/primitives/ErrorState';
 import { catalogLabel, matches, parsePrice, priceDraftOf } from '@/lib/shelfEdit';
+import { MAX_LABEL_LEN } from '@/lib/stringingLimits';
+import type { StringColourId } from '@/lib/stringPalette';
+import { ColourPicker } from '@/components/stringing/StringColours';
 import type { StringStockLine } from '@/lib/stringStockMath';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
 
@@ -64,6 +67,12 @@ interface Props {
   onRemove?: () => void;
   onAlias?: (target: string) => void;
   onOffer?: () => void;
+  /** offered: the colours the club has it in. */
+  colours?: StringColourId[];
+  onSaveColours?: (ids: StringColourId[]) => void;
+  /** offered: a new name for it. The card answers with `renameError` if the server refused. */
+  onRename?: (to: string) => void;
+  renameError?: 'name_taken' | 'invalid_name' | null;
 }
 
 export default function StringShelfSheet(props: Props) {
@@ -72,7 +81,19 @@ export default function StringShelfSheet(props: Props) {
   const [priceDraft, setPriceDraft] = useState(() => priceDraftOf(props.price));
   const [query, setQuery] = useState('');
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [nameDraft, setNameDraft] = useState(label);
+  const [colourDraft, setColourDraft] = useState<StringColourId[]>(() => props.colours ?? []);
   const off = busy || !online;
+  const nameTrim = nameDraft.trim();
+  // Another offered string with this name, any case: refused here before the
+  // server is asked, and said in the same words the server's 409 gets.
+  const nameTaken = (props.offered ?? []).some((s) => s !== label && s.toLowerCase() === nameTrim.toLowerCase());
+  const nameChanged = nameTrim !== label;
+  const nameOk = !!nameTrim && nameTrim.length <= MAX_LABEL_LEN && !nameTaken;
+  const nameError = nameTaken || props.renameError === 'name_taken'
+    ? t('shelf.sheet.nameTaken')
+    : props.renameError === 'invalid_name' ? t('shelf.sheet.nameInvalid') : null;
+  const coloursChanged = colourDraft.join() !== (props.colours ?? []).join();
   const parsed = parsePrice(priceDraft);
   // Against the STORED value, unset included: an empty field on a string with
   // no price saves "Ask" (null), which is different from no price at all.
@@ -166,7 +187,41 @@ export default function StringShelfSheet(props: Props) {
       <BottomSheetBody>
         <div className="flex flex-col gap-5">
           {errorLine}
-          {/* PRICE — the first thing, because it is what a player reads. */}
+          {/* NAME — what the shelf, the request form and the bench call it.
+              Renaming keeps its price, link, colours and stock: jobs and
+              purchases under the old name go on counting as this string. */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="shelf-name" className="section-label-muted">{t('shelf.sheet.name')}</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <input
+                id="shelf-name"
+                type="text"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && nameChanged && nameOk && !off) {
+                    e.preventDefault();
+                    props.onRename?.(nameTrim);
+                  }
+                }}
+                maxLength={MAX_LABEL_LEN}
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <button
+                type="button"
+                className="cc-btn cc-btn-secondary"
+                disabled={off || !nameChanged || !nameOk}
+                onClick={() => props.onRename?.(nameTrim)}
+              >
+                {t('shelf.sheet.nameSave')}
+              </button>
+            </div>
+            {nameError
+              ? <p className="field-error" role="alert">{nameError}</p>
+              : <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.nameHint')}</p>}
+          </div>
+
+          {/* PRICE — what a player reads first. */}
           <div className="flex flex-col gap-2">
             <label htmlFor="shelf-price" className="section-label-muted">{t('strings.price')}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
@@ -199,6 +254,25 @@ export default function StringShelfSheet(props: Props) {
             <p className="fs-xs" style={{ margin: 0, color: parsed === undefined ? 'var(--sev-crit-text)' : 'var(--text-muted)' }}>
               {parsed === undefined ? t('shelf.sheet.priceInvalid') : t('strings.priceHint')}
             </p>
+          </div>
+
+          {/* COLOURS — what is on the reel, shown to players on the Stringing
+              tab in place of the maker's list. */}
+          <div className="flex flex-col gap-2">
+            <span className="section-label-muted">{t('shelf.sheet.colours')}</span>
+            <ColourPicker value={colourDraft} onChange={setColourDraft} disabled={off} label={t('shelf.sheet.colours')} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+              <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.coloursHint')}</p>
+              <button
+                type="button"
+                className="cc-btn cc-btn-secondary"
+                disabled={off || !coloursChanged}
+                onClick={() => props.onSaveColours?.(colourDraft)}
+                style={{ flex: '0 0 auto' }}
+              >
+                {t('shelf.sheet.coloursSave')}
+              </button>
+            </div>
           </div>
 
           {/* STOCK — counted from jobs; the only thing logged here is a purchase. */}

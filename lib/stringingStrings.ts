@@ -25,6 +25,7 @@ export function stringsDocId(groupId: string): string {
 export { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
 import { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
 import { MAX_PRICE_CENTS } from './stringingRateCard';
+import { normaliseColourList, type StringColourId } from './stringPalette';
 
 export interface OfferedStringsDoc {
   id: string;
@@ -53,6 +54,13 @@ export interface OfferedStringsDoc {
    * old spelling. Admin-only: the public read does not return it.
    */
   aliases?: Record<string, string>;
+  /**
+   * Offered label → the colours the club has that string in, as palette ids
+   * (`lib/stringPalette.ts`). ADDITIVE, like the maps above: a label with no
+   * entry shows the maker's colours on the Stringing tab, with "ask the
+   * stringer"; a label with one shows what is actually on the reel.
+   */
+  colours?: Record<string, string[]>;
   updatedAt: string;
   updatedBy: string | null;
 }
@@ -62,6 +70,7 @@ export interface OfferedStringsRead {
   links: Record<string, string>;
   prices: Record<string, number | null>;
   aliases: Record<string, string>;
+  colours: Record<string, StringColourId[]>;
 }
 
 /** More than any shelf has had typos for; a cap so the doc stays small. */
@@ -77,7 +86,13 @@ export async function readOfferedStringsWithLinks(groupId: string): Promise<Offe
     const known = new Set(strings);
     const links: Record<string, string> = {};
     for (const [label, id] of Object.entries(raw)) if (known.has(label) && typeof id === 'string') links[label] = id;
-    return { strings, links, prices: normalisePrices(resource?.prices, strings), aliases: normaliseAliases(resource?.aliases, strings) };
+    return {
+      strings,
+      links,
+      prices: normalisePrices(resource?.prices, strings),
+      aliases: normaliseAliases(resource?.aliases, strings),
+      colours: normaliseColours(resource?.colours, strings),
+    };
   } catch (err) {
     console.error('readOfferedStringsWithLinks failed:', err);
     return null;
@@ -117,6 +132,71 @@ export function normalisePrices(value: unknown, strings: readonly string[]): Rec
     else if (typeof cents === 'number' && Number.isInteger(cents) && cents >= 0 && cents <= MAX_PRICE_CENTS) out[label] = cents;
   }
   return out;
+}
+
+/**
+ * Clean a submitted colour map against the (already normalised) list: a label
+ * not in the list is DROPPED, like the other maps, and each list keeps palette
+ * ids only. An empty list is dropped too — "no colours set" and "none" read
+ * the same, the maker's colours.
+ */
+export function normaliseColours(value: unknown, strings: readonly string[]): Record<string, StringColourId[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const known = new Set(strings);
+  const out: Record<string, StringColourId[]> = {};
+  for (const [label, list] of Object.entries(value as Record<string, unknown>)) {
+    if (!known.has(label)) continue;
+    const clean = normaliseColourList(list);
+    if (clean.length > 0) out[label] = clean;
+  }
+  return out;
+}
+
+export type RenameError = 'invalid_name' | 'not_offered' | 'name_taken';
+
+/**
+ * Rename one offered string, carrying everything keyed by its label with it
+ * (price, catalog link, colours, and the old spellings counted as it), and
+ * counting the OLD name as the new one from now on — jobs and purchases
+ * recorded under it are not rewritten, so without that alias the stock would
+ * forget them. Pure: the route applies it to the stored doc, so a rename never
+ * races a stale copy of the other maps.
+ */
+export function renameOffered(
+  read: OfferedStringsRead,
+  rawFrom: unknown,
+  rawTo: unknown,
+): { ok: true; value: OfferedStringsRead } | { ok: false; error: RenameError } {
+  if (typeof rawFrom !== 'string' || typeof rawTo !== 'string') return { ok: false, error: 'invalid_name' };
+  const from = rawFrom;
+  const to = rawTo.trim();
+  if (!to || to.length > MAX_LABEL_LEN) return { ok: false, error: 'invalid_name' };
+  const at = read.strings.indexOf(from);
+  if (at < 0) return { ok: false, error: 'not_offered' };
+  if (to === from) return { ok: true, value: read };
+  if (read.strings.some((s, i) => i !== at && s.toLowerCase() === to.toLowerCase())) return { ok: false, error: 'name_taken' };
+
+  const strings = read.strings.map((s, i) => (i === at ? to : s));
+  const move = <V>(map: Record<string, V>): Record<string, V> => {
+    const next: Record<string, V> = {};
+    for (const [k, v] of Object.entries(map)) next[k === from ? to : k] = v;
+    return next;
+  };
+  const aliases: Record<string, string> = {};
+  for (const [old, target] of Object.entries(read.aliases)) aliases[old] = target === from ? to : target;
+  // The old name keeps counting as this string. A change of case only needs
+  // nothing: the stock matches labels without case.
+  if (from.toLowerCase() !== to.toLowerCase()) aliases[from] = to;
+  return {
+    ok: true,
+    value: {
+      strings,
+      links: move(read.links),
+      prices: move(read.prices),
+      colours: move(read.colours),
+      aliases: normaliseAliases(aliases, strings),
+    },
+  };
 }
 
 /**

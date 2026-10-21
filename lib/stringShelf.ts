@@ -9,6 +9,7 @@
 import type { CatalogItem } from './types';
 import type { StockBand } from './stringStockMath';
 import { formatServicePrice } from './stringingRateCard';
+import { normaliseColourList, type StringColourId } from './stringPalette';
 
 export type { StockBand };
 
@@ -20,6 +21,8 @@ export interface Shelf {
   /** `null` = the stock read failed; a missing label = unknown. */
   stock: Record<string, StockBand> | null;
   players: Record<string, number>;
+  /** Label → the colours the club has it in (palette ids); a missing label has none said. */
+  colours: Record<string, StringColourId[]>;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -51,7 +54,14 @@ export function parseShelf(d: unknown): Shelf | null {
   }
   const players: Record<string, number> = {};
   if (isObj(d.players)) for (const [k, v] of Object.entries(d.players)) if (typeof v === 'number') players[k] = v;
-  return { strings, links, prices, stock, players };
+  const colours: Record<string, StringColourId[]> = {};
+  if (isObj(d.colours)) {
+    for (const [k, v] of Object.entries(d.colours)) {
+      const list = normaliseColourList(v);
+      if (list.length > 0) colours[k] = list;
+    }
+  }
+  return { strings, links, prices, stock, players, colours };
 }
 
 /** The shelf price for a label: a figure, "ask" (`null` stored), or nothing set (`undefined`). */
@@ -173,6 +183,28 @@ const SWATCH: Record<string, string> = {
 };
 
 const swatchOf = (name: string) => SWATCH[name.trim().toLowerCase()] ?? 'var(--text-muted)';
+
+/** The club's palette (`lib/stringPalette.ts`), drawn: the catalog's swatches, plus the three it lacks. */
+const PALETTE_FILL: Record<StringColourId, string> = {
+  white: SWATCH.white,
+  yellow: SWATCH.yellow,
+  fluo_yellow: SWATCH['fluorescent yellow'],
+  gold: SWATCH.gold,
+  orange: SWATCH.orange,
+  red: SWATCH.red,
+  pink: SWATCH.pink,
+  purple: SWATCH.purple,
+  blue: SWATCH.blue,
+  navy: '#1e3a8a',
+  turquoise: '#2dd4bf',
+  green: SWATCH.green,
+  grey: '#9ca3af',
+  black: SWATCH.black,
+};
+
+export function paletteFill(id: StringColourId): string {
+  return PALETTE_FILL[id];
+}
 
 export interface StringColour {
   name: string;

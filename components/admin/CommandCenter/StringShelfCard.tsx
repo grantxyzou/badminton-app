@@ -15,8 +15,10 @@ import { formatServicePrice } from '@/lib/stringingRateCard';
 import { LOW_STOCK_SETS, labelKey, type StringStockSummary } from '@/lib/stringStockMath';
 import { catalogLabel, matches } from '@/lib/shelfEdit';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
+import { normaliseColourList, type StringColourId } from '@/lib/stringPalette';
 import StringShelfSheet, { type ShelfSheetMode } from './StringShelfSheet';
 import StringPurchaseSheet from './StringPurchaseSheet';
+import { ColourDots } from '@/components/stringing/StringColours';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -26,6 +28,19 @@ interface Shelf {
   links: Record<string, string>;
   prices: Record<string, number | null>;
   aliases: Record<string, string>;
+  colours: Record<string, StringColourId[]>;
+}
+
+/** The route's colour map, palette ids only. */
+function coloursOf(v: unknown): Record<string, StringColourId[]> {
+  const out: Record<string, StringColourId[]> = {};
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    for (const [k, list] of Object.entries(v)) {
+      const clean = normaliseColourList(list);
+      if (clean.length > 0) out[k] = clean;
+    }
+  }
+  return out;
 }
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2).replace(/\.00$/, '')}`;
@@ -57,6 +72,7 @@ export default function StringShelfCard() {
   const [jobsOpen, setJobsOpen] = useState(false);
   // "The shelf is full" — said, rather than the typed name silently vanishing.
   const [full, setFull] = useState(false);
+  const [renameError, setRenameError] = useState<'name_taken' | 'invalid_name' | null>(null);
 
   const loadStock = useCallback(async () => {
     const res = await fetch(`${BASE}/api/stringing/stock`, { cache: 'no-store' });
@@ -83,6 +99,7 @@ export default function StringShelfCard() {
           links: d.links && typeof d.links === 'object' ? d.links : {},
           prices: d.prices && typeof d.prices === 'object' ? d.prices : {},
           aliases: s.aliases && typeof s.aliases === 'object' ? s.aliases : {},
+          colours: coloursOf(d.colours),
         });
       })
       .catch(() => {
@@ -116,7 +133,7 @@ export default function StringShelfCard() {
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
       if (Array.isArray(d.strings)) {
-        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {} });
+        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {}, colours: coloursOf(d.colours) });
       }
       await loadStock().catch(() => setLoadError(true));
       return true;
@@ -124,6 +141,40 @@ export default function StringShelfCard() {
       setShelf(previous);
       setSaveError(true);
       return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Rename one offered string. The server moves its price, link, colours and
+   * old spellings on the STORED doc, so nothing here is sent but the two names.
+   * The open sheet follows the string to its new name.
+   */
+  async function rename(from: string, to: string) {
+    if (busy || !online) return;
+    setBusy(true);
+    setSaveError(false);
+    setRenameError(null);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/strings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rename: { from, to } }),
+      });
+      if (res.status === 409 || res.status === 400) {
+        setRenameError(res.status === 409 ? 'name_taken' : 'invalid_name');
+        return;
+      }
+      if (!res.ok) throw new Error(String(res.status));
+      const d = await res.json();
+      if (Array.isArray(d.strings)) {
+        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {}, colours: coloursOf(d.colours) });
+      }
+      setSheet((s) => (s && s.label === from ? { ...s, label: to } : s));
+      await loadStock().catch(() => setLoadError(true));
+    } catch {
+      setSaveError(true);
     } finally {
       setBusy(false);
     }
@@ -194,7 +245,10 @@ export default function StringShelfCard() {
       : t('shelf.subtitleEmpty');
   const suggestions = ready ? matches(catalog.items, draft.trim()) : [];
 
-  const openSheet = (mode: ShelfSheetMode, label: string) => setSheet((s) => ({ mode, label, n: (s?.n ?? 0) + 1 }));
+  const openSheet = (mode: ShelfSheetMode, label: string) => {
+    setRenameError(null);
+    setSheet((s) => ({ mode, label, n: (s?.n ?? 0) + 1 }));
+  };
   const closeSheet = () => setSheet(null);
   const sheetLabel = sheet?.label ?? '';
   const sheetLine = sheet ? (sheet.mode === 'jobLabel' ? null : lineFor(sheetLabel)) : null;
@@ -226,6 +280,11 @@ export default function StringShelfCard() {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', color: low ? 'var(--sev-warn)' : undefined }}>
                       {low && <span className="material-icons icon-xs" aria-hidden="true">warning</span>}
                       {hasStock ? t('shelf.setsLeft', { count: line.remainingSets }) : t('shelf.noStock')}
+                      {(shelf.colours[label]?.length ?? 0) > 0 && (
+                        <span style={{ marginLeft: 'var(--space-2)', display: 'inline-flex' }}>
+                          <ColourDots ids={shelf.colours[label]} />
+                        </span>
+                      )}
                     </span>
                   }
                   trailing={
@@ -384,6 +443,15 @@ export default function StringShelfCard() {
           onAlias={(target) => {
             void save({ aliases: { ...shelf.aliases, [sheetLabel]: target } }).then((ok) => ok && closeSheet());
           }}
+          colours={shelf.colours[sheetLabel] ?? []}
+          onSaveColours={(ids) => {
+            const next = { ...shelf.colours };
+            if (ids.length > 0) next[sheetLabel] = ids;
+            else delete next[sheetLabel];
+            void save({ colours: next });
+          }}
+          onRename={(to) => void rename(sheetLabel, to)}
+          renameError={renameError}
           onOffer={() => {
             // Closes either way: a refused add (a full shelf) is said on the
             // card, under the add field, which is where the sheet returns to.

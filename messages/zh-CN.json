@@ -200,7 +200,25 @@
         "typeWord_control": "控制",
         "typeWord_durability": "耐用",
         "typeWord_hybrid": "混搭",
-        "typeWord_all_round": "全面"
+        "typeWord_all_round": "全面",
+        "coloursOnReel": "现有颜色",
+        "coloursLabel": "颜色：{colours}",
+        "colourName": {
+          "white": "白色",
+          "yellow": "黄色",
+          "fluo_yellow": "荧光黄",
+          "gold": "金色",
+          "orange": "橙色",
+          "red": "红色",
+          "pink": "粉色",
+          "purple": "紫色",
+          "blue": "蓝色",
+          "navy": "藏青",
+          "turquoise": "青绿",
+          "green": "绿色",
+          "grey": "灰色",
+          "black": "黑色"
+        }
       }
     },
     "skillLead": {
@@ -1714,7 +1732,15 @@
           "jobLabelIntro": "有 {count} 支球拍用了这个名称，但它不在货架上。",
           "sameAs": "与以下球线相同",
           "offerIt": "上架",
-          "offerItHint": "以此名称上架。"
+          "offerItHint": "以此名称上架。",
+          "name": "名称",
+          "nameSave": "改名",
+          "nameHint": "球员和穿线台看到的名称。旧名称下的订单和库存仍算作这条线。",
+          "nameTaken": "你的线单上已有同名的线。",
+          "nameInvalid": "名称不能为空，最多 60 个字。",
+          "colours": "现有颜色",
+          "coloursHint": "球员会在穿线页面看到这些颜色。",
+          "coloursSave": "保存颜色"
         }
       },
       "propose": {

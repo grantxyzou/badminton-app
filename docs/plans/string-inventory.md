@@ -123,6 +123,20 @@ shrinks to the plain list it replaces.
   Grant's canvas edits came with it: the card is titled "Strings in stock",
   the map subtitle says "Tap on a string to view more", and the bottom axis
   label starts at the plot's left edge.
+- **Rename, and the colours on the reel (2026-10-21).** Grant: "I need the
+  ability to edit inputed string name. Create a colour pallett picker so I can
+  input correct colours and have those reflected in the strining page." A
+  string's sheet on the bench takes a new name and a set of colours.
+  - Rename is its own PATCH operation (`{ rename: { from, to } }`,
+    `renameOffered`), applied to the STORED doc so it never races another
+    device's maps. Price, link and colours move with the label, aliases that
+    pointed at it follow, and the old name becomes an alias: jobs and
+    purchases are never rewritten, so without it the stock would forget them.
+  - Colours are palette ids (`lib/stringPalette.ts`, fourteen colours covering
+    every name the catalog uses), stored as `OfferedStringsDoc.colours`, never
+    hex. The Stringing tab shows them as dots on the row and as "On the reel"
+    on the string's page, where they replace the maker's list and its "ask the
+    stringer which are on the reel".
 
 ## Shape
 

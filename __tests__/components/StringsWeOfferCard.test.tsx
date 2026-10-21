@@ -310,3 +310,19 @@ describe('as a whole tab', () => {
     expect(container.textContent).toBe('');
   });
 });
+
+describe('the colours on the reel', () => {
+  it('shows the stringer’s colours on the row and on the string’s page, in place of the maker’s list', async () => {
+    try { localStorage.setItem('bpm:strings-view', 'list'); } catch { /* jsdom always has it */ }
+    mockApi(['BG80', 'BG65'], { colours: { BG80: ['white', 'yellow', 'not-a-colour'] } });
+    wrap();
+    expect(await screen.findByRole('img', { name: 'Colours: White, Yellow' })).toBeDefined();
+    // Only the string the stringer described carries dots.
+    expect(screen.getAllByRole('img', { name: /^Colours:/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /Yonex BG80/ }));
+    const sheet = await screen.findByRole('dialog');
+    expect(within(sheet).getByText('On the reel')).toBeDefined();
+    expect(within(sheet).getByText('Yellow')).toBeDefined();
+    expect(within(sheet).queryByText(enMessages.home.stringing.offer.coloursNote)).toBeNull();
+  });
+});
