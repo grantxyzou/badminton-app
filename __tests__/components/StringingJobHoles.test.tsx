@@ -121,6 +121,58 @@ describe('the intake suggests catalog names (4b)', () => {
   });
 });
 
+describe('the intake suggests the player’s own gear', () => {
+  it('offers their rackets and strings, and a string fills its tension', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      const body = () => {
+        if (u.includes('/api/equipment/catalog')) return { items: rackets };
+        if (u.includes('/api/members')) return { members: [{ id: 'member-lin', name: 'Lin' }] };
+        if (u.includes('/api/equipment/gear')) return { gear: {
+          id: 'gear-member-lin', memberId: 'member-lin', activeRacketId: 'r1', updatedAt: '',
+          items: [
+            { id: 'r1', catalogId: null, category: 'racket', label: 'Yonex Astrox 88D Pro' },
+            { id: 's1', catalogId: null, category: 'string', label: 'Yonex BG65', tensionLbs: 24 },
+          ],
+        } };
+        if (u.includes('archived=true')) return { jobs: [] };
+        if (u.includes('/api/stringing/jobs')) return { jobs: [] };
+        return {};
+      };
+      return Promise.resolve({ ok: true, status: 200, json: async () => body() } as Response);
+    }));
+    wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Lin' }));
+    const racket = screen.getByLabelText('Racket, e.g. Astrox 99 Pro') as HTMLInputElement;
+    const rows = await screen.findByRole('group', { name: "Lin's rackets" });
+    expect(rows.textContent).toContain('In play');
+    fireEvent.click(screen.getByRole('button', { name: /Yonex Astrox 88D Pro/ }));
+    expect(racket.value).toBe('Yonex Astrox 88D Pro');
+    fireEvent.click(screen.getByRole('button', { name: /Yonex BG65/ }));
+    expect((screen.getByLabelText('String, e.g. BG80 white') as HTMLInputElement).value).toBe('Yonex BG65');
+    expect(screen.getByText('24')).toBeDefined();
+    expect(screen.getByText('26')).toBeDefined();
+    // A custom value is still allowed: the suggestions just step aside.
+    fireEvent.change(racket, { target: { value: 'My own frame' } });
+    expect(racket.value).toBe('My own frame');
+    expect(screen.queryByRole('group', { name: "Lin's rackets" })).toBeNull();
+  });
+
+  it('a failed gear read offers nothing and the form still works', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/api/members')) return Promise.resolve({ ok: true, json: async () => ({ members: [{ id: 'member-lin', name: 'Lin' }] }) } as Response);
+      if (u.includes('/api/equipment/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: rackets }) } as Response);
+      return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as Response);
+    }));
+    wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Lin' }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole('group', { name: "Lin's rackets" })).toBeNull();
+    expect(screen.getByLabelText('Racket, e.g. Astrox 99 Pro')).toBeDefined();
+  });
+});
+
 describe('the stringer’s card', () => {
   it('shows the count on an assigned job', async () => {
     respond({ stringerJobs: [job('Yonex Astrox 100ZZ')] });

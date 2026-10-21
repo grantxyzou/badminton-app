@@ -8,11 +8,14 @@ import OfferedStringOptions from '@/components/stringing/OfferedStringOptions';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
+import StatusBadge from '@/components/primitives/StatusBadge';
 import { useOnline } from '@/lib/useOnline';
 import { useCatalog } from '@/components/stats/useCatalog';
 import { searchCatalog } from '@/lib/gearSearch';
 import { racketIdForLabel, racketIdsByTallyKey } from '@/lib/gearSetup';
 import { isOffered } from '@/lib/catalogOffer';
+import { intakeSuggestions, lastJobFor, matchingSuggestions, type IntakeSuggestions, type StringSuggestion } from '@/lib/intakeSuggestions';
+import type { PlayerGear, StringingJob } from '@/lib/types';
 import { formatServicePrice } from '@/lib/stringingRateCard';
 import {
   TENSION_MIN_LB,
@@ -69,12 +72,46 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
      name the bench can match; typing anything else is still allowed. */
   const rackets = useCatalog('racket');
   const racketIds = useMemo(() => racketIdsByTallyKey(rackets.items), [rackets.items]);
+  /* The picked player's own rackets and strings (their bag, and the bench's
+     last job for them), offered first. A failed read offers nothing: these
+     decorate a form that works without them. */
+  const [theirs, setTheirs] = useState<IntakeSuggestions | null>(null);
+  useEffect(() => {
+    setTheirs(null);
+    if (!picked) return;
+    let cancelled = false;
+    const read = (path: string) =>
+      fetch(`${BASE}/api/${path}`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+    Promise.all([
+      read(`equipment/gear?name=${encodeURIComponent(picked.name)}`),
+      read('stringing/jobs'),
+      read('stringing/jobs?archived=true'),
+    ]).then(([g, live, archived]) => {
+      if (cancelled) return;
+      const gear: PlayerGear | null = g && typeof g.gear === 'object' ? g.gear : null;
+      const jobs: StringingJob[] = [
+        ...(Array.isArray(live?.jobs) ? live.jobs : []),
+        ...(Array.isArray(archived?.jobs) ? archived.jobs : []),
+      ];
+      setTheirs(intakeSuggestions(gear, lastJobFor(jobs, picked.id)));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [picked]);
+  const theirRackets = useMemo(() => matchingSuggestions(theirs?.rackets ?? [], racketLabel), [theirs, racketLabel]);
   const racketSuggestions = useMemo(() => {
     const q = racketLabel.trim();
     if (q.length < 2 || racketIdForLabel(q, racketIds)) return [];
-    return searchCatalog(rackets.items.filter(isOffered), q, (r) => `${r.brand} ${r.model}`).slice(0, 4);
-  }, [racketLabel, racketIds, rackets.items]);
+    const own = new Set((theirs?.rackets ?? []).map((r) => r.label.toLowerCase()));
+    return searchCatalog(rackets.items.filter(isOffered), q, (r) => `${r.brand} ${r.model}`)
+      .filter((r) => !own.has(`${r.brand} ${r.model}`.toLowerCase()))
+      .slice(0, 4);
+  }, [racketLabel, racketIds, rackets.items, theirs]);
   const [stringLabel, setStringLabel] = useState('');
+  const theirStrings = useMemo(() => matchingSuggestions(theirs?.strings ?? [], stringLabel), [theirs, stringLabel]);
   const [mains, setMains] = useState(26);
   const [crosses, setCrosses] = useState(28);
   const [priceDollars, setPriceDollars] = useState('');
@@ -157,6 +194,16 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
     // along onto a string it was not for.
     if (!priceTouched) setPriceDollars(match && shelfPrices ? dollars(shelfPrices[match] ?? null) : '');
   }
+  /** A string they have had before comes with its tension, when one was recorded. */
+  function pickString(s: StringSuggestion) {
+    changeString(s.label);
+    if (typeof s.mains === 'number') setMains(clamp(s.mains));
+    if (typeof s.crosses === 'number') setCrosses(clamp(s.crosses));
+  }
+  const tensionText = (s: StringSuggestion) =>
+    typeof s.mains !== 'number' ? null
+      : s.crosses === undefined || s.crosses === s.mains ? t('theirTensionOne', { mains: s.mains })
+      : t('theirTension', { mains: s.mains, crosses: s.crosses });
 
   // Empty is a legitimate price — "not decided yet", not zero.
   const priceCents = useMemo(() => {
@@ -257,8 +304,22 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
               aria-label={t('racketPlaceholder')}
               maxLength={80}
             />
+            {picked && theirRackets.length > 0 && (
+              <div className="flex flex-col gap-2" role="group" aria-label={t('theirRackets', { name: picked.name })}>
+                <span className="section-label-muted">{t('theirRackets', { name: picked.name })}</span>
+                {theirRackets.map((r) => (
+                  <ListRow
+                    key={r.label}
+                    onClick={() => setRacketLabel(r.label)}
+                    title={<span className="fs-md">{r.label}</span>}
+                    trailing={r.inPlay ? <StatusBadge variant="muted">{t('inPlay')}</StatusBadge> : undefined}
+                  />
+                ))}
+              </div>
+            )}
             {racketSuggestions.length > 0 && (
               <div className="flex flex-col gap-2" role="group" aria-label={t('racketSuggest')}>
+                <span className="section-label-muted">{t('racketSuggest')}</span>
                 {racketSuggestions.map((r) => (
                   <ListRow
                     key={r.id}
@@ -277,6 +338,23 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
               maxLength={80}
               list="intake-offered-strings"
             />
+            {picked && theirStrings.length > 0 && (
+              <div className="flex flex-col gap-2" role="group" aria-label={t('theirStrings', { name: picked.name })}>
+                <span className="section-label-muted">{t('theirStrings', { name: picked.name })}</span>
+                {theirStrings.map((s) => (
+                  <ListRow
+                    key={s.label}
+                    onClick={() => pickString(s)}
+                    title={<span className="fs-md">{s.label}</span>}
+                    subtitle={
+                      <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+                        {[tensionText(s), t(s.source === 'lastJob' ? 'fromLastJob' : 'fromBag')].filter(Boolean).join(' · ')}
+                      </span>
+                    }
+                  />
+                ))}
+              </div>
+            )}
             <OfferedStringOptions id="intake-offered-strings" />
           </div>
         </div>
