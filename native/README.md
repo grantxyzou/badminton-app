@@ -182,3 +182,10 @@ The test suite can see none of this.
   **can cancel own spot** (the deleteToken re-mint). Re-tap → "already used".
 - Receipt share → the native sheet. Android back: sheet closes → Home → exits.
 - Both themes, both languages.
+- **Icon badge** (`lib/appBadge.ts`): with push allowed, owe for a settled
+  session → open Home → the icon shows a red count. Mark it paid (admin) →
+  reopen Home → the badge goes. Sign out → no badge.
+- **Long-press the icon** (`lib/appShortcuts.ts`): Sign up for <day>, What I
+  owe, Request stringing, each with its line. From a CLOSED app, each lands:
+  Home, Home, and the stringing request form open. Sign out → the menu is the
+  phone's own items only.

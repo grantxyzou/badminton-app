@@ -2585,5 +2585,17 @@
       "group": "多人"
     },
     "drillReason": "针对你的{skill}（自评 {value}/5）"
+  },
+  "appShortcuts": {
+    "signUpFor": "报名{day}的活动",
+    "signUpThisWeek": "本周活动",
+    "noSession": "本周没有活动",
+    "notOpenYet": "报名尚未开放",
+    "owed": "我的欠款",
+    "owedAmount": "欠 {amount}",
+    "allPaid": "已全部付清",
+    "owedUnknown": "我的余额",
+    "stringing": "预约穿线",
+    "stringingSub": "预约下一次穿线"
   }
 }

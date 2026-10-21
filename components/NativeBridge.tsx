@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { isNative } from '@/lib/native';
+import { hasNativePlugin, isNative } from '@/lib/native';
 import { closeTopSheet } from '@/lib/sheetStack';
 import { rememberReturnCode } from '@/lib/handoffClient';
 import { routeInApp } from '@/lib/inAppNavigate';
+import { openShortcut } from '@/lib/appShortcuts';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const HOST = 'bpm.grantzou.com';
@@ -33,6 +34,9 @@ type Removable = { remove: () => Promise<void> | void };
  *  - Status bar style following `data-theme`.
  *  - A push notification tap → our own path only; a place inside the app
  *    is switched to in place (`lib/inAppNavigate.ts`), never reloaded.
+ *  - A long-press shortcut on the app icon (`lib/appShortcuts.ts`), the same
+ *    way. The plugin holds a tap that LAUNCHED the app until this listener
+ *    attaches, so a cold start through a shortcut still lands.
  */
 export default function NativeBridge({ activeTab, onGoHome }: Props) {
   // Refs, so the listeners registered once can read the latest values.
@@ -215,6 +219,23 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
         );
       } catch {
         /* messaging plugin absent in this build — nothing to route */
+      }
+
+      // A long-press shortcut. A binary older than the plugin answers false
+      // (the web app is always newer than the store build): skip it there.
+      if (hasNativePlugin('AppShortcuts') !== false) {
+        try {
+          const { AppShortcuts } = await import('@capawesome/capacitor-app-shortcuts');
+          if (disposed) return;
+          handles.push(
+            await AppShortcuts.addListener('click', ({ shortcutId }) => {
+              const url = openShortcut(shortcutId);
+              if (url && !routeInApp(url)) window.location.assign(url);
+            }),
+          );
+        } catch {
+          /* shortcuts plugin absent in this build — nothing to route */
+        }
       }
     })();
 

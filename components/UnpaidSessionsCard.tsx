@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { syncAppBadge, owedBadgeCount } from '@/lib/appBadge';
+import { noteOwedForShortcuts } from '@/lib/appShortcuts';
 import { BALANCE_EVENT } from '@/lib/balanceRefresh';
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
@@ -18,6 +20,10 @@ interface UnpaidSession {
   sessionId: string;
   date: string;
   owedAmount: number;
+  /** The bill is frozen — only these count toward the icon's badge. */
+  settled?: boolean;
+  /** The member said they paid — not counted on the badge. */
+  selfReported?: boolean;
 }
 
 interface StringingCharge {
@@ -171,6 +177,10 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
           setData(res.data);
           setForbidden(false);
           setLoadError(false);
+          // The icon's badge and the long-press menu read this same answer —
+          // only a read that SUCCEEDED, never an error (unknown is not zero).
+          void syncAppBadge(owedBadgeCount(res.data));
+          noteOwedForShortcuts(res.data.totalOwed);
         }
         setLoaded(true);
       })

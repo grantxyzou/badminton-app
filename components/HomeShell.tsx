@@ -29,6 +29,7 @@ import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
 import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
 import { useInAppNavigation } from '@/lib/inAppNavigate';
+import { useAppShortcuts } from '@/lib/appShortcuts';
 import { useEverOpened } from '@/lib/useEverOpened';
 import { prewarmInsight } from '@/lib/useInsight';
 import { TabActiveContext } from '@/lib/tabActivity';
@@ -786,6 +787,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     setTabNonce((n) => ({ ...n, [activeTabRef.current]: (n[activeTabRef.current] ?? 0) + 1 }));
     await new Promise((r) => setTimeout(r, 600));
   }, []);
+
+  // The store app's long-press menu (lib/appShortcuts.ts); a no-op elsewhere.
+  useAppShortcuts();
 
   // A link to a place inside the app — a tapped notification, native or web —
   // arrives here instead of reloading the page (lib/inAppNavigate.ts). It

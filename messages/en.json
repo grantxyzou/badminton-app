@@ -2597,5 +2597,17 @@
       "group": "group"
     },
     "drillReason": "For your {skill} (rated {value}/5)"
+  },
+  "appShortcuts": {
+    "signUpFor": "Sign up for {day}",
+    "signUpThisWeek": "This week's session",
+    "noSession": "No session this week",
+    "notOpenYet": "Sign-ups not open yet",
+    "owed": "What I owe",
+    "owedAmount": "{amount} owed",
+    "allPaid": "All paid",
+    "owedUnknown": "Your balance",
+    "stringing": "Request stringing",
+    "stringingSub": "Book your next restring"
   }
 }
