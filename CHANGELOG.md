@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Kudos reads every recent roster at once (2026-10-21)
+
+From the code review of efficiency. Who you may thank is anyone you shared a roster with in the last eight sessions, and both the card that lists them and the send that checks them read those rosters one session at a time — up to nine database round trips in series on every GiveKudosCard mount, and the send asked each session for its game log too before moving to the next. The rule is unchanged; the reads now go out together.
+
+- **One query per session, all in flight at once**, merged in session order so the list still leads with the people you played with most recently. Still one `@sessionId` query each, never one `ARRAY_CONTAINS` query: that would be a cross-partition read in Cosmos and, in the mock store, every row in the container.
+- **The send proves by roster first.** Every roster is read at once; the game logs are read — also at once — only when no roster proved it. A refusal costs the same reads the serial walk made at its worst, in three round trips instead of eighteen.
+
 ### The session picker reads what it shows (2026-10-21)
 
 From the code review of efficiency. `GET /api/sessions` — the Payments card's session picker and the bird-usage assign sheet — was an unbounded `SELECT *` over the `sessions` container: every session the club ever had, every field (bird usages, settle snapshots, invite lists, advance snapshots), on every open of the Command Center.

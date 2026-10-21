@@ -26,8 +26,10 @@ import { groupScope, sessionPrefix } from '@/lib/groupScope';
  * is a cross-partition scan of every session the club has held — the shape
  * CLAUDE.md flags for the `club/bands` query. Eight keeps anyone you would
  * plausibly recognise reachable while the cost stays bounded: one bounded
- * `sessions` read, then at most eight `players` reads (plus, on the enforcement
- * path only, up to eight `gameResults` reads before the first match).
+ * `sessions` read, then at most nine `players` reads (the active session and
+ * eight dated ones) issued CONCURRENTLY — one round trip, not nine — plus, on
+ * the enforcement path only, nine `gameResults` reads, again concurrent, and
+ * only when no roster already proved it.
  */
 export const CO_PLAY_LOOKBACK_SESSIONS = 8;
 
@@ -35,13 +37,14 @@ const lower = (s: string) => s.trim().toLowerCase();
 
 /**
  * Session ids co-play may be proven against: the ACTIVE one first, then recent
- * dated ones.
+ * dated ones, newest first.
  *
- * The active id leads because it is the likeliest match — so the common case
- * short-circuits on the first read — and because it is the only way the LEGACY
- * `'current-session'` id is reachable. That id is still live in production
- * (CLAUDE.md) and does not match the dated prefix, so a prefix filter alone
- * would silently exclude the very session most people just played.
+ * The active id leads because it is the only way the LEGACY `'current-session'`
+ * id is reachable. That id is still live in production (CLAUDE.md) and does
+ * not match the dated prefix, so a prefix filter alone would silently exclude
+ * the very session most people just played. The order is also the order
+ * `eligibleCoPlayers` lists people in: the ones you played with most recently
+ * come first.
  */
 async function recentSessionIds(
   groupId: string,
@@ -75,8 +78,12 @@ async function recentSessionIds(
   return ids;
 }
 
-/** Non-removed roster names for one session, lowercased. */
-async function rosterFor(groupId: string, sessionId: string): Promise<Set<string>> {
+/**
+ * Non-removed roster names for one session, as stored (display case).
+ * A failed read answers an EMPTY roster so one session's outage narrows the
+ * answer rather than failing it — the same skip the loop used to make.
+ */
+async function rosterNames(groupId: string, sessionId: string): Promise<string[]> {
   try {
     // `@sessionId`, not `@sid`: the mock filters by parameter NAME, and `@sid`
     // was one it did not know — so this returned every row in tests.
@@ -86,14 +93,32 @@ async function rosterFor(groupId: string, sessionId: string): Promise<Set<string
       params: [{ name: '@sessionId', value: sessionId }],
     });
     // The JS re-filter stays for parity with real Cosmos either way.
-    return new Set(
-      resources
-        .filter((p) => p && p.sessionId === sessionId && p.removed !== true && typeof p.name === 'string')
-        .map((p) => lower(p.name as string)),
-    );
+    return resources
+      .filter((p) => p && p.sessionId === sessionId && p.removed !== true && typeof p.name === 'string')
+      .map((p) => p.name as string);
   } catch {
-    return new Set();
+    return [];
   }
+}
+
+/**
+ * The rosters of several sessions, in the order asked for.
+ *
+ * Read CONCURRENTLY, one query per session: `players` is partitioned by
+ * `/sessionId`, so each is a single-partition read, and nine of them in flight
+ * together cost one round trip where the old loop paid nine in series on every
+ * card mount and every send. Still one query PER session — a single
+ * `ARRAY_CONTAINS(@sessionIds, c.sessionId)` would be a cross-partition query
+ * in Cosmos and, bound under a name the mock does not know, every row in the
+ * container in tests.
+ */
+function rostersFor(groupId: string, sessionIds: string[]): Promise<string[][]> {
+  return Promise.all(sessionIds.map((id) => rosterNames(groupId, id)));
+}
+
+/** Non-removed roster names for one session, lowercased. */
+async function rosterFor(groupId: string, sessionId: string): Promise<Set<string>> {
+  return new Set((await rosterNames(groupId, sessionId)).map(lower));
 }
 
 /**
@@ -104,28 +129,19 @@ async function rosterFor(groupId: string, sessionId: string): Promise<Set<string
 export async function eligibleCoPlayers(groupId: string, name: string, activeSessionId: string): Promise<string[]> {
   const me = lower(name);
   const ids = await recentSessionIds(groupId, activeSessionId);
+  const rosters = await rostersFor(groupId, ids);
   const seen = new Set<string>();
   const out: string[] = [];
 
-  for (const id of ids) {
-    try {
-      const resources = await groupScope(groupId).query<{ name?: string; removed?: boolean; sessionId?: string }>('players', {
-        select: 'c.name, c.removed, c.sessionId',
-        where: 'c.sessionId = @sessionId',
-        params: [{ name: '@sessionId', value: id }],
-      });
-      const rows = resources
-        .filter((p) => p && p.sessionId === id && p.removed !== true && typeof p.name === 'string');
-      // Only a session I was actually on can make anyone a co-player.
-      if (!rows.some((p) => lower(p.name as string) === me)) continue;
-      for (const p of rows) {
-        const n = p.name as string;
-        if (lower(n) === me || seen.has(lower(n))) continue;
-        seen.add(lower(n));
-        out.push(n.trim());
-      }
-    } catch {
-      /* Skip this session rather than failing the whole list. */
+  // Walked in session order (active, then newest first), whatever order the
+  // reads came back in, so the list's order is the one documented above.
+  for (const names of rosters) {
+    // Only a session I was actually on can make anyone a co-player.
+    if (!names.some((n) => lower(n) === me)) continue;
+    for (const n of names) {
+      if (lower(n) === me || seen.has(lower(n))) continue;
+      seen.add(lower(n));
+      out.push(n.trim());
     }
   }
   return out;
@@ -175,8 +191,16 @@ export async function playedTogetherIn(groupId: string, aName: string, bName: st
 
 /**
  * Did these two share a recent session — by roster, or by a logged game?
- * Short-circuits on the first match, so the common case (you played last
- * Thursday, and it is the active session) costs one read.
+ *
+ * Two phases, each concurrent across every recent session: the rosters first,
+ * and the game logs only when no roster proved it. It used to walk the
+ * sessions in series and ask BOTH questions of each before moving on, so a
+ * pair whose session was three back paid six round trips, and a pair who never
+ * played paid eighteen. The roster is the ordinary proof and the game log the
+ * rare one (a walk-up, a failed roster read), so asking every roster at once
+ * and every game log at once answers the common send in two round trips and
+ * the refusal in three, with the same reads the serial walk made at its worst
+ * and never a game read a roster had already made unnecessary.
  */
 export async function playedTogetherRecently(
   groupId: string,
@@ -184,8 +208,14 @@ export async function playedTogetherRecently(
   bName: string,
   activeSessionId: string,
 ): Promise<boolean> {
-  for (const id of await recentSessionIds(groupId, activeSessionId)) {
-    if (await playedTogetherIn(groupId, aName, bName, id)) return true;
-  }
-  return false;
+  const a = lower(aName);
+  const b = lower(bName);
+  const ids = await recentSessionIds(groupId, activeSessionId);
+  const rosters = await rostersFor(groupId, ids);
+  if (rosters.some((names) => {
+    const roster = new Set(names.map(lower));
+    return roster.has(a) && roster.has(b);
+  })) return true;
+  const games = await Promise.all(ids.map((id) => sharedAGame(groupId, a, b, id)));
+  return games.some(Boolean);
 }
