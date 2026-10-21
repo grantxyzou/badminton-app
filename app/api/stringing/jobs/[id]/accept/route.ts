@@ -100,7 +100,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // the player's answer to a proposal that no longer exists.
     const written = await scope.replace('stringingJobs', next, caller.memberId);
     if (!written) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      // Gone, or changed under this answer (the stringer edited the proposal
+      // meanwhile): the player answers again against what it became.
+      const still = await scope.read<StringingJob>('stringingJobs', id, caller.memberId);
+      return still
+        ? NextResponse.json({ error: 'changed_elsewhere' }, { status: 409 })
+        : NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
     // Through `toPlayerJob`, like every other player-facing response: the
     // strip cannot be forgotten at a call site.

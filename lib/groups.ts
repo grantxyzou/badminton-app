@@ -575,8 +575,11 @@ export async function reassignOwnership(groupId: string, fromMemberId: string): 
   }
 
   await mutateGroup(groupId, (g) => ({ ...g, ownerMemberId: heir.memberId }));
-  await scope.replace('memberships', { ...heir, role: 'owner' }, groupId);
+  // `replace` is etag-conditional: a membership edited under us resolves
+  // undefined, and a hand-over that silently did not happen is worse than one
+  // that fails loudly and is retried.
+  if (!(await scope.replace('memberships', { ...heir, role: 'owner' }, groupId))) throw new Error('membership_contended');
   const old = await readMembership(groupId, fromMemberId);
-  if (old && old.role === 'owner') await scope.replace('memberships', { ...old, role: 'admin' }, groupId);
+  if (old && old.role === 'owner' && !(await scope.replace('memberships', { ...old, role: 'admin' }, groupId))) throw new Error('membership_contended');
   return { outcome: 'reassigned', to: heir.memberId };
 }

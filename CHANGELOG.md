@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A read-modify-write cannot overwrite a change it never saw (2026-10-21)
+
+From the code review of money accuracy (PR 4 of 5). `groupScope.replace` verified that the doc still existed but not that it was unchanged, so two taps that both read "unpaid" both wrote, and a credit spend racing an e-transfer ingest could charge a member twice.
+
+- **`replace` now sends the etag the caller read** and treats a 412 like a vanished doc: the caller re-reads and decides. Every caller already handled that outcome; the credit spend refunds itself, the inbox skips the row.
+- A stringing status tap that lands on a job edited from another phone answers 409 `changed_elsewhere` instead of a false "not found"; an ownership hand-over that cannot land fails loudly instead of silently not happening.
+
 ### A payment is matched to frozen money only (2026-10-21)
 
 From the code review of money accuracy (PR 3 of 5). An unsettled past session's live share is what Home shows, but it moves until settle: a no-show removed on Wednesday raises Thursday's figure. A member who paid the estimate was marked paid, settle then stamped a higher `owedAmount` on a row already `paid: true`, and the difference was never collected and never shown.

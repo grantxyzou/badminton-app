@@ -329,7 +329,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     // with a new status and its price intact.
     const written = await scope.replace('stringingJobs', next, memberId);
     if (!written) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      // `undefined` is "gone or changed under you": a job edited from another
+      // phone between the read and this write is still there, and the tap
+      // should be made again against what it became, not reported missing.
+      const still = await scope.read<StringingJob>('stringingJobs', id, memberId);
+      return still
+        ? NextResponse.json({ error: 'changed_elsewhere' }, { status: 409 })
+        : NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
     // The ledger mirror: a charge while billable, a payment when paid, voids
     // on the way back. `job` is the row before the write.
