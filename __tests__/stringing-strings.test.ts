@@ -52,7 +52,7 @@ describe('who can read and who can write', () => {
     // keeps on the shelf is not a secret — from its own members.
     const res = await GET(memberGet('http://x/api/stringing/strings'));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ strings: [], links: {}, prices: {}, stock: {}, players: {} });
+    expect(await res.json()).toEqual({ strings: [], links: {}, prices: {}, colours: {}, stock: {}, players: {} });
   });
 
   it('returns the list and its per-label maps — no author, no timestamps', async () => {
@@ -60,7 +60,7 @@ describe('who can read and who can write', () => {
       makeAdminRequest('PATCH', 'http://x/api/stringing/strings', { strings: ['BG80'] }),
     );
     const body = await (await GET(memberGet('http://x/api/stringing/strings'))).json();
-    expect(Object.keys(body)).toEqual(['strings', 'links', 'prices', 'stock', 'players']);
+    expect(Object.keys(body)).toEqual(['strings', 'links', 'prices', 'colours', 'stock', 'players']);
   });
 
   it('refuses a player trying to set it', async () => {
@@ -173,6 +173,48 @@ describe('the shelf extras', () => {
     const ip = { 'X-Client-IP': 'strings-ratelimit-probe' };
     let last: Response | null = null;
     for (let i = 0; i < 121; i++) last = await GET(makeRequest('GET', 'http://x/api/stringing/strings', undefined, ip));
-    expect(await last!.json()).toEqual({ strings: null, links: null, prices: null, stock: null, players: null });
+    expect(await last!.json()).toEqual({ strings: null, links: null, prices: null, stock: null, players: null, colours: null });
+  });
+});
+
+describe('renaming a string, and the colours on its reel', () => {
+  const admin = (body: Record<string, unknown>) => makeAdminRequest('PATCH', 'http://x/api/stringing/strings', body);
+  const read = async () => (await GET(memberGet('http://x/api/stringing/strings'))).json();
+
+  it('stores the colours an admin picks, palette ids only, and keeps them when only the list is sent', async () => {
+    await PATCH(admin({ strings: ['BG80'], colours: { BG80: ['yellow', 'white', 'mauve', 'yellow'], Gone: ['red'] } }));
+    expect((await read()).colours).toEqual({ BG80: ['white', 'yellow'] });
+    await PATCH(admin({ strings: ['BG80', 'Aerobite'] }));
+    expect((await read()).colours).toEqual({ BG80: ['white', 'yellow'] });
+  });
+
+  it('renames one string and carries its price, colours and old spellings with it', async () => {
+    await PATCH(admin({ strings: ['BG80 whte', 'Aerobite'], prices: { 'BG80 whte': 3200 }, colours: { 'BG80 whte': ['white'] }, aliases: { 'bg-80': 'BG80 whte' } }));
+    const res = await PATCH(admin({ rename: { from: 'BG80 whte', to: '  Yonex BG80  ' } }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.strings).toEqual(['Yonex BG80', 'Aerobite']);
+    expect(body.prices).toEqual({ 'Yonex BG80': 3200 });
+    expect(body.colours).toEqual({ 'Yonex BG80': ['white'] });
+    // The old name, and the old spelling that pointed at it, count as the new one.
+    expect(body.aliases).toEqual({ 'bg-80': 'Yonex BG80', 'BG80 whte': 'Yonex BG80' });
+    expect((await read()).strings).toEqual(['Yonex BG80', 'Aerobite']);
+  });
+
+  it('refuses a name another string already has, a blank one, and a string not on the shelf', async () => {
+    await PATCH(admin({ strings: ['BG80', 'Aerobite'] }));
+    expect((await PATCH(admin({ rename: { from: 'BG80', to: 'aerobite' } }))).status).toBe(409);
+    expect((await PATCH(admin({ rename: { from: 'BG80', to: '   ' } }))).status).toBe(400);
+    expect((await PATCH(admin({ rename: { from: 'Nope', to: 'X' } }))).status).toBe(404);
+    expect((await read()).strings).toEqual(['BG80', 'Aerobite']);
+  });
+
+  it('refuses a player trying to rename', async () => {
+    await PATCH(admin({ strings: ['BG80'] }));
+    const res = await PATCH(makeRequest('PATCH', 'http://x/api/stringing/strings', { rename: { from: 'BG80', to: 'X' } }, {
+      Cookie: `member_session=${memberCookieValue('wei')}`,
+    }));
+    expect(res.status).toBe(401);
+    expect((await read()).strings).toEqual(['BG80']);
   });
 });

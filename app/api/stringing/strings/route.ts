@@ -17,6 +17,11 @@
  *   players — how many on the roster have the string in their bag; only
  *             counts of `CLUB_GEAR_MIN_COHORT` (3) or more, the same privacy
  *             floor as `stats/club/gear`.
+ *   colours — the colours the club has each string in, as palette ids
+ *             (`lib/stringPalette.ts`); missing = not said.
+ * PATCH also takes `{ rename: { from, to } }` on its own: one string renamed,
+ * with its price, link, colours and old spellings carried across on the
+ * STORED doc, and the old name counted as the new one.
  * A throttled or failed read answers every field `null`: unknown, not empty.
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -32,6 +37,8 @@ import {
   normaliseLinks,
   normalisePrices,
   normaliseAliases,
+  normaliseColours,
+  renameOffered,
   stringsDocId,
   type OfferedStringsDoc,
 } from '@/lib/stringingStrings';
@@ -41,7 +48,7 @@ import { forgetShelfExtras, readShelfExtras } from '@/lib/stringShelfRead';
 export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
-const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null };
+const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null, colours: null };
 
 export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
@@ -71,6 +78,7 @@ export async function GET(req: NextRequest) {
     strings: read.strings,
     links: read.links,
     prices: read.prices,
+    colours: read.colours,
     stock: extras?.stock ?? null,
     players: extras?.players ?? null,
   });
@@ -90,6 +98,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
+  if (body && typeof body === 'object' && 'rename' in body) return rename(req, body.rename, admin.memberId);
   const strings = normaliseOfferedStrings(body?.strings);
   if (strings === null) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
@@ -111,12 +120,15 @@ export async function PATCH(req: NextRequest) {
     // And aliases (docs/plans/bench-redesign.md): absent keeps what is stored,
     // and an alias whose target left the list leaves with it.
     const aliases = normaliseAliases(body?.aliases === undefined ? prior?.aliases ?? {} : body.aliases, strings);
+    // Colours, the same again.
+    const colours = normaliseColours(body?.colours === undefined ? prior?.colours ?? {} : body.colours, strings);
     const doc: OfferedStringsDoc = {
       id: stringsDocId(groupId),
       strings,
       links,
       prices,
       aliases,
+      colours,
       updatedAt: new Date().toISOString(),
       updatedBy: admin.memberId,
     };
@@ -129,9 +141,38 @@ export async function PATCH(req: NextRequest) {
     // The list changed, so the stock and count keyed by it may have too.
     forgetShelfExtras(groupId);
     // Aliases go back to the admin who saved them; the public GET never lists them.
-    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices, aliases });
+    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices, aliases, colours });
   } catch (err) {
     console.error('PATCH /api/stringing/strings failed:', err);
+    return NextResponse.json({ error: 'write_failed' }, { status: 503 });
+  }
+}
+
+const RENAME_STATUS = { invalid_name: 400, not_offered: 404, name_taken: 409 } as const;
+
+/** One string renamed on the stored doc (rate limit and admin check already passed). */
+async function rename(req: NextRequest, op: unknown, memberId: string | null) {
+  const from = (op as { from?: unknown } | null)?.from;
+  const to = (op as { to?: unknown } | null)?.to;
+  try {
+    await ensureClubSettings();
+    const groupId = resolveGroupId(req);
+    const prior = await readOfferedStringsWithLinks(groupId);
+    if (!prior) return NextResponse.json({ error: 'write_failed' }, { status: 503 });
+    const result = renameOffered(prior, from, to);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: RENAME_STATUS[result.error] });
+    const next = result.value;
+    const doc: OfferedStringsDoc = {
+      id: stringsDocId(groupId),
+      ...next,
+      updatedAt: new Date().toISOString(),
+      updatedBy: memberId,
+    };
+    await groupScope(groupId).upsert('clubSettings', doc);
+    forgetShelfExtras(groupId);
+    return NextResponse.json({ strings: next.strings, links: next.links, prices: next.prices, aliases: next.aliases, colours: next.colours });
+  } catch (err) {
+    console.error('PATCH /api/stringing/strings rename failed:', err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });
   }
 }

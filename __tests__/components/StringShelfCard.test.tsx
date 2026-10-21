@@ -47,6 +47,12 @@ function respond(opts: { strings?: unknown; stockOk?: boolean; stock?: Record<st
       const body = JSON.parse(String(init.body));
       patches.push(body);
       if (opts.patchOk === false) return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as Response);
+      if (body.rename) {
+        // What the route answers: the list with the one name changed, its maps carried across.
+        const { from, to } = body.rename as { from: string; to: string };
+        const strings = shelf.strings.map((x: string) => (x === from ? to : x));
+        return Promise.resolve({ ok: true, json: async () => ({ strings, links: {}, prices: {}, aliases: { [from]: to }, colours: {} }) } as Response);
+      }
       return Promise.resolve({ ok: true, json: async () => body } as Response);
     }
     return Promise.resolve({ ok: true, json: async () => shelf } as Response);
@@ -212,5 +218,44 @@ describe('review fixes (docs/plans/bench-redesign.md)', () => {
     const sheet = screen.getByRole('dialog');
     expect(within(sheet).getByText(/from the club shop/)).toBeDefined();
     expect(within(sheet).getByRole('button', { name: /Remove the purchase from/ })).toBeDefined();
+  });
+});
+
+describe('a string’s name and colours', () => {
+  it('renames a string from its sheet, and the sheet follows it', async () => {
+    const patches = respond();
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Li-Ning No. 1' }));
+    const name = screen.getByLabelText('Name') as HTMLInputElement;
+    expect(name.value).toBe('Li-Ning No. 1');
+    fireEvent.change(name, { target: { value: 'Li-Ning No.1 Boost' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+    await waitFor(() => expect(patches).toEqual([{ rename: { from: 'Li-Ning No. 1', to: 'Li-Ning No.1 Boost' } }]));
+    expect(await screen.findByRole('button', { name: 'Open Li-Ning No.1 Boost' })).toBeDefined();
+  });
+
+  it('will not rename onto another shelf string’s name', async () => {
+    const patches = respond();
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Li-Ning No. 1' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'bg80 power-white' } });
+    expect(screen.getByRole('alert').textContent).toContain('already has that name');
+    expect((screen.getByRole('button', { name: 'Rename' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(patches).toHaveLength(0);
+  });
+
+  it('picks the colours on the reel and saves only the colour map', async () => {
+    const patches = respond();
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Open BG80 Power-White' }));
+    const picker = screen.getByRole('group', { name: 'Colours on the reel' });
+    fireEvent.click(within(picker).getByRole('button', { name: 'Yellow' }));
+    fireEvent.click(within(picker).getByRole('button', { name: 'White' }));
+    expect(within(picker).getByRole('button', { name: 'White' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Save colours' }));
+    await waitFor(() => expect(patches).toHaveLength(1));
+    // Palette order, whatever order they were tapped in.
+    expect(patches[0].colours).toEqual({ 'BG80 Power-White': ['white', 'yellow'] });
+    expect(patches[0].prices).toBeUndefined();
   });
 });

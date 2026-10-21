@@ -5,6 +5,8 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { cadRange } from '@/lib/catalogPrice';
 import { CLUB_GEAR_MIN_COHORT } from '@/lib/clubGear';
+import type { StringColourId } from '@/lib/stringPalette';
+import { ColourList } from './StringColours';
 import { stringColours, stringTypeOf, typeBand, typeTint, stockColour, type StockBand } from '@/lib/stringShelf';
 import type { CatalogItem } from '@/lib/types';
 
@@ -48,6 +50,7 @@ export default function StringDetailSheet({
   price,
   band = null,
   clubCount = null,
+  clubColours = [],
 }: {
   item: CatalogItem | null;
   open: boolean;
@@ -56,6 +59,9 @@ export default function StringDetailSheet({
   price?: string | null;
   band?: StockBand | null;
   clubCount?: number | null;
+  /** The colours the club says it has this string in. When set, they replace
+   *  the maker's list — which can only say "ask the stringer". */
+  clubColours?: StringColourId[];
 }) {
   const t = useTranslations('home.stringing.offer');
   const tSpec = useTranslations('stats.gear');
@@ -145,7 +151,12 @@ export default function StringDetailSheet({
               </div>
             )}
 
-            {colours.length > 0 && (
+            {clubColours.length > 0 ? (
+              <section aria-label={t('coloursOnReel')} className="flex flex-col gap-2">
+                <span className="section-label">{t('coloursOnReel')}</span>
+                <ColourList ids={clubColours} />
+              </section>
+            ) : colours.length > 0 && (
               <section aria-label={t('colours')} className="flex flex-col gap-2">
                 <span className="section-label">{t('colours')}</span>
                 <div className="fs-base" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' }}>

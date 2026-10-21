@@ -33,6 +33,7 @@ import {
 import StringDetailSheet from './StringDetailSheet';
 import StringMap, { type MapDot } from './StringMap';
 import StockBadge from './StockBadge';
+import { ColourDots } from './StringColours';
 import { formatServicePrice } from '@/lib/stringingRateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -275,7 +276,13 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
             read as "not available". */}
         {(() => {
           const content = {
-            title: <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{name(e)}</span>,
+            title: (
+              <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{name(e)}</span>
+                {/* The colours on the reel, when the stringer has said. */}
+                <ColourDots ids={shelf?.colours[e.label] ?? []} />
+              </span>
+            ),
             subtitle,
             trailing: (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)', flex: 'none' }}>
@@ -478,6 +485,7 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
         price={openEntry && shelf ? shelfPrice(shelf, openEntry.label) : undefined}
         band={openEntry ? bandOf(openEntry.label) : null}
         clubCount={openEntry ? shelf?.players[openEntry.label] ?? null : null}
+        clubColours={openEntry ? shelf?.colours[openEntry.label] ?? [] : []}
       />
     </div>
   );

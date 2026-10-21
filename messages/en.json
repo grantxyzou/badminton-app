@@ -200,7 +200,25 @@
         "typeWord_control": "Control",
         "typeWord_durability": "Durability",
         "typeWord_hybrid": "Hybrid",
-        "typeWord_all_round": "All-round"
+        "typeWord_all_round": "All-round",
+        "coloursOnReel": "On the reel",
+        "coloursLabel": "Colours: {colours}",
+        "colourName": {
+          "white": "White",
+          "yellow": "Yellow",
+          "fluo_yellow": "Fluorescent yellow",
+          "gold": "Gold",
+          "orange": "Orange",
+          "red": "Red",
+          "pink": "Pink",
+          "purple": "Purple",
+          "blue": "Blue",
+          "navy": "Navy",
+          "turquoise": "Turquoise",
+          "green": "Green",
+          "grey": "Grey",
+          "black": "Black"
+        }
       }
     },
     "skillLead": {
@@ -1726,7 +1744,15 @@
             "jobLabelIntro": "{count, plural, one {# racket was} other {# rackets were}} strung with this name, which isn't on your shelf.",
             "sameAs": "Same string as",
             "offerIt": "Offer it",
-            "offerItHint": "Add it to the shelf under this name."
+            "offerItHint": "Add it to the shelf under this name.",
+            "name": "Name",
+            "nameSave": "Rename",
+            "nameHint": "What players and the bench see. Jobs and stock under the old name still count as this string.",
+            "nameTaken": "Another string on your shelf already has that name.",
+            "nameInvalid": "Give it a name of up to 60 characters.",
+            "colours": "Colours on the reel",
+            "coloursHint": "Players see these on the Stringing page.",
+            "coloursSave": "Save colours"
           }
         },
         "propose": {
