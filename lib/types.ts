@@ -7,8 +7,13 @@ export interface PrevSessionSnapshot {
   courtCount: number;
   costPerCourt: number;
   maxPlayers: number;
-  /** Hours between session start and the deadline at the time of advance. */
-  deadlineOffsetHours: number;
+  /** Hours between session start and the deadline at the time of advance.
+   *  `null` means the session was RECORDED as having no deadline (written
+   *  since 2026-10-21); `undefined` means the snapshot never recorded it.
+   *  Snapshots from before that date wrote `0` for "none", which
+   *  `detectSettingsDrift` reads as none too — a deadline at the session's
+   *  own start closes nothing. */
+  deadlineOffsetHours: number | null;
   /** Hours before session start that signup-open was set (if recorded). 0 if signup was opened immediately. */
   signupOpensOffsetHours: number;
 }

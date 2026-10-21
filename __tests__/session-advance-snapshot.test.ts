@@ -184,6 +184,24 @@ describe('POST /api/session/advance — snapshot fields', () => {
     expect(body.anomaliesAtAdvance).toContain('long_break');
   });
 
+  it('records a session with no deadline as null, not 0', async () => {
+    // `null` is "recorded as none"; `undefined` would be "never recorded", and
+    // the drift check treats the two differently.
+    seedPointer('session-2026-04-29');
+    seedSession('session-2026-04-29', { courts: 2, costPerCourt: 30, maxPlayers: 12, datetime: '2026-04-29T20:00:00-04:00', deadline: undefined });
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-05-06T20:00:00-04:00',
+      deadline: '2026-05-06T18:00:00-04:00',
+      courts: 2,
+      maxPlayers: 12,
+    });
+    const res = await ADVANCE(req);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.prevSnapshot.deadlineOffsetHours).toBeNull();
+    expect(body.anomaliesAtAdvance).toContain('deadline_changed');
+  });
+
   it('omits prevSnapshot if there is no current session', async () => {
     // No seedPointer → no current session
     const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
