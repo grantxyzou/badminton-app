@@ -429,6 +429,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Already signed up' }, { status: 409 });
     }
 
+    // A SETTLED session takes no new row, admin or not: settle stamps
+    // `owedAmount` on the rows it found, so a row added afterwards would owe
+    // nothing — invisible to the balance card, the reminders, the hold and
+    // the reconcile, with no ledger charge. The one row that may come back is
+    // a cancelled one that was stamped before it left (it carries its bill).
+    // Unsettle, add, re-settle is the path for a late addition.
+    const rejoinsWithBill = !!removedRecord && typeof (removedRecord as { settledAt?: unknown }).settledAt === 'string';
+    if (sessionData?.settled && !rejoinsWithBill) {
+      return NextResponse.json({ error: 'session_settled' }, { status: 409 });
+    }
+
     const activePlayers = activeRes;
     const isFull = activePlayers.length >= maxPlayers;
 
@@ -833,9 +844,17 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const sessionDoc = await scope.read<{ id: string; maxPlayers?: number }>('sessions', sessionId, sessionId);
+    const sessionDoc = await scope.read<{ id: string; maxPlayers?: number; settled?: unknown }>('sessions', sessionId, sessionId);
     const maxPlayers =
       sessionDoc?.maxPlayers ?? defaultMaxPlayers();
+
+    // On a SETTLED session a row may come back into play only with the bill
+    // settle stamped on it: a waitlisted row was never stamped, and a row
+    // removed before settle was not either, so either would rejoin owing
+    // nothing (the same gap POST closes). Unsettle first.
+    if (sessionDoc?.settled && (body.waitlisted === false || (body.removed === false && typeof existing.settledAt !== 'string'))) {
+      return NextResponse.json({ error: 'session_settled' }, { status: 409 });
+    }
 
     // Capacity check when restoring a removed player or promoting a waitlisted player
     if (body.removed === false || body.waitlisted === false) {

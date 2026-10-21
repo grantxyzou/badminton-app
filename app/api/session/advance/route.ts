@@ -69,6 +69,18 @@ export async function POST(req: NextRequest) {
     }
 
     const scope = groupScope(groupId);
+
+    // A date whose session already EXISTS is refused, not overwritten. The
+    // write below is an upsert of a fresh doc, so re-advancing to an archived
+    // date (a typo, or "go back a week") used to replace that doc wholesale:
+    // its `settled` snapshot vanished while its player rows kept their frozen
+    // amounts, and the balance card re-read those rows as an unsettled live
+    // share. Same-date is already caught above; this catches every other.
+    const clash = await scope.read<Session>('sessions', newId, newId);
+    if (clash) {
+      return NextResponse.json({ error: 'session_exists', sessionId: newId }, { status: 409 });
+    }
+
     const currentSession = currentId ? await scope.read<Session>('sessions', currentId, currentId) : undefined;
 
     // Snapshot previous session's cost-per-person for the payment reminder
