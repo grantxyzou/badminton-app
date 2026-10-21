@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     const activePlayers = await scope.query<Player>('players', {
       where: ACTIVE_PLAYERS_WHERE,
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
     });
 
     if (activePlayers.length === 0) {
@@ -175,6 +176,7 @@ export async function DELETE(req: NextRequest) {
     const settledPlayers = await scope.query<Player>('players', {
       where: 'c.sessionId = @sessionId AND IS_DEFINED(c.settledAt)',
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
     });
 
     for (const player of settledPlayers) {

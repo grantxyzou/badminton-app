@@ -284,6 +284,7 @@ async function entriesFor(scope: GroupScope, memberId: string, refId: string): P
   const rows = await scope.query<LedgerEntry>('ledger', {
     where: 'c.memberId = @memberId',
     params: [{ name: '@memberId', value: memberId }],
+    partitionKey: memberId,
   });
   return rows.filter((e) => e.memberId === memberId && e.ref?.id === refId);
 }

@@ -36,6 +36,7 @@ async function liveExpenses(groupId: string): Promise<LedgerEntry[]> {
   const rows = await groupScope(groupId).query<LedgerEntry>('ledger', {
     where: 'c.memberId = @memberId',
     params: [{ name: '@memberId', value: CLUB_LEDGER_ID }],
+    partitionKey: CLUB_LEDGER_ID,
   });
   const mine = rows.filter((e) => e.memberId === CLUB_LEDGER_ID);
   const voided = new Set(mine.filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));

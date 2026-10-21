@@ -338,6 +338,7 @@ export async function GET(req: NextRequest) {
     const resources = (await scope.query<StringingJob>('stringingJobs', {
       where: 'c.memberId = @memberId',
       params: [{ name: '@memberId', value: memberId }],
+      partitionKey: memberId,
     })).filter((j) => j.memberId === memberId);
     // A player never sees an archived job. Archiving is how a stringer says
     // "this is done with"; leaving it on someone's Home card afterwards would

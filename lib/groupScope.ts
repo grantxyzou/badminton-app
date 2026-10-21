@@ -172,9 +172,45 @@ export interface GroupQuery {
    * genuinely wants it (bird stock, a member's history).
    */
   includeLegacy?: boolean;
+  /**
+   * OPT-IN single-partition hint, passed to the SDK as the `partitionKey`
+   * feed option. Give it ONLY when the WHERE is a plain equality on the
+   * container's own partition key (`c.<pkField> = @param` as a top-level AND
+   * conjunct, no OR at the top level) and this is that parameter's value.
+   * Without it the SDK fans the query out to every physical partition and
+   * merges — `players` by `@sessionId`, `ledger` by `@memberId`, `kudos` by
+   * `@recipientMemberId` are the hottest read shapes in the app, paying for
+   * a scan they never needed. Never inferred from the WHERE text: a
+   * parameter inside an `OR`, an `IN` or an `ARRAY_CONTAINS` would silently
+   * drop rows if the scope guessed. The accessor refuses it on a container
+   * keyed by `/id` (a point-read key; a query there is a scan by nature) and
+   * on one that is not GROUP scoped. The mock ignores the option, so
+   * `__tests__/group-scope-pk-hint.test.ts` source-scans every hint against
+   * its WHERE — that canary is what stops a wrong one passing CI.
+   */
+  partitionKey?: string;
 }
 
 const RESERVED_PARAMS = new Set(['@groupId', '@pointerId', '@legacyId']);
+
+/**
+ * The feed options a hinted query runs under, or `undefined` for none. A hint
+ * on a `/id`-keyed or non-GROUP container is a mistake, not an optimisation,
+ * and throws so it cannot ship.
+ */
+export function partitionKeyOptions(container: GroupContainer, q: GroupQuery): { partitionKey: string } | undefined {
+  if (q.partitionKey === undefined) return undefined;
+  if ((CONTAINERS[container] as { scope: string }).scope !== 'group') {
+    throw new Error(`groupScope.${container}: a partitionKey hint is for GROUP-scoped containers only`);
+  }
+  if (pkFieldOf(container) === 'id') {
+    throw new Error(`groupScope.${container}: keyed by /id — a partitionKey hint cannot apply to a query there`);
+  }
+  if (typeof q.partitionKey !== 'string' || !q.partitionKey) {
+    throw new Error(`groupScope.${container}: partitionKey hint must be a non-empty string`);
+  }
+  return { partitionKey: q.partitionKey };
+}
 
 export function buildGroupQuery(
   groupId: string,
@@ -289,7 +325,10 @@ export function groupScope(groupId: string): GroupScope {
 
     async query<T = Record<string, unknown>>(container: GroupContainer, q: GroupQuery = {}): Promise<T[]> {
       const built = buildGroupQuery(groupId, container, q);
-      const { resources } = await getContainer(container).items.query(built).fetchAll();
+      // A hinted query runs against ONE partition (the SDK's `partitionKey`
+      // feed option); an unhinted one fans out. The mock takes no options.
+      const options = partitionKeyOptions(container, q);
+      const { resources } = await getContainer(container).items.query(built, options).fetchAll();
       const isValue = /^VALUE\b/i.test(q.select?.trim() ?? '');
       return isValue ? ((resources ?? []) as T[]) : keep<T>(container, resources ?? []);
     },

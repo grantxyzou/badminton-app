@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
     const existing = await scope.query<StringingJob>('stringingJobs', {
       where: 'c.memberId = @memberId',
       params: [{ name: '@memberId', value: caller.memberId }],
+      partitionKey: caller.memberId,
     });
     // Archived jobs do not count. The cap bounds the SHELF, and an archived
     // job is off the shelf by definition — without this, archiving a job that

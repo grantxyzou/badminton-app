@@ -67,6 +67,7 @@ async function chargesFor(scope: GroupScope, memberId: string | null): Promise<S
     const resources = await scope.query<StringingJob>('stringingJobs', {
       where: 'c.memberId = @memberId',
       params: [{ name: '@memberId', value: memberId }],
+      partitionKey: memberId,
     });
     return stringingCharges(resources.filter((j) => j.memberId === memberId));
   } catch {

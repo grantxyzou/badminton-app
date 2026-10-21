@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
         { name: '@raterMemberId', value: rater.memberId },
         { name: '@tag', value: body.tag },
       ],
+      partitionKey: recipient.memberId,
     });
     const dupe = existing
       .some((d) => d.recipientMemberId === recipient.memberId && d.raterMemberId === rater.memberId
@@ -156,6 +157,7 @@ export async function GET(req: NextRequest) {
       select: 'c.tag, c.recipientMemberId, c.note, c.skillKey, c.raterName, c.createdAt',
       where: 'c.recipientMemberId = @recipientMemberId',
       params: [{ name: '@recipientMemberId', value: subject.memberId }],
+      partitionKey: subject.memberId,
     });
     // JS-filtered by recipient too, for mock/real parity.
     const mine = resources.filter((d) => d.recipientMemberId === subject.memberId);

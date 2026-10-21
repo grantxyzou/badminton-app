@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A query that names its partition runs against one partition (2026-10-21)
+
+From the code review of efficiency. Every scoped query went to Cosmos with no partition-key feed option, so a read that already filtered on the container's own key — a session's `players` rows, a member's `ledger` or `stringingJobs`, the kudos for one recipient — was still executed as a cross-partition fan-out: the SDK asks every physical partition and merges. Those are the hottest reads in the app (Home's balance, the sign-up capacity check, settle, the bench).
+
+- **`groupScope.query` takes an opt-in `partitionKey` hint** and passes it to the SDK; 35 call sites whose WHERE is a plain equality on the container's key now carry it. No query's WHERE, ORDER or results changed.
+- **Never inferred.** A parameter inside an `OR`, an `IN` or an `ARRAY_CONTAINS` would silently drop rows if the accessor guessed, so the hint is given by hand, the accessor refuses it on a `/id`-keyed or non-GROUP container, and a source-scan canary (`__tests__/group-scope-pk-hint.test.ts`) checks every hint against its WHERE, its params and the registry — the mock ignores the option, so nothing else could catch a wrong one.
+
 ### The Command Center reads the roster, the birds and the bench once (2026-10-21)
 
 From the code review of efficiency. The admin landing mounts its cards in one commit, and three of them asked for the same thing: the Needs-you card and the stat tiles each read `/api/members` and `/api/birds`, and the Needs-you card and the bench menu row each read `/api/stringing/jobs`. Three extra round trips on every open of the admin screen, for answers already on their way.

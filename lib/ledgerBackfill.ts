@@ -135,6 +135,7 @@ async function rowsOfSession(scope: GroupScope, sessionId: string): Promise<Play
   const rows = await scope.query<Player>('players', {
     where: 'c.sessionId = @sessionId',
     params: [{ name: '@sessionId', value: sessionId }],
+    partitionKey: sessionId,
   });
   return rows.filter((r) => r.sessionId === sessionId);
 }

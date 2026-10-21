@@ -50,6 +50,7 @@ async function reconcileCapacity(
   const resources = await scope.query<{ id: string; timestamp?: string }>('players', {
     where: ACTIVE_PLAYERS_WHERE,
     params: [{ name: '@sessionId', value: sessionId }],
+    partitionKey: sessionId,
   });
   if (!isOverCapacity(resources, doc.id, maxPlayers)) return 'kept';
   if (joinWaitlist) {
@@ -76,6 +77,7 @@ export async function GET(req: NextRequest) {
         ? 'c.sessionId = @sessionId'
         : 'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
       orderBy: 'c.timestamp ASC',
     });
     // Strip deleteToken — it must never be exposed to other clients.
@@ -303,10 +305,12 @@ export async function POST(req: NextRequest) {
       scope.query<Record<string, unknown>>('players', {
         where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
         params: [{ name: '@sessionId', value: sessionId }, { name: '@name', value: trimmedName }],
+        partitionKey: sessionId,
       }),
       scope.query<Record<string, unknown>>('players', {
         where: ACTIVE_PLAYERS_WHERE,
         params: [{ name: '@sessionId', value: sessionId }],
+        partitionKey: sessionId,
       }),
     ]);
 
@@ -627,6 +631,7 @@ export async function PATCH(req: NextRequest) {
             { name: '@sessionId', value: sessionId },
             { name: '@name', value: trimmedLookupName },
           ],
+          partitionKey: sessionId,
         });
         existing = resources[0] ?? null;
       } else {
@@ -861,6 +866,7 @@ export async function PATCH(req: NextRequest) {
       const active = await scope.query<{ id: string }>('players', {
         where: ACTIVE_PLAYERS_WHERE,
         params: [{ name: '@sessionId', value: sessionId }],
+        partitionKey: sessionId,
       });
       // Exclude the player being promoted from the count (they're currently in the list as waitlisted/removed)
       const countExcludingSelf = active.filter((p) => p.id !== id).length;
@@ -909,6 +915,7 @@ export async function DELETE(req: NextRequest) {
       const all = await scope.query<{ id: string; memberId?: string }>('players', {
         where: 'c.sessionId = @sessionId',
         params: [{ name: '@sessionId', value: sessionId }],
+        partitionKey: sessionId,
       });
       await Promise.all(all.map((p) => scope.remove('players', p.id, sessionId)));
       // A hard-deleted settled row's charge is void in the ledger; a received
@@ -933,6 +940,7 @@ export async function DELETE(req: NextRequest) {
       const active = await scope.query<Record<string, unknown> & { id: string }>('players', {
         where: 'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
         params: [{ name: '@sessionId', value: sessionId }],
+        partitionKey: sessionId,
       });
       const now = new Date().toISOString();
       await Promise.all(
@@ -964,6 +972,7 @@ export async function DELETE(req: NextRequest) {
         { name: '@sessionId', value: sessionId },
         { name: '@name', value: trimmedName },
       ],
+      partitionKey: sessionId,
     });
 
     if (resources.length === 0) {

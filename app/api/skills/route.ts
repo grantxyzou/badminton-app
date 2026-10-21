@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
     const resources = await groupScope(resolveGroupId(req)).query('skills', {
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
     });
     return NextResponse.json({ skills: resources });
   } catch (error) {
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
         { name: '@sessionId', value: sessionId },
         { name: '@name', value: name.toLowerCase() },
       ],
+      partitionKey: sessionId,
     });
 
     if (existing.length > 0) {

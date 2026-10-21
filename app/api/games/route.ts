@@ -111,6 +111,7 @@ export async function GET(req: NextRequest) {
     const resources = await scope.query<GameResult>('gameResults', {
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
     });
     // JS-side newest-first sort — mock store doesn't honor ORDER BY.
     resources.sort((a, b) => String(b.loggedAt).localeCompare(String(a.loggedAt)));
