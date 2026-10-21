@@ -23,7 +23,7 @@ import { createHash, randomBytes } from 'crypto';
 import { ensureContainer } from './cosmos';
 import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
-import { computeOwed, settledLines } from './owedBalance';
+import { computeOwed, settledLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
 import type { LedgerAccount, LedgerEntry, Player, StringingJob } from './types';
 import { mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
@@ -296,6 +296,149 @@ export async function giftCardRecords(groupId: string): Promise<GiftCardRecord[]
 
 // ── Spending ───────────────────────────────────────────────────────────────
 
+/** The row a spend is about: enough to read it, mark it, and refund it. */
+type SpendLine = Pick<OwedLine, 'kind' | 'ref' | 'pk' | 'amountCents'>;
+
+/** `refund:<ref>:<n>`; a 409 means another request already returned it. */
+async function writeRefund(scope: GroupScope, memberId: string, line: SpendLine, n: number, note: string): Promise<void> {
+  try {
+    await scope.create<LedgerEntry>('ledger', {
+      id: `refund:${line.ref}:${n}`,
+      memberId,
+      account: 'member_credit',
+      kind: 'credit_refund',
+      amountCents: line.amountCents,
+      note,
+      ref: { kind: line.kind, id: line.ref, pk: line.pk },
+      // Its own clock, not the request's `now`: a refund dated the same ms
+      // as its spend reads in the history as if it came first. The
+      // attribution tie-breaks by kind as well, because two writes can
+      // still land in one ms.
+      createdAt: new Date().toISOString(),
+      createdBy: memberId,
+    });
+  } catch (err) {
+    if (!isConflict(err)) throw err; // already refunded — another request got there
+  }
+}
+
+/**
+ * Mark the row paid by credit, stamping `paidAt` with the SPEND's time (the
+ * moment the credit was taken), which is also how a stringing job remembers
+ * it was credit that paid it (see `'credit'` below).
+ *
+ *   'paid'    — by this call.
+ *   'credit'  — already paid, BY THIS CREDIT: a session row says
+ *               `paidVia: 'credit'`; a stringing job carries no `paidVia`, so
+ *               it is credit's when its `paidAt` IS the spend's `createdAt`
+ *               (the live path and the stale finish both stamp it so). The
+ *               common case never gets here: `refundStaleSpends` answers it
+ *               from the mirror's payment entry without reading the row.
+ *   'already' — paid some other way (an e-transfer, an admin's tap): the
+ *               credit must go back.
+ *   'gone'    — removed, covered or deleted: the credit must go back too.
+ */
+async function markRowPaid(
+  scope: GroupScope,
+  line: SpendLine,
+  opts: { spendAt: string; now: string },
+): Promise<'paid' | 'credit' | 'already' | 'gone'> {
+  if (line.kind === 'session') {
+    const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
+    if (!row || row.writtenOff === true || row.removed === true) return 'gone';
+    if (row.paid === true) return row.paidVia === 'credit' ? 'credit' : 'already';
+    const written = await scope.replace('players', { ...row, paid: true, paidAt: opts.spendAt, paidVia: 'credit' }, line.pk);
+    if (!written) return 'gone';
+    await mirrorPaid(scope, written as unknown as Player); // the owed side; the credit side is the spend entry
+    return 'paid';
+  }
+  const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
+  if (!job) return 'gone';
+  if (job.paidAt !== null) return job.paidAt === opts.spendAt ? 'credit' : 'already';
+  const written = await scope.replace('stringingJobs', { ...job, paidAt: opts.spendAt, updatedAt: opts.now }, line.pk);
+  if (!written) return 'gone';
+  await mirrorStringingChanged(scope, job, written, 'credit');
+  return 'paid';
+}
+
+/**
+ * Reconcile every STALE spend in this member's credit against its ROW —
+ * whatever happened to the row since.
+ *
+ * A spend is written BEFORE its row is marked paid, so a process that dies
+ * between the two leaves credit taken for a line that is still owed. Finding
+ * those by walking the member's OWED lines (what `payWithCredit` once did)
+ * missed the worst case: a row since paid another way — an e-transfer, an
+ * admin's tap, a cover — is no longer owed, so it was never visited and its
+ * credit stayed taken forever. This walks the LEDGER instead: a line whose
+ * `credit_spend`s outweigh its `credit_refund`s has credit taken for it.
+ *
+ *   - FRESH (younger than `UNFINISHED_SPEND_MS`): another request is paying
+ *     it right now — left alone, or this would race a good payment.
+ *   - COMPLETED (the common case — every credit payment ever made nets
+ *     negative here): answered from the ledger itself, with NO row read.
+ *     The mirror writes the owed-side `payment` entry into the same
+ *     partition with `meta.via: 'credit'` (`paymentEntry` /
+ *     `stringingPaymentEntry` in lib/ledgerMirror.ts), matched on `ref.id`
+ *     so every id shape a session payment can take counts; a payment since
+ *     VOIDED (the row un-ticked) does not count, so the row is read again.
+ *     Reading the row for each of a member's past credit payments on every
+ *     balance read would have grown with their history forever.
+ *   - Otherwise the ROW is read (the mirror flag off, or a mirror write that
+ *     failed): still unpaid and owed → the row update is FINISHED; paid by
+ *     credit → nothing; paid another way, covered, removed or gone →
+ *     `refund:<ref>:<n>`.
+ *
+ * Called at the top of every "Pay with credit" and, best-effort, from the
+ * member's own balance read — so a member with nothing left to pay still gets
+ * the credit back the next time they look. The admin reconcile does NOT call
+ * it: that stays no-auto-repair.
+ */
+export async function refundStaleSpends(
+  scope: GroupScope,
+  memberId: string,
+  ledger?: LedgerEntry[],
+): Promise<{ finished: number; refunded: number; ledger: LedgerEntry[] }> {
+  let entries = ledger ?? (await ledgerFor(scope, memberId));
+  const byRef = new Map<string, LedgerEntry[]>();
+  for (const e of entries) {
+    // Credit entries only: the mirror writes a line's charge and payment under
+    // member_owed in the same partition, and they are not spends.
+    if (accountOf(e) !== 'member_credit' || (e.kind !== 'credit_spend' && e.kind !== 'credit_refund')) continue;
+    if (!e.ref || (e.ref.kind !== 'session' && e.ref.kind !== 'stringing')) continue;
+    const list = byRef.get(e.ref.id) ?? [];
+    list.push(e);
+    byRef.set(e.ref.id, list);
+  }
+  const voided = new Set(entries.filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));
+  const completedByMirror = (refId: string) =>
+    entries.some((e) => e.kind === 'payment' && e.ref?.id === refId && e.meta?.via === 'credit' && !voided.has(e.id));
+  let finished = 0;
+  let refunded = 0;
+  const now = new Date().toISOString();
+  for (const [refId, forLine] of byRef) {
+    const net = forLine.reduce((sum, e) => sum + e.amountCents, 0);
+    if (net >= 0) continue;
+    const spends = forLine.filter((e) => e.kind === 'credit_spend').sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+    const last = spends[spends.length - 1];
+    if (!last?.ref || Date.now() - Date.parse(last.createdAt) < UNFINISHED_SPEND_MS) continue;
+    if (completedByMirror(refId)) continue;
+    // Refund what was TAKEN (−net), not what the row says now: an owedAmount
+    // edited since is the row's business, the credit's is what left it.
+    const line: SpendLine = { kind: last.ref.kind as SpendLine['kind'], ref: refId, pk: last.ref.pk, amountCents: -net };
+    const outcome = await markRowPaid(scope, line, { spendAt: last.createdAt, now });
+    if (outcome === 'credit') continue;
+    if (outcome === 'paid') {
+      finished += 1;
+    } else {
+      await writeRefund(scope, memberId, line, spends.length - 1, 'Paid another way — credit returned');
+      refunded += 1;
+    }
+  }
+  if (finished + refunded > 0) entries = await ledgerFor(scope, memberId);
+  return { finished, refunded, ledger: entries };
+}
+
 /**
  * Pay this member's owed lines from their credit: oldest first, each line
  * only if what is left covers it in full. Returns what was paid.
@@ -306,8 +449,9 @@ export async function giftCardRecords(groupId: string): Promise<GiftCardRecord[]
  *     collides on insert; a line whose earlier spend was REFUNDED gets n+1
  *     and can be paid again (a fixed `spend:<ref>` id stranded it forever).
  *   - A line whose spends outweigh its refunds already has credit taken for
- *     it. If its row is still unpaid — the process died between the two
- *     writes — the row update is FINISHED, not skipped.
+ *     it. `refundStaleSpends` runs FIRST — before the owed lines are even
+ *     read — and finishes the row update if the row is still unpaid, or
+ *     returns the credit if the row was settled some other way meanwhile.
  *   - Any failure to mark the row writes `refund:<ref>:<n>` before giving up,
  *     so credit is never taken for a line that stays owed.
  *   - Two requests at once could each pay a different line from the same
@@ -316,84 +460,29 @@ export async function giftCardRecords(groupId: string): Promise<GiftCardRecord[]
  */
 export async function payWithCredit(groupId: string, memberId: string): Promise<{ paid: number; spentCents: number; balanceCents: number }> {
   const scope = groupScope(groupId);
-  let ledger = await ledgerFor(scope, memberId);
+  const stale = await refundStaleSpends(scope, memberId);
+  let ledger = stale.ledger;
   const identity = await resolveIdentity({ memberId }, groupId);
   // Frozen lines only (`settledLines`): credit spent on a live estimate is
   // credit spent on a number that can still move.
   const lines = settledLines(await computeOwed(scope, identity), identity.memberId);
-  if (lines.length === 0) throw new CreditError('nothing_to_pay');
+  if (lines.length === 0 && stale.finished === 0) throw new CreditError('nothing_to_pay');
 
-  let paid = 0;
+  let paid = stale.finished;
   let spent = 0;
   const now = new Date().toISOString();
-
-  const refund = async (line: (typeof lines)[number], n: number, note: string) => {
-    try {
-      await scope.create<LedgerEntry>('ledger', {
-        id: `refund:${line.ref}:${n}`,
-        memberId,
-        account: 'member_credit',
-        kind: 'credit_refund',
-        amountCents: line.amountCents,
-        note,
-        ref: { kind: line.kind, id: line.ref, pk: line.pk },
-        // Its own clock, not the request's `now`: a refund dated the same ms
-        // as its spend reads in the history as if it came first. The
-        // attribution tie-breaks by kind as well, because two writes can
-        // still land in one ms.
-        createdAt: new Date().toISOString(),
-        createdBy: memberId,
-      });
-    } catch (err) {
-      if (!isConflict(err)) throw err; // already refunded — another request got there
-    }
-  };
-
-  /**
-   * Mark the row paid. `'paid'` — by this call. `'already'` — something else
-   * paid it first (an e-transfer that just landed): the credit must go back.
-   * `'gone'` — removed, covered or deleted: the credit must go back too.
-   */
-  const markPaid = async (line: (typeof lines)[number]): Promise<'paid' | 'already' | 'gone'> => {
-    if (line.kind === 'session') {
-      const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
-      if (!row || row.writtenOff === true) return 'gone';
-      if (row.paid === true) return 'already';
-      const written = await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: 'credit' }, line.pk);
-      if (!written) return 'gone';
-      await mirrorPaid(scope, written as unknown as Player); // the owed side; the credit side is the spend entry
-      return 'paid';
-    }
-    const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
-    if (!job) return 'gone';
-    if (job.paidAt !== null) return 'already';
-    const written = await scope.replace('stringingJobs', { ...job, paidAt: now, updatedAt: now }, line.pk);
-    if (!written) return 'gone';
-    await mirrorStringingChanged(scope, job, written, 'credit');
-    return 'paid';
-  };
+  const refund = (line: SpendLine, n: number, note: string) => writeRefund(scope, memberId, line, n, note);
 
   for (const line of lines) {
-    // Credit entries only: the mirror writes this line's charge and payment
-    // under member_owed in the same partition, and they are not spends.
     const forLine = ledger.filter((e) => e.ref?.id === line.ref && accountOf(e) === 'member_credit');
     const spends = forLine.filter((e) => e.kind === 'credit_spend').length;
     const net = forLine.reduce((sum, e) => sum + e.amountCents, 0);
 
-    if (net < 0) {
-      // Credit already taken for this line. If that spend is FRESH, another
-      // request is mid-way through paying it (a double tap) — leave it be;
-      // touching it would race that request and could refund a good payment.
-      // If it is STALE, the attempt died between its two writes: finish it,
-      // or give the credit back if the line was settled some other way.
-      const last = forLine.filter((e) => e.kind === 'credit_spend').map((e) => Date.parse(e.createdAt)).sort().pop() ?? 0;
-      if (Date.now() - last < UNFINISHED_SPEND_MS) continue;
-      const outcome = await markPaid(line);
-      if (outcome === 'paid') paid += 1;
-      else await refund(line, spends - 1, 'Already settled — credit returned');
-      ledger = await ledgerFor(scope, memberId);
-      continue;
-    }
+    // Credit already taken for this line, and `refundStaleSpends` left it:
+    // the spend is FRESH, so another request is mid-way through paying it (a
+    // double tap). Touching it would race that request and could refund a
+    // good payment.
+    if (net < 0) continue;
     if (line.amountCents <= 0 || line.amountCents > balanceOf(ledger)) continue;
 
     const n = spends;
@@ -421,9 +510,9 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
       continue;
     }
 
-    let outcome: 'paid' | 'already' | 'gone';
+    let outcome: Awaited<ReturnType<typeof markRowPaid>>;
     try {
-      outcome = await markPaid(line);
+      outcome = await markRowPaid(scope, line, { spendAt: now, now });
     } catch (err) {
       await refund(line, n, 'Could not mark it paid — returned');
       throw err;
