@@ -33,6 +33,7 @@ import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
 import { takeProfileView } from '@/lib/profileView';
+import { useTabActive } from '@/lib/tabActivity';
 import { isFlagOn } from '@/lib/flags';
 import { useAdminNeedsYou } from '@/lib/useAdminNeedsYou';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
@@ -223,10 +224,13 @@ export default function ProfileTab({
   // A Stats card's "turn this off" link (lib/profileView.ts) lands here on the
   // Stats & privacy screen. Waits for an identity: that screen is for a
   // signed-in member, and the marker is consumed only once one exists.
+  // On each ARRIVAL: the tab is kept, and usually mounted before the link
+  // is tapped (lib/tabActivity.ts).
+  const onScreen = useTabActive();
   useEffect(() => {
-    if (!identity) return;
+    if (!identity || !onScreen) return;
     if (takeProfileView() === 'stats-privacy') setView('stats-privacy');
-  }, [identity]);
+  }, [identity, onScreen]);
 
   // Deep link from the public delete-account page. Waits for an identity so a
   // signed-out person sees the ordinary sign-in card first, then the sheet.

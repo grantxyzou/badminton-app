@@ -7,6 +7,7 @@ import { useFocusTrap } from './useFocusTrap';
 import { useKeyboardInset } from './useKeyboardInset';
 import { registerOpenSheet } from '@/lib/sheetStack';
 import { useHydrated } from '@/lib/useClientValue';
+import { useTabActive } from '@/lib/tabActivity';
 
 export interface BottomSheetProps {
   open: boolean;
@@ -57,7 +58,7 @@ const UP_FOLLOW = 0.36;
 const UP_HALF_PX = 100;
 
 export default function BottomSheet({
-  open,
+  open: openProp,
   onClose,
   ariaLabel,
   children,
@@ -66,6 +67,12 @@ export default function BottomSheet({
   closeOnEscape = true,
 }: BottomSheetProps) {
   const mounted = useHydrated();
+  // A sheet portals to <body>, out of its tab's hidden panel, so a sheet left
+  // open on a tab you switched away from would float over the next one. It
+  // stays shut while its tab is away and comes back with it
+  // (lib/tabActivity.ts). Always true outside a tab.
+  const tabActive = useTabActive();
+  const open = openProp && tabActive;
   const [state, setState] = useState<SheetState>('closed');
   const sheetRef = useRef<HTMLDivElement>(null);
   /** Live drag, or null. Held in a ref and written straight to the DOM: React

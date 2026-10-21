@@ -71,10 +71,11 @@ transition passes every existing test.
 
 ## Still open, web side (ships with a normal deploy)
 
-1. **Duplicate reads ACROSS TABS** — the same-screen ones are done (#462, and
-   Profile's two `members/me` calls in #651). A pass through the four tabs still
-   reads `/api/session` and `/api/members/me` more than once, because every tab
-   switch unmounts the old tab, so nothing is kept. These are seconds apart, so only a real TTL
+1. **Duplicate reads ACROSS TABS** — DONE differently (2026-10-21,
+   `docs/plans/tab-keep-alive.md`): tabs are kept once visited and opened early
+   behind the launch screen, so a tab switch reads nothing (it sends only the
+   usage beacon), and a tab away for 10 s or more re-checks quietly on return.
+   The notes below are the history of why a TTL cache was declined. These are seconds apart, so only a real TTL
    cache helps — and that trades a round trip for showing a stale roster after
    somebody signs up. **A decision, not a task**: `lib/sharedRead.ts` is
    deliberately a dedupe with no TTL for exactly that reason. Read again for

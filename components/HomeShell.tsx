@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
 import { isFlagOn } from '@/lib/flags';
@@ -31,6 +31,8 @@ import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
 import { useInAppNavigation } from '@/lib/inAppNavigate';
 import { useEverOpened } from '@/lib/useEverOpened';
 import { prewarmInsight } from '@/lib/useInsight';
+import { TabActiveContext } from '@/lib/tabActivity';
+import { appSettled, APP_SHELL_ATTR, TAB_PANEL_ATTR } from '@/lib/appSettled';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
 const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
@@ -91,6 +93,25 @@ export function toTab(v: string | null | undefined): Tab | null {
   return v === 'home' || v === 'stringing' || v === 'skills' || v === 'admin' || v === 'profile' ? v : null;
 }
 
+/** The tabs kept once visited, and opened early behind the launch screen. */
+const KEPT_TABS: Tab[] = ['home', 'stringing', 'skills', 'profile'];
+
+/**
+ * The longest the other tabs wait for the first screen to settle before they
+ * load anyway. A card that never settles (a slow model call, a stuck read)
+ * must not keep the rest of the app cold.
+ */
+const PRELOAD_WAIT_MAX_MS = 4000;
+
+/** The browser's "save data" request (Android Chrome's Lite mode and the like). */
+function saveDataOn(): boolean {
+  try {
+    return (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  } catch {
+    return false;
+  }
+}
+
 interface Props {
   /**
    * Pre-fetched on the server in `app/page.tsx` so the announcement (the
@@ -120,6 +141,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // tab remounts and re-runs its data fetches (no service worker; refresh ==
   // refetch the current view).
   const [refreshNonce, setRefreshNonce] = useState(0);
+  // Pull-to-refresh and a tapped notification refresh ONE tab: the one on
+  // screen. The tabs kept behind it (below) stay as they are and re-check on
+  // their own when you go back to them (`useTabReturn`). `refreshNonce` above
+  // is the everything-changed key — a group switch or join.
+  const [tabNonce, setTabNonce] = useState<Partial<Record<Tab, number>>>({});
   const [showAdmin, setShowAdmin] = useState(false);
   // The Stringing tab's register (docs/plans/stringing-tabs.md). Held HERE,
   // above that tab's `stringing-${refreshNonce}` key, so pull-to-refresh keeps
@@ -428,6 +454,46 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // eslint-disable-next-line react-hooks/set-state-in-effect -- marks the post-mount restore above as done
   useEffect(() => setTabResolved(true), []);
 
+  /**
+   * TABS ARE KEPT (docs/plans/tab-keep-alive.md). A tab you leave is hidden,
+   * not destroyed, so going back shows what you left at once instead of a
+   * skeleton and five fresh requests; it re-checks quietly if it was away a
+   * while (`useTabReturn`). Grant, 2026-10-21: "it still has a lot of loading
+   * stats everytime i tap on a new page."
+   *
+   * Only once the starting tab is RESOLVED: before that the SSR'd Home is a
+   * placeholder for whatever the restore picks, and keeping it would fetch
+   * Home behind a restored Stats — the exact cost `deferFetch` exists to
+   * avoid. Admin is not kept: it is the one tab with its own sub-pages and a
+   * fixed toast stack, and it is visited far less than the four in the nav.
+   */
+  const [kept, setKept] = useState<Tab[]>([]);
+  if (tabResolved && KEPT_TABS.includes(activeTab) && !kept.includes(activeTab)) {
+    setKept([...kept, activeTab]);
+  }
+
+  /**
+   * Each tab keeps its own scroll position, as a phone's tab bar does: the
+   * page is one scroller shared by every tab, so without this a tab came back
+   * at whatever height the last one was left. Not while a sheet holds the
+   * page (`useBodyScrollLock` pins `<body>`, and the window then reads 0).
+   */
+  const scrollByTab = useRef<Partial<Record<Tab, number>>>({});
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    const save = () => {
+      if (document.body.style.position === 'fixed') return;
+      scrollByTab.current[activeTabRef.current] = window.scrollY;
+    };
+    window.addEventListener('scroll', save, { passive: true });
+    return () => window.removeEventListener('scroll', save);
+  }, []);
+  useLayoutEffect(() => {
+    if (activeTabRef.current === activeTab) return;
+    activeTabRef.current = activeTab;
+    window.scrollTo(0, scrollByTab.current[activeTab] ?? 0);
+  }, [activeTab]);
+
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
   // ProfileTab is allowed to render with empty values (anonymous state).
   /**
@@ -705,7 +771,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // the member just pulled to replace.
   const handlePullRefresh = useCallback(async () => {
     resetSharedReads();
-    setRefreshNonce((n) => n + 1);
+    setTabNonce((n) => ({ ...n, [activeTabRef.current]: (n[activeTabRef.current] ?? 0) + 1 }));
     await new Promise((r) => setTimeout(r, 600));
   }, []);
 
@@ -719,7 +785,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     const next: Tab = toTab(tab) ?? 'home';
     resetSharedReads();
     setActiveTab(next);
-    setRefreshNonce((n) => n + 1);
+    setTabNonce((n) => ({ ...n, [next]: (n[next] ?? 0) + 1 }));
   }, []));
 
   /**
@@ -738,10 +804,32 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   /** Either takes the full screen, so the tab bar belongs to neither. */
   const inOnboarding = showDoors || showOnboardingPage;
 
+  /**
+   * And the tabs you have not opened yet are opened for you, hidden, once the
+   * screen you landed on has finished loading — while the launch screen is
+   * still finishing its shot on a cold start. Their reads never compete with
+   * the first screen's, and the first tap on each is instant too. Skipped when
+   * the browser asks to save data.
+   */
+  const [preloaded, setPreloaded] = useState(false);
+  const canPreload = tabResolved && hasIdentity === true && !inOnboarding;
+  useEffect(() => {
+    if (preloaded || !canPreload || saveDataOn()) return;
+    const started = Date.now();
+    const id = window.setInterval(() => {
+      if (!appSettled(document) && Date.now() - started < PRELOAD_WAIT_MAX_MS) return;
+      window.clearInterval(id);
+      setPreloaded(true);
+      setKept((k) => [...k, ...KEPT_TABS.filter((t) => !k.includes(t))]);
+    }, 150);
+    return () => window.clearInterval(id);
+  }, [preloaded, canPreload]);
+
+
   return (
     <>
       <PullToRefresh onRefresh={handlePullRefresh} />
-      <div className="min-h-screen pb-32">
+      <div className="min-h-screen pb-32" {...{ [APP_SHELL_ATTR]: '' }}>
         <ThemeToggle />
         <LanguageToggle />
         <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
@@ -849,37 +937,52 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             />
           ) : (
           <>
-          {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="motion-fade"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} /></div>}
-          {activeTab === 'stringing' && <div key={`stringing-${refreshNonce}`} className="motion-fade"><StringingTab isAdmin={showAdmin} view={stringingView} onViewChange={setStringingView} /></div>}
-          {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="motion-fade"><SkillsTab onTabChange={setActiveTab} /></div>}
+          {/* Each kept tab is its own panel: hidden, not unmounted, while
+              another is on screen (`kept` above). The panel's key is what a
+              refresh changes — `refreshNonce` for everything, `tabNonce` for
+              the one tab a pull or a notification refreshed. */}
+          {(['home', 'stringing', 'skills', 'profile'] as const).map((tab) =>
+            tab === activeTab || kept.includes(tab) ? (
+              <div
+                key={`${tab}-${refreshNonce}-${tabNonce[tab] ?? 0}`}
+                {...{ [TAB_PANEL_ATTR]: tab }}
+                hidden={tab !== activeTab}
+                className="motion-fade"
+              >
+                <TabActiveContext.Provider value={tab === activeTab}>
+                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} />}
+                  {tab === 'stringing' && <StringingTab isAdmin={showAdmin} view={stringingView} onViewChange={setStringingView} />}
+                  {tab === 'skills' && <SkillsTab onTabChange={setActiveTab} />}
+                  {tab === 'profile' && (
+                    <ProfileTab
+                      sessionId={profileSession.id}
+                      sessionLabel={profileSession.label}
+                      isAdmin={showAdmin}
+                      onAdminTools={() => setActiveTab('admin')}
+                      authProviders={authProviders}
+                      deleteIntent={deleteIntent}
+                      onDeleteIntentConsumed={() => setDeleteIntent(false)}
+                      onGroupSwitched={() => {
+                        setRefreshNonce((n) => n + 1);
+                        void refreshGroups();
+                      }}
+                      onJoinGroup={() => setOnboarding('join')}
+                      onCreateGroup={() => {
+                        // Reachable only where a group exists, so an account does.
+                        setCreateAuthFirst(false);
+                        setOnboarding('create');
+                      }}
+                      inviteToken={joinToken}
+                    />
+                  )}
+                </TabActiveContext.Provider>
+              </div>
+            ) : null,
+          )}
           {/* Admin's verdict is still pending (a reload or deep link onto the
               tab): show the console's loading frame, not an empty page. */}
-          {activeTab === 'admin' && !adminKnown && <div key="admin-pending" className="motion-fade"><AdminFallback /></div>}
-          {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="motion-fade"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
-          {activeTab === 'profile' && (
-            <div key={`profile-${refreshNonce}`} className="motion-fade">
-              <ProfileTab
-                sessionId={profileSession.id}
-                sessionLabel={profileSession.label}
-                isAdmin={showAdmin}
-                onAdminTools={() => setActiveTab('admin')}
-                authProviders={authProviders}
-                deleteIntent={deleteIntent}
-                onDeleteIntentConsumed={() => setDeleteIntent(false)}
-                onGroupSwitched={() => {
-                  setRefreshNonce((n) => n + 1);
-                  void refreshGroups();
-                }}
-                onJoinGroup={() => setOnboarding('join')}
-                onCreateGroup={() => {
-                  // Reachable only where a group exists, so an account does.
-                  setCreateAuthFirst(false);
-                  setOnboarding('create');
-                }}
-                inviteToken={joinToken}
-              />
-            </div>
-          )}
+          {activeTab === 'admin' && !adminKnown && <div key="admin-pending" {...{ [TAB_PANEL_ATTR]: 'admin' }} className="motion-fade"><AdminFallback /></div>}
+          {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}-${tabNonce.admin ?? 0}`} {...{ [TAB_PANEL_ATTR]: 'admin' }} className="motion-fade"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
           </>
           )}
         </main>

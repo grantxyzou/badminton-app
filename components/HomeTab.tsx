@@ -24,6 +24,7 @@ import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
 import { OFFER_PIN_KEY } from '@/lib/offerPin';
+import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
 import { primeHaptics, tapSuccess } from '@/lib/haptics';
@@ -235,6 +236,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     }
     loadData();
   }, [loadData, memberName, deferFetch]);
+
+  // Back on Home after a while: someone may have signed up, an announcement
+  // may be new. Re-read quietly — the week stays on screen while it does
+  // (`weekLoadedRef` above), so a return never blinks to a skeleton.
+  useTabReturn(() => {
+    if (!deferFetch) void loadData();
+  });
 
   // Ask the server what the verified member can sign in with. `auth/methods`
   // answers for the cookie's own member (PIN, password, providers); where that

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import LaunchArt from '@/components/launch/LaunchArt';
 import { isLandingUrl } from '@/lib/landingParams';
+import { appSettled, APP_SHELL_ATTR } from '@/lib/appSettled';
 import {
+  APP_SETTLE_WAIT_MS,
   frameStyles,
   HARD_TIMEOUT_MS,
   resolveFrame,
@@ -14,7 +16,7 @@ import {
 } from '@/lib/launchMotion';
 
 /** Where the launch screen goes once it knows. */
-export type LaunchDecision = 'welcome' | 'none';
+export type LaunchDecision = 'welcome' | 'app' | 'none';
 
 /**
  * READ FROM THE PAGE THE SERVER RENDERED, never from a client opinion.
@@ -26,17 +28,22 @@ export type LaunchDecision = 'welcome' | 'none';
  * because a view can leave Welcome straight after hydration, and then the
  * screen should simply get out of the way.
  *
- * ONLY WELCOME GETS A FINAL SHOT. There the shot is the screen: the shuttle
- * lands and the lockup it lands on is Welcome. For a signed-in member it was
- * a wait — Grant, 2026-10-03: "its done loading faster than 1.5s". The app is
- * ready at hydration, so the screen leaves at hydration, as it does for a
- * route that is not the app at all (`/legal/*`, `/design/*`, `/migrate`) and
- * for a LANDING (`lib/landingParams.ts`; the shells read those parameters
- * after this runs, so the URL still carries them).
+ * WELCOME AND THE APP GET A FINAL SHOT. On Welcome the shot is the screen:
+ * the shuttle lands and the lockup it lands on is Welcome. For a signed-in
+ * member (`HomeShell`, `data-app-shell`) the shot is the time the app spends
+ * loading Home and opening the other tabs behind it, and the screen lifts once
+ * the shot has landed AND Home has finished (`appSettled`), so the first
+ * screen arrives whole (Grant, 2026-10-21). It used to leave at hydration —
+ * Grant, 2026-10-03: "its done loading faster than 1.5s" — which showed Home's
+ * skeletons instead; the wait now buys something. A route that is not the app
+ * at all (`/legal/*`, `/design/*`, `/migrate`) and a LANDING
+ * (`lib/landingParams.ts`; the shells read those parameters after this runs,
+ * so the URL still carries them) still leave at once.
  */
 export function launchDecision(doc: Document, search = ''): LaunchDecision {
   if (isLandingUrl(search)) return 'none';
-  return doc.querySelector('[data-signed-out-welcome]') ? 'welcome' : 'none';
+  if (doc.querySelector('[data-signed-out-welcome]')) return 'welcome';
+  return doc.querySelector(`[${APP_SHELL_ATTR}]`) ? 'app' : 'none';
 }
 
 /**
@@ -79,8 +86,10 @@ function apply(p: ReturnType<typeof parts>, f: LaunchFrame) {
  * loading shot loops as CSS (`<html data-launch="loading">`, `launchLoopCss`)
  * for exactly as long as the page takes to arrive. Once React hydrates:
  *
- *   - signed in, a route that is not the app, a landing, or a reload: the page
- *     is ready, so it fades away at once;
+ *   - a route that is not the app, a landing, or a reload: the page is ready,
+ *     so it fades away at once;
+ *   - signed in: the same final shot as Welcome's, then it waits for Home to
+ *     finish loading (at most `APP_SETTLE_WAIT_MS` more) and fades away;
  *   - signed out, on Welcome: the shot becomes the final one — the shot
  *     already in the air if it is still flying, the next one if it has landed
  *     (`shotTakeover`; a shuttle is never cut off mid-air) — the wordmark
@@ -167,6 +176,20 @@ export default function LaunchScreen({ tagline }: { tagline: string }) {
       leave(first === 'welcome' ? 'welcome' : 'done');
       return cleanup;
     }
+    // Where the shot lands: Welcome takes over the lockup; the app is waited
+    // for, then the screen fades off it.
+    const toApp = first === 'app';
+
+    /** The shot has landed on a signed-in launch: lift once Home is whole. */
+    const awaitApp = () => {
+      const until = performance.now() + APP_SETTLE_WAIT_MS;
+      const check = (now: number) => {
+        if (finished) return;
+        if (appSettled(document) || now >= until) return leave('done');
+        raf = requestAnimationFrame(check);
+      };
+      check(performance.now());
+    };
 
     // The page owns the screen now: the CSS failsafe stands down.
     html.setAttribute('data-launch', 'resolving');
@@ -193,7 +216,7 @@ export default function LaunchScreen({ tagline }: { tagline: string }) {
       if (reduced) {
         // No flight: the finished lockup at once, then straight on.
         apply(p, SETTLED_FRAME);
-        return leave('welcome');
+        return toApp ? awaitApp() : leave('welcome');
       }
       const start = performance.now() - into;
       shotStart.current = start;
@@ -201,7 +224,7 @@ export default function LaunchScreen({ tagline }: { tagline: string }) {
       const tick = (now: number) => {
         const ms = now - start;
         apply(p, resolveFrame(ms));
-        if (ms >= WELCOME_HANDOFF_MS) return leave('welcome');
+        if (ms >= WELCOME_HANDOFF_MS) return toApp ? awaitApp() : leave('welcome');
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);

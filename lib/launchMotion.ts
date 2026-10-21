@@ -35,9 +35,8 @@ export const SHOT_MS = 2000;
 export const RESOLVE_FLIGHT_MS = 1200;
 /**
  * `W` in the handoff: when Welcome begins, measured from the start of the final
- * shot. Welcome's buttons are timed from it. (The handoff also routes a
- * signed-in launch to Home at W; this build does not play a final shot for a
- * signed-in member at all — see `launchDecision`.)
+ * shot. Welcome's buttons are timed from it. (A signed-in launch plays the same
+ * final shot and then waits for Home to finish loading — `APP_SETTLE_WAIT_MS`.)
  */
 export const WELCOME_AT_MS = 1400;
 /** If the page never gives the screen a decision after hydration, it leaves anyway. */
@@ -50,6 +49,16 @@ export const HARD_TIMEOUT_MS = 8000;
  * solid one — the one swap the handoff says must not be visible.
  */
 export const WELCOME_HANDOFF_MS = RESOLVE_FLIGHT_MS + 500;
+
+/**
+ * A signed-in launch: once the final shot has landed, how long the screen waits
+ * for the first screen to finish loading before it lifts anyway. The shot is
+ * the time the app uses to load Home and open the other tabs behind it
+ * (Grant, 2026-10-21: "let the full animation play end to end at least once
+ * and use that time to preload"); this is the most it adds after the shot when
+ * the network is slow. A card still loading after it shows its own skeleton.
+ */
+export const APP_SETTLE_WAIT_MS = 2500;
 
 /** Welcome's buttons, relative to W: Sign up then Log in, 150ms apart. (The rise itself is `launch-rise` in globals.css.) */
 export const BUTTON_RISE = { delayMs: 450, staggerMs: 150 } as const;

@@ -10,6 +10,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { useStringingShop } from '@/lib/useStringingShop';
 import { takeStringingIntent } from '@/lib/stringingIntent';
+import { useTabActive, useTabReturn } from '@/lib/tabActivity';
 import { restringDueWeeks } from '@/lib/restring';
 import RequestStringingSheet from './RequestStringingSheet';
 import { useGear } from '@/components/stats/useGear';
@@ -138,13 +139,22 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
   // reads after mount (a child's effect runs before its parent's, so the first
   // pass can see `false` for a signed-in member). A closed shop consumes the
   // marker without opening anything, so it cannot open a form on a later visit.
+  // Asked again on each arrival: the tab is kept, so the card is usually
+  // mounted before the link is tapped (lib/tabActivity.ts).
+  const onScreen = useTabActive();
   useEffect(() => {
-    if (open === null || !hasIdentity) return;
+    if (!onScreen || open === null || !hasIdentity) return;
     const lbs = takeStringingIntent();
     if (lbs === null || open !== true) return;
     setPrefillTension(lbs);
     setSheetOpen(true);
-  }, [open, hasIdentity]);
+  }, [onScreen, open, hasIdentity]);
+
+  // Back on this tab after a while: the stringer may have moved a racket on.
+  // Re-read quietly; the list stays on screen while it does.
+  useTabReturn(() => {
+    if (open === true) loadJobs();
+  });
 
   // The Stringing tab's RevealSlot holds this place until the card can draw its
   // final shape: the shop has answered and, when it is open for a signed-in
