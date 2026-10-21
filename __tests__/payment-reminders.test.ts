@@ -10,6 +10,7 @@ import { GET as inboxGet } from '@/app/api/admin/payments/route';
 import { PATCH as patchSettings } from '@/app/api/admin/payments/settings/route';
 import { mintPaymentsKey, notePaymentsSettings, readPaymentsSettings } from '@/lib/paymentsInbox';
 import { reminderDue, reminderPayload } from '@/lib/paymentReminders';
+import * as owedBalance from '@/lib/owedBalance';
 import {
   resetMockStore,
   getStore,
@@ -133,6 +134,20 @@ describe('the admin card', () => {
     seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
     const inbox = await (await inboxGet(makeAdminRequest('GET', `${BASE}/admin/payments`))).json();
     expect(inbox.reminders).toEqual({ on: false, lastRunAt: null, wouldRemind: ['Lin'] });
+  });
+
+  it('the preview and the hold list come from ONE roster read, never the per-person path', async () => {
+    // The regression: each preview walked the roster through computeOwed —
+    // ~4 serial round trips a member, twice, on every Command Center open.
+    seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
+    const roster = vi.spyOn(owedBalance, 'computeOwedForRoster');
+    const person = vi.spyOn(owedBalance, 'computeOwed');
+    const inbox = await (await inboxGet(makeAdminRequest('GET', `${BASE}/admin/payments`))).json();
+    expect(inbox.reminders.wouldRemind).toEqual(['Lin']);
+    expect(roster).toHaveBeenCalledTimes(1);
+    expect(person).not.toHaveBeenCalled();
+    roster.mockRestore();
+    person.mockRestore();
   });
 
   it('the switch is admin-only and validated', async () => {
