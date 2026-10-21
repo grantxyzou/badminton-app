@@ -10,7 +10,10 @@
  * here: the person's own rows first (a small, indexed result), then only
  * the sessions those rows name, then the roster of only the UNSETTLED ones
  * among them — the one place a live per-person denominator is still needed,
- * because a settled session has its amount frozen on the row.
+ * because a settled session has its amount frozen on the row. That roster is
+ * handed over as ROWS (projected to the four fields `costSplit` reads), not a
+ * count: a count cannot carry a `resplit` cover, and the balance card must
+ * show the figure the receipt shows. Same one query, two more fields.
  *
  * Every query keeps its JS re-check: the mock store filters by parameter
  * NAME and ignores the ones it does not know (`@names`, `@sessionIds`), so
@@ -23,6 +26,7 @@
  */
 import type { GroupScope } from './groupScope';
 import { matchesIdentity, type ResolvedIdentity } from './playerIdentity';
+import type { SplitPlayer } from './sessionCost';
 import type { Player, Session } from './types';
 
 export interface OwedInputs {
@@ -30,8 +34,9 @@ export interface OwedInputs {
   players: Player[];
   /** The sessions those rows name (only the ones that exist). */
   sessionById: Map<string, Session>;
-  /** Active roster size per UNSETTLED session the identity has a row in. */
-  activeCountBySession: Map<string, number>;
+  /** Every row of each UNSETTLED session the identity has a row in, projected
+   *  to what `costSplit` needs — the live denominator comes from there. */
+  rosterBySession: Map<string, SplitPlayer[]>;
 }
 
 export async function loadOwedInputs(
@@ -78,21 +83,21 @@ export async function loadOwedInputs(
     for (const s of sessions) if (s && wanted.has(s.id)) sessionById.set(s.id, s);
   }
 
-  const activeCountBySession = new Map<string, number>();
+  const rosterBySession = new Map<string, SplitPlayer[]>();
   const unsettledIds = [...sessionById.values()].filter((s) => !s.settled).map((s) => s.id);
   if (unsettledIds.length > 0) {
     const wanted = new Set(unsettledIds);
-    const rows = await scope.query<Pick<Player, 'sessionId' | 'removed' | 'waitlisted'>>('players', {
-      select: 'c.sessionId, c.removed, c.waitlisted',
+    const rows = await scope.query<Pick<Player, 'sessionId' | 'removed' | 'waitlisted' | 'writtenOff' | 'coverMode'>>('players', {
+      select: 'c.sessionId, c.removed, c.waitlisted, c.writtenOff, c.coverMode',
       where: 'ARRAY_CONTAINS(@sessionIds, c.sessionId)',
       params: [{ name: '@sessionIds', value: unsettledIds }],
     });
     for (const p of rows) {
       if (typeof p.sessionId !== 'string' || !wanted.has(p.sessionId)) continue;
-      if (p.removed === true || p.waitlisted === true) continue;
-      activeCountBySession.set(p.sessionId, (activeCountBySession.get(p.sessionId) ?? 0) + 1);
+      const { removed, waitlisted, writtenOff, coverMode } = p;
+      rosterBySession.set(p.sessionId, [...(rosterBySession.get(p.sessionId) ?? []), { removed, waitlisted, writtenOff, coverMode }]);
     }
   }
 
-  return { players, sessionById, activeCountBySession };
+  return { players, sessionById, rosterBySession };
 }

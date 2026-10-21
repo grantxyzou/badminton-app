@@ -80,7 +80,7 @@ describe('resolveIdentity', () => {
 });
 
 describe('classifyOwed', () => {
-  const ctx = { activeSessionId: 'session-active', now: new Date('2026-06-10T00:00:00Z').getTime(), activeCount: 4 };
+  const ctx = { activeSessionId: 'session-active', now: new Date('2026-06-10T00:00:00Z').getTime(), roster: [{}, {}, {}, {}] };
   const settled = (over: Partial<Session> = {}): Session =>
     ({ id: 's', datetime: '2026-06-01T19:00:00-04:00', settled: { at: '', costPerPerson: 10, totalCost: 40, courtTotal: 40, birdTotal: 0, playerCount: 4, playerNames: [] }, ...over } as Session);
   const unsettledPast = (over: Partial<Session> = {}): Session =>
@@ -98,6 +98,14 @@ describe('classifyOwed', () => {
   });
   it('computes the live per-person share for an unsettled past priced session', () => {
     expect(classifyOwed({}, unsettledPast(), ctx)).toEqual({ counted: true, reason: 'counted', owedAmount: 10 });
+  });
+  it('the live share honours a resplit cover, exactly as costSplit does', () => {
+    // $40 across four rows, one resplit-covered: 40 / 3, not 40 / 4.
+    const roster = [{}, {}, {}, { writtenOff: true, coverMode: 'resplit' as const }];
+    expect(classifyOwed({}, unsettledPast(), { ...ctx, roster })).toEqual({ counted: true, reason: 'counted', owedAmount: 13.33 });
+    // An absorb cover stays in the denominator: 40 / 4.
+    const absorb = [{}, {}, {}, { writtenOff: true, coverMode: 'absorb' as const }];
+    expect(classifyOwed({}, unsettledPast(), { ...ctx, roster: absorb }).owedAmount).toBe(10);
   });
   it('drops an unsettled past session with no recorded cost', () => {
     expect(classifyOwed({}, unsettledPast({ costPerCourt: 0, courts: 0 }), ctx).reason).toBe('unsettled_no_cost');

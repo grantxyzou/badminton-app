@@ -5,8 +5,8 @@ import { loadOwedInputs } from '../lib/owedRows';
 
 /**
  * The player-first read behind unpaid / owed-audit: one person's rows, the
- * sessions they name, and a live roster count only where a session is still
- * unsettled. The mock ignores the array parameters, so every assertion here
+ * sessions they name, and a live roster (the rows `costSplit` reads) only
+ * where a session is still unsettled. The mock ignores the array parameters, so every assertion here
  * is on the JS re-check that keeps mock and Cosmos answering alike.
  */
 function seedSession(id: string, extra: Record<string, unknown> = {}) {
@@ -38,10 +38,13 @@ describe('loadOwedInputs', () => {
 
     expect(out.players.map((p) => p.sessionId).sort()).toEqual(['session-2026-08-25', 'session-2026-09-01']);
     expect([...out.sessionById.keys()].sort()).toEqual(['session-2026-08-25', 'session-2026-09-01']);
-    // Settled session: no roster count needed (amount is frozen on the row).
-    expect(out.activeCountBySession.has('session-2026-08-25')).toBe(false);
-    // Unsettled: active roster = Lin + Viktor; the waitlisted row does not count.
-    expect(out.activeCountBySession.get('session-2026-09-01')).toBe(2);
+    // Settled session: no roster needed (amount is frozen on the row).
+    expect(out.rosterBySession.has('session-2026-08-25')).toBe(false);
+    // Unsettled: every row, projected — Lin, Viktor and the waitlisted
+    // Carolina, whom costSplit drops itself.
+    const roster = out.rosterBySession.get('session-2026-09-01')!;
+    expect(roster).toHaveLength(3);
+    expect(roster.filter((r) => r.waitlisted === true)).toHaveLength(1);
   });
 
   it('a session another person played does not appear', async () => {
@@ -51,7 +54,7 @@ describe('loadOwedInputs', () => {
     const out = await loadOwedInputs(groupScope('bpm'), { memberId: lin.id, names: new Set(['lin']) });
     expect(out.players).toEqual([]);
     expect(out.sessionById.size).toBe(0);
-    expect(out.activeCountBySession.size).toBe(0);
+    expect(out.rosterBySession.size).toBe(0);
   });
 
   it('a row naming a session that no longer exists is kept out of sessionById', async () => {

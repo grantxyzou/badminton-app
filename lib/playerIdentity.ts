@@ -1,7 +1,7 @@
 import { getContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import type { Alias, Member, Player, Session } from './types';
-import { sessionCostTotals } from './sessionCost';
+import { costSplit, type SplitPlayer } from './sessionCost';
 import { readAliases } from './aliases';
 
 /**
@@ -122,9 +122,12 @@ export type OwedReason =
 export interface OwedContext {
   activeSessionId: string;
   now: number;
-  /** Full active-roster size of the session (the live per-person denominator).
-   *  Only consulted for unsettled past sessions. */
-  activeCount: number;
+  /** EVERY `players` row of the session (removed and waitlisted included —
+   *  `costSplit` drops those itself). Only consulted for an unsettled past
+   *  session, where it is handed to `costSplit` so the live share is the one
+   *  the receipt shows and settle will freeze. A count cannot carry a
+   *  `resplit` cover, which is why this is the rows and not a number. */
+  roster: SplitPlayer[];
 }
 
 export interface OwedResult {
@@ -141,8 +144,11 @@ export interface OwedResult {
  *
  *  - Settled session → the frozen `owedAmount` (counts only when > 0). A settled
  *    debt counts even on the active session (the bill was already frozen).
- *  - Unsettled past session → the live per-person share `totalCost / activeCount`
+ *  - Unsettled past session → the live per-person share from `costSplit`
  *    (the active session itself and any future session never count this way).
+ *    This used to be `totalCost / activeCount`, a third hand-rolled denominator
+ *    beside settle's and the receipt's: a cover resplit before settle made
+ *    Home's balance line and the same week's receipt disagree (2026-10-21).
  */
 export function classifyOwed(
   player: Pick<Player, 'paid' | 'writtenOff' | 'removed' | 'waitlisted' | 'owedAmount'>,
@@ -167,9 +173,9 @@ export function classifyOwed(
   if (session.id === ctx.activeSessionId) return miss('future_or_active');
   if (new Date(session.datetime).getTime() >= ctx.now) return miss('future_or_active');
 
-  const { totalCost } = sessionCostTotals(session);
-  if (totalCost > 0 && ctx.activeCount > 0) {
-    return { counted: true, reason: 'counted', owedAmount: round2(totalCost / ctx.activeCount) };
+  const { costPerPerson } = costSplit(session, ctx.roster);
+  if (costPerPerson > 0) {
+    return { counted: true, reason: 'counted', owedAmount: round2(costPerPerson) };
   }
   return miss('unsettled_no_cost');
 }
