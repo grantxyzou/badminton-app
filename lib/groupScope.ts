@@ -327,10 +327,28 @@ export function groupScope(groupId: string): GroupScope {
       const pk = pkValueFor(container, doc.id, pkValue);
       const existing = await scope.read(container, doc.id, pk);
       if (!existing) return undefined;
+      // CONDITIONAL on the etag the CALLER read (`doc._etag`, carried along by
+      // the `{ ...row, paid: true }` spread every caller writes). The verify
+      // above only proves the doc exists now; it says nothing about whether
+      // it changed since the caller decided — two taps reading `paid !== true`
+      // at once both wrote, and a credit spend racing an e-transfer ingest
+      // charged a member twice (review, 2026-10-21). A 412 resolves
+      // `undefined` exactly like a vanished doc: "gone or changed under you —
+      // re-read and decide" is one outcome, and every caller already handles
+      // it. A doc with no etag (a seed, a hand-built row) replaces
+      // unconditionally, as before.
       // The mock's `replace` pushes on a miss; the verify above is what makes
       // this honest there too. Cosmos itself 404s a missing replace.
-      const { resource } = await getContainer(container).item(doc.id, pk).replace({ ...doc, groupId });
-      return (resource ?? { ...doc, groupId }) as T;
+      const etag = (doc as { _etag?: unknown })._etag;
+      try {
+        const { resource } = await getContainer(container)
+          .item(doc.id, pk)
+          .replace({ ...doc, groupId }, typeof etag === 'string' && etag ? { accessCondition: { type: 'IfMatch', condition: etag } } : undefined);
+        return (resource ?? { ...doc, groupId }) as T;
+      } catch (err) {
+        if ((err as { code?: number })?.code === 412) return undefined;
+        throw err;
+      }
     },
 
     async remove(container, id, pkValue) {

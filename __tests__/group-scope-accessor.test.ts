@@ -144,6 +144,25 @@ describe('groupScope', () => {
     expect(leak).not.toHaveBeenCalled();
   });
 
+  it('replace is conditional on the etag the caller read: a doc changed under you is not overwritten', async () => {
+    // A row created through the accessor carries the etag Cosmos (and the mock) mint.
+    const created = await groupScope(A).create('players', { id: 'pe', sessionId: 's-a', name: 'Lin', paid: false });
+    const mine = await groupScope(A).read<{ id: string; sessionId: string; paid: boolean; _etag?: string }>('players', 'pe', 's-a');
+    expect(mine?._etag).toBe((created as { _etag?: string })._etag);
+    // Somebody else writes first (an e-transfer landing while a credit spend is in flight).
+    const theirs = await groupScope(A).read<{ id: string; sessionId: string; paid: boolean; paidVia?: string }>('players', 'pe', 's-a');
+    expect(await groupScope(A).replace('players', { ...theirs!, paid: true, paidVia: 'etransfer' }, 's-a')).toMatchObject({ paidVia: 'etransfer' });
+    // The stale write resolves undefined — gone or changed under you — and the row keeps the first writer's change.
+    expect(await groupScope(A).replace('players', { ...mine!, paid: true, paidVia: 'credit' }, 's-a')).toBeUndefined();
+    const row = (getStore().players as Array<{ id: string; paidVia?: string }>).find((p) => p.id === 'pe')!;
+    expect(row.paidVia).toBe('etransfer');
+    // Re-read and decide: a fresh read carries the current etag and writes.
+    const fresh = await groupScope(A).read<{ id: string; sessionId: string; note?: string }>('players', 'pe', 's-a');
+    expect(await groupScope(A).replace('players', { ...fresh!, note: 'seen' }, 's-a')).toMatchObject({ note: 'seen' });
+    // A doc that carries no etag (a seed, a hand-built row) still replaces unconditionally.
+    expect(await groupScope(A).replace('players', { id: 'pe', sessionId: 's-a', name: 'Lin', note: 'bare' }, 's-a')).toMatchObject({ note: 'bare' });
+  });
+
   it('replace updates a doc the group owns and refuses to resurrect one that is gone', async () => {
     const updated = await groupScope(A).replace('players', { id: 'pa', sessionId: 's-a', name: 'Lin', paid: true }, 's-a');
     expect(updated).toMatchObject({ id: 'pa', paid: true, groupId: A });
