@@ -7,10 +7,8 @@ import TopBar from '../../primitives/TopBar';
 import AnomalyFeed from './AnomalyFeed';
 import { isFlagOn } from '@/lib/flags';
 import AccessRequestsCard from './AccessRequestsCard';
-import SignInReadinessCard from './SignInReadinessCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
-import PaymentsInboxCard from './PaymentsInboxCard';
 import NeedsYouCard from './NeedsYouCard';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import SettingsList, { type SettingsRow } from '@/components/profile/SettingsList';
@@ -33,8 +31,6 @@ export interface OpenReceiptOpts {
 interface CommandCenterProps {
   refreshKey: number;
   setView: (v: AdminView) => void;
-  /** Open one member in the Roster editor. */
-  onOpenMember?: (name: string) => void;
   /** Open the Roster on its Dormant filter. */
   onOpenDormant?: () => void;
   /** Exit the Admin tab back to Profile (Admin is reached from Profile). */
@@ -46,7 +42,7 @@ interface CommandCenterProps {
  * across every admin domain (session, payments, birds, roster) so the
  * organizer can confirm "everything looks right" in 30 seconds.
  */
-export default function CommandCenter({ refreshKey, setView, onExit, onOpenMember, onOpenDormant }: CommandCenterProps) {
+export default function CommandCenter({ refreshKey, setView, onExit, onOpenDormant }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   const [localRefresh, setLocalRefresh] = useState(0);
   const composedRefresh = refreshKey + localRefresh;
@@ -83,6 +79,55 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
           .filter(Boolean)
           .join(' · ')
       : undefined;
+
+  /* The two cards that used to sit in the body — Sign-in readiness above
+     "This week", the e-transfer inbox between the session and Payments — are
+     menu rows now (Grant, 2026-10-21: "should be moved into menu items").
+     Each row carries the one number the card was there for, read the same
+     way the card read it; `null` while unknown, so a dead fetch never says
+     "0 locked out" or hides "2 waiting". */
+  const [lockedOut, setLockedOut] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE}/api/admin/sign-in-readiness`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { cannotSignIn?: string[] } | null) => {
+        if (!cancelled && d && Array.isArray(d.cannotSignIn)) setLockedOut(d.cannotSignIn.length);
+      })
+      .catch(() => {
+        /* the row still opens the page; it just carries no count */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [composedRefresh]);
+  const paymentsAutoOn = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
+  const [inbox, setInbox] = useState<{ configured: boolean; waiting: number } | null>(null);
+  useEffect(() => {
+    if (!paymentsAutoOn) return;
+    let cancelled = false;
+    fetch(`${BASE}/api/admin/payments`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { configured?: boolean; review?: unknown[] } | null) => {
+        if (!cancelled && d && typeof d.configured === 'boolean') {
+          setInbox({ configured: d.configured, waiting: Array.isArray(d.review) ? d.review.length : 0 });
+        }
+      })
+      .catch(() => {
+        /* no count; the page itself reports a failed read */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [paymentsAutoOn, composedRefresh]);
+  const lockedTrailing = lockedOut && lockedOut > 0 ? `${lockedOut} locked out` : undefined;
+  const inboxTrailing = inbox
+    ? !inbox.configured
+      ? 'Set up'
+      : inbox.waiting > 0
+        ? `${inbox.waiting} waiting`
+        : undefined
+    : undefined;
 
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
   const [profileMemberName, setProfileMemberName] = useState<string | null>(null);
@@ -153,12 +198,18 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
       title: 'People',
       rows: [
         { icon: 'person_add', label: 'Invite someone', onClick: () => setView('invite') },
+        // Who has no PIN, password or Google yet; the count is the work.
+        { icon: 'key', label: 'Sign-in readiness', meta: lockedTrailing, accent: !!lockedTrailing, onClick: () => setView('sign-in-readiness') },
       ],
     },
     {
       title: 'Money',
       rows: [
         { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
+        // The inbox, reminders, the unpaid hold and the ledger check.
+        ...(paymentsAutoOn
+          ? [{ icon: 'receipt_long', label: 'E-transfers', meta: inboxTrailing, accent: !!inboxTrailing && inbox?.configured === true, onClick: () => setView('etransfers') }]
+          : []),
         ...(giftCardsOn ? [{ icon: 'payments', label: 'Gift cards', onClick: () => setView('gift-cards') }] : []),
         { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
       ],
@@ -205,9 +256,9 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
       <div className="flex flex-col gap-5">
       <RevealGroup>
       {/* NEEDS YOU FIRST (admin audit, 2026-10-12). Someone waiting on a human
-          (sign-in requests), what Profile's "N need you" counted, and members
-          who'd be locked out. All three render nothing when nothing is
-          waiting, so on a quiet week the screen opens on "This week". */}
+          (sign-in requests) and what Profile's "N need you" counted. Both
+          render nothing when nothing is waiting, so on a quiet week the screen
+          opens on "This week". Who is locked out is the People row's count. */}
       <RevealSlot canBeEmpty placeholder={null}>
         <AccessRequestsCard refreshKey={composedRefresh} />
       </RevealSlot>
@@ -220,13 +271,8 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
           onOpenBench={() => setView('stringing')}
         />
       </RevealSlot>
-      <RevealSlot canBeEmpty placeholder={null}>
-        <SignInReadinessCard refreshKey={composedRefresh} onOpenMember={onOpenMember} />
-      </RevealSlot>
 
-      {/* THIS WEEK: the session and its money, the screen's main job. The
-          e-transfers inbox sits right above the paid pills it resolves into;
-          a match bumps the refresh so the pills move with it. */}
+      {/* THIS WEEK: the session and its money, the screen's main job. */}
       <ProfileEyebrow>This week</ProfileEyebrow>
       <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />}>
       <NextSessionCard
@@ -236,11 +282,6 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenMembe
         onShareCost={() => openReceipt({ mode: 'group' })}
         onChanged={() => setLocalRefresh((n) => n + 1)}
       />
-      </RevealSlot>
-      {/* Holds a box: with the flag on this card ALWAYS renders (a status line
-          or the set-up invitation), so it is not "usually absent". */}
-      <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.inbox} />}>
-        <PaymentsInboxCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
       </RevealSlot>
       <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>
         <div id="cc-payments" style={{ scrollMarginTop: 'var(--space-9)' }}>

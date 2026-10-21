@@ -5,13 +5,11 @@ import { useUsageBeacons, usagePlatform, REOPEN_AFTER_MS } from '@/lib/useUsageB
 
 /**
  * The client half of the usage records (docs/plans/usage-metrics.md). What
- * matters is what it does NOT send: nothing with the flag off, nothing for a
+ * matters is what it does NOT send: nothing for a
  * signed-out visitor, nothing for the admin tab, and no second app_open for a
  * quick glance away.
  */
 
-const FLAG = 'NEXT_PUBLIC_FLAG_USAGE_METRICS';
-const before = process.env[FLAG];
 let sent: Array<Record<string, unknown>>;
 
 function setVisibility(state: 'visible' | 'hidden') {
@@ -25,23 +23,14 @@ beforeEach(() => {
     sent.push(JSON.parse(String(init.body)));
     return new Response('{}', { status: 201 });
   }));
-  process.env[FLAG] = 'true';
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.useRealTimers();
-  if (before === undefined) delete process.env[FLAG];
-  else process.env[FLAG] = before;
 });
 
 describe('useUsageBeacons', () => {
-  it('sends nothing with the flag off', () => {
-    process.env[FLAG] = 'false';
-    renderHook(() => useUsageBeacons('home', true));
-    expect(sent).toEqual([]);
-  });
-
   it('sends nothing for a signed-out visitor', () => {
     renderHook(() => useUsageBeacons('home', false));
     expect(sent).toEqual([]);

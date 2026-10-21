@@ -741,7 +741,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   }, []);
 
   // App opens and tab views, for Admin → Metrics (docs/plans/usage-metrics.md).
-  // Off with NEXT_PUBLIC_FLAG_USAGE_METRICS off; never for a signed-out visitor.
+  // Never for a signed-out visitor.
   useUsageBeacons(activeTab, hasIdentity === true);
 
   useEffect(() => {

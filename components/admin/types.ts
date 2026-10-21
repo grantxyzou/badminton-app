@@ -16,7 +16,9 @@ export type AdminView =
   | 'catalog-gaps'
   | 'metrics'
   | 'invite'
-  | 'gift-cards';
+  | 'gift-cards'
+  | 'sign-in-readiness'
+  | 'etransfers';
 
 export interface AdminNavProps {
   onBack: () => void;

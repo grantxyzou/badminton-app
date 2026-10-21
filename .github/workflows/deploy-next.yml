@@ -89,7 +89,6 @@ jobs:
           # First-party usage records (docs/plans/usage-metrics.md). ON since
           # 2026-10-07, once the store privacy labels declared it. Read
           # server-side; off, nothing is recorded.
-          NEXT_PUBLIC_FLAG_USAGE_METRICS: 'true'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.
           #
