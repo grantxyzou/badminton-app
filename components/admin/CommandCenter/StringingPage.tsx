@@ -18,6 +18,7 @@ import StringingIntake from './StringingIntake';
 import StringShelfCard from './StringShelfCard';
 import OtherPricesCard from './OtherPricesCard';
 import HoleCountsCard from './HoleCountsCard';
+import { useHoleLookup } from '@/components/stringing/useHoleLookup';
 import { StateLink } from '@/components/primitives/StateCard';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import RegisterSwitch from '@/components/primitives/RegisterSwitch';
@@ -71,6 +72,10 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   const [loadError, setLoadError] = useState(false);
   const [mine, setMine] = useState(false);
   const [view, setView] = useState<'bench' | 'detail' | 'new' | 'archive' | 'setup'>('bench');
+  // Each job's grommet holes, matched from its racket label (docs/plans/grommet-holes.md, Phase 4).
+  const holes = useHoleLookup();
+  // A racket to open the Set-up screen's hole-count card on, from a job's "Add a hole count".
+  const [holesPreset, setHolesPreset] = useState<string | null>(null);
   /* Mine/All is only worth a control when somebody else strings too. Read off
      an ALL load — the jobs already on screen, so it arrives in the same frame
      as the list instead of one request later, pushing it down — and kept once
@@ -379,7 +384,14 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                 <span className="material-icons icon-md">more_vert</span>
               </button>
             </div>
-            <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>{job.racketLabel}</div>
+            <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>
+              {job.racketLabel}
+              {holes.forLabel(job.racketLabel).holes !== null && (
+                <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+                  {' · '}{t('holes.holesValue', { count: holes.forLabel(job.racketLabel).holes as number })}
+                </span>
+              )}
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
               {/* Words in the body face, the tension in mono: mono is for data,
                   and a string's name is not. --text-muted, the secondary ink
@@ -430,6 +442,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           crumb={crumb}
           onBack={() => setView('bench')}
           onChanged={() => void load()}
+          holesFor={holes.forLabel}
+          onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('setup'); }}
         />
       </div>
     );
@@ -582,14 +596,18 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   if (view === 'setup') {
     return (
       <div className="animate-slideInRight">
-        <AdminBackHeader onBack={() => setView('bench')} title={t('setupRow')} crumb={crumb} />
+        <AdminBackHeader
+          onBack={() => { setHolesPreset(null); holes.reload(); setView('bench'); }}
+          title={t('setupRow')}
+          crumb={crumb}
+        />
         {/* Its own screen (docs/plans/bench-redesign.md): folded under the
             list, it still opened three tall cards beneath the jobs. Siblings,
             never a card around cards (DESIGN.md #12). */}
         <div className="flex flex-col gap-4 pb-6">
           <StringShelfCard />
           <OtherPricesCard />
-          <HoleCountsCard />
+          <HoleCountsCard preset={holesPreset} />
         </div>
       </div>
     );

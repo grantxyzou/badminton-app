@@ -9,6 +9,10 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
 import { useOnline } from '@/lib/useOnline';
+import { useCatalog } from '@/components/stats/useCatalog';
+import { searchCatalog } from '@/lib/gearSearch';
+import { racketIdForLabel, racketIdsByTallyKey } from '@/lib/gearSetup';
+import { isOffered } from '@/lib/catalogOffer';
 import { formatServicePrice } from '@/lib/stringingRateCard';
 import {
   TENSION_MIN_LB,
@@ -59,6 +63,17 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
   const [picked, setPicked] = useState<PickableMember | null>(null);
 
   const [racketLabel, setRacketLabel] = useState('');
+  /* Catalog names as the racket is typed (docs/plans/grommet-holes.md, 4b):
+     the bench finds a job's hole count by its racket's EXACT catalog name,
+     and "88d pro" typed by hand never matches. Picking a suggestion writes the
+     name the bench can match; typing anything else is still allowed. */
+  const rackets = useCatalog('racket');
+  const racketIds = useMemo(() => racketIdsByTallyKey(rackets.items), [rackets.items]);
+  const racketSuggestions = useMemo(() => {
+    const q = racketLabel.trim();
+    if (q.length < 2 || racketIdForLabel(q, racketIds)) return [];
+    return searchCatalog(rackets.items.filter(isOffered), q, (r) => `${r.brand} ${r.model}`).slice(0, 4);
+  }, [racketLabel, racketIds, rackets.items]);
   const [stringLabel, setStringLabel] = useState('');
   const [mains, setMains] = useState(26);
   const [crosses, setCrosses] = useState(28);
@@ -242,6 +257,17 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
               aria-label={t('racketPlaceholder')}
               maxLength={80}
             />
+            {racketSuggestions.length > 0 && (
+              <div className="flex flex-col gap-2" role="group" aria-label={t('racketSuggest')}>
+                {racketSuggestions.map((r) => (
+                  <ListRow
+                    key={r.id}
+                    onClick={() => setRacketLabel(`${r.brand} ${r.model}`)}
+                    title={<span className="fs-md">{r.brand} {r.model}</span>}
+                  />
+                ))}
+              </div>
+            )}
             <input
               type="text"
               value={stringLabel}

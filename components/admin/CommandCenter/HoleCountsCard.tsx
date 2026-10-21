@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
@@ -23,7 +23,10 @@ const MATCHES_SHOWN = 6;
  * the search lists only those. A count shows on that racket's page, to this
  * club's members only.
  */
-export default function HoleCountsCard() {
+export default function HoleCountsCard({ preset = null }: {
+  /** A racket to open on, from a stringing job's "Add a hole count" (Phase 4). */
+  preset?: string | null;
+} = {}) {
   const t = useTranslations('admin.stringing.holes');
   const tRoot = useTranslations('admin.stringing');
   const online = useOnline();
@@ -56,6 +59,27 @@ export default function HoleCountsCard() {
     () => rackets.items.filter((r) => isOffered(r) && grommetHoles(r) === null),
     [rackets.items],
   );
+  // Open on the job's racket once both reads land, and only if it can still be
+  // counted. Once per preset, so cancelling does not reopen it.
+  const [presetApplied, setPresetApplied] = useState<string | null>(null);
+  const draftRef = useRef<HTMLInputElement>(null);
+  const [focusDraft, setFocusDraft] = useState(false);
+  useEffect(() => {
+    if (!preset || presetApplied === preset || counts === null || !rackets.loaded) return;
+    setPresetApplied(preset);
+    const row = countable.find((r) => r.id === preset);
+    if (row && counts[row.id] === undefined) { setPicked(row); setDraft(''); setFocusDraft(true); }
+  }, [preset, presetApplied, counts, rackets.loaded, countable]);
+
+  // The card sits last on the Set-up screen, below the fold: arriving from a
+  // job, bring it into view with the number field ready, or the tap looks
+  // like it did nothing.
+  useEffect(() => {
+    if (!focusDraft || !draftRef.current) return;
+    setFocusDraft(false);
+    draftRef.current.scrollIntoView?.({ block: 'center' });
+    draftRef.current.focus({ preventScroll: true });
+  }, [focusDraft, picked]);
   const byId = useMemo(() => new Map(rackets.items.map((r) => [r.id, r])), [rackets.items]);
   const matches = useMemo(() => {
     if (!query.trim() || !counts) return [];
@@ -156,6 +180,7 @@ export default function HoleCountsCard() {
           <label htmlFor="hole-count" className="section-label-muted">{t('countFor', { name: `${picked.brand} ${picked.model}` })}</label>
           <input
             id="hole-count"
+            ref={draftRef}
             type="text"
             inputMode="numeric"
             value={draft}
