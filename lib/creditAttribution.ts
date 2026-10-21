@@ -20,12 +20,31 @@ import { accountOf } from './storeCredit';
  *   - A REFUND (`credit_refund`) reverses the spend that shares its `ref`:
  *     that spend's uses are given back to the sources they came from and
  *     marked `reversed`, so a card whose spend bounced reads as unused. A
- *     refund with no spend to match is treated as a plain source.
+ *     refund whose spend is NOT in the history (the spend entry is missing,
+ *     not merely later) is counted as a plain source: `balanceOf` already
+ *     sums it, so leaving it out would make the sources add up to less than
+ *     the balance. It invents nothing — the money is in the balance either
+ *     way — it only cannot name which card the bounced spend came from.
+ *
+ * TIME ORDER IS `createdAt`, THEN KIND, THEN `id`. `payWithCredit` writes a
+ * spend and the refund that bounces it within one request, often in the
+ * same millisecond, and `'refund:…' < 'spend:…'` alphabetically — so an id
+ * tie-break alone processed the refund BEFORE the spend it reverses: the
+ * refund found nothing to give back and became a source, and the spend
+ * then drew from the gift card, whose record showed it used although the
+ * spend bounced. Within one timestamp a source comes first (a grant and a
+ * spend in the same ms should see the grant), then a drain, then a refund.
  *
  * Pure, and deterministic for a given entry list: the same history always
  * attributes the same way, so the admin's record of a card never changes
  * under them except when a new entry lands.
  */
+
+/** Within one `createdAt`: sources (0) before drains (1) before refunds (2). */
+function kindRank(e: LedgerEntry): number {
+  if (e.kind === 'credit_refund') return 2;
+  return e.amountCents < 0 ? 1 : 0;
+}
 
 export interface CreditUse {
   /** The draining entry's id. */
@@ -60,7 +79,12 @@ export function attributeCredit(entries: readonly LedgerEntry[]): CreditSource[]
   const credit = entries
     .filter((e) => accountOf(e) === 'member_credit' && e.kind !== 'void')
     .slice()
-    .sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.id < b.id ? -1 : 1));
+    .sort((a, b) => {
+      if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
+      const rank = kindRank(a) - kindRank(b);
+      if (rank !== 0) return rank;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
 
   const sources: Live[] = [];
   // Every drain's allocation, by the drain's ref id, so a refund can find it.
