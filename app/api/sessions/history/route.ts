@@ -6,6 +6,7 @@ import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import { readGroup } from '@/lib/groups';
 import { recipientOf } from '@/lib/payTo';
+import { SESSION_CALENDAR_LIMIT } from '@/lib/sessionCalendar';
 import type { ETransferRecipient, Member, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +14,9 @@ export const dynamic = 'force-dynamic';
 const DEFAULT_LIMIT = 8;
 const MAX_LIMIT = 24;
 /** `counts=1` builds no receipts, so it can answer for every session the
- *  Payments calendar shows (docs/plans/payments-today-first.md). */
-const MAX_COUNTS_LIMIT = 200;
+ *  Payments calendar shows (docs/plans/payments-today-first.md) — the same
+ *  cap `GET /api/sessions` lists them under. */
+const MAX_COUNTS_LIMIT = SESSION_CALENDAR_LIMIT;
 
 /**
  * GET /api/sessions/history — admin-only list of recent sessions, each row

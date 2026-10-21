@@ -20,7 +20,7 @@ import MemberAvatar from '@/components/primitives/MemberAvatar';
 import Collapse from '@/components/primitives/Collapse';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { sharedFetch } from '@/lib/sharedRead';
-import { sessionDay, sessionMoneyState } from '@/lib/sessionCalendar';
+import { sessionDay, sessionMoneyState, SESSION_CALENDAR_LIMIT } from '@/lib/sessionCalendar';
 import SessionDatePicker, { type PickerSession } from './SessionDatePicker';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -256,7 +256,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     let cancelled = false;
     (async () => {
       try {
-        const res = await sharedFetch(`/api/sessions/history?counts=1&limit=${Math.min(200, Math.max(1, sessions.length))}`);
+        const res = await sharedFetch(`/api/sessions/history?counts=1&limit=${Math.min(SESSION_CALENDAR_LIMIT, Math.max(1, sessions.length))}`);
         if (!res.ok) return;
         const data = (await res.json().catch(() => null)) as { sessions?: HistoryRow[] } | null;
         const rows = Array.isArray(data?.sessions) ? data.sessions : [];

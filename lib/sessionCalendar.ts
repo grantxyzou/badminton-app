@@ -21,6 +21,15 @@ export interface SessionCounts {
 const ID_DAY = /session-(\d{4}-\d{2}-\d{2})$/;
 
 /**
+ * How many sessions the calendar can show — nearly four years of weekly
+ * nights. `GET /api/sessions` (the picker's list) and
+ * `GET /api/sessions/history?counts=1` (its dots) both stop here, from the
+ * one constant, so a day can never have a dot without a session or a session
+ * without a dot.
+ */
+export const SESSION_CALENDAR_LIMIT = 200;
+
+/**
  * The session's calendar day, `YYYY-MM-DD`. The id carries it for every
  * date-keyed session (`session-…` for BPM, `<group>:session-…` otherwise);
  * the legacy `current-session` doc falls back to its datetime read in the
