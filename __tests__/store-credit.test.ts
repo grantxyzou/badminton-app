@@ -396,6 +396,159 @@ describe('failure recovery (review of #544)', () => {
   });
 });
 
+describe('a stale spend is reconciled against the ROW, whatever happened to it', () => {
+  // A spend is written BEFORE its row is marked paid. If the process died
+  // between the two and the row was then paid some other way, the old
+  // recovery never saw it: it walked the OWED lines, and a paid row is not
+  // one. The credit stayed taken forever.
+  const pay = () => spend(makeRequest('POST', `${BASE}/credit/spend`, {}, asLin()));
+  const ledgerIds = () => (getStore()['ledger'] as Array<{ id: string }>).map((e) => e.id);
+  const entry = (id: string, kind: string, amountCents: number, ref?: { kind: 'session' | 'stringing'; id: string; pk: string }, createdAt = '2026-10-05T00:00:00Z') =>
+    seedDoc('ledger', { id, groupId: 'bpm', memberId: lin.id, account: 'member_credit', kind, amountCents, note: '', ...(ref ? { ref } : {}), createdAt, createdBy: lin.id });
+  const sessionRef = (id: string, pk: string) => ({ kind: 'session' as const, id, pk });
+
+  it('paid manually since → refunded by the next "Pay with credit", even with nothing else owed', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'));
+    Object.assign(row(row1.id), { paid: true, paidVia: 'manual' });
+    Object.assign(row(row2.id), { paid: true, paidVia: 'manual' });
+    // Nothing is owed, so the tap still answers 409 — but the refund landed first.
+    const res = await pay();
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'nothing_to_pay' });
+    expect(ledgerIds()).toContain(`refund:${row1.id}:0`);
+    expect(await balance()).toBe(2000);
+    // And a second look writes nothing more.
+    await pay();
+    expect(ledgerIds().filter((id) => id.startsWith('refund:'))).toHaveLength(1);
+  });
+
+  it('paid manually since → refunded by the balance read alone', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'));
+    Object.assign(row(row1.id), { paid: true, paidVia: 'etransfer' });
+    expect(await balance()).toBe(2000);
+    const refund = (getStore()['ledger'] as Array<Record<string, unknown>>).find((e) => e.id === `refund:${row1.id}:0`);
+    expect(refund).toMatchObject({ kind: 'credit_refund', amountCents: 1200, note: 'Paid another way — credit returned' });
+    expect(row(row1.id).paidVia).toBe('etransfer'); // the row is not touched
+  });
+
+  it('a FRESH spend is left alone, whatever the row says', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'), new Date().toISOString());
+    Object.assign(row(row1.id), { paid: true, paidVia: 'manual' });
+    expect(await balance()).toBe(800);
+    expect(ledgerIds().some((id) => id.startsWith('refund:'))).toBe(false);
+  });
+
+  it('still unpaid → the row update is finished (paid by credit), from the balance read too', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'));
+    expect(await balance()).toBe(800);
+    expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'credit', paidAt: '2026-10-05T00:00:00Z' });
+    expect(ledgerIds().some((id) => id.startsWith('refund:'))).toBe(false);
+    // A spend that completed is the common case, and it nets negative too: never refunded.
+    expect(await balance()).toBe(800);
+  });
+
+  it('covered or removed since → refunded', async () => {
+    entry('grant:a', 'credit_grant', 3000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'));
+    entry(`spend:${row2.id}:0`, 'credit_spend', -1500, sessionRef(row2.id, 'session-2026-10-01'));
+    Object.assign(row(row1.id), { writtenOff: true, coverMode: 'absorb' });
+    Object.assign(row(row2.id), { removed: true });
+    expect(await balance()).toBe(3000);
+    expect(ledgerIds()).toEqual(expect.arrayContaining([`refund:${row1.id}:0`, `refund:${row2.id}:0`]));
+  });
+
+  // Counts point reads of the row containers, the way the mirror-failure tests spy.
+  const spyRowReads = () => {
+    const reads: string[] = [];
+    const real = cosmos.getContainer;
+    const spy = vi.spyOn(cosmos, 'getContainer').mockImplementation(((name: string) => {
+      const c = real(name as never);
+      if (name !== 'players' && name !== 'stringingJobs') return c;
+      return {
+        ...c,
+        items: c.items,
+        item: (id: string, pk: string) => {
+          const it = c.item(id, pk);
+          return { ...it, read: async () => { reads.push(`${name}:${id}`); return it.read(); } };
+        },
+      } as never;
+    }) as never);
+    return { reads, restore: () => spy.mockRestore() };
+  };
+
+  it('completed credit payments cost the balance read NO row reads — the mirror entry answers for them', async () => {
+    // Every credit payment ever made nets negative on its ref forever; reading
+    // each row on every balance look would grow with the member's history.
+    process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
+    try {
+      await giveLin(6000);
+      expect(await (await pay()).json()).toMatchObject({ paid: 2, spentCents: 2700 });
+      // A stringing line paid with credit, as the mirror leaves it.
+      entry('spend:J-0001:0', 'credit_spend', -3000, { kind: 'stringing', id: 'J-0001', pk: lin.id });
+      seedDoc('ledger', { id: 'payment:J-0001:1759622400000', groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'payment', amountCents: -3000, note: 'Paid with credit', ref: { kind: 'stringing', id: 'J-0001', pk: lin.id }, meta: { via: 'credit' }, createdAt: '2026-10-05T00:00:00Z', createdBy: 'system' });
+      // Age the spends past the fresh window.
+      for (const e of getStore()['ledger'] as Array<Record<string, unknown>>) if (String(e.id).startsWith('spend:')) e.createdAt = '2026-10-05T00:00:00Z';
+      const before = ledgerIds().length;
+      const { reads, restore } = spyRowReads();
+      try {
+        expect(await balance()).toBe(300);
+      } finally {
+        restore();
+      }
+      expect(reads).toEqual([]);
+      expect(ledgerIds()).toHaveLength(before);
+    } finally {
+      delete process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
+    }
+  });
+
+  it('with no mirror entry the row IS read — and, paid by credit, left alone', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'));
+    Object.assign(row(row1.id), { paid: true, paidVia: 'credit', paidAt: '2026-10-05T00:00:00Z' });
+    const { reads, restore } = spyRowReads();
+    try {
+      expect(await balance()).toBe(800);
+    } finally {
+      restore();
+    }
+    expect(reads).toEqual([`players:${row1.id}`]);
+    expect(ledgerIds().some((id) => id.startsWith('refund:'))).toBe(false);
+  });
+
+  it('a credit payment since VOIDED (the row un-ticked) is not "completed": the row is read again', async () => {
+    entry('grant:a', 'credit_grant', 2000);
+    entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'));
+    seedDoc('ledger', { id: `payment:${row1.id}:1759622400000`, groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'payment', amountCents: -1200, note: 'Paid with credit', ref: sessionRef(row1.id, 'session-2026-09-24'), meta: { via: 'credit' }, createdAt: '2026-10-05T00:00:00Z', createdBy: 'system' });
+    seedDoc('ledger', { id: `void:payment:${row1.id}:1759622400000`, groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'void', amountCents: 1200, note: 'Reversed', ref: sessionRef(row1.id, 'session-2026-09-24'), createdAt: '2026-10-06T00:00:00Z', createdBy: 'system' });
+    Object.assign(row(row1.id), { paid: true, paidVia: 'manual' });
+    const { reads, restore } = spyRowReads();
+    try {
+      expect(await balance()).toBe(2000);
+    } finally {
+      restore();
+    }
+    expect(reads).toEqual([`players:${row1.id}`]);
+    expect(ledgerIds()).toContain(`refund:${row1.id}:0`);
+  });
+
+  it('a stringing job is credit\'s when its paidAt IS the spend\'s time; any other paidAt is another route', async () => {
+    const job = (id: string, paidAt: string | null) =>
+      seedDoc('stringingJobs', { id, groupId: 'bpm', memberId: lin.id, memberName: 'Lin', status: 'ready', priceCents: 3000, paidAt, createdAt: '2026-10-04T00:00:00Z', updatedAt: '2026-10-04T00:00:00Z', history: [] });
+    entry('grant:a', 'credit_grant', 6000);
+    job('J-0001', '2026-10-05T00:00:00Z'); // paid by the spend below: same instant
+    entry('spend:J-0001:0', 'credit_spend', -3000, { kind: 'stringing', id: 'J-0001', pk: lin.id });
+    job('J-0002', '2026-10-06T12:00:00Z'); // the stringer ticked it paid after the spend died
+    entry('spend:J-0002:0', 'credit_spend', -3000, { kind: 'stringing', id: 'J-0002', pk: lin.id });
+    expect(await balance()).toBe(3000);
+    expect(ledgerIds().filter((id) => id.startsWith('refund:'))).toEqual(['refund:J-0002:0']);
+  });
+});
+
 describe('account deletion', () => {
   it('removes the member\'s ledger and leaves others\'', async () => {
     await giveLin(1000);

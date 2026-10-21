@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A credit spend whose row was paid another way is refunded (2026-10-21)
+
+From the code review of money accuracy. "Pay with credit" writes the spend before it marks the row paid; a process that died between the two left credit taken for a line still owed, and the recovery for that walked the member's OWED lines. A row since paid by e-transfer, an admin's tap or a cover is no longer owed, so it was never visited — and with nothing else owed the tap answered `nothing_to_pay` before any recovery ran. That credit stayed taken forever.
+
+- **`refundStaleSpends` walks the LEDGER instead**: every line whose spends outweigh its refunds is checked against its row — still unpaid → finished (as before); paid another way, covered, removed or gone → `refund:<ref>:<n>` ("Paid another way — credit returned"). A fresh spend (under two minutes) is still left to the request that owns it.
+- It runs first on every "Pay with credit" and, best-effort, on the member's own balance read, so a member with nothing left to pay gets the credit back the next time they look. The admin reconcile stays no-auto-repair.
+- **A completed credit payment costs no row read.** Every credit payment ever made nets negative on its line forever; the ledger mirror's own `payment` entry (`meta.via: 'credit'`, same partition) answers for it, so the balance read does not grow with the member's history. Only a line with no such entry — mirror off, or a mirror write that failed — has its row read. A stringing job carries no `paidVia`: there, it counts as credit's when its `paidAt` is the spend's own timestamp (what the credit path stamps).
+
 ### Removing a sign-up deadline is an anomaly too (2026-10-21)
 
 From the code review of logic. The settings-drift check compared the sign-up deadline only when BOTH this week and last week had one, so a deadline that was there last week and is gone this week — sign-ups that used to close now staying open — was never mentioned to the admin, while adding one was.
