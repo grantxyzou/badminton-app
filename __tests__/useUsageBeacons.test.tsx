@@ -5,7 +5,7 @@ import { useUsageBeacons, usagePlatform, REOPEN_AFTER_MS } from '@/lib/useUsageB
 
 /**
  * The client half of the usage records (docs/plans/usage-metrics.md). What
- * matters is what it does NOT send: nothing with the flag off, nothing for a
+ * matters is what it does NOT send: nothing for a
  * signed-out visitor, nothing for the admin tab, and no second app_open for a
  * quick glance away.
  */
