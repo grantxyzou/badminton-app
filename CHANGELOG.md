@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The session picker reads what it shows (2026-10-21)
+
+From the code review of efficiency. `GET /api/sessions` — the Payments card's session picker and the bird-usage assign sheet — was an unbounded `SELECT *` over the `sessions` container: every session the club ever had, every field (bird usages, settle snapshots, invite lists, advance snapshots), on every open of the Command Center.
+
+- **Projected to the nine fields its two consumers read**, and bounded in SQL to the calendar's 200 sessions — `SESSION_CALENDAR_LIMIT` in `lib/sessionCalendar.ts`, which `/api/sessions/history?counts=1` (the picker's owing dots) now reads from the same constant, so the list and the dots cannot cap at different places.
+- The admin anomalies route read the whole history to keep one row's `datetime` (the previous session, for `long_break`); it asks for that one row, two fields, now.
+- The whole-history reads stay whole: bird stock, a member's history, the ledger and the owed balance need every session.
+
 ### A failed read of your own account is a failure, not "no PIN" (2026-10-21)
 
 From the code review of logic. `GET /api/members/me` — the probe behind Profile's PIN row, the first-PIN gate and the club-comparison consent sheet — answered a thrown database read with a 200 of defaults: `hasPin: false`, `statsPrivacy: null`, no `authed`. Every reader took that for a fact about the member, so a Cosmos outage read as "you have no PIN and never consented". The sibling reads (`/api/session`, `/api/members`, `/api/sessions`) have answered 503 `read_failed` since September; this one now does too.

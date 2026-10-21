@@ -23,11 +23,17 @@ export async function GET(req: NextRequest) {
     const [session, { resource: adminMember }, archived] = await Promise.all([
       scope.read<Session>('sessions', sessionId, sessionId),
       membersContainer.item(auth.memberId, auth.memberId).read(),
-      // The group's sessions minus the active one; the accessor drops the
-      // pointer and legacy docs.
-      scope.query<Session>('sessions', {
+      // The newest session that is not the active one — the only row this
+      // handler reads, and only its datetime. It used to pull every session
+      // the club ever had, whole, to keep one. The JS sort below stays
+      // because the mock store ignores ORDER BY / LIMIT; the accessor drops
+      // the pointer and legacy docs.
+      scope.query<Pick<Session, 'id' | 'datetime'>>('sessions', {
+        select: 'c.id, c.datetime',
         where: 'c.id != @activeId',
         params: [{ name: '@activeId', value: sessionId }],
+        orderBy: 'c.id DESC',
+        limit: 1,
       }),
     ]);
 
