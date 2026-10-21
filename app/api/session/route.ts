@@ -73,11 +73,48 @@ export async function GET(req: NextRequest) {
  * `YYYY-MM-DDThh:mm:00`" and every client goes through `withLocalTz` — but
  * this was the one place that would have accepted one anyway, and an
  * offset-less string means a different instant on the server than on the
- * phone that wrote it. Invalid resolves to '' exactly as before.
+ * phone that wrote it. Anything else resolves to '' — the caller decides what
+ * '' means: the advance route refuses a session without one, and the PUT
+ * editor goes through `readDatetimeField` below, which tells a CLEAR apart
+ * from an INVALID value instead of storing '' for both.
  */
 export function toValidIso(val: unknown): string {
   const s = String(val ?? '').slice(0, 30);
   return s && !isNaN(Date.parse(s)) && /(?:Z|[+-]\d{2}:\d{2})$/.test(s) ? s : '';
+}
+
+type DatetimeField = 'datetime' | 'endDatetime' | 'deadline';
+
+/**
+ * One datetime field of the PUT body. The contract:
+ *
+ * - `null` or `''` CLEARS `endDatetime` / `deadline` (stored as '', the value
+ *   every existing doc holds for "none"). `''` is what the real client sends:
+ *   `SetupPage` builds each value with `withLocalTz(date, time)`, which is ''
+ *   when either input is empty, so "no deadline" arrives as an empty string.
+ * - A non-empty value that `toValidIso` refuses — unparseable, truncated, or
+ *   carrying no offset — answers 400 `invalid_datetime` naming the field, and
+ *   nothing is written. It used to be stored as '' too, which for `deadline`
+ *   meant "no deadline": a client bug silently left sign-ups open for ever.
+ * - `datetime` can never be cleared (a session IS its time), so empty and
+ *   invalid both refuse.
+ *
+ * Returns `undefined` when the body did not carry the field at all — a
+ * date-only editor leaves the others untouched (see the read-spread below).
+ */
+function readDatetimeField(
+  body: Record<string, unknown>,
+  field: DatetimeField,
+): { ok: true; value: string | undefined } | { ok: false; response: NextResponse } {
+  const raw = body[field];
+  if (raw === undefined) return { ok: true, value: undefined };
+  const cleared = raw === null || raw === '';
+  if (cleared && field !== 'datetime') return { ok: true, value: '' };
+  const iso = cleared ? '' : toValidIso(raw);
+  if (!iso) {
+    return { ok: false, response: NextResponse.json({ error: 'invalid_datetime', field }, { status: 400 }) };
+  }
+  return { ok: true, value: iso };
 }
 
 export async function PUT(req: NextRequest) {
@@ -96,9 +133,11 @@ export async function PUT(req: NextRequest) {
     if (body.title !== undefined) updates.title = String(body.title ?? '').trim().slice(0, 100);
     if (body.locationName !== undefined) updates.locationName = String(body.locationName ?? '').trim().slice(0, 200);
     if (body.locationAddress !== undefined) updates.locationAddress = String(body.locationAddress ?? '').trim().slice(0, 300);
-    if (body.datetime !== undefined) updates.datetime = toValidIso(body.datetime);
-    if (body.endDatetime !== undefined) updates.endDatetime = toValidIso(body.endDatetime);
-    if (body.deadline !== undefined) updates.deadline = toValidIso(body.deadline);
+    for (const field of ['datetime', 'endDatetime', 'deadline'] as const) {
+      const read = readDatetimeField(body, field);
+      if (!read.ok) return read.response;
+      if (read.value !== undefined) updates[field] = read.value;
+    }
     if (body.courts !== undefined) updates.courts = Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2));
     if (body.maxPlayers !== undefined) updates.maxPlayers = Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12));
     if (typeof body.signupOpen === 'boolean') updates.signupOpen = body.signupOpen;

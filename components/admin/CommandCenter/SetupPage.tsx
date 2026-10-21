@@ -173,6 +173,21 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     setTubes((prev) => Math.max(0, Math.min(100, Math.round((prev + delta) * 4) / 4)));
   }
 
+  /**
+   * The server refuses a datetime it cannot store (`invalid_datetime`, naming
+   * the field) rather than silently saving '' — which for the deadline meant
+   * "no deadline". That refusal has to reach the admin as words; the raw code
+   * in a red line read as nothing happening.
+   */
+  function saveErrorMessage(data: { error?: string; field?: string }): string {
+    if (data.error === 'invalid_datetime') {
+      if (data.field === 'datetime') return 'The session needs a date and a time.';
+      if (data.field === 'endDatetime') return 'The end time isn\u2019t a valid date and time.';
+      if (data.field === 'deadline') return 'The sign-up deadline isn\u2019t a valid date and time.';
+    }
+    return data.error ?? 'Failed to save.';
+  }
+
   async function save() {
     setSaving(true);
     setSaveError('');
@@ -203,8 +218,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setSaveError(data.error ?? 'Failed to save.');
+        const data = await res.json().catch(() => ({})) as { error?: string; field?: string };
+        setSaveError(saveErrorMessage(data));
         return;
       }
       setSuccess(true);
