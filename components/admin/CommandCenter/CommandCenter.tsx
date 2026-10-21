@@ -20,6 +20,7 @@ import type { ReceiptInput } from '@/lib/receiptTemplate';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton, { CONSOLE_HEIGHTS } from '@/components/primitives/CardSkeleton';
+import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -58,7 +59,9 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
   useEffect(() => {
     if (!stringingOn) return;
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/jobs`, { cache: 'no-store' })
+    // The Needs-you card reads the bench in the same commit; `sharedFetch`
+    // makes that one request while it is in flight (lib/sharedRead.ts).
+    sharedFetch('/api/stringing/jobs')
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { jobs?: BenchRow[] } | null) => {
         if (!cancelled && d && Array.isArray(d.jobs)) setBenchCount(benchSignals(d.jobs));
