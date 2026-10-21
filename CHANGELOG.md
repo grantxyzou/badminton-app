@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A failed read of your own account is a failure, not "no PIN" (2026-10-21)
+
+From the code review of logic. `GET /api/members/me` — the probe behind Profile's PIN row, the first-PIN gate and the club-comparison consent sheet — answered a thrown database read with a 200 of defaults: `hasPin: false`, `statsPrivacy: null`, no `authed`. Every reader took that for a fact about the member, so a Cosmos outage read as "you have no PIN and never consented". The sibling reads (`/api/session`, `/api/members`, `/api/sessions`) have answered 503 `read_failed` since September; this one now does too.
+
+- **A thrown read answers 503 `read_failed`.** The no-`?name` anonymous shape still answers 200 — nothing was read for it.
+- **The admin verdict stays undecided on a 503 or a 429** from that probe instead of bouncing the admin tab to Home: the body carries no `role`, and reading it as "not admin" took an outage for a demotion. A 401 or 403 is still a verdict. Profile, Home's credential check, the sign-in probe and the privacy hook already treated a non-ok status as unknown.
+
 ### A credit spend whose row was paid another way is refunded (2026-10-21)
 
 From the code review of money accuracy. "Pay with credit" writes the spend before it marks the row paid; a process that died between the two left credit taken for a line still owed, and the recovery for that walked the member's OWED lines. A row since paid by e-transfer, an admin's tap or a cover is no longer owed, so it was never visited — and with nothing else owed the tap answered `nothing_to_pay` before any recovery ran. That credit stayed taken forever.
