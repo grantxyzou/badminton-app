@@ -174,7 +174,11 @@ fixes the person and hides the picker.
   most people just played. Its `sessions` query is bounded with `ORDER BY ...
   LIMIT` in SQL, not only by the JS slice: that container is partitioned by
   `/sessionId`, so an unbounded `SELECT` is a cross-partition scan on every card
-  mount and every send.
+  mount and every send. **The per-session roster reads it leads to run
+  CONCURRENTLY** (2026-10-21), one `@sessionId` query per session merged in
+  session order — never one `ARRAY_CONTAINS` query, which the mock would answer
+  with every row — and the POST path proves by every roster first, reaching
+  for the game logs (again all at once) only when no roster did.
 - **`GiveKudosCard` must never return `null`.** It renders loading / expired /
   error / honest-empty / ready, always. Returning null when there was nobody to
   thank is what made the feature unfindable — a player asked "how do I give
