@@ -94,4 +94,33 @@ describe('GET /api/sessions/history', () => {
     expect(ids).toContain(PAST);
     expect(ids).not.toContain(ACTIVE);
   });
+
+  // counts=1 (docs/plans/payments-today-first.md): the Payments date picker
+  // marks an owing day for EVERY session, so it must reach past the 24 the
+  // receipt list stops at — and it builds no receipts to get there.
+  it('counts=1 answers who owes for more than 24 sessions, without receipts', async () => {
+    for (let i = 0; i < 30; i++) {
+      const day = new Date(Date.UTC(2026, 0, 1 + i * 7)).toISOString().slice(0, 10);
+      const id = `session-${day}`;
+      seedSession(id, { settled: settled(), datetime: `${day}T19:00:00-07:00` });
+      seedPlayer(id, `P${i}`, { paid: i !== 0 });
+    }
+    const res = await GET(makeAdminRequest('GET', `${URL}?counts=1&limit=200`));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.sessions.length).toBe(30);
+    const oldest = data.sessions.find((r: { sessionId: string }) => r.sessionId === 'session-2026-01-01');
+    expect(oldest).toEqual({ sessionId: 'session-2026-01-01', date: '2026-01-01T19:00:00-07:00', attendanceCount: 1, unpaidCount: 1 });
+    expect(data.sessions.every((r: Record<string, unknown>) => !('receipt' in r))).toBe(true);
+  });
+
+  it('keeps the receipt list capped at 24 without counts=1', async () => {
+    for (let i = 0; i < 30; i++) {
+      const day = new Date(Date.UTC(2026, 0, 1 + i * 7)).toISOString().slice(0, 10);
+      seedSession(`session-${day}`, { settled: settled(), datetime: `${day}T19:00:00-07:00` });
+    }
+    const res = await GET(makeAdminRequest('GET', `${URL}?limit=200`));
+    const data = await res.json();
+    expect(data.sessions.length).toBe(24);
+  });
 });
