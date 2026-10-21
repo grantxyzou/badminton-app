@@ -54,6 +54,7 @@ From the code review of money accuracy and logic. Settle stamps each row's bill,
 
 - **Sign-up, admin add, waitlist promotion and the restore of a row removed before settle all answer 409 `session_settled`** on a settled session. The one row that may come back is a cancelled one that was stamped before it left — it returns with its bill. Unsettle, add, re-settle is the path for a late addition.
 - **Advancing to a date that already has a session answers 409 `session_exists`** instead of overwriting it: re-advancing to an archived date used to replace the doc wholesale, dropping its `settled` snapshot while the rows kept their frozen amounts.
+
 ### Usage records are permanent (2026-10-21)
 
 `NEXT_PUBLIC_FLAG_USAGE_METRICS` retired with its ON branch: sign-ins, app opens and tab views are recorded for the Metrics page without a switch. The 404 that `POST /api/events` answered for those kinds with the flag off, the matching check in `recordSignIn`, the client gate in `useUsageBeacons` and their flag-off tests are gone, and the flag left `lib/flags.ts`, both workflows, `.env.local.example` and `dev:next`. Stopping the beacons is now a code change.
