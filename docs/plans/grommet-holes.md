@@ -137,6 +137,32 @@ Grant's two calls, 2026-10-20: the entry point is a **"String holes" card on the
 
 **Only an admin enters a count.** The Set-up screen is admin-only. A stringer who is not an admin sees only their assigned jobs (`docs/roles.md`), and nothing here changes that.
 
+## Phase 4 scope: the count on the stringing job (2026-10-21, not started)
+
+Grant, 2026-10-21, after Phase 3: "So the hole count UI show up so we can add it? thats all?" The count reaches the member's racket page, but not the place the stringer is standing: the job on the bench.
+
+**The gap.** `StringingJob.racketLabel` is free text, a snapshot on purpose (`lib/types.ts`), with no catalog id. So the bench cannot look up a count.
+
+**The approach: match at read time, store nothing.** A player's request picks the racket from their kit, and a catalog racket in the kit is labelled exactly "Brand Model" (`useGear`). `racketIdsByTallyKey` in `lib/gearSetup.ts` already maps that label to a catalog id for the club tally. The bench reuses it:
+
+- **Count shown:** the sourced count (`grommetHoles`), else the club's own count (`GET /api/stringing/holes`). The same rule as the racket page.
+- **No new field:** `racketLabel` stays the truth, and an admin's edit to it moves the match with it.
+- **Old jobs count too:** every job on the bench today gets a count if its label matches.
+- **No match, nothing shown:** a typed name the catalog doesn't know shows no count, rather than a guess.
+
+| Where | What shows |
+|---|---|
+| Bench job row and job detail (admin) | "76 holes" under the racket, when known |
+| The stringer's assigned-job card | The same line |
+| Job detail, racket matched but no count anywhere | A one-tap "Add a hole count" to the Set-up card, so counting the frame on the machine is one step |
+| Player's own job card | Nothing: a player doesn't string it |
+
+**Known weak spot: the admin intake.** An admin logging a job types the racket ("88d pro"), and a typed name rarely matches exactly. Option 4b: the intake's racket field suggests catalog names as you type (`searchCatalog`, as the bench card already does), so a picked suggestion matches. Without it, admin-logged jobs mostly show no count.
+
+**Kill criterion.** If, a month in, most open jobs still show no count because their labels don't match, the read-time match is not enough. Then the job needs a stored `racketCatalogId`, set when the racket is picked.
+
+**Non-goals.** No change to what a player sees, no stored field, and no fuzzy matching. A near-miss name ("Astrox 88D" for "Astrox 88D Pro") is a different racket, and a wrong count is worse than none.
+
 ## Phases
 
 1. **Yonex from the official sheet.** Map each offered Yonex row to a model code on the sheet, then the code's pattern family to its count (Type 1/2 → 76, Nanoflare 800 Pro → 78, trainers → 72), stored as `pattern`. Rows with no code on the sheet stay blank. This is about 54 rows, and the only phase with an official source.
