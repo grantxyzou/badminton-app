@@ -87,17 +87,14 @@ export const CONSOLE_HEIGHTS = {
   // same with 0 or 4 signed up, no waitlist line.
   nextSession: 358,
   tile: 109,
-  // The e-transfer inbox in its "Set up" state, which is production's until
-  // the Gmail script is installed; re-measure the configured one-line status
-  // card then. Flag off, the slot closes at once and this is never drawn.
-  inbox: 190,
   // Re-measured 2026-10-20 at 430px after the redesign: hero block, two
   // still-owed rows, a paid-chips row and the add field (4 players, 2 owing).
   payments: 541,
   invite: 343,
   // The grouped lists (People / Money / Club / More, eyebrows included) since
-  // the admin regroup (measured 2026-10-12, 430px, all flags on).
-  settings: 700,
+  // the admin regroup, plus the Sign-in readiness and E-transfers rows that
+  // joined them (re-measured 2026-10-21, 430px, all flags on).
+  settings: 779,
 } as const;
 
 /**

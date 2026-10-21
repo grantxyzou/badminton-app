@@ -9,6 +9,7 @@ import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import type { EtransferPayment, PaymentAllocation } from '@/lib/types';
 import { useRevealReady } from '@/components/primitives/Reveal';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -24,6 +25,13 @@ interface Inbox {
   /** The daily ledger check; `null` with the mirror off. */
   reconcile: { lastAt: string | null; mismatches: number; truncated: boolean } | null;
 }
+
+/**
+ * The configured card with nothing waiting (status line, reminders, the
+ * unpaid hold, the ledger check), read off production at 430px (2026-10-21);
+ * the not-yet-set-up card measures 190 on the mock store.
+ */
+const INBOX_SKELETON_HEIGHT = 525;
 
 /** No email for this long while set up reads as "the script may have stopped". */
 const STALE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -55,7 +63,16 @@ function ago(iso: string | null): string {
  * up → the invitation to set it up. A failed load is an explicit error: "0
  * waiting" is exactly the answer that would let a payment sit unseen.
  */
-export default function PaymentsInboxCard({ refreshKey = 0, onChanged }: { refreshKey?: number; onChanged?: () => void }) {
+export default function PaymentsInboxCard({
+  refreshKey = 0,
+  onChanged,
+  standalone = false,
+}: {
+  refreshKey?: number;
+  onChanged?: () => void;
+  /** On its own page (Admin → Money → E-transfers, 2026-10-21) it holds its place while loading. */
+  standalone?: boolean;
+}) {
   const enabled = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
   const [data, setData] = useState<Inbox | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -93,7 +110,7 @@ export default function PaymentsInboxCard({ refreshKey = 0, onChanged }: { refre
       />
     );
   }
-  if (!data) return null;
+  if (!data) return standalone ? <CardSkeleton height={INBOX_SKELETON_HEIGHT} /> : null;
 
   const done = () => {
     void load();

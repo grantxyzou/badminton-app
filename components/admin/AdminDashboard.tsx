@@ -17,6 +17,8 @@ import PaymentsCard from './CommandCenter/PaymentsCard';
 import AdminBackHeader from './AdminBackHeader';
 import InviteCard from './CommandCenter/InviteCard';
 import GiftCardsCard from './CommandCenter/GiftCardsCard';
+import SignInReadinessCard from './CommandCenter/SignInReadinessCard';
+import PaymentsInboxCard from './CommandCenter/PaymentsInboxCard';
 import type { FilterKey as RosterFilter } from './CommandCenter/RosterPage';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
@@ -44,6 +46,7 @@ const VIEW_KEY = 'badminton_admin_view';
 const RESTORABLE: ReadonlySet<AdminView> = new Set<AdminView>([
   'session-details', 'members', 'birds', 'releases', 'ledger', 'announcements', 'etransfer',
   'skip-dates', 'late-cancel', 'past-sessions', 'stringing', 'catalog-gaps', 'metrics', 'invite', 'gift-cards',
+  'sign-in-readiness', 'etransfers',
 ]);
 function storeView(v: AdminView | null) {
   try {
@@ -197,6 +200,24 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
       </div>
     );
   }
+  if (view === 'sign-in-readiness') {
+    // A name opens the member in the Roster (recovery code inside); the
+    // Roster's Back lands on the console, the same as from Needs you.
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="Sign-in readiness" />
+        <SignInReadinessCard refreshKey={refreshKey} standalone onOpenMember={(name) => { setRosterFocus(name); push('members'); }} />
+      </div>
+    );
+  }
+  if (view === 'etransfers' && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="E-transfers" />
+        <PaymentsInboxCard refreshKey={refreshKey} standalone onChanged={() => setRefreshKey((k) => k + 1)} />
+      </div>
+    );
+  }
   if (view === 'past-sessions') {
     return (
       <PastSessionsPage
@@ -216,7 +237,6 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
         refreshKey={refreshKey}
         setView={push}
         onExit={exit}
-        onOpenMember={(name) => { setRosterFocus(name); push('members'); }}
         onOpenDormant={() => { setRosterFilter('dormant'); push('members'); }}
       />
     </div>

@@ -4,8 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import CardHeader from '@/components/primitives/CardHeader';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { useRevealReady } from '@/components/primitives/Reveal';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
+import EmptyState from '@/components/primitives/EmptyState';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+/** The card with a row of names, measured on the page at 430px (2026-10-21). */
+const READINESS_SKELETON_HEIGHT = 202;
 
 interface Readiness {
   total: number;
@@ -23,7 +28,20 @@ interface Readiness {
  *
  * A load failure is an explicit error, never a confident zero.
  */
-export default function SignInReadinessCard({ refreshKey = 0, onOpenMember }: { refreshKey?: number; onOpenMember?: (name: string) => void }) {
+export default function SignInReadinessCard({
+  refreshKey = 0,
+  onOpenMember,
+  standalone = false,
+}: {
+  refreshKey?: number;
+  onOpenMember?: (name: string) => void;
+  /**
+   * On its own page (Admin → People → Sign-in readiness, 2026-10-21) the card
+   * is the whole screen, so it holds its place while loading and says so
+   * when nobody is locked out, instead of rendering nothing.
+   */
+  standalone?: boolean;
+}) {
   const [data, setData] = useState<Readiness | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -73,9 +91,20 @@ export default function SignInReadinessCard({ refreshKey = 0, onOpenMember }: { 
       </StateCard>
     );
   }
-  if (!data) return null;
+  if (!data) return standalone ? <CardSkeleton height={READINESS_SKELETON_HEIGHT} /> : null;
   const locked = data.cannotSignIn.length;
-  if (locked === 0) return null;
+  if (locked === 0) {
+    if (!standalone) return null;
+    return (
+      <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
+        <CardHeader icon="key" title={title} subtitle="Who has a way to sign in." />
+        <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>
+          <strong>{data.ready}</strong> of {data.total} members can sign in.
+        </p>
+        <EmptyState>Everyone has a PIN, password or Google. Nobody is locked out.</EmptyState>
+      </section>
+    );
+  }
 
   return (
     <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
