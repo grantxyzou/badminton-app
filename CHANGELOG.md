@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A settled session is frozen: nothing can add a row to it (2026-10-21)
+
+From the code review of money accuracy and logic. Settle stamps each row's bill, so any row that arrived AFTER settle owed nothing and was invisible to the balance card, reminders, the hold, the reconcile and the ledger.
+
+- **Sign-up, admin add, waitlist promotion and the restore of a row removed before settle all answer 409 `session_settled`** on a settled session. The one row that may come back is a cancelled one that was stamped before it left — it returns with its bill. Unsettle, add, re-settle is the path for a late addition.
+- **Advancing to a date that already has a session answers 409 `session_exists`** instead of overwriting it: re-advancing to an archived date used to replace the doc wholesale, dropping its `settled` snapshot while the rows kept their frozen amounts.
+
 ### Tabs stay where you left them, and the app opens complete (2026-10-21)
 
 - **A tab you leave is kept, not rebuilt.** Going back to Home, Stats, Stringing or Profile shows what you left at once — no skeleton, and no data request (the usage beacon is the only one). A tab away for 10 seconds or more re-checks quietly in the background: Home's sign-ups and announcement, your balance, your rackets and the bench. Each tab keeps its own scroll position. Before, every tap rebuilt the tab from nothing: five to ten requests and up to a second of skeletons, even for a tab seen seconds earlier.
