@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import MoneyInput from '@/components/primitives/MoneyInput';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
@@ -126,22 +127,16 @@ export default function OtherPricesCard() {
 
       <div className="flex flex-col gap-2">
         <label htmlFor="own-string-price" className="section-label-muted">{t('own')}</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <span className="fs-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>$</span>
-          <input
-            id="own-string-price"
-            type="text"
-            inputMode="decimal"
-            value={own}
-            onChange={(e) => setOwn(e.target.value)}
-            placeholder={tRoot('strings.priceAsk')}
-            maxLength={7}
-                        style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-mono)' }}
-          />
-        </div>
-        <p className="fs-xs" style={{ margin: 0, color: ownParsed === undefined ? 'var(--sev-crit-text)' : 'var(--text-muted)' }}>
-          {ownParsed === undefined ? tRoot('shelf.sheet.priceInvalid') : t('ownHint')}
-        </p>
+        <MoneyInput
+          id="own-string-price"
+          value={own}
+          onChange={setOwn}
+          placeholder={tRoot('strings.priceAsk')}
+          maxLength={7}
+        />
+        {ownParsed === undefined
+          ? <p className="field-error" role="alert">{tRoot('shelf.sheet.priceInvalid')}</p>
+          : <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('ownHint')}</p>}
       </div>
 
       <div className="flex flex-col gap-2">
