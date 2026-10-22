@@ -6,8 +6,9 @@ import {
   makeAdminRequest,
   makeRequest,
   getStore,
+  seedGroup,
 } from './helpers';
-import { PATCH } from '@/app/api/admin/settings/route';
+import { GET, PATCH } from '@/app/api/admin/settings/route';
 
 setupAdminPin();
 
@@ -94,5 +95,42 @@ describe('PATCH /api/admin/settings', () => {
     const res = await PATCH(req);
     const body = await res.json();
     expect(body.pinHash).toBeUndefined();
+  });
+});
+
+describe('/api/admin/settings — the club name', () => {
+  beforeEach(async () => {
+    resetMockStore();
+    await seedTestAdminMember();
+  });
+
+  it('reads the group record’s name and renames it', async () => {
+    seedGroup('bpm', { name: 'BPM Core' });
+    const before = await (await GET(makeAdminRequest('GET', 'http://localhost:3000/api/admin/settings'))).json();
+    expect(before.groupName).toBe('BPM Core');
+
+    const res = await PATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/admin/settings', { groupName: '  Thursday Core  ' }));
+    expect(res.status).toBe(200);
+    const group = (getStore()['groups'] as Array<{ id: string; name: string }>).find((g) => g.id === 'bpm');
+    expect(group?.name).toBe('Thursday Core');
+    const after = await (await GET(makeAdminRequest('GET', 'http://localhost:3000/api/admin/settings'))).json();
+    expect(after.groupName).toBe('Thursday Core');
+  });
+
+  it('refuses a name outside 2–40 characters and saves nothing', async () => {
+    seedGroup('bpm', { name: 'BPM Core' });
+    for (const groupName of ['x', 'a'.repeat(41), '', 7]) {
+      const res = await PATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/admin/settings', { groupName }));
+      expect(res.status).toBe(400);
+    }
+    const group = (getStore()['groups'] as Array<{ id: string; name: string }>).find((g) => g.id === 'bpm');
+    expect(group?.name).toBe('BPM Core');
+  });
+
+  it('answers 409 rather than a 200 that saved nothing when there is no group record', async () => {
+    const res = await PATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/admin/settings', { groupName: 'Anything' }));
+    expect(res.status).toBe(409);
+    const read = await (await GET(makeAdminRequest('GET', 'http://localhost:3000/api/admin/settings'))).json();
+    expect(read.groupName).toBeNull();
   });
 });

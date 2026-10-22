@@ -24,8 +24,8 @@ describe('buildSignupShare', () => {
 
   it('falls back to the deployment name when there is no club', () => {
     // Flag off, or a read that has not resolved. Not an error state.
-    expect(buildSignupShare({}).title).toBe('BPM Badminton');
-    expect(buildSignupShare({ groupName: '   ' }).title).toBe('BPM Badminton');
+    expect(buildSignupShare({}).title).toBe('BPM');
+    expect(buildSignupShare({ groupName: '   ' }).title).toBe('BPM');
   });
 
   it('is the PLAIN app address — never an invite', () => {

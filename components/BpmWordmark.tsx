@@ -1,3 +1,4 @@
+import { APP_SHORT_NAME } from '@/lib/brand';
 import { memo } from 'react';
 
 /**
@@ -10,7 +11,7 @@ import { memo } from 'react';
 function BpmWordmark({
   size = '1em',
   color,
-  ariaLabel = 'BPM',
+  ariaLabel = APP_SHORT_NAME,
 }: {
   size?: string;
   color?: string;

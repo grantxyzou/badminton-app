@@ -224,6 +224,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
           ? [{ icon: 'sports_tennis', label: 'Stringing bench', meta: benchTrailing, accent: !!benchTrailing, onClick: () => setView('stringing') }]
           : []),
         { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },
+        { icon: 'groups', label: 'Club name', onClick: () => setView('club-name') },
         { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
         { icon: 'schedule', label: 'Late cancellations', onClick: () => setView('late-cancel') },
       ],

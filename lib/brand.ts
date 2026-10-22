@@ -15,10 +15,12 @@
  *
  * `docs/plans/multi-group.md` records the decision: "A new product name; BPM is
  * a group inside it (2026-09-07) ... Name is Grant's, set in one constant."
- * This is that constant. It still reads "BPM Badminton" because the name has
- * not been chosen yet, and a placeholder invented here would be worse than the
- * honest status quo — it would ship a name nobody picked. Changing it is a
- * one-line edit, which is the point.
+ * This is that constant. Grant chose on 2026-10-22: the APP is "BPM", short for
+ * Badminton Per Management, and his club — group #1 — is "BPM Core". The two
+ * share three letters on purpose, so the expansion is what tells a reader the
+ * app is the software and the club is the people; it lives in prose (the
+ * legal pages, the store listing) rather than in a second constant nothing
+ * renders.
  *
  * WHAT DOES NOT FOLLOW THIS CONSTANT, deliberately:
  *
@@ -26,8 +28,12 @@
  *     custom scheme and the `.bpm-*` CSS classes. Infrastructure, not brand —
  *     and the first Play upload fixed the package name for good.
  *   - `lib/cosmos.ts`'s dev seed and `lib/groupBackfill.ts`'s group creation,
- *     which write `name: 'BPM Badminton'` as the CLUB's own name for group #1.
- *     Renaming the product must never silently rename Grant's club.
+ *     which write `name: 'BPM Core'` as the CLUB's own name for group #1.
+ *     Renaming the product must never silently rename Grant's club; the live
+ *     club is renamed from Admin → Club name, which writes `Group.name`.
+ *   - The gift-code prefix `BPM-`, the `'BPM'` racket colourway and the two
+ *     `/design` preview pages: a code format in issued cards, a paint named
+ *     after the club, and specimens of the mark itself.
  */
 
 /**
@@ -42,7 +48,7 @@
  * could plausibly be either, prefer the club: a member has a relationship with
  * their club and merely uses the app.
  */
-export const APP_NAME = 'BPM Badminton';
+export const APP_NAME = 'BPM';
 
 /**
  * The short form, for places where the full name would wrap or crowd: the
@@ -51,7 +57,9 @@ export const APP_NAME = 'BPM Badminton';
  * both platforms.
  *
  * Kept separate rather than derived by taking the first word, because that
- * only works for names shaped like this one.
+ * only works for names shaped like this one. The same string as `APP_NAME`
+ * since the name became one word; the two roles stay distinct so a longer
+ * name later lands in the right places.
  */
 export const APP_SHORT_NAME = 'BPM';
 

@@ -16,7 +16,7 @@ describe('capacitor.config.ts', () => {
 
   it('has the store identity', () => {
     expect(config.appId).toBe('com.motioncraft.bpm');
-    expect(config.appName).toBe('BPM Badminton');
+    expect(config.appName).toBe('BPM');
   });
 
   it('points errorPath at a bundled page that exists', () => {

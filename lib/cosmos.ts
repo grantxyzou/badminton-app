@@ -61,7 +61,7 @@ function seedDevGroupMembership(
       // DATA, NOT BRAND — deliberately not `APP_NAME`. This is group #1's own
       // club name, and renaming the product must never silently rename Grant's
       // club. Same reasoning as `lib/groupBackfill.ts`'s group creation.
-      name: 'BPM Badminton',
+      name: 'BPM Core',
       sport: 'badminton',
       ownerMemberId: member.id,
       createdAt,
