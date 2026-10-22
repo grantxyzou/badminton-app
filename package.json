@@ -34,6 +34,8 @@
     "@capacitor/ios": "^8.5.3",
     "@capacitor/share": "^8.0.3",
     "@capacitor/status-bar": "^8.0.4",
+    "@capawesome/capacitor-app-shortcuts": "^8.0.3",
+    "@capawesome/capacitor-badge": "^8.0.4",
     "@formatjs/intl-localematcher": "^0.9.0",
     "arctic": "^3.7.0",
     "next": "^16.4.0",

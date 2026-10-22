@@ -146,7 +146,7 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
     if (!onScreen || open === null || !hasIdentity) return;
     const lbs = takeStringingIntent();
     if (lbs === null || open !== true) return;
-    setPrefillTension(lbs);
+    setPrefillTension(lbs === 'open' ? null : lbs);
     setSheetOpen(true);
   }, [onScreen, open, hasIdentity]);
 

@@ -297,6 +297,21 @@ submitted by Grant on device.
   row's own member's `member_session` since 2026-09-29 (the token lives in one
   browser's storage, so members who switched to the installed app or a new
   phone could not cancel — admins never saw it, their cookie skips the check).
+- **The icon badge and the long-press menu** (`docs/plans/native-badge-shortcuts.md`,
+  2026-10-21; capawesome's Badge and App Shortcuts plugins, v8): `lib/appBadge.ts`
+  counts what is owed and FROZEN — settled sessions not reported paid, plus
+  stringing charges — from the read `UnpaidSessionsCard` already makes, and
+  sets it only after a read that SUCCEEDED (unknown is not zero). It never
+  prompts, and clears to zero only from a badge that showed something,
+  because a zero badge on iOS also clears delivered notifications. The web
+  app on a home screen gets the same badge through `navigator.setAppBadge`.
+  `lib/appShortcuts.ts` keeps the menu (Sign up for <day>, What I owe,
+  Request stringing) current from Home's own reads; a tap routes in place
+  through `NativeBridge`, and Request stringing opens the form via the
+  stringing intent's `'open'` marker. Sign-out clears both. iOS needs
+  `SceneDelegate.swift` to forward the tap (pinned by the shell canary).
+  **They ship with the next store build** — the web half is harmless on the
+  current binary, which answers `hasNativePlugin() === false`.
 - **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`
   answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`,
   `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path

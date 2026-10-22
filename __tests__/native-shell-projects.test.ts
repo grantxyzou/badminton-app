@@ -107,6 +107,23 @@ describe('ios/', () => {
     expect(swift).toContain('FirebaseApp.configure()');
   });
 
+  // docs/plans/native-badge-shortcuts.md. Without the SceneDelegate
+  // forwarding the long-press menu still shows, and a tap on it does nothing:
+  // the plugin never hears about it under the UIScene lifecycle.
+  it('forwards a long-press shortcut to the plugin, at launch and while running', () => {
+    const scene = read('ios', 'App', 'App', 'SceneDelegate.swift');
+    expect(scene).toContain('import AppShortcutsPlugin');
+    expect(scene).toContain('connectionOptions.shortcutItem');
+    expect(scene).toContain('performActionFor shortcutItem');
+    expect(scene).toContain('AppShortcutsPlugin.notificationName');
+  });
+
+  it('builds the badge and shortcut plugins into the app', () => {
+    const spm = read('ios', 'App', 'CapApp-SPM', 'Package.swift');
+    expect(spm).toContain('CapawesomeCapacitorAppShortcuts');
+    expect(spm).toContain('CapawesomeCapacitorBadge');
+  });
+
   it('does not commit Firebase config or signing material', () => {
     expect(isTracked('ios', 'App', 'App', 'GoogleService-Info.plist')).toBe(false);
     const gi = read('.gitignore');
@@ -146,6 +163,12 @@ describe('android/', () => {
     expect(manifest).toContain('android:screenOrientation="portrait"');
     expect(read('android', 'app', 'build.gradle')).toContain('versionName "1.0.0"');
     expect(read('ios', 'App', 'App.xcodeproj', 'project.pbxproj')).toContain('MARKETING_VERSION = 1.0.0;');
+  });
+
+  it('builds the badge and shortcut plugins into the app', () => {
+    const gradle = read('android', 'app', 'capacitor.build.gradle');
+    expect(gradle).toContain("implementation project(':capawesome-capacitor-app-shortcuts')");
+    expect(gradle).toContain("implementation project(':capawesome-capacitor-badge')");
   });
 
   it('does not commit google-services.json', () => {

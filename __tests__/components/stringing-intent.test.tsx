@@ -11,7 +11,7 @@ import { resetSharedReads } from '../../lib/sharedRead';
 import {
   STRINGING_INTENT_KEY,
   hasStringingIntent,
-  requestStringingAt,
+  requestStringing, requestStringingAt,
   takeStringingIntent,
 } from '../../lib/stringingIntent';
 
@@ -69,6 +69,15 @@ describe('the marker', () => {
     expect(takeStringingIntent()).toBe(24);
     expect(takeStringingIntent()).toBeNull();
     expect(hasStringingIntent()).toBe(false);
+  });
+
+  // The app icon's long-press "Request stringing" knows no number: it opens
+  // the form at its own default (lib/appShortcuts.ts).
+  it('can ask for the form with no tension', () => {
+    requestStringing();
+    expect(hasStringingIntent()).toBe(true);
+    expect(takeStringingIntent()).toBe('open');
+    expect(takeStringingIntent()).toBeNull();
   });
 
   it('drops anything the request form could not show', () => {

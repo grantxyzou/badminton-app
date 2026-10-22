@@ -5,7 +5,7 @@ import { join, relative } from 'node:path';
 /**
  * THE WEB BUNDLE MUST NOT PAY FOR THE NATIVE SHELL.
  *
- * Every `@capacitor/*` and `@capacitor-firebase/*` package is loaded with a
+ * Every `@capacitor/*`, `@capacitor-firebase/*` and `@capawesome/*` package is loaded with a
  * dynamic `import()` INSIDE an `isNative()` branch, so a browser or PWA user
  * downloads only an unloaded chunk reference. A static `import … from
  * '@capacitor/…'` at the top of any app file would pull the plugin and its
@@ -14,8 +14,8 @@ import { join, relative } from 'node:path';
  * `lib/native.ts` itself imports nothing — it reads `window.Capacitor`.
  */
 const ROOTS = ['app', 'components', 'lib'];
-const STATIC_IMPORT = /^\s*import\s[^;]*?\sfrom\s+['"]@capacitor(?:-firebase)?\//m;
-const STATIC_REQUIRE = /require\(\s*['"]@capacitor(?:-firebase)?\//;
+const STATIC_IMPORT = /^\s*import\s[^;]*?\sfrom\s+['"]@(?:capacitor(?:-firebase)?|capawesome)\//m;
+const STATIC_REQUIRE = /require\(\s*['"]@(?:capacitor(?:-firebase)?|capawesome)\//;
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

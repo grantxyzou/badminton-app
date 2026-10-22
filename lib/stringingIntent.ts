@@ -11,10 +11,22 @@
 import { TENSION_MAX_LB, TENSION_MIN_LB } from './stringing';
 
 export const STRINGING_INTENT_KEY = 'badminton_stringing_intent';
+/** The marker for "open the form at its own default tension" — the app icon's
+ *  long-press "Request stringing" (lib/appShortcuts.ts), which knows no number. */
+const OPEN_FORM = 'open';
 
 export function requestStringingAt(lbs: number): void {
   try {
     sessionStorage.setItem(STRINGING_INTENT_KEY, String(Math.round(lbs)));
+  } catch {
+    /* storage unavailable: the tab switch still happens */
+  }
+}
+
+/** Open the request form with no tension chosen. */
+export function requestStringing(): void {
+  try {
+    sessionStorage.setItem(STRINGING_INTENT_KEY, OPEN_FORM);
   } catch {
     /* storage unavailable: the tab switch still happens */
   }
@@ -29,11 +41,13 @@ export function hasStringingIntent(): boolean {
   }
 }
 
-/** Reads and clears the marker, so a later visit opens on the card. */
-export function takeStringingIntent(): number | null {
+/** Reads and clears the marker, so a later visit opens on the card. `'open'`
+ *  means open the form at its default; a number, at that tension. */
+export function takeStringingIntent(): number | 'open' | null {
   try {
     const raw = sessionStorage.getItem(STRINGING_INTENT_KEY);
     sessionStorage.removeItem(STRINGING_INTENT_KEY);
+    if (raw === OPEN_FORM) return OPEN_FORM;
     const n = raw === null ? NaN : Number(raw);
     return Number.isInteger(n) && n >= TENSION_MIN_LB && n <= TENSION_MAX_LB ? n : null;
   } catch {
