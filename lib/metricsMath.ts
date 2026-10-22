@@ -63,6 +63,13 @@ export interface MetricsInput {
    * and then every usage figure is null rather than zero.
    */
   usageEvents?: Array<{ memberId: string; kind: string; at: string; tab?: string; via?: string }>;
+  /**
+   * Every `sign_in` through the PWA-to-app migration link, all time (bounded
+   * only by the events container's TTL). Kept apart from `usageEvents`
+   * because a move happens once per person and would fall out of a 28-day
+   * window within a month of the link going live.
+   */
+  migrations?: Array<{ memberId: string; at: string }>;
 }
 
 export interface SessionMetrics {
@@ -148,6 +155,14 @@ export interface UsageMetrics {
   tabViews: Record<string, number> | null;
   /** Sign-ins by method, last 28 days. */
   signInMethods: Record<string, number> | null;
+  /**
+   * Distinct roster members who have signed into the store app through the
+   * "Move to the app" link, all time — a zero once usage is recorded (nobody
+   * has moved), null before (nothing is being recorded).
+   */
+  movedToApp: number | null;
+  /** When the latest of those moves happened; null when none has. */
+  movedToAppLastAt: string | null;
 }
 
 const DAY = 86_400_000;
@@ -331,7 +346,7 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
     }
   }
 
-  const usage = computeUsage(input.usageEvents ?? [], rosterIds, now);
+  const usage = computeUsage(input.usageEvents ?? [], input.migrations ?? [], rosterIds, now);
 
   return {
     generatedAt: input.now.toISOString(),
@@ -367,16 +382,34 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
 
 function computeUsage(
   raw: NonNullable<MetricsInput['usageEvents']>,
+  rawMigrations: NonNullable<MetricsInput['migrations']>,
   rosterIds: Set<string>,
   now: number,
 ): UsageMetrics {
   const events = raw
     .map((e) => ({ ...e, t: ms(e.at) }))
     .filter((e): e is typeof e & { t: number } => e.t !== null && e.t <= now && now - e.t <= 28 * DAY && rosterIds.has(e.memberId));
-  if (events.length === 0) {
+  // All time, roster only; the mock store applies no WHERE, so the kind and
+  // method are re-checked by the reader and the window and roster here.
+  const migrations = rawMigrations
+    .map((e) => ({ ...e, t: ms(e.at) }))
+    .filter((e): e is typeof e & { t: number } => e.t !== null && e.t <= now && rosterIds.has(e.memberId));
+  if (events.length === 0 && migrations.length === 0) {
     return {
       firstRecordedAt: null, weeklyActive: [null, null, null, null], activeSoFar: null, avgDailyActive: null,
       stickiness: null, opensPerActive7d: null, tabViews: null, signInMethods: null,
+      movedToApp: null, movedToAppLastAt: null,
+    };
+  }
+  const movedToApp = new Set(migrations.map((e) => e.memberId)).size;
+  const movedToAppLastAt = migrations.length ? new Date(Math.max(...migrations.map((e) => e.t))).toISOString() : null;
+  if (events.length === 0) {
+    // A move is a sign-in, so this only happens when the last usage record
+    // aged out of the window; the move count still stands on its own.
+    return {
+      firstRecordedAt: null, weeklyActive: [null, null, null, null], activeSoFar: null, avgDailyActive: null,
+      stickiness: null, opensPerActive7d: null, tabViews: null, signInMethods: null,
+      movedToApp, movedToAppLastAt,
     };
   }
   const first = Math.min(...events.map((e) => e.t));
@@ -422,5 +455,7 @@ function computeUsage(
     opensPerActive7d,
     tabViews: countBy('tab_view', 'tab'),
     signInMethods: countBy('sign_in', 'via'),
+    movedToApp,
+    movedToAppLastAt,
   };
 }

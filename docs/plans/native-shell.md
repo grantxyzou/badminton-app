@@ -1,8 +1,7 @@
 # Native shell — App Store + Google Play
 
 **Track:** Reach (ROADMAP track 4 — the one Value-Hub track never built)
-**Status:** shipped — live on the App Store and Google Play (Grant, 2026-10-07)
-**Review on:** 2026-10-21 — the "Move to the app" link (`NEXT_PUBLIC_FLAG_NATIVE_MIGRATE`) was held OFF "until a store listing exists"; Grant turned it on 2026-10-07, once both listings were live. Has anyone used it?
+**Status:** shipped — live on the App Store and Google Play (Grant, 2026-10-07); the "Move to the app" link has been used (review of 2026-10-21, below)
 
 ## Problem
 
@@ -85,6 +84,21 @@ don't copy.
   the repo recorded it. The one thing that was waiting on a listing is the
   "Move to the app" link, still OFF in `deploy-next.yml`; turning it on is a
   flag flip and Grant's call.
+- **2026-10-21 review: yes, the link has been used — and the Metrics page now
+  says so.** The review asked whether anyone had moved; Grant: "Yes, and where
+  is the tracking in Metrics?" The record existed — every claim of a migration
+  link signs the person in with `via: 'migrate'`, which is one of the
+  `sign_in` usage records — but the only place it surfaced was the Usage
+  card's "Signed in with" caption, a 28-day count among seven methods. A move
+  happens once per person, so that caption forgets each one a month later and
+  a question asked in the week after would have read a plausible zero. Now
+  `clubMetrics()` reads those sign-ins ALL TIME (the events container's TTL is
+  the only bound) and the Usage card carries its own line: "Moved to the
+  store app: N members, last on <date>", roster-only, with a zero meaning
+  nobody has (null, drawing nothing, means nothing is recorded). It is the
+  one all-time figure on a card that is otherwise a 28-day window, and the
+  count is of PEOPLE, not devices — a second phone through the same link is
+  the same member. The review line is closed; the shell has no further gate.
 
 ## Shape
 
@@ -96,4 +110,5 @@ don't copy.
 | Apple handoff parity | `app/api/auth/apple/{start,callback}/route.ts` |
 | Native push | `lib/fcm.ts`, `lib/push.ts`, `app/api/push/subscribe/route.ts` |
 | Migration link | `lib/authMigration.ts`, `app/api/auth/migrate/*`, `components/Migrate*.tsx`, `app/migrate/page.tsx` |
+| Its tracking ("Moved to the store app") | `lib/metrics.ts` (the all-time `via: 'migrate'` read), `lib/metricsMath.ts` `UsageMetrics.movedToApp`, `components/admin/MetricsPage.tsx` `MovedToApp` |
 | Shell | `capacitor.config.ts`, `native/`, `ios/`, `android/`, `components/NativeBridge.tsx` |
