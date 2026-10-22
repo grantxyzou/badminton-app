@@ -48,6 +48,22 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The Metrics page counts who has moved to the store app (2026-10-21)
+
+The native-shell plan's review asked whether anyone had used the "Move to the
+app" link since it went live on 2026-10-07. Grant: "Yes, and where is the
+tracking in Metrics?" It was there, but buried: a migration claim is a
+`sign_in` with `via: 'migrate'`, and the only place that showed was the Usage
+card's "Signed in with" caption — a 28-day count among seven methods, which
+forgets each move a month after it happens. `clubMetrics()` now reads those
+sign-ins all time (bounded by the events container's TTL alone) and the Usage
+card carries its own line, "Moved to the store app: N members, last on
+<date>" — distinct roster members, not devices; a zero once usage is recorded
+means nobody has, and before that the line draws nothing. `UsageMetrics` gains
+`movedToApp` and `movedToAppLastAt` (additive), and the weekly report carries
+them through the same reader. `docs/plans/native-shell.md`'s review line is
+closed.
+
 ### The legal copy names no place or person for the operator (2026-10-21)
 
 Grant's call on the legal-copy review: "take out all private informations about me". The policy already named no person; the city in "the app's operator, in Vancouver, BC" is now "in British Columbia, Canada" in both locales (the province stays because the policy cites BC PIPA), and the crash screen's "let Grant know" reads "let the operator know". The support mailbox was never repo text (`SUPPORT_EMAIL`). The Play listing's developer name is deliberately not added to the policy; `docs/plans/legal-copy-multi-group.md` D10 records why and what satisfies Play's rule instead.

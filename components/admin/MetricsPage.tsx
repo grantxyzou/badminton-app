@@ -240,6 +240,7 @@ function UsageCard({ usage }: { usage: UsageMetrics | undefined }) {
           Daily and weekly active members, how often people come back, which tabs get used and how people sign in.
           These appear once the app has recorded its first visit.
         </Caption>
+        {typeof usage?.movedToApp === 'number' && usage.movedToApp > 0 && <MovedToApp usage={usage} />}
       </section>
     );
   }
@@ -281,6 +282,25 @@ function UsageCard({ usage }: { usage: UsageMetrics | undefined }) {
       {signIns.length > 0 && (
         <Caption>Signed in with: {signIns.map(([via, n]) => `${VIA_LABELS[via] ?? via} ${n}`).join(' · ')}.</Caption>
       )}
+      <MovedToApp usage={usage} />
     </section>
+  );
+}
+
+/**
+ * The "Move to the app" link's tracking (docs/plans/native-shell.md): how
+ * many members have carried their sign-in into the store app, all time — a
+ * move happens once per person, so the 28-day sign-in caption above loses it
+ * within a month. A zero is honest here: it means nobody has, not that
+ * nothing is recorded (that case is null and draws nothing).
+ */
+function MovedToApp({ usage }: { usage: UsageMetrics }) {
+  if (typeof usage.movedToApp !== 'number') return null;
+  const last = usage.movedToAppLastAt ? `, last on ${shortDate(usage.movedToAppLastAt.slice(0, 10))}` : '';
+  return (
+    <Caption>
+      Moved to the store app: {usage.movedToApp === 1 ? '1 member' : `${usage.movedToApp} members`}
+      {last}, since the link went live.
+    </Caption>
   );
 }

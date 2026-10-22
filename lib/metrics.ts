@@ -18,6 +18,10 @@ import { computeClubMetrics, type ClubMetrics, type MetricsPlayer, type MetricsS
 /** How far back the history reads go: a year of sessions and a month on top for the cohorts' first months. */
 const HISTORY_DAYS = 400;
 const DAY = 86_400_000;
+/** The `via` the migration claim route signs in with (`lib/authMigration.ts`). */
+const MIGRATE_VIA = 'migrate';
+/** A move is one row per person per device; a club is under a hundred people. */
+const MIGRATIONS_LIMIT = 1000;
 
 export const SESSIONS_SHOWN = [8, 12, 26] as const;
 export type SessionsShown = (typeof SESSIONS_SHOWN)[number];
@@ -118,6 +122,19 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
       { name: '@kinds', value: [...USAGE_KINDS] },
     ],
   });
+  // The "Move to the app" sign-ins, all time (the container's TTL is the only
+  // bound): one per person, so a 28-day window would lose them within a month
+  // of the link going live. Cosmos filters by kind and method; the mock does
+  // not, so both are re-checked here.
+  const migrationRows = await scope.query<{ memberId?: unknown; kind?: unknown; via?: unknown; at?: unknown }>('events', {
+    select: 'c.memberId, c.kind, c.via, c.at',
+    where: 'c.kind = @kind AND c.via = @via',
+    params: [
+      { name: '@kind', value: 'sign_in' },
+      { name: '@via', value: MIGRATE_VIA },
+    ],
+    limit: MIGRATIONS_LIMIT,
+  });
   const { resources: pushRows } = await getContainer('pushSubscriptions')
     .items.query<{ memberId?: unknown }>({ query: 'SELECT c.memberId FROM c' })
     .fetchAll();
@@ -148,6 +165,11 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
             ...(typeof r.tab === 'string' ? { tab: r.tab } : {}),
             ...(typeof r.via === 'string' ? { via: r.via } : {}),
           }]
+        : [],
+    ),
+    migrations: migrationRows.flatMap((r) =>
+      typeof r.memberId === 'string' && typeof r.at === 'string' && r.kind === 'sign_in' && r.via === MIGRATE_VIA
+        ? [{ memberId: r.memberId, at: r.at }]
         : [],
     ),
   });

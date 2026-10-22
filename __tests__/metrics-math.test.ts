@@ -258,7 +258,37 @@ describe('computeClubMetrics — app usage', () => {
     expect(m.usage).toEqual({
       firstRecordedAt: null, weeklyActive: [null, null, null, null], activeSoFar: null, avgDailyActive: null,
       stickiness: null, opensPerActive7d: null, tabViews: null, signInMethods: null,
+      movedToApp: null, movedToAppLastAt: null,
     });
+  });
+
+  it('counts who moved to the store app all time, by person, roster only', () => {
+    const m = computeClubMetrics(
+      base({
+        roster,
+        usageEvents: [{ memberId: 'a', kind: 'app_open', at: hoursAgo(2) }],
+        migrations: [
+          { memberId: 'a', at: daysAgo(60) }, // older than the 28-day usage window: still counts
+          { memberId: 'a', at: daysAgo(3) }, // a second device is the same person
+          { memberId: 'b', at: daysAgo(40) },
+          { memberId: 'stranger', at: daysAgo(1) },
+        ],
+      }),
+    );
+    expect(m.usage.movedToApp).toBe(2);
+    expect(m.usage.movedToAppLastAt).toBe(daysAgo(3));
+  });
+
+  it('reads zero moves as nobody, once usage is recorded', () => {
+    const m = computeClubMetrics(base({ roster, usageEvents: [{ memberId: 'a', kind: 'app_open', at: hoursAgo(2) }] }));
+    expect(m.usage.movedToApp).toBe(0);
+    expect(m.usage.movedToAppLastAt).toBeNull();
+  });
+
+  it('keeps the move count when every usage record has aged out of the window', () => {
+    const m = computeClubMetrics(base({ roster, migrations: [{ memberId: 'a', at: daysAgo(50) }] }));
+    expect(m.usage.firstRecordedAt).toBeNull();
+    expect(m.usage.movedToApp).toBe(1);
   });
 
   it('counts members who opened the app, by week and by day, roster only', () => {

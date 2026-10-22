@@ -66,6 +66,8 @@ const HAPPY: ClubMetrics = {
     opensPerActive7d: null,
     tabViews: null,
     signInMethods: null,
+    movedToApp: null,
+    movedToAppLastAt: null,
   },
 };
 
@@ -137,6 +139,8 @@ describe('<MetricsPage />', () => {
         opensPerActive7d: 3.2,
         tabViews: { home: 60, skills: 30, profile: 10 },
         signInMethods: { pin: 9, google: 3 },
+        movedToApp: 4,
+        movedToAppLastAt: '2026-10-18T03:00:00.000Z',
       },
     });
     render(<MetricsPage onBack={() => {}} />);
@@ -147,6 +151,7 @@ describe('<MetricsPage />', () => {
     expect(within(usage).getByText('60 · 60%')).toBeTruthy();
     expect(within(usage).getByText(/PIN 9 · Google 3/)).toBeTruthy();
     expect(within(usage).getByText(/Recorded since Sep 20/)).toBeTruthy();
+    expect(within(usage).getByText(/Moved to the store app: 4 members, last on Oct 1[78]/)).toBeTruthy();
   });
 
   it('names the tracking-based numbers without drawing any', async () => {
