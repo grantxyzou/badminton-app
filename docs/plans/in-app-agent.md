@@ -4,6 +4,8 @@
 **Status:** intent
 **Review on:** 2026-11-22 — still wanted? If so, which ONE Level 2 item goes first, and does it need an LLM or only a rule?
 
+> **Do not implement any level without Grant's explicit go-ahead in the session.**
+
 ## Problem
 
 Nobody has asked for this out loud. It came out of a conversation with Grant on
