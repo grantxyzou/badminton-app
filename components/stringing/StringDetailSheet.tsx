@@ -153,12 +153,12 @@ export default function StringDetailSheet({
 
             {clubColours.length > 0 ? (
               <section aria-label={t('coloursOnReel')} className="flex flex-col gap-2">
-                <span className="section-label">{t('coloursOnReel')}</span>
+                <span className="section-label-muted">{t('coloursOnReel')}</span>
                 <ColourList ids={clubColours} />
               </section>
             ) : colours.length > 0 && (
               <section aria-label={t('colours')} className="flex flex-col gap-2">
-                <span className="section-label">{t('colours')}</span>
+                <span className="section-label-muted">{t('colours')}</span>
                 <div className="fs-base" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
                   {colours.map((c) => (
                     <span key={c.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
@@ -172,7 +172,7 @@ export default function StringDetailSheet({
             )}
 
             <section aria-label={t('ratings')} className="flex flex-col gap-2">
-              <span className="section-label">{t('ratings')}</span>
+              <span className="section-label-muted">{t('ratings')}</span>
               {ratings.map(([key, value]) => value === null ? null : (
                 <div key={key} style={{ display: 'grid', gridTemplateColumns: '6.5rem 1fr 2.5rem', alignItems: 'center', gap: 'var(--space-3)' }}>
                   <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t(key)}</span>
@@ -187,7 +187,7 @@ export default function StringDetailSheet({
 
             {meaning.length > 0 && (
               <section aria-label={t('meansTitle')} className="flex flex-col gap-2">
-                <span className="section-label">{t('meansTitle')}</span>
+                <span className="section-label-muted">{t('meansTitle')}</span>
                 {meaning.map((line) => (
                   <p key={line} className="fs-base" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{line}</p>
                 ))}
@@ -195,7 +195,7 @@ export default function StringDetailSheet({
             )}
 
             <section aria-label={t('specs')} className="flex flex-col gap-1">
-              <span className="section-label">{t('specs')}</span>
+              <span className="section-label-muted">{t('specs')}</span>
               <dl className="fs-sm" style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 'var(--space-4)', rowGap: 'var(--space-1)' }}>
                 {/* The two ratings drawn as bars above are not repeated as rows. */}
                 {catalogSpecRows(item).filter((r) => r.labelKey !== 'specRepulsion' && r.labelKey !== 'specDurability').map((r) => (

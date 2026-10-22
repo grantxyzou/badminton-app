@@ -9,6 +9,8 @@ import { catalogLabel, matches, parsePrice, priceDraftOf } from '@/lib/shelfEdit
 import { MAX_LABEL_LEN } from '@/lib/stringingLimits';
 import type { StringColourId } from '@/lib/stringPalette';
 import { ColourPicker } from '@/components/stringing/StringColours';
+import MoneyInput from '@/components/primitives/MoneyInput';
+import ListRow from '@/components/primitives/ListRow';
 import type { StringStockLine } from '@/lib/stringStockMath';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
 
@@ -225,13 +227,10 @@ export default function StringShelfSheet(props: Props) {
           <div className="flex flex-col gap-2">
             <label htmlFor="shelf-price" className="section-label-muted">{t('strings.price')}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <span className="fs-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>$</span>
-              <input
+              <MoneyInput
                 id="shelf-price"
-                type="text"
-                inputMode="decimal"
                 value={priceDraft}
-                onChange={(e) => setPriceDraft(e.target.value)}
+                onChange={setPriceDraft}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && priceChanged && !off) {
                     e.preventDefault();
@@ -240,7 +239,6 @@ export default function StringShelfSheet(props: Props) {
                 }}
                 placeholder={t('strings.priceAsk')}
                 maxLength={7}
-                style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-mono)' }}
               />
               <button
                 type="button"
@@ -251,9 +249,9 @@ export default function StringShelfSheet(props: Props) {
                 {t('strings.priceSave')}
               </button>
             </div>
-            <p className="fs-xs" style={{ margin: 0, color: parsed === undefined ? 'var(--sev-crit-text)' : 'var(--text-muted)' }}>
-              {parsed === undefined ? t('shelf.sheet.priceInvalid') : t('strings.priceHint')}
-            </p>
+            {parsed === undefined
+              ? <p className="field-error" role="alert">{t('shelf.sheet.priceInvalid')}</p>
+              : <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('strings.priceHint')}</p>}
           </div>
 
           {/* COLOURS — what is on the reel, shown to players on the Stringing
@@ -280,7 +278,8 @@ export default function StringShelfSheet(props: Props) {
             <span className="section-label-muted">{t('shelf.sheet.stock')}</span>
             {line && line.purchases > 0 ? (
               <>
-                <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                {/* The shelf row's words, the same face: a phrase, not a figure. */}
+                <span className="fs-md" style={{ color: 'var(--text-primary)' }}>
                   {t('shelf.setsLeft', { count: line.remainingSets })}
                 </span>
                 <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
@@ -352,23 +351,15 @@ export default function StringShelfSheet(props: Props) {
                   disabled={!catalogReady}
                 />
                 {suggestions.length > 0 && (
-                  <div role="listbox" aria-label={t('strings.matches')} className="flex flex-col gap-1">
+                  <div role="group" aria-label={t('strings.matches')} className="flex flex-col gap-2">
                     {suggestions.map((i) => (
-                      <button
+                      <ListRow
                         key={i.id}
-                        type="button"
-                        role="option"
-                        aria-selected={false}
-                        className="cc-mini-card fs-sm"
-                        style={{ textAlign: 'left', padding: 'var(--space-2) var(--space-3)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)' }}
                         disabled={off}
                         onClick={() => props.onLink?.(i)}
-                      >
-                        {catalogLabel(i)}
-                        {typeof i.attributes?.gaugeMm === 'number' && (
-                          <span style={{ color: 'var(--text-muted)' }}>{` · ${i.attributes.gaugeMm.toFixed(2)}mm`}</span>
-                        )}
-                      </button>
+                        title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{catalogLabel(i)}</span>}
+                        subtitle={typeof i.attributes?.gaugeMm === 'number' ? `${i.attributes.gaugeMm.toFixed(2)}mm` : undefined}
+                      />
                     ))}
                   </div>
                 )}

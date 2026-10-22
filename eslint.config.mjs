@@ -183,6 +183,14 @@ const config = [
       'components/primitives/**/*.{ts,tsx}',
       'components/home/**/*.{ts,tsx}',
       'components/BottomSheet/**/*.{ts,tsx}',
+      // The stringing service, both sides (design review, 2026-10-22): the
+      // member's Stringing tab and the bench's screens, every one at zero.
+      'components/stringing/**/*.{ts,tsx}',
+      'components/StringingTab.tsx',
+      'components/DatePicker.tsx',
+      'components/admin/CommandCenter/Stringing*.tsx',
+      'components/admin/CommandCenter/String{Shelf,Purchase}*.tsx',
+      'components/admin/CommandCenter/{HoleCountsCard,OtherPricesCard}.tsx',
     ],
     rules: {
       'no-restricted-syntax': ['error', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS, ...SPACING_TOKEN_SELECTORS],

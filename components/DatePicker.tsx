@@ -1,7 +1,7 @@
 'use client';
 
 import { todayIso } from '@/lib/stringingDue';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -9,6 +9,23 @@ const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
+/** Room the calendar keeps from the viewport's edges, and from its field. */
+const EDGE = 8;
+const GAP = 6;
+
+/**
+ * Below the field, unless the calendar would run off the bottom of the screen
+ * and fits above it. A field low on a page could scroll into room; one low in
+ * a bottom sheet could not — the page under a sheet is locked, so its lower
+ * weeks were simply unreachable (the string purchase's date, 2026-10-22).
+ */
+function placeCalendar(rect: DOMRect, height: number) {
+  const fitsBelow = rect.bottom + GAP + height <= window.innerHeight - EDGE;
+  const fitsAbove = rect.top - GAP - height >= EDGE;
+  const top = !fitsBelow && fitsAbove ? rect.top - GAP - height : rect.bottom + GAP;
+  return { top, left: rect.left, width: rect.width };
+}
+
 const MONTHS_FULL = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -37,6 +54,19 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
 
   const btnRef = useRef<HTMLButtonElement>(null);
   const calRef = useRef<HTMLDivElement>(null);
+  // The calendar's height, measured once it has drawn; a close guess before.
+  const calHeight = useRef(340);
+
+  // Measured on open, before paint, so a calendar that must sit above its
+  // field never flashes below it first.
+  useLayoutEffect(() => {
+    if (!open || !calRef.current || !btnRef.current) return;
+    const h = calRef.current.offsetHeight;
+    if (h > 0 && h !== calHeight.current) {
+      calHeight.current = h;
+      setCalPos(placeCalendar(btnRef.current.getBoundingClientRect(), h));
+    }
+  }, [open]);
 
   // Snap the visible month back to `value` whenever it changes. Adjusted
   // during render rather than in an effect: the effect version committed one
@@ -80,8 +110,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
       raf = 0;
       pending = false;
       if (!btnRef.current) return;
-      const rect = btnRef.current.getBoundingClientRect();
-      setCalPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+      setCalPos(placeCalendar(btnRef.current.getBoundingClientRect(), calHeight.current));
     }
     function onScroll() {
       if (pending) return;
@@ -97,8 +126,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
 
   function handleToggle() {
     if (!open && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setCalPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+      setCalPos(placeCalendar(btnRef.current.getBoundingClientRect(), calHeight.current));
     }
     setOpen(o => !o);
   }
@@ -233,18 +261,14 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
         ref={btnRef}
         type="button"
         onClick={handleToggle}
+        className="date-picker-trigger"
+        data-open={open ? 'true' : 'false'}
         style={{
           width: '100%',
           textAlign: 'left',
-          background: 'var(--input-bg)',
-          backdropFilter: 'blur(20px)',
-          border: open ? '1px solid var(--input-focus-border)' : '1px solid var(--glass-border)',
-          boxShadow: open ? `0 0 0 3px var(--input-focus-ring)` : 'none',
-          borderRadius: 14,
           color: value ? 'var(--text-primary)' : 'var(--text-muted)',
-          padding: '0 var(--space-4)',
+          padding: '0 var(--space-5)',
           height: '42px',
-          fontSize: '0.8rem',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -257,7 +281,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {value ? formatDisplay(value) : placeholder}
         </span>
-        <span className="material-icons" style={{ fontSize: 'var(--fs-md)', flexShrink: 0, color: 'var(--text-muted)' }}>
+        <span className="material-icons icon-sm" style={{ flexShrink: 0, color: 'var(--text-muted)' }}>
           calendar_today
         </span>
       </button>

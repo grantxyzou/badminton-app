@@ -310,21 +310,15 @@ export default function StringShelfCard() {
 
       {/* ADD — catalog matches for what is typed; Enter adds it as typed. */}
       {suggestions.length > 0 && (
-        <div role="listbox" aria-label={t('strings.matches')} className="flex flex-col gap-1">
+        <div role="group" aria-label={t('strings.matches')} className="flex flex-col gap-2">
           {suggestions.map((i) => (
-            <button
+            <ListRow
               key={i.id}
-              type="button"
-              role="option"
-              aria-selected={false}
-              className="cc-mini-card fs-sm"
-              style={{ textAlign: 'left', padding: 'var(--space-2) var(--space-3)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)' }}
               disabled={busy || !online}
               onClick={() => add(catalogLabel(i), i)}
-            >
-              {catalogLabel(i)}
-              {typeof i.attributes?.gaugeMm === 'number' && <span style={{ color: 'var(--text-muted)' }}>{` · ${i.attributes.gaugeMm.toFixed(2)}mm`}</span>}
-            </button>
+              title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{catalogLabel(i)}</span>}
+              subtitle={typeof i.attributes?.gaugeMm === 'number' ? `${i.attributes.gaugeMm.toFixed(2)}mm` : undefined}
+            />
           ))}
         </div>
       )}

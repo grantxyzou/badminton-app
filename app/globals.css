@@ -2826,6 +2826,40 @@ input[type="datetime-local"] {
   min-width: 0;
 }
 
+/* The custom date picker's trigger (components/DatePicker.tsx) — a button
+   that has to look like the field beside it. It was styled inline with its
+   own radius (14), border colour, padding and a smaller face, and stayed
+   filled inside a glass card where every input flattens. The 42px height it
+   keeps is the date/time control height above, so it still lines up with the
+   native time field next to it on the new-session form. */
+.date-picker-trigger {
+  background: var(--input-bg);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  box-shadow: inset 0 1px 0 var(--input-inset);
+  transition:
+    border-color var(--duration-fast) var(--ease-glass),
+    box-shadow var(--duration-fast) var(--ease-glass),
+    background var(--duration-fast) var(--ease-glass);
+}
+.glass-card .date-picker-trigger {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.date-picker-trigger[data-open="true"],
+.glass-card .date-picker-trigger[data-open="true"] {
+  background: var(--input-bg);
+  border-color: var(--input-focus-border);
+  box-shadow:
+    inset 0 1px 0 var(--input-inset),
+    0 0 0 3px var(--input-focus-ring);
+}
+
 select option {
   background: var(--select-option-bg);
   color: var(--select-option-text);

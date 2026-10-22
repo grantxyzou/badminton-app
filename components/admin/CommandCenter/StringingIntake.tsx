@@ -8,6 +8,7 @@ import OfferedStringOptions from '@/components/stringing/OfferedStringOptions';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
+import MoneyInput from '@/components/primitives/MoneyInput';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { useOnline } from '@/lib/useOnline';
 import { useCatalog } from '@/components/stats/useCatalog';
@@ -441,37 +442,16 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
               </div>
             </div>
           )}
-          <div style={{ position: 'relative' }}>
-            <span
-              aria-hidden="true"
-              className="fs-md"
-              style={{
-                position: 'absolute',
-                left: 'var(--space-4)',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: priceDollars.trim() ? 'var(--text-primary)' : 'var(--text-muted)',
-                fontFamily: 'var(--font-mono)',
-                pointerEvents: 'none',
-              }}
-            >
-              $
-            </span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={priceDollars}
-              onChange={(e) => {
-                setPriceTouched(true);
-                setPriceDollars(e.target.value);
-              }}
-              placeholder={t('pricePlaceholder')}
-              aria-label={t('yourPrice')}
-              maxLength={8}
-              style={{ width: '100%', paddingLeft: 'var(--space-6)', fontFamily: 'var(--font-mono)' }}
-            />
-          </div>
-          {priceCents === undefined && <p className="field-error">{t('error.invalid_price')}</p>}
+          <MoneyInput
+            value={priceDollars}
+            onChange={(v) => {
+              setPriceTouched(true);
+              setPriceDollars(v);
+            }}
+            placeholder={t('pricePlaceholder')}
+            ariaLabel={t('yourPrice')}
+          />
+          {priceCents === undefined && <p className="field-error" role="alert">{t('error.invalid_price')}</p>}
           {/* A DATE, not free text. See lib/stringingDue.ts: the old free-text
               field could not be translated, could not be compared, and so
               nothing could ever be overdue — which is the entire reason a
@@ -493,11 +473,12 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
             }}
           >
             <span>{t('theySee', { name: picked?.name ?? t('theyFallback') })}</span>
-            <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
-              {priceCents === undefined || priceCents === null
-                ? t('unpriced')
-                : formatPriceBand(priceBand(priceCents))}
-            </span>
+            {/* The data face for a figure only; "Not priced yet" is a sentence. */}
+            {priceCents === undefined || priceCents === null ? (
+              <span style={{ fontWeight: 600 }}>{t('unpriced')}</span>
+            ) : (
+              <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{formatPriceBand(priceBand(priceCents))}</span>
+            )}
           </div>
         </div>
 

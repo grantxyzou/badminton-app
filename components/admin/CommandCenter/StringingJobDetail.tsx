@@ -9,6 +9,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import OfferedStringOptions from '@/components/stringing/OfferedStringOptions';
 import Collapse from '@/components/primitives/Collapse';
 import StatusBadge from '@/components/primitives/StatusBadge';
+import MoneyInput from '@/components/primitives/MoneyInput';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { formatReadyBy } from '@/lib/stringingDue';
@@ -519,7 +520,8 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             }}
           >
             <span>{t('playerSees', { name: local.memberName })}</span>
-            <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+            {/* A stage is words ("You have it"), so not the data face. */}
+            <span style={{ fontWeight: 600 }}>
               {t(`playerStage.${playerStageFor(local.status)}`)}
             </span>
           </div>
@@ -587,18 +589,16 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             )}
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-              <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('propose.price')}</span>
-              <input
-                type="text"
-                inputMode="decimal"
+              <span className="section-label-muted">{t('propose.price')}</span>
+              <MoneyInput
                 value={proposePrice}
-                onChange={(e) => setProposePrice(e.target.value)}
-                aria-label={t('propose.price')}
+                onChange={setProposePrice}
+                ariaLabel={t('propose.price')}
                 placeholder={t('pricePlaceholder')}
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-              <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('propose.string')}</span>
+              <span className="section-label-muted">{t('propose.string')}</span>
               <input
                 type="text"
                 value={proposeString}
@@ -611,7 +611,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             </label>
             <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flex: 1 }}>
-                <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('mains')}</span>
+                <span className="section-label-muted">{t('mains')}</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -621,7 +621,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flex: 1 }}>
-                <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('crosses')}</span>
+                <span className="section-label-muted">{t('crosses')}</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -779,9 +779,11 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             which admin tapped a button rather than who is stringing the racket.
             The list is members flagged `canString` — deliberately not admins,
             so Zach can string without being handed payments and the roster. */}
+        {/* A card like every other part of the job: on the bare page it read as
+            a stray footnote between the price and the actions. */}
         {stringers !== null && (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-            <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
+          <label className="glass-card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <span className="section-label-muted">
               {t('assignTitle')}
             </span>
             {stringers.length === 0 ? (

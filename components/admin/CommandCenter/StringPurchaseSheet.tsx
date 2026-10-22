@@ -5,9 +5,25 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import { todayIso } from '@/lib/stringingDue';
 import { metresFor, REEL_M, SET_M } from '@/lib/stringStockMath';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
-import BirdSheetField from './BirdSheetField';
+import DatePicker from '@/components/DatePicker';
+import MoneyInput from '@/components/primitives/MoneyInput';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+/**
+ * A labelled field, in the label the rest of the bench's forms use. A `div`
+ * for a group of buttons: a wrapping <label> would send a tap on its text to
+ * the first button inside it.
+ */
+function Field({ label, children, group = false }: { label: string; children: React.ReactNode; group?: boolean }) {
+  const Tag = group ? 'div' : 'label';
+  return (
+    <Tag style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      <span className="section-label-muted">{label}</span>
+      {children}
+    </Tag>
+  );
+}
 
 interface Props {
   open: boolean;
@@ -34,7 +50,9 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
   const [units, setUnits] = useState<number | ''>(1);
   const [metresTouched, setMetresTouched] = useState(false);
   const [metres, setMetres] = useState<number | ''>(() => metresFor('reel', first?.item ?? undefined));
-  const [cost, setCost] = useState<number | ''>('');
+  const [costDraft, setCostDraft] = useState('');
+  // Empty is unanswered; anything else must read as a number.
+  const cost: number | '' = costDraft.trim() === '' ? '' : Number.isFinite(Number(costDraft)) ? Number(costDraft) : NaN;
   const [date, setDate] = useState(() => todayIso());
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -58,7 +76,7 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
   async function save() {
     const n = typeof units === 'number' ? units : 0;
     const m = typeof metres === 'number' ? metres : 0;
-    const c = typeof cost === 'number' ? cost : -1;
+    const c = typeof cost === 'number' && Number.isFinite(cost) ? cost : -1;
     if (!label.trim()) { setError('Pick a string.'); return; }
     if (!Number.isInteger(n) || n <= 0) { setError('How many did you buy?'); return; }
     if (m <= 0) { setError('How many metres does one hold?'); return; }
@@ -93,6 +111,7 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
   }
 
   const perSet = typeof cost === 'number' && typeof units === 'number' && typeof metres === 'number' && units > 0 && metres > 0
+    && Number.isFinite(cost)
     ? (cost / (units * metres)) * (chosen?.item && typeof chosen.item.attributes?.setLengthM === 'number' ? chosen.item.attributes.setLengthM : SET_M)
     : null;
 
@@ -103,7 +122,7 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
       </BottomSheetHeader>
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <BirdSheetField label="String">
+          <Field label="String">
             {offered.length > 0 ? (
               <select value={label} onChange={(e) => pickLabel(e.target.value)}>
                 {offered.map((o) => <option key={o.label} value={o.label}>{o.label}</option>)}
@@ -111,9 +130,9 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
             ) : (
               <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. BG65" maxLength={60} />
             )}
-          </BirdSheetField>
+          </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <BirdSheetField label="Bought as">
+            <Field label="Bought as" group>
               <div className="segment-control flex">
                 {(['reel', 'set'] as const).map((u) => (
                   <button key={u} type="button" onClick={() => pickUnit(u)} className={`flex-1 flex items-center justify-center fs-sm ${unit === u ? 'segment-tab-active' : 'segment-tab-inactive'}`}>
@@ -121,29 +140,31 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
                   </button>
                 ))}
               </div>
-            </BirdSheetField>
-            <BirdSheetField label={unit === 'reel' ? 'Reels' : 'Sets'}>
+            </Field>
+            <Field label={unit === 'reel' ? 'Reels' : 'Sets'}>
               <input type="number" inputMode="numeric" min={1} max={100} value={units} onChange={(e) => setUnits(e.target.value === '' ? '' : Number(e.target.value))} />
-            </BirdSheetField>
+            </Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <BirdSheetField label={unit === 'reel' ? 'Metres per reel' : 'Metres per set'}>
+            <Field label={unit === 'reel' ? 'Metres per reel' : 'Metres per set'}>
               <input type="number" inputMode="decimal" min={1} max={1000} value={metres} onChange={(e) => { setMetresTouched(true); setMetres(e.target.value === '' ? '' : Number(e.target.value)); }} />
-            </BirdSheetField>
-            <BirdSheetField label="Total cost ($)">
-              <input type="number" inputMode="decimal" min={0} step="0.01" value={cost} onChange={(e) => setCost(e.target.value === '' ? '' : Number(e.target.value))} placeholder="0.00" />
-            </BirdSheetField>
+            </Field>
+            <Field label="Total cost">
+              <MoneyInput value={costDraft} onChange={setCostDraft} placeholder="0.00" ariaLabel="Total cost" />
+            </Field>
           </div>
           <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
             {`A reel is usually ${REEL_M} m and a set ${SET_M} m; one job uses one set.`}
             {perSet !== null && ` That makes this string about $${perSet.toFixed(2)} a racket.`}
           </p>
-          <BirdSheetField label="Date">
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </BirdSheetField>
-          <BirdSheetField label="Notes (optional)">
+          {/* The bench's own date picker, as on New job's "Ready by". */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <span className="section-label-muted">Date</span>
+            <DatePicker value={date} onChange={(d) => setDate(d || todayIso())} placeholder="Date" />
+          </div>
+          <Field label="Notes (optional)">
             <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={200} placeholder="Where from, colour…" />
-          </BirdSheetField>
+          </Field>
           {error && <p className="field-error" role="alert">{error}</p>}
           <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" disabled={saving} onClick={() => void save()}>
             {saving ? 'Saving…' : 'Log purchase'}
