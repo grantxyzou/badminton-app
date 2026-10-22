@@ -3,8 +3,8 @@
 **Track:** Reach (ROADMAP track 4). This is the *explicit choice* the LOCKED
 block reserved for Stage-2 (#81): multi-GROUP inside the one deployment, not the
 SaaS the April memo costed — no billing, no marketing site, no super-admin plane.
-**Status:** in-flight (Phases 0–4 landed and the production backfill has run — BPM is group #1, 72/72 memberships, `mismatched: 0`. The flag is still OFF, so nothing is observable yet. Phases 5–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
-**Review on:** 2026-10-20 — Has Phase 5 (the flag on) happened, and was the week after it clean of `[group-leak]` logs? If not, what is blocking the flip?
+**Status:** in-flight (Phases 0–4 landed and the production backfill ran on 2026-09-10 — BPM is group #1, 72/72 memberships, `mismatched: 0`. The flag is still OFF, so nothing is observable yet; what the flip waits on is the 2026-10-21 review answer below. Phases 5–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
+**Review on:** 2026-11-04 — has Grant re-run the backfill (`GET /api/admin/migrate-groups` all zeros, `mismatched: 0`) and asked for the flag PR? If the flag is on, was the week after it clean of `[group-leak]`, and has `TOLERATE_UNSTAMPED` been set to false?
 
 ## Problem
 
@@ -103,7 +103,15 @@ don't copy.
   on a new device via the shared sign-up link, which now carries the join token,
   so this path is the exception rather than the door.
 - **Removal does not revoke the cookie, and the Phase 5 gate has to say so**
-  (raised in review of #373, 2026-09-11; OPEN). `DELETE /api/groups/members/
+  (raised in review of #373, 2026-09-11; CLOSED 2026-10-21 — members-only
+  took the first of the three candidates below without this plan noticing:
+  every club read now goes through `requireMember`, which with the flag on
+  re-reads the membership in the cookie's claimed group on every request and
+  refuses anything but `status: 'active'`, and `isAdminAuthedWithMember` does
+  the same for every admin write. A removed member's cookie stops working at
+  once. The hot-path round trip the architecture rejected was paid for a
+  different reason — a removed person's 30-day cookie reading the roster was
+  the members-only bug of 2026-09-13 — and it closes this one for free). `DELETE /api/groups/members/
   [memberId]` flips a membership to `removed` and frees the roster name, but the
   session cookie it was removed from keeps its `groupId` claim. `resolveGroupId`
   reads that claim without a database check — deliberately, and the reasoning in
@@ -201,6 +209,39 @@ don't copy.
   oldest group instead, he kept the list ("Yes"). The doors for a person in no
   group at all were his choice on 2026-10-07. Both are now decided, not
   proposed; the members-only-OFF half above is still open.
+- **2026-10-21 review — "why isn't it live?" (Grant). Nothing in the code
+  blocks the flip; what is left is operational, and the first step is his.**
+  Read against the Phase 5 gate, item by item:
+  - *The two decisions the gate waited on are both closed.* The legal copy
+    was rewritten for two roles on 2026-10-07 and scrubbed of the operator's
+    person and city on 2026-10-21 (`docs/plans/legal-copy-multi-group.md`);
+    "what a person in no club sees" closed when members-only became
+    permanent on 2026-10-17. And the cookie-revocation item above closed with
+    it: members-only re-reads the membership on every request.
+  - *The backfill is six weeks stale.* It ran clean on 2026-09-10, but the
+    whole window since has run flag-off, and flag-off `POST`/`DELETE
+    /api/members` move `Member.active` without touching memberships — the
+    exact drift `GET /api/admin/migrate-groups` reports as
+    `members.mismatched`. Turning the flag on over a stale backfill is the
+    "every roster empty, every admin a 401" failure the dev seeds were
+    changed to prevent. So the flip is a RE-RUN first: `GET` → `POST { dryRun
+    }` → `POST` → `GET` until every count is zero and `mismatched: 0`. The
+    route needs the admin cookie AND the `MIGRATION_KEY` header, so it is run
+    from Grant's own signed-in browser, as the first run was; nothing in a
+    session here can do it.
+  - *Then the flag*, `NEXT_PUBLIC_FLAG_MULTI_GROUP: 'true'` in
+    `deploy-next.yml` — a one-line PR, baked at build, server-read. Production
+    then watches the App Service log stream for `[group-leak]` for a week; a
+    clean week is what lets `TOLERATE_UNSTAMPED` go to `false`, and the
+    `Member.role` dual write (kept for rollback) goes with it. The
+    `members.find(role === 'admin')` client path the Phase 5 line names is
+    already gone — `SetupPage` reads `/api/admin/settings`.
+  - *Not a gate for the flip:* the sweep ratchet (`UNSWEPT` 48, shrinking),
+    Phase 4's screenshots, and Phase 6's Demo Club, which the STORE needs but
+    the flip does not — the first outside club can come through a link.
+  So the honest answer is that it is not live because nobody has asked for
+  the flag PR, and the re-run that has to precede it is a step only Grant
+  can take. The review date above is set two weeks out to ask whether he has.
 
 ## Shape
 
