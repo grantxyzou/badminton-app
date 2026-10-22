@@ -80,7 +80,7 @@ export default function GlobalError({
             }}
           >
             Something went wrong starting the app. Reopening it usually fixes
-            this. If it keeps happening, let Grant know.
+            this. If it keeps happening, let the operator know.
           </p>
           <button
             type="button"

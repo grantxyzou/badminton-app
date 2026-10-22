@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The legal copy names no place or person for the operator (2026-10-21)
+
+Grant's call on the legal-copy review: "take out all private informations about me". The policy already named no person; the city in "the app's operator, in Vancouver, BC" is now "in British Columbia, Canada" in both locales (the province stays because the policy cites BC PIPA), and the crash screen's "let Grant know" reads "let the operator know". The support mailbox was never repo text (`SUPPORT_EMAIL`). The Play listing's developer name is deliberately not added to the policy; `docs/plans/legal-copy-multi-group.md` D10 records why and what satisfies Play's rule instead.
+
 ### A query that names its partition runs against one partition (2026-10-21)
 
 From the code review of efficiency. Every scoped query went to Cosmos with no partition-key feed option, so a read that already filtered on the container's own key — a session's `players` rows, a member's `ledger` or `stringingJobs`, the kudos for one recipient — was still executed as a cross-partition fan-out: the SDK asks every physical partition and merges. Those are the hottest reads in the app (Home's balance, the sign-up capacity check, settle, the bench).
