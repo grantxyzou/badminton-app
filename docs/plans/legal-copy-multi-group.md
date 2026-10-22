@@ -1,8 +1,7 @@
 # Legal copy once a second club exists
 
 **Track:** Reach (ROADMAP track 4) — multi-group Phase 5 gate item "DECIDE WHAT THE LEGAL COPY SAYS ONCE A SECOND CLUB EXISTS" (`docs/superpowers/plans/2026-09-07-multi-group.md`).
-**Status:** in-flight — wording PROPOSED and CONFIRMED by Grant 2026-10-07 ("yes" to D1–D9); both locales edited the same day. A lawyer's read of the four items under "Where a lawyer earns their fee" remains open.
-**Review on:** 2026-10-21 — does the Play listing's developer name appear in the privacy policy, and has anyone with a legal eye read the four flagged items? If `NEXT_PUBLIC_FLAG_MULTI_GROUP` flipped first, check both were done.
+**Status:** shipped — wording PROPOSED and CONFIRMED by Grant 2026-10-07 ("yes" to D1–D9); both locales edited the same day. 2026-10-21: D10 below — no personal information about the operator in the copy, which also answers the Play developer-name question (not added). A lawyer's read of the four items under "Where a lawyer earns their fee" is Grant's to pursue off-repo and is not a gate.
 
 ## Problem
 
@@ -145,6 +144,20 @@ second club with nobody they can identify to ask about their data.
   organiser's account closes the club (`Group.closedAt`). The policy should say
   both; the code already does them.
 
+- **D10. No personal information about the operator in the copy (Grant,
+  2026-10-21: "take out all private informations about me").** The policy
+  already named no person (D1); the one locating detail left, "in Vancouver,
+  BC", is now "in British Columbia, Canada" in both locales — the province
+  stays because the policy cites BC PIPA, the city goes. The support mailbox
+  is the `SUPPORT_EMAIL` App Setting, not repo text, and is Grant's to set to
+  a non-personal address. The crash screen's "let Grant know" became "let the
+  operator know" (the one rendered string that named him). **Consequence for
+  research 3**: the Play listing's developer name will NOT appear in the
+  policy. Play's rule asks the policy to reference the developer entity shown
+  on the listing; the way to satisfy it without naming a person is to make the
+  listing's developer name the app's own name, which is a console setting and
+  Grant's call — the repo carries no name to add.
+
 ## Wording — English (shipped; the Chinese is a translation of this, same section count)
 
 Section counts per document must stay equal across locales
@@ -274,7 +287,7 @@ low-risk and standard. Worth a professional read before shipping:
 
 ## Store checklist (do at ship, not before)
 
-- [ ] Play listing's developer name appears in the privacy policy (research 3).
+- [~] Play listing's developer name in the privacy policy (research 3): NOT added — D10. Satisfy Play's rule from the console side (listing developer name = the app's name), not by naming a person in the policy.
 - [ ] App Store privacy label and Play Data safety re-read against the policy;
       nothing new is collected by this change, so no label edit is expected.
 - [ ] Web deletion URL (`/legal/delete-account`) still linked in Play Console.
@@ -288,4 +301,4 @@ low-risk and standard. Worth a professional read before shipping:
 | Shape + needle test | `__tests__/legal-pages.test.ts` (unchanged; every needle survived) |
 | Phase 5 gate line ticked | `docs/superpowers/plans/2026-09-07-multi-group.md` |
 | Home policy-changed note (D7: dropped from the copy; a Home note is a `later` issue) | GitHub issue, not this change |
-| Still open | the Play listing's developer name in the policy (one line, at ship); `PRODUCT.md` / `README.md` / `docs/OWNER-KB.md` still say "one group" |
+| Still open | a lawyer's read of the four items above (off-repo, not a gate); `PRODUCT.md` / `README.md` / `docs/OWNER-KB.md` still say "one group" |
