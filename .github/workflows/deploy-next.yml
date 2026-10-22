@@ -139,10 +139,13 @@ jobs:
           # credential-minting routes SERVER-side and the "Move to the app"
           # row. ON since 2026-10-07, the day both store listings went live.
           NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'true'
-          # OFF. Multi-group (docs/plans/multi-group.md) is read server-side;
-          # off means every request resolves to group "bpm" and nothing
-          # changes. Flip in Phase 5, after the backfill status shows zeros.
-          NEXT_PUBLIC_FLAG_MULTI_GROUP: 'false'
+          # ON since 2026-10-22 (Phase 5). Multi-group (docs/plans/multi-group.md)
+          # is read server-side: the cookie's club claim plus a membership
+          # check decide every request. The backfill status read all zeros
+          # and mismatched 0 the same day. Back out by setting 'false' —
+          # nothing is migrated that older code cannot read, so the flag is
+          # the whole rollback.
+          NEXT_PUBLIC_FLAG_MULTI_GROUP: 'true'
           # ON since 2026-10-03. Members only (docs/plans/members-only.md): a
           # signed-out visitor sees no club data and every group-data route
           # 401s. Read server-side. Back out by setting 'false' — nothing is

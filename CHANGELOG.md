@@ -48,6 +48,20 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Multi-group is on (2026-10-22)
+
+`NEXT_PUBLIC_FLAG_MULTI_GROUP` is `'true'` in `deploy-next.yml` (and in
+`pr-ci.yml`, which builds what production builds). Grant re-ran the backfill
+first: 3 memberships created, 3 created already removed, 22 deactivated to
+match accounts turned off since September, and the status then read
+`mismatched: 0` and `withoutMembership: 0`. From this deploy the cookie's club
+claim and a membership check decide every request, Home's header shows the
+club's own name, and a signed-in person with no club sees the doors to create
+or join one. Cookies minted before the claim existed read as BPM, so nobody is
+signed out. The rollback is setting the flag back to `'false'`. Next: a week of
+App Service logs with no `[group-leak]` line, then `TOLERATE_UNSTAMPED = false`
+(plan review 2026-10-29).
+
 ### The app is BPM and the club is BPM Core (2026-10-22)
 
 Grant: "to avoid confusion I think we should change the group name to BPM core.

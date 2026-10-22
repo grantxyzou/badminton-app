@@ -4,7 +4,7 @@
 block reserved for Stage-2 (#81): multi-GROUP inside the one deployment, not the
 SaaS the April memo costed — no billing, no marketing site, no super-admin plane.
 **Status:** in-flight (Phases 0–4 landed and the production backfill ran on 2026-09-10 — BPM is group #1, 72/72 memberships, `mismatched: 0`. The flag is still OFF, so nothing is observable yet; what the flip waits on is the 2026-10-21 review answer below. Phases 5–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
-**Review on:** 2026-11-04 — has Grant re-run the backfill (`GET /api/admin/migrate-groups` all zeros, `mismatched: 0`) and asked for the flag PR? If the flag is on, was the week after it clean of `[group-leak]`, and has `TOLERATE_UNSTAMPED` been set to false?
+**Review on:** 2026-10-29 — the flag went on 2026-10-22: was the week after it clean of `[group-leak]` in the App Service log stream? If so, set `TOLERATE_UNSTAMPED` to false and stop dual-writing `Member.role`.
 
 ## Problem
 
@@ -258,6 +258,18 @@ don't copy.
   So the honest answer is that it is not live because nobody has asked for
   the flag PR, and the re-run that has to precede it is a step only Grant
   can take. The review date above is set two weeks out to ask whether he has.
+- **2026-10-22 — the re-run, then the flag.** Grant ran the backfill from his
+  signed-in admin browser the next day. Status before: 78 members, 72 with a
+  membership, 6 without, **22 mismatched**, every unstamped count zero.
+  Dry run and real run agreed exactly: 3 memberships created (active people
+  who joined flag-off), 3 created already `removed` (inactive people with
+  none), 22 `deactivated` (accounts Grant had turned off since September
+  whose membership was still active), 0 rejoined, no collisions, no errors,
+  nothing `remaining`. Status after: `withMembership: 78`,
+  `withoutMembership: 0`, `mismatched: 0`. The 22 changed nothing anyone
+  could see — `requireMember` already refused an inactive account — it made
+  the roster agree with the accounts, which is what the flag reads. The flag
+  PR followed the same day; the week of `[group-leak]` starts at its deploy.
 
 ## Shape
 
