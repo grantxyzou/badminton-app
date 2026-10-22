@@ -141,6 +141,7 @@ const ROUTES: Record<string, Entry> = {
   'auth/complete-signup': { kind: 'public', reason: 'reads only the signed pending-signup cookie' },
   'groups/preview': { kind: 'public', reason: 'an invite preview: the club NAME for a valid invite, one 404 otherwise' },
   releases: { kind: 'public', reason: 'app release notes, not club data (global container)' },
+  health: { kind: 'public', reason: "App Service's liveness probe: reads nothing, answers ok and the build id" },
   'equipment/catalog': { kind: 'public', reason: 'the global racket/string catalog, not club data' },
 };
 
