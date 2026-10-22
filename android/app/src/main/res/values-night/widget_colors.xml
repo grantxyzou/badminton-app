@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bpm_widget_bg">#FF151413</color>
+    <color name="bpm_widget_primary">#FFFFFFFF</color>
+    <color name="bpm_widget_secondary">#A6FFFFFF</color>
+    <color name="bpm_widget_muted">#80FFFFFF</color>
+    <color name="bpm_widget_green">#FF4ADE80</color>
+    <color name="bpm_widget_on_green">#FF052E16</color>
+    <color name="bpm_widget_amber">#FFFBBF24</color>
+    <color name="bpm_widget_amber_soft">#2EFBBF24</color>
+    <color name="bpm_widget_blue">#FF60A5FA</color>
+    <color name="bpm_widget_track">#1FFFFFFF</color>
+    <color name="bpm_widget_rule">#14FFFFFF</color>
+</resources>

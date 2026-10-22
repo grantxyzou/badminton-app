@@ -5,6 +5,7 @@ import { closeTopSheet } from '@/lib/sheetStack';
 import { rememberReturnCode } from '@/lib/handoffClient';
 import { routeInApp } from '@/lib/inAppNavigate';
 import { openShortcut } from '@/lib/appShortcuts';
+import { widgetOpenTarget } from '@/lib/widgetBridge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const HOST = 'bpm.grantzou.com';
@@ -24,7 +25,8 @@ type Removable = { remove: () => Promise<void> | void };
  * bundle cost. What it wires:
  *
  *  - `appUrlOpen`: the custom scheme (`bpm://auth/return` from the OAuth
- *    landing, `bpm://migrate?c=` from the PWA's sheet) and the universal link
+ *    landing, `bpm://migrate?c=` from the PWA's sheet, `bpm://open?tab=`
+ *    from a home-screen widget) and the universal link
  *    (`https://bpm.grantzou.com/bpm/migrate?c=`).
  *  - `bpm:resume`: dispatched when the browser sheet closes, the app returns
  *    to the foreground, or a URL opens — HomeShell's handoff claim listens
@@ -129,6 +131,14 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
                 const c = u.searchParams.get('c');
                 if (c) rememberReturnCode(c);
                 void Browser?.close().catch(() => undefined);
+                resume();
+                return;
+              }
+              // `bpm://open?tab=…` — a tap on the home-screen widget
+              // (lib/widgetBridge.ts). Switched to in place, like a push tap.
+              const widgetTarget = widgetOpenTarget(u);
+              if (widgetTarget) {
+                if (!routeInApp(widgetTarget)) window.location.assign(widgetTarget);
                 resume();
                 return;
               }

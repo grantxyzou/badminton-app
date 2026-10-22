@@ -123,6 +123,8 @@ const ROUTES: Record<string, Entry> = {
   'kudos/eligible': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
+  // The home-screen widget's bearer pass (docs/plans/native-widgets.md), re-read against the membership.
+  widget: { kind: 'authed', helper: 'requireWidgetMember' },
   credit: { kind: 'authed', helper: 'requireGroupMember' },
   // A gifter's own cards (docs/plans/gift-card-ledger.md): the member cookie, then the switch.
   giftcards: { kind: 'authed', helper: 'requireGroupMember' },

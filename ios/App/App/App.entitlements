@@ -8,6 +8,13 @@
 	<!-- Universal links for /bpm/migrate (the migration link) and password
 	     autofill on the email form. Both need the AASA served at the domain
 	     root — proxy.ts, env APPLE_APP_SITE_ASSOCIATION. -->
+	<!-- The home-screen widget reads its pass and its last snapshot from this
+	     group (docs/plans/native-widgets.md). The extension's entitlements name
+	     the same group; both need it enabled on the App ID. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.motioncraft.bpm</string>
+	</array>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:bpm.grantzou.com</string>
