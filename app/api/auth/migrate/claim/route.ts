@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
         { name: '@sessionId', value: sessionId },
         { name: '@name', value: member.name },
       ],
+      partitionKey: sessionId,
     });
     const player = playerHits[0] ?? null;
 

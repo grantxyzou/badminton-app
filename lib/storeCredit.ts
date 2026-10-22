@@ -59,6 +59,7 @@ export async function ledgerFor(scope: GroupScope, memberId: string): Promise<Le
   const rows = await scope.query<LedgerEntry>('ledger', {
     where: 'c.memberId = @memberId',
     params: [{ name: '@memberId', value: memberId }],
+    partitionKey: memberId,
   });
   return rows.filter((e) => e.memberId === memberId).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 }

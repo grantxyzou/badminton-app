@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
   const existing = await scope.query<{ id: string; name: string }>('players', {
     where: 'c.sessionId = @sessionId',
     params: [{ name: '@sessionId', value: sessionId }],
+    partitionKey: sessionId,
   });
   const existingByLowerName = new Map<string, { id: string; name: string }>(
     existing.map((p) => [p.name.toLowerCase(), p]),

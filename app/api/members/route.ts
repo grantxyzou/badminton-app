@@ -251,6 +251,7 @@ export async function PATCH(req: NextRequest) {
             { name: '@sessionId', value: sessionId },
             { name: '@name', value: existing.name },
           ],
+          partitionKey: sessionId,
         });
         for (const p of matches) {
           if ('pinHash' in p) {

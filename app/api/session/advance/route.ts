@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
         const prevPlayers = await scope.query<Player>('players', {
           where: 'c.sessionId = @sessionId',
           params: [{ name: '@sessionId', value: currentSession.id }],
+          partitionKey: currentSession.id,
         });
         const { costPerPerson } = costSplit(currentSession, prevPlayers.filter((p) => p.sessionId === currentSession.id));
         if (costPerPerson > 0) {

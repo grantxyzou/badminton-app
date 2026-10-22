@@ -107,6 +107,7 @@ async function handlePost(req: NextRequest) {
         { name: '@sessionId', value: sessionId },
         { name: '@name', value: name },
       ],
+      partitionKey: sessionId,
     });
     return hits[0] ?? null;
   };

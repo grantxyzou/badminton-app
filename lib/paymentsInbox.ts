@@ -553,6 +553,7 @@ export async function releaseHoldIfSettled(scope: GroupScope, memberId: string |
         { name: '@sessionId', value: sessionId },
         { name: '@memberId', value: memberId },
       ],
+      partitionKey: sessionId,
     });
     // Only a row STILL on the waitlist: an admin may have promoted a held
     // player by hand, and that row is active — counting it against its own
@@ -571,6 +572,7 @@ export async function releaseHoldIfSettled(scope: GroupScope, memberId: string |
     const active = await scope.query<Player>('players', {
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
     });
     const inSession = active.filter((p) => p.sessionId === sessionId && !p.removed);
     const activeCount = inSession.filter((p) => !p.waitlisted).length;

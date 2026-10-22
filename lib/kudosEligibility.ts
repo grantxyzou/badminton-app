@@ -91,6 +91,7 @@ async function rosterNames(groupId: string, sessionId: string): Promise<string[]
       select: 'c.name, c.removed, c.sessionId',
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
     });
     // The JS re-filter stays for parity with real Cosmos either way.
     return resources
@@ -163,6 +164,7 @@ async function sharedAGame(groupId: string, a: string, b: string, sessionId: str
       select: 'c.teamA, c.teamB, c.sessionId',
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
     });
     for (const g of resources) {
       if (g.sessionId !== sessionId) continue;

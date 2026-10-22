@@ -28,6 +28,7 @@ export async function readActiveAnnouncements(groupId: string): Promise<Announce
     return await groupScope(groupId).query<Announcement>('announcements', {
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
       orderBy: 'c.time DESC',
     });
   } catch (error) {

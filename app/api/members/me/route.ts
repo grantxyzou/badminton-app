@@ -493,6 +493,7 @@ async function handlePatch(req: NextRequest) {
         { name: '@sessionId', value: sessionId },
         { name: '@name', value: name },
       ],
+      partitionKey: sessionId,
     });
     const player = players[0];
     if (player) {
