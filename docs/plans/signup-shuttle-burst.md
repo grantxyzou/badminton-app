@@ -1,8 +1,7 @@
 # Sign-up shuttle burst
 
 **Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); requested directly by the owner on 2026-09-28
-**Status:** in-flight
-**Review on:** 2026-10-19 — after three Thursdays: has anyone said it is annoying, and has anyone said it is the reason they noticed the sign-up landed?
+**Status:** shipped 2026-09-28; reviewed 2026-10-21 and kept
 
 ## Problem
 
@@ -41,6 +40,15 @@ This failed if any of the following is true a month in:
   - Confetti from a popper leaves in an UPWARD cone at staggered instants and lingers, and a falling card's flutter is a side-to-side rock rather than a tumble at these sizes (the flutter/tumble regime of Belmonte, Eisenberg & Moses, Phys. Rev. Lett. 81, 345). → The cone is ±75° about straight up, delays are spread over 160 ms, the flight is 1.0–1.4 s instead of ~0.6, and the wobble is a rock, not a spin.
   - Sources read for this: https://www.worldbadminton.com/reference/research/documents/Aerodynamics_of_a_Badminton_Shuttlecock.pdf, https://iopscience.iop.org/article/10.1088/1402-4896/ae5361, https://physicsworld.com/a/flutter-and-tumble-in-fluids/, https://link.aps.org/doi/10.1103/PhysRevLett.81.345.
   - Verified by seeking the Web Animations to fixed times (110 / 380 / 800 / 1150 ms) in Playwright's Chromium AND WebKit and reading each piece's position, opacity and rotation back: every rotation converges on nose-down with the rock, every piece rises then lands below the card. A CDP playback-rate slowdown was the wrong tool — it slows the CSS but not the `onDone` timer, so the layer unmounted at ~400 ms of animation time.
+- **2026-10-21 review, after three Thursdays: "nothing" (Grant).** Nobody has
+  said the burst is annoying and nobody has said it is how they noticed the
+  sign-up landed. Against the kill criterion that is a pass — the one line
+  with a number on it is "more than one member says it is annoying", and the
+  count is zero — and it is also the expected shape of a one-second moment
+  spent once a week: a detail that is working is one nobody mentions. The
+  burst stays as built. No further review; the criterion's other lines (fires
+  only on a confirmed non-waitlist 201, nothing under reduced motion, the
+  layer takes no taps) are pinned by the tests in Shape and need no reader.
 - **The tap is felt when the shuttles launch, not when the server answers** (2026-09-28, Grant: "the vibration timing and the motion should be synced"). Since the burst moved behind the morph, `tapSuccess()` still fired as the 201 landed, a whole morph (~250 ms) before anything flew: felt, then seen, which reads as two events. Three changes make it one: the tap moved into the same `launch` callback that sets the burst (`applySignup`); the haptics module is primed when the request STARTS (`primeHaptics()` in `handleSignUp`), because the shell loads the live site and the first `import('@capacitor/haptics')` is a network fetch that could make the first tap late on its own; and the lead shuttle's delay is always 0, so the first movement is on the tap rather than up to 160 ms after it. Reduced motion has no morph and no burst, so the tap lands straight after the commit, with the banner. `__tests__/components/HomeTab.burstHaptic.test.tsx` holds the morph open and pins that nothing is felt until it ends; it fails on the old ordering.
 
 ## Shape

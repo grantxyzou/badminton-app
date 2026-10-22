@@ -48,6 +48,21 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Two plan reviews answered: multi-group is not live because the flip waits on a backfill re-run, and the shuttle burst stays (2026-10-21)
+
+Docs only. `docs/plans/multi-group.md` records Grant's "why isn't it live?":
+nothing in the code blocks the flag — the two Phase 5 decisions closed on
+2026-10-07 and 2026-10-17, and the "removal does not revoke the cookie" item
+from the review of #373 closed with members-only, which re-reads the
+membership on every request — but the production backfill of 2026-09-10 has
+six weeks of flag-off roster edits drifted against it, so the order is: Grant
+re-runs `migrate-groups` from his admin browser until it reads all zeros, then
+the one-line flag PR, then a clean week of `[group-leak]`, then
+`TOLERATE_UNSTAMPED = false`. The review date moves to 2026-11-04 to ask
+whether the re-run has happened. `docs/plans/signup-shuttle-burst.md` closes
+on "nothing" after three Thursdays — no one annoyed, no one crediting it —
+which passes its kill criterion; the burst stays as built.
+
 ### The Metrics page counts who has moved to the store app (2026-10-21)
 
 The native-shell plan's review asked whether anyone had used the "Move to the
