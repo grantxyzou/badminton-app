@@ -48,6 +48,23 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The admin's "Sign-in requests" list is their own club's (2026-10-22)
+
+Grant asked whether players without a PIN block the multi-group flip. They do
+not — the backfill ignores credentials, a live cookie keeps reading as BPM, and
+a lapsed one goes through "Ask to be let in" exactly as today — but reading
+that flow found one route that was not per club: `GET`/`POST
+/api/admin/access-requests` listed every member with a pending request in the
+deployment, because a request lives on the person and nothing on the row says
+which club they asked. With one club that is invisible; with two, one admin
+would have seen and could have approved the other club's askers by name. Both
+are narrowed to the admin's roster now, like the sign-in readiness list beside
+them, and a person off the roster answers the same 404 as one with no
+request. The second gap — a signed-out ask cannot name its club, so a future
+second club's PIN-less member would be looked up in BPM — is recorded on the
+Phase 6 list; it needs a design choice before the first outside club, and is
+not a gate for the flip.
+
 ### Two plan reviews answered: multi-group is not live because the flip waits on a backfill re-run, and the shuttle burst stays (2026-10-21)
 
 Docs only. `docs/plans/multi-group.md` records Grant's "why isn't it live?":
