@@ -28,6 +28,8 @@ import { isAdminAuthed, isAdminAuthedWithMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { openRequests, pendingRequests } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
+import { resolveGroupId } from '@/lib/groupContext';
+import { rosterMemberIds } from '@/lib/roster';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -46,6 +48,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // `members` is a PERSON container: a request lives on the person, and
+    // nothing on the row says which club they asked. Only the ROSTER can
+    // separate them, so the list is narrowed to the admin's club (the same
+    // rule as the sign-in readiness list beside it). With one club this is
+    // every member; with two, one club's admin would otherwise see — and
+    // could approve — the other club's requests by name.
+    const roster = await rosterMemberIds(resolveGroupId(req));
     const { resources } = await getContainer('members')
       .items.query<Member>({
         // Both fields: a doc written before one-per-device still carries the
@@ -61,6 +70,7 @@ export async function GET(req: NextRequest) {
        test. Expiry has to be evaluated here regardless: it is a timestamp
        comparison, not a field the query can express. */
     const waiting = resources
+      .filter((m) => roster.has(m.id))
       .map((m) => ({ m, open: openRequests(m), pending: pendingRequests(m) }))
       .filter(({ pending }) => pending.length > 0)
       .map(({ m, open, pending }) => ({
@@ -106,6 +116,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Same narrowing as the list: a person off this club's roster answers the
+    // same 404 as one with no request, so the route says nothing about whether
+    // they exist elsewhere.
+    if (!(await rosterMemberIds(admin.groupId)).has(memberId)) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
     let refusal: 'not_found' | 'several_requests' | null = null;
 
     const result = await updateAccessRequests(memberId, (open) => {
