@@ -53,6 +53,7 @@ this and is kept as a record.
 | Base path | `/bpm` (`basePath` in `next.config.js`; `NEXT_PUBLIC_BASE_PATH` must match) |
 | Production URL | `https://bpm.grantzou.com/bpm` (`APP_ORIGIN` in the workflow) |
 | Custom domain + certificate † | bound in the portal; expiry not recorded here |
+| Health check † | path `/bpm/api/health` (`app/api/health/route.ts`: liveness only, reads nothing), load-balancing threshold 10 minutes. With one instance Azure never removes it; after an hour of failed probes it replaces it. Not `/api/releases`: that reads Cosmos, and a database blip would recycle a healthy server |
 
 ### Build output
 
