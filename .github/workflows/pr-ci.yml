@@ -96,7 +96,7 @@ jobs:
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
           NEXT_PUBLIC_FLAG_RACKET_FIT: 'true'
           NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'true'
-          NEXT_PUBLIC_FLAG_MULTI_GROUP: 'false'
+          NEXT_PUBLIC_FLAG_MULTI_GROUP: 'true'
           NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: 'true'
           NEXT_PUBLIC_FLAG_STORE_CREDIT: 'true'
           NEXT_PUBLIC_FLAG_LEDGER_MIRROR: 'true'
