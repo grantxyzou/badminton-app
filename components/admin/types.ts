@@ -1,4 +1,5 @@
 export type AdminView =
+  | 'club-name'
   | 'dashboard'
   | 'session-details'
   | 'members'

@@ -4,7 +4,8 @@ import { publicMember } from '@/lib/publicShapes';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
-import { readGroup, setLateCancelHours, updateGroupSettings } from '@/lib/groups';
+import { readGroup, renameGroup, setLateCancelHours, updateGroupSettings } from '@/lib/groups';
+import { cleanString, GROUP_NAME_MIN, GROUP_NAME_MAX } from '@/lib/groupRoutes';
 import { isValidLateCancelHours, lateCancelHoursOf } from '@/lib/cancelPolicy';
 import { recipientOf } from '@/lib/payTo';
 import type { ETransferRecipient } from '@/lib/types';
@@ -72,6 +73,10 @@ export async function GET(req: NextRequest) {
       // The group record only, flag on or off (docs/plans/late-cancel-fee.md):
       // a new field has no Member-doc history to fall back to. null = off.
       lateCancelHours: lateCancelHoursOf(group?.settings),
+      // The CLUB's name (`Group.name`), flag on or off: the group record exists
+      // from the backfill on, and it is what the flip will show members. Null
+      // before the record exists.
+      groupName: group?.name ?? null,
     });
   } catch (error) {
     console.error('GET /api/admin/settings error:', error);
@@ -83,7 +88,7 @@ export async function PATCH(req: NextRequest) {
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();
 
-  let body: { skipDates?: unknown; eTransferRecipient?: unknown; lateCancelHours?: unknown };
+  let body: { skipDates?: unknown; eTransferRecipient?: unknown; lateCancelHours?: unknown; groupName?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -99,13 +104,18 @@ export async function PATCH(req: NextRequest) {
   if (body.lateCancelHours !== undefined && body.lateCancelHours !== null && !isValidLateCancelHours(body.lateCancelHours)) {
     return NextResponse.json({ error: 'Invalid lateCancelHours' }, { status: 400 });
   }
+  // The same rule as creating a club (`POST /api/groups`): trimmed, 2–40 chars.
+  const groupName = body.groupName !== undefined ? cleanString(body.groupName, GROUP_NAME_MIN, GROUP_NAME_MAX) : undefined;
+  if (body.groupName !== undefined && !groupName) {
+    return NextResponse.json({ error: 'invalid_name' }, { status: 400 });
+  }
 
   try {
     // The late-cancellation window lives on the group record ONLY, so a save
     // with no record would be a 200 that stored nothing. Refuse it up front,
     // before anything else in the body is written.
     const groupId = resolveGroupId(req);
-    if (body.lateCancelHours !== undefined && !(await readGroup(groupId))) {
+    if ((body.lateCancelHours !== undefined || groupName !== undefined) && !(await readGroup(groupId))) {
       return NextResponse.json({ error: 'no_group' }, { status: 409 });
     }
     const container = getContainer('members');
@@ -130,6 +140,11 @@ export async function PATCH(req: NextRequest) {
     });
     if (body.lateCancelHours !== undefined) {
       await setLateCancelHours(groupId, body.lateCancelHours as number | null);
+    }
+    // The club's name lives on the group record ONLY — it has no Member-doc
+    // copy, because a club is not a person's setting.
+    if (typeof groupName === 'string') {
+      await renameGroup(groupId, groupName);
     }
     // This reads and echoes back the caller's own MEMBER document, so every
     // member secret has to come off — not just the PIN hash. `recoveryCode`

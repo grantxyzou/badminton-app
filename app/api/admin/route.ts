@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
           await addMembership({ groupId, memberId: member.id, name: member.name, role: 'admin', joinedVia: 'admin' });
         }
       } catch (err) {
-        console.error('POST /api/admin: ADMIN_NAMES bootstrap could not promote the BPM membership:', err);
+        console.error('POST /api/admin: ADMIN_NAMES bootstrap could not promote the group #1 membership:', err);
       }
     }
   }

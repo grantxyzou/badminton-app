@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Mobile-first web app for managing casual weekly badminton sessions. Players sign up (or join waitlist when full), admin manages sessions, players, payments, and announcements. Built for "BPM Badminton", deployed on Azure App Service B1 tier at `/bpm`. Sessions are date-keyed and archived.
+Mobile-first web app for managing casual weekly badminton sessions. Players sign up (or join waitlist when full), admin manages sessions, players, payments, and announcements. The app is **BPM** (short for Badminton Per Management, `lib/brand.ts`); its first club, Grant's Thursday night, is **BPM Core** (`Group.name`, renamed from Admin → Club name) — the two were one name until 2026-10-22. Deployed on Azure App Service B1 tier at `/bpm`. Sessions are date-keyed and archived.
 
 ## Quick Start
 

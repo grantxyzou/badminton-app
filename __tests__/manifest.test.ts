@@ -14,7 +14,7 @@ describe('web app manifest', () => {
   it('is a standalone, portrait, installable PWA', () => {
     const m = manifest();
     expect(m.display).toBe('standalone');
-    expect(m.name).toBe('BPM Badminton');
+    expect(m.name).toBe('BPM');
     expect(m.short_name).toBe('BPM');
   });
 

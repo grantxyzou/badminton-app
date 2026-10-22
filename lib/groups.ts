@@ -221,6 +221,16 @@ export async function updateGroupSettings(groupId: string, patch: Partial<GroupS
 }
 
 /**
+ * Rename the club. `Group.name` is what members see on Home, on an invite and
+ * on a receipt's memo — the CLUB's name, never the product's (`lib/brand.ts`).
+ * The caller validates (`GROUP_NAME_MIN`..`GROUP_NAME_MAX`, trimmed). Resolves
+ * `undefined` when the group record is missing.
+ */
+export async function renameGroup(groupId: string, name: string): Promise<Group | undefined> {
+  return mutateGroup(groupId, (group) => ({ ...group, name }));
+}
+
+/**
  * Set or clear the club's late-cancellation window (docs/plans/late-cancel-fee.md).
  * `null` REMOVES the key rather than storing `undefined`: the mock and Cosmos need
  * not agree on how an `undefined` field survives a write, and absent is what "off"

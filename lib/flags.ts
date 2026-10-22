@@ -48,7 +48,7 @@ interface FlagMeta {
 
 export const FLAGS: Record<FlagName, FlagMeta> = {
   NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: {
-    description: 'Exposes the /design preview route with the formalized BPM design-system specimen cards, logo candidates, font pairings, and background variants. Off on bpm-stable; on for bpm-next + dev.',
+    description: 'Exposes the /design preview route with the formalized design-system specimen cards, logo candidates, font pairings, and background variants. Off on bpm-stable; on for bpm-next + dev.',
     owner: 'grant',
     plannedRemoval: 'never',
     note: 'Deliberately dateless. This gates the /design preview route — developer tooling, not a staged feature, so there is no ship moment to count two weeks from. It retires when the route does.',

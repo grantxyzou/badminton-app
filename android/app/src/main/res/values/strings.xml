@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">BPM Badminton</string>
-    <string name="title_activity_main">BPM Badminton</string>
+    <string name="app_name">BPM</string>
+    <string name="title_activity_main">BPM</string>
     <string name="package_name">com.motioncraft.bpm</string>
     <string name="custom_url_scheme">bpm</string>
 </resources>

@@ -106,11 +106,12 @@ describe('the message files carry tokens, never the literal name', () => {
 
 describe('no source file hardcodes the product name', () => {
   /**
-   * The four exemptions are CLUB data or a club-specific surface, not brand.
+   * The exemptions are CLUB data, a club-specific surface, a format that
+   * happens to carry the letters, or the mark itself — not brand copy.
    *
-   * Each writes or renders group #1's own name, and wiring any of them to
-   * `APP_NAME` would mean renaming the product silently renamed Grant's club —
-   * in a durable Cosmos document, in two of the four cases.
+   * The first three write or render group #1's own name, and wiring any of
+   * them to `APP_NAME` would mean renaming the product silently renamed
+   * Grant's club — in a durable Cosmos document, in two of the three cases.
    */
   const EXEMPT: Record<string, string> = {
     'lib/cosmos.ts': "the dev seed's group doc — group #1's own club name",
@@ -118,7 +119,33 @@ describe('no source file hardcodes the product name', () => {
     'app/opengraph-image.tsx':
       'the share card for the app’s one public URL, which is BPM’s; a per-group card needs a per-group URL first',
     'lib/brand.ts': 'the constant itself, and the prose explaining what it is not',
+    'lib/storeCredit.ts': 'the gift-code prefix — a code format printed on cards already issued, not a name',
+    'lib/racketLook.ts': 'the default racket colourway, named after the club, not the product',
+    'components/admin/CommandCenter/GiftCardsCard.tsx': "the share text of a gift card — the CLUB's liability, so the club's letters",
+    'app/design/layout.tsx': 'the flag-gated design preview, which is specimens of the mark itself',
+    'app/design/logo/page.tsx': 'the flag-gated design preview, which is specimens of the mark itself',
   };
+
+  /**
+   * The product's name is one word now ("BPM"), and the same three letters
+   * are the group id, the club's nickname and half the identifiers in the
+   * codebase, so a substring scan would flag `BPM_GROUP_ID`. What a user can
+   * READ is a string literal: this scans the quoted strings on each
+   * non-comment line for the name as a whole word.
+   */
+  const NAME_WORD = new RegExp(`(^|[^A-Za-z0-9_])${APP_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z0-9_])`);
+  function literalsNamingTheProduct(source: string): string[] {
+    const out: string[] = [];
+    for (const raw of source.split('\n')) {
+      const line = raw.trim();
+      if (line.startsWith('//') || line.startsWith('*') || line.startsWith('/*')) continue;
+      for (const m of line.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)) {
+        const text = m[1] ?? m[2] ?? m[3] ?? '';
+        if (NAME_WORD.test(text)) out.push(text);
+      }
+    }
+    return out;
+  }
 
   function walk(dir: string): string[] {
     const out: string[] = [];
@@ -138,7 +165,8 @@ describe('no source file hardcodes the product name', () => {
       for (const file of walk(join(root, dir))) {
         const rel = file.slice(root.length + 1);
         if (EXEMPT[rel]) continue;
-        if (readFileSync(file, 'utf8').includes(APP_NAME)) offenders.push(rel);
+        const hits = literalsNamingTheProduct(readFileSync(file, 'utf8'));
+        if (hits.length) offenders.push(`${rel}: ${hits.join(' | ')}`);
       }
     }
     expect(offenders).toEqual([]);
@@ -148,11 +176,17 @@ describe('no source file hardcodes the product name', () => {
     const root = process.cwd();
     const stale = Object.keys(EXEMPT).filter((rel) => {
       try {
-        return !readFileSync(join(root, rel), 'utf8').includes(APP_NAME);
+        return literalsNamingTheProduct(readFileSync(join(root, rel), 'utf8')).length === 0;
       } catch {
         return true; // the file is gone
       }
     });
     expect(stale).toEqual([]);
+  });
+
+  it('the scan itself can see a literal (an empty sweep would pass vacuously)', () => {
+    expect(literalsNamingTheProduct(`const x = '${APP_NAME} was updated';`)).toEqual([`${APP_NAME} was updated`]);
+    expect(literalsNamingTheProduct(`const y = ${APP_NAME}_GROUP_ID; // ${APP_NAME}`)).toEqual([]);
+    expect(literalsNamingTheProduct(` * "${APP_NAME}" in a docblock`)).toEqual([]);
   });
 });

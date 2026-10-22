@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { looksLikeChunkError } from '@/lib/chunkError';
+import { APP_SHORT_NAME } from '@/lib/brand';
 import { useClientSubscription } from '@/lib/useClientValue';
 
 /**
@@ -109,7 +110,7 @@ export default function AppError({ error }: { error: Error & { digest?: string }
       }}
     >
       <p style={{ fontWeight: 600, color: 'var(--text)' }}>
-        {isChunk ? 'BPM was updated' : 'Something went wrong'}
+        {isChunk ? `${APP_SHORT_NAME} was updated` : 'Something went wrong'}
       </p>
       <p style={{ fontSize: 'var(--fs-base)', marginTop: 'var(--space-2)' }}>
         {reloading

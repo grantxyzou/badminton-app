@@ -486,7 +486,7 @@ export async function runBackfill(opts: {
           // document. Wiring it to the product constant would mean a future
           // rename silently rewrote what Grant's club is called, in a row this
           // code may never touch again.
-          name: 'BPM Badminton',
+          name: 'BPM Core',
           ownerMemberId: owner.id,
           ownerName: owner.name,
           settings: settingsFrom(owner),

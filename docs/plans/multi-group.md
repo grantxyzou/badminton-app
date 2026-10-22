@@ -144,14 +144,30 @@ don't copy.
   club from `Group.name`, and where a caller cannot say which club it is, the
   fallback is the PRODUCT name rather than any particular club's — naming a
   club we are not sure of is a guess, while naming the app is simply true.
-  Four sites are deliberately exempt because they are club DATA, not brand:
+  The exempt sites are club DATA, a format or the mark itself, not brand:
   the dev seed and the backfill both write group #1's own name into a durable
-  document, and the OG card renders the club whose public URL it is.
-  `__tests__/i18n/brand-canary.test.ts` holds the line.
+  document, the OG card renders the club whose public URL it is, the gift-code
+  prefix and the default racket colourway carry the letters, and the design
+  preview shows the mark. `__tests__/i18n/brand-canary.test.ts` holds the
+  line — scanning string LITERALS for the name as a whole word since the name
+  became three letters that are also the group id.
 - **The name itself is still Grant's, and Phase 4 did not invent one** (Phase
-  4). `APP_NAME` reads `'BPM Badminton'` because that is the honest status quo;
-  a placeholder chosen here would ship a name nobody picked. Everything else in
-  the phase is what makes the rename a one-line edit rather than a sweep.
+  4). `APP_NAME` read `'BPM Badminton'` until 2026-10-22 because that was the
+  honest status quo; a placeholder chosen here would have shipped a name nobody
+  picked. Everything else in the phase is what made the rename a one-line edit
+  rather than a sweep — which is what it was, below.
+- **2026-10-22 — the app is "BPM" and the club is "BPM Core" (Grant: "to
+  avoid confusion I think we should change the group name to BPM core. The
+  APP would be BPM (short for Badminton Per Management)").** `APP_NAME` is
+  `'BPM'`; the manifest, the document title, the native display names and
+  every `%APP%` token follow it. Group #1's record is the club's name and is
+  NOT rewritten by the rename: the dev seed and the backfill's creation now
+  write `BPM Core`, and the LIVE record is renamed from a new Admin → Club
+  name card (`PATCH /api/admin/settings { groupName }` → `Group.name`), which
+  Grant does once. Flag off, nothing in the app reads `Group.name` yet, so
+  members keep seeing the app's name where the club's will go at the flip.
+  Three stray literals that named the product (the chunk-error screen, the
+  migrate page title, the wordmark's label) now read the constant.
 - **The legal copy's "one group" claims are NOT a brand edit and were left
   alone** (Phase 4). `messages/*.json` tells a reader the app "is a sign-up
   sheet for one casual badminton group in Vancouver, BC", "run by the group's

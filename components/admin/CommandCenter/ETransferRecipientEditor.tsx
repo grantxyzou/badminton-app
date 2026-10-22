@@ -14,7 +14,8 @@ interface Recipient {
   memo?: string;
 }
 
-const DEFAULT_MEMO = 'BPM {date} - {name}';
+/** Mirrors `lib/receiptTemplate.ts`: `{club}` is the club's own name, filled in on the receipt. */
+const DEFAULT_MEMO = '{club} {date} - {name}';
 
 export default function ETransferRecipientEditor() {
   const [recipient, setRecipient] = useState<Recipient | null>(null);
@@ -213,7 +214,7 @@ export default function ETransferRecipientEditor() {
               style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             />
             <p className="fs-sm text-gray-500 mt-1">
-              Use <code>{'{date}'}</code> for the session date and <code>{'{name}'}</code> for the player name.
+              Use <code>{'{club}'}</code> for the club&apos;s name, <code>{'{date}'}</code> for the session date and <code>{'{name}'}</code> for the player name.
             </p>
           </Field>
 

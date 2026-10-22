@@ -48,6 +48,24 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The app is BPM and the club is BPM Core (2026-10-22)
+
+Grant: "to avoid confusion I think we should change the group name to BPM core.
+The APP would be BPM (short for Badminton Per Management)". `APP_NAME` in
+`lib/brand.ts` is now `BPM`, which the document title, the manifest, every
+`%APP%` string, the emails and the native display names follow; three literals
+that had hardcoded the product (the chunk-error screen, the migrate page title,
+the wordmark's label) read the constant. The club is separate on purpose:
+renaming the product never renames group #1's record, so Admin → Club gains a
+**Club name** card that writes `Group.name` through `PATCH /api/admin/settings
+{ groupName }` (same 2–40 character rule as creating a club; 409 before the
+record exists), and the dev seed and backfill write `BPM Core` for a new
+deployment. The OG share card reads the club's record instead of a literal, and
+the receipt memo placeholder shows `{club}` as the server fills it. The brand
+canary now scans string literals for the name as a whole word, since the
+three letters are also the group id. With groups off, members keep seeing the
+app's name where the club's will appear at the flip.
+
 ### The admin's "Sign-in requests" list is their own club's (2026-10-22)
 
 Grant asked whether players without a PIN block the multi-group flip. They do

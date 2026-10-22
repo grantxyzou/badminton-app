@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
 import { BPM_GROUP_ID, groupScope } from '@/lib/groupScope';
+import { readGroup } from '@/lib/groups';
 import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 
 export const dynamic = 'force-dynamic';
@@ -14,18 +15,23 @@ export const dynamic = 'force-dynamic';
  * whose URL it is, and swapping in the product name would make it advertise
  * software to people being invited to a badminton night.
  */
-export const alt = 'BPM Badminton';
+export const alt = 'BPM Core';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export default async function OGImage() {
   let session = { ...DEFAULT_SESSION };
   let playerCount = 0;
+  // The club's own record names it (Admin → Club name); the literal is only
+  // the fallback for a deployment whose backfill has not run.
+  let clubName = 'BPM Core';
 
   try {
     // The share card for the app's one public URL, which is BPM's. A
     // per-group card needs a per-group URL and is a later phase.
     const scope = groupScope(BPM_GROUP_ID);
+    const group = await readGroup(scope.groupId).catch(() => undefined);
+    if (group?.name) clubName = group.name;
     const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) throw new Error('no active session');
     const found = await scope.read<typeof DEFAULT_SESSION>('sessions', sessionId, sessionId);
@@ -74,7 +80,7 @@ export default async function OGImage() {
             marginBottom: 16,
           }}
         >
-          BPM BADMINTON
+          {clubName.toUpperCase()}
         </div>
 
         <div
