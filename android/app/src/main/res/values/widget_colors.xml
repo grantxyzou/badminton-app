@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The home-screen widget's palette (docs/plans/native-widgets.md), light
+     mode. values-night/ holds the dark one, which mirrors the app's own
+     dark ground. -->
+<resources>
+    <color name="bpm_widget_bg">#FFF3F6F4</color>
+    <color name="bpm_widget_primary">#FF0F172A</color>
+    <color name="bpm_widget_secondary">#FF475569</color>
+    <color name="bpm_widget_muted">#FF64748B</color>
+    <color name="bpm_widget_green">#FF16A34A</color>
+    <color name="bpm_widget_on_green">#FFFFFFFF</color>
+    <color name="bpm_widget_amber">#FFB45309</color>
+    <color name="bpm_widget_amber_soft">#2EB45309</color>
+    <color name="bpm_widget_blue">#FF2563EB</color>
+    <color name="bpm_widget_track">#1A0F172A</color>
+    <color name="bpm_widget_rule">#140F172A</color>
+</resources>

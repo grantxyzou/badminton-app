@@ -18,6 +18,8 @@
 		5B20029C304A3ED30052126A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5B20029B304A3ED30052126A /* GoogleService-Info.plist */; };
 		5B20029E304A3EDD0052126A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5B20029D304A3EDD0052126A /* PrivacyInfo.xcprivacy */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		7A1B0E022FF2A00100C0FFEE /* BpmWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B0E012FF2A00100C0FFEE /* BpmWidgetPlugin.swift */; };
+		7A1B0E042FF2A00100C0FFEE /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B0E032FF2A00100C0FFEE /* MainViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +35,8 @@
 		5B20029B304A3ED30052126A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		5B20029D304A3EDD0052126A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		7A1B0E012FF2A00100C0FFEE /* BpmWidgetPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BpmWidgetPlugin.swift; sourceTree = "<group>"; };
+		7A1B0E032FF2A00100C0FFEE /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -69,6 +73,8 @@
 			isa = PBXGroup;
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
+				7A1B0E032FF2A00100C0FFEE /* MainViewController.swift */,
+				7A1B0E012FF2A00100C0FFEE /* BpmWidgetPlugin.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -169,6 +175,8 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				7A1B0E042FF2A00100C0FFEE /* MainViewController.swift in Sources */,
+				7A1B0E022FF2A00100C0FFEE /* BpmWidgetPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -312,6 +312,23 @@ submitted by Grant on device.
   `SceneDelegate.swift` to forward the tap (pinned by the shell canary).
   **They ship with the next store build** — the web half is harmless on the
   current binary, which answers `hasNativePlugin() === false`.
+- **Home-screen widgets** (`docs/plans/native-widgets.md`, 2026-10-22): the
+  widget runs outside the WebView with no cookies, so it reads and acts with
+  its OWN pass — a signed token with audience `typ: 'widget'` (`lib/auth.ts`
+  `mintWidgetToken` / `verifyWidgetToken`), refused as either session cookie,
+  sent only as `Authorization: Bearer` to `/api/widget*`, and re-checked
+  against the membership on every read (`requireWidgetMember` in
+  `lib/widget.ts`). The app mints it (`POST /api/widget/token`) and hands it to
+  the in-app `BpmWidget` plugin (`lib/widgetBridge.ts`; iOS
+  `BpmWidgetPlugin.swift` via `MainViewController`, Android
+  `BpmWidgetPlugin.java` via `MainActivity`), which keeps it in the App Group /
+  private prefs; sign-out clears it. **Join and Undo are the sign-up route**:
+  `/api/widget/join` re-enters `POST` / `DELETE /api/players` as the member
+  (`memberCookieHeaderFor`, a five-minute cookie never sent anywhere), so every
+  rule Home's button meets, the widget meets. Taps open a TAB through
+  `bpm://open?tab=` (`widgetOpenTarget`), never a path. The iOS extension's
+  sources are in `ios/App/BPMWidget/` and its TARGET is created once in Xcode
+  (`native/README.md`), never by hand in the project file.
 - **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`
   answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`,
   `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path

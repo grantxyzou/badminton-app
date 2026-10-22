@@ -124,6 +124,42 @@ describe('ios/', () => {
     expect(spm).toContain('CapawesomeCapacitorBadge');
   });
 
+  /* The home-screen widget (docs/plans/native-widgets.md). The plugin is IN
+     the app, not a package, so Capacitor finds it only because
+     MainViewController registers it and Main.storyboard names that class; a
+     regenerated storyboard back on CAPBridgeViewController would leave the
+     widget without a pass and no error anywhere. The App Group is the only
+     storage the app and the widget share, so its name has to agree in four
+     places. */
+  it('registers the widget plugin through the storyboard and the project', () => {
+    expect(read('ios', 'App', 'App', 'Base.lproj', 'Main.storyboard')).toContain('customClass="MainViewController" customModule="App"');
+    expect(read('ios', 'App', 'App', 'MainViewController.swift')).toContain('registerPluginInstance(BpmWidgetPlugin())');
+    const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');
+    for (const f of ['MainViewController.swift', 'BpmWidgetPlugin.swift']) {
+      expect(pbx).toMatch(new RegExp(`/\\* ${f.replace('.', '\\.')} in Sources \\*/,`));
+    }
+    expect(read('ios', 'App', 'App', 'BpmWidgetPlugin.swift')).toContain('jsName = "BpmWidget"');
+  });
+
+  it('names one App Group for the app, the widget and the stores that share it', () => {
+    const group = 'group.com.motioncraft.bpm';
+    expect(read('ios', 'App', 'App', 'App.entitlements')).toContain(`<string>${group}</string>`);
+    expect(read('ios', 'App', 'BPMWidget', 'BPMWidget.entitlements')).toContain(`<string>${group}</string>`);
+    expect(read('ios', 'App', 'App', 'BpmWidgetPlugin.swift')).toContain(`appGroup = "${group}"`);
+    expect(read('ios', 'App', 'BPMWidget', 'BPMWidgetStore.swift')).toContain(`appGroup = "${group}"`);
+    // The keys too: the plugin writes what the widget reads.
+    for (const key of ['widget.token', 'widget.baseUrl', 'widget.snapshot']) {
+      expect(read('ios', 'App', 'App', 'BpmWidgetPlugin.swift')).toContain(`"${key}"`);
+      expect(read('ios', 'App', 'BPMWidget', 'BPMWidgetStore.swift')).toContain(`"${key}"`);
+    }
+  });
+
+  it('keeps the money on the lock screen private', () => {
+    const widget = read('ios', 'App', 'BPMWidget', 'BPMWidget.swift');
+    expect(widget).toContain('.privacySensitive()');
+    expect(widget).toContain('.accessoryCircular');
+  });
+
   it('does not commit Firebase config or signing material', () => {
     expect(isTracked('ios', 'App', 'App', 'GoogleService-Info.plist')).toBe(false);
     const gi = read('.gitignore');
@@ -169,6 +205,21 @@ describe('android/', () => {
     const gradle = read('android', 'app', 'capacitor.build.gradle');
     expect(gradle).toContain("implementation project(':capawesome-capacitor-app-shortcuts')");
     expect(gradle).toContain("implementation project(':capawesome-capacitor-badge')");
+  });
+
+  /* The home-screen widget (docs/plans/native-widgets.md): the plugin is in
+     the app module, so MainActivity has to register it before the bridge
+     starts, and the receiver has to be in the manifest or the widget never
+     appears in the picker. Not exported: Join and Undo arrive only through
+     its own PendingIntents. */
+  it('registers the widget plugin and its receiver', () => {
+    const activity = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'MainActivity.java');
+    expect(activity).toMatch(/registerPlugin\(BpmWidgetPlugin\.class\);\s*super\.onCreate/);
+    const receiver = manifest.match(/<receiver\s+android:name="\.BpmWidgetProvider"([\s\S]*?)<\/receiver>/)![1]!;
+    expect(receiver).toContain('android:exported="false"');
+    expect(receiver).toContain('android.appwidget.action.APPWIDGET_UPDATE');
+    expect(receiver).toContain('@xml/bpm_widget_info');
+    expect(read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmWidgetPlugin.java')).toContain('@CapacitorPlugin(name = "BpmWidget")');
   });
 
   it('does not commit google-services.json', () => {

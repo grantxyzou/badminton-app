@@ -57,6 +57,34 @@ no cleartext), `MainActivity.java` (notification channel), `strings.xml`.
 4. **AASA**: Azure App Setting `APPLE_APP_SITE_ASSOCIATION` with the Team ID.
    `curl -sI https://bpm.grantzou.com/.well-known/apple-app-site-association`
    must be 200 `application/json` with no `location`.
+5. **The widget extension (iOS, once)** — `docs/plans/native-widgets.md`. Its
+   sources are in git (`ios/App/BPMWidget/`); the TARGET is made with Xcode's
+   own template, because a hand-edited project file that Xcode rejects would
+   stop every archive.
+   1. developer.apple.com → Identifiers → App Groups → `+` →
+      `group.com.motioncraft.bpm`. Enable **App Groups** on the App ID
+      `com.motioncraft.bpm` with that group, and create the App ID
+      `com.motioncraft.bpm.BPMWidget` with the same group.
+   2. Xcode → File → New → Target → **Widget Extension**. Product Name
+      `BPMWidget`; untick "Include Live Activity", "Include Control" and
+      "Include Configuration App Intent"; embed in **App**; Activate the scheme
+      if asked.
+   3. Xcode generated a `BPMWidget` folder with its own Swift files, assets and
+      Info.plist. Delete those generated Swift files and the generated
+      Info.plist (Move to Trash), then drag the four files from
+      `ios/App/BPMWidget/` (`BPMWidget.swift`, `BPMWidgetIntents.swift`,
+      `BPMWidgetStore.swift`, `Info.plist`) into the group with target
+      membership **BPMWidget only**. Keep the generated `Assets.xcassets`.
+   4. BPMWidget target → General → Minimum Deployments **iOS 17.0** (Join and
+      Undo are interactive widgets, iOS 17+; the app itself stays on 15).
+      Build Settings → Info.plist File `BPMWidget/Info.plist`; Code Signing
+      Entitlements `BPMWidget/BPMWidget.entitlements`. Signing & Capabilities →
+      the same Team; App Groups shows the group ticked.
+   5. App target → Signing & Capabilities → App Groups shows the same group
+      (it is already in `App.entitlements`).
+   6. Version: the extension's `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`
+      must equal the app's, or App Store Connect rejects the upload.
+   7. `npm test -- native-shell-projects` stays green; commit the project file.
 
 ## Build
 
@@ -189,3 +217,11 @@ The test suite can see none of this.
   owe, Request stringing, each with its line. From a CLOSED app, each lands:
   Home, Home, and the stringing request form open. Sign out → the menu is the
   phone's own items only.
+- **Widgets** (`docs/plans/native-widgets.md`): sign in, add the BPM widget at
+  each size (iPhone small / medium / large and a lock-screen pair; Android
+  2 × 2, stretched to 4 × 2 and 4 × 3). Each shows this week, the medium the
+  balance, the large your level. Sign-ups open and you are out → **Join** →
+  "You're in" with **Undo** → Undo gives the spot back (check Home). Full →
+  "Join waitlist". Airplane mode → Join → "Couldn't join · Tap to finish in
+  BPM", and the tap opens Home. Lock the phone → the owed amount is hidden
+  until Face ID. Sign out → every widget says "Open BPM and sign in".

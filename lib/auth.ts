@@ -110,7 +110,7 @@ function getSessionSecret(): string {
  * `admin_session`, and pass every sync admin check. `typ` binds a token to its
  * purpose INSIDE the signature, so the two are no longer interchangeable.
  */
-type SessionKind = 'admin' | 'member';
+type SessionKind = 'admin' | 'member' | 'widget';
 
 interface SessionPayload {
   memberId: string;
@@ -194,6 +194,10 @@ function verifyToken(
     // Any other value is neither.
     if (expect === 'admin' && payload.typ !== 'admin') return null;
     if (expect === 'member' && payload.typ !== 'member' && payload.typ !== undefined) return null;
+    // The widget pass is its own audience and nothing else's: `'either'` means
+    // the two session cookies, so a pass copied into a cookie names no group.
+    if (expect === 'widget' && payload.typ !== 'widget') return null;
+    if (expect === 'either' && payload.typ === 'widget') return null;
     if (!opts.ignoreExpiry && payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch {
@@ -416,6 +420,61 @@ export function readGroupClaim(token: string | null | undefined): string | null 
   return payload ? (payload.groupId ?? BPM_GROUP_ID) : null;
 }
 
+// ── Widget pass (docs/plans/native-widgets.md) ──
+// A home-screen widget runs OUTSIDE the WebView: it has no cookie jar, so it
+// cannot carry `member_session`. The app mints it this pass while signed in
+// and hands it to the widget's own storage (the iOS App Group, Android's
+// private prefs). Its audience is `'widget'`, so it is refused as a member
+// cookie and as an admin cookie alike, and only the `/api/widget` routes read
+// it — from an `Authorization: Bearer` header, never a cookie.
+const WIDGET_TTL_S = 60 * 24 * 60 * 60;
+
+/** Sixty days: the app re-mints it on every open, so only a phone whose app
+ *  has not been opened in two months sees the widget ask to be opened. */
+export function mintWidgetToken(member: MemberSession): { token: string; expiresAt: string } {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: SessionPayload = {
+    memberId: member.memberId,
+    name: member.name,
+    groupId: member.groupId,
+    typ: 'widget',
+    iat: now,
+    exp: now + WIDGET_TTL_S,
+  };
+  return { token: signPayload(payload), expiresAt: new Date((now + WIDGET_TTL_S) * 1000).toISOString() };
+}
+
+/** Signature, audience and expiry of the bearer pass — identity only. The
+ *  membership re-read (a removed member's pass stops working at once) is
+ *  `requireWidgetMember` in lib/widget.ts. */
+export function verifyWidgetToken(req: NextRequest): MemberSession | null {
+  const header = req.headers.get('authorization') ?? '';
+  const match = /^Bearer\s+(\S+)$/i.exec(header);
+  if (!match) return null;
+  const payload = verifyToken(match[1], 'widget');
+  return payload ? sessionOf(payload) : null;
+}
+
+/**
+ * A `member_session` value for a request the server builds ITSELF, to act as a
+ * member it has already verified some other way (the widget's join and undo
+ * re-enter the sign-up route with it, so they pass exactly the checks Home's
+ * button does). Five minutes, never set on a response: it is not a credential
+ * anybody receives.
+ */
+export function memberCookieHeaderFor(member: MemberSession): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: SessionPayload = {
+    memberId: member.memberId,
+    name: member.name,
+    groupId: member.groupId,
+    typ: 'member',
+    iat: now,
+    exp: now + 5 * 60,
+  };
+  return `${MEMBER_COOKIE_NAME}=${signPayload(payload)}`;
+}
+
 /** The two session cookie names, for the header-parsing twin in lib/groupContext.ts. */
 export const SESSION_COOKIE_NAMES = { member: MEMBER_COOKIE_NAME, admin: COOKIE_NAME } as const;
 
@@ -431,6 +490,17 @@ export async function requireGroupMember(
 ): Promise<(MemberSession & { role: MembershipRole }) | null> {
   const session = verifyMemberAuth(req);
   if (!session) return null;
+  return activeMemberFor(session);
+}
+
+/**
+ * The re-read behind `requireGroupMember`, for a session that arrived some
+ * other way (the widget's bearer pass): is this person still an ACTIVE member
+ * of the group the credential names, and under which name and role?
+ */
+export async function activeMemberFor(
+  session: MemberSession,
+): Promise<(MemberSession & { role: MembershipRole }) | null> {
   try {
     if (!groupsOn()) {
       // Flag off: everyone is in BPM and `Member.role` is the role — the same

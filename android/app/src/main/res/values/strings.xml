@@ -4,4 +4,9 @@
     <string name="title_activity_main">BPM Badminton</string>
     <string name="package_name">com.motioncraft.bpm</string>
     <string name="custom_url_scheme">bpm</string>
+    <!-- The home-screen widget (docs/plans/native-widgets.md). English only,
+         like push payloads: there is no per-member locale yet. -->
+    <string name="widget_description">Whether you\'re in on Thursday, how full it is, and what you owe.</string>
+    <string name="widget_signed_out">Open BPM and sign in to see your week here.</string>
+    <string name="widget_undo">Undo</string>
 </resources>

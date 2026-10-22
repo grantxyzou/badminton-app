@@ -45,6 +45,7 @@ import AvatarSheet from './profile/AvatarSheet';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 import { clearAppBadge } from '@/lib/appBadge';
 import { clearAppShortcuts } from '@/lib/appShortcuts';
+import { clearWidgets } from '@/lib/widgetBridge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** The deployed commit, baked in at build time (`deploy-next.yml`); `dev` locally. */
@@ -332,9 +333,9 @@ export default function ProfileTab({
   }
 
   async function handleLogout() {
-    // The icon's badge and long-press menu carry this person's balance; a
+    // The icon's badge, long-press menu and widget carry this person's balance; a
     // shared phone must not keep them for whoever picks it up next.
-    await Promise.all([clearAppBadge(), clearAppShortcuts()]);
+    await Promise.all([clearAppBadge(), clearAppShortcuts(), clearWidgets()]);
     // Single-identity model: logging out as a player also revokes admin
     // status. Otherwise the admin cookie outlived the player session and
     // leaked admin powers to whoever signed in next on the same browser.

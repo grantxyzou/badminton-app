@@ -30,6 +30,7 @@ import { useClientValue } from '@/lib/useClientValue';
 import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
 import { useInAppNavigation } from '@/lib/inAppNavigate';
 import { useAppShortcuts } from '@/lib/appShortcuts';
+import { useWidgetBridge } from '@/lib/widgetBridge';
 import { useEverOpened } from '@/lib/useEverOpened';
 import { prewarmInsight } from '@/lib/useInsight';
 import { TabActiveContext } from '@/lib/tabActivity';
@@ -790,6 +791,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
 
   // The store app's long-press menu (lib/appShortcuts.ts); a no-op elsewhere.
   useAppShortcuts();
+  // The home-screen widget's pass and redraws (lib/widgetBridge.ts); store app only.
+  useWidgetBridge(hasIdentity === true);
 
   // A link to a place inside the app — a tapped notification, native or web —
   // arrives here instead of reloading the page (lib/inAppNavigate.ts). It
