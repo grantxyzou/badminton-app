@@ -475,16 +475,31 @@ struct Sparkline: View {
     }
 }
 
-struct SignedOutView: View {
+/// A widget with one thing to say says it in the middle (Grant, on the canvas).
+struct CenteredMessage: View {
+    let text: String
     let p: WidgetPalette
+    var bold = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Header(p: p)
             Spacer(minLength: 0)
-            Text("Open BPM and sign in to see your week here.")
-                .font(.system(size: 14)).foregroundStyle(p.secondary)
+            Text(text)
+                .font(.system(size: bold ? 15 : 14, weight: bold ? .bold : .regular))
+                .foregroundStyle(p.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
+            Spacer(minLength: 0)
         }
+    }
+}
+
+struct SignedOutView: View {
+    let p: WidgetPalette
+
+    var body: some View {
+        CenteredMessage(text: "Open BPM and sign in to see your week here.", p: p)
     }
 }
 
@@ -494,12 +509,7 @@ struct UnavailableView: View {
     let p: WidgetPalette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Header(p: p)
-            Spacer(minLength: 0)
-            Text("Couldn't load your week. Tap to open BPM.")
-                .font(.system(size: 14)).foregroundStyle(p.secondary)
-        }
+        CenteredMessage(text: "Couldn't load your week. Tap to open BPM.", p: p)
     }
 }
 
@@ -547,6 +557,9 @@ struct BPMWeekView: View {
                 FillBar(fraction: s.max > 0 ? Double(s.inCount) / Double(s.max) : 0, p: p)
             } else {
                 Text("No session this week").font(.system(size: 15, weight: .bold)).foregroundStyle(p.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                Spacer(minLength: 0)
             }
         }
         .widgetURL(WidgetLink.home)

@@ -23,10 +23,17 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
+    <!-- Centred: a widget with one thing to say says it in the middle. -->
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:text="@string/widget_signed_out"
         android:textColor="@color/bpm_widget_secondary"
         android:textSize="14sp" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 </LinearLayout>
