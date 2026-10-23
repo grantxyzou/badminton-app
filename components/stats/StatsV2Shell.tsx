@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
 import RegisterSwitch from '@/components/primitives/RegisterSwitch';
@@ -42,6 +42,10 @@ export interface StatsV2ShellProps {
   playSlot?: ReactNode;
   learnSlot?: ReactNode;
   gearSlot?: ReactNode;
+  /** A register to switch to when this changes — the tab arriving with
+   *  something for one register (a score for Play, lib/gameIntent.ts). Null
+   *  asks nothing; the member's own taps are untouched. */
+  openView?: StatsView | null;
 }
 
 export default function StatsV2Shell({
@@ -51,9 +55,13 @@ export default function StatsV2Shell({
   playSlot,
   learnSlot,
   gearSlot,
+  openView = null,
 }: StatsV2ShellProps) {
   const t = useTranslations('stats');
   const [view, setView] = useState<StatsView>('you');
+  useEffect(() => {
+    if (openView) setView(openView);
+  }, [openView]);
   // A page inside a register (statsTakeover.ts) hides the chrome, not the
   // register: the register owns the page's data and must stay mounted.
   const [takeover, setTakeover] = useState(false);

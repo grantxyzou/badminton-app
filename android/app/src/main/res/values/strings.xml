@@ -9,4 +9,5 @@
     <string name="widget_description">Whether you\'re in on Thursday, how full it is, and what you owe.</string>
     <string name="widget_signed_out">Open BPM and sign in to see your week here.</string>
     <string name="widget_undo">Undo</string>
+    <string name="score_widget_description">Keep score for a game without opening the app: tap a side for its point, and Save game logs it in BPM.</string>
 </resources>

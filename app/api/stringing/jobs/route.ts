@@ -20,6 +20,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { lastStrungFromJobs } from '@/lib/restring';
+import { isArchived, benchOrder } from '@/lib/stringingOrder';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import {
@@ -77,9 +78,9 @@ function ensureJobs(): Promise<void> {
  * while looking correct in production. Belt and braces, and the braces are the
  * JS.
  */
-export function isArchived(job: Pick<StringingJob, 'archivedAt'>): boolean {
-  return typeof job.archivedAt === 'string' && job.archivedAt.length > 0;
-}
+// `isArchived` and `benchOrder` live in lib/stringingOrder.ts since the widget
+// snapshot (lib/widget.ts) names the same racket this route leads with.
+export { isArchived, benchOrder };
 
 const LIVE_SQL = '(NOT IS_DEFINED(c.archivedAt) OR c.archivedAt = null)';
 /**
@@ -108,12 +109,6 @@ const ARCHIVED_SQL = '(IS_DEFINED(c.archivedAt) AND NOT IS_NULL(c.archivedAt))';
  * and which would look like a data-loss bug rather than a sort bug. The route
  * already sorted in JS before this; this only adds a key.
  */
-export function benchOrder(a: StringingJob, b: StringingJob): number {
-  const ap = a.prioritizedAt ?? '';
-  const bp = b.prioritizedAt ?? '';
-  if (ap !== bp) return bp.localeCompare(ap);
-  return b.createdAt.localeCompare(a.createdAt);
-}
 
 /**
  * The proposed-change diff a player is shown, or null.

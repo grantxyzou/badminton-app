@@ -71,10 +71,13 @@ no cleartext), `MainActivity.java` (notification channel), `strings.xml`.
       if asked.
    3. Xcode generated a `BPMWidget` folder with its own Swift files, assets and
       Info.plist. Delete those generated Swift files and the generated
-      Info.plist (Move to Trash), then drag the four files from
-      `ios/App/BPMWidget/` (`BPMWidget.swift`, `BPMWidgetIntents.swift`,
-      `BPMWidgetStore.swift`, `Info.plist`) into the group with target
-      membership **BPMWidget only**. Keep the generated `Assets.xcassets`.
+      Info.plist (Move to Trash), then drag the five files from
+      `ios/App/BPMWidget/` (`BPMWidget.swift`, `BPMScoreWidget.swift`,
+      `BPMWidgetIntents.swift`, `BPMWidgetStore.swift`, `Info.plist`) into the
+      group with target membership **BPMWidget only**. Keep the generated
+      `Assets.xcassets`. (A project that already has the target: add
+      `BPMScoreWidget.swift` the same way — the score widget ships in the same
+      bundle, `BPMWidgetBundle`.)
    4. BPMWidget target → General → Minimum Deployments **iOS 17.0** (Join and
       Undo are interactive widgets, iOS 17+; the app itself stays on 15).
       Build Settings → Info.plist File `BPMWidget/Info.plist`; Code Signing

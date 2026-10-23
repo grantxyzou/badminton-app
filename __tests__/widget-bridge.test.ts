@@ -119,6 +119,14 @@ describe('widgetOpenTarget', () => {
     expect(widgetOpenTarget(new URL('bpm://open?tab=../legal'))).toMatch(/\/$/);
   });
 
+  it('carries the score widget’s Save game onto Stats, and only a real score', () => {
+    expect(widgetOpenTarget(new URL('bpm://open?tab=skills&game=21-18'))).toMatch(/\/\?tab=skills&game=21-18$/);
+    // Not a score, or not Stats: the rider is dropped, the tab still opens.
+    expect(widgetOpenTarget(new URL('bpm://open?tab=skills&game=31-18'))).toMatch(/\/\?tab=skills$/);
+    expect(widgetOpenTarget(new URL('bpm://open?tab=skills&game=../x'))).toMatch(/\/\?tab=skills$/);
+    expect(widgetOpenTarget(new URL('bpm://open?tab=home&game=21-18'))).toMatch(/\/$/);
+  });
+
   it('is not a widget link otherwise', () => {
     expect(widgetOpenTarget(new URL('bpm://auth/return?c=x'))).toBeNull();
     expect(widgetOpenTarget(new URL('https://bpm.grantzou.com/bpm/?tab=skills'))).toBeNull();

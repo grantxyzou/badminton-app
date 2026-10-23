@@ -1332,6 +1332,7 @@
       "versus": "你和 {partner} 对阵 {opponents}",
       "yourScore": "你的比分",
       "theirScore": "对方比分",
+      "swap": "交换比分",
       "youWon": "你赢了",
       "theyWon": "对方赢了",
       "level": "平局",

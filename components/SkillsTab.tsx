@@ -12,6 +12,7 @@ import WhoYouPlayWithCard from '@/components/stats/WhoYouPlayWithCard';
 import LearnRegister from '@/components/stats/LearnRegister';
 import GearRegister from '@/components/stats/GearRegister';
 import { requestStringingAt } from '@/lib/stringingIntent';
+import { hasGameIntent } from '@/lib/gameIntent';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
 import StatsSignedOut from '@/components/stats/StatsSignedOut';
 import { StatsFallback, STATS_HEIGHTS } from '@/components/TabFallbacks';
@@ -83,6 +84,15 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
     if (onScreen && identResolved && activeName) void recordEngagement('stats_open');
   }, [onScreen, identResolved, activeName]);
 
+  // A score from the widget's Save game (lib/gameIntent.ts) belongs to Play:
+  // open that register on ARRIVAL, where `YourRecordCard` takes the marker.
+  // Re-asked per arrival; the tab is kept (lib/tabActivity.ts).
+  const [openView, setOpenView] = useState<'play' | null>(null);
+  useEffect(() => {
+    if (onScreen && hasGameIntent()) setOpenView('play');
+    else if (!onScreen) setOpenView(null);
+  }, [onScreen]);
+
   /**
    * SINGLE OWNER of the check-in — its history, its sheet, and the one beacon
    * that records which door was used. Same invariant as `GearRegister` calling
@@ -122,6 +132,7 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
     <StatsV2Shell
       activeName={activeName}
       checkIn={checkIn}
+      openView={openView}
       // No LevelCard: the overview strip above owns the level, and showing the
       // same number twice on one screen reads as two different facts.
       youSlot={

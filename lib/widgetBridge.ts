@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { hasNativePlugin, isNative } from './native';
+import { gameParam, parseGameParam } from './scoreRules';
 
 /**
  * The app's half of the home-screen widget (docs/plans/native-widgets.md).
@@ -31,6 +32,8 @@ interface BpmWidgetPlugin {
   setSession(opts: { token: string; expiresAt: string; baseUrl: string }): Promise<void>;
   clear(): Promise<void>;
   reload(): Promise<void>;
+  /** The score widget's finished game was logged in Add a game. */
+  scoreSaved(): Promise<void>;
 }
 
 /**
@@ -99,6 +102,19 @@ export async function reloadWidgets(): Promise<void> {
   }
 }
 
+/**
+ * Add a game logged the score the widget was holding (lib/gameIntent.ts): the
+ * widget drops it and goes back to "Keep score". Never throws.
+ */
+export async function markWidgetGameSaved(): Promise<void> {
+  if (!widgetAvailable()) return;
+  try {
+    await (await bpmWidget()).widget.scoreSaved();
+  } catch {
+    /* an older binary: the widget keeps offering Save until Discard */
+  }
+}
+
 /** Signing out: a shared phone must not keep the last person's week on its
  *  home screen. The widget then shows "Open BPM and sign in". */
 export async function clearWidgets(): Promise<void> {
@@ -122,12 +138,17 @@ const WIDGET_TABS = new Set(['home', 'skills', 'stringing', 'profile']);
  * Where a widget tap lands: `bpm://open?tab=skills` → `/bpm/?tab=skills`. The
  * widget names a TAB, never a path, so a link it carries cannot send the app
  * anywhere but its own tabs. `null` for anything that is not a widget link.
+ *
+ * One rider: the score widget's Save game adds `game=21-18`, carried only
+ * onto Stats and only when it parses as a score (`lib/scoreRules.ts`), where
+ * `HomeShell` parks it for Add a game (`lib/gameIntent.ts`).
  */
 export function widgetOpenTarget(url: URL): string | null {
   if (url.protocol !== 'bpm:' || url.host !== 'open') return null;
   const tab = url.searchParams.get('tab');
   if (!tab || tab === 'home' || !WIDGET_TABS.has(tab)) return `${BASE}/`;
-  return `${BASE}/?tab=${tab}`;
+  const game = tab === 'skills' ? parseGameParam(url.searchParams.get('game')) : null;
+  return game ? `${BASE}/?tab=${tab}&game=${gameParam(game)}` : `${BASE}/?tab=${tab}`;
 }
 
 /**

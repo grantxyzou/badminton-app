@@ -261,8 +261,72 @@ public class BpmWidgetProvider extends AppWidgetProvider {
                 v.setTextViewText(R.id.bpm_level_trend, trendLine(level));
             }
             v.setOnClickPendingIntent(R.id.bpm_level_area, open(context, "skills", 12));
+            stringing(context, v, snap.optJSONObject("stringing"));
         }
         return v;
+    }
+
+    // ── Stringing: the racket on the bench, or the strings wearing in ──
+
+    private static final int[] STRING_STEPS = {
+        R.id.bpm_string_step1, R.id.bpm_string_step2, R.id.bpm_string_step3, R.id.bpm_string_step4,
+    };
+
+    /**
+     * The large widget's third section, the twin of BPMWidget.swift's
+     * StringingBlock. A live job shows the player's four-step track; otherwise
+     * the restring bar fills by DATE against the club's interval (time, not
+     * sessions — we cannot know when they play outside BPM), and the advice is
+     * "consider", never "overdue". Absent (never strung, nothing on the bench)
+     * hides the section rather than explaining itself.
+     */
+    private static void stringing(Context context, RemoteViews v, JSONObject stringing) {
+        boolean show = stringing != null;
+        v.setViewVisibility(R.id.bpm_string_divider, show ? View.VISIBLE : View.GONE);
+        v.setViewVisibility(R.id.bpm_string_area, show ? View.VISIBLE : View.GONE);
+        if (!show) return;
+        v.setOnClickPendingIntent(R.id.bpm_string_area, open(context, "stringing", 13));
+        JSONObject job = stringing.optJSONObject("job");
+        v.setViewVisibility(R.id.bpm_string_wear, View.GONE);
+        v.setViewVisibility(R.id.bpm_string_wear_due, View.GONE);
+        if (job != null) {
+            v.setTextViewText(R.id.bpm_string_label, "STRINGING");
+            v.setTextViewText(R.id.bpm_string_status, stageLine(job));
+            boolean ready = "ready_for_you".equals(job.optString("stage"));
+            v.setTextColor(R.id.bpm_string_status, context.getColor(ready ? R.color.bpm_widget_green : R.color.bpm_widget_secondary));
+            v.setTextViewText(R.id.bpm_string_line,
+                job.optString("racketLabel") + " · " + job.optString("stringLabel") + " · " + job.optInt("tensionMains") + " lb");
+            v.setViewVisibility(R.id.bpm_string_steps, View.VISIBLE);
+            int reached = Math.min(job.optInt("stageIndex"), 3);
+            for (int i = 0; i < STRING_STEPS.length; i++) {
+                v.setInt(STRING_STEPS[i], "setBackgroundResource", i <= reached ? R.drawable.widget_bpm_step_on : R.drawable.widget_bpm_step_off);
+            }
+            return;
+        }
+        boolean due = stringing.optBoolean("due");
+        int weeks = stringing.optInt("weeksSince", 0);
+        int after = Math.max(stringing.optInt("afterWeeks", 8), 1);
+        v.setTextViewText(R.id.bpm_string_label, "YOUR STRINGS");
+        v.setTextViewText(R.id.bpm_string_status, due ? "Time to restring" : "Fresh");
+        v.setTextColor(R.id.bpm_string_status, context.getColor(due ? R.color.bpm_widget_amber : R.color.bpm_widget_secondary));
+        String since = "Strung " + monthDay(stringing.optString("lastStrungAt")) + " · " + weeks + (weeks == 1 ? " week ago" : " weeks ago");
+        v.setTextViewText(R.id.bpm_string_line, due ? since + "\nConsider a restring for a better feel." : since);
+        v.setViewVisibility(R.id.bpm_string_steps, View.GONE);
+        int bar = due ? R.id.bpm_string_wear_due : R.id.bpm_string_wear;
+        v.setViewVisibility(bar, View.VISIBLE);
+        v.setProgressBar(bar, after, Math.min(weeks, after), false);
+    }
+
+    /** The stage in the player's words — the same four Home's track uses. */
+    private static String stageLine(JSONObject job) {
+        switch (job.optString("stage")) {
+            case "awaiting_dropoff": return "Drop it off";
+            case "with_stringer": return "With the stringer";
+            case "being_strung": return "Being strung";
+            case "ready_for_you":
+                return job.isNull("readyBy") ? "Ready" : "Ready · " + monthDay(job.optString("readyBy") + "T12:00:00Z");
+            default: return "";
+        }
     }
 
     // ── The week's status, decided once ──

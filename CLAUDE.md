@@ -326,9 +326,20 @@ submitted by Grant on device.
   `/api/widget/join` re-enters `POST` / `DELETE /api/players` as the member
   (`memberCookieHeaderFor`, a five-minute cookie never sent anywhere), so every
   rule Home's button meets, the widget meets. Taps open a TAB through
-  `bpm://open?tab=` (`widgetOpenTarget`), never a path. The iOS extension's
-  sources are in `ios/App/BPMWidget/` and its TARGET is created once in Xcode
-  (`native/README.md`), never by hand in the project file.
+  `bpm://open?tab=` (`widgetOpenTarget`), never a path — the one query it
+  carries besides the tab is `game=21-18` from the SCORE widget's Save game,
+  which `lib/gameIntent.ts` parks for `SteppedGameLoggerSheet` to open
+  prefilled (Swap sides, because the widget cannot know which side was yours);
+  the sheet's save calls `markWidgetGameSaved()` so the widget lets the game
+  go. The score widget's game never touches the server before that save; its
+  rules are `lib/scoreRules.ts` (umpire's terms: game point, "20 all", "29
+  all · next point wins", Interval at 11; sides are Green and Blue), and the
+  Swift and Java ports are held to `__tests__/score-rules.test.ts`. The large
+  widget's stringing section reads the bench through `lib/stringingOrder.ts`
+  (shared with the jobs route) and wears strings by TIME against
+  `RESTRING_AFTER_WEEKS`, never by sessions. The iOS extension's sources are in
+  `ios/App/BPMWidget/` (both widgets, one bundle) and its TARGET is created
+  once in Xcode (`native/README.md`), never by hand in the project file.
 - **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`
   answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`,
   `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path

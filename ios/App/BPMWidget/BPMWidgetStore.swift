@@ -120,12 +120,36 @@ struct WidgetSnapshot: Codable {
         let workOn: String?
     }
 
+    /// `lib/widget.ts` `WidgetStringing`: the player's stage, never the
+    /// bench status, and no price.
+    struct Stringing: Codable {
+        struct Job: Codable {
+            let id: String
+            let jobNo: String
+            let racketLabel: String
+            let stringLabel: String
+            let tensionMains: Int
+            let tensionCrosses: Int
+            let stage: String
+            let stageIndex: Int
+            let readyBy: String?
+        }
+
+        let job: Job?
+        let lastStrungAt: String?
+        let weeksSince: Int?
+        let due: Bool
+        let afterWeeks: Int
+    }
+
     let v: Int
     let name: String
     let generatedAt: String
     let session: Session?
     let owed: Owed
     let level: Level?
+    /// Absent on a server that predates it: the section simply does not draw.
+    let stringing: Stringing?
 }
 
 enum WidgetAPIError: Error {

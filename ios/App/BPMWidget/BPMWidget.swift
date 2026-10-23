@@ -12,6 +12,7 @@ struct BPMWidgets: WidgetBundle {
     var body: some Widget {
         BPMWeekWidget()
         BPMLockWidget()
+        BPMScoreWidget()
     }
 }
 
@@ -170,6 +171,9 @@ struct WidgetPalette {
     let track: Color
     let rule: Color
     let background: LinearGradient
+    /// A solid badge in the text colour, and the text to put on it.
+    var badge: Color { primary.opacity(0.92) }
+    var onBadge: Color { Color(red: 0.06, green: 0.09, blue: 0.16) }
 
     static func make(_ scheme: ColorScheme) -> WidgetPalette {
         if scheme == .light {
@@ -205,6 +209,7 @@ struct WidgetPalette {
 enum WidgetLink {
     static let home = URL(string: "bpm://open?tab=home")!
     static let stats = URL(string: "bpm://open?tab=skills")!
+    static let stringing = URL(string: "bpm://open?tab=stringing")!
 }
 
 // MARK: - Pieces shared by every size
@@ -231,12 +236,13 @@ struct Header: View {
 struct FillBar: View {
     let fraction: Double
     let p: WidgetPalette
+    var color: Color? = nil
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(p.track)
-                Capsule().fill(p.green).frame(width: geo.size.width * min(max(fraction, 0), 1)).widgetAccentable()
+                Capsule().fill(color ?? p.green).frame(width: geo.size.width * min(max(fraction, 0), 1)).widgetAccentable()
             }
         }
         .frame(height: 5)
@@ -431,6 +437,67 @@ struct LevelBlock: View {
             parts.append("work on \(workOn.lowercased())")
         }
         return parts.isEmpty ? "Check in again to see it move" : parts.joined(separator: " · ")
+    }
+}
+
+/// The large widget's third section: the racket on the bench, or the strings
+/// wearing in. Four steps, as the player's track on Home (drop off, with the
+/// stringer, being strung, ready); the restring bar fills by date against the
+/// club's interval, and the advice is "consider", never "overdue".
+struct StringingBlock: View {
+    let stringing: WidgetSnapshot.Stringing
+    let p: WidgetPalette
+
+    private static let steps = ["Dropped off", "With the stringer", "Being strung", "Ready"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let job = stringing.job {
+                HStack(alignment: .firstTextBaseline) {
+                    SectionLabel(text: "Stringing", color: p.muted)
+                    Spacer(minLength: 4)
+                    Text(stageLine(job)).font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(job.stage == "ready_for_you" ? p.green : p.secondary).lineLimit(1)
+                }
+                Text("\(job.racketLabel) · \(job.stringLabel) · \(job.tensionMains) lb").font(.system(size: 13)).foregroundStyle(p.primary).lineLimit(1)
+                HStack(spacing: 4) {
+                    ForEach(0..<4, id: \.self) { i in
+                        Capsule().fill(i <= min(job.stageIndex, 3) ? p.green : p.track).frame(height: 4).widgetAccentable()
+                    }
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    SectionLabel(text: "Your strings", color: p.muted)
+                    Spacer(minLength: 4)
+                    Text(stringing.due ? "Time to restring" : "Fresh").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(stringing.due ? p.amber : p.secondary)
+                }
+                Text(sinceLine).font(.system(size: 12)).foregroundStyle(p.secondary).lineLimit(2)
+                FillBar(fraction: wear, p: p, color: stringing.due ? p.amber : p.green)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func stageLine(_ job: WidgetSnapshot.Stringing.Job) -> String {
+        switch job.stage {
+        case "awaiting_dropoff": return "Drop it off"
+        case "with_stringer": return "With the stringer"
+        case "being_strung": return "Being strung"
+        case "ready_for_you": return job.readyBy.map { "Ready · \(WidgetDates.monthDay($0 + "T12:00:00Z"))" } ?? "Ready"
+        default: return ""
+        }
+    }
+
+    private var sinceLine: String {
+        guard let at = stringing.lastStrungAt, let weeks = stringing.weeksSince else { return "" }
+        let since = "Strung \(WidgetDates.monthDay(at)) · \(weeks) week\(weeks == 1 ? "" : "s") ago"
+        return stringing.due ? since + "\nConsider a restring for a better feel." : since
+    }
+
+    private var wear: Double {
+        guard let weeks = stringing.weeksSince, stringing.afterWeeks > 0 else { return 0 }
+        return min(1, Double(weeks) / Double(stringing.afterWeeks))
     }
 }
 
@@ -636,6 +703,15 @@ struct BPMWeekView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            // Your racket (Grant, 2026-10-23): the job on the bench step by
+            // step, or the strings wearing in by TIME since the restring. No
+            // finished job, no section — the large widget closes the gap.
+            if let stringing = snap.stringing {
+                Rectangle().fill(p.rule).frame(height: 1)
+                Link(destination: WidgetLink.stringing) {
+                    StringingBlock(stringing: stringing, p: p)
+                }
+            }
             Spacer(minLength: 0)
         }
     }
@@ -755,5 +831,8 @@ extension WidgetSnapshot {
         owed: Owed(total: 18.5, lines: 1, since: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-7 * 86400))),
         level: Level(overall: 3.1, phase: "switch", phaseLabel: "Intermediate", prevOverall: 2.7,
                      prevAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-28 * 86400)),
-                     delta: 0.4, history: [2.3, 2.7, 3.1], workOn: "Net play"))
+                     delta: 0.4, history: [2.3, 2.7, 3.1], workOn: "Net play"),
+        stringing: Stringing(job: Stringing.Job(id: "j1", jobNo: "J-0042", racketLabel: "Astrox 88D Pro", stringLabel: "BG 80",
+                                                tensionMains: 26, tensionCrosses: 28, stage: "being_strung", stageIndex: 2, readyBy: nil),
+                             lastStrungAt: nil, weeksSince: nil, due: false, afterWeeks: 8))
 }
