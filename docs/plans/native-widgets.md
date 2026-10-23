@@ -73,6 +73,18 @@ ten minutes, more than one in five), Join goes back to opening the app.
   this can be built off a Mac. Android's widget lives inside the app module and
   needs no new target.
 
+- **2026-10-23 — the plugin is registered by the controller the app ACTUALLY
+  uses.** The first cut named `MainViewController` in `Main.storyboard`, but
+  `SceneDelegate.swift` builds the window in code with a bare
+  `CAPBridgeViewController()`, so the storyboard's class was never read; on
+  Grant's phone `Capacitor.isPluginAvailable('BpmWidget')` answered `false`
+  and the widget never got its pass. `SceneDelegate` now creates
+  `MainViewController()`, and the shell canary pins it. Found on the first
+  device run, through Safari's Web Inspector on the app's own page.
+- **A failed read is not "sign in".** With no pass the widget says "Open BPM
+  and sign in"; with a pass but a failed read and nothing cached, it says
+  "Couldn't load your week" — the first cut showed the sign-in line for both.
+
 ## Shape
 
 | Piece | File |

@@ -473,6 +473,21 @@ struct SignedOutView: View {
     }
 }
 
+/// The read failed and there is nothing cached to show. Not "sign in": the
+/// pass may be fine and the network not.
+struct UnavailableView: View {
+    let p: WidgetPalette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Header(p: p)
+            Spacer(minLength: 0)
+            Text("Couldn't load your week. Tap to open BPM.")
+                .font(.system(size: 14)).foregroundStyle(p.secondary)
+        }
+    }
+}
+
 // MARK: - The week widget: small, medium, large
 
 struct BPMWeekView: View {
@@ -483,8 +498,11 @@ struct BPMWeekView: View {
     var body: some View {
         let p = WidgetPalette.make(scheme)
         Group {
-            if entry.state == .signedOut || entry.snapshot == nil {
+            if entry.state == .signedOut {
                 SignedOutView(p: p).widgetURL(WidgetLink.home)
+            } else if entry.snapshot == nil {
+                // A read failed and nothing is cached: say so, never "sign in".
+                UnavailableView(p: p).widgetURL(WidgetLink.home)
             } else if let snap = entry.snapshot {
                 switch family {
                 case .systemSmall: small(snap, p)
@@ -651,6 +669,9 @@ struct BPMLockView: View {
             } else if entry.state == .signedOut {
                 Text("BPM").font(.system(size: 12, weight: .bold))
                 Text("Open BPM to sign in").font(.system(size: 13))
+            } else if entry.snapshot == nil {
+                Text("BPM").font(.system(size: 12, weight: .bold))
+                Text("Couldn't load").font(.system(size: 13))
             } else {
                 Text("BPM").font(.system(size: 12, weight: .bold))
                 Text("No session this week").font(.system(size: 13))
