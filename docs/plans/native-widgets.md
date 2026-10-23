@@ -138,6 +138,18 @@ ten minutes, more than one in five), Join goes back to opening the app.
   never deuce; "29 all · next point wins"; "Interval" at 11. Game point turns
   the whole widget amber, not only a label (Grant: "Make game point more
   visually different").
+- **2026-10-23 — Add a game lists the whole club, tonight's sign-ups first.**
+  The first Save game from the widget on a device landed in the logger with
+  NOBODY to pick (Grant: "cant save game in the app"): the partner step
+  offered only tonight's sign-up list, and a game is not only played on a
+  session night with sign-ups open — the widget's Save game arrives whenever
+  a game ends. `SteppedGameLoggerSheet` now reads `GET /api/members` beside
+  `GET /api/players` and lists the rest of the club under "Everyone else",
+  each name once (tonight's spelling wins); both reads failing is the one
+  case that shows the error pill, and the typed-name line stays either way.
+  The score widget also lost a doubled 16 pt margin — the system already adds
+  the widget's content margins — and its type grew ("the content can take up
+  more space in the widget").
 - **2026-10-23 — no Live Activity yet, for either.** Grant asked "is it hard
   to have the widgets live?" A Live Activity would put the score on the lock
   screen and in the Dynamic Island, but it needs an `ActivityAttributes` file
