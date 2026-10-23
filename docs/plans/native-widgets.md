@@ -49,7 +49,7 @@ ten minutes, more than one in five), Join goes back to opening the app.
   never sends anywhere). Every rule Home's button meets — sign-ups open, the
   deadline, capacity, the soft hold, the late-cancel fee — the widget meets by
   construction. Both answer with the fresh snapshot, so the widget shows
-  "You're in" only after the server said yes.
+  "Signed up" only after the server said yes.
 - **Undo, for a few minutes.** A widget is easy to brush with a thumb. After a
   Join the widget offers Undo until it next refreshes; Undo is the ordinary
   cancel. A late-cancel window still applies: the widget then opens the app,
@@ -84,6 +84,13 @@ ten minutes, more than one in five), Join goes back to opening the app.
 - **A failed read is not "sign in".** With no pass the widget says "Open BPM
   and sign in"; with a pass but a failed read and nothing cached, it says
   "Couldn't load your week" — the first cut showed the sign-in line for both.
+- **Sign-out never waits on the phone.** It cleared the badge, the long-press
+  menu and the widget with `await Promise.all(...)` before clearing the
+  identity, so on the first build carrying all three plugins Sign out did
+  nothing at all. `lib/clearDeviceTraces.ts` gives them 1.5 s, then signs out
+  regardless; a clear that fails leaves a badge, never a person signed in.
+- **"Signed up", not "You're in"** (Grant, on the canvas): the widget's word for
+  being on the list, on both platforms and the lock screen.
 
 ## Shape
 

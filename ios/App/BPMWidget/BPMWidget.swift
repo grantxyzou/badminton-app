@@ -286,7 +286,7 @@ struct WeekBlock: View {
             case .inSession:
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(p.green).widgetAccentable()
-                    Text("You're in").font(.system(size: size + 2, weight: .bold)).foregroundStyle(p.primary)
+                    Text("Signed up").font(.system(size: size + 2, weight: .bold)).foregroundStyle(p.primary)
                 }
             case .waitlist(let position):
                 HStack(spacing: 6) {
@@ -539,7 +539,7 @@ struct BPMWeekView: View {
 
     private func smallLabel(_ status: WeekStatus) -> String {
         switch status {
-        case .inSession: return "You're in"
+        case .inSession: return "Signed up"
         case .waitlist(let pos): return pos.map { "Waitlist · \(ordinal($0))" } ?? "Waitlist"
         case .join: return "Sign-ups open"
         case .joinWaitlist: return "Full · waitlist open"
@@ -701,7 +701,7 @@ struct BPMLockView: View {
 
     private func lockStatus(_ s: WidgetSnapshot.Session) -> String {
         switch WeekStatus(s) {
-        case .inSession: return "You're in · \(s.inCount)/\(s.max)"
+        case .inSession: return "Signed up · \(s.inCount)/\(s.max)"
         case .waitlist(let pos): return pos.map { "Waitlist · \(ordinal($0))" } ?? "On the waitlist"
         case .join: return "Open · \(s.inCount)/\(s.max)"
         case .joinWaitlist: return "Full · \(s.waitingCount) waiting"

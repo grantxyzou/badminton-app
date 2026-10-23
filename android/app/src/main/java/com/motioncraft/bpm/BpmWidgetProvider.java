@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
  * and your level at 4 × 3 (large only, as on iPhone).
  *
  * Join and Undo are broadcasts back to this receiver, which calls the server
- * and redraws from the snapshot it answers with — "You're in" only after the
+ * and redraws from the snapshot it answers with — "Signed up" only after the
  * server said yes. Every tap that opens the app names a TAB through
  * `bpm://open?tab=` (lib/widgetBridge.ts `widgetOpenTarget`), never a path.
  */
@@ -279,7 +279,7 @@ public class BpmWidgetProvider extends AppWidgetProvider {
 
         String headline(JSONObject s) {
             switch (this) {
-                case IN: return "✓ You're in";
+                case IN: return "✓ Signed up";
                 case WAITLIST: return position(s) == null ? "On the waitlist" : "Waitlist · " + position(s);
                 case JOIN: return "Open now";
                 case JOIN_WAITLIST: return "Full";
@@ -292,7 +292,7 @@ public class BpmWidgetProvider extends AppWidgetProvider {
 
         String smallLabel(JSONObject s) {
             switch (this) {
-                case IN: return "You're in";
+                case IN: return "Signed up";
                 case WAITLIST: return position(s) == null ? "Waitlist" : "Waitlist · " + position(s);
                 case JOIN: return "Sign-ups open";
                 case JOIN_WAITLIST: return "Full · waitlist open";
