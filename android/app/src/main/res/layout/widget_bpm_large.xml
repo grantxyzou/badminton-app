@@ -77,13 +77,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:background="@drawable/widget_bpm_join"
-                    android:paddingStart="14dp"
-                    android:paddingTop="6dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="6dp"
+                    android:paddingStart="10dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="3dp"
                     android:text="Join"
                     android:textColor="@color/bpm_widget_on_green"
-                    android:textSize="13sp"
+                    android:textSize="11sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -98,7 +98,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:maxLines="1"
-                    android:text="9 of 12 in · 3 spots left"
+                    android:text="9 signed up · 3 spots left"
                     android:textColor="@color/bpm_widget_secondary"
                     android:textSize="12sp" />
 
@@ -208,21 +208,24 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/bpm_balance_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:letterSpacing="0.08"
-                android:text="YOUR BALANCE"
+                android:text="OWED"
                 android:textColor="@color/bpm_widget_muted"
                 android:textSize="10sp"
                 android:textStyle="bold" />
-
             <TextView
-                android:id="@+id/bpm_balance_detail"
+                android:id="@+id/bpm_balance_paid"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="1 line · from Oct 15"
-                android:textColor="@color/bpm_widget_muted"
-                android:textSize="12sp" />
+                android:maxLines="1"
+                android:text="✓ All paid"
+                android:textColor="@color/bpm_widget_green"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
         </LinearLayout>
 
         <TextView

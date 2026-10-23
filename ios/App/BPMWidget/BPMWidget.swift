@@ -301,8 +301,8 @@ struct WeekBlock: View {
                     if showsActions {
                         Button(intent: JoinSessionIntent(waitlist: status.isFull)) {
                             Text(status.isFull ? "Join waitlist" : "Join")
-                                .font(.system(size: 13, weight: .bold))
-                                .padding(.horizontal, 14).padding(.vertical, 6)
+                                .font(.system(size: 11, weight: .bold))
+                                .padding(.horizontal, 10).padding(.vertical, 3)
                                 .foregroundStyle(status.isFull ? p.amber : Color(red: 0.02, green: 0.18, blue: 0.09))
                                 .background(Capsule().fill(status.isFull ? p.amber.opacity(0.18) : p.green))
                         }
@@ -361,21 +361,36 @@ func ordinal(_ n: Int) -> String {
     return "\(n)\(suffix)"
 }
 
+struct PaidUp: View {
+    let p: WidgetPalette
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "checkmark.circle.fill").font(.system(size: 13))
+            Text("All paid").font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(p.green)
+        .lineLimit(1)
+    }
+}
+
 struct BalanceBlock: View {
     let owed: WidgetSnapshot.Owed
     let p: WidgetPalette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SectionLabel(text: "Your balance", color: p.muted)
-            Text(money(owed.total))
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
-                .foregroundStyle(owed.total > 0 ? p.amber : p.primary)
-                .minimumScaleFactor(0.7).lineLimit(1)
-            if owed.total > 0, let since = owed.since {
-                Text("from \(WidgetDates.monthDay(since))").font(.system(size: 11)).foregroundStyle(p.muted)
-            } else if owed.total <= 0 {
-                Text("All paid").font(.system(size: 11)).foregroundStyle(p.green)
+        // Quiet on purpose (Grant, on the canvas: "this side looks busy"): a
+        // label and the amount, no line, no date, so the week reads first.
+        // Nothing owed is "All paid", never "Owed $0".
+        if owed.total <= 0 {
+            PaidUp(p: p)
+        } else {
+            VStack(alignment: .trailing, spacing: 2) {
+                SectionLabel(text: "Owed", color: p.muted)
+                Text(money(owed.total))
+                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                    .foregroundStyle(p.amber)
+                    .minimumScaleFactor(0.7).lineLimit(1)
             }
         }
     }
@@ -566,9 +581,8 @@ struct BPMWeekView: View {
                 Link(destination: WidgetLink.home) {
                     WeekBlock(entry: entry, p: p).frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Rectangle().fill(p.rule).frame(width: 1)
                 Link(destination: WidgetLink.home) {
-                    BalanceBlock(owed: snap.owed, p: p).frame(width: 98, alignment: .leading)
+                    BalanceBlock(owed: snap.owed, p: p).frame(width: 90, alignment: .trailing)
                 }
             }
         }
@@ -604,14 +618,16 @@ struct BPMWeekView: View {
             Rectangle().fill(p.rule).frame(height: 1)
             Link(destination: WidgetLink.home) {
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        SectionLabel(text: "Your balance", color: p.muted)
-                        Text(balanceDetail(snap.owed)).font(.system(size: 12)).foregroundStyle(p.muted)
+                    if snap.owed.total <= 0 {
+                        PaidUp(p: p)
+                        Spacer()
+                    } else {
+                        SectionLabel(text: "Owed", color: p.muted)
+                        Spacer()
+                        Text(money(snap.owed.total))
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
+                            .foregroundStyle(p.amber)
                     }
-                    Spacer()
-                    Text(money(snap.owed.total))
-                        .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundStyle(snap.owed.total > 0 ? p.amber : p.primary)
                 }
             }
             Spacer(minLength: 0)
@@ -621,12 +637,6 @@ struct BPMWeekView: View {
     private func timeRange(_ s: WidgetSnapshot.Session) -> String {
         guard let end = s.endDatetime else { return WidgetDates.time(s.datetime) }
         return "\(WidgetDates.time(s.datetime).replacingOccurrences(of: " PM", with: "").replacingOccurrences(of: " AM", with: ""))–\(WidgetDates.time(end))"
-    }
-
-    private func balanceDetail(_ owed: WidgetSnapshot.Owed) -> String {
-        if owed.total <= 0 { return "All paid" }
-        let lines = "\(owed.lines) line\(owed.lines == 1 ? "" : "s")"
-        return owed.since.map { "\(lines) · from \(WidgetDates.monthDay($0))" } ?? lines
     }
 }
 

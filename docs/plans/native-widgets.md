@@ -101,6 +101,10 @@ ten minutes, more than one in five), Join goes back to opening the app.
 - **"Signed up", not "You're in"** (Grant, on the canvas): the widget's word for
   being on the list, on both platforms and the lock screen, and the count is
   "9 signed up", not "9 of 12 in".
+- **The money side is quiet** (Grant: "this side looks busy"; the Join pill
+  "way too big"). No dividing line and no date under the amount: "Owed" and
+  the figure, right-aligned. Nothing owed is "✓ All paid", never "Owed $0".
+  The Join pill is a small chip (11 pt). Every size, both platforms.
 
 ## Shape
 

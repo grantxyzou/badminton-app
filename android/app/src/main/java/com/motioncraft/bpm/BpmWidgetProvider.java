@@ -239,10 +239,13 @@ public class BpmWidgetProvider extends AppWidgetProvider {
         // The balance.
         JSONObject owed = snap.optJSONObject("owed");
         double total = owed == null ? 0 : owed.optDouble("total", 0);
+        // Nothing owed is "All paid", never "Owed $0".
+        boolean paidUp = total <= 0;
+        v.setViewVisibility(R.id.bpm_balance_label, paidUp ? View.GONE : View.VISIBLE);
+        v.setViewVisibility(R.id.bpm_balance_amount, paidUp ? View.GONE : View.VISIBLE);
+        v.setViewVisibility(R.id.bpm_balance_paid, paidUp ? View.VISIBLE : View.GONE);
         v.setTextViewText(R.id.bpm_balance_amount, money(total));
-        v.setTextColor(R.id.bpm_balance_amount, context.getColor(total > 0 ? R.color.bpm_widget_amber : R.color.bpm_widget_primary));
-        v.setTextViewText(R.id.bpm_balance_detail, balanceDetail(owed, large));
-        v.setTextColor(R.id.bpm_balance_detail, context.getColor(total > 0 ? R.color.bpm_widget_muted : R.color.bpm_widget_green));
+        v.setTextColor(R.id.bpm_balance_amount, context.getColor(R.color.bpm_widget_amber));
         v.setOnClickPendingIntent(R.id.bpm_balance_area, open(context, "home", 11));
 
         // Your level — the large size only (Grant, 2026-10-22).
@@ -325,15 +328,6 @@ public class BpmWidgetProvider extends AppWidgetProvider {
         if (waiting > 0 && in >= max) return in + " signed up · " + waiting + " waiting";
         int left = Math.max(max - in, 0);
         return in + " signed up" + (left > 0 ? " · " + left + (left == 1 ? " spot left" : " spots left") : "");
-    }
-
-    private static String balanceDetail(JSONObject owed, boolean large) {
-        if (owed == null || owed.optDouble("total", 0) <= 0) return "All paid";
-        String since = owed.isNull("since") ? null : owed.optString("since");
-        if (!large) return since == null ? "" : "from " + monthDay(since);
-        int lines = owed.optInt("lines");
-        String head = lines + (lines == 1 ? " line" : " lines");
-        return since == null ? head : head + " · from " + monthDay(since);
     }
 
     private static String trendLine(JSONObject level) {
