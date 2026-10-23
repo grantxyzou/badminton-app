@@ -239,6 +239,19 @@ describe('SteppedGameLoggerSheet', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('says so when the club read failed and tonight is empty — never a blank step', async () => {
+    mockFetch({
+      '/api/players': () => jsonResponse([]),
+      '/api/members': () => jsonResponse({ error: 'read_failed' }, false, 503),
+    });
+    renderSheet();
+    await waitFor(() => expect(screen.getByText("Couldn't load the rest of the club.")).toBeTruthy());
+    expect(screen.queryByText("Nobody on tonight's list yet.")).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    // The typed-name line is still the way through.
+    expect(screen.getByRole('button', { name: 'Add someone not on the list' })).toBeTruthy();
+  });
+
   it('still lets a guest be added when both reads fail', async () => {
     mockFetch({
       '/api/players': () => jsonResponse({ error: 'load_failed' }, false),

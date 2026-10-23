@@ -1326,6 +1326,7 @@
       "rosterNote": "先是今晚报名的人，然后是俱乐部的其他成员。",
       "rosterError": "名单加载失败，你还是可以手动输入名字。",
       "tonightError": "今晚的名单加载失败。",
+      "clubError": "俱乐部其他成员加载失败。",
       "tonight": "今晚",
       "club": "其他成员",
       "noTonight": "今晚还没有人报名。",

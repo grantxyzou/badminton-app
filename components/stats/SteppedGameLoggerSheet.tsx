@@ -304,6 +304,9 @@ export default function SteppedGameLoggerSheet({
               {rosterError && !clubError && (
                 <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tonightError')}</p>
               )}
+              {clubError && !rosterError && (
+                <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('clubError')}</p>
+              )}
 
               {listFor.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>

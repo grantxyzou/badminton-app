@@ -1338,6 +1338,7 @@
       "rosterNote": "Tonight's sign-ups first, then everyone in the club.",
       "rosterError": "Couldn't load the lists — you can still add someone by name.",
       "tonightError": "Couldn't load tonight's list.",
+      "clubError": "Couldn't load the rest of the club.",
       "tonight": "Tonight",
       "club": "Everyone else",
       "noTonight": "Nobody on tonight's list yet.",
