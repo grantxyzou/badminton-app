@@ -588,19 +588,27 @@ struct BPMWeekView: View {
         }
     }
 
-    /// The week, your level and the money (Grant: level on the large size only).
+    /// The week with the money, then your level (Grant: level on the large size only).
     private func large(_ snap: WidgetSnapshot, _ p: WidgetPalette) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Header(p: p, trailing: updated(snap))
-            Link(destination: WidgetLink.home) {
-                VStack(alignment: .leading, spacing: 8) {
-                    if let s = snap.session {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(WidgetDates.day(s.datetime)).font(.system(size: 20, weight: .bold)).foregroundStyle(p.primary)
-                            Text(timeRange(s)).font(.system(size: 13)).foregroundStyle(p.secondary)
+            // The money sits with the sign-up, as on the medium size (Grant, on
+            // the canvas: "this should be part of the sign up section").
+            HStack(alignment: .center, spacing: 14) {
+                Link(destination: WidgetLink.home) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let s = snap.session {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(WidgetDates.day(s.datetime)).font(.system(size: 20, weight: .bold)).foregroundStyle(p.primary)
+                                Text(timeRange(s)).font(.system(size: 13)).foregroundStyle(p.secondary)
+                            }
                         }
+                        WeekBlock(entry: entry, p: p, big: false)
                     }
-                    WeekBlock(entry: entry, p: p, big: false)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Link(destination: WidgetLink.home) {
+                    BalanceBlock(owed: snap.owed, p: p).frame(width: 90, alignment: .trailing)
                 }
             }
             Rectangle().fill(p.rule).frame(height: 1)
@@ -613,21 +621,6 @@ struct BPMWeekView: View {
                         Text("Check in on Stats to see your level here.").font(.system(size: 13)).foregroundStyle(p.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            Rectangle().fill(p.rule).frame(height: 1)
-            Link(destination: WidgetLink.home) {
-                HStack {
-                    if snap.owed.total <= 0 {
-                        PaidUp(p: p)
-                        Spacer()
-                    } else {
-                        SectionLabel(text: "Owed", color: p.muted)
-                        Spacer()
-                        Text(money(snap.owed.total))
-                            .font(.system(size: 20, weight: .bold, design: .monospaced))
-                            .foregroundStyle(p.amber)
-                    }
                 }
             }
             Spacer(minLength: 0)

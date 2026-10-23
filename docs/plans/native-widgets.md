@@ -104,7 +104,9 @@ ten minutes, more than one in five), Join goes back to opening the app.
 - **The money side is quiet** (Grant: "this side looks busy"; the Join pill
   "way too big"). No dividing line and no date under the amount: "Owed" and
   the figure, right-aligned. Nothing owed is "✓ All paid", never "Owed $0".
-  The Join pill is a small chip (11 pt). Every size, both platforms.
+  The Join pill is a small chip (11 pt). Every size, both platforms. On the
+  large size the money sits beside the sign-up, as on the medium, with the
+  level below ("this should be part of the sign up section").
 
 ## Shape
 
