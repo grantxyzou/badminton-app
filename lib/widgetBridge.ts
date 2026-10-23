@@ -33,15 +33,26 @@ interface BpmWidgetPlugin {
   reload(): Promise<void>;
 }
 
-let plugin: Promise<BpmWidgetPlugin> | null = null;
+/**
+ * The plugin travels in a box. A Capacitor plugin proxy answers EVERY
+ * property as a native method, `then` included, so a promise resolved with
+ * the proxy itself calls `proxy.then()` — "not implemented" — and rejects.
+ * Every `setSession`, `clear` and `reload` was silently dropped that way on the
+ * first device run (2026-10-23): the widget never got its pass, and sign-out
+ * never cleared it.
+ */
+let plugin: Promise<{ widget: BpmWidgetPlugin }> | null = null;
 
 function widgetAvailable(): boolean {
   return isNative() && hasNativePlugin('BpmWidget') !== false;
 }
 
-function bpmWidget(): Promise<BpmWidgetPlugin> {
+// Returns the BOX: an async function returning the proxy would adopt it too.
+function bpmWidget(): Promise<{ widget: BpmWidgetPlugin }> {
   if (!plugin) {
-    plugin = import('@capacitor/core').then(({ registerPlugin }) => registerPlugin<BpmWidgetPlugin>('BpmWidget'));
+    plugin = import('@capacitor/core').then(({ registerPlugin }) => ({
+      widget: registerPlugin<BpmWidgetPlugin>('BpmWidget'),
+    }));
   }
   return plugin;
 }
@@ -67,7 +78,7 @@ export async function syncWidgetPass(force = false): Promise<void> {
     if (!res.ok) return;
     const { token, expiresAt } = (await res.json()) as { token?: string; expiresAt?: string };
     if (typeof token !== 'string' || typeof expiresAt !== 'string') return;
-    await (await bpmWidget()).setSession({ token, expiresAt, baseUrl: `${window.location.origin}${BASE}` });
+    await (await bpmWidget()).widget.setSession({ token, expiresAt, baseUrl: `${window.location.origin}${BASE}` });
     try {
       localStorage.setItem(WIDGET_MINTED_KEY, String(Date.now()));
     } catch {
@@ -82,7 +93,7 @@ export async function syncWidgetPass(force = false): Promise<void> {
 export async function reloadWidgets(): Promise<void> {
   if (!widgetAvailable()) return;
   try {
-    await (await bpmWidget()).reload();
+    await (await bpmWidget()).widget.reload();
   } catch {
     /* nothing to reload */
   }
@@ -98,7 +109,7 @@ export async function clearWidgets(): Promise<void> {
   }
   if (!widgetAvailable()) return;
   try {
-    await (await bpmWidget()).clear();
+    await (await bpmWidget()).widget.clear();
   } catch {
     /* nothing to clear */
   }

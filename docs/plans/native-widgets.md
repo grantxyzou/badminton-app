@@ -89,6 +89,15 @@ ten minutes, more than one in five), Join goes back to opening the app.
   identity, so on the first build carrying all three plugins Sign out did
   nothing at all. `lib/clearDeviceTraces.ts` gives them 1.5 s, then signs out
   regardless; a clear that fails leaves a badge, never a person signed in.
+- **The plugin proxy must never resolve a promise.** Capacitor's plugin proxy
+  answers every property as a native method, `then` included, so
+  `import(...).then(() => registerPlugin('BpmWidget'))` adopted it, called
+  `BpmWidget.then()` ("not implemented") and rejected. Every `setSession`,
+  `clear` and `reload` was dropped and swallowed: the app never handed the
+  widget its pass, and sign-out never cleared it. `lib/widgetBridge.ts` keeps
+  the proxy in a `{ widget }` box, and the test's mock is now a proxy of the
+  same shape (a plain object hid it). Found in Grant's Web Inspector log: the
+  badge and shortcut calls showed, the widget's never did.
 - **"Signed up", not "You're in"** (Grant, on the canvas): the widget's word for
   being on the list, on both platforms and the lock screen.
 

@@ -8,7 +8,20 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
  */
 
 const widget = vi.hoisted(() => ({ setSession: vi.fn(), clear: vi.fn(), reload: vi.fn() }));
-vi.mock('@capacitor/core', () => ({ registerPlugin: () => widget }));
+// Shaped like Capacitor's real proxy: EVERY property is a native method, `then`
+// included, and an unknown one throws "not implemented". A plain object here
+// is what let a promise resolved with the proxy drop every call unnoticed.
+vi.mock('@capacitor/core', () => ({
+  registerPlugin: () =>
+    new Proxy({}, {
+      get(_t, prop) {
+        if (prop in widget) return widget[prop as keyof typeof widget];
+        return () => {
+          throw new Error(`"BpmWidget.${String(prop)}()" is not implemented on ios`);
+        };
+      },
+    }),
+}));
 
 import { syncWidgetPass, clearWidgets, reloadWidgets, widgetOpenTarget, WIDGET_MINTED_KEY } from '@/lib/widgetBridge';
 
