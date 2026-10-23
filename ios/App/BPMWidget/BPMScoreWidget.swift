@@ -339,7 +339,7 @@ struct BPMScoreView: View {
                         Image(systemName: "arrow.uturn.backward").font(.system(size: 18)).foregroundStyle(p.secondary)
                         Text("Undo").font(.system(size: 10)).foregroundStyle(p.muted)
                     }
-                    .frame(width: 44, maxHeight: .infinity)
+                    .frame(width: 44).frame(maxHeight: .infinity)
                 }
                 .buttonStyle(.plain)
                 .disabled(game.points.isEmpty)
