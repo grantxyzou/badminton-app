@@ -28,7 +28,8 @@ ten minutes, more than one in five), Join goes back to opening the app.
   when what it shows is old.
 - Chinese copy on the widget. Like push payloads, it is English: there is no
   per-member locale to choose from yet (`Member.locale` is deferred).
-- The stringing Live Activity. Drawn on the same canvas page, built later.
+- The stringing Live Activity, and a Live Activity for the score. Drawn on the
+  canvas; see the 2026-10-23 decision below for why neither is built yet.
 
 ## Decisions
 
@@ -49,7 +50,7 @@ ten minutes, more than one in five), Join goes back to opening the app.
   never sends anywhere). Every rule Home's button meets — sign-ups open, the
   deadline, capacity, the soft hold, the late-cancel fee — the widget meets by
   construction. Both answer with the fresh snapshot, so the widget shows
-  "You're in" only after the server said yes.
+  "Signed up" only after the server said yes.
 - **Undo, for a few minutes.** A widget is easy to brush with a thumb. After a
   Join the widget offers Undo until it next refreshes; Undo is the ordinary
   cancel. A late-cancel window still applies: the widget then opens the app,
@@ -73,15 +74,90 @@ ten minutes, more than one in five), Join goes back to opening the app.
   this can be built off a Mac. Android's widget lives inside the app module and
   needs no new target.
 
+- **2026-10-23 — the plugin is registered by the controller the app ACTUALLY
+  uses.** The first cut named `MainViewController` in `Main.storyboard`, but
+  `SceneDelegate.swift` builds the window in code with a bare
+  `CAPBridgeViewController()`, so the storyboard's class was never read; on
+  Grant's phone `Capacitor.isPluginAvailable('BpmWidget')` answered `false`
+  and the widget never got its pass. `SceneDelegate` now creates
+  `MainViewController()`, and the shell canary pins it. Found on the first
+  device run, through Safari's Web Inspector on the app's own page.
+- **A failed read is not "sign in".** With no pass the widget says "Open BPM
+  and sign in"; with a pass but a failed read and nothing cached, it says
+  "Couldn't load your week" — the first cut showed the sign-in line for both.
+- **Sign-out never waits on the phone.** It cleared the badge, the long-press
+  menu and the widget with `await Promise.all(...)` before clearing the
+  identity, so on the first build carrying all three plugins Sign out did
+  nothing at all. `lib/clearDeviceTraces.ts` gives them 1.5 s, then signs out
+  regardless; a clear that fails leaves a badge, never a person signed in.
+- **The plugin proxy must never resolve a promise.** Capacitor's plugin proxy
+  answers every property as a native method, `then` included, so
+  `import(...).then(() => registerPlugin('BpmWidget'))` adopted it, called
+  `BpmWidget.then()` ("not implemented") and rejected. Every `setSession`,
+  `clear` and `reload` was dropped and swallowed: the app never handed the
+  widget its pass, and sign-out never cleared it. `lib/widgetBridge.ts` keeps
+  the proxy in a `{ widget }` box, and the test's mock is now a proxy of the
+  same shape (a plain object hid it). Found in Grant's Web Inspector log: the
+  badge and shortcut calls showed, the widget's never did.
+- **"Signed up", not "You're in"** (Grant, on the canvas): the widget's word for
+  being on the list, on both platforms and the lock screen, and the count is
+  "9 signed up", not "9 of 12 in".
+- **The money side is quiet** (Grant: "this side looks busy"; the Join pill
+  "way too big"). No dividing line and no date under the amount: "Owed" and
+  the figure, right-aligned. Nothing owed is "✓ All paid", never "Owed $0".
+  The Join pill is a small chip (11 pt). Every size, both platforms. On the
+  large size the money sits beside the sign-up, as on the medium, with the
+  level below ("this should be part of the sign up section").
+- **2026-10-23 — the large size has a third section, stringing** (Grant: "a
+  third section about stringing. Active job show progress. When a job is done
+  and we have the data we can show a restring in X weeks? and why?"). A racket
+  on the bench shows the PLAYER's four-step track from Home (drop off, with the
+  stringer, being strung, ready — `playerStageFor`, never the bench status) and
+  no price; with nothing on the bench, the strings' wear fills a bar **by time,
+  never by sessions** (Grant: "it cant measure by session. Only time since we
+  cant know when they play outside of BPM") against `RESTRING_AFTER_WEEKS` (8),
+  the same `lib/restring.ts` rule Home's card uses, and the advice reads
+  "Consider a restring for a better feel." — consider, never overdue. Never
+  strung and nothing on the bench hides the section. `stringingPart` in
+  `lib/widget.ts` orders the bench with `lib/stringingOrder.ts`, moved out of
+  the jobs route so the route and the widget cannot rank a job differently.
+- **2026-10-23 — a second widget keeps score** (Grant: "make a widget mock for
+  scour counting. So that people dont need to open the app"). Two sides, two
+  tap targets, Undo; the game lives on the PHONE (`ScoreStore` in
+  `BPMScoreWidget.swift`, `BpmScoreStore.java`) as the points in order, so Undo
+  is a pop and nothing reaches the server until **Save game**, which opens Add
+  a game with the score already in (`bpm://open?tab=skills&game=21-18` →
+  `lib/gameIntent.ts` → `SteppedGameLoggerSheet`'s `prefill`, with a Swap sides
+  button because the widget cannot know which side was yours). Saving tells
+  the plugin (`scoreSaved`) so the widget lets the game go; "Next game" parks a
+  finished game as pending until it is saved or discarded. The sides are
+  **Green and Blue**, not "us and them" (Grant: "I dont like the language").
+  The calls are the umpire's (`lib/scoreRules.ts` is the spec; the Swift and
+  Java ports are held to `__tests__/score-rules.test.ts`): to 21, won by two,
+  capped at 30; "game point" for the side one rally from winning; "20 all",
+  never deuce; "29 all · next point wins"; "Interval" at 11. Game point turns
+  the whole widget amber, not only a label (Grant: "Make game point more
+  visually different").
+- **2026-10-23 — no Live Activity yet, for either.** Grant asked "is it hard
+  to have the widgets live?" A Live Activity would put the score on the lock
+  screen and in the Dynamic Island, but it needs an `ActivityAttributes` file
+  compiled into BOTH targets, `NSSupportsLiveActivities` in the app's plist,
+  and an App Intent per tap — Xcode work that cannot be compiled here and that
+  the score widget does not need to be useful: an interactive home-screen
+  widget already takes the taps. Build it in the next shell pass, after the
+  widget has been used courtside for a few weeks.
+
 ## Shape
 
 | Piece | File |
 | --- | --- |
 | The pass (mint, verify, the internal member cookie) | `lib/auth.ts` |
 | Snapshot and the membership gate | `lib/widget.ts` |
+| Stringing section: bench order shared with the jobs route | `lib/stringingOrder.ts`, `lib/restring.ts` |
+| Score rules (the spec) and the game deep link into Add a game | `lib/scoreRules.ts`, `lib/gameIntent.ts`, `components/stats/SteppedGameLoggerSheet.tsx` |
 | Routes | `app/api/widget/route.ts`, `app/api/widget/token/route.ts`, `app/api/widget/join/route.ts` |
 | App side: mint, hand over, reload, clear on sign-out | `lib/widgetBridge.ts`, mounted in `HomeShell` |
 | iOS plugin (App Group storage, timeline reload) | `ios/App/App/BpmWidgetPlugin.swift`, `ios/App/App/MainViewController.swift` |
-| iOS widget extension | `ios/App/BPMWidget/` |
-| Android plugin and widget | `android/app/src/main/java/com/motioncraft/bpm/BpmWidget*.java`, `res/layout/widget_bpm_*.xml`, `res/xml/bpm_widget_info.xml` |
-| Tests | `__tests__/group-widget.test.ts`, `__tests__/widget-bridge.test.ts`, `__tests__/native-shell-projects.test.ts` |
+| iOS widget extension (week widget and score widget, one bundle) | `ios/App/BPMWidget/` (`BPMWidget.swift`, `BPMScoreWidget.swift`, `BPMWidgetIntents.swift`, `BPMWidgetStore.swift`) |
+| Android plugin and widgets | `android/app/src/main/java/com/motioncraft/bpm/BpmWidget*.java`, `BpmScore*.java`, `ScoreRules.java`, `res/layout/widget_bpm_*.xml`, `res/xml/bpm_*widget_info.xml` |
+| Tests | `__tests__/group-widget.test.ts`, `__tests__/widget-bridge.test.ts`, `__tests__/score-rules.test.ts`, `__tests__/game-intent.test.ts`, `__tests__/native-shell-projects.test.ts` |

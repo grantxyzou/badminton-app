@@ -16,7 +16,7 @@ afterEach(cleanup);
  */
 describe('routeInApp', () => {
   function capture() {
-    const seen: Array<{ tab: string | null }> = [];
+    const seen: Array<{ tab: string | null; game: string | null }> = [];
     const on = (e: Event) => seen.push((e as CustomEvent).detail);
     window.addEventListener(NAVIGATE_EVENT, on);
     return { seen, off: () => window.removeEventListener(NAVIGATE_EVENT, on) };
@@ -26,14 +26,14 @@ describe('routeInApp', () => {
     const { seen, off } = capture();
     expect(routeInApp(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/`)).toBe(true);
     off();
-    expect(seen).toEqual([{ tab: null }]);
+    expect(seen).toEqual([{ tab: null, game: null }]);
   });
 
   it('carries the tab an access-request notification asks for', () => {
     const { seen, off } = capture();
     expect(routeInApp(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/?tab=admin`)).toBe(true);
     off();
-    expect(seen).toEqual([{ tab: 'admin' }]);
+    expect(seen).toEqual([{ tab: 'admin', game: null }]);
   });
 
   it('another route is NOT in-app: it has to load as a page', () => {
@@ -57,7 +57,7 @@ describe('useInAppNavigation', () => {
     const onNavigate = vi.fn();
     renderHook(() => useInAppNavigation(onNavigate));
     routeInApp(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/?tab=players`);
-    expect(onNavigate).toHaveBeenCalledWith({ tab: 'players' });
+    expect(onNavigate).toHaveBeenCalledWith({ tab: 'players', game: null });
   });
 });
 

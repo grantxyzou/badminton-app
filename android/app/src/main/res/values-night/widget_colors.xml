@@ -11,4 +11,11 @@
     <color name="bpm_widget_blue">#FF60A5FA</color>
     <color name="bpm_widget_track">#1FFFFFFF</color>
     <color name="bpm_widget_rule">#14FFFFFF</color>
+    <!-- The score widget: tinted side tiles and the badge the "20 all" call sits on. -->
+    <color name="bpm_widget_green_soft">#244ADE80</color>
+    <color name="bpm_widget_green_edge">#594ADE80</color>
+    <color name="bpm_widget_blue_soft">#2460A5FA</color>
+    <color name="bpm_widget_blue_edge">#5960A5FA</color>
+    <color name="bpm_widget_on_amber">#FF3B2203</color>
+    <color name="bpm_widget_on_badge">#FF151413</color>
 </resources>

@@ -31,6 +31,8 @@ import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
 import { useInAppNavigation } from '@/lib/inAppNavigate';
 import { useAppShortcuts } from '@/lib/appShortcuts';
 import { useWidgetBridge } from '@/lib/widgetBridge';
+import { requestGameLog } from '@/lib/gameIntent';
+import { parseGameParam } from '@/lib/scoreRules';
 import { useEverOpened } from '@/lib/useEverOpened';
 import { prewarmInsight } from '@/lib/useInsight';
 import { TabActiveContext } from '@/lib/tabActivity';
@@ -409,6 +411,16 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     if (params.get('intent') === 'delete') {
       setDeleteIntent(true);
       cleaned.searchParams.delete('intent');
+      dirty = true;
+    }
+
+    // `?game=21-18` from the score widget's Save game (lib/gameIntent.ts):
+    // parked for Add a game, which `YourRecordCard` opens once Stats is on
+    // screen. Stripped like `tab`, so a restored URL cannot re-open it.
+    const game = parseGameParam(params.get('game'));
+    if (game) {
+      requestGameLog(game);
+      cleaned.searchParams.delete('game');
       dirty = true;
     }
 
@@ -800,8 +812,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // open" is only worth landing on if the card shows that it is. The admin tab
   // is not special-cased: a non-admin asking for it meets the same bounce a
   // `?tab=admin` landing does.
-  useInAppNavigation(useCallback(({ tab }: { tab: string | null }) => {
+  useInAppNavigation(useCallback(({ tab, game }: { tab: string | null; game: string | null }) => {
     const next: Tab = toTab(tab) ?? 'home';
+    // The score widget's Save game while the app is already open: park the
+    // score first, then remount Stats below so the card finds it on arrival.
+    const score = parseGameParam(game);
+    if (score && next === 'skills') requestGameLog(score);
     resetSharedReads();
     setActiveTab(next);
     setTabNonce((n) => ({ ...n, [next]: (n[next] ?? 0) + 1 }));

@@ -32,6 +32,9 @@ export const SW_NAVIGATE_MESSAGE = 'bpm:navigate';
 export interface NavigateDetail {
   /** The `?tab=` value, unvalidated (HomeShell validates), or null for Home. */
   tab: string | null;
+  /** The `?game=` value a score widget's Save game carries, unvalidated
+   *  (`parseGameParam` validates), or null. */
+  game: string | null;
 }
 
 export function routeInApp(url: string): boolean {
@@ -46,7 +49,11 @@ export function routeInApp(url: string): boolean {
   // The SPA root, with or without its trailing slash. Every other path is a
   // separate route that has to be loaded as one.
   if (u.pathname !== `${BASE}/` && u.pathname !== BASE) return false;
-  window.dispatchEvent(new CustomEvent<NavigateDetail>(NAVIGATE_EVENT, { detail: { tab: u.searchParams.get('tab') } }));
+  window.dispatchEvent(
+    new CustomEvent<NavigateDetail>(NAVIGATE_EVENT, {
+      detail: { tab: u.searchParams.get('tab'), game: u.searchParams.get('game') },
+    }),
+  );
   return true;
 }
 
@@ -62,7 +69,7 @@ export function useInAppNavigation(onNavigate: (detail: NavigateDetail) => void)
   }, [onNavigate]);
 
   useEffect(() => {
-    const onEvent = (e: Event) => ref.current((e as CustomEvent<NavigateDetail>).detail ?? { tab: null });
+    const onEvent = (e: Event) => ref.current((e as CustomEvent<NavigateDetail>).detail ?? { tab: null, game: null });
     const onMessage = (e: MessageEvent) => {
       const data = e.data as { type?: unknown; url?: unknown } | null;
       if (data?.type === SW_NAVIGATE_MESSAGE && typeof data.url === 'string') routeInApp(data.url);

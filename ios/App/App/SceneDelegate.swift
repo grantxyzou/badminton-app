@@ -9,7 +9,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        // MainViewController, not CAPBridgeViewController: it registers the
+        // in-app plugins (BpmWidget, docs/plans/native-widgets.md). This file
+        // builds the window in code, so Main.storyboard's class is never read.
+        window?.rootViewController = MainViewController()
         window?.makeKeyAndVisible()
 
         // A long-press shortcut that LAUNCHED the app (lib/appShortcuts.ts).

@@ -63,6 +63,19 @@
                 android:resource="@xml/bpm_widget_info" />
         </receiver>
 
+        <!-- Keeping score from the widget: every tap is a broadcast to this
+             receiver from its own PendingIntents, so it is not exported. -->
+        <receiver
+            android:name=".BpmScoreWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/bpm_score_widget_info" />
+        </receiver>
+
         <!-- The channel lib/fcm.ts names in every message. Created in
              MainActivity so it exists before the first notification. -->
         <meta-data

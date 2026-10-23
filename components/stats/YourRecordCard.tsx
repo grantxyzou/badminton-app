@@ -11,6 +11,9 @@ import type { GameResult } from '@/lib/types';
 import SteppedGameLoggerSheet from './SteppedGameLoggerSheet';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
+import { takeGameIntent, hasGameIntent } from '@/lib/gameIntent';
+import { useTabActive } from '@/lib/tabActivity';
+import type { Score } from '@/lib/scoreRules';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -40,6 +43,18 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
   // GameLoggerCard has always done it. A missing id disables logging but must
   // NOT hide the record — reading and writing fail independently.
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // The score the widget's Save game carried (lib/gameIntent.ts), taken once
+  // this card is on screen with a session to log into, and handed to the
+  // logger as its starting score. Null is the ordinary open.
+  const [prefill, setPrefill] = useState<Score | null>(null);
+  const onScreen = useTabActive();
+  useEffect(() => {
+    if (!onScreen || !sessionId || !activeName || status !== 'ready' || !hasGameIntent()) return;
+    const score = takeGameIntent();
+    if (!score) return;
+    setPrefill(score);
+    setLoggerOpen(true);
+  }, [onScreen, sessionId, activeName, status]);
 
   useEffect(() => {
     let live = true;
@@ -105,7 +120,11 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
           you={activeName}
           sessionId={sessionId}
           open={loggerOpen}
-          onClose={() => setLoggerOpen(false)}
+          prefill={prefill}
+          onClose={() => {
+            setLoggerOpen(false);
+            setPrefill(null);
+          }}
           onLogged={load}
         />
       )}

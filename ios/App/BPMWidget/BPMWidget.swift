@@ -12,6 +12,7 @@ struct BPMWidgets: WidgetBundle {
     var body: some Widget {
         BPMWeekWidget()
         BPMLockWidget()
+        BPMScoreWidget()
     }
 }
 
@@ -170,6 +171,9 @@ struct WidgetPalette {
     let track: Color
     let rule: Color
     let background: LinearGradient
+    /// A solid badge in the text colour, and the text to put on it.
+    var badge: Color { primary.opacity(0.92) }
+    var onBadge: Color { Color(red: 0.06, green: 0.09, blue: 0.16) }
 
     static func make(_ scheme: ColorScheme) -> WidgetPalette {
         if scheme == .light {
@@ -205,6 +209,7 @@ struct WidgetPalette {
 enum WidgetLink {
     static let home = URL(string: "bpm://open?tab=home")!
     static let stats = URL(string: "bpm://open?tab=skills")!
+    static let stringing = URL(string: "bpm://open?tab=stringing")!
 }
 
 // MARK: - Pieces shared by every size
@@ -231,12 +236,13 @@ struct Header: View {
 struct FillBar: View {
     let fraction: Double
     let p: WidgetPalette
+    var color: Color? = nil
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(p.track)
-                Capsule().fill(p.green).frame(width: geo.size.width * min(max(fraction, 0), 1)).widgetAccentable()
+                Capsule().fill(color ?? p.green).frame(width: geo.size.width * min(max(fraction, 0), 1)).widgetAccentable()
             }
         }
         .frame(height: 5)
@@ -286,7 +292,7 @@ struct WeekBlock: View {
             case .inSession:
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(p.green).widgetAccentable()
-                    Text("You're in").font(.system(size: size + 2, weight: .bold)).foregroundStyle(p.primary)
+                    Text("Signed up").font(.system(size: size + 2, weight: .bold)).foregroundStyle(p.primary)
                 }
             case .waitlist(let position):
                 HStack(spacing: 6) {
@@ -301,8 +307,8 @@ struct WeekBlock: View {
                     if showsActions {
                         Button(intent: JoinSessionIntent(waitlist: status.isFull)) {
                             Text(status.isFull ? "Join waitlist" : "Join")
-                                .font(.system(size: 13, weight: .bold))
-                                .padding(.horizontal, 14).padding(.vertical, 6)
+                                .font(.system(size: 11, weight: .bold))
+                                .padding(.horizontal, 10).padding(.vertical, 3)
                                 .foregroundStyle(status.isFull ? p.amber : Color(red: 0.02, green: 0.18, blue: 0.09))
                                 .background(Capsule().fill(status.isFull ? p.amber.opacity(0.18) : p.green))
                         }
@@ -331,17 +337,17 @@ struct WeekBlock: View {
                 Text("Tap to finish in BPM").font(.system(size: 12)).foregroundStyle(p.secondary)
             } else if showsActions, entry.undoOffered, case .inSession = status {
                 HStack(spacing: 4) {
-                    Text("\(s.inCount) of \(s.max) in ·").font(.system(size: 12)).foregroundStyle(p.secondary)
+                    Text("\(s.inCount) signed up ·").font(.system(size: 12)).foregroundStyle(p.secondary)
                     Button(intent: UndoJoinIntent()) {
                         Text("Undo").font(.system(size: 12, weight: .semibold)).underline().foregroundStyle(p.primary)
                     }
                     .buttonStyle(.plain)
                 }
             } else if s.waitingCount > 0 && s.inCount >= s.max {
-                Text("\(s.inCount) of \(s.max) in · \(s.waitingCount) waiting").font(.system(size: 12)).foregroundStyle(p.secondary)
+                Text("\(s.inCount) signed up · \(s.waitingCount) waiting").font(.system(size: 12)).foregroundStyle(p.secondary)
             } else {
                 let left = max(s.max - s.inCount, 0)
-                Text("\(s.inCount) of \(s.max) in" + (left > 0 ? " · \(left) spot\(left == 1 ? "" : "s") left" : ""))
+                Text("\(s.inCount) signed up" + (left > 0 ? " · \(left) spot\(left == 1 ? "" : "s") left" : ""))
                     .font(.system(size: 12)).foregroundStyle(p.secondary).lineLimit(1)
             }
         }
@@ -361,21 +367,36 @@ func ordinal(_ n: Int) -> String {
     return "\(n)\(suffix)"
 }
 
+struct PaidUp: View {
+    let p: WidgetPalette
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "checkmark.circle.fill").font(.system(size: 13))
+            Text("All paid").font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(p.green)
+        .lineLimit(1)
+    }
+}
+
 struct BalanceBlock: View {
     let owed: WidgetSnapshot.Owed
     let p: WidgetPalette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SectionLabel(text: "Your balance", color: p.muted)
-            Text(money(owed.total))
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
-                .foregroundStyle(owed.total > 0 ? p.amber : p.primary)
-                .minimumScaleFactor(0.7).lineLimit(1)
-            if owed.total > 0, let since = owed.since {
-                Text("from \(WidgetDates.monthDay(since))").font(.system(size: 11)).foregroundStyle(p.muted)
-            } else if owed.total <= 0 {
-                Text("All paid").font(.system(size: 11)).foregroundStyle(p.green)
+        // Quiet on purpose (Grant, on the canvas: "this side looks busy"): a
+        // label and the amount, no line, no date, so the week reads first.
+        // Nothing owed is "All paid", never "Owed $0".
+        if owed.total <= 0 {
+            PaidUp(p: p)
+        } else {
+            VStack(alignment: .trailing, spacing: 2) {
+                SectionLabel(text: "Owed", color: p.muted)
+                Text(money(owed.total))
+                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                    .foregroundStyle(p.amber)
+                    .minimumScaleFactor(0.7).lineLimit(1)
             }
         }
     }
@@ -416,6 +437,67 @@ struct LevelBlock: View {
             parts.append("work on \(workOn.lowercased())")
         }
         return parts.isEmpty ? "Check in again to see it move" : parts.joined(separator: " · ")
+    }
+}
+
+/// The large widget's third section: the racket on the bench, or the strings
+/// wearing in. Four steps, as the player's track on Home (drop off, with the
+/// stringer, being strung, ready); the restring bar fills by date against the
+/// club's interval, and the advice is "consider", never "overdue".
+struct StringingBlock: View {
+    let stringing: WidgetSnapshot.Stringing
+    let p: WidgetPalette
+
+    private static let steps = ["Dropped off", "With the stringer", "Being strung", "Ready"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let job = stringing.job {
+                HStack(alignment: .firstTextBaseline) {
+                    SectionLabel(text: "Stringing", color: p.muted)
+                    Spacer(minLength: 4)
+                    Text(stageLine(job)).font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(job.stage == "ready_for_you" ? p.green : p.secondary).lineLimit(1)
+                }
+                Text("\(job.racketLabel) · \(job.stringLabel) · \(job.tensionMains) lb").font(.system(size: 13)).foregroundStyle(p.primary).lineLimit(1)
+                HStack(spacing: 4) {
+                    ForEach(0..<4, id: \.self) { i in
+                        Capsule().fill(i <= min(job.stageIndex, 3) ? p.green : p.track).frame(height: 4).widgetAccentable()
+                    }
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    SectionLabel(text: "Your strings", color: p.muted)
+                    Spacer(minLength: 4)
+                    Text(stringing.due ? "Time to restring" : "Fresh").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(stringing.due ? p.amber : p.secondary)
+                }
+                Text(sinceLine).font(.system(size: 12)).foregroundStyle(p.secondary).lineLimit(2)
+                FillBar(fraction: wear, p: p, color: stringing.due ? p.amber : p.green)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func stageLine(_ job: WidgetSnapshot.Stringing.Job) -> String {
+        switch job.stage {
+        case "awaiting_dropoff": return "Drop it off"
+        case "with_stringer": return "With the stringer"
+        case "being_strung": return "Being strung"
+        case "ready_for_you": return job.readyBy.map { "Ready · \(WidgetDates.monthDay($0 + "T12:00:00Z"))" } ?? "Ready"
+        default: return ""
+        }
+    }
+
+    private var sinceLine: String {
+        guard let at = stringing.lastStrungAt, let weeks = stringing.weeksSince else { return "" }
+        let since = "Strung \(WidgetDates.monthDay(at)) · \(weeks) week\(weeks == 1 ? "" : "s") ago"
+        return stringing.due ? since + "\nConsider a restring for a better feel." : since
+    }
+
+    private var wear: Double {
+        guard let weeks = stringing.weeksSince, stringing.afterWeeks > 0 else { return 0 }
+        return min(1, Double(weeks) / Double(stringing.afterWeeks))
     }
 }
 
@@ -460,16 +542,41 @@ struct Sparkline: View {
     }
 }
 
-struct SignedOutView: View {
+/// A widget with one thing to say says it in the middle (Grant, on the canvas).
+struct CenteredMessage: View {
+    let text: String
     let p: WidgetPalette
+    var bold = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Header(p: p)
             Spacer(minLength: 0)
-            Text("Open BPM and sign in to see your week here.")
-                .font(.system(size: 14)).foregroundStyle(p.secondary)
+            Text(text)
+                .font(.system(size: bold ? 15 : 14, weight: bold ? .bold : .regular))
+                .foregroundStyle(p.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
+            Spacer(minLength: 0)
         }
+    }
+}
+
+struct SignedOutView: View {
+    let p: WidgetPalette
+
+    var body: some View {
+        CenteredMessage(text: "Open BPM and sign in to see your week here.", p: p)
+    }
+}
+
+/// The read failed and there is nothing cached to show. Not "sign in": the
+/// pass may be fine and the network not.
+struct UnavailableView: View {
+    let p: WidgetPalette
+
+    var body: some View {
+        CenteredMessage(text: "Couldn't load your week. Tap to open BPM.", p: p)
     }
 }
 
@@ -483,8 +590,11 @@ struct BPMWeekView: View {
     var body: some View {
         let p = WidgetPalette.make(scheme)
         Group {
-            if entry.state == .signedOut || entry.snapshot == nil {
+            if entry.state == .signedOut {
                 SignedOutView(p: p).widgetURL(WidgetLink.home)
+            } else if entry.snapshot == nil {
+                // A read failed and nothing is cached: say so, never "sign in".
+                UnavailableView(p: p).widgetURL(WidgetLink.home)
             } else if let snap = entry.snapshot {
                 switch family {
                 case .systemSmall: small(snap, p)
@@ -510,10 +620,13 @@ struct BPMWeekView: View {
                 SectionLabel(text: smallLabel(WeekStatus(s)), color: smallLabelColor(WeekStatus(s), p))
                 Text(WidgetDates.day(s.datetime)).font(.system(size: 20, weight: .bold)).foregroundStyle(p.primary)
                     .minimumScaleFactor(0.8).lineLimit(1)
-                Text("\(WidgetDates.time(s.datetime)) · \(s.inCount) of \(s.max) in").font(.system(size: 12)).foregroundStyle(p.secondary)
+                Text("\(WidgetDates.time(s.datetime)) · \(s.inCount) signed up").font(.system(size: 12)).foregroundStyle(p.secondary)
                 FillBar(fraction: s.max > 0 ? Double(s.inCount) / Double(s.max) : 0, p: p)
             } else {
                 Text("No session this week").font(.system(size: 15, weight: .bold)).foregroundStyle(p.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                Spacer(minLength: 0)
             }
         }
         .widgetURL(WidgetLink.home)
@@ -521,7 +634,7 @@ struct BPMWeekView: View {
 
     private func smallLabel(_ status: WeekStatus) -> String {
         switch status {
-        case .inSession: return "You're in"
+        case .inSession: return "Signed up"
         case .waitlist(let pos): return pos.map { "Waitlist · \(ordinal($0))" } ?? "Waitlist"
         case .join: return "Sign-ups open"
         case .joinWaitlist: return "Full · waitlist open"
@@ -548,27 +661,34 @@ struct BPMWeekView: View {
                 Link(destination: WidgetLink.home) {
                     WeekBlock(entry: entry, p: p).frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Rectangle().fill(p.rule).frame(width: 1)
                 Link(destination: WidgetLink.home) {
-                    BalanceBlock(owed: snap.owed, p: p).frame(width: 98, alignment: .leading)
+                    BalanceBlock(owed: snap.owed, p: p).frame(width: 90, alignment: .trailing)
                 }
             }
         }
     }
 
-    /// The week, your level and the money (Grant: level on the large size only).
+    /// The week with the money, then your level (Grant: level on the large size only).
     private func large(_ snap: WidgetSnapshot, _ p: WidgetPalette) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Header(p: p, trailing: updated(snap))
-            Link(destination: WidgetLink.home) {
-                VStack(alignment: .leading, spacing: 8) {
-                    if let s = snap.session {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(WidgetDates.day(s.datetime)).font(.system(size: 20, weight: .bold)).foregroundStyle(p.primary)
-                            Text(timeRange(s)).font(.system(size: 13)).foregroundStyle(p.secondary)
+            // The money sits with the sign-up, as on the medium size (Grant, on
+            // the canvas: "this should be part of the sign up section").
+            HStack(alignment: .center, spacing: 14) {
+                Link(destination: WidgetLink.home) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let s = snap.session {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(WidgetDates.day(s.datetime)).font(.system(size: 20, weight: .bold)).foregroundStyle(p.primary)
+                                Text(timeRange(s)).font(.system(size: 13)).foregroundStyle(p.secondary)
+                            }
                         }
+                        WeekBlock(entry: entry, p: p, big: false)
                     }
-                    WeekBlock(entry: entry, p: p, big: false)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Link(destination: WidgetLink.home) {
+                    BalanceBlock(owed: snap.owed, p: p).frame(width: 90, alignment: .trailing)
                 }
             }
             Rectangle().fill(p.rule).frame(height: 1)
@@ -583,17 +703,13 @@ struct BPMWeekView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            Rectangle().fill(p.rule).frame(height: 1)
-            Link(destination: WidgetLink.home) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        SectionLabel(text: "Your balance", color: p.muted)
-                        Text(balanceDetail(snap.owed)).font(.system(size: 12)).foregroundStyle(p.muted)
-                    }
-                    Spacer()
-                    Text(money(snap.owed.total))
-                        .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundStyle(snap.owed.total > 0 ? p.amber : p.primary)
+            // Your racket (Grant, 2026-10-23): the job on the bench step by
+            // step, or the strings wearing in by TIME since the restring. No
+            // finished job, no section — the large widget closes the gap.
+            if let stringing = snap.stringing {
+                Rectangle().fill(p.rule).frame(height: 1)
+                Link(destination: WidgetLink.stringing) {
+                    StringingBlock(stringing: stringing, p: p)
                 }
             }
             Spacer(minLength: 0)
@@ -603,12 +719,6 @@ struct BPMWeekView: View {
     private func timeRange(_ s: WidgetSnapshot.Session) -> String {
         guard let end = s.endDatetime else { return WidgetDates.time(s.datetime) }
         return "\(WidgetDates.time(s.datetime).replacingOccurrences(of: " PM", with: "").replacingOccurrences(of: " AM", with: ""))–\(WidgetDates.time(end))"
-    }
-
-    private func balanceDetail(_ owed: WidgetSnapshot.Owed) -> String {
-        if owed.total <= 0 { return "All paid" }
-        let lines = "\(owed.lines) line\(owed.lines == 1 ? "" : "s")"
-        return owed.since.map { "\(lines) · from \(WidgetDates.monthDay($0))" } ?? lines
     }
 }
 
@@ -651,6 +761,9 @@ struct BPMLockView: View {
             } else if entry.state == .signedOut {
                 Text("BPM").font(.system(size: 12, weight: .bold))
                 Text("Open BPM to sign in").font(.system(size: 13))
+            } else if entry.snapshot == nil {
+                Text("BPM").font(.system(size: 12, weight: .bold))
+                Text("Couldn't load").font(.system(size: 13))
             } else {
                 Text("BPM").font(.system(size: 12, weight: .bold))
                 Text("No session this week").font(.system(size: 13))
@@ -680,7 +793,7 @@ struct BPMLockView: View {
 
     private func lockStatus(_ s: WidgetSnapshot.Session) -> String {
         switch WeekStatus(s) {
-        case .inSession: return "You're in · \(s.inCount)/\(s.max)"
+        case .inSession: return "Signed up · \(s.inCount)/\(s.max)"
         case .waitlist(let pos): return pos.map { "Waitlist · \(ordinal($0))" } ?? "On the waitlist"
         case .join: return "Open · \(s.inCount)/\(s.max)"
         case .joinWaitlist: return "Full · \(s.waitingCount) waiting"
@@ -718,5 +831,8 @@ extension WidgetSnapshot {
         owed: Owed(total: 18.5, lines: 1, since: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-7 * 86400))),
         level: Level(overall: 3.1, phase: "switch", phaseLabel: "Intermediate", prevOverall: 2.7,
                      prevAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-28 * 86400)),
-                     delta: 0.4, history: [2.3, 2.7, 3.1], workOn: "Net play"))
+                     delta: 0.4, history: [2.3, 2.7, 3.1], workOn: "Net play"),
+        stringing: Stringing(job: Stringing.Job(id: "j1", jobNo: "J-0042", racketLabel: "Astrox 88D Pro", stringLabel: "BG 80",
+                                                tensionMains: 26, tensionCrosses: 28, stage: "being_strung", stageIndex: 2, readyBy: nil),
+                             lastStrungAt: nil, weeksSince: nil, due: false, afterWeeks: 8))
 }

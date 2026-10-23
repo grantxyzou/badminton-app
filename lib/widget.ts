@@ -9,11 +9,15 @@ import { resolveIdentity } from './playerIdentity';
 import { computeOwed } from './owedBalance';
 import { stringingTotal } from './stringingBilling';
 import { summarizeAssessmentTrend, type Phase, type StoredAssessment } from './assessment';
-import type { Player, Session } from './types';
+import { playerStageFor, playerStageIndex, type PlayerStage } from './stringing';
+import { lastStrungFromJobs, restringDueWeeks, weeksSince, RESTRING_AFTER_WEEKS } from './restring';
+import { isArchived, benchOrder } from './stringingOrder';
+import type { Player, Session, StringingJob } from './types';
 
 /**
  * What the home-screen widget shows (docs/plans/native-widgets.md): this
- * week's session and your place in it, your balance, and your level.
+ * week's session and your place in it, your balance, your level, and your
+ * racket when the shop has it or has had it.
  *
  * ONE read for the widget, made with the widget's own pass. Every number in it
  * comes from the helper Home already uses for the same number — the owed total
@@ -51,6 +55,42 @@ export interface WidgetLevel {
   workOn: string | null;
 }
 
+/**
+ * The racket on the bench, in the PLAYER's vocabulary — the stage, never the
+ * bench status, and no price at all (the widget shows no money for stringing;
+ * the balance already carries what is due).
+ */
+export interface WidgetStringingJob {
+  id: string;
+  jobNo: string;
+  racketLabel: string;
+  stringLabel: string;
+  tensionMains: number;
+  tensionCrosses: number;
+  stage: PlayerStage;
+  /** Index into `PLAYER_TRACK`: how far along the four-step bar is. */
+  stageIndex: number;
+  readyBy: string | null;
+}
+
+/**
+ * The large widget's third section (Grant, 2026-10-23: "a third section about
+ * stringing. Active job show progress. When a job is done … show a restring in
+ * X weeks? and why?"). By TIME, never by sessions: play outside BPM is
+ * invisible to us, so a session count would undercount it.
+ */
+export interface WidgetStringing {
+  /** The racket on the bench — the job Home's card leads with — or null. */
+  job: WidgetStringingJob | null;
+  /** When the shop last strung for this member (`lib/restring.ts`). */
+  lastStrungAt: string | null;
+  weeksSince: number | null;
+  /** `afterWeeks` or more since, with no racket in: "Consider a restring". */
+  due: boolean;
+  /** The club's interval, so the widget can draw the bar filling by date. */
+  afterWeeks: number;
+}
+
 export interface WidgetSnapshot {
   v: 1;
   name: string;
@@ -58,6 +98,8 @@ export interface WidgetSnapshot {
   session: WidgetSession | null;
   owed: { total: number; lines: number; since: string | null };
   level: WidgetLevel | null;
+  /** Null when there is nothing to say: never used the shop and nothing in. */
+  stringing: WidgetStringing | null;
 }
 
 export const LEVEL_HISTORY = 6;
@@ -142,6 +184,48 @@ async function levelPart(memberId: string): Promise<WidgetLevel | null> {
 }
 
 /**
+ * One partition (`/memberId`), every job archived included — archiving takes
+ * a racket off the bench, it does not un-string it — so the restring clock is
+ * the one Home's card keeps (`lastStrungFromJobs`). The lead job is the first
+ * live, unfinished one in bench order: the racket the card's strip talks about.
+ */
+async function stringingPart(scope: ReturnType<typeof groupScope>, memberId: string, now: number): Promise<WidgetStringing | null> {
+  const jobs = (
+    await scope.query<StringingJob>('stringingJobs', {
+      where: 'c.memberId = @memberId',
+      params: [{ name: '@memberId', value: memberId }],
+      partitionKey: memberId,
+    })
+  ).filter((j) => j.memberId === memberId);
+  const lead = jobs
+    .filter((j) => !isArchived(j) && j.status !== 'picked_up')
+    .sort(benchOrder)[0];
+  const lastStrungAt = lastStrungFromJobs(jobs);
+  if (!lead && lastStrungAt === null) return null;
+  const at = new Date(now);
+  return {
+    job: lead
+      ? {
+          id: lead.id,
+          jobNo: lead.jobNo,
+          racketLabel: lead.racketLabel,
+          stringLabel: lead.stringLabel,
+          tensionMains: lead.tensionMains,
+          tensionCrosses: lead.tensionCrosses,
+          stage: playerStageFor(lead.status),
+          stageIndex: playerStageIndex(lead.status),
+          readyBy: lead.readyBy ?? null,
+        }
+      : null,
+    lastStrungAt,
+    weeksSince: lastStrungAt === null ? null : weeksSince(lastStrungAt, at),
+    // A racket on the bench is already the answer, as on Home's card.
+    due: !lead && restringDueWeeks(lastStrungAt, at) !== null,
+    afterWeeks: RESTRING_AFTER_WEEKS,
+  };
+}
+
+/**
  * Everything the widget draws. Throws when a read fails: the route answers
  * 503 and the widget keeps what it last showed, with its "Updated" time —
  * never a confident zero (the lying-empty-state rule).
@@ -167,7 +251,12 @@ export async function widgetSnapshot(member: MemberSession, now: number = Date.n
     return computeOwed(scope, identity);
   });
 
-  const [[session, rows], owed, level] = await Promise.all([sessionRead, owedRead, levelPart(member.memberId)]);
+  const [[session, rows], owed, level, stringing] = await Promise.all([
+    sessionRead,
+    owedRead,
+    levelPart(member.memberId),
+    stringingPart(scope, member.memberId, now),
+  ]);
 
   const sessionsOwed = owed.sessions.reduce((sum, s) => sum + s.owedAmount, 0);
   const oldest = owed.sessions.length > 0 ? owed.sessions[owed.sessions.length - 1].date : null;
@@ -183,5 +272,6 @@ export async function widgetSnapshot(member: MemberSession, now: number = Date.n
       since: oldest,
     },
     level,
+    stringing,
   };
 }

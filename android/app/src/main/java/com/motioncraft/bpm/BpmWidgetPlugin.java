@@ -33,6 +33,17 @@ public class BpmWidgetPlugin extends Plugin {
     public void clear(PluginCall call) {
         BpmWidgetStore.clear(getContext());
         BpmWidgetProvider.redrawAll(getContext());
+        // Sign-out forgets the score widget's game too — a shared phone.
+        BpmScoreStore.clear(getContext());
+        BpmScoreWidgetProvider.redrawAll(getContext());
+        call.resolve();
+    }
+
+    /** Add a game saved the score the widget was holding (lib/gameIntent.ts). */
+    @PluginMethod
+    public void scoreSaved(PluginCall call) {
+        BpmScoreStore.gameSaved(getContext());
+        BpmScoreWidgetProvider.redrawAll(getContext());
         call.resolve();
     }
 

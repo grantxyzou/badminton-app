@@ -137,6 +137,55 @@ describe('the snapshot is the claimed club’s', () => {
   });
 });
 
+describe('the racket on the widget (the large size’s third section)', () => {
+  const WEEK = 7 * 86_400_000;
+  const job = (id: string, groupId: string, status: string, extra: Record<string, unknown> = {}) =>
+    seedDoc('stringingJobs', {
+      id, groupId, memberId: ANA, jobNo: `J-${id}`, memberName: 'Ana', stringerId: null, stringerName: null,
+      status, racketLabel: 'Astrox 88D Pro', stringLabel: 'BG 80', tensionMains: 26, tensionCrosses: 28,
+      method: '', priceCents: 3000, readyBy: null, acceptedAt: null, paidAt: null, sessionId: null,
+      createdAt: new Date(Date.now() - WEEK).toISOString(), updatedAt: new Date().toISOString(),
+      history: [{ status, at: new Date(Date.now() - WEEK).toISOString(), by: null }],
+      ...extra,
+    });
+
+  it('has nothing to say for someone the shop has never strung for', async () => {
+    const snap = (await (await read(await passFor(A))).json()) as WidgetSnapshot;
+    expect(snap.stringing).toBeNull();
+  });
+
+  it('names the racket on the bench in the player’s words, in this club only', async () => {
+    job('a1', A, 'strung');
+    job('b1', B, 'ready');
+    const snap = (await (await read(await passFor(A))).json()) as WidgetSnapshot;
+    expect(snap.stringing?.job).toMatchObject({ jobNo: 'J-a1', stage: 'being_strung', stageIndex: 2, racketLabel: 'Astrox 88D Pro' });
+    // No price, no stringer: the player projection, as on Home.
+    expect(snap.stringing?.job).not.toHaveProperty('priceCents');
+    expect(snap.stringing?.job).not.toHaveProperty('status');
+    expect(snap.stringing?.due).toBe(false);
+    const other = (await (await read(await passFor(B))).json()) as WidgetSnapshot;
+    expect(other.stringing?.job?.jobNo).toBe('J-b1');
+  });
+
+  it('says a restring is due by TIME since the shop last strung — eight weeks, no racket in', async () => {
+    const nineWeeksAgo = new Date(Date.now() - 9 * WEEK).toISOString();
+    job('old', A, 'picked_up', { archivedAt: new Date().toISOString(), history: [{ status: 'ready', at: nineWeeksAgo, by: null }, { status: 'picked_up', at: nineWeeksAgo, by: null }] });
+    const snap = (await (await read(await passFor(A))).json()) as WidgetSnapshot;
+    expect(snap.stringing).toMatchObject({ job: null, lastStrungAt: nineWeeksAgo, weeksSince: 9, due: true, afterWeeks: 8 });
+  });
+
+  it('is not due with a racket already on the bench, nor inside the interval', async () => {
+    const twoWeeksAgo = new Date(Date.now() - 2 * WEEK).toISOString();
+    job('fresh', A, 'picked_up', { history: [{ status: 'ready', at: twoWeeksAgo, by: null }] });
+    let snap = (await (await read(await passFor(A))).json()) as WidgetSnapshot;
+    expect(snap.stringing).toMatchObject({ job: null, weeksSince: 2, due: false });
+    job('now', A, 'received');
+    snap = (await (await read(await passFor(A))).json()) as WidgetSnapshot;
+    expect(snap.stringing?.job?.stage).toBe('with_stringer');
+    expect(snap.stringing?.due).toBe(false);
+  });
+});
+
 describe('Join and Undo are the sign-up route', () => {
   it('joins, and the answer is the server’s, not a guess', async () => {
     const token = await passFor(A);

@@ -133,6 +133,12 @@ describe('ios/', () => {
      places. */
   it('registers the widget plugin through the storyboard and the project', () => {
     expect(read('ios', 'App', 'App', 'Base.lproj', 'Main.storyboard')).toContain('customClass="MainViewController" customModule="App"');
+    // The scene delegate builds the window IN CODE, so the storyboard's class
+    // is never read: the first cut named MainViewController only there, and on
+    // a phone `isPluginAvailable('BpmWidget')` answered false.
+    const scene = read('ios', 'App', 'App', 'SceneDelegate.swift');
+    expect(scene).toContain('rootViewController = MainViewController()');
+    expect(scene).not.toContain('CAPBridgeViewController()');
     expect(read('ios', 'App', 'App', 'MainViewController.swift')).toContain('registerPluginInstance(BpmWidgetPlugin())');
     const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');
     for (const f of ['MainViewController.swift', 'BpmWidgetPlugin.swift']) {

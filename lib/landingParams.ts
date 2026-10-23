@@ -15,7 +15,7 @@ export const LANDING_PARAMS = ['authError', 'verified', 'signedIn', 'authFlow', 
  * Read by a shell, and NOT a landing: a deep link into a tab is still a launch,
  * and the rest only ever ride along with a parameter above.
  */
-export const NOT_LANDING_PARAMS = ['tab', 'intent', 'email', 'provider'] as const;
+export const NOT_LANDING_PARAMS = ['tab', 'intent', 'email', 'provider', 'game'] as const;
 
 export function isLandingUrl(search: string): boolean {
   const params = new URLSearchParams(search);

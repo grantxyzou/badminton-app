@@ -6,6 +6,8 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet'
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { KUDOS_TAGS, TAG_ICON, type KudosTag } from '@/lib/kudos';
+import type { Score } from '@/lib/scoreRules';
+import { markWidgetGameSaved } from '@/lib/widgetBridge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -37,6 +39,10 @@ export interface SteppedGameLoggerSheetProps {
   open: boolean;
   onClose: () => void;
   onLogged: () => void;
+  /** A score kept on the home-screen widget (lib/gameIntent.ts): the sheet
+   *  starts from it instead of the defaults, with a Swap for the side the
+   *  phone's holder was on. Null is the ordinary open. */
+  prefill?: Score | null;
 }
 
 interface Player {
@@ -51,6 +57,7 @@ export default function SteppedGameLoggerSheet({
   open,
   onClose,
   onLogged,
+  prefill = null,
 }: SteppedGameLoggerSheetProps) {
   const t = useTranslations('stats.logger');
   const tKudos = useTranslations('stats.kudos');
@@ -73,13 +80,13 @@ export default function SteppedGameLoggerSheet({
     setStep('partner');
     setPartner(null);
     setOpponents([]);
-    setMine(DEFAULT_MINE);
-    setTheirs(DEFAULT_THEIRS);
+    setMine(prefill?.a ?? DEFAULT_MINE);
+    setTheirs(prefill?.b ?? DEFAULT_THEIRS);
     setGuestOpen(false);
     setGuest('');
     setError(false);
     setKudosSent({});
-  }, []);
+  }, [prefill]);
 
   useEffect(() => {
     if (open) reset();
@@ -152,6 +159,8 @@ export default function SteppedGameLoggerSheet({
         }),
       });
       if (!res.ok) throw new Error(String(res.status));
+      // The widget keeps a finished game until it is saved here; tell it.
+      if (prefill) void markWidgetGameSaved();
       onLogged();
       setStep('done');
     } catch {
@@ -311,6 +320,23 @@ export default function SteppedGameLoggerSheet({
                 <Stepper label={t('yourScore')} value={mine} onChange={setMine} accent />
                 <Stepper label={t('theirScore')} value={theirs} onChange={setTheirs} />
               </div>
+              {/* The widget scores Green against Blue and cannot know which
+                  side you were on: one tap turns the score round. */}
+              {prefill && (
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-ghost"
+                  onClick={() => {
+                    setMine(theirs);
+                    setTheirs(mine);
+                  }}
+                >
+                  <span className="material-icons" aria-hidden="true" style={{ marginRight: 'var(--space-1)', fontSize: 'var(--icon-sm)', verticalAlign: 'text-bottom' }}>
+                    swap_horiz
+                  </span>
+                  {t('swap')}
+                </button>
+              )}
               <p
                 style={{
                   margin: '0',

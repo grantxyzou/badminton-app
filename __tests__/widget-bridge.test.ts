@@ -8,7 +8,20 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
  */
 
 const widget = vi.hoisted(() => ({ setSession: vi.fn(), clear: vi.fn(), reload: vi.fn() }));
-vi.mock('@capacitor/core', () => ({ registerPlugin: () => widget }));
+// Shaped like Capacitor's real proxy: EVERY property is a native method, `then`
+// included, and an unknown one throws "not implemented". A plain object here
+// is what let a promise resolved with the proxy drop every call unnoticed.
+vi.mock('@capacitor/core', () => ({
+  registerPlugin: () =>
+    new Proxy({}, {
+      get(_t, prop) {
+        if (prop in widget) return widget[prop as keyof typeof widget];
+        return () => {
+          throw new Error(`"BpmWidget.${String(prop)}()" is not implemented on ios`);
+        };
+      },
+    }),
+}));
 
 import { syncWidgetPass, clearWidgets, reloadWidgets, widgetOpenTarget, WIDGET_MINTED_KEY } from '@/lib/widgetBridge';
 
@@ -104,6 +117,14 @@ describe('widgetOpenTarget', () => {
     // An unknown tab, or a path smuggled in, lands on Home — never elsewhere.
     expect(widgetOpenTarget(new URL('bpm://open?tab=admin'))).toMatch(/\/$/);
     expect(widgetOpenTarget(new URL('bpm://open?tab=../legal'))).toMatch(/\/$/);
+  });
+
+  it('carries the score widget’s Save game onto Stats, and only a real score', () => {
+    expect(widgetOpenTarget(new URL('bpm://open?tab=skills&game=21-18'))).toMatch(/\/\?tab=skills&game=21-18$/);
+    // Not a score, or not Stats: the rider is dropped, the tab still opens.
+    expect(widgetOpenTarget(new URL('bpm://open?tab=skills&game=31-18'))).toMatch(/\/\?tab=skills$/);
+    expect(widgetOpenTarget(new URL('bpm://open?tab=skills&game=../x'))).toMatch(/\/\?tab=skills$/);
+    expect(widgetOpenTarget(new URL('bpm://open?tab=home&game=21-18'))).toMatch(/\/$/);
   });
 
   it('is not a widget link otherwise', () => {

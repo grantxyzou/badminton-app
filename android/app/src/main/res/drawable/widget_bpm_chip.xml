@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A quiet pill: Next game, Discard. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/bpm_widget_track" />
+    <stroke android:width="1dp" android:color="@color/bpm_widget_rule" />
+    <corners android:radius="100dp" />
+</shape>

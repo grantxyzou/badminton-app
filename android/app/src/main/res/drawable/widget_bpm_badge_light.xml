@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "20 all · win by two": a solid badge in the text colour. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/bpm_widget_primary" />
+    <corners android:radius="100dp" />
+</shape>

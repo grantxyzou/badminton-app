@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
  * and your level at 4 × 3 (large only, as on iPhone).
  *
  * Join and Undo are broadcasts back to this receiver, which calls the server
- * and redraws from the snapshot it answers with — "You're in" only after the
+ * and redraws from the snapshot it answers with — "Signed up" only after the
  * server said yes. Every tap that opens the app names a TAB through
  * `bpm://open?tab=` (lib/widgetBridge.ts `widgetOpenTarget`), never a path.
  */
@@ -177,7 +177,7 @@ public class BpmWidgetProvider extends AppWidgetProvider {
             v.setTextViewText(R.id.bpm_small_label, status.smallLabel(s).toUpperCase(Locale.US));
             v.setTextColor(R.id.bpm_small_label, context.getColor(status.labelColor()));
             v.setTextViewText(R.id.bpm_small_date, day(s.optString("datetime")));
-            v.setTextViewText(R.id.bpm_small_count, time(s.optString("datetime")) + " · " + s.optInt("inCount") + " of " + s.optInt("max") + " in");
+            v.setTextViewText(R.id.bpm_small_count, time(s.optString("datetime")) + " · " + s.optInt("inCount") + " signed up");
             v.setViewVisibility(R.id.bpm_small_count, View.VISIBLE);
             v.setViewVisibility(R.id.bpm_fill, View.VISIBLE);
             v.setProgressBar(R.id.bpm_fill, Math.max(s.optInt("max"), 1), s.optInt("inCount"), false);
@@ -239,10 +239,13 @@ public class BpmWidgetProvider extends AppWidgetProvider {
         // The balance.
         JSONObject owed = snap.optJSONObject("owed");
         double total = owed == null ? 0 : owed.optDouble("total", 0);
+        // Nothing owed is "All paid", never "Owed $0".
+        boolean paidUp = total <= 0;
+        v.setViewVisibility(R.id.bpm_balance_label, paidUp ? View.GONE : View.VISIBLE);
+        v.setViewVisibility(R.id.bpm_balance_amount, paidUp ? View.GONE : View.VISIBLE);
+        v.setViewVisibility(R.id.bpm_balance_paid, paidUp ? View.VISIBLE : View.GONE);
         v.setTextViewText(R.id.bpm_balance_amount, money(total));
-        v.setTextColor(R.id.bpm_balance_amount, context.getColor(total > 0 ? R.color.bpm_widget_amber : R.color.bpm_widget_primary));
-        v.setTextViewText(R.id.bpm_balance_detail, balanceDetail(owed, large));
-        v.setTextColor(R.id.bpm_balance_detail, context.getColor(total > 0 ? R.color.bpm_widget_muted : R.color.bpm_widget_green));
+        v.setTextColor(R.id.bpm_balance_amount, context.getColor(R.color.bpm_widget_amber));
         v.setOnClickPendingIntent(R.id.bpm_balance_area, open(context, "home", 11));
 
         // Your level — the large size only (Grant, 2026-10-22).
@@ -258,8 +261,72 @@ public class BpmWidgetProvider extends AppWidgetProvider {
                 v.setTextViewText(R.id.bpm_level_trend, trendLine(level));
             }
             v.setOnClickPendingIntent(R.id.bpm_level_area, open(context, "skills", 12));
+            stringing(context, v, snap.optJSONObject("stringing"));
         }
         return v;
+    }
+
+    // ── Stringing: the racket on the bench, or the strings wearing in ──
+
+    private static final int[] STRING_STEPS = {
+        R.id.bpm_string_step1, R.id.bpm_string_step2, R.id.bpm_string_step3, R.id.bpm_string_step4,
+    };
+
+    /**
+     * The large widget's third section, the twin of BPMWidget.swift's
+     * StringingBlock. A live job shows the player's four-step track; otherwise
+     * the restring bar fills by DATE against the club's interval (time, not
+     * sessions — we cannot know when they play outside BPM), and the advice is
+     * "consider", never "overdue". Absent (never strung, nothing on the bench)
+     * hides the section rather than explaining itself.
+     */
+    private static void stringing(Context context, RemoteViews v, JSONObject stringing) {
+        boolean show = stringing != null;
+        v.setViewVisibility(R.id.bpm_string_divider, show ? View.VISIBLE : View.GONE);
+        v.setViewVisibility(R.id.bpm_string_area, show ? View.VISIBLE : View.GONE);
+        if (!show) return;
+        v.setOnClickPendingIntent(R.id.bpm_string_area, open(context, "stringing", 13));
+        JSONObject job = stringing.optJSONObject("job");
+        v.setViewVisibility(R.id.bpm_string_wear, View.GONE);
+        v.setViewVisibility(R.id.bpm_string_wear_due, View.GONE);
+        if (job != null) {
+            v.setTextViewText(R.id.bpm_string_label, "STRINGING");
+            v.setTextViewText(R.id.bpm_string_status, stageLine(job));
+            boolean ready = "ready_for_you".equals(job.optString("stage"));
+            v.setTextColor(R.id.bpm_string_status, context.getColor(ready ? R.color.bpm_widget_green : R.color.bpm_widget_secondary));
+            v.setTextViewText(R.id.bpm_string_line,
+                job.optString("racketLabel") + " · " + job.optString("stringLabel") + " · " + job.optInt("tensionMains") + " lb");
+            v.setViewVisibility(R.id.bpm_string_steps, View.VISIBLE);
+            int reached = Math.min(job.optInt("stageIndex"), 3);
+            for (int i = 0; i < STRING_STEPS.length; i++) {
+                v.setInt(STRING_STEPS[i], "setBackgroundResource", i <= reached ? R.drawable.widget_bpm_step_on : R.drawable.widget_bpm_step_off);
+            }
+            return;
+        }
+        boolean due = stringing.optBoolean("due");
+        int weeks = stringing.optInt("weeksSince", 0);
+        int after = Math.max(stringing.optInt("afterWeeks", 8), 1);
+        v.setTextViewText(R.id.bpm_string_label, "YOUR STRINGS");
+        v.setTextViewText(R.id.bpm_string_status, due ? "Time to restring" : "Fresh");
+        v.setTextColor(R.id.bpm_string_status, context.getColor(due ? R.color.bpm_widget_amber : R.color.bpm_widget_secondary));
+        String since = "Strung " + monthDay(stringing.optString("lastStrungAt")) + " · " + weeks + (weeks == 1 ? " week ago" : " weeks ago");
+        v.setTextViewText(R.id.bpm_string_line, due ? since + "\nConsider a restring for a better feel." : since);
+        v.setViewVisibility(R.id.bpm_string_steps, View.GONE);
+        int bar = due ? R.id.bpm_string_wear_due : R.id.bpm_string_wear;
+        v.setViewVisibility(bar, View.VISIBLE);
+        v.setProgressBar(bar, after, Math.min(weeks, after), false);
+    }
+
+    /** The stage in the player's words — the same four Home's track uses. */
+    private static String stageLine(JSONObject job) {
+        switch (job.optString("stage")) {
+            case "awaiting_dropoff": return "Drop it off";
+            case "with_stringer": return "With the stringer";
+            case "being_strung": return "Being strung";
+            case "ready_for_you":
+                return job.isNull("readyBy") ? "Ready" : "Ready · " + monthDay(job.optString("readyBy") + "T12:00:00Z");
+            default: return "";
+        }
     }
 
     // ── The week's status, decided once ──
@@ -279,7 +346,7 @@ public class BpmWidgetProvider extends AppWidgetProvider {
 
         String headline(JSONObject s) {
             switch (this) {
-                case IN: return "✓ You're in";
+                case IN: return "✓ Signed up";
                 case WAITLIST: return position(s) == null ? "On the waitlist" : "Waitlist · " + position(s);
                 case JOIN: return "Open now";
                 case JOIN_WAITLIST: return "Full";
@@ -292,7 +359,7 @@ public class BpmWidgetProvider extends AppWidgetProvider {
 
         String smallLabel(JSONObject s) {
             switch (this) {
-                case IN: return "You're in";
+                case IN: return "Signed up";
                 case WAITLIST: return position(s) == null ? "Waitlist" : "Waitlist · " + position(s);
                 case JOIN: return "Sign-ups open";
                 case JOIN_WAITLIST: return "Full · waitlist open";
@@ -322,18 +389,9 @@ public class BpmWidgetProvider extends AppWidgetProvider {
         int in = s.optInt("inCount");
         int max = s.optInt("max");
         int waiting = s.optInt("waitingCount");
-        if (waiting > 0 && in >= max) return in + " of " + max + " in · " + waiting + " waiting";
+        if (waiting > 0 && in >= max) return in + " signed up · " + waiting + " waiting";
         int left = Math.max(max - in, 0);
-        return in + " of " + max + " in" + (left > 0 ? " · " + left + (left == 1 ? " spot left" : " spots left") : "");
-    }
-
-    private static String balanceDetail(JSONObject owed, boolean large) {
-        if (owed == null || owed.optDouble("total", 0) <= 0) return "All paid";
-        String since = owed.isNull("since") ? null : owed.optString("since");
-        if (!large) return since == null ? "" : "from " + monthDay(since);
-        int lines = owed.optInt("lines");
-        String head = lines + (lines == 1 ? " line" : " lines");
-        return since == null ? head : head + " · from " + monthDay(since);
+        return in + " signed up" + (left > 0 ? " · " + left + (left == 1 ? " spot left" : " spots left") : "");
     }
 
     private static String trendLine(JSONObject level) {
