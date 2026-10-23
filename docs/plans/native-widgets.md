@@ -99,7 +99,8 @@ ten minutes, more than one in five), Join goes back to opening the app.
   same shape (a plain object hid it). Found in Grant's Web Inspector log: the
   badge and shortcut calls showed, the widget's never did.
 - **"Signed up", not "You're in"** (Grant, on the canvas): the widget's word for
-  being on the list, on both platforms and the lock screen.
+  being on the list, on both platforms and the lock screen, and the count is
+  "9 signed up", not "9 of 12 in".
 
 ## Shape
 

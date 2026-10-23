@@ -331,17 +331,17 @@ struct WeekBlock: View {
                 Text("Tap to finish in BPM").font(.system(size: 12)).foregroundStyle(p.secondary)
             } else if showsActions, entry.undoOffered, case .inSession = status {
                 HStack(spacing: 4) {
-                    Text("\(s.inCount) of \(s.max) in ·").font(.system(size: 12)).foregroundStyle(p.secondary)
+                    Text("\(s.inCount) signed up ·").font(.system(size: 12)).foregroundStyle(p.secondary)
                     Button(intent: UndoJoinIntent()) {
                         Text("Undo").font(.system(size: 12, weight: .semibold)).underline().foregroundStyle(p.primary)
                     }
                     .buttonStyle(.plain)
                 }
             } else if s.waitingCount > 0 && s.inCount >= s.max {
-                Text("\(s.inCount) of \(s.max) in · \(s.waitingCount) waiting").font(.system(size: 12)).foregroundStyle(p.secondary)
+                Text("\(s.inCount) signed up · \(s.waitingCount) waiting").font(.system(size: 12)).foregroundStyle(p.secondary)
             } else {
                 let left = max(s.max - s.inCount, 0)
-                Text("\(s.inCount) of \(s.max) in" + (left > 0 ? " · \(left) spot\(left == 1 ? "" : "s") left" : ""))
+                Text("\(s.inCount) signed up" + (left > 0 ? " · \(left) spot\(left == 1 ? "" : "s") left" : ""))
                     .font(.system(size: 12)).foregroundStyle(p.secondary).lineLimit(1)
             }
         }
@@ -528,7 +528,7 @@ struct BPMWeekView: View {
                 SectionLabel(text: smallLabel(WeekStatus(s)), color: smallLabelColor(WeekStatus(s), p))
                 Text(WidgetDates.day(s.datetime)).font(.system(size: 20, weight: .bold)).foregroundStyle(p.primary)
                     .minimumScaleFactor(0.8).lineLimit(1)
-                Text("\(WidgetDates.time(s.datetime)) · \(s.inCount) of \(s.max) in").font(.system(size: 12)).foregroundStyle(p.secondary)
+                Text("\(WidgetDates.time(s.datetime)) · \(s.inCount) signed up").font(.system(size: 12)).foregroundStyle(p.secondary)
                 FillBar(fraction: s.max > 0 ? Double(s.inCount) / Double(s.max) : 0, p: p)
             } else {
                 Text("No session this week").font(.system(size: 15, weight: .bold)).foregroundStyle(p.secondary)

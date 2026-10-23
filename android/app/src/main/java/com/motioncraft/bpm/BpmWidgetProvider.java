@@ -177,7 +177,7 @@ public class BpmWidgetProvider extends AppWidgetProvider {
             v.setTextViewText(R.id.bpm_small_label, status.smallLabel(s).toUpperCase(Locale.US));
             v.setTextColor(R.id.bpm_small_label, context.getColor(status.labelColor()));
             v.setTextViewText(R.id.bpm_small_date, day(s.optString("datetime")));
-            v.setTextViewText(R.id.bpm_small_count, time(s.optString("datetime")) + " · " + s.optInt("inCount") + " of " + s.optInt("max") + " in");
+            v.setTextViewText(R.id.bpm_small_count, time(s.optString("datetime")) + " · " + s.optInt("inCount") + " signed up");
             v.setViewVisibility(R.id.bpm_small_count, View.VISIBLE);
             v.setViewVisibility(R.id.bpm_fill, View.VISIBLE);
             v.setProgressBar(R.id.bpm_fill, Math.max(s.optInt("max"), 1), s.optInt("inCount"), false);
@@ -322,9 +322,9 @@ public class BpmWidgetProvider extends AppWidgetProvider {
         int in = s.optInt("inCount");
         int max = s.optInt("max");
         int waiting = s.optInt("waitingCount");
-        if (waiting > 0 && in >= max) return in + " of " + max + " in · " + waiting + " waiting";
+        if (waiting > 0 && in >= max) return in + " signed up · " + waiting + " waiting";
         int left = Math.max(max - in, 0);
-        return in + " of " + max + " in" + (left > 0 ? " · " + left + (left == 1 ? " spot left" : " spots left") : "");
+        return in + " signed up" + (left > 0 ? " · " + left + (left == 1 ? " spot left" : " spots left") : "");
     }
 
     private static String balanceDetail(JSONObject owed, boolean large) {
