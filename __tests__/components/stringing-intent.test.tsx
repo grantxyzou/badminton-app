@@ -162,6 +162,8 @@ describe('arriving on Stringing', () => {
     renderStringing();
     expect(await screen.findByText('Coming soon')).toBeTruthy();
     expect(screen.queryByLabelText('Which racket?')).toBeNull();
-    expect(hasStringingIntent()).toBe(false);
+    // Consumed once the identity is read too, which can land a render after
+    // "Coming soon" — on a slow CI runner it did (PR #702).
+    await waitFor(() => expect(hasStringingIntent()).toBe(false));
   });
 });
