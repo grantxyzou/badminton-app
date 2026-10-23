@@ -192,8 +192,71 @@ describe('SteppedGameLoggerSheet', () => {
     expect(screen.queryByText('Logged — thanks!')).toBeNull();
   });
 
-  it('still lets a guest be added when the roster read fails', async () => {
-    mockFetch({ '/api/players': () => jsonResponse({ error: 'load_failed' }, false) });
+  it('lists the rest of the club below tonight, each name once', async () => {
+    mockFetch({
+      '/api/members': () =>
+        jsonResponse([
+          { name: 'Lin', active: true },
+          { name: 'viktor', active: true }, // on tonight's list already (case differs)
+          { name: 'Carolina', active: true },
+          { name: 'Sindhu', active: false },
+        ]),
+    });
+    renderSheet();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Carolina' })).toBeTruthy());
+    expect(screen.getByText('Tonight')).toBeTruthy();
+    expect(screen.getByText('Everyone else')).toBeTruthy();
+    // Tonight's spelling wins; the club copy is not offered a second time.
+    expect(screen.getAllByRole('button', { name: /viktor/i })).toHaveLength(1);
+    // The viewer and a removed member are never offered.
+    expect(screen.queryByRole('button', { name: 'Lin' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sindhu' })).toBeNull();
+    // A club member works as a partner like anyone on tonight's list.
+    fireEvent.click(screen.getByRole('button', { name: 'Carolina' }));
+    expect(screen.getByText(/With Carolina — who were you against\?/)).toBeTruthy();
+  });
+
+  it('offers the club when nobody is on tonight\'s list yet', async () => {
+    mockFetch({
+      '/api/players': () => jsonResponse([]),
+      '/api/members': () => jsonResponse([{ name: 'Carolina', active: true }]),
+    });
+    renderSheet();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Carolina' })).toBeTruthy());
+    expect(screen.getByText("Nobody on tonight's list yet.")).toBeTruthy();
+    expect(screen.queryByText('Tonight')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says so when only tonight\'s list failed, and keeps the club', async () => {
+    mockFetch({
+      '/api/players': () => jsonResponse({ error: 'load_failed' }, false),
+      '/api/members': () => jsonResponse([{ name: 'Carolina', active: true }]),
+    });
+    renderSheet();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Carolina' })).toBeTruthy());
+    expect(screen.getByText("Couldn't load tonight's list.")).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says so when the club read failed and tonight is empty — never a blank step', async () => {
+    mockFetch({
+      '/api/players': () => jsonResponse([]),
+      '/api/members': () => jsonResponse({ error: 'read_failed' }, false, 503),
+    });
+    renderSheet();
+    await waitFor(() => expect(screen.getByText("Couldn't load the rest of the club.")).toBeTruthy());
+    expect(screen.queryByText("Nobody on tonight's list yet.")).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    // The typed-name line is still the way through.
+    expect(screen.getByRole('button', { name: 'Add someone not on the list' })).toBeTruthy();
+  });
+
+  it('still lets a guest be added when both reads fail', async () => {
+    mockFetch({
+      '/api/players': () => jsonResponse({ error: 'load_failed' }, false),
+      '/api/members': () => jsonResponse({ error: 'read_failed' }, false, 503),
+    });
     renderSheet();
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
     // Legible failure that does not block the task.

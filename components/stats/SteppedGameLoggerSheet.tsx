@@ -51,6 +51,14 @@ interface Player {
   removed?: boolean;
 }
 
+/** `GET /api/members` as a non-admin sees it (`rosterPublicRows`). */
+interface ClubRow {
+  name?: string;
+  active?: boolean;
+}
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
 export default function SteppedGameLoggerSheet({
   you,
   sessionId,
@@ -66,6 +74,12 @@ export default function SteppedGameLoggerSheet({
   const [step, setStep] = useState<Step>('partner');
   const [roster, setRoster] = useState<string[]>([]);
   const [rosterError, setRosterError] = useState(false);
+  // The rest of the club, below tonight's list. A game is not only played on
+  // a session night (the score widget's Save game arrives whenever a game
+  // ends), and on a night nobody has signed up for yet the list above is
+  // empty — which read as "can't save a game" (Grant, 2026-10-23).
+  const [club, setClub] = useState<string[]>([]);
+  const [clubError, setClubError] = useState(false);
   const [partner, setPartner] = useState<string | null>(null);
   const [opponents, setOpponents] = useState<string[]>([]);
   const [mine, setMine] = useState(DEFAULT_MINE);
@@ -114,6 +128,18 @@ export default function SteppedGameLoggerSheet({
         setRosterError(false);
       })
       .catch(() => live && setRosterError(true));
+    fetch(`${BASE}/api/members`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (!live) return;
+        const names = ((Array.isArray(d) ? d : []) as ClubRow[])
+          .filter((m) => m?.name && m.active !== false)
+          .map((m) => m.name as string)
+          .filter((n) => !sameName(n, you));
+        setClub(names);
+        setClubError(false);
+      })
+      .catch(() => live && setClubError(true));
     return () => {
       live = false;
     };
@@ -187,6 +213,61 @@ export default function SteppedGameLoggerSheet({
   }
 
   const listFor = step === 'opponents' ? roster.filter((n) => n !== partner) : roster;
+  // Everyone in the club who is not already on tonight's list (and not the
+  // partner once one is picked), so a name is never offered twice.
+  const clubFor = club.filter((n) => !listFor.some((r) => sameName(r, n)) && (step !== 'opponents' || n !== partner));
+
+  const nameRow = (name: string) => {
+    const picked = step === 'partner' ? partner === name : opponents.includes(name);
+    return (
+      <button
+        key={name}
+        type="button"
+        aria-pressed={picked}
+        className="flow-step"
+        onClick={() => {
+          if (step === 'partner') {
+            // Tapping a name advances immediately — there is no
+            // Next on this step, because picking IS the answer.
+            setPartner(name);
+            // Going Back and picking someone already tapped as
+            // an opponent has to drop them from that list: the
+            // opponents step hides the partner, so an overlap
+            // left here can never be untoggled, and both teams
+            // submit with the same person on them.
+            setOpponents((prev) => prev.filter((n) => n !== name));
+            setStep('opponents');
+          } else {
+            toggleOpponent(name);
+          }
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 'var(--space-3)',
+          padding: 'var(--space-4) var(--space-4)',
+          minHeight: 48,
+          borderRadius: 'var(--radius-lg)',
+          background: picked ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
+          border: `1px solid ${picked ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
+          color: 'var(--text-primary)',
+          fontSize: 'var(--fs-md)',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
+        <span>{name}</span>
+        <span
+          className="material-icons"
+          aria-hidden="true"
+          style={{ fontSize: 'var(--icon-md)', color: picked ? 'var(--accent)' : 'var(--text-muted)' }}
+        >
+          {picked ? 'check_circle' : 'radio_button_unchecked'}
+        </span>
+      </button>
+    );
+  };
 
   return (
     <BottomSheet
@@ -217,61 +298,31 @@ export default function SteppedGameLoggerSheet({
                 {step === 'partner' ? t('whoWith') : t('whoAgainst', { partner: partner ?? '' })}
               </p>
 
-              {rosterError && <ErrorState message={t('rosterError')} />}
+              {/* Both reads failed: nothing to pick from but a typed name. One
+                  failed: the other list stands, with a line saying which is missing. */}
+              {rosterError && clubError && <ErrorState message={t('rosterError')} />}
+              {rosterError && !clubError && (
+                <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tonightError')}</p>
+              )}
+              {clubError && !rosterError && (
+                <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('clubError')}</p>
+              )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {listFor.map((name) => {
-                  const picked = step === 'partner' ? partner === name : opponents.includes(name);
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      aria-pressed={picked}
-                      className="flow-step"
-                      onClick={() => {
-                        if (step === 'partner') {
-                          // Tapping a name advances immediately — there is no
-                          // Next on this step, because picking IS the answer.
-                          setPartner(name);
-                          // Going Back and picking someone already tapped as
-                          // an opponent has to drop them from that list: the
-                          // opponents step hides the partner, so an overlap
-                          // left here can never be untoggled, and both teams
-                          // submit with the same person on them.
-                          setOpponents((prev) => prev.filter((n) => n !== name));
-                          setStep('opponents');
-                        } else {
-                          toggleOpponent(name);
-                        }
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 'var(--space-3)',
-                        padding: 'var(--space-4) var(--space-4)',
-                        minHeight: 48,
-                        borderRadius: 'var(--radius-lg)',
-                        background: picked ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
-                        border: `1px solid ${picked ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
-                        color: 'var(--text-primary)',
-                        fontSize: 'var(--fs-md)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <span>{name}</span>
-                      <span
-                        className="material-icons"
-                        aria-hidden="true"
-                        style={{ fontSize: 'var(--icon-md)', color: picked ? 'var(--accent)' : 'var(--text-muted)' }}
-                      >
-                        {picked ? 'check_circle' : 'radio_button_unchecked'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              {listFor.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {clubFor.length > 0 && <span className="section-label">{t('tonight')}</span>}
+                  {listFor.map(nameRow)}
+                </div>
+              )}
+              {listFor.length === 0 && !rosterError && clubFor.length > 0 && (
+                <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('noTonight')}</p>
+              )}
+              {clubFor.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {(listFor.length > 0 || rosterError) && <span className="section-label">{t('club')}</span>}
+                  {clubFor.map(nameRow)}
+                </div>
+              )}
 
               {/* Guests: someone who turned up but isn't on tonight's list. */}
               {guestOpen ? (

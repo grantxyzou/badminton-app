@@ -258,7 +258,7 @@ struct BPMScoreView: View {
         let p = WidgetPalette.make(scheme)
         let gamePoint = entry.game.map { ScoreRules.gamePoint($0.score) } ?? nil
         content(p, gamePoint: gamePoint)
-            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .containerBackground(for: .widget) {
                 ZStack {
                     p.background
@@ -290,13 +290,13 @@ struct BPMScoreView: View {
             Spacer(minLength: 0)
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Keep score").font(.system(size: 18, weight: .bold)).foregroundStyle(p.primary)
-                    Text("Game \(entry.nextGameNo) tonight · to \(ScoreRules.gameTo)").font(.system(size: 12)).foregroundStyle(p.secondary)
+                    Text("Keep score").font(.system(size: 22, weight: .bold)).foregroundStyle(p.primary)
+                    Text("Game \(entry.nextGameNo) tonight · to \(ScoreRules.gameTo)").font(.system(size: 13)).foregroundStyle(p.secondary)
                 }
                 Spacer(minLength: 0)
                 Button(intent: StartGameIntent()) {
-                    Label("Start", systemImage: "play.fill").font(.system(size: 11, weight: .bold))
-                        .padding(.horizontal, 10).padding(.vertical, 4)
+                    Label("Start", systemImage: "play.fill").font(.system(size: 13, weight: .bold))
+                        .padding(.horizontal, 14).padding(.vertical, 7)
                         .foregroundStyle(Color(red: 0.02, green: 0.18, blue: 0.09))
                         .background(Capsule().fill(p.green))
                 }
@@ -339,7 +339,7 @@ struct BPMScoreView: View {
                         Image(systemName: "arrow.uturn.backward").font(.system(size: 18)).foregroundStyle(p.secondary)
                         Text("Undo").font(.system(size: 10)).foregroundStyle(p.muted)
                     }
-                    .frame(width: 44, maxHeight: .infinity)
+                    .frame(width: 44).frame(maxHeight: .infinity)
                 }
                 .buttonStyle(.plain)
                 .disabled(game.points.isEmpty)
@@ -380,14 +380,14 @@ struct BPMScoreView: View {
         return Button(intent: PointIntent(side: side)) {
             ZStack(alignment: .topTrailing) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(side.name).font(.system(size: 11, weight: .semibold)).foregroundStyle(tint)
-                    Text("\(points)").font(.system(size: 36, weight: .bold, design: .monospaced))
+                    Text(side.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(tint)
+                    Text("\(points)").font(.system(size: 44, weight: .bold, design: .monospaced))
                         .foregroundStyle(gamePoint ? p.amber : p.primary).minimumScaleFactor(0.7).lineLimit(1)
                     Text(gamePoint ? "+1 wins it" : "+1").font(.system(size: 11, weight: .bold))
                         .foregroundStyle(gamePoint ? p.amber : p.muted)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(.horizontal, 12).padding(.vertical, 8)
+                .padding(.horizontal, 12).padding(.vertical, 6)
                 // The amber dot is who serves — it follows the last rally.
                 if serving { Circle().fill(p.amber).frame(width: 8, height: 8).padding(8) }
             }
@@ -408,15 +408,15 @@ struct BPMScoreView: View {
             Header(p: p, trailing: "Game \(game.gameNo)")
             Spacer(minLength: 0)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("\(s.a)–\(s.b)").font(.system(size: 28, weight: .bold, design: .monospaced)).foregroundStyle(p.primary)
+                Text("\(s.a)–\(s.b)").font(.system(size: 36, weight: .bold, design: .monospaced)).foregroundStyle(p.primary)
                 if let w = winner {
-                    Text("\(w.name) wins").font(.system(size: 16, weight: .bold)).foregroundStyle(w == .a ? p.green : p.blue)
+                    Text("\(w.name) wins").font(.system(size: 18, weight: .bold)).foregroundStyle(w == .a ? p.green : p.blue)
                 }
             }
             HStack(spacing: 8) {
                 Link(destination: ScoreLink.save(s)) {
-                    Label("Save game", systemImage: "checkmark").font(.system(size: 11, weight: .bold))
-                        .padding(.horizontal, 10).padding(.vertical, 4)
+                    Label("Save game", systemImage: "checkmark").font(.system(size: 12, weight: .bold))
+                        .padding(.horizontal, 12).padding(.vertical, 6)
                         .foregroundStyle(Color(red: 0.02, green: 0.18, blue: 0.09))
                         .background(Capsule().fill(p.green))
                 }
@@ -428,8 +428,8 @@ struct BPMScoreView: View {
     }
 
     private func ghost(_ text: String, _ p: WidgetPalette) -> some View {
-        Text(text).font(.system(size: 11, weight: .bold))
-            .padding(.horizontal, 10).padding(.vertical, 4)
+        Text(text).font(.system(size: 12, weight: .bold))
+            .padding(.horizontal, 12).padding(.vertical, 6)
             .foregroundStyle(p.secondary)
             .background(Capsule().strokeBorder(p.rule, lineWidth: 1).background(Capsule().fill(p.primary.opacity(0.06))))
     }
