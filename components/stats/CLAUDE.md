@@ -347,7 +347,7 @@ conditional.
   retires. `maxFlexDemand` is still exported for that legacy path only — the
   fit engine no longer reads it.
 
-### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`) — the OFF branch of the flag above
+### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`) — off the route since the flag above retired (2026-10-24); `recommendRackets` stays for Phase 4
 
 Scores the **fourteen check-in skill ratings** rather than the old
 `Member.stage` (optional, rarely set — so it showed nearly everyone the same

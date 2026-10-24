@@ -1,6 +1,6 @@
 # Azure Architecture — Badminton App
 
-Last verified against the repo: 2026-10-15. Rows marked **†** cannot be derived
+Last verified against the repo: 2026-10-24. Rows marked **†** cannot be derived
 from anything in this repository; they are what the Azure portal said when
 someone last looked, and the "Observed in the portal" section at the end is
 where a fresh look gets recorded.
@@ -270,7 +270,8 @@ Three routes call the SDK:
   the async `isAdminAuthedWithMember` check, accepting the cost, because it
   spends API budget.
 - `GET /api/stats/insight` — the member-facing weekly read on Stats.
-- `POST /api/equipment/fit-verdict` — the racket-fit verdict, flag-gated.
+- `POST /api/equipment/fit-verdict` — the racket-fit verdict (its flag retired
+  2026-10-19; with no API key it answers without AI words).
 
 The browser never calls Anthropic directly. The shared voice in
 `lib/aiPersona.ts` is opt-in per caller (see
@@ -349,8 +350,8 @@ on the row's `memberId`), for members whose token lives in another browser.
 ```
 Browser
   POST /api/players  { name, waitlist?: boolean, pin? }
-    → per-IP rate limit (10/min; 60/min with members-only on, because the
-      per-MEMBER limit of 10/min then does the real work)
+    → per-IP rate limit (60/min; the per-MEMBER limit of 10/min after it
+      does the real work)
     → members-only: must be a signed-in active member; name comes from the
       account and the body's name is ignored
     → signupOpen check (403 if closed, admin bypasses)
@@ -524,6 +525,9 @@ the repo plus Microsoft's published Cosmos limits: **good enough for the launch
 scale of a handful of small clubs, not built for many.** No Azure change is
 needed to turn the flag on. Three portal checks are, because hosting other
 clubs' data makes the operator responsible for it (`app/legal/privacy`).
+**The flag went on in production on 2026-10-22** (#700, `deploy-next.yml`);
+the week of watching below runs to the review on 2026-10-29
+(`docs/plans/multi-group.md`).
 
 **Why multi-group costs nothing in Azure.** A club is a `groupId` field on each
 row, not a database or container per club (`docs/plans/multi-group.md`). One

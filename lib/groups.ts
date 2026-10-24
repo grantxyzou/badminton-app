@@ -35,24 +35,15 @@ import type { Group, GroupSettings, Membership, MembershipRole, NameReservation 
 
 // ---------------------------------------------------------------------------
 // Provisioning — both are new containers, so a route must ensure them before
-// first use. Lazy promise, the `app/api/skills/route.ts` pattern; a failure
-// clears the memo so the next call retries rather than caching the outage.
+// first use. `ensureContainer` memoizes per process and forgets a failure,
+// so the next call retries rather than caching the outage.
 // ---------------------------------------------------------------------------
 
-let ready: Promise<void> | null = null;
 function ensureReady(): Promise<void> {
-  if (!ready) {
-    ready = Promise.all([
-      ensureContainer('groups', '/id'),
-      ensureContainer('memberships', '/groupId'),
-    ])
-      .then(() => undefined)
-      .catch((err) => {
-        ready = null;
-        throw err;
-      });
-  }
-  return ready;
+  return Promise.all([
+    ensureContainer('groups', '/id'),
+    ensureContainer('memberships', '/groupId'),
+  ]).then(() => undefined);
 }
 
 // ---------------------------------------------------------------------------

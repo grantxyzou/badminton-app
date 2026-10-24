@@ -14,15 +14,8 @@ const isRelease = (r: { kind?: unknown }) => r.kind === undefined || r.kind === 
 export const dynamic = 'force-dynamic';
 
 // Lazy container bootstrap — real Cosmos doesn't auto-create containers.
-let releasesReady: Promise<void> | null = null;
 function ensureReleasesContainer(): Promise<void> {
-  if (!releasesReady) {
-    releasesReady = ensureContainer('releases', '/id').catch((err) => {
-      releasesReady = null;
-      throw err;
-    });
-  }
-  return releasesReady;
+  return ensureContainer('releases', '/id');
 }
 
 interface ReleaseBody {

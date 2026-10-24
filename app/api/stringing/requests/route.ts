@@ -45,15 +45,8 @@ const REQUESTS_PER_HOUR = 10;
 const MAX_OPEN_PER_MEMBER = 3;
 const OPEN_STATUSES = ['requested', 'received', 'strung', 'ready'];
 
-let ready: Promise<void> | null = null;
 function ensureJobs(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('stringingJobs', '/memberId').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('stringingJobs', '/memberId');
 }
 
 function label(value: unknown, max = 80): string | null {

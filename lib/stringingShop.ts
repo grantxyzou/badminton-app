@@ -22,15 +22,8 @@ export interface ShopDoc {
   updatedBy: string | null;
 }
 
-let ready: Promise<void> | null = null;
 export function ensureClubSettings(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('clubSettings', '/id').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('clubSettings', '/id');
 }
 
 /**

@@ -3,8 +3,9 @@
 Your personal operating manual. Not agent instructions (that's `CLAUDE.md`),
 not strategy (that's `ROADMAP.md`). This is *your* reference — maintain it.
 
-Last verified against the repo: 2026-10-15. Every claim below was checked that
+Last verified against the repo: 2026-10-24. Every claim below was checked that
 day; the ones that could only be checked in the Azure portal are marked so.
+The three routines were not re-read on 2026-10-24; their own dates stand.
 
 ---
 
@@ -76,15 +77,18 @@ initiative, so the next lock edit is a strategy decision for you, not a tidy-up.
    account. None has a schedule and none has been rotated. Decide the window.
 4. **Monetization intent** (value-hub Decision D) — affiliate? which retailers?
 5. **Store submission** — the native shell is built and archived locally; the
-   App Store and Play listings are yours, on device (`native/README.md`).
+   App Store and Play listings are yours, on device (`native/README.md`). Both
+   listings have been live since 2026-10-07 (#549); each new shell build is
+   still yours to archive and submit.
 6. **The last Phase 5 decision for multi-group** — Phase 5 in
    `docs/superpowers/plans/2026-09-07-multi-group.md`. Two of its three gates
    were answered 2026-10-07: the legal copy now names two roles (the operator
    and your club's organisers), and with members-only ON a person in no club
    sees the create/join doors or their own club list and no club data (#563).
-   Still yours: what a no-club person sees with members-only OFF — today a
-   BPM-claiming cookie reads BPM through `resolveGroupId`'s default. Then a
-   clean week of `[group-leak]`, then the flip. The order itself — multi-group,
+   The third, what a no-club person sees with members-only OFF, stopped
+   existing when that flag retired on 2026-10-17. The flip itself happened on
+   2026-10-22 (#700). Still yours: the clean week of `[group-leak]`, reviewed
+   on 2026-10-29, then `TOLERATE_UNSTAMPED = false`. The order itself — multi-group,
    then pricing — is recorded in `docs/plans/multi-group.md` (2026-10-07) with
    pricing as intent only in `docs/plans/pricing.md`.
    `scripts/check-plan-reviews.mjs` will say when the next plan review is due.
@@ -114,7 +118,7 @@ Things not derivable from the codebase — provide when relevant:
 - bpm-marketing: branding, what the intro should say, design-system scope.
 - **Anything that lives only in the Azure portal.** The repo cannot see the
   Cosmos firewall, the backup mode, the key-rotation history, the certificate
-  expiry or the real partition keys of the six hand-made containers. The
+  expiry or the real partition keys of the five hand-made containers. The
   ten-minute audit in `docs/plans/infra-baseline.md` is how those become facts.
 
 ## Learning — the infrastructure under the app
@@ -159,9 +163,11 @@ module in the guide; none is a commitment.
 
 ## Parked — next session first task
 
-**Next:** the two Phase 5 decisions (item 6 above), then step 1 of Learning.
+**Next:** the multi-group clean-week review (item 6 above), then step 1 of Learning.
 Both are decisions or observations only you can make; neither is agent work.
-The agent work that follows your answers is Phase 3's onboarding screens.
+The agent work that follows your answers is the `TOLERATE_UNSTAMPED = false`
+change; Phase 3's onboarding screens, which this line used to name, shipped
+(every Phase 3 box is ticked in `docs/superpowers/plans/2026-09-07-multi-group.md`).
 
 ## Key commands
 

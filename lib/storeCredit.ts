@@ -38,17 +38,8 @@ export const MAX_GRANT_CENTS = 50_000;
  */
 export const UNFINISHED_SPEND_MS = 2 * 60 * 1000;
 
-let ready: Promise<void> | null = null;
 export function ensureLedger(): Promise<void> {
-  if (!ready) {
-    ready = Promise.all([ensureContainer('ledger', '/memberId'), ensureClubSettings()])
-      .then(() => undefined)
-      .catch((err) => {
-        ready = null;
-        throw err;
-      });
-  }
-  return ready;
+  return Promise.all([ensureContainer('ledger', '/memberId'), ensureClubSettings()]).then(() => undefined);
 }
 
 const isConflict = (err: unknown) => (err as { code?: number })?.code === 409;

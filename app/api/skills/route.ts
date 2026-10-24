@@ -12,18 +12,10 @@ const SCORE_MIN = 0;
 const SCORE_MAX = 6;
 
 // Lazy container bootstrap — real Cosmos doesn't auto-create containers,
-// and 'skills' was added after the initial portal setup. Cache the
-// promise so the createIfNotExists fires at most once per server instance.
-let skillsReady: Promise<void> | null = null;
+// and 'skills' was added after the initial portal setup. `ensureContainer`
+// memoizes per process, so this costs one round trip per instance.
 function ensureSkillsContainer(): Promise<void> {
-  if (!skillsReady) {
-    skillsReady = ensureContainer('skills', '/sessionId').catch((err) => {
-      // If it fails, reset so the next request retries
-      skillsReady = null;
-      throw err;
-    });
-  }
-  return skillsReady;
+  return ensureContainer('skills', '/sessionId');
 }
 
 function validateScores(raw: unknown): Record<string, number> | null {
