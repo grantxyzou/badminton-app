@@ -391,11 +391,9 @@ struct BPMScoreView: View {
                 // The amber dot is who serves — it follows the last rally.
                 if serving { Circle().fill(p.amber).frame(width: 8, height: 8).padding(8) }
             }
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(tint.opacity(0.14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(gamePoint ? p.amber : tint.opacity(0.35), lineWidth: 1))
-            )
+            // No stroke (Grant, on the canvas): the tint alone is the tile, and
+            // game point turns it amber rather than outlining it.
+            .background(RoundedRectangle(cornerRadius: 14).fill((gamePoint ? p.amber : tint).opacity(gamePoint ? 0.22 : 0.14)))
         }
         .buttonStyle(.plain)
     }
