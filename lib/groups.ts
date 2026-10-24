@@ -516,6 +516,23 @@ export async function setMembershipCanGift(
   return groupScope(groupId).replace('memberships', { ...m, canGift }, groupId);
 }
 
+/**
+ * Refuse every widget pass minted before now (lib/widget.ts). Sign-out clears
+ * the pass from the device, but cannot reach a copy already taken off it;
+ * the membership remembers the sign-out instead, and the next sign-in mints a
+ * pass dated after it. Resolves `undefined` when there is no membership here.
+ */
+export async function revokeWidgetPasses(
+  groupId: string,
+  memberId: string,
+  at: string = new Date().toISOString(),
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m) return undefined;
+  return groupScope(groupId).replace('memberships', { ...m, widgetPassNotBefore: at }, groupId);
+}
+
 // ---------------------------------------------------------------------------
 // Ownership
 // ---------------------------------------------------------------------------

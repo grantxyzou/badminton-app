@@ -145,6 +145,11 @@ describe('ios/', () => {
       expect(pbx).toMatch(new RegExp(`/\\* ${f.replace('.', '\\.')} in Sources \\*/,`));
     }
     expect(read('ios', 'App', 'App', 'BpmWidgetPlugin.swift')).toContain('jsName = "BpmWidget"');
+    // The base URL is PARSED: a string prefix let `http://localhost.example.com`
+    // through as local (security review, 2026-10-24).
+    const plugin = read('ios', 'App', 'App', 'BpmWidgetPlugin.swift');
+    expect(plugin).not.toContain('hasPrefix("http://localhost")');
+    expect(plugin).toContain('url.host?.lowercased() == "localhost"');
   });
 
   it('names one App Group for the app, the widget and the stores that share it', () => {

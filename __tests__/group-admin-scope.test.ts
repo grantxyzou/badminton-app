@@ -105,3 +105,77 @@ describe('/api/members PATCH and DELETE stay inside the admin\'s roster', () => 
     expect(res.status).toBe(200);
   });
 });
+
+/**
+ * WHICH COPY A WRITE REACHES. With groups on, `role`, `active` and `name` are
+ * the MEMBERSHIP's — the only place flag-on auth and the roster read them, so
+ * the Roster sheet's "make admin" and "restore" had been writing a `Member`
+ * field nothing read since the flag flipped. The Member fields are the
+ * flag-off value and the rollback copy, and flag-off IS BPM: only BPM's admin
+ * writes them, so a club-x admin cannot mint a BPM admin for the day the flag
+ * comes off, or lock a shared person out of every club.
+ */
+describe('/api/members edits reach the membership; the Member copy is BPM\'s alone', () => {
+  const membershipRow = (groupId: string) =>
+    (getStore()['memberships'] as { id: string; role?: string; status?: string; name?: string }[]).find((m) => m.id === `${groupId}:${lin.id}`);
+  const linMember = () => (getStore()['members'] as { id: string; role?: string; active?: boolean; name?: string }[]).find((m) => m.id === lin.id)!;
+
+  beforeEach(() => {
+    seedMembership('club-x', lin.id, { name: 'Lin', role: 'member' });
+  });
+
+  it('role goes to the club-x membership — not to BPM\'s, not to the Member', async () => {
+    const res = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, role: 'admin' }, cookies('club-x')));
+    expect(res.status).toBe(200);
+    expect(membershipRow('club-x')?.role).toBe('admin');
+    expect(membershipRow('bpm')?.role).toBe('member');
+    expect(linMember().role).toBe('member');
+  });
+
+  it('active:false removes from THIS roster and keeps the person; active:true rejoins them', async () => {
+    const off = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, active: false, role: 'member' }, cookies('club-x')));
+    expect(off.status).toBe(200);
+    expect(membershipRow('club-x')?.status).toBe('removed');
+    expect(membershipRow('bpm')?.status).toBe('active');
+    expect(linMember().active).toBe(true);
+
+    const on = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, active: true, role: 'member', name: 'Lin' }, cookies('club-x')));
+    expect(on.status).toBe(200);
+    expect(membershipRow('club-x')?.status).toBe('active');
+    expect(membershipRow('club-x')?.name).toBe('Lin');
+  });
+
+  it('a rename is the club-x roster name; the person\'s own name and BPM\'s roster are untouched', async () => {
+    const res = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, name: 'Lin W' }, cookies('club-x')));
+    expect(res.status).toBe(200);
+    expect(membershipRow('club-x')?.name).toBe('Lin W');
+    expect(membershipRow('bpm')?.name).toBe('Lin');
+    expect(linMember().name).toBe('Lin');
+  });
+
+  it('DELETE removes from club-x and leaves the account active', async () => {
+    const res = await deleteMember(makeRequest('DELETE', 'http://x/api/members', { id: lin.id }, cookies('club-x')));
+    expect(res.status).toBe(200);
+    expect(membershipRow('club-x')?.status).toBe('removed');
+    expect(linMember().active).toBe(true);
+  });
+
+  it('BPM\'s admin writes both: the membership AND the rollback copy', async () => {
+    const mine = (getStore()['memberships'] as { id: string; role: string }[]).find((m) => m.id === `bpm:${ADMIN_MEMBER_ID}`)!;
+    mine.role = 'admin';
+    const res = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, role: 'admin', name: 'Lin W' }, cookies('bpm')));
+    expect(res.status).toBe(200);
+    expect(membershipRow('bpm')?.role).toBe('admin');
+    expect(linMember().role).toBe('admin');
+    expect(linMember().name).toBe('Lin W');
+    expect(membershipRow('club-x')?.role).toBe('member');
+  });
+
+  it('the owner is an admin already and is not demoted here', async () => {
+    const self = (body: Record<string, unknown>) =>
+      patchMember(makeRequest('PATCH', 'http://x/api/members', { id: ADMIN_MEMBER_ID, ...body }, cookies('club-x')));
+    expect((await self({ role: 'admin', canString: true })).status).toBe(200);
+    expect((await self({ role: 'member' })).status).toBe(403);
+    expect((await deleteMember(makeRequest('DELETE', 'http://x/api/members', { id: ADMIN_MEMBER_ID }, cookies('club-x')))).status).toBe(403);
+  });
+});

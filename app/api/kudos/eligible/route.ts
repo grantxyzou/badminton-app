@@ -12,7 +12,7 @@
  * else's co-players (security rule 12 — names are enumerable).
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyMemberAuth } from '@/lib/auth';
+import { requireGroupMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { getActiveSessionId } from '@/lib/cosmos';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
@@ -26,7 +26,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const member = verifyMemberAuth(req);
+  // The membership is RE-READ, not only the cookie's signature: a removed
+  // member's 30-day cookie used to keep listing their co-players here
+  // (security review, 2026-10-24).
+  const member = await requireGroupMember(req);
   if (!member) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 
   try {

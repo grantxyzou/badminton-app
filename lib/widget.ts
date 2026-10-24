@@ -115,13 +115,30 @@ const PHASE_LABEL: Record<Phase, string> = {
   advanced: 'Competitive',
 };
 
-/** The bearer pass, then the same membership re-read the cookie routes make. */
+/**
+ * The bearer pass, then the same membership re-read the cookie routes make —
+ * and the sign-out cutoff: a pass minted before the membership's
+ * `widgetPassNotBefore` is refused (`DELETE /api/widget/token` stamps it).
+ * Compared in whole seconds, the token's own unit, so a pass minted in the
+ * same second as a sign-out (sign out, sign straight back in) still works.
+ */
 export async function requireWidgetMember(
   req: NextRequest,
 ): Promise<(MemberSession & { role: MembershipRole }) | null> {
   const session = verifyWidgetToken(req);
   if (!session) return null;
-  return activeMemberFor(session);
+  const member = await activeMemberFor(session);
+  if (!member) return null;
+  if (passRevoked(session.iat, member.widgetPassNotBefore)) return null;
+  const { widgetPassNotBefore: _cutoff, ...rest } = member;
+  return rest;
+}
+
+/** `iat` is seconds; the cutoff an ISO instant. Unparseable cutoff = none. */
+export function passRevoked(iatSeconds: number, notBefore: string | undefined): boolean {
+  if (!notBefore) return false;
+  const cutoffMs = Date.parse(notBefore);
+  return Number.isFinite(cutoffMs) && iatSeconds < Math.floor(cutoffMs / 1000);
 }
 
 function round2(n: number): number {

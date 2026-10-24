@@ -444,15 +444,16 @@ export function mintWidgetToken(member: MemberSession): { token: string; expires
   return { token: signPayload(payload), expiresAt: new Date((now + WIDGET_TTL_S) * 1000).toISOString() };
 }
 
-/** Signature, audience and expiry of the bearer pass — identity only. The
- *  membership re-read (a removed member's pass stops working at once) is
- *  `requireWidgetMember` in lib/widget.ts. */
-export function verifyWidgetToken(req: NextRequest): MemberSession | null {
+/** Signature, audience and expiry of the bearer pass — identity only, plus
+ *  WHEN it was minted (`iat`), which `requireWidgetMember` in lib/widget.ts
+ *  compares with the membership's `widgetPassNotBefore` after the same
+ *  re-read that stops a removed member's pass at once. */
+export function verifyWidgetToken(req: NextRequest): (MemberSession & { iat: number }) | null {
   const header = req.headers.get('authorization') ?? '';
   const match = /^Bearer\s+(\S+)$/i.exec(header);
   if (!match) return null;
   const payload = verifyToken(match[1], 'widget');
-  return payload ? sessionOf(payload) : null;
+  return payload ? { ...sessionOf(payload), iat: payload.iat } : null;
 }
 
 /**
@@ -485,22 +486,22 @@ export const SESSION_COOKIE_NAMES = { member: MEMBER_COOKIE_NAME, admin: COOKIE_
  * as the role. Flag on: the claimed group must hold an ACTIVE membership for
  * this person, and the role comes from it.
  */
-export async function requireGroupMember(
-  req: NextRequest,
-): Promise<(MemberSession & { role: MembershipRole }) | null> {
+export async function requireGroupMember(req: NextRequest): Promise<ActiveMember | null> {
   const session = verifyMemberAuth(req);
   if (!session) return null;
   return activeMemberFor(session);
 }
+
+/** A session re-read against its membership: the roster name and role, and
+ *  the widget-pass cutoff the same doc carries (lib/widget.ts reads it). */
+export type ActiveMember = MemberSession & { role: MembershipRole; widgetPassNotBefore?: string };
 
 /**
  * The re-read behind `requireGroupMember`, for a session that arrived some
  * other way (the widget's bearer pass): is this person still an ACTIVE member
  * of the group the credential names, and under which name and role?
  */
-export async function activeMemberFor(
-  session: MemberSession,
-): Promise<(MemberSession & { role: MembershipRole }) | null> {
+export async function activeMemberFor(session: MemberSession): Promise<ActiveMember | null> {
   try {
     if (!groupsOn()) {
       // Flag off: everyone is in BPM and `Member.role` is the role — the same
@@ -513,11 +514,23 @@ export async function activeMemberFor(
       // member as a stranger. With groups on, the membership read below
       // already returns the roster name.
       const name = typeof resource.name === 'string' && resource.name ? resource.name : session.name;
-      return { ...session, name, groupId: BPM_GROUP_ID, role: resource.role === 'admin' ? 'admin' : 'member' };
+      return {
+        ...session,
+        name,
+        groupId: BPM_GROUP_ID,
+        role: resource.role === 'admin' ? 'admin' : 'member',
+        ...(resource.widgetPassNotBefore ? { widgetPassNotBefore: resource.widgetPassNotBefore } : {}),
+      };
     }
     const m = await readMembership(session.groupId, session.memberId);
     if (!m || m.status !== 'active') return null;
-    return { memberId: m.memberId, name: m.name, groupId: m.groupId, role: m.role };
+    return {
+      memberId: m.memberId,
+      name: m.name,
+      groupId: m.groupId,
+      role: m.role,
+      ...(m.widgetPassNotBefore ? { widgetPassNotBefore: m.widgetPassNotBefore } : {}),
+    };
   } catch {
     return null;
   }

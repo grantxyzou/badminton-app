@@ -41,9 +41,18 @@ ten minutes, more than one in five), Join goes back to opening the app.
   cookie, read only from an `Authorization: Bearer` header by the
   `/api/widget` routes, and re-checked against the membership on every read,
   so a removed member's widget goes dark on its next refresh. Sixty days; the
-  app re-mints it on every open. Stateless, so there is no per-device revoke:
-  signing out clears it from the device, removal from the club stops it
-  server-side, and rotating `SESSION_SECRET` stops every pass at once.
+  app re-mints it on every open. Removal from the club stops it server-side,
+  and rotating `SESSION_SECRET` stops every pass at once.
+- **2026-10-24 — sign-out revokes the pass on the server too.** The pass is
+  stateless, so clearing the device copy could not reach one already copied
+  off the phone, and it would have lived its sixty days (the 24 Oct security
+  review). `clearWidgets` now also calls `DELETE /api/widget/token`, which
+  stamps `widgetPassNotBefore` on the membership (the Member doc with groups
+  off); `requireWidgetMember` refuses any pass minted before it, compared in
+  whole seconds so a sign-in a moment later works. Per PERSON per club, not
+  per device: a second phone's pass dies too, and comes back when that phone's
+  app re-mints — a tap on its widget forces one (`NativeBridge`), so "Open BPM"
+  is the whole recovery.
 - **Join and Undo are the sign-up route, not a copy of it.** `POST` /
   `DELETE /api/widget/join` re-enter `POST` / `DELETE /api/players` as the
   member the pass names (a five-minute member cookie the server builds and

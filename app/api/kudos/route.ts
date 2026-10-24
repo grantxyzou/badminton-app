@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
-import { isAdminAuthed, verifyMemberAuth, ownsNameOrAdmin } from '@/lib/auth';
+import { isAdminAuthed, verifyMemberAuth, requireGroupMember, ownsNameOrAdmin } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { aggregateKudos, distinctGivers, isKudosTag, kudosByMonth, normalizeNote, isoWeekKey, visibleNotes, type KudosDoc } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
@@ -30,8 +30,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Identity-bound (rule 12): the rater is the cookie holder, never the body.
-  // No admin-on-behalf — kudos is inherently first-person.
-  const rater = verifyMemberAuth(req);
+  // No admin-on-behalf — kudos is inherently first-person. The membership is
+  // re-read: a removed member could still send kudos (and push nobody, but
+  // write rows) for the life of their cookie (security review, 2026-10-24).
+  const rater = await requireGroupMember(req);
   if (!rater) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
