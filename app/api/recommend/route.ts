@@ -8,7 +8,6 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth, ownsNameOrAdmin, requireMember } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
-import { recommendRackets } from '@/lib/racketRecommend';
 import { recommendFit, comfortTensionDeltaLb, FIT_ENGINE_VERSION } from '@/lib/racketFit';
 import { fitReasonTexts } from '@/lib/fitReasonText';
 import { pairString } from '@/lib/stringPair';
@@ -194,13 +193,12 @@ export async function GET(req: NextRequest) {
 
       const ratings = (latest?.ratings as Rating[]) ?? [];
       const profile = buildProfile({ ratings, gear });
-      const fitOn = isFlagOn('NEXT_PUBLIC_FLAG_RACKET_FIT');
 
       // D5: no ratings -> say so rather than score fourteen 3s and emit a
       // confident, meaningless pick. The FIT engine has its own honest-state
       // ladder (a racket in the bag, or a check-in, or goal + swing) and
       // answers `needsFit` itself, so only the string branch keeps this gate.
-      if (!profile && !(fitOn && category === 'racket')) {
+      if (!profile && category !== 'racket') {
         return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
       }
 
@@ -247,9 +245,7 @@ export async function GET(req: NextRequest) {
         }
         if (!frame) {
           source = 'recommended';
-          frame = fitOn
-            ? recommendFit(buildFitInput(gear, ratings, catalogRackets as CatalogItem[]), catalogRackets as CatalogItem[]).top?.item ?? null
-            : recommendRackets(profile, catalogRackets as CatalogItem[], 1, 'racket')[0]?.item ?? null;
+          frame = recommendFit(buildFitInput(gear, ratings, catalogRackets as CatalogItem[]), catalogRackets as CatalogItem[]).top?.item ?? null;
         }
         // No frame from either rung means the racket catalog is empty or
         // unscorable — a catalog problem, the same one the racket card reports.
@@ -290,66 +286,40 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      if (fitOn) {
-        // The fit engine. Reasons are KEYS; the English strings alongside
-        // are transitional (`lib/fitReasonText.ts`) for the client that still
-        // reads `reasons: string[]`. Everything new is additive.
-        const fit = recommendFit(buildFitInput(gear, ratings, catalogItems as CatalogItem[]), catalogItems as CatalogItem[]);
-        if (fit.fitState === 'needsFit') {
-          return NextResponse.json({ item: null, reason: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
-        }
-        if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
-        const [, clubEntries] = await Promise.all([
-          ownsName && member
-            ? recordServed(resolveGroupId(req), subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION)
-            : Promise.resolve(),
-          clubEntriesOrEmpty(resolveGroupId(req)),
-        ]);
-        // The club line keeps its reserved last slot on the engine path too —
-        // as a KEY, so the rail can say it in the member's locale.
-        const reasonKeys = buildPickReasonKeys({ item: fit.top.item, engineReasons: fit.top.reasons, clubEntries });
-        const reasons = fitReasonTexts(reasonKeys);
-        return NextResponse.json({
-          item: fit.top.item,
-          reason: reasons[0] ?? null,
-          reasons,
-          warnings: fitReasonTexts(fit.top.warnings),
-          reasonKeys,
-          warningKeys: fit.top.warnings,
-          alternatives: fit.alternatives.map((a) => ({
-            item: a.item,
-            reasons: fitReasonTexts(a.reasons),
-            reasonKeys: a.reasons,
-            differsBy: a.differsBy ?? [],
-            differsByText: fitReasonTexts(a.differsBy ?? []),
-          })),
-          engineVersion: FIT_ENGINE_VERSION,
-          fitState: fit.fitState,
-        });
+      // The fit engine. Reasons are KEYS; the English strings alongside
+      // are transitional (`lib/fitReasonText.ts`) for the client that still
+      // reads `reasons: string[]`. Everything new is additive.
+      const fit = recommendFit(buildFitInput(gear, ratings, catalogItems as CatalogItem[]), catalogItems as CatalogItem[]);
+      if (fit.fitState === 'needsFit') {
+        return NextResponse.json({ item: null, reason: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
       }
-
-      const top = recommendRackets(profile!, catalogItems as CatalogItem[], 1, category)[0];
-      // The mock store ignores @category (see lib/cosmos.ts), so catalogItems
-      // above can be non-empty even when nothing of THIS category exists —
-      // recommendRackets' internal filter is the one that actually agrees
-      // with real Cosmos. Rows present but nothing scorable is still a
-      // catalog problem, not a "player has no viable pick" problem, so it
-      // gets the same unavailable code as a literally-empty query.
-      if (!top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
-
-      const clubEntries: ClubGearEntry[] = await clubEntriesOrEmpty(resolveGroupId(req));
-
-      const reasons = buildPickReasons({
-        item: top.item,
-        engineReasons: top.reasons,
-        clubEntries,
-      });
-
+      if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+      const [, clubEntries] = await Promise.all([
+        ownsName && member
+          ? recordServed(resolveGroupId(req), subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION)
+          : Promise.resolve(),
+        clubEntriesOrEmpty(resolveGroupId(req)),
+      ]);
+      // The club line keeps its reserved last slot on the engine path too —
+      // as a KEY, so the rail can say it in the member's locale.
+      const reasonKeys = buildPickReasonKeys({ item: fit.top.item, engineReasons: fit.top.reasons, clubEntries });
+      const reasons = fitReasonTexts(reasonKeys);
       return NextResponse.json({
-        item: top.item,
+        item: fit.top.item,
         reason: reasons[0] ?? null,
         reasons,
-        warnings: top.warnings,
+        warnings: fitReasonTexts(fit.top.warnings),
+        reasonKeys,
+        warningKeys: fit.top.warnings,
+        alternatives: fit.alternatives.map((a) => ({
+          item: a.item,
+          reasons: fitReasonTexts(a.reasons),
+          reasonKeys: a.reasons,
+          differsBy: a.differsBy ?? [],
+          differsByText: fitReasonTexts(a.differsBy ?? []),
+        })),
+        engineVersion: FIT_ENGINE_VERSION,
+        fitState: fit.fitState,
       });
     }
 

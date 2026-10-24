@@ -7,7 +7,7 @@ import { FIT_ENGINE_VERSION } from '@/lib/racketFit';
 import { resetMockStore, getStore, seedMember, seedAdminMember, setupAdminPin, makeRequest, makeAdminRequest, memberCookieValue } from './helpers';
 
 /**
- * `GET /api/recommend` with `NEXT_PUBLIC_FLAG_RACKET_FIT` on — the fit engine
+ * `GET /api/recommend` — the fit engine
  * behind the racket branch. The catalog is the REAL seed (`ensureCatalogSeeded`
  * fills the mock from `scripts/data/equipment-catalog.json`), so ids here are
  * real ids and a wrong one fails rather than passing vacuously.
@@ -34,13 +34,11 @@ describe('GET /api/recommend — the fit engine', () => {
     _resetCalibrationCache();
     setupAdminPin();
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
-    process.env.NEXT_PUBLIC_FLAG_RACKET_FIT = 'true';
-    seedMember('Lin', { id: 'member-lin' });
+        seedMember('Lin', { id: 'member-lin' });
   });
   afterAll(() => {
     delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
-    delete process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
-  });
+      });
 
   it('still refuses (401) without the member cookie — reasons quote the member', async () => {
     const res = await GET(makeRequest('GET', `${BASE}?name=Lin`));
@@ -161,20 +159,5 @@ describe('GET /api/recommend — the fit engine', () => {
     expect(keys[keys.length - 1]).toBe('reason.clubPlays');
     expect(body.reasonKeys[keys.length - 1].params).toEqual({ count: 3 });
     expect(body.reasons[keys.length - 1]).toBe('3 people in the group already play it.');
-  });
-
-  it('with the fit flag OFF the racket branch is the old shape — no fitState, no alternatives', async () => {
-    process.env.NEXT_PUBLIC_FLAG_RACKET_FIT = 'false';
-    await seedRatings(THREE_RATINGS);
-    const body = await (await ask()).json();
-    expect(body.item).toBeTruthy();
-    expect(body.fitState).toBeUndefined();
-    expect(body.alternatives).toBeUndefined();
-    expect(body.reasonKeys).toBeUndefined();
-    // And no ratings → the old needsCheckIn, not needsFit.
-    resetMockStore(); __resetCatalogSeedForTests(); setupAdminPin(); seedMember('Lin', { id: 'member-lin' });
-    const empty = await (await ask()).json();
-    expect(empty.needsCheckIn).toBe(true);
-    expect(empty.needsFit).toBeUndefined();
   });
 });
