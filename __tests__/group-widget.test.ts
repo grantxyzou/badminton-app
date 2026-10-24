@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { NextRequest } from 'next/server';
 import {
   resetMockStore,
@@ -17,9 +17,9 @@ import { POINTER_ID, sessionIdFromDate } from '@/lib/cosmos';
 import { groupDocId } from '@/lib/groupScope';
 import { mintWidgetToken, verifyMemberAuth, verifyWidgetToken } from '@/lib/auth';
 import { GET as widgetGet } from '@/app/api/widget/route';
-import { POST as tokenPost } from '@/app/api/widget/token/route';
+import { POST as tokenPost, DELETE as tokenDelete } from '@/app/api/widget/token/route';
 import { POST as joinPost, DELETE as joinDelete } from '@/app/api/widget/join/route';
-import type { WidgetSnapshot } from '@/lib/widget';
+import { passRevoked, type WidgetSnapshot } from '@/lib/widget';
 
 /**
  * THE WIDGET'S SERVER HALF (docs/plans/native-widgets.md).
@@ -100,6 +100,57 @@ describe('the widget pass', () => {
   it('answers 401 with no pass at all', async () => {
     const res = await widgetGet(makeRequest('GET', 'http://x/bpm/api/widget'));
     expect(res.status).toBe(401);
+  });
+
+  /* SIGN-OUT REVOKES ON THE SERVER (security review, 2026-10-24). The pass is
+     stateless and lives sixty days; clearing the device copy cannot reach one
+     already taken off the phone. `DELETE /api/widget/token` stamps the
+     membership, and anything minted before the stamp is refused — in whole
+     seconds, so the pass the next sign-in mints is fine even a moment later. */
+  it('a pass minted before sign-out is refused; one minted after works', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-24T10:00:00Z'));
+      const before = await passFor(A);
+      expect((await read(before)).status).toBe(200);
+
+      vi.setSystemTime(new Date('2026-10-24T10:00:05Z'));
+      const revoke = await tokenDelete(makeRequest('DELETE', 'http://x/bpm/api/widget/token', {}, { Cookie: anaCookie(A) }));
+      expect(revoke.status).toBe(200);
+      expect((await read(before)).status).toBe(401);
+      // The stamp is the CLAIMED club's: Ana's pass for club B is untouched.
+      expect((await read(await passFor(B))).status).toBe(200);
+
+      vi.setSystemTime(new Date('2026-10-24T10:00:06Z'));
+      expect((await read(await passFor(A))).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('revocation needs a signed-in member', async () => {
+    const res = await tokenDelete(makeRequest('DELETE', 'http://x/bpm/api/widget/token', {}));
+    expect(res.status).toBe(401);
+  });
+
+  it('flag off, the stamp lives on the Member doc', async () => {
+    delete process.env[FLAG];
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-24T10:00:00Z'));
+      const bpmCookie = { Cookie: `member_session=${memberCookieValue('Ana', ANA, 3600, 'bpm')}` };
+      const mint = await tokenPost(makeRequest('POST', 'http://x/bpm/api/widget/token', {}, bpmCookie));
+      const before = ((await mint.json()) as { token: string }).token;
+      vi.setSystemTime(new Date('2026-10-24T10:00:05Z'));
+      expect((await tokenDelete(makeRequest('DELETE', 'http://x/bpm/api/widget/token', {}, bpmCookie))).status).toBe(200);
+      expect((getStore().members as { id: string; widgetPassNotBefore?: string }[]).find((m) => m.id === ANA)?.widgetPassNotBefore)
+        .toBe('2026-10-24T10:00:05.000Z');
+      expect(passRevoked(Math.floor(Date.parse('2026-10-24T10:00:00Z') / 1000), '2026-10-24T10:00:05.000Z')).toBe(true);
+      expect(passRevoked(Math.floor(Date.parse('2026-10-24T10:00:05.900Z') / 1000), '2026-10-24T10:00:05.000Z')).toBe(false);
+      void before;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

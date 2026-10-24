@@ -101,6 +101,22 @@ describe('clearWidgets and reloadWidgets', () => {
     expect(localStorage.getItem(WIDGET_MINTED_KEY)).toBeNull();
   });
 
+  it('sign-out also revokes the pass on the server, and only from the store app', async () => {
+    await clearWidgets();
+    expect(fetchMock).not.toHaveBeenCalled();
+    nativeShell();
+    await clearWidgets();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/api\/widget\/token$/), expect.objectContaining({ method: 'DELETE' }));
+    expect(widget.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed revoke never blocks the sign-out', async () => {
+    nativeShell();
+    fetchMock.mockRejectedValue(new Error('offline'));
+    widget.clear.mockRejectedValue(new Error('UNIMPLEMENTED'));
+    await expect(clearWidgets()).resolves.toBeUndefined();
+  });
+
   it('reload is a no-op off the store app', async () => {
     await reloadWidgets();
     expect(widget.reload).not.toHaveBeenCalled();

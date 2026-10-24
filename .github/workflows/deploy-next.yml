@@ -67,13 +67,13 @@ jobs:
           # of 8. This one value drives both. Revert to `next` to undo.
           NEXT_PUBLIC_ENV: stable
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+          # Every flag below is LIVE (lib/flags.ts is the registry;
+          # scripts/check-flag-sync.mjs holds the two in step). A retired flag's
+          # history is docs/flag-retirements.md, not a comment left behind here.
+          # NEXT_PUBLIC_* is baked at build time, so a flag must live HERE -- an
+          # Azure App Setting cannot turn it on.
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
-          # The Equipment redesign (the Set-up card). On since 2026-09-14; revert
-          # to 'false' to bring back the old register. See lib/flags.ts.
-          # Equipment Turn 3 pages and the AI fit verdict. On since 2026-09-14;
-          # revert either to 'false' to go back to the fit sheet (pages) or to
-          # the fixed verdict wording (verdict). See lib/flags.ts.
           # E-transfer auto-detection (docs/plans/payments.md). ON since
           # 2026-10-03, after a real notification's headers confirmed the
           # anti-spoof check. Inert until an admin mints a key and installs
@@ -85,53 +85,9 @@ jobs:
           # Phase 2 ledger, stage 1: mirror every charge/payment into `ledger`.
           # Read server-side; nothing visible changes. See lib/flags.ts.
           NEXT_PUBLIC_FLAG_LEDGER_MIRROR: 'true'
-          # First-party usage records (docs/plans/usage-metrics.md). ON since
-          # 2026-10-07, once the store privacy labels declared it. Read
-          # server-side; off, nothing is recorded.
-          # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
-          # Azure App Setting cannot turn it on.
-          #
-          # OFF since 2026-08-26, after Google sign-in was found broken on an
-          # installed iOS home-screen app: the callback is issued from a browser
-          # container that never saw the bpm_oauth_state cookie /start wrote
-          # inside the PWA, so every attempt dies as state_mismatch and strands
-          # the user in Safari. Reproduced on device three times. The server
-          # side is NOT at fault -- replaying the handshake with curl sets the
-          # cookie, matches the state and passes the check.
-          #
-          # Landing the redirect inside the manifest scope (f5e0c65) was tried
-          # and did not fix it, which rules out the callback simply being
-          # bounced for an out-of-scope target.
-          #
-          # Turning this off leaves PIN and email+password untouched; both work
-          # everywhere, including in the PWA, because neither leaves the origin.
-          # GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET stay set in the App Service
-          # -- they are inert while this is off, and re-flipping is one line.
-          #
-          # Turned on 2026-08-27 to run that diagnostic, and the diagnostic
-          # found the cause: the installed PWA's WKWebView and Safari are
-          # SEPARATE cookie jars (`state=cookie_absent cookies=[NEXT_LOCALE]`).
-          # Fixed the same day by lib/authHandoff.ts -- a hashed handoff that
-          # parks the state server-side and lets the app claim the session in
-          # its own jar -- and verified on device. ON since, and it stays on.
-          #
-          # (This comment used to say "TURN THIS BACK TO 'false' THE MOMENT THE
-          # LINE IS CAPTURED" and outlived the fix by a week. A comment that
-          # asks for an action nobody takes is worse than none.)
-          #
-          # 2026-09-03: apple/start and apple/callback gained the same handoff
-          # Google had -- Apple sign-in from the PWA was still hitting the split.
-          # ON as of 2026-08-27. This lights up the admin bench (job list, job
-          # detail, intake form) and un-404s /api/stringing/*.
-          #
-          # It does NOT show players anything yet: the shop carries its own
-          # admin-controlled `open` flag (PATCH /api/stringing/shop), and
-          # StringingCard renders "Coming soon" until that is set. Two gates,
-          # and this is only the first.
-          #
-          # KNOWN GAP once the shop DOES open: lib/stringingNotify.ts still has
-          # zero callers, so nobody is told their racket is ready. Taking a real
-          # racket before that is wired means remembering to tell them yourself.
+          # ON as of 2026-08-27: the admin bench (job list, job detail, intake)
+          # and /api/stringing/*. Players see the shop only once its own
+          # admin-controlled `open` flag is set (PATCH /api/stringing/shop).
           NEXT_PUBLIC_FLAG_STRINGING: 'true'
           # The one-time link that carries a signed-in PWA identity into the
           # native shell (docs/plans/native-shell.md, WP5). Gates two
@@ -145,10 +101,6 @@ jobs:
           # nothing is migrated that older code cannot read, so the flag is
           # the whole rollback.
           NEXT_PUBLIC_FLAG_MULTI_GROUP: 'true'
-          # ON since 2026-10-03. Members only (docs/plans/members-only.md): a
-          # signed-out visitor sees no club data and every group-data route
-          # 401s. Read server-side. Back out by setting 'false' — nothing is
-          # migrated, so the flag is the whole rollback.
           # NOT a secret: the browser needs it for
           # pushManager.subscribe({ applicationServerKey }). It must live HERE
           # and not only in Azure App Settings, because NEXT_PUBLIC_* is inlined

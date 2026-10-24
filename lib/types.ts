@@ -369,6 +369,14 @@ export interface Membership {
    * the flag-off value (still written, for rollback). Additive; absent = no.
    */
   canGift?: boolean;
+  /**
+   * A widget pass minted BEFORE this instant is refused (lib/widget.ts).
+   * Stamped by `DELETE /api/widget/token` when the person signs out of the
+   * store app: sign-out clears the pass from the device, but a pass already
+   * copied off it would otherwise live its sixty days. Additive; absent =
+   * nothing revoked. The flag-off copy is `Member.widgetPassNotBefore`.
+   */
+  widgetPassNotBefore?: string;
 }
 
 /**
@@ -437,6 +445,8 @@ export interface Member {
    * required full admin.
    */
   canString?: boolean;
+  /** Flag-off twin of `Membership.widgetPassNotBefore`: widget passes minted before it are refused. */
+  widgetPassNotBefore?: string;
   /**
    * This person may give out gift cards (docs/plans/gift-card-ledger.md).
    * The third independent switch beside `role` and `canString`: a helper who

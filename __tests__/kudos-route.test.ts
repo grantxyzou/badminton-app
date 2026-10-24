@@ -6,11 +6,20 @@ import {
 
 const BASE = 'http://localhost:3000/api/kudos';
 
+/** The cookie holder must EXIST as an active member: the route re-reads the
+ *  membership (a removed member's cookie is refused), so a cookie for a name
+ *  nobody seeded is a 401, not a rater. */
+function ensureMember(name: string) {
+  const rows = (getStore()['members'] ?? []) as Array<{ name?: string; active?: boolean }>;
+  if (!rows.some((m) => m.name === name && m.active !== false)) seedMember(name);
+}
 function postAs(name: string, body: Record<string, unknown>) {
+  ensureMember(name);
   const cookie = `member_session=${memberCookieValue(name)}`;
   return makeRequest('POST', BASE, body, { Cookie: cookie });
 }
 function getAs(name: string, cookieName?: string) {
+  ensureMember(cookieName ?? name);
   const cookie = `member_session=${memberCookieValue(cookieName ?? name)}`;
   return makeRequest('GET', `${BASE}?name=${encodeURIComponent(name)}`, undefined, { Cookie: cookie });
 }
