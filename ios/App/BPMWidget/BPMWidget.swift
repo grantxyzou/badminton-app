@@ -171,9 +171,15 @@ struct WidgetPalette {
     let track: Color
     let rule: Color
     let background: LinearGradient
-    /// A solid badge in the text colour, and the text to put on it.
+    /// Text on a green fill (the Join / Start / Save chips) and on an amber one
+    /// (the game-point badge): dark on the bright dark-mode tints, white on the
+    /// deeper light-mode ones — dark-on-#16a34a did not pass.
+    let onGreen: Color
+    let onAmber: Color
+    /// A solid badge in the text colour, and the text to put on it: the ground's
+    /// own colour, so it reads in both modes (it was navy-on-navy in light).
     var badge: Color { primary.opacity(0.92) }
-    var onBadge: Color { Color(red: 0.06, green: 0.09, blue: 0.16) }
+    let onBadge: Color
 
     static func make(_ scheme: ColorScheme) -> WidgetPalette {
         if scheme == .light {
@@ -187,7 +193,10 @@ struct WidgetPalette {
                 track: Color.black.opacity(0.1),
                 rule: Color.black.opacity(0.08),
                 background: LinearGradient(colors: [.white, Color(red: 0.95, green: 0.96, blue: 0.96)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+                                           startPoint: .topLeading, endPoint: .bottomTrailing),
+                onGreen: .white,
+                onAmber: .white,
+                onBadge: .white)
         }
         return WidgetPalette(
             primary: .white,
@@ -200,7 +209,10 @@ struct WidgetPalette {
             rule: Color.white.opacity(0.08),
             background: LinearGradient(colors: [Color(red: 0.11, green: 0.10, blue: 0.10),
                                                 Color(red: 0.06, green: 0.06, blue: 0.06)],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing))
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+            onGreen: Color(red: 0.02, green: 0.18, blue: 0.09),
+            onAmber: Color(red: 0.23, green: 0.13, blue: 0.01),
+            onBadge: Color(red: 0.06, green: 0.09, blue: 0.16))
     }
 }
 
@@ -220,10 +232,7 @@ struct Header: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "figure.badminton")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(p.green)
-                .widgetAccentable()
+            BPMMark(p: p)
             Text("BPM").font(.system(size: 11, weight: .bold)).foregroundStyle(p.secondary)
             Spacer(minLength: 4)
             if let trailing = trailing {
@@ -246,6 +255,34 @@ struct FillBar: View {
             }
         }
         .frame(height: 5)
+    }
+}
+
+/// The BPM mark: the shuttle from public/brand/bpm-logo.svg, drawn as paths so
+/// it needs no asset in the extension's catalog and takes the accent tint.
+/// Grant, 2026-10-24: "I want BPM and logo to get implemented".
+struct BPMMark: View {
+    let p: WidgetPalette
+    var size: CGFloat = 16
+
+    var body: some View {
+        Canvas { ctx, box in
+            let k = box.height / 36
+            let ox = (box.width - 28 * k) / 2 - 6 * k
+            func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: ox + x * k, y: y * k) }
+            var strings = Path()
+            for tip in [(11.0, 6.0), (15.0, 5.0), (20.0, 4.0), (25.0, 5.0), (29.0, 6.0)] {
+                strings.move(to: pt(20, 30)); strings.addLine(to: pt(tip.0, tip.1))
+            }
+            ctx.stroke(strings, with: .color(p.green), style: StrokeStyle(lineWidth: 1.7 * k, lineCap: .round))
+            var rim = Path()
+            rim.move(to: pt(11, 6)); rim.addQuadCurve(to: pt(29, 6), control: pt(20, 2))
+            ctx.stroke(rim, with: .color(p.green.opacity(0.55)), style: StrokeStyle(lineWidth: 1.7 * k, lineCap: .round))
+            let cork = Path(ellipseIn: CGRect(x: ox + 15.5 * k, y: 27.4 * k, width: 9 * k, height: 5.2 * k))
+            ctx.fill(cork, with: .color(p.green))
+        }
+        .frame(width: size * 28 / 36, height: size)
+        .widgetAccentable()
     }
 }
 
@@ -309,7 +346,7 @@ struct WeekBlock: View {
                             Text(status.isFull ? "Join waitlist" : "Join")
                                 .font(.system(size: 11, weight: .bold))
                                 .padding(.horizontal, 10).padding(.vertical, 3)
-                                .foregroundStyle(status.isFull ? p.amber : Color(red: 0.02, green: 0.18, blue: 0.09))
+                                .foregroundStyle(status.isFull ? p.amber : p.onGreen)
                                 .background(Capsule().fill(status.isFull ? p.amber.opacity(0.18) : p.green))
                         }
                         .buttonStyle(.plain)

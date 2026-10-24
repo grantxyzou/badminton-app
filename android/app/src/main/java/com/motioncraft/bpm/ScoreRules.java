@@ -5,8 +5,8 @@ package com.motioncraft.bpm;
  * which is the spec; `__tests__/score-rules.test.ts` is what this port is held
  * to. To 21, won by two, capped at 30; "game point" for the side one rally
  * from winning; "20 all", never deuce; "29 all" means the next point wins;
- * an interval when the leading side first reaches 11. Sides are 'a' (Green)
- * and 'b' (Blue). Pure.
+ * an interval when the leading side first reaches 11. Sides are 'a' (A side)
+ * and 'b' (B side) — neutral, so anyone can score any court. Pure.
  */
 final class ScoreRules {
     static final int GAME_TO = 21;
@@ -56,6 +56,6 @@ final class ScoreRules {
     }
 
     static String sideName(char side) {
-        return side == 'a' ? "Green" : "Blue";
+        return side == 'a' ? "A side" : "B side";
     }
 }

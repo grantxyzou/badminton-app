@@ -333,7 +333,7 @@ submitted by Grant on device.
   the sheet's save calls `markWidgetGameSaved()` so the widget lets the game
   go. The score widget's game never touches the server before that save; its
   rules are `lib/scoreRules.ts` (umpire's terms: game point, "20 all", "29
-  all · next point wins", Interval at 11; sides are Green and Blue), and the
+  all · next point wins", Interval at 11; sides are A side and B side), and the
   Swift and Java ports are held to `__tests__/score-rules.test.ts`. The large
   widget's stringing section reads the bench through `lib/stringingOrder.ts`
   (shared with the jobs route) and wears strings by TIME against
