@@ -18,12 +18,10 @@ import type { Player } from '@/lib/types';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, unauthorized } from '@/lib/auth';
-import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
+import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import type { RecoveryEvent, Session } from '@/lib/types';
-
-const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
 
 /**
  * Close the signup capacity race (#79). The pre-insert count check and the

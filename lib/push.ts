@@ -101,16 +101,8 @@ export function safeTag(raw: string | undefined): string | undefined {
   return cleaned || undefined;
 }
 
-let ready: Promise<void> | null = null;
 export function ensurePushContainer(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('pushSubscriptions', '/memberId').catch((err) => {
-      // Reset so the next request retries rather than caching the failure.
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('pushSubscriptions', '/memberId');
 }
 
 let vapidReady = false;

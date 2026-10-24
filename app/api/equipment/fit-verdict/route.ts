@@ -60,15 +60,8 @@ const COPY_ATTEMPTS = 2;
 /** How long a twice-rejected verdict stands before the same facts ask again. */
 const REJECTION_RETRY_MS = 60 * 60 * 1000;
 
-let insightsReady: Promise<void> | null = null;
 function ensureInsights(): Promise<void> {
-  if (!insightsReady) {
-    insightsReady = ensureContainer('insights', '/memberId').catch((err) => {
-      insightsReady = null;
-      throw err;
-    });
-  }
-  return insightsReady;
+  return ensureContainer('insights', '/memberId');
 }
 
 interface VerdictCopyDoc {

@@ -103,15 +103,8 @@ function reasonFor(item: CatalogItem, stage?: number): string {
 
 // Lazy container bootstrap for the gear read below — real Cosmos doesn't
 // auto-create containers. Mirrors app/api/equipment/gear/route.ts's ensureGear.
-let gearReady: Promise<void> | null = null;
 function ensureGear(): Promise<void> {
-  if (!gearReady) {
-    gearReady = ensureContainer('playerGear', '/memberId').catch((err) => {
-      gearReady = null;
-      throw err;
-    });
-  }
-  return gearReady;
+  return ensureContainer('playerGear', '/memberId');
 }
 
 export async function GET(req: NextRequest) {

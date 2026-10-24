@@ -52,15 +52,8 @@ const ATTENDANCE_WEEKS = 52;
 
 // Lazy bootstrap — real Cosmos doesn't auto-create containers. PK /memberId
 // (one insight doc per member, id === memberId).
-let insightsReady: Promise<void> | null = null;
 function ensureInsightsContainer(): Promise<void> {
-  if (!insightsReady) {
-    insightsReady = ensureContainer('insights', '/memberId').catch((err) => {
-      insightsReady = null;
-      throw err;
-    });
-  }
-  return insightsReady;
+  return ensureContainer('insights', '/memberId');
 }
 
 /** One distributed-insight slice: a styled chip's content. `kind` is set

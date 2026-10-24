@@ -111,15 +111,8 @@ const CONTAINER = 'authhandoff';
  *  enough that an unclaimed stash is not a standing credential. */
 export const HANDOFF_TTL_MS = 10 * 60 * 1000;
 
-let ready: Promise<void> | null = null;
 function containerReady(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer(CONTAINER, '/id').catch((err) => {
-      ready = null; // let the next request retry rather than cache a failure
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer(CONTAINER, '/id');
 }
 
 /** The secret. Lives only in the PWA's localStorage and in the claim body. */
