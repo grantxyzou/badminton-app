@@ -3,7 +3,7 @@
 **Track:** Reach (ROADMAP track 4). This is the *explicit choice* the LOCKED
 block reserved for Stage-2 (#81): multi-GROUP inside the one deployment, not the
 SaaS the April memo costed — no billing, no marketing site, no super-admin plane.
-**Status:** in-flight (Phases 0–4 landed and the production backfill ran on 2026-09-10 — BPM is group #1, 72/72 memberships, `mismatched: 0`. The flag is still OFF, so nothing is observable yet; what the flip waits on is the 2026-10-21 review answer below. Phases 5–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
+**Status:** in-flight (Phases 0–4 landed and the production backfill ran on 2026-09-10 — BPM is group #1, 72/72 memberships, `mismatched: 0`. The flag went ON in production on 2026-10-22 (#700), the same day the backfill re-run read `mismatched: 0` (Decisions, 2026-10-22); what remains is the clean-week review below. Phases 5–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
 **Review on:** 2026-10-29 — the flag went on 2026-10-22: was the week after it clean of `[group-leak]` in the App Service log stream? If so, set `TOLERATE_UNSTAMPED` to false and stop dual-writing `Member.role`.
 
 ## Problem
