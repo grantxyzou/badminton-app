@@ -25,7 +25,7 @@
 
 > **Production:** https://bpm.grantzou.com/bpm (app service `vnext-badminton-app` — the name is inverted; verify by DNS, never by name)
 > **Stack:** Next.js 16 · Azure App Service (single, B1) · Cosmos DB · Anthropic Claude API
-> **Last updated:** 2026-09-02
+> **Last updated:** 2026-10-24 (§3 and §5 re-pointed at the live trackers; the sections below them are a dated record)
 >
 > **This file is the index.** Detail lives elsewhere — don't duplicate it here:
 > - **What shipped** → `CHANGELOG.md` (per-version, not chronological by design)
@@ -63,7 +63,7 @@ As of **v1.7 every feature flag was on for everyone** (the two deployments reach
 - **Stats** — Summary redesign (tiles + radar), window/cache alignment (#223), i18n + offline gating (#224).
 - **Design-audit remediation** (P0–P2) — phantom tokens resolved, icon/font-size tokenization, guardrail lint→error on cleared areas. Item #6 deliberately deferred; see `docs/plans/design-audit-remediation.md`.
 
-## 3. Open PRs (6, as of 2026-08-16)
+## 3. Open PRs (a record as of 2026-08-16 — current PRs: GitHub; ranked work: the umbrella issues #518–#537)
 
 | PR | State | Note |
 |---|---|---|
@@ -109,5 +109,5 @@ As of **v1.7 every feature flag was on for everyone** (the two deployments reach
 | Offline architecture | `docs/plans/offline-legible-fail.md` |
 | Value-hub strategy | `docs/plans/value-hub-slice-0.md` |
 | How the code works / gotchas | `CLAUDE.md` |
-| Deploy/rollback | `deploy-promotion` skill + `CLAUDE.md` "Deployment" (`docs/deployment-model.md` predates the single-deployment topology) |
+| Deploy/rollback | `deploy-promotion` skill + `docs/deployment-model.md` + `CLAUDE.md` "Deployment" |
 | Live tasks | GitHub milestones/issues |
