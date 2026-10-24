@@ -30,7 +30,8 @@ The names are inverted relative to reality, and this has caused repeated confusi
   identifier, not a feature flag.
 
 Never verify which app is live by its name. Verify by DNS: `bpm.grantzou.com` and
-`next.grantzou.com` are both bound to `vnext-badminton-app`.
+`next.grantzou.com` are both bound to `vnext-badminton-app`.† († DNS and the portal, not
+the repo; the workflow's `APP_ORIGIN` proves only `bpm.grantzou.com`.)
 
 ## Shipping
 
@@ -51,7 +52,9 @@ gh workflow run deploy-next.yml --ref <good-sha>
 ```
 
 It has `workflow_dispatch`, so production can be redeployed at any commit. This does not
-depend on the deleted stable service in any way.
+depend on the deleted stable service in any way. Deploys run one at a time
+(`concurrency: deploy-production`, `cancel-in-progress: false`), so a rollback queues
+behind a deploy already in flight, and the next merge to `main` deploys `main` over it.
 
 For data rollback: Cosmos point-in-time restore. The account is in continuous 7-day
 backup mode† (the cost export of 2026-10-14 carries a `PITR · Cont 7D Bkup` meter for
@@ -63,11 +66,13 @@ drill. † read from billing, not from the Backup & Restore blade.
 
 ```
 gh run list --workflow=deploy-next.yml --limit 3
-curl -s -o /dev/null -w "%{http_code}\n" https://bpm.grantzou.com/bpm
+node scripts/smoke-prod.mjs --sha <full 40-char sha>
 ```
 
-Probe a route that only exists in the new build to prove *which* build is live — a 200 on
-the home page only proves something is serving. Keep production smoke tests **read-only**:
+The workflow runs that smoke check itself after every deploy. `--sha` waits until the
+page's `bpm-build` meta tag (`app/layout.tsx`, the full `github.sha`) equals the SHA given —
+an exact match, so a short SHA never matches — which proves *which* build is live; a 200
+on the home page only proves something is serving. Keep production smoke tests **read-only**:
 signing in writes engagement events that feed the Value-Hub Slice-0 kill-criterion metric.
 
 ## Schema rule
