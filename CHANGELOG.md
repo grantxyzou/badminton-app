@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Racket fit flag retired (2026-10-24)
+
+`NEXT_PUBLIC_FLAG_RACKET_FIT` was already `'true'` in production; the fit engine is now the only racket recommender in `GET /api/recommend`. Nothing changes on screen.
+
 ### Multi-group is on (2026-10-22)
 
 `NEXT_PUBLIC_FLAG_MULTI_GROUP` is `'true'` in `deploy-next.yml` (and in
