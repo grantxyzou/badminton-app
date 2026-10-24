@@ -115,8 +115,16 @@ export async function markWidgetGameSaved(): Promise<void> {
   }
 }
 
-/** Signing out: a shared phone must not keep the last person's week on its
- *  home screen. The widget then shows "Open BPM and sign in". */
+/**
+ * Signing out: a shared phone must not keep the last person's week on its
+ * home screen. The widget then shows "Open BPM and sign in".
+ *
+ * Two clears, together: the device's copy through the plugin, and the pass
+ * itself on the server (`DELETE /api/widget/token` stamps the membership so
+ * anything minted before now is refused — a copy taken off the phone would
+ * otherwise outlive the sign-out by sixty days). Called while the member
+ * cookie is still set; the revoke is best-effort like everything here.
+ */
 export async function clearWidgets(): Promise<void> {
   try {
     localStorage.removeItem(WIDGET_MINTED_KEY);
@@ -125,7 +133,10 @@ export async function clearWidgets(): Promise<void> {
   }
   if (!widgetAvailable()) return;
   try {
-    await (await bpmWidget()).widget.clear();
+    await Promise.allSettled([
+      fetch(`${BASE}/api/widget/token`, { method: 'DELETE', cache: 'no-store' }),
+      bpmWidget().then(({ widget }) => widget.clear()),
+    ]);
   } catch {
     /* nothing to clear */
   }

@@ -5,7 +5,7 @@ import { closeTopSheet } from '@/lib/sheetStack';
 import { rememberReturnCode } from '@/lib/handoffClient';
 import { routeInApp } from '@/lib/inAppNavigate';
 import { openShortcut } from '@/lib/appShortcuts';
-import { widgetOpenTarget } from '@/lib/widgetBridge';
+import { widgetOpenTarget, syncWidgetPass } from '@/lib/widgetBridge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const HOST = 'bpm.grantzou.com';
@@ -139,6 +139,10 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
               const widgetTarget = widgetOpenTarget(u);
               if (widgetTarget) {
                 if (!routeInApp(widgetTarget)) window.location.assign(widgetTarget);
+                // A tap from the widget re-mints its pass at once: the widget
+                // may be asking because a sign-out elsewhere revoked the one
+                // it holds, and the daily re-mint would leave it dark all day.
+                void syncWidgetPass(true);
                 resume();
                 return;
               }

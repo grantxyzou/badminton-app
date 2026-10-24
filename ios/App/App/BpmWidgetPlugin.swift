@@ -36,9 +36,18 @@ public class BpmWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var store: UserDefaults? { UserDefaults(suiteName: Self.appGroup) }
 
+    /// https anywhere, or plain http on localhost ITSELF — parsed, never a
+    /// string prefix: `http://localhost.example.com` starts with
+    /// `http://localhost` and is somebody else's server.
+    static func isAllowedBaseUrl(_ raw: String) -> Bool {
+        guard let url = URL(string: raw), let scheme = url.scheme?.lowercased() else { return false }
+        if scheme == "https" { return true }
+        return scheme == "http" && url.host?.lowercased() == "localhost"
+    }
+
     @objc func setSession(_ call: CAPPluginCall) {
         guard let token = call.getString("token"), !token.isEmpty,
-              let baseUrl = call.getString("baseUrl"), baseUrl.hasPrefix("https://") || baseUrl.hasPrefix("http://localhost")
+              let baseUrl = call.getString("baseUrl"), Self.isAllowedBaseUrl(baseUrl)
         else {
             call.reject("token and an https baseUrl are required")
             return
