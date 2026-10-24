@@ -47,15 +47,8 @@ import { getContainer, ensureContainer } from '@/lib/cosmos';
 const CONTAINER = 'authhandoff';
 export const MIGRATION_TTL_MS = 5 * 60 * 1000;
 
-let ready: Promise<void> | null = null;
 function containerReady(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('authhandoff', '/id').catch((err) => {
-      ready = null; // let the next request retry rather than cache a failure
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('authhandoff', '/id');
 }
 
 export interface MigrationDoc {

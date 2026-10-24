@@ -7,7 +7,7 @@ import { isFlagOn } from '@/lib/flags';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { readMembership } from '@/lib/groups';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
+import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import {
   verifyMemberAuth,
   isAdminAuthed,
@@ -29,8 +29,6 @@ import {
   parseStatsPrivacyPatch,
   type StatsPrivacy,
 } from '@/lib/statsPrivacy';
-
-const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);

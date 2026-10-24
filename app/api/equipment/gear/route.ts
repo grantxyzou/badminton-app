@@ -50,15 +50,8 @@ const FIT_ENUMS = {
 const HOUR_MS = 60 * 60 * 1000;
 const VALID_CATEGORIES = new Set<EquipmentCategory>(['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip']);
 
-let ready: Promise<void> | null = null;
 function ensureGear(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('playerGear', '/memberId').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('playerGear', '/memberId');
 }
 
 

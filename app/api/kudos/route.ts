@@ -12,15 +12,8 @@ import { playedTogetherIn, playedTogetherRecently } from '@/lib/kudosEligibility
 
 export const dynamic = 'force-dynamic';
 
-let ready: Promise<void> | null = null;
 function ensureKudos(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('kudos', '/recipientMemberId').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('kudos', '/recipientMemberId');
 }
 
 /** A skill key must name a real assessment skill. Anything else is dropped
