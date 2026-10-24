@@ -573,7 +573,25 @@ export async function requireMember(req: NextRequest): Promise<MemberGate> {
 export function isAdminAuthed(req: NextRequest): boolean {
   const cookie = req.cookies.get(COOKIE_NAME)?.value;
   if (!cookie) return false;
-  return verifyToken(cookie, 'admin') !== null;
+  const payload = verifyToken(cookie, 'admin');
+  return payload !== null && !claimsDisagree(req, payload);
+}
+
+/**
+ * TWO COOKIES, ONE CLUB. With groups on, the admin token proves a role in the
+ * club IT names, while `resolveGroupId` scopes the request to the club the
+ * MEMBER token names first. Every legitimate path mints the pair together —
+ * `completeSignIn` sets or clears the admin cookie for the member's group, and
+ * `POST /api/admin` resolves its group from the member cookie — so a pair that
+ * disagrees was assembled by hand: an admin of a club they created themselves,
+ * replaying that token beside a member cookie for BPM, passed this check and
+ * then acted on BPM (security review, 2026-10-24). Refused, not reconciled:
+ * the caller signs in again. Flag off, both claims read as BPM.
+ */
+function claimsDisagree(req: NextRequest, admin: SessionPayload): boolean {
+  if (!groupsOn()) return false;
+  const memberGroup = readGroupClaim(req.cookies.get(MEMBER_COOKIE_NAME)?.value);
+  return memberGroup !== null && memberGroup !== (admin.groupId ?? BPM_GROUP_ID);
 }
 
 /**
@@ -625,7 +643,7 @@ export async function isAdminAuthedWithMember(
   const cookie = req.cookies.get(COOKIE_NAME)?.value;
   if (!cookie) return { authed: false };
   const payload = verifyToken(cookie, 'admin');
-  if (!payload) return { authed: false };
+  if (!payload || claimsDisagree(req, payload)) return { authed: false };
 
   try {
     const container = getContainer('members');
