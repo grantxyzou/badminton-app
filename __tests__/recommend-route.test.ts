@@ -154,10 +154,10 @@ describe('/api/recommend with the engine flag on', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns needsCheckIn rather than guessing when there is no assessment', async () => {
+  it('returns needsFit rather than guessing when there is no assessment, racket or fit answer', async () => {
     seedMember('Lin');
     const body = await (await GET(getAs('Lin'))).json();
-    expect(body.needsCheckIn).toBe(true);
+    expect(body.needsFit).toBe(true);
     expect(body.item).toBeNull();
   });
 
