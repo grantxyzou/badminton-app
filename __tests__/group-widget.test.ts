@@ -139,15 +139,29 @@ describe('the widget pass', () => {
     try {
       vi.setSystemTime(new Date('2026-10-24T10:00:00Z'));
       const bpmCookie = { Cookie: `member_session=${memberCookieValue('Ana', ANA, 3600, 'bpm')}` };
-      const mint = await tokenPost(makeRequest('POST', 'http://x/bpm/api/widget/token', {}, bpmCookie));
-      const before = ((await mint.json()) as { token: string }).token;
+      const mintFlagOff = async () => {
+        const res = await tokenPost(makeRequest('POST', 'http://x/bpm/api/widget/token', {}, bpmCookie));
+        expect(res.status).toBe(200);
+        return ((await res.json()) as { token: string }).token;
+      };
+      const before = await mintFlagOff();
+      expect((await read(before)).status).toBe(200);
+
       vi.setSystemTime(new Date('2026-10-24T10:00:05Z'));
       expect((await tokenDelete(makeRequest('DELETE', 'http://x/bpm/api/widget/token', {}, bpmCookie))).status).toBe(200);
       expect((getStore().members as { id: string; widgetPassNotBefore?: string }[]).find((m) => m.id === ANA)?.widgetPassNotBefore)
         .toBe('2026-10-24T10:00:05.000Z');
+      // THE ROUTE refuses the old pass — the flag-off branch of `activeMemberFor`
+      // is what carries the cutoff off the Member doc, and this is the only
+      // test that reaches it (review of #710: the first cut minted the pass and
+      // never sent it).
+      expect((await read(before)).status).toBe(401);
+
+      vi.setSystemTime(new Date('2026-10-24T10:00:06Z'));
+      expect((await read(await mintFlagOff())).status).toBe(200);
+
       expect(passRevoked(Math.floor(Date.parse('2026-10-24T10:00:00Z') / 1000), '2026-10-24T10:00:05.000Z')).toBe(true);
       expect(passRevoked(Math.floor(Date.parse('2026-10-24T10:00:05.900Z') / 1000), '2026-10-24T10:00:05.000Z')).toBe(false);
-      void before;
     } finally {
       vi.useRealTimers();
     }
