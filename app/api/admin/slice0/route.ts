@@ -4,7 +4,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { PICK_KINDS, GEAR_SURFACE_KINDS, USAGE_KINDS, isCheckInSource } from '@/lib/events';
+import { PICK_KINDS, GEAR_SURFACE_KINDS, USAGE_KINDS, ERROR_KINDS, isCheckInSource } from '@/lib/events';
 import { SKILLS } from '@/lib/assessment';
 import { rosterMembers } from '@/lib/roster';
 
@@ -176,6 +176,9 @@ export async function GET(req: NextRequest) {
     /** Usage records (docs/plans/usage-metrics.md), tallied the same way. */
     const usage: Record<string, { events: number; members: number }> = {};
     const usageMembers = new Map<string, Set<string>>();
+    /** Client crashes (docs/plans/client-error-beacon.md): how many, and how many members hit one. */
+    const clientErrors = { events: 0, members: 0 };
+    const clientErrorMembers = new Set<string>();
     const gearSurfaceMembers = new Map<string, Set<string>>();
     const statsOpeners = new Set<string>();
     const checkInOpeners = new Set<string>();
@@ -217,6 +220,14 @@ export async function GET(req: NextRequest) {
             seen.add(rk);
             gearSurfaceMembers.set(e.kind, seen);
             row.members = seen.size;
+          }
+        }
+        if ((ERROR_KINDS as readonly string[]).includes(e.kind)) {
+          const rk = rosterKey(e.memberId, e.name);
+          if (rk) {
+            clientErrors.events += 1;
+            clientErrorMembers.add(rk);
+            clientErrors.members = clientErrorMembers.size;
           }
         }
         if ((USAGE_KINDS as readonly string[]).includes(e.kind)) {
@@ -429,6 +440,7 @@ export async function GET(req: NextRequest) {
        *  Roster-narrowed like everything above; a kind nobody used is absent. */
       gearSurfaces,
       usage,
+      clientErrors,
       verdict,
     });
   } catch (error) {

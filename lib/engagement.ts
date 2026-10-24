@@ -1,6 +1,6 @@
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-import type { ClientKind, CheckInSource, StatsOpenSource, USAGE_PLATFORMS, USAGE_TABS } from './events';
+import type { ClientKind, CheckInSource, StatsOpenSource, ErrorWhere, USAGE_PLATFORMS, USAGE_TABS } from './events';
 
 /** The kinds a CLIENT may send — server-only kinds (`pick_served`) are not in
  *  this type, and `POST /api/events` refuses them. */
@@ -20,6 +20,8 @@ export interface EngagementMeta {
   tab?: (typeof USAGE_TABS)[number];
   /** `app_open` only. */
   platform?: (typeof USAGE_PLATFORMS)[number];
+  /** `client_error` only. */
+  where?: ErrorWhere;
 }
 
 /**
@@ -48,4 +50,20 @@ export async function recordEngagement(kind: EngagementKind, meta?: EngagementMe
   } catch {
     /* beacon only — see above */
   }
+}
+
+/** A crash loop must not become a flood: a page load reports a few, then goes quiet. */
+const ERROR_BEACONS_PER_PAGE = 3;
+let errorBeaconsSent = 0;
+
+/**
+ * Tells the server a screen crashed, so a broken screen is known without a
+ * player having to say so. Fire-and-forget like `recordEngagement`; anonymous
+ * visitors get a 401 and are uncounted, which is the design. Carries no
+ * message or stack — only WHERE it broke.
+ */
+export function reportClientError(where: ErrorWhere, tab?: (typeof USAGE_TABS)[number]): void {
+  if (errorBeaconsSent >= ERROR_BEACONS_PER_PAGE) return;
+  errorBeaconsSent += 1;
+  void recordEngagement('client_error', { where, ...(tab ? { tab } : {}) });
 }

@@ -24,6 +24,7 @@ function mockMetrics(payload: unknown, ok = true) {
 }
 
 const HAPPY: ClubMetrics = {
+  clientErrors: { last7d: 0, members7d: 0, byTab: {} },
   generatedAt: '2026-10-07T12:00:00.000Z',
   rosterSize: 40,
   activeMembers: { last4: 23, previous4: 19 },

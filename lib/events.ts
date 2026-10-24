@@ -42,6 +42,8 @@ export const CLIENT_KINDS = [
   // Usage (docs/plans/usage-metrics.md). See USAGE_KINDS below.
   'app_open',
   'tab_view',
+  // A screen crashed for a signed-in member (docs/plans/client-error-beacon.md).
+  'client_error',
 ] as const;
 /**
  * The Equipment surfaces' own beacons (design "Equipment redesign", Turn 3 §9).
@@ -79,6 +81,15 @@ export const USAGE_PLATFORMS = ['web', 'installed', 'ios', 'android'] as const;
 /** How a member signed in. `completeSignIn` takes one, so no path can forget it. */
 export const SIGN_IN_VIAS = ['pin', 'password', 'google', 'apple', 'recovery', 'reset', 'handoff', 'migrate'] as const;
 export type SignInVia = (typeof SIGN_IN_VIAS)[number];
+
+/**
+ * Where a client failure happened, bounded like `tab`: never a message, a URL
+ * or a stack — an open payload would turn `events` into a free-text sink.
+ * `render` is a screen that threw and landed on an error boundary.
+ */
+export const ERROR_WHERES = ['render'] as const;
+export type ErrorWhere = (typeof ERROR_WHERES)[number];
+export const ERROR_KINDS = ['client_error'] as const;
 
 export const PICK_KINDS = ['pick_served', 'pick_added', 'pick_tried', 'pick_rated'] as const;
 
@@ -127,7 +138,7 @@ export function isValueHubKind(v: string): boolean {
  *  is dropped: an open payload turns the container into a free-text sink. */
 export const CLIENT_PAYLOAD: Record<
   ClientKind,
-  ReadonlyArray<'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform'>
+  ReadonlyArray<'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform' | 'where'>
 > = {
   rec_card_tap: [],
   pick_added: ['catalogId', 'engineVersion', 'category'],
@@ -145,6 +156,7 @@ export const CLIENT_PAYLOAD: Record<
   frame_section_expanded: ['catalogId'],
   app_open: ['platform'],
   tab_view: ['tab'],
+  client_error: ['where', 'tab'],
 };
 
 export function isClientKind(v: unknown): v is ClientKind {

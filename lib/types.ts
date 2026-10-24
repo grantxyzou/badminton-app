@@ -872,6 +872,8 @@ export interface EngagementEvent {
   tab?: string;
   /** `app_open` only — one of USAGE_PLATFORMS. Additive. */
   platform?: string;
+  /** `client_error` only — one of ERROR_WHERES. Additive. */
+  where?: string;
   /** `sign_in` only — one of SIGN_IN_VIAS. Additive. */
   via?: string;
 }

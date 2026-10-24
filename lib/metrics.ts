@@ -1,7 +1,7 @@
 import { getContainer, ensureContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import { rosterMembers } from './roster';
-import { USAGE_KINDS } from './events';
+import { USAGE_KINDS, ERROR_KINDS } from './events';
 import { computeClubMetrics, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
 
 /**
@@ -122,6 +122,15 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
       { name: '@kinds', value: [...USAGE_KINDS] },
     ],
   });
+  const since7 = new Date(now.getTime() - 7 * DAY).toISOString();
+  const errorRows = await scope.query<{ memberId?: unknown; kind?: unknown; at?: unknown; tab?: unknown }>('events', {
+    select: 'c.memberId, c.kind, c.at, c.tab',
+    where: 'c.at >= @since AND ARRAY_CONTAINS(@kinds, c.kind)',
+    params: [
+      { name: '@since', value: since7 },
+      { name: '@kinds', value: [...ERROR_KINDS] },
+    ],
+  });
   // The "Move to the app" sign-ins, all time (the container's TTL is the only
   // bound): one per person, so a 28-day window would lose them within a month
   // of the link going live. Cosmos filters by kind and method; the mock does
@@ -165,6 +174,11 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
             ...(typeof r.tab === 'string' ? { tab: r.tab } : {}),
             ...(typeof r.via === 'string' ? { via: r.via } : {}),
           }]
+        : [],
+    ),
+    errorEvents: errorRows.flatMap((r) =>
+      typeof r.memberId === 'string' && typeof r.at === 'string' && (ERROR_KINDS as readonly string[]).includes(r.kind as string)
+        ? [{ memberId: r.memberId, at: r.at, ...(typeof r.tab === 'string' ? { tab: r.tab } : {}) }]
         : [],
     ),
     migrations: migrationRows.flatMap((r) =>

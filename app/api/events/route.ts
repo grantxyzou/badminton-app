@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS } from '@/lib/events';
+import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS, ERROR_WHERES } from '@/lib/events';
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -24,7 +24,7 @@ const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T =>
  * the feedback loop's denominator) is not a client kind at all, so it is
  * refused as unknown.
  */
-type Payload = Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform'>;
+type Payload = Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform' | 'where'>;
 
 function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unknown>): Payload {
   const out: Payload = {};
@@ -39,6 +39,7 @@ function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unkn
     if (field === 'source' && kind === 'stats_open' && isStatsOpenSource(body.source)) out.source = body.source;
     if (field === 'source' && kind !== 'stats_open' && isCheckInSource(body.source)) out.source = body.source;
     if (field === 'tab' && oneOf(USAGE_TABS, body.tab)) out.tab = body.tab;
+    if (field === 'where' && oneOf(ERROR_WHERES, body.where)) out.where = body.where;
     if (field === 'platform' && oneOf(USAGE_PLATFORMS, body.platform)) out.platform = body.platform;
   }
   return out;
