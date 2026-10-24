@@ -13,15 +13,8 @@ export const dynamic = 'force-dynamic';
 
 // Lazy container bootstrap — real Cosmos doesn't auto-create containers.
 // Personal trend store, keyed per-person so snapshots accumulate over time.
-let ready: Promise<void> | null = null;
 function ensureAssessments(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('assessments', '/memberId').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('assessments', '/memberId');
 }
 
 const SKILL_KEYS = new Set(SKILLS.map((s) => s.key));

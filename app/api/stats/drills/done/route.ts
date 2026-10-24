@@ -29,16 +29,8 @@ import { resolveActiveSubject } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
-let ready: Promise<void> | null = null;
 function ensureDrillsDone(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('drillCompletions', '/memberId').catch((err) => {
-      // Null it so a transient failure doesn't permanently poison the module.
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('drillCompletions', '/memberId');
 }
 
 

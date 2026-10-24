@@ -54,17 +54,8 @@ function isoDateOrNull(value: unknown): string | null | undefined {
   return Number.isNaN(Date.parse(`${t}T00:00:00Z`)) ? undefined : t;
 }
 
-let ready: Promise<void> | null = null;
 function ensureJobs(): Promise<void> {
-  if (!ready) {
-    // Not memoising the rejection: a container that failed to create once must
-    // be retried on the next request, not remembered as permanently broken.
-    ready = ensureContainer('stringingJobs', '/memberId').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('stringingJobs', '/memberId');
 }
 
 /**

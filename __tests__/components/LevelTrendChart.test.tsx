@@ -33,7 +33,7 @@ function stub(snapshots: CheckInSnapshot[], status: UseCheckIn['status'] = 'read
 
 function renderChart(checkIn: UseCheckIn) {
   return render(
-    <NextIntlClientProvider locale="en" messages={enMessages}>
+    <NextIntlClientProvider locale="en" messages={enMessages} timeZone="UTC">
       <LevelTrendChart checkIn={checkIn} />
     </NextIntlClientProvider>,
   );
