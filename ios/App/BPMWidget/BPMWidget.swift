@@ -728,7 +728,12 @@ struct BPMWeekView: View {
                     BalanceBlock(owed: snap.owed, p: p).frame(width: 90, alignment: .trailing)
                 }
             }
+            // The three sections share the height, a rule centred in each gap:
+            // one spacer at the end left the bottom third empty (Grant's first
+            // light-mode screenshot, 2026-10-24).
+            Spacer(minLength: 0)
             Rectangle().fill(p.rule).frame(height: 1)
+            Spacer(minLength: 0)
             Link(destination: WidgetLink.stats) {
                 if let level = snap.level {
                     LevelBlock(level: level, p: p)
@@ -744,12 +749,15 @@ struct BPMWeekView: View {
             // step, or the strings wearing in by TIME since the restring. No
             // finished job, no section — the large widget closes the gap.
             if let stringing = snap.stringing {
+                Spacer(minLength: 0)
                 Rectangle().fill(p.rule).frame(height: 1)
+                Spacer(minLength: 0)
                 Link(destination: WidgetLink.stringing) {
                     StringingBlock(stringing: stringing, p: p)
                 }
+            } else {
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
         }
     }
 
