@@ -18,6 +18,13 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <ImageView
+            android:layout_width="12dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@null"
+            android:src="@drawable/widget_bpm_mark" />
+
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -47,7 +54,7 @@
             android:paddingTop="3dp"
             android:paddingEnd="8dp"
             android:paddingBottom="3dp"
-            android:text="⚡ GAME POINT · GREEN"
+            android:text="⚡ GAME POINT · A SIDE"
             android:textColor="@color/bpm_widget_on_amber"
             android:textSize="9sp"
             android:textStyle="bold"
@@ -180,7 +187,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Green"
+                    android:text="A side"
                     android:textColor="@color/bpm_widget_green"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -239,7 +246,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Blue"
+                    android:text="B side"
                     android:textColor="@color/bpm_widget_blue"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -331,7 +338,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:layout_marginBottom="4dp"
-                android:text="Green wins"
+                android:text="A side wins"
                 android:textColor="@color/bpm_widget_green"
                 android:textSize="16sp"
                 android:textStyle="bold" />

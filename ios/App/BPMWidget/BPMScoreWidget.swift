@@ -14,8 +14,8 @@ enum ScoreSide: String, Codable {
     case a, b
 
     /// Two neutral sides, so whoever holds the phone can keep score for any
-    /// court (Grant, 2026-10-23: not "Us" and "Them").
-    var name: String { self == .a ? "Green" : "Blue" }
+    /// court (Grant, 2026-10-23: not "Us" and "Them"; 2026-10-24: "A side" and "B side", not colours).
+    var name: String { self == .a ? "A side" : "B side" }
 }
 
 struct Score: Codable, Equatable {
@@ -297,7 +297,7 @@ struct BPMScoreView: View {
                 Button(intent: StartGameIntent()) {
                     Label("Start", systemImage: "play.fill").font(.system(size: 13, weight: .bold))
                         .padding(.horizontal, 14).padding(.vertical, 7)
-                        .foregroundStyle(Color(red: 0.02, green: 0.18, blue: 0.09))
+                        .foregroundStyle(p.onGreen)
                         .background(Capsule().fill(p.green))
                 }
                 .buttonStyle(.plain)
@@ -326,7 +326,7 @@ struct BPMScoreView: View {
         let s = game.score
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: "figure.badminton").font(.system(size: 11, weight: .bold)).foregroundStyle(p.green).widgetAccentable()
+                BPMMark(p: p)
                 Text("BPM").font(.system(size: 11, weight: .bold)).foregroundStyle(p.secondary)
                 Spacer(minLength: 4)
                 statusBadge(game, p, gamePoint: gamePoint)
@@ -351,7 +351,7 @@ struct BPMScoreView: View {
     private func statusBadge(_ game: ScoreGame, _ p: WidgetPalette, gamePoint: ScoreSide?) -> some View {
         let s = game.score
         if let gp = gamePoint {
-            badge("Game point · \(gp.name)", fill: p.amber, text: Color(red: 0.23, green: 0.13, blue: 0.01), icon: "bolt.fill")
+            badge("Game point · \(gp.name)", fill: p.amber, text: p.onAmber, icon: "bolt.fill")
         } else if ScoreRules.nextPointWins(s) {
             badge("29 all · next point wins", fill: p.badge, text: p.onBadge, icon: nil)
         } else if let at = ScoreRules.allAt(s) {
@@ -391,11 +391,9 @@ struct BPMScoreView: View {
                 // The amber dot is who serves — it follows the last rally.
                 if serving { Circle().fill(p.amber).frame(width: 8, height: 8).padding(8) }
             }
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(tint.opacity(0.14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(gamePoint ? p.amber : tint.opacity(0.35), lineWidth: 1))
-            )
+            // No stroke (Grant, on the canvas): the tint alone is the tile, and
+            // game point turns it amber rather than outlining it.
+            .background(RoundedRectangle(cornerRadius: 14).fill((gamePoint ? p.amber : tint).opacity(gamePoint ? 0.22 : 0.14)))
         }
         .buttonStyle(.plain)
     }
@@ -417,7 +415,7 @@ struct BPMScoreView: View {
                 Link(destination: ScoreLink.save(s)) {
                     Label("Save game", systemImage: "checkmark").font(.system(size: 12, weight: .bold))
                         .padding(.horizontal, 12).padding(.vertical, 6)
-                        .foregroundStyle(Color(red: 0.02, green: 0.18, blue: 0.09))
+                        .foregroundStyle(p.onGreen)
                         .background(Capsule().fill(p.green))
                 }
                 Button(intent: NextGameIntent()) { ghost("Next game", p) }.buttonStyle(.plain)

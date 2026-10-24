@@ -140,7 +140,10 @@ ten minutes, more than one in five), Join goes back to opening the app.
   button because the widget cannot know which side was yours). Saving tells
   the plugin (`scoreSaved`) so the widget lets the game go; "Next game" parks a
   finished game as pending until it is saved or discarded. The sides are
-  **Green and Blue**, not "us and them" (Grant: "I dont like the language").
+  **A side and B side** since 2026-10-24 (Grant, on the canvas: "Green team
+  and Blue team name should be A side and B side"); the green and blue tints
+  stay as each side's colour. They were Green and Blue for a day, chosen over
+  "us and them" (Grant: "I dont like the language").
   The calls are the umpire's (`lib/scoreRules.ts` is the spec; the Swift and
   Java ports are held to `__tests__/score-rules.test.ts`): to 21, won by two,
   capped at 30; "game point" for the side one rally from winning; "20 all",
@@ -159,6 +162,21 @@ ten minutes, more than one in five), Join goes back to opening the app.
   The score widget also lost a doubled 16 pt margin — the system already adds
   the widget's content margins — and its type grew ("the content can take up
   more space in the widget").
+- **2026-10-24 — the header is the BPM mark and the name; the boards are
+  light.** The first screenshot of a live widget (light mode) matched none of
+  the boards, which had been drawn as a dark "liquid glass" target before the
+  code existed; the score boards are now drawn from the Swift, in light mode as
+  on Grant's phone. iOS labels every widget with the app's name underneath, so
+  the header's "BPM" is redundant — kept anyway (Grant: "Dont drop I want BPM
+  and logo to get implemented"), and the stand-in badminton figure became the
+  real mark, the shuttle from `public/brand/bpm-logo.svg`, drawn as paths
+  (`BPMMark` in SwiftUI, `widget_bpm_mark.xml` on Android) so the extension
+  needs no asset in its catalog. The same pass fixed two light-mode contrast
+  bugs only a light screenshot showed: dark-green text on the deeper light
+  green, and a navy badge with navy text (`onGreen` / `onAmber` / `onBadge`
+  are per scheme now). The large score widget is drawn, not built
+  (`WidgetScoreLarge` on the canvas): 92 pt digits, a full-width Undo,
+  tonight's games under the result, "Interval · change ends".
 - **2026-10-23 — no Live Activity yet, for either.** Grant asked "is it hard
   to have the widgets live?" A Live Activity would put the score on the lock
   screen and in the Dynamic Island, but it needs an `ActivityAttributes` file

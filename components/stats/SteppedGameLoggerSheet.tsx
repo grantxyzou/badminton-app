@@ -371,7 +371,7 @@ export default function SteppedGameLoggerSheet({
                 <Stepper label={t('yourScore')} value={mine} onChange={setMine} accent />
                 <Stepper label={t('theirScore')} value={theirs} onChange={setTheirs} />
               </div>
-              {/* The widget scores Green against Blue and cannot know which
+              {/* The widget scores A side against B side and cannot know which
                   side you were on: one tap turns the score round. */}
               {prefill && (
                 <button

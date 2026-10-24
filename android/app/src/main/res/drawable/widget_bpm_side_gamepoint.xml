@@ -2,6 +2,5 @@
 <!-- The side one rally from winning. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="@color/bpm_widget_amber_soft" />
-    <stroke android:width="1dp" android:color="@color/bpm_widget_amber" />
     <corners android:radius="14dp" />
 </shape>
