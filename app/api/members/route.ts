@@ -6,7 +6,7 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rosterMembers, adminAddToRoster, rosterPublicRows } from '@/lib/roster';
-import { rosterNameHolder, renameRosterMember, removeFromRoster, setMembershipCanGift, RosterNameTakenError } from '@/lib/groups';
+import { rosterNameHolder, renameRosterMember, removeFromRoster, setMembershipCanGift, readMembership, RosterNameTakenError } from '@/lib/groups';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { randomBytes } from 'crypto';
 import { normalizeAvatar } from '@/lib/memberAvatar';
@@ -151,12 +151,20 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
   try {
     const body = await req.json();
     const { id } = body;
     if (typeof id !== 'string') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+    // An admin edits people on THEIR roster. Without this, any member who
+    // created a club of their own held an admin cookie that could rewrite or
+    // deactivate anyone whose id they had read off a roster (security review,
+    // 2026-10-24). A removed membership still counts, so a restore works.
+    if (groupsOn() && !(await readMembership(auth.groupId, id))) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
     const container = getContainer('members');
@@ -178,7 +186,7 @@ export async function PATCH(req: NextRequest) {
         // Per-group: the reservation is the clash check, and the membership's
         // roster name (what `GET /api/members` shows and what sign-up resolves)
         // moves with the Member's display name.
-        const groupId = resolveGroupId(req);
+        const groupId = auth.groupId;
         const holder = await rosterNameHolder(groupId, nextName);
         if (holder && holder !== id) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
         try {
@@ -216,7 +224,7 @@ export async function PATCH(req: NextRequest) {
     // copy. Someone not on this roster is a 404, not a silent no-op.
     if (typeof body.canGift === 'boolean') {
       updates.canGift = body.canGift;
-      if (groupsOn() && !(await setMembershipCanGift(resolveGroupId(req), id, body.canGift))) {
+      if (groupsOn() && !(await setMembershipCanGift(auth.groupId, id, body.canGift))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
     }
@@ -242,7 +250,7 @@ export async function PATCH(req: NextRequest) {
     // with /api/players PIN updates.
     if (clearPin && typeof existing?.name === 'string') {
       try {
-        const scope = groupScope(resolveGroupId(req));
+        const scope = groupScope(auth.groupId);
         // '' when there is no session: matches nothing, nothing to mirror.
         const sessionId = (await getActiveSessionId(scope.groupId)) ?? '';
         const matches = await scope.query<Record<string, unknown> & { id: string }>('players', {
@@ -273,7 +281,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
   try {
     const body = await req.json();
     const { id } = body;
@@ -282,6 +291,19 @@ export async function DELETE(req: NextRequest) {
     }
 
     const container = getContainer('members');
+
+    if (groupsOn()) {
+      // A club admin removes someone from THEIR roster and nothing more. A hard
+      // delete erases the PERSON from every club, so it is not one club's call
+      // (account deletion is `DELETE /api/members/me`); and someone off this
+      // roster is not this admin's to touch at all.
+      if (body.hard === true) {
+        return NextResponse.json({ error: 'hard_delete_disabled' }, { status: 403 });
+      }
+      if (!(await readMembership(auth.groupId, id))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
 
     if (body.hard === true) {
       await container.item(id, id).delete();
@@ -296,7 +318,7 @@ export async function DELETE(req: NextRequest) {
     // With groups on, this is removal from THIS roster (status `removed`,
     // name released); `Member.active` is still flipped for the flag-off
     // readers until Phase 3's per-group route replaces this one.
-    if (groupsOn()) await removeFromRoster(resolveGroupId(req), id);
+    if (groupsOn()) await removeFromRoster(auth.groupId, id);
     const { resource: updated } = await container.items.upsert({ ...existing, active: false });
     return NextResponse.json(publicMember(updated as Record<string, unknown> | undefined));
   } catch (error) {

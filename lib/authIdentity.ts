@@ -84,21 +84,11 @@ export function identityId(provider: AuthProvider, key: string): string {
   return `${provider}:${normalized}`;
 }
 
-// Lazy one-shot container bootstrap — real Cosmos does not auto-create
-// containers the way the mock store does. Same pattern as app/api/skills.
-let ensured: Promise<void> | null = null;
+// Lazy container bootstrap — real Cosmos does not auto-create containers the
+// way the mock store does. `ensureContainer` memoizes per process and forgets
+// a rejected attempt, so a cold-start failure is retried on the next call.
 function ready(): Promise<void> {
-  // The rejection is cleared, NOT memoized. Caching a failed promise would turn
-  // one transient cold-start error into every identity operation failing for
-  // the life of the process — the container bootstrap is exactly the call most
-  // likely to fail once and then succeed.
-  if (!ensured) {
-    ensured = ensureContainer('identities', '/id').catch((err) => {
-      ensured = null;
-      throw err;
-    });
-  }
-  return ensured;
+  return ensureContainer('identities', '/id');
 }
 
 export async function lookupIdentity(

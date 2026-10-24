@@ -14,6 +14,10 @@ function derive(pin: string, salt: Buffer): Promise<Buffer> {
   });
 }
 
+/** PINs refused when a member sets one. ONE list: the sign-up and the
+ *  change-PIN routes each kept a copy, and two copies of a guard drift. */
+export const BLOCKLISTED_PINS: ReadonlySet<string> = new Set(['0000', '1111', '1234', '4321', '1212']);
+
 const KEY_LENGTH = 32;
 const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1 };
 
