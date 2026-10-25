@@ -109,11 +109,14 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
   useEffect(() => {
     if (!paymentsAutoOn) return;
     let cancelled = false;
-    fetch(`${BASE}/api/admin/payments`, { cache: 'no-store' })
+    // The count form: the full inbox also reads every member's balance for its
+    // previews, which this row never shows (2026-10-25: the slowest request on
+    // a first open of Admin).
+    fetch(`${BASE}/api/admin/payments?count=1`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { configured?: boolean; review?: unknown[] } | null) => {
-        if (!cancelled && d && typeof d.configured === 'boolean') {
-          setInbox({ configured: d.configured, waiting: Array.isArray(d.review) ? d.review.length : 0 });
+      .then((d: { configured?: boolean; waiting?: number } | null) => {
+        if (!cancelled && d && typeof d.configured === 'boolean' && typeof d.waiting === 'number') {
+          setInbox({ configured: d.configured, waiting: d.waiting });
         }
       })
       .catch(() => {

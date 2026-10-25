@@ -70,7 +70,10 @@ describe('Sign-in readiness and E-transfers are menu rows', () => {
 
   it('the Money row says what is waiting in the inbox and opens the page', async () => {
     stubFetch((url) => {
-      if (url.includes('/api/admin/payments')) return { configured: true, review: [{}, {}, {}] };
+      // The row asks for the count form only: the full inbox reads every
+      // member's balance, which the row never shows.
+      if (url.includes('/api/admin/payments?count=1')) return { configured: true, waiting: 3 };
+      if (url.includes('/api/admin/payments')) throw new Error('the row must not read the full inbox');
       return {};
     });
     const setView = renderConsole();
@@ -82,7 +85,7 @@ describe('Sign-in readiness and E-transfers are menu rows', () => {
   });
 
   it('an inbox not set up yet says so on the row', async () => {
-    stubFetch((url) => (url.includes('/api/admin/payments') ? { configured: false, review: [] } : {}));
+    stubFetch((url) => (url.includes('/api/admin/payments?count=1') ? { configured: false, waiting: 0 } : {}));
     renderConsole();
     const row = await screen.findByRole('button', { name: /E-transfers/ });
     await waitFor(() => expect(row.textContent).toMatch(/Set up/));

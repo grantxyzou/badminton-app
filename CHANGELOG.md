@@ -48,6 +48,16 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Admin's first open starts loading at once (2026-10-25)
+
+Grant: "Admin still loads taking some time." Timed on a local build with simulated database delay, the first tap on Admin spent about 0.3 s doing nothing, then asked the server "is this an admin?" again (the app had just asked), and only then started the console's reads. The slowest of those was the full e-transfer inbox, which reads every member's balance to fill one menu row.
+
+- **No pause before the console.** The Admin code downloaded in the background is now used directly. Through `dynamic()` alone React still suspended on the first tap and held its placeholder for its minimum ~300 ms.
+- **No second admin check in front of the reads.** When the app's own check already said yes, the console draws at once and the tab's check runs behind it; a refusal still shows the PIN form.
+- **The E-transfers menu row reads two numbers** (`GET /api/admin/payments?count=1`): set up or not, and how many wait. It used to read the whole inbox: 17 database trips against 2.
+
+Locally the tap-to-first-read time fell from about 330 ms to about 40 ms, and the screen settled in 0.61 s instead of 0.84 s; production adds the phone's network time to each step that was removed.
+
 ### The privacy policy names the crash records (2026-10-25)
 
 Grant's call. "How you use the app" in the privacy policy now says that when a screen stops working for a signed-in member, the app records that it failed and which tab it was on, never the screen's content or the error's details, and that the organiser sees those only as totals, like the rest. English and Chinese, and the policy's date moves to 25 October 2026. (`docs/plans/client-error-beacon.md`)

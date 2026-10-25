@@ -157,6 +157,14 @@ describe('matching', () => {
     expect(inbox.review[0].suggestions[0].proposed.map((a: { ref: string }) => a.ref)).toEqual([row1.id]);
   });
 
+  it('?count=1 answers the menu row only: set up, and how many wait, with no names', async () => {
+    await post(email('Lin', '12.00', { authResults: undefined }));
+    const res = await inboxGet(makeAdminRequest('GET', `${BASE}/admin/payments?count=1`));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ configured: true, waiting: 1 });
+    expect((await inboxGet(makeRequest('GET', `${BASE}/admin/payments?count=1`))).status).toBe(401);
+  });
+
   it("an unsettled past session's estimate is never auto-matched; an admin may still assign it by hand", async () => {
     // A past session nobody has settled: $20 across Lin and one other → $10 each, live.
     const S3 = 'session-2026-10-05';
