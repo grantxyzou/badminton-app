@@ -137,11 +137,7 @@ export interface ClubMetrics {
   clientErrors: ClientErrorMetrics;
 }
 
-/**
- * How members use the app, from the usage records. Every field is null until
- * there is a record to count — "nobody opened the app" and "nothing is being
- * recorded" are different answers, and only the first is a zero.
- */
+/** Screens that crashed for roster members (docs/plans/client-error-beacon.md). */
 export interface ClientErrorMetrics {
   last7d: number;
   members7d: number;
@@ -149,6 +145,11 @@ export interface ClientErrorMetrics {
   byTab: Record<string, number>;
 }
 
+/**
+ * How members use the app, from the usage records. Every field is null until
+ * there is a record to count — "nobody opened the app" and "nothing is being
+ * recorded" are different answers, and only the first is a zero.
+ */
 export interface UsageMetrics {
   /** The earliest usage record in the window; null = nothing recorded yet. */
   firstRecordedAt: string | null;

@@ -62,8 +62,24 @@ let errorBeaconsSent = 0;
  * visitors get a 401 and are uncounted, which is the design. Carries no
  * message or stack — only WHERE it broke.
  */
-export function reportClientError(where: ErrorWhere, tab?: (typeof USAGE_TABS)[number]): void {
+export function reportClientError(where: ErrorWhere, tab: (typeof USAGE_TABS)[number] | undefined = crashedTab()): void {
   if (errorBeaconsSent >= ERROR_BEACONS_PER_PAGE) return;
   errorBeaconsSent += 1;
   void recordEngagement('client_error', { where, ...(tab ? { tab } : {}) });
+}
+
+/**
+ * The tab the member was on when the screen broke. Read from the session copy
+ * `HomeShell` writes on every switch, NOT `html[data-tab]`: the shell's effect
+ * cleanup removes that attribute as the crashed tree unmounts, before an error
+ * boundary's effect runs. Not checked against `USAGE_TABS` here (that list
+ * lives in a server module); `POST /api/events` drops a value outside it, so
+ * the admin tab is reported as no tab at all.
+ */
+function crashedTab(): (typeof USAGE_TABS)[number] | undefined {
+  try {
+    return (window.sessionStorage.getItem('badminton_active_tab') ?? undefined) as (typeof USAGE_TABS)[number] | undefined;
+  } catch {
+    return undefined;
+  }
 }
