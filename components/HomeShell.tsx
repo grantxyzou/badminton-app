@@ -101,6 +101,13 @@ export function toTab(v: string | null | undefined): Tab | null {
 const KEPT_TABS: Tab[] = ['home', 'stringing', 'skills', 'profile'];
 
 /**
+ * Admin is kept once VISITED but never opened early: only admins have it, and
+ * opening it is fifteen reads nobody else pays for. Its console stays mounted
+ * under its own pages too (`AdminDashboard`).
+ */
+const KEPT_ON_VISIT: Tab[] = [...KEPT_TABS, 'admin'];
+
+/**
  * The longest the other tabs wait for the first screen to settle before they
  * load anyway. A card that never settles (a slow model call, a stuck read)
  * must not keep the rest of the app cold.
@@ -478,11 +485,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * Only once the starting tab is RESOLVED: before that the SSR'd Home is a
    * placeholder for whatever the restore picks, and keeping it would fetch
    * Home behind a restored Stats — the exact cost `deferFetch` exists to
-   * avoid. Admin is not kept: it is the one tab with its own sub-pages and a
-   * fixed toast stack, and it is visited far less than the four in the nav.
+   * avoid. Admin is kept once visited but never opened early
+   * (`KEPT_ON_VISIT`); its toast stack and the Roster's add button are hidden
+   * with it.
    */
   const [kept, setKept] = useState<Tab[]>([]);
-  if (tabResolved && KEPT_TABS.includes(activeTab) && !kept.includes(activeTab)) {
+  if (tabResolved && KEPT_ON_VISIT.includes(activeTab) && !kept.includes(activeTab)) {
     setKept([...kept, activeTab]);
   }
 
@@ -860,6 +868,13 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     return () => window.clearInterval(id);
   }, [preloaded, canPreload]);
 
+  // An admin's Admin tab is not opened early (KEPT_ON_VISIT), but its CODE is
+  // fetched once the rest is in, so the first tap on Admin waits only for its
+  // data, not for the chunk too. Nobody else downloads it.
+  useEffect(() => {
+    if (preloaded && showAdmin) void import('@/components/AdminTab').catch(() => {});
+  }, [preloaded, showAdmin]);
+
 
   return (
     <>
@@ -1017,7 +1032,16 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           {/* Admin's verdict is still pending (a reload or deep link onto the
               tab): show the console's loading frame, not an empty page. */}
           {activeTab === 'admin' && !adminKnown && <div key="admin-pending" {...{ [TAB_PANEL_ATTR]: 'admin' }} className="motion-fade"><AdminFallback /></div>}
-          {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}-${tabNonce.admin ?? 0}`} {...{ [TAB_PANEL_ATTR]: 'admin' }} className="motion-fade"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
+          {/* Kept once visited, like the four above (Grant, 2026-10-25: "Admin
+              is still choppy and slow"), and only while this person is an
+              admin — a demotion unmounts it. */}
+          {showAdmin && (activeTab === 'admin' || kept.includes('admin')) && (
+            <div key={`admin-${refreshNonce}-${tabNonce.admin ?? 0}`} {...{ [TAB_PANEL_ATTR]: 'admin' }} hidden={activeTab !== 'admin'} className="motion-fade">
+              <TabActiveContext.Provider value={activeTab === 'admin'}>
+                <AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary>
+              </TabActiveContext.Provider>
+            </div>
+          )}
           </>
           )}
         </main>

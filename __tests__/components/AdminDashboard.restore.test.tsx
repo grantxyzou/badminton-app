@@ -51,3 +51,24 @@ describe('the admin page survives a refresh', () => {
     expect(sessionStorage.getItem('badminton_admin_view')).toBeNull();
   });
 });
+
+/**
+ * Grant, 2026-10-25: "Admin is still choppy and slow". Every Back from a page
+ * rebuilt the console from nothing — fourteen reads behind skeletons. The
+ * console now stays mounted, hidden, under the page on top of it.
+ */
+describe('the console stays under its pages', () => {
+  it('is mounted, hidden, while a page is open, and Back shows the same one', async () => {
+    sessionStorage.setItem('badminton_admin_view', 'skip-dates');
+    wrap();
+    await screen.findByRole('heading', { name: 'Skip dates' });
+    const consoleHeading = screen.getByRole('heading', { name: 'Admin', hidden: true });
+    expect(consoleHeading.closest('[hidden]')).not.toBeNull();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /back/i })[0]);
+    const shown = await screen.findByRole('heading', { name: 'Admin' });
+    // The same element: shown again, not rebuilt.
+    expect(shown).toBe(consoleHeading);
+    expect(shown.closest('[hidden]')).toBeNull();
+  });
+});

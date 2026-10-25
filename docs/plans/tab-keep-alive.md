@@ -33,8 +33,9 @@ membership before reading.
 - A client data cache (stale-while-revalidate per resource, invalidated on a
   write). It is the larger, better step and the next one if first visits still
   feel slow; this keeps SCREENS, not data.
-- Keeping the Admin tab. It has its own sub-pages and a fixed toast stack, and
-  is opened far less than the four tabs in the nav.
+- Opening the Admin tab early. It is kept once VISITED (2026-10-25, Grant: "Admin
+  is still choppy and slow") but never mounted before an admin opens it; only
+  its code is fetched in the background, for admins only.
 - Remembering tabs across a cold start. A quit still lands on Home, fresh.
 
 ## Decisions
@@ -72,6 +73,15 @@ membership before reading.
   tab on screen. Every loading frame in the app draws one, so no card has to
   report in; a card that never settles holds nothing past the caps.
 - **Each tab keeps its own scroll position**, as a phone's tab bar does.
+- **Admin is kept once visited, and its console stays under its pages**
+  (2026-10-25). Measured before: opening Admin rebuilt it every time (15 reads,
+  ~1 s of skeletons on a throttled phone profile), and every Back from an admin
+  page rebuilt the console (14 reads, ~0.7 s of skeletons). After: a second
+  open reads nothing, Back shows the console at once and re-reads it quietly
+  (what the page changed must show), and the Admin code downloads in the
+  background for admins, so the first open went from 4 code files and 587 ms
+  of blocked main thread to 1 file and 154 ms. The Roster's add button, a
+  portal, is hidden with its tab.
 
 ## Shape
 

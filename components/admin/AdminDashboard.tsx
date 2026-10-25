@@ -27,6 +27,7 @@ import SkipDatesEditor from './CommandCenter/SkipDatesEditor';
 import LateCancelEditor from './CommandCenter/LateCancelEditor';
 import ClubNameEditor from './CommandCenter/ClubNameEditor';
 import { isFlagOn } from '@/lib/flags';
+import { TabActiveContext, useTabActive, useTabReturn } from '@/lib/tabActivity';
 
 /*
  * The admin subtree's router. Every view is a Command Center page; the
@@ -76,6 +77,10 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const [rosterFocus, setRosterFocus] = useState<string | null>(null);
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>('all');
   const { group } = useCurrentGroup();
+  // The Admin tab is kept once visited (HomeShell). Back on it after a while,
+  // re-read the console quietly, as the other tabs do.
+  const onScreen = useTabActive();
+  useTabReturn(() => setRefreshKey((k) => k + 1));
 
   // Which way the last move went. A push slides the page in from the right;
   // going BACK used to have no motion at all (the Command Center just cut in).
@@ -102,152 +107,168 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     setView(to);
   }, []);
 
-  /* ── Drill-down routing ── */
-  if (view === 'session-details') {
-    return <div className="animate-slideInRight"><SetupPage onBack={goBack} /></div>;
-  }
-  if (view === 'members') {
-    return (
-      <div className="animate-slideInRight">
-        <RosterPage
-          onBack={() => { setRosterFocus(null); setRosterFilter('all'); goBack(); }}
-          focusName={rosterFocus}
-          initialFilter={rosterFilter}
-        />
-      </div>
-    );
-  }
-  if (view === 'birds') {
-    return <div className="animate-slideInRight"><BirdsPage onBack={goBack} /></div>;
-  }
-  if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
-  if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
-  if (view === 'catalog-gaps') return <div className="animate-slideInRight"><CatalogGapsPage onBack={goBack} /></div>;
-  if (view === 'metrics') return <div className="animate-slideInRight"><MetricsPage onBack={goBack} /></div>;
-  // Flag-gated at the route level too — every price on this screen is exact,
-  // which is precisely what the player API strips.
-  if (view === 'stringing' && isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
-    return <div className="animate-slideInRight"><StringingPage onBack={goBack} /></div>;
-  }
-  if (view === 'ledger') {
-    return (
-      <div className={popped ? 'motion-fade' : 'animate-slideInRight'}>
-        <LedgerPage
-          onBack={goBack}
+  /* ── Drill-down routing ──
+     The page on top of the console, or null on the console itself. The
+     CONSOLE STAYS MOUNTED underneath (hidden) while a page is open, so Back
+     shows it at once instead of rebuilding it — every Back used to re-run
+     its fourteen reads behind skeletons (Grant, 2026-10-25: "Admin is still
+     choppy and slow"). Back still bumps `refreshKey`, so what the page
+     changed is re-read quietly: a revealed card keeps its content. */
+  const subPage = ((): React.ReactNode => {
+      if (view === 'session-details') {
+      return <div className="animate-slideInRight"><SetupPage onBack={goBack} /></div>;
+    }
+    if (view === 'members') {
+      return (
+        <div className="animate-slideInRight">
+          <RosterPage
+            onBack={() => { setRosterFocus(null); setRosterFilter('all'); goBack(); }}
+            focusName={rosterFocus}
+            initialFilter={rosterFilter}
+          />
+        </div>
+      );
+    }
+    if (view === 'birds') {
+      return <div className="animate-slideInRight"><BirdsPage onBack={goBack} /></div>;
+    }
+    if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
+    if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
+    if (view === 'catalog-gaps') return <div className="animate-slideInRight"><CatalogGapsPage onBack={goBack} /></div>;
+    if (view === 'metrics') return <div className="animate-slideInRight"><MetricsPage onBack={goBack} /></div>;
+    // Flag-gated at the route level too — every price on this screen is exact,
+    // which is precisely what the player API strips.
+    if (view === 'stringing' && isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
+      return <div className="animate-slideInRight"><StringingPage onBack={goBack} /></div>;
+    }
+    if (view === 'ledger') {
+      return (
+        <div className={popped ? 'motion-fade' : 'animate-slideInRight'}>
+          <LedgerPage
+            onBack={goBack}
+            onOpenSession={(sessionId) => {
+              setPaymentsSessionId(sessionId);
+              setPaymentsFrom('ledger');
+              push('payments');
+            }}
+            onOpenPastSessions={() => push('past-sessions')}
+          />
+        </div>
+      );
+    }
+    if (view === 'payments') {
+      // Reached from a Ledger row or a Past sessions row.
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={() => goBackTo(paymentsFrom)} title="Payments" />
+          <PaymentsCard refreshKey={refreshKey} initialSessionId={paymentsSessionId} />
+        </div>
+      );
+    }
+    if (view === 'announcements') {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="Announcements" />
+          <AnnouncementsCard refreshKey={refreshKey} />
+        </div>
+      );
+    }
+    if (view === 'etransfer') {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="E-transfer recipient" />
+          <ETransferRecipientEditor />
+        </div>
+      );
+    }
+    if (view === 'skip-dates') {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="Skip dates" />
+          <SkipDatesEditor />
+        </div>
+      );
+    }
+    if (view === 'late-cancel') {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="Late cancellations" />
+          <LateCancelEditor />
+        </div>
+      );
+    }
+    if (view === 'club-name') {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="Club name" />
+          <ClubNameEditor />
+        </div>
+      );
+    }
+    if (view === 'invite') {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="Invite someone" />
+          <InviteCard enabled groupName={group?.name} bare />
+        </div>
+      );
+    }
+    if (view === 'gift-cards') {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="Gift cards" />
+          <GiftCardsCard refreshKey={refreshKey} bare />
+        </div>
+      );
+    }
+    if (view === 'sign-in-readiness') {
+      // A name opens the member in the Roster (recovery code inside); the
+      // Roster's Back lands on the console, the same as from Needs you.
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="Sign-in readiness" />
+          <SignInReadinessCard refreshKey={refreshKey} standalone onOpenMember={(name) => { setRosterFocus(name); push('members'); }} />
+        </div>
+      );
+    }
+    if (view === 'etransfers' && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="E-transfers" />
+          <PaymentsInboxCard refreshKey={refreshKey} standalone onChanged={() => setRefreshKey((k) => k + 1)} />
+        </div>
+      );
+    }
+    if (view === 'past-sessions') {
+      return (
+        <PastSessionsPage
+          onBack={() => goBackTo('ledger')}
           onOpenSession={(sessionId) => {
             setPaymentsSessionId(sessionId);
-            setPaymentsFrom('ledger');
+            setPaymentsFrom('past-sessions');
             push('payments');
           }}
-          onOpenPastSessions={() => push('past-sessions')}
         />
-      </div>
-    );
-  }
-  if (view === 'payments') {
-    // Reached from a Ledger row or a Past sessions row.
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={() => goBackTo(paymentsFrom)} title="Payments" />
-        <PaymentsCard refreshKey={refreshKey} initialSessionId={paymentsSessionId} />
-      </div>
-    );
-  }
-  if (view === 'announcements') {
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="Announcements" />
-        <AnnouncementsCard refreshKey={refreshKey} />
-      </div>
-    );
-  }
-  if (view === 'etransfer') {
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="E-transfer recipient" />
-        <ETransferRecipientEditor />
-      </div>
-    );
-  }
-  if (view === 'skip-dates') {
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="Skip dates" />
-        <SkipDatesEditor />
-      </div>
-    );
-  }
-  if (view === 'late-cancel') {
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="Late cancellations" />
-        <LateCancelEditor />
-      </div>
-    );
-  }
-  if (view === 'club-name') {
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="Club name" />
-        <ClubNameEditor />
-      </div>
-    );
-  }
-  if (view === 'invite') {
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="Invite someone" />
-        <InviteCard enabled groupName={group?.name} bare />
-      </div>
-    );
-  }
-  if (view === 'gift-cards') {
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="Gift cards" />
-        <GiftCardsCard refreshKey={refreshKey} bare />
-      </div>
-    );
-  }
-  if (view === 'sign-in-readiness') {
-    // A name opens the member in the Roster (recovery code inside); the
-    // Roster's Back lands on the console, the same as from Needs you.
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="Sign-in readiness" />
-        <SignInReadinessCard refreshKey={refreshKey} standalone onOpenMember={(name) => { setRosterFocus(name); push('members'); }} />
-      </div>
-    );
-  }
-  if (view === 'etransfers' && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
-    return (
-      <div className="animate-slideInRight space-y-3">
-        <AdminBackHeader onBack={goBack} title="E-transfers" />
-        <PaymentsInboxCard refreshKey={refreshKey} standalone onChanged={() => setRefreshKey((k) => k + 1)} />
-      </div>
-    );
-  }
-  if (view === 'past-sessions') {
-    return (
-      <PastSessionsPage
-        onBack={() => goBackTo('ledger')}
-        onOpenSession={(sessionId) => {
-          setPaymentsSessionId(sessionId);
-          setPaymentsFrom('past-sessions');
-          push('payments');
-        }}
-      />
-    );
-  }
+      );
+    }
+    return null;
+  })();
 
   return (
-    <div className={popped ? 'motion-fade' : undefined}>
-      <CommandCenter
-        refreshKey={refreshKey}
-        setView={push}
-        onExit={exit}
-        onOpenDormant={() => { setRosterFilter('dormant'); push('members'); }}
-      />
-    </div>
+    <>
+      <div hidden={subPage !== null} className={popped ? 'motion-fade' : undefined}>
+        {/* A sheet opened on the console portals out of this hidden box, so it
+            is told the console is off screen while a page sits on top. */}
+        <TabActiveContext.Provider value={onScreen && subPage === null}>
+          <CommandCenter
+            refreshKey={refreshKey}
+            setView={push}
+            onExit={exit}
+            onOpenDormant={() => { setRosterFilter('dormant'); push('members'); }}
+          />
+        </TabActiveContext.Provider>
+      </div>
+      {subPage}
+    </>
   );
 }
