@@ -127,7 +127,7 @@ public class BpmScoreWidgetProvider extends AppWidgetProvider {
         // The header says what matters now, in the umpire's words.
         if (gp != ScoreRules.NONE) {
             badge(v, "⚡ GAME POINT · " + ScoreRules.sideName(gp).toUpperCase(Locale.US), R.drawable.widget_bpm_badge_amber, R.color.bpm_widget_on_amber, context);
-            // Game point changes the whole widget: an amber wash and rim.
+            // Game point changes the whole widget: an amber wash (no rim — the widget draws no strokes).
             v.setInt(R.id.score_root, "setBackgroundResource", R.drawable.widget_bpm_bg_amber);
         } else if (ScoreRules.nextPointWins(a, b)) {
             badge(v, "29 ALL · NEXT POINT WINS", R.drawable.widget_bpm_badge_light, R.color.bpm_widget_on_badge, context);

@@ -258,31 +258,20 @@ struct FillBar: View {
     }
 }
 
-/// The BPM mark: the shuttle from public/brand/bpm-logo.svg, drawn as paths so
-/// it needs no asset in the extension's catalog and takes the accent tint.
-/// Grant, 2026-10-24: "I want BPM and logo to get implemented".
+/// The BPM mark beside the name: the app's own shuttle, the image the icon and
+/// the launch screen use (`public/brand/launch/shuttle.png`, in the extension's
+/// catalog as BPMShuttle). Grant, 2026-10-25: the line-drawn shuttle "should
+/// not exist anywhere" — never a redrawn mark, always this one.
 struct BPMMark: View {
     let p: WidgetPalette
     var size: CGFloat = 16
 
     var body: some View {
-        Canvas { ctx, box in
-            let k = box.height / 36
-            let ox = (box.width - 28 * k) / 2 - 6 * k
-            func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: ox + x * k, y: y * k) }
-            var strings = Path()
-            for tip in [(11.0, 6.0), (15.0, 5.0), (20.0, 4.0), (25.0, 5.0), (29.0, 6.0)] {
-                strings.move(to: pt(20, 30)); strings.addLine(to: pt(tip.0, tip.1))
-            }
-            ctx.stroke(strings, with: .color(p.green), style: StrokeStyle(lineWidth: 1.7 * k, lineCap: .round))
-            var rim = Path()
-            rim.move(to: pt(11, 6)); rim.addQuadCurve(to: pt(29, 6), control: pt(20, 2))
-            ctx.stroke(rim, with: .color(p.green.opacity(0.55)), style: StrokeStyle(lineWidth: 1.7 * k, lineCap: .round))
-            let cork = Path(ellipseIn: CGRect(x: ox + 15.5 * k, y: 27.4 * k, width: 9 * k, height: 5.2 * k))
-            ctx.fill(cork, with: .color(p.green))
-        }
-        .frame(width: size * 28 / 36, height: size)
-        .widgetAccentable()
+        Image("BPMShuttle")
+            .renderingMode(.original)
+            .resizable()
+            .scaledToFit()
+            .frame(height: size)
     }
 }
 

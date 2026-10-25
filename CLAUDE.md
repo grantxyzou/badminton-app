@@ -343,7 +343,9 @@ submitted by Grant on device.
   Swift and Java ports are held to `__tests__/score-rules.test.ts`. The large
   widget's stringing section reads the bench through `lib/stringingOrder.ts`
   (shared with the jobs route) and wears strings by TIME against
-  `RESTRING_AFTER_WEEKS`, never by sessions. The iOS extension's sources are in
+  `RESTRING_AFTER_WEEKS`, never by sessions. The header mark is the launch screen's shuttle image (`BPMShuttle` in the
+  extension's catalog, `widget_bpm_shuttle.png` on Android), never a redrawn
+  mark (Grant, 2026-10-25). The iOS extension's sources are in
   `ios/App/BPMWidget/` (both widgets, one bundle) and its TARGET is created
   once in Xcode (`native/README.md`), never by hand in the project file.
 - **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`

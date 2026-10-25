@@ -262,11 +262,11 @@ struct BPMScoreView: View {
             .containerBackground(for: .widget) {
                 ZStack {
                     p.background
-                    // Game point changes the whole widget: an amber wash and rim,
-                    // the one moment worth seeing from across the court.
+                    // Game point changes the whole widget: an amber wash (no rim —
+                    // the widget draws no strokes), the one moment worth seeing
+                    // from across the court.
                     if gamePoint != nil {
                         p.amber.opacity(0.18)
-                        RoundedRectangle(cornerRadius: 22).strokeBorder(p.amber.opacity(0.7), lineWidth: 1.5).padding(1)
                     }
                 }
             }
@@ -429,7 +429,7 @@ struct BPMScoreView: View {
         Text(text).font(.system(size: 12, weight: .bold))
             .padding(.horizontal, 12).padding(.vertical, 6)
             .foregroundStyle(p.secondary)
-            .background(Capsule().strokeBorder(p.rule, lineWidth: 1).background(Capsule().fill(p.primary.opacity(0.06))))
+            .background(Capsule().fill(p.primary.opacity(0.06)))
     }
 }
 

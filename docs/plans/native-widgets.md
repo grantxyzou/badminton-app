@@ -169,14 +169,27 @@ ten minutes, more than one in five), Join goes back to opening the app.
   on Grant's phone. iOS labels every widget with the app's name underneath, so
   the header's "BPM" is redundant — kept anyway (Grant: "Dont drop I want BPM
   and logo to get implemented"), and the stand-in badminton figure became the
-  real mark, the shuttle from `public/brand/bpm-logo.svg`, drawn as paths
-  (`BPMMark` in SwiftUI, `widget_bpm_mark.xml` on Android) so the extension
-  needs no asset in its catalog. The same pass fixed two light-mode contrast
+  real mark. A first cut drew the shuttle from `public/brand/bpm-logo.svg` as
+  paths; Grant, 2026-10-25, on the canvas: "This should not exist anywhere.
+  Remove and use the BPM logo the same one as our app, loading screen." The
+  mark is the launch screen's own image, `public/brand/launch/shuttle.png` —
+  `BPMShuttle` in the extension's asset catalog (`ios/App/BPMWidget/Assets.xcassets`,
+  committed now) and `drawable-nodpi/widget_bpm_shuttle.png` on Android —
+  never a redrawn one. The same pass fixed two light-mode contrast
   bugs only a light screenshot showed: dark-green text on the deeper light
   green, and a navy badge with navy text (`onGreen` / `onAmber` / `onBadge`
   are per scheme now). The large score widget is drawn, not built
   (`WidgetScoreLarge` on the canvas): 92 pt digits, a full-width Undo,
   tonight's games under the result, "Interval · change ends".
+- **2026-10-25 — the score widget draws no strokes at all.** Grant on the
+  canvas, twice: "no stroke remove them" (the side tiles) and, after that
+  landed, "There is still a stroke on the widget" — the amber rim the game
+  point frame kept. Game point is now the amber wash alone, plus the badge and
+  the amber tile; the Undo and Reset chips lost their hairline too. On a
+  phone a 1.5 pt rim around a widget reads as a selection outline, not a
+  signal, so the colour does the work. Boards, Swift and Android changed
+  together; `widget_bpm_bg_amber.xml` and `widget_bpm_chip.xml` carry the
+  rule in a comment.
 - **2026-10-23 — no Live Activity yet, for either.** Grant asked "is it hard
   to have the widgets live?" A Live Activity would put the score on the lock
   screen and in the Dynamic Island, but it needs an `ActivityAttributes` file
