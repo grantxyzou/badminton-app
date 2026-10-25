@@ -60,7 +60,12 @@ no cleartext), `MainActivity.java` (notification channel), `strings.xml`.
 5. **The widget extension (iOS, once)** — `docs/plans/native-widgets.md`. Its
    sources are in git (`ios/App/BPMWidget/`); the TARGET is made with Xcode's
    own template, because a hand-edited project file that Xcode rejects would
-   stop every archive.
+   stop every archive. **Done 2026-10-25 and committed** (the target, its
+   scheme in `xcshareddata/` and the generated asset folders), so a fresh
+   checkout already has it; the steps below are for rebuilding it. Xcode set
+   both targets' minimum iOS to `$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)`
+   when it made the target; that was pinned back to 15.0 (app) and 17.0
+   (widget), and `native-shell-projects` now fails on the variable.
    1. developer.apple.com → Identifiers → App Groups → `+` →
       `group.com.motioncraft.bpm`. Enable **App Groups** on the App ID
       `com.motioncraft.bpm` with that group, and create the App ID

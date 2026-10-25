@@ -88,6 +88,24 @@ describe('ios/', () => {
     expect(pbx).not.toContain('TARGETED_DEVICE_FAMILY = "1,2";');
   });
 
+  // Xcode, adding the widget target (2026-10-25), rewrote both targets' floor to
+  // $(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET). That is whatever the Xcode on the
+  // desk recommends, so the app's minimum iOS would rise silently with an Xcode
+  // update and older iPhones could no longer install it. The app stays on 15.0;
+  // the widget extension needs 17.0 for interactive widgets (Button(intent:),
+  // containerBackground), and iOS simply does not offer it below that.
+  it('pins the minimum iOS of the app and of the widget extension', () => {
+    const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');
+    expect(pbx).not.toContain('RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET');
+    const configs = pbx.split('isa = XCBuildConfiguration;').slice(1);
+    const appFloors = configs.filter((c) => c.includes('INFOPLIST_FILE = App/Info.plist;'))
+      .map((c) => /IPHONEOS_DEPLOYMENT_TARGET = ([\d.]+);/.exec(c)?.[1]);
+    const widgetFloors = configs.filter((c) => c.includes('INFOPLIST_FILE = BPMWidget/Info.plist;'))
+      .map((c) => /IPHONEOS_DEPLOYMENT_TARGET = ([\d.]+);/.exec(c)?.[1]);
+    expect(appFloors).toEqual(['15.0', '15.0']);
+    expect(widgetFloors).toEqual(['17.0', '17.0']);
+  });
+
   it('ships a privacy manifest that does not track', () => {
     const priv = read('ios', 'App', 'App', 'PrivacyInfo.xcprivacy');
     expect(priv).toMatch(/<key>NSPrivacyTracking<\/key>\s*<false\/>/);
