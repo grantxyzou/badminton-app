@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The privacy policy names the crash records (2026-10-25)
+
+Grant's call. "How you use the app" in the privacy policy now says that when a screen stops working for a signed-in member, the app records that it failed and which tab it was on, never the screen's content or the error's details, and that the organiser sees those only as totals, like the rest. English and Chinese, and the policy's date moves to 25 October 2026. (`docs/plans/client-error-beacon.md`)
+
 ### Admin opens once and stays (2026-10-25)
 
 - **The Admin tab is kept once you have opened it**, like the other tabs: going back to it shows what you left, with no reads. It is not opened early; only its code downloads in the background, for admins.

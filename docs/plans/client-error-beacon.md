@@ -16,3 +16,6 @@ No messages, stacks or URLs (the `events` payload stays a bounded vocabulary). N
 - New client kind `client_error`, payload `where` (`ERROR_WHERES`, `render` only) and optional `tab`, in `lib/events.ts`.
 - `reportClientError()` in `lib/engagement.ts` (3 per page load), called from `app/error.tsx` (not for stale-chunk errors, which reload themselves) and `app/global-error.tsx`.
 - Readers: `GET /api/admin/slice0` (`clientErrors`) and `clubMetrics().clientErrors` (last 7 days, roster-narrowed), so the key-protected `GET /api/reports/metrics` carries it into the daily health report.
+
+## Decisions
+- **The privacy policy names it** (Grant, 2026-10-25): one sentence in "How you use the app", both locales — that a failure and its tab are recorded, never the screen or the error, and counted as totals like the rest of usage.
