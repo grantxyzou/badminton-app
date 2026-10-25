@@ -18,9 +18,17 @@ import { isRefused } from '@/lib/apiFetch';
    var is retired. Admin powers come from `member.role === 'admin'` on
    the matched record. */
 
-export default function AdminTab({ onExit }: { onExit: () => void }) {
+export default function AdminTab({ onExit, knownAuthed = false }: {
+  onExit: () => void;
+  /** The shell's own `GET /api/admin` already said yes. The console then
+   *  renders at once and this tab's check runs behind it, instead of every
+   *  console read waiting on a second answer to the same question
+   *  (2026-10-25). A refusal still swaps in the PIN form; the server checks
+   *  every admin read regardless. */
+  knownAuthed?: boolean;
+}) {
   const pageT = useTranslations('pages.admin');
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null); // null = loading
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(knownAuthed ? true : null); // null = loading
   /* Guarded, matching HomeTab's initializer. `getIdentity()` reads
      localStorage, which does not exist on the server. This is safe today only
      because routing never server-renders AdminTab — an accident of
@@ -51,11 +59,15 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
         if (!cancelled) setIsAuthed(d.authed === true);
       })
       .catch(() => {
-        if (!cancelled) setCheckFailed(true);
+        // A console already on screen stays: its own reads report their own
+        // failures. Only a check nothing else stands behind shows the error.
+        if (!cancelled && !knownAuthed) setCheckFailed(true);
       });
     return () => {
       cancelled = true;
     };
+    // `knownAuthed` seeds the first render only; a later change does not re-check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkAttempt]);
 
   function retryCheck() {

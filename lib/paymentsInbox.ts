@@ -413,6 +413,25 @@ export async function resolvePayment(
 }
 
 /** The queue, the recent history, and whether the script is alive. */
+/**
+ * The Command Center's inbox row: is the script set up, and how many payments
+ * wait for a person. The same bounded read `inboxSummary` counts `review` from,
+ * without its roster-wide owed read, which the row never shows and which was
+ * the slowest request on every first open of Admin (2026-10-25).
+ */
+export async function inboxCount(groupId: string): Promise<{ configured: boolean; waiting: number }> {
+  await ensurePayments();
+  const scope = groupScope(groupId);
+  const [rows, settings] = await Promise.all([
+    scope.query<EtransferPayment>('payments', { orderBy: 'c.receivedAt DESC', limit: 200 }),
+    readPaymentsSettings(groupId),
+  ]);
+  return {
+    configured: !!settings?.keyHash,
+    waiting: rows.filter((p) => p.status === 'review').length,
+  };
+}
+
 export async function inboxSummary(groupId: string) {
   await ensurePayments();
   const scope = groupScope(groupId);
