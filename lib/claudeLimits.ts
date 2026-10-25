@@ -6,7 +6,10 @@
  * `Unreleased` section, which ran to ~12,000 characters by September 2026. The
  * old 4,000 cap rejected that with "Prompt too long", which is why no release
  * note was drafted after v1.7. The route is admin-only and rate-limited, so the
- * cap bounds a mistake, not an attacker.
+ * cap bounds a mistake, not an attacker. The section is never cut on publish
+ * and reached ~87,000 characters by late October, so the form now pre-fills
+ * only the entries since the last release (`lib/releaseNotes.ts`) rather than
+ * this cap growing with it.
  */
 export const MAX_PROMPT_CHARS = 24_000;
 
