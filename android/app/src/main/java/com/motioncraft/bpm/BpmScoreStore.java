@@ -162,6 +162,9 @@ final class BpmScoreStore {
             f.finishedAt = parked.startedAt;
             f.saved = false;
             list.add(f);
+            // Persist the fold BEFORE the legacy key goes, or a read-only
+            // caller (draw, nextGameNo) shows the game once and loses it.
+            setTonight(context, list);
             prefs(context).edit().remove(KEY_LEGACY_PENDING).apply();
         }
         List<Finished> today = new ArrayList<>();

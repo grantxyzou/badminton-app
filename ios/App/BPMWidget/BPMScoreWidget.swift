@@ -146,6 +146,9 @@ enum ScoreStore {
                 let s = parked.score
                 list.append(FinishedGame(gameNo: parked.gameNo, a: s.a, b: s.b,
                                          finishedAt: parked.startedAt.timeIntervalSince1970, saved: false))
+                // Persist the fold BEFORE the legacy key goes, or a read-only
+                // caller shows the game once and loses it.
+                if let data = try? JSONEncoder().encode(list) { defaults?.set(data, forKey: tonightKey) }
                 defaults?.removeObject(forKey: legacyPendingKey)
             }
             return list
