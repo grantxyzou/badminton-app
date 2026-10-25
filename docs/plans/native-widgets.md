@@ -178,9 +178,28 @@ ten minutes, more than one in five), Join goes back to opening the app.
   never a redrawn one. The same pass fixed two light-mode contrast
   bugs only a light screenshot showed: dark-green text on the deeper light
   green, and a navy badge with navy text (`onGreen` / `onAmber` / `onBadge`
-  are per scheme now). The large score widget is drawn, not built
-  (`WidgetScoreLarge` on the canvas): 92 pt digits, a full-width Undo,
-  tonight's games under the result, "Interval · change ends".
+  are per scheme now). The large score widget was drawn first
+  (`WidgetScoreLarge` and `WidgetScoreLargeDark` on the canvas), then built the
+  next day (below).
+- **2026-10-25 — the score widget has a large size, and the night has a
+  list.** Grant: "build the big score keep widget", from the boards. The large
+  (`.systemLarge`; on Android the same 4 × 2 widget resized to 4 × 3 or 4 × 4,
+  picked by height in `BpmScoreWidgetProvider` the way the week widget picks
+  its layouts) is the court-side scoreboard: 92 pt digits, a full-width "Undo
+  last point", "Interval · change ends", and the two things the medium had no
+  room for — the result at 48 pt, and **tonight's games**. A finished game now
+  goes into a list on the phone (`FinishedGame` / `score.gamesTonight` on iOS,
+  `Finished` / `tonight` in `BpmScoreStore`) with its score, winner and
+  whether Add a game has logged it; "Next game" never loses one, a "Not
+  saved" row is a tap into Add a game with that score, and the idle screen
+  carries the tally ("A side 2 · B side 1 tonight"). Yesterday's games are
+  dropped on read; sign-out clears the list with the rest. The medium's
+  one-slot "pending" became a READING of that list (the newest unsaved game);
+  the old `score.pending` key is folded in once and never written again. To
+  mark the RIGHT game saved when the night has several, `markWidgetGameSaved`
+  now passes the score the widget handed over (`scoreSaved({ a, b })`); an
+  older binary ignores the argument and marks the game on screen, as before.
+  Kept on the phone only — the server never sees a game until it is saved.
 - **2026-10-25 — the score widget draws no strokes at all.** Grant on the
   canvas, twice: "no stroke remove them" (the side tiles) and, after that
   landed, "There is still a stroke on the widget" — the amber rim the game

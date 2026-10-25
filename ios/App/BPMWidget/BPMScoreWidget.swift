@@ -7,6 +7,11 @@ import AppIntents
 // here touches the network: the score lives on the phone until Save game
 // opens Add a game with it. The rules are a port of lib/scoreRules.ts — the
 // spec — and `__tests__/score-rules.test.ts` is what this port is held to.
+//
+// Two sizes. The medium is the court-side scorer; the large (WidgetScoreLarge
+// on the canvas, 2026-10-25) is the same scorer with digits readable from the
+// far court, a full-width Undo, and the evening so far: every game finished
+// on this phone today, saved or not.
 
 // MARK: - Rules (lib/scoreRules.ts)
 
@@ -88,47 +93,106 @@ struct ScoreGame: Codable {
     }
 }
 
+/// A game finished tonight, kept on the phone so the large size can list the
+/// evening and "Next game" never loses one. `saved` flips when Add a game logs
+/// it (the app's plugin edits this list with JSONSerialization, so the fields
+/// are plain numbers and booleans — `finishedAt` is seconds since 1970, not a
+/// Date). Cleared at midnight by the read, and on sign-out with the rest.
+struct FinishedGame: Codable, Equatable {
+    var gameNo: Int
+    var a: Int
+    var b: Int
+    var finishedAt: TimeInterval
+    var saved: Bool
+
+    var score: Score { Score(a: a, b: b) }
+    var winner: ScoreSide? { ScoreRules.winner(score) }
+}
+
 enum ScoreStore {
     /// The game in play (or just finished).
     static let gameKey = "score.game"
-    /// A finished game waiting for Save game — "Next game" parks it here.
-    static let pendingKey = "score.pending"
-    static let gamesTonightKey = "score.gamesTonight"
+    /// Before the list (2026-10-25) one finished game could wait here for Save
+    /// game. Read once more and folded into `tonight`, never written again.
+    static let legacyPendingKey = "score.pending"
+    static let tonightKey = "score.gamesTonight"
 
     private static var defaults: UserDefaults? { BPMWidgetStore.defaults }
 
-    static func load(_ key: String) -> ScoreGame? {
-        guard let data = defaults?.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(ScoreGame.self, from: data)
-    }
-
-    static func save(_ game: ScoreGame?, _ key: String) {
-        if let game = game, let data = try? JSONEncoder().encode(game) {
-            defaults?.set(data, forKey: key)
-        } else {
-            defaults?.removeObject(forKey: key)
+    static var game: ScoreGame? {
+        get {
+            guard let data = defaults?.data(forKey: gameKey) else { return nil }
+            return try? JSONDecoder().decode(ScoreGame.self, from: data)
+        }
+        set {
+            if let game = newValue, let data = try? JSONEncoder().encode(game) {
+                defaults?.set(data, forKey: gameKey)
+            } else {
+                defaults?.removeObject(forKey: gameKey)
+            }
         }
     }
 
-    static var game: ScoreGame? {
-        get { load(gameKey) }
-        set { save(newValue, gameKey) }
+    /// Tonight's finished games, oldest first. Yesterday's are dropped on read.
+    static var tonight: [FinishedGame] {
+        get {
+            var list: [FinishedGame] = []
+            if let data = defaults?.data(forKey: tonightKey),
+               let decoded = try? JSONDecoder().decode([FinishedGame].self, from: data) {
+                list = decoded
+            }
+            if let data = defaults?.data(forKey: legacyPendingKey),
+               let parked = try? JSONDecoder().decode(ScoreGame.self, from: data) {
+                let s = parked.score
+                list.append(FinishedGame(gameNo: parked.gameNo, a: s.a, b: s.b,
+                                         finishedAt: parked.startedAt.timeIntervalSince1970, saved: false))
+                defaults?.removeObject(forKey: legacyPendingKey)
+            }
+            return list
+                .filter { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0.finishedAt)) }
+                .sorted { $0.gameNo < $1.gameNo }
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) { defaults?.set(data, forKey: tonightKey) }
+        }
     }
 
-    static var pending: ScoreGame? {
-        get { load(pendingKey) }
-        set { save(newValue, pendingKey) }
+    /// The newest finished game not yet logged — what the medium's idle row
+    /// offers to save.
+    static var pending: FinishedGame? { tonight.last { !$0.saved } }
+
+    /// A finished game leaves the court for the list, unless it is there already.
+    static func park(_ done: ScoreGame) {
+        guard done.isOver else { return }
+        var list = tonight
+        guard !list.contains(where: { $0.gameNo == done.gameNo }) else { return }
+        let s = done.score
+        list.append(FinishedGame(gameNo: done.gameNo, a: s.a, b: s.b, finishedAt: Date().timeIntervalSince1970, saved: false))
+        tonight = list
     }
 
-    /// "Game 3 tonight": counted from the first game started today.
+    /// "Game 3 tonight": one more than the last game started today.
     static func nextGameNo() -> Int {
-        let last = game ?? pending
-        if let last = last, Calendar.current.isDateInToday(last.startedAt) { return last.gameNo + 1 }
-        return 1
+        var last = tonight.map(\.gameNo).max() ?? 0
+        if let g = game, Calendar.current.isDateInToday(g.startedAt) { last = max(last, g.gameNo) }
+        return last + 1
+    }
+
+    /// Start the next game; a finished one still on screen is parked, not lost.
+    static func startNext() {
+        if let done = game, done.isOver { park(done) }
+        game = ScoreGame(gameNo: nextGameNo(), points: [], startedAt: Date())
+    }
+
+    static func discardPending() {
+        var list = tonight
+        guard let i = list.lastIndex(where: { !$0.saved }) else { return }
+        list.remove(at: i)
+        tonight = list
     }
 
     static func clearAll() {
-        for key in [gameKey, pendingKey, gamesTonightKey] { defaults?.removeObject(forKey: key) }
+        for key in [gameKey, legacyPendingKey, tonightKey] { defaults?.removeObject(forKey: key) }
     }
 
     static func reload() {
@@ -143,9 +207,7 @@ struct StartGameIntent: AppIntent {
     static let isDiscoverable: Bool = false
 
     func perform() async throws -> some IntentResult {
-        // A finished game still on screen is parked, not lost.
-        if let done = ScoreStore.game, done.isOver, ScoreStore.pending == nil { ScoreStore.pending = done }
-        ScoreStore.game = ScoreGame(gameNo: ScoreStore.nextGameNo(), points: [], startedAt: Date())
+        ScoreStore.startNext()
         ScoreStore.reload()
         return .result()
     }
@@ -183,14 +245,13 @@ struct UndoPointIntent: AppIntent {
     }
 }
 
-/// "Next game" keeps the finished one waiting to save and starts 0–0.
+/// "Next game" keeps the finished one in tonight's list and starts 0–0.
 struct NextGameIntent: AppIntent {
     static let title: LocalizedStringResource = "Next game"
     static let isDiscoverable: Bool = false
 
     func perform() async throws -> some IntentResult {
-        if let done = ScoreStore.game, done.isOver { ScoreStore.pending = done }
-        ScoreStore.game = ScoreGame(gameNo: ScoreStore.nextGameNo(), points: [], startedAt: Date())
+        ScoreStore.startNext()
         ScoreStore.reload()
         return .result()
     }
@@ -200,14 +261,14 @@ struct DiscardGameIntent: AppIntent {
     static let title: LocalizedStringResource = "Discard this game"
     static let isDiscoverable: Bool = false
 
-    @Parameter(title: "The parked game, not the one in play")
+    @Parameter(title: "The newest unsaved game in the list, not the one on screen")
     var pending: Bool
 
     init() { pending = false }
     init(pending: Bool) { self.pending = pending }
 
     func perform() async throws -> some IntentResult {
-        if pending { ScoreStore.pending = nil } else { ScoreStore.game = nil }
+        if pending { ScoreStore.discardPending() } else { ScoreStore.game = nil }
         ScoreStore.reload()
         return .result()
     }
@@ -218,13 +279,21 @@ struct DiscardGameIntent: AppIntent {
 struct ScoreEntry: TimelineEntry {
     let date: Date
     let game: ScoreGame?
-    let pending: ScoreGame?
+    let tonight: [FinishedGame]
     let nextGameNo: Int
+
+    var pending: FinishedGame? { tonight.last { !$0.saved } }
 }
 
 struct ScoreProvider: TimelineProvider {
     func placeholder(in context: Context) -> ScoreEntry {
-        ScoreEntry(date: Date(), game: ScoreGame(gameNo: 3, points: [.a, .a, .b, .a, .b, .a], startedAt: Date()), pending: nil, nextGameNo: 3)
+        let now = Date().timeIntervalSince1970
+        return ScoreEntry(
+            date: Date(),
+            game: ScoreGame(gameNo: 3, points: [.a, .a, .b, .a, .b, .a], startedAt: Date()),
+            tonight: [FinishedGame(gameNo: 1, a: 21, b: 15, finishedAt: now, saved: true),
+                      FinishedGame(gameNo: 2, a: 19, b: 21, finishedAt: now, saved: false)],
+            nextGameNo: 4)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ScoreEntry) -> Void) {
@@ -236,7 +305,7 @@ struct ScoreProvider: TimelineProvider {
     }
 
     private func current() -> ScoreEntry {
-        ScoreEntry(date: Date(), game: ScoreStore.game, pending: ScoreStore.pending, nextGameNo: ScoreStore.nextGameNo())
+        ScoreEntry(date: Date(), game: ScoreStore.game, tonight: ScoreStore.tonight, nextGameNo: ScoreStore.nextGameNo())
     }
 }
 
@@ -253,6 +322,9 @@ enum ScoreLink {
 struct BPMScoreView: View {
     let entry: ScoreEntry
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.widgetFamily) private var family
+
+    private var large: Bool { family == .systemLarge }
 
     var body: some View {
         let p = WidgetPalette.make(scheme)
@@ -275,13 +347,15 @@ struct BPMScoreView: View {
     @ViewBuilder
     private func content(_ p: WidgetPalette, gamePoint: ScoreSide?) -> some View {
         if let game = entry.game, !game.isOver {
-            playing(game, p, gamePoint: gamePoint)
+            if large { largePlaying(game, p, gamePoint: gamePoint) } else { playing(game, p, gamePoint: gamePoint) }
         } else if let game = entry.game {
-            over(game, p)
+            if large { largeOver(game, p) } else { over(game, p) }
         } else {
-            idle(p)
+            if large { largeIdle(p) } else { idle(p) }
         }
     }
+
+    // MARK: Medium
 
     // Between games — one tap to start.
     private func idle(_ p: WidgetPalette) -> some View {
@@ -294,17 +368,11 @@ struct BPMScoreView: View {
                     Text("Game \(entry.nextGameNo) tonight · to \(ScoreRules.gameTo)").font(.system(size: 13)).foregroundStyle(p.secondary)
                 }
                 Spacer(minLength: 0)
-                Button(intent: StartGameIntent()) {
-                    Label("Start", systemImage: "play.fill").font(.system(size: 13, weight: .bold))
-                        .padding(.horizontal, 14).padding(.vertical, 7)
-                        .foregroundStyle(p.onGreen)
-                        .background(Capsule().fill(p.green))
-                }
-                .buttonStyle(.plain)
+                startChip(p, size: 13)
             }
             if let pending = entry.pending {
                 HStack(spacing: 8) {
-                    Text("Game \(pending.gameNo) · \(pending.score.a)–\(pending.score.b) not saved")
+                    Text("Game \(pending.gameNo) · \(pending.a)–\(pending.b) not saved")
                         .font(.system(size: 11)).foregroundStyle(p.muted).lineLimit(1)
                     Spacer(minLength: 0)
                     Link(destination: ScoreLink.save(pending.score)) {
@@ -325,12 +393,7 @@ struct BPMScoreView: View {
     private func playing(_ game: ScoreGame, _ p: WidgetPalette, gamePoint: ScoreSide?) -> some View {
         let s = game.score
         return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                BPMMark(p: p)
-                Text("BPM").font(.system(size: 11, weight: .bold)).foregroundStyle(p.secondary)
-                Spacer(minLength: 4)
-                statusBadge(game, p, gamePoint: gamePoint)
-            }
+            scoreHeader(game, p, gamePoint: gamePoint)
             HStack(spacing: 8) {
                 sideTile(.a, s.a, p, serving: game.serving == .a, gamePoint: gamePoint == .a)
                 sideTile(.b, s.b, p, serving: game.serving == .b, gamePoint: gamePoint == .b)
@@ -347,6 +410,143 @@ struct BPMScoreView: View {
         }
     }
 
+    // Game over — save it, or start the next.
+    private func over(_ game: ScoreGame, _ p: WidgetPalette) -> some View {
+        let s = game.score
+        return VStack(alignment: .leading, spacing: 10) {
+            Header(p: p, trailing: "Game \(game.gameNo)")
+            Spacer(minLength: 0)
+            result(s, p, digits: 36, words: 18)
+            overChips(s, p)
+            Spacer(minLength: 0)
+        }
+    }
+
+    // MARK: Large — the court-side scoreboard, and the evening so far
+
+    private func largePlaying(_ game: ScoreGame, _ p: WidgetPalette, gamePoint: ScoreSide?) -> some View {
+        let s = game.score
+        return VStack(alignment: .leading, spacing: 10) {
+            scoreHeader(game, p, gamePoint: gamePoint)
+            HStack(spacing: 10) {
+                sideTile(.a, s.a, p, serving: game.serving == .a, gamePoint: gamePoint == .a, large: true)
+                sideTile(.b, s.b, p, serving: game.serving == .b, gamePoint: gamePoint == .b, large: true)
+            }
+            .frame(maxHeight: .infinity)
+            // Undo is a full-width row here, not a 44 pt corner: the thumb
+            // that just scored a point should not have to aim.
+            Button(intent: UndoPointIntent()) {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.uturn.backward").font(.system(size: 16, weight: .semibold))
+                    Text("Undo last point").font(.system(size: 13, weight: .bold))
+                }
+                .foregroundStyle(p.secondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(RoundedRectangle(cornerRadius: 14).fill(p.primary.opacity(0.06)))
+            }
+            .buttonStyle(.plain)
+            .disabled(game.points.isEmpty)
+            .opacity(game.points.isEmpty ? 0.5 : 1)
+        }
+    }
+
+    private func largeOver(_ game: ScoreGame, _ p: WidgetPalette) -> some View {
+        let s = game.score
+        // The game on screen is not in the list yet; the list is the rest of
+        // the night.
+        let earlier = entry.tonight.filter { $0.gameNo != game.gameNo }
+        return VStack(alignment: .leading, spacing: 10) {
+            Header(p: p, trailing: "Game \(game.gameNo)")
+            result(s, p, digits: 48, words: 20).padding(.vertical, 2)
+            overChips(s, p)
+            rule(p)
+            tonightList(earlier, p)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func largeIdle(_ p: WidgetPalette) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Header(p: p, trailing: "Score")
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Keep score").font(.system(size: 24, weight: .bold)).foregroundStyle(p.primary)
+                    Text("Game \(entry.nextGameNo) tonight · to \(ScoreRules.gameTo)").font(.system(size: 13)).foregroundStyle(p.secondary)
+                }
+                Spacer(minLength: 0)
+                startChip(p, size: 14)
+            }
+            .padding(.vertical, 2)
+            rule(p)
+            tonightList(entry.tonight, p)
+            Spacer(minLength: 0)
+            if let tally = tally(entry.tonight) {
+                Text(tally).font(.system(size: 11)).foregroundStyle(p.muted)
+            }
+        }
+        .widgetURL(WidgetLink.stats)
+    }
+
+    /// Every game finished on this phone tonight, saved or not. A "Not saved"
+    /// row is a tap into Add a game with that score, exactly as Save game is.
+    @ViewBuilder
+    private func tonightList(_ games: [FinishedGame], _ p: WidgetPalette) -> some View {
+        if games.isEmpty {
+            Text("No games finished yet tonight").font(.system(size: 12)).foregroundStyle(p.muted)
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                SectionLabel(text: "Tonight", color: p.muted)
+                ForEach(games.suffix(4), id: \.gameNo) { g in
+                    if g.saved {
+                        tonightRow(g, p)
+                    } else {
+                        Link(destination: ScoreLink.save(g.score)) { tonightRow(g, p) }
+                    }
+                }
+            }
+        }
+    }
+
+    private func tonightRow(_ g: FinishedGame, _ p: WidgetPalette) -> some View {
+        HStack(spacing: 10) {
+            Text("Game \(g.gameNo)").font(.system(size: 12)).foregroundStyle(p.secondary)
+                .frame(width: 56, alignment: .leading)
+            Text("\(g.a)–\(g.b)").font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundStyle(p.primary)
+                .frame(width: 56, alignment: .leading)
+            if let w = g.winner {
+                Text(w.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(w == .a ? p.green : p.blue)
+            }
+            Spacer(minLength: 0)
+            Text(g.saved ? "Saved" : "Not saved").font(.system(size: 11)).foregroundStyle(p.muted)
+        }
+        .lineLimit(1)
+    }
+
+    /// "A side 2 · B side 1 tonight".
+    private func tally(_ games: [FinishedGame]) -> String? {
+        guard !games.isEmpty else { return nil }
+        let a = games.filter { $0.winner == .a }.count
+        let b = games.filter { $0.winner == .b }.count
+        return "A side \(a) · B side \(b) tonight"
+    }
+
+    private func rule(_ p: WidgetPalette) -> some View {
+        Rectangle().fill(p.rule).frame(height: 1)
+    }
+
+    // MARK: Pieces both sizes share
+
+    /// The header says what matters now, in the umpire's words.
+    private func scoreHeader(_ game: ScoreGame, _ p: WidgetPalette, gamePoint: ScoreSide?) -> some View {
+        HStack(spacing: 6) {
+            BPMMark(p: p)
+            Text("BPM").font(.system(size: 11, weight: .bold)).foregroundStyle(p.secondary)
+            Spacer(minLength: 4)
+            statusBadge(game, p, gamePoint: gamePoint)
+        }
+    }
+
     @ViewBuilder
     private func statusBadge(_ game: ScoreGame, _ p: WidgetPalette, gamePoint: ScoreSide?) -> some View {
         let s = game.score
@@ -357,7 +557,9 @@ struct BPMScoreView: View {
         } else if let at = ScoreRules.allAt(s) {
             badge("\(at) all · win by two", fill: p.badge, text: p.onBadge, icon: nil)
         } else if game.atInterval {
-            Text("Interval").font(.system(size: 11, weight: .semibold)).foregroundStyle(p.secondary)
+            // The large has room to say what the interval is also for.
+            Text(large ? "Interval · change ends" : "Interval")
+                .font(.system(size: 11, weight: .semibold)).foregroundStyle(large ? p.primary : p.secondary)
         } else {
             Text("Game \(game.gameNo) · to \(ScoreRules.gameTo)").font(.system(size: 11)).foregroundStyle(p.muted)
         }
@@ -374,54 +576,60 @@ struct BPMScoreView: View {
         .lineLimit(1)
     }
 
-    /// Each half is a button: a tap adds a point to that side.
-    private func sideTile(_ side: ScoreSide, _ points: Int, _ p: WidgetPalette, serving: Bool, gamePoint: Bool) -> some View {
+    /// Each half is a button: a tap adds a point to that side. The large size
+    /// draws the digits at 92 pt — readable from the far court.
+    private func sideTile(_ side: ScoreSide, _ points: Int, _ p: WidgetPalette, serving: Bool, gamePoint: Bool, large: Bool = false) -> some View {
         let tint = side == .a ? p.green : p.blue
         return Button(intent: PointIntent(side: side)) {
             ZStack(alignment: .topTrailing) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(side.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(tint)
-                    Text("\(points)").font(.system(size: 44, weight: .bold, design: .monospaced))
-                        .foregroundStyle(gamePoint ? p.amber : p.primary).minimumScaleFactor(0.7).lineLimit(1)
-                    Text(gamePoint ? "+1 wins it" : "+1").font(.system(size: 11, weight: .bold))
+                    Text(side.name).font(.system(size: large ? 13 : 12, weight: .semibold)).foregroundStyle(tint)
+                    Text("\(points)").font(.system(size: large ? 92 : 44, weight: .bold, design: .monospaced))
+                        .foregroundStyle(gamePoint ? p.amber : p.primary).minimumScaleFactor(0.5).lineLimit(1)
+                    Text(gamePoint ? "+1 wins it" : "+1").font(.system(size: large ? 12 : 11, weight: .bold))
                         .foregroundStyle(gamePoint ? p.amber : p.muted)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(.horizontal, 12).padding(.vertical, 6)
+                .padding(.horizontal, large ? 14 : 12).padding(.vertical, large ? 10 : 6)
                 // The amber dot is who serves — it follows the last rally.
-                if serving { Circle().fill(p.amber).frame(width: 8, height: 8).padding(8) }
+                if serving { Circle().fill(p.amber).frame(width: large ? 9 : 8, height: large ? 9 : 8).padding(large ? 10 : 8) }
             }
             // No stroke (Grant, on the canvas): the tint alone is the tile, and
             // game point turns it amber rather than outlining it.
-            .background(RoundedRectangle(cornerRadius: 14).fill((gamePoint ? p.amber : tint).opacity(gamePoint ? 0.22 : 0.14)))
+            .background(RoundedRectangle(cornerRadius: large ? 16 : 14).fill((gamePoint ? p.amber : tint).opacity(gamePoint ? 0.22 : 0.14)))
         }
         .buttonStyle(.plain)
     }
 
-    // Game over — save it, or start the next.
-    private func over(_ game: ScoreGame, _ p: WidgetPalette) -> some View {
-        let s = game.score
-        let winner = ScoreRules.winner(s)
-        return VStack(alignment: .leading, spacing: 10) {
-            Header(p: p, trailing: "Game \(game.gameNo)")
-            Spacer(minLength: 0)
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("\(s.a)–\(s.b)").font(.system(size: 36, weight: .bold, design: .monospaced)).foregroundStyle(p.primary)
-                if let w = winner {
-                    Text("\(w.name) wins").font(.system(size: 18, weight: .bold)).foregroundStyle(w == .a ? p.green : p.blue)
-                }
+    private func startChip(_ p: WidgetPalette, size: CGFloat) -> some View {
+        Button(intent: StartGameIntent()) {
+            Label("Start", systemImage: "play.fill").font(.system(size: size, weight: .bold))
+                .padding(.horizontal, size > 13 ? 18 : 14).padding(.vertical, size > 13 ? 10 : 7)
+                .foregroundStyle(p.onGreen)
+                .background(Capsule().fill(p.green))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func result(_ s: Score, _ p: WidgetPalette, digits: CGFloat, words: CGFloat) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text("\(s.a)–\(s.b)").font(.system(size: digits, weight: .bold, design: .monospaced)).foregroundStyle(p.primary)
+            if let w = ScoreRules.winner(s) {
+                Text("\(w.name) wins").font(.system(size: words, weight: .bold)).foregroundStyle(w == .a ? p.green : p.blue)
             }
-            HStack(spacing: 8) {
-                Link(destination: ScoreLink.save(s)) {
-                    Label("Save game", systemImage: "checkmark").font(.system(size: 12, weight: .bold))
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .foregroundStyle(p.onGreen)
-                        .background(Capsule().fill(p.green))
-                }
-                Button(intent: NextGameIntent()) { ghost("Next game", p) }.buttonStyle(.plain)
-                Button(intent: DiscardGameIntent(pending: false)) { ghost("Discard", p) }.buttonStyle(.plain)
+        }
+    }
+
+    private func overChips(_ s: Score, _ p: WidgetPalette) -> some View {
+        HStack(spacing: 8) {
+            Link(destination: ScoreLink.save(s)) {
+                Label("Save game", systemImage: "checkmark").font(.system(size: 12, weight: .bold))
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .foregroundStyle(p.onGreen)
+                    .background(Capsule().fill(p.green))
             }
-            Spacer(minLength: 0)
+            Button(intent: NextGameIntent()) { ghost("Next game", p) }.buttonStyle(.plain)
+            Button(intent: DiscardGameIntent(pending: false)) { ghost("Discard", p) }.buttonStyle(.plain)
         }
     }
 
@@ -441,7 +649,7 @@ struct BPMScoreWidget: Widget {
             BPMScoreView(entry: entry)
         }
         .configurationDisplayName("Keep score")
-        .description("Tap a side for its point. Game point, 20 all and the interval are called for you; Save game logs it in BPM.")
-        .supportedFamilies([.systemMedium])
+        .description("Tap a side for its point. Game point, 20 all and the interval are called for you; Save game logs it in BPM. The large size lists tonight's games.")
+        .supportedFamilies([.systemMedium, .systemLarge])
     }
 }

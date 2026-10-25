@@ -39,10 +39,14 @@ public class BpmWidgetPlugin extends Plugin {
         call.resolve();
     }
 
-    /** Add a game saved the score the widget was holding (lib/gameIntent.ts). */
+    /** Add a game saved the score the widget was holding (lib/gameIntent.ts) —
+     *  which one, when the app says (a and b); -1 means it did not. */
     @PluginMethod
     public void scoreSaved(PluginCall call) {
-        BpmScoreStore.gameSaved(getContext());
+        Integer a = call.getInt("a");
+        Integer b = call.getInt("b");
+        boolean known = a != null && b != null;
+        BpmScoreStore.gameSaved(getContext(), known ? a : -1, known ? b : -1);
         BpmScoreWidgetProvider.redrawAll(getContext());
         call.resolve();
     }
