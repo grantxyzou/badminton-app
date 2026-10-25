@@ -108,8 +108,9 @@ describe('the sign-up card as the sign-up list', () => {
 
   it('cancels your spot from the card through a sheet that names the action', async () => {
     renderHome();
-    await screen.findByText('Grant, you have signed up for this week!');
-    fireEvent.click(screen.getByRole('button', { name: enMessages.home.signup.cantMakeIt }));
+    // Await the ROLE, not the text: findByText also matches a RevealSlot that
+    // is still hidden, and a role query made before it reveals finds nothing.
+    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cantMakeIt }));
     expect(await screen.findByText(enMessages.players.cancelSheetBody)).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Yes$/ })).toBeNull();
 
@@ -126,8 +127,9 @@ describe('the sign-up card as the sign-up list', () => {
 
   it('dismissing the sheet cancels nothing', async () => {
     renderHome();
-    await screen.findByText('Grant, you have signed up for this week!');
-    fireEvent.click(screen.getByRole('button', { name: enMessages.home.signup.cantMakeIt }));
+    // Await the ROLE, not the text: findByText also matches a RevealSlot that
+    // is still hidden, and a role query made before it reveals finds nothing.
+    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cantMakeIt }));
     fireEvent.click(await screen.findByRole('button', { name: enMessages.players.sheetKeep }));
     expect(fetchMock.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === 'DELETE')).toBe(false);
   });
