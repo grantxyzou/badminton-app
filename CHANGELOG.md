@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Admin opens once and stays (2026-10-25)
+
+- **The Admin tab is kept once you have opened it**, like the other tabs: going back to it shows what you left, with no reads. It is not opened early; only its code downloads in the background, for admins.
+- **Back from an admin page shows the console at once.** Every Back used to rebuild the whole console behind skeletons (fourteen reads); it now stays underneath each page and re-checks quietly, so what you changed on the page still shows.
+- The Roster's add button no longer shows over another tab while Admin is kept behind it.
+
 ### Group leaks are written down, and the leak watch waits for a second club (2026-10-24)
 
 Grant: "dont ask me to monitor group leak until there is a second group created

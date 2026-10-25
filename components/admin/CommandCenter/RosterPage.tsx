@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTabActive } from '@/lib/tabActivity';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -71,6 +72,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
 
   // SSR-safe portal mount guard
   const [portalReady, setPortalReady] = useState(false);
+  const onScreen = useTabActive();
   useEffect(() => { setPortalReady(true); }, []);
 
   // Sheet state
@@ -653,7 +655,9 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
       {/* FAB — add new member. Rendered via portal so the page-level
           translateX animation (which creates a containing block) doesn't
           turn `position: fixed` into "scrolls with the page". */}
-      {portalReady && createPortal(
+      {/* Not while the Admin tab is kept behind another tab: a portal leaves
+          the hidden panel, so it would float over Home (lib/tabActivity.ts). */}
+      {portalReady && onScreen && createPortal(
         <button
           type="button"
           onClick={openAddSheet}
