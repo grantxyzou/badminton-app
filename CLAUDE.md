@@ -104,7 +104,7 @@ the Value-Hub Slice-0 metric — the caveat is repeated at the point the number 
 read in `app/api/admin/slice0/route.ts`.
 
 ### Usage metrics (first-party tracking, the Metrics page, the report keys)
-`docs/plans/usage-metrics.md`, its flag `NEXT_PUBLIC_FLAG_USAGE_METRICS` was ON from 2026-10-07 and retired 2026-10-21, ON branch kept, so stopping the beacons is now a code change, not a setting. **Three usage kinds only**, in the existing append-only `events` container: `sign_in` (written by `completeSignIn`, whose `via` argument is REQUIRED so no sign-in path can forget it; group create/join/switch pass `null`), and the `app_open` / `tab_view` beacons from `lib/useUsageBeacons.ts` (mounted once in `HomeShell`, signed-in only, admin tab excluded, `tab` and `platform` from bounded lists). Sign-ups, cancels, kudos, stringing, push and reports are counted from their OWN containers, never re-logged as events.
+`docs/plans/usage-metrics.md`, its flag `NEXT_PUBLIC_FLAG_USAGE_METRICS` was ON from 2026-10-07 and retired 2026-10-21, ON branch kept, so stopping the beacons is now a code change, not a setting. **Three usage kinds only**, in the existing append-only `events` container: `sign_in` (written by `completeSignIn`, whose `via` argument is REQUIRED so no sign-in path can forget it; group create/join/switch pass `null`), and the `app_open` / `tab_view` beacons from `lib/useUsageBeacons.ts` (mounted once in `HomeShell`, signed-in only, admin tab excluded, `tab` and `platform` from bounded lists). Sign-ups, cancels, kudos, stringing, push and reports are counted from their OWN containers, never re-logged as events. **A fourth kind is an ERROR, not usage** (`client_error`, 2026-10-25, `docs/plans/client-error-beacon.md`): `reportClientError()` in `lib/engagement.ts`, fired from `app/error.tsx` and `app/global-error.tsx`, at most 3 per page load and never for a stale-chunk error (which reloads itself), carrying only `where` (`ERROR_WHERES`) and the tab — no message, stack or URL. It is read as `clientErrors` by `GET /api/admin/slice0` and `clubMetrics()` (last 7 days, roster-narrowed), so the key-protected report carries it into the daily health check; it is how a screen that breaks in a player's browser gets noticed without the player saying so.
 - **`lib/metrics.ts` `clubMetrics()` is the one reader**; the admin `GET /api/admin/metrics` and the key-protected `GET /api/reports/metrics` both call it, so the page and the weekly report cannot disagree. `lib/metricsMath.ts` is pure. Every aggregate is narrowed to the roster, and a metric without enough data is `null` ("—"), never 0 — the lying-empty-state rule on a screen an admin decides from.
 - **Totals only, never a list of names.** `GET /api/reports/feedback` is operator-club only and strips `ip` and `name` and cuts `url` to its path (an invite token rides in the query).
 - **`x-reports-key`** is a read-only per-club secret minted on the Metrics page (`lib/reportsAccess.ts`, hashed in `clubSettings`, compared through `lib/clubKey.ts` — the same helper the payments key uses). The scheduled report helpers read it from the `BPM_REPORTS_KEY` environment variable; it is never pasted into a chat.
@@ -349,7 +349,12 @@ submitted by Grant on device.
   extension's catalog, `widget_bpm_shuttle.png` on Android), never a redrawn
   mark (Grant, 2026-10-25). The iOS extension's sources are in
   `ios/App/BPMWidget/` (both widgets, one bundle) and its TARGET is created
-  once in Xcode (`native/README.md`), never by hand in the project file.
+  once in Xcode (`native/README.md`), never by hand in the project file. It
+  was made on Grant's Mac and COMMITTED on 2026-10-24 (#716), so a fresh
+  checkout builds the widgets; Xcode had raised the app's minimum iOS to its
+  "recommended" variable while doing it, and `native-shell-projects` now pins
+  the floors (app 15.0, widget 17.0). Store build 5 (#719) is the first that
+  carries the widgets, the icon badge and the shortcuts.
 - **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`
   answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`,
   `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path
@@ -626,7 +631,7 @@ npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
 ```
 
-**524 test files / ~5,337 tests** (2026-10-24). `__tests__/docs-canary.test.ts` fails the
+**529 test files / ~5,379 tests** (2026-10-25). `__tests__/docs-canary.test.ts` fails the
 build when the file count stated here drifts more than 10% from the tree — the
 previous figure, 279 / 2712, sat a third short for weeks and read as current.
 Covering API routes (admin auth,
