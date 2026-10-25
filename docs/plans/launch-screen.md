@@ -79,7 +79,8 @@ shot loops only for as long as the page actually takes.
   speed fix goes into Home's reads, not the splash: a trace showed Home in two
   waves (the balance and skill cards' reads starting only once the week's had
   landed, 2.3 s in), and Home now starts them together (`primeFetch` in
-  `lib/sharedRead.ts`). The shot and the settle wait are unchanged.
+  `lib/sharedRead.ts`). The shot and the settle wait are unchanged. A reload
+  and a landing URL stay exceptions that leave at once (Grant, same day).
 - **The shot in flight BECOMES the final shot** (`shotTakeover`). The handoff
   says to wait for the current shot's trail to clear and then play the final
   one. But a loading shot and the final shot are the same frames until the
