@@ -64,7 +64,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
       'Several clubs in the one deployment (docs/plans/multi-group.md) — the explicit Stage-2 choice, made 2026-09-07 so strangers who install the store app have somewhere to go. Read SERVER-SIDE: off, every request resolves to groupId "bpm" and nothing observable changes; on, the cookie claim plus a membership check decide. ON in production since 2026-10-22 (Phase 5), after the migrate-groups status read all zeros and mismatched 0; off is the whole rollback, since nothing is migrated that older code cannot read.',
     owner: 'grant',
     plannedRemoval: '2026-12-15',
-    note: 'About two weeks after the intended Phase 5 cutover. Retiring it means deleting the "resolve to bpm" branch AND flipping TOLERATE_UNSTAMPED off in lib/groupScope.ts (only after the migrate-groups status read shows zero unstamped rows for a week), not just removing the switch.',
+    note: 'About two weeks after the intended Phase 5 cutover. Retiring it means deleting the "resolve to bpm" branch AND flipping TOLERATE_UNSTAMPED off in lib/groupScope.ts (only after a second club has run one session end to end and the migrate-groups status shows zero unstamped rows and zero recorded leaks), not just removing the switch.',
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
