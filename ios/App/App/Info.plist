@@ -20,11 +20,6 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<!-- The custom scheme the web app hands back to: bpm://auth/return from
-	     the OAuth landing, bpm://migrate?c= from the PWA's "Move to the app"
-	     sheet. Universal links (applinks:) live in App.entitlements. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -36,8 +31,8 @@
 			</array>
 		</dict>
 	</array>
-	<!-- HTTPS only; no proprietary encryption. Answers the export-compliance
-	     question once, instead of at every TestFlight upload. -->
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
@@ -73,8 +68,6 @@
 	<array>
 		<string>armv7</string>
 	</array>
-	<!-- Portrait only, matching app/manifest.ts. A landscape roster is not a
-	     layout anyone designed. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
