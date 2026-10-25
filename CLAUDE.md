@@ -336,14 +336,18 @@ submitted by Grant on device.
   carries besides the tab is `game=21-18` from the SCORE widget's Save game,
   which `lib/gameIntent.ts` parks for `SteppedGameLoggerSheet` to open
   prefilled (Swap sides, because the widget cannot know which side was yours);
-  the sheet's save calls `markWidgetGameSaved()` so the widget lets the game
-  go. The score widget's game never touches the server before that save; its
+  the sheet's save calls `markWidgetGameSaved(score)` so the widget marks
+  that game saved. The score widget's game never touches the server before
+  that save; it has two sizes (the large is the court-side scoreboard with
+  tonight's games, a list kept on the phone and cleared at midnight); its
   rules are `lib/scoreRules.ts` (umpire's terms: game point, "20 all", "29
   all · next point wins", Interval at 11; sides are A side and B side), and the
   Swift and Java ports are held to `__tests__/score-rules.test.ts`. The large
   widget's stringing section reads the bench through `lib/stringingOrder.ts`
   (shared with the jobs route) and wears strings by TIME against
-  `RESTRING_AFTER_WEEKS`, never by sessions. The iOS extension's sources are in
+  `RESTRING_AFTER_WEEKS`, never by sessions. The header mark is the launch screen's shuttle image (`BPMShuttle` in the
+  extension's catalog, `widget_bpm_shuttle.png` on Android), never a redrawn
+  mark (Grant, 2026-10-25). The iOS extension's sources are in
   `ios/App/BPMWidget/` (both widgets, one bundle) and its TARGET is created
   once in Xcode (`native/README.md`), never by hand in the project file.
 - **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`

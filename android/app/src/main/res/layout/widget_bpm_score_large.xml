@@ -1,0 +1,627 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keep score at 4 × 3 and up: the court-side scoreboard (WidgetScoreLarge on
+     the design canvas). Same three states and the same ids as
+     widget_bpm_score, so BpmScoreWidgetProvider fills both; this one adds
+     digits readable from the far court, a full-width Undo, and tonight's
+     games. RemoteViews allow only a few view classes: LinearLayout,
+     FrameLayout, TextView, ProgressBar, ImageView — never a bare View. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/score_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bpm_bg"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="17dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_bpm_shuttle" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="BPM"
+            android:textColor="@color/bpm_widget_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/score_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="Game 3 · to 21"
+            android:textColor="@color/bpm_widget_muted"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/score_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_bpm_badge_amber"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:text="⚡ GAME POINT · A SIDE"
+            android:textColor="@color/bpm_widget_on_amber"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Between games — one tap to start. -->
+    <LinearLayout
+        android:id="@+id/score_idle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Keep score"
+                android:textColor="@color/bpm_widget_primary"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_idle_sub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Game 4 tonight · to 21"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/score_start"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_bpm_join"
+            android:paddingStart="18dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="10dp"
+            android:text="▶ Start"
+            android:textColor="@color/bpm_widget_on_green"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Game over — save it, or start the next. -->
+    <LinearLayout
+        android:id="@+id/score_over"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:id="@+id/score_final"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="21–18"
+                android:textColor="@color/bpm_widget_primary"
+                android:textSize="40sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_winner"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_marginBottom="6dp"
+                android:text="A side wins"
+                android:textColor="@color/bpm_widget_green"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/score_save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/widget_bpm_join"
+                android:paddingStart="12dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="6dp"
+                android:text="✓ Save game"
+                android:textColor="@color/bpm_widget_on_green"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_next"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/widget_bpm_chip"
+                android:paddingStart="12dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="6dp"
+                android:text="Next game"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_discard"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/widget_bpm_chip"
+                android:paddingStart="12dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="6dp"
+                android:text="Discard"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Playing — each half is a button; a tap adds a point to that side. -->
+    <LinearLayout
+        android:id="@+id/score_play"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:id="@+id/score_side_a"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="5dp"
+                android:layout_weight="1"
+                android:background="@drawable/widget_bpm_side_green">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:paddingStart="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="A side"
+                        android:textColor="@color/bpm_widget_green"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/score_a_pts"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:autoSizeMaxTextSize="92sp"
+                        android:autoSizeMinTextSize="40sp"
+                        android:autoSizeTextType="uniform"
+                        android:fontFamily="monospace"
+                        android:gravity="center_vertical"
+                        android:maxLines="1"
+                        android:text="15"
+                        android:textColor="@color/bpm_widget_primary"
+                        android:textSize="92sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/score_a_plus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="+1"
+                        android:textColor="@color/bpm_widget_muted"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/score_a_serve"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="10dp"
+                    android:text="●"
+                    android:textColor="@color/bpm_widget_amber"
+                    android:textSize="10sp"
+                    android:visibility="invisible" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/score_side_b"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="5dp"
+                android:layout_weight="1"
+                android:background="@drawable/widget_bpm_side_blue">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:paddingStart="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="B side"
+                        android:textColor="@color/bpm_widget_blue"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/score_b_pts"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:autoSizeMaxTextSize="92sp"
+                        android:autoSizeMinTextSize="40sp"
+                        android:autoSizeTextType="uniform"
+                        android:fontFamily="monospace"
+                        android:gravity="center_vertical"
+                        android:maxLines="1"
+                        android:text="12"
+                        android:textColor="@color/bpm_widget_primary"
+                        android:textSize="92sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/score_b_plus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="+1"
+                        android:textColor="@color/bpm_widget_muted"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/score_b_serve"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="10dp"
+                    android:text="●"
+                    android:textColor="@color/bpm_widget_amber"
+                    android:textSize="10sp"
+                    android:visibility="invisible" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Undo is a full-width row here, not a 44 dp corner. -->
+        <LinearLayout
+            android:id="@+id/score_undo"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/widget_bpm_chip_wide"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="↶"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Undo last point"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Tonight: every game finished on this phone today, saved or not. Shown
+         between games and after one; a "Not saved" row opens Add a game. -->
+    <LinearLayout
+        android:id="@+id/score_tonight"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="10dp"
+            android:background="@color/bpm_widget_rule" />
+
+        <TextView
+            android:id="@+id/score_tonight_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No games finished yet tonight"
+            android:textColor="@color/bpm_widget_muted"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/score_tn_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.08"
+            android:text="TONIGHT"
+            android:textColor="@color/bpm_widget_muted"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/score_tn_1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/score_tn_1_no"
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:text="Game 1"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/score_tn_1_sc"
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="monospace"
+                android:text="21–15"
+                android:textColor="@color/bpm_widget_primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_tn_1_win"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:text="A side"
+                android:textColor="@color/bpm_widget_green"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_tn_1_st"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saved"
+                android:textColor="@color/bpm_widget_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/score_tn_2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/score_tn_2_no"
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:text="Game 2"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/score_tn_2_sc"
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="monospace"
+                android:text="19–21"
+                android:textColor="@color/bpm_widget_primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_tn_2_win"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:text="B side"
+                android:textColor="@color/bpm_widget_blue"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_tn_2_st"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Not saved"
+                android:textColor="@color/bpm_widget_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/score_tn_3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/score_tn_3_no"
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:text="Game 3"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/score_tn_3_sc"
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="monospace"
+                android:text="21–18"
+                android:textColor="@color/bpm_widget_primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_tn_3_win"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:text="A side"
+                android:textColor="@color/bpm_widget_green"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_tn_3_st"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Not saved"
+                android:textColor="@color/bpm_widget_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/score_tn_4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/score_tn_4_no"
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:text="Game 4"
+                android:textColor="@color/bpm_widget_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/score_tn_4_sc"
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="monospace"
+                android:text="21–19"
+                android:textColor="@color/bpm_widget_primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_tn_4_win"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:text="A side"
+                android:textColor="@color/bpm_widget_green"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/score_tn_4_st"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Not saved"
+                android:textColor="@color/bpm_widget_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/score_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/score_tally"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="A side 2 · B side 1 tonight"
+        android:textColor="@color/bpm_widget_muted"
+        android:textSize="11sp"
+        android:visibility="gone" />
+</LinearLayout>

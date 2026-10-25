@@ -186,7 +186,7 @@ export default function SteppedGameLoggerSheet({
       });
       if (!res.ok) throw new Error(String(res.status));
       // The widget keeps a finished game until it is saved here; tell it.
-      if (prefill) void markWidgetGameSaved();
+      if (prefill) void markWidgetGameSaved(prefill);
       onLogged();
       setStep('done');
     } catch {
