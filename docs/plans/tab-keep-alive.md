@@ -1,7 +1,7 @@
 # Kept tabs, and a launch that opens them
 
 **Track:** Mobile fluidity (`docs/plans/mobile-fluidity.md`) — the app people install is this app in a WebView, and a tab bar that reloads on every tap is the loudest "this is a website" tell after transitions.
-**Status:** in-flight
+**Status:** shipped 2026-10-21 (#668), Admin added 2026-10-25 (#721)
 **Review on:** 2026-11-04 — has anyone seen something out of date on a tab they came back to (a roster missing a sign-up, a balance already paid)? Has anyone said opening the app feels slower since 2026-10-21?
 
 ## Problem

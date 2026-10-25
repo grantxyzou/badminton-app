@@ -54,6 +54,35 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Back from an admin page shows the console at once.** Every Back used to rebuild the whole console behind skeletons (fourteen reads); it now stays underneath each page and re-checks quietly, so what you changed on the page still shows.
 - The Roster's add button no longer shows over another tab while Admin is kept behind it.
 
+### A screen that crashes is counted (2026-10-25)
+
+Grant: "When a button or feature fails how would we know without you in it?" When a screen breaks for a signed-in player, the app now records one `client_error` event: which kind of failure and which tab, never the message, the stack or the address. At most three per page load, and none for the "new version" error that reloads itself. The count (last 7 days, this club only) is in `GET /api/admin/slice0` and in the metrics report, so the daily health check sees it. (#711, `docs/plans/client-error-beacon.md`)
+
+### Store build 5 carries the widgets (2026-10-24 to 25)
+
+The iPhone widget extension's Xcode target is committed (#716), so a fresh checkout builds it; Xcode had raised the app's minimum iOS on its own while making it, and it is back at 15 (the widget needs 17). Build numbers go from 4 to 5 on both platforms (#719): build 4 predates the widgets, the icon badge and the long-press menu, and this is the build that ships them.
+
+### Home's second wave starts with the first (2026-10-24)
+
+A trace of a signed-in open showed Home loading in two waves: the balance and skill cards mounted only once the week's five reads had landed, so their own reads started at 1.6 s and Home finished at 2.3 s. Home now starts those three reads at the same moment as the week's, and each card picks up the request already in flight (`primeFetch` in `lib/sharedRead.ts`); a refetch after a payment still goes to the server. The launch screen's full shot stays the floor and is never cut short (Grant). (#717)
+
+### An admin's rights stay inside their own club (2026-10-24)
+
+From the 24 October security review (#708, #710):
+
+- With groups on, an admin check requires the admin cookie and the member cookie to name the same club, and editing or removing a member requires that person to be on the admin's own roster. Hard-deleting a member is refused (account deletion stays `DELETE /api/members/me`).
+- Making someone an admin, restoring them and renaming them now write to their place in THIS club. Since groups went on (22 Oct) the Roster's "make admin" and "restore" had been writing a field nothing read. The club's owner cannot be demoted or removed there.
+- Giving kudos, listing who you can thank and requesting stringing re-check that you are still on the roster, so a removed member's cookie stops working at once.
+- Signing out revokes the home-screen widget's pass on the server, not just on the phone.
+
+### Widgets on a real phone (2026-10-23 to 24)
+
+The first runs on Grant's iPhone (#702, #703, #712, #714): fixes for the widget plugin not registering and a Swift layout that would not compile; "Signed up" in place of a status word; a stringing section on the large widget that says when strings are due by weeks worn, not sessions played; and a score-keeping widget with A side and B side, umpire's calls ("20 all", game point, the interval at 11) and a large court-side scoreboard listing tonight's games. Its Save game opens Add a game with the score filled in, and Add a game lists the whole club, not only tonight's sign-ups. No strokes on the tiles, the launch screen's shuttle as the BPM mark in every header, and colours that read in light mode.
+
+### Housekeeping (2026-10-24)
+
+The twenty hand-written "is the container ready" promises are gone (`ensureContainer` already remembered its answer); the list of refused PINs lives in one place; and a chart test that failed on any computer west of Greenwich is pinned to UTC. (#707)
+
 ### Group leaks are written down, and the leak watch waits for a second club (2026-10-24)
 
 Grant: "dont ask me to monitor group leak until there is a second group created
@@ -72,6 +101,14 @@ is operator-only now (an admin of BPM). The plan's review moves to 2026-11-25.
 ### Racket fit flag retired (2026-10-24)
 
 `NEXT_PUBLIC_FLAG_RACKET_FIT` was already `'true'` in production; the fit engine is now the only racket recommender in `GET /api/recommend`. Nothing changes on screen.
+
+### Home-screen widgets (2026-10-22)
+
+This week's session and your place in it, your balance and (on the large size) your level, on iPhone and Android, plus lock-screen widgets that hide the amount until Face ID. Join and Undo work from the widget itself and go through the same sign-up rules as Home's button. A widget has no cookies, so the app gives it its own pass, which only the widget routes accept and which is re-checked against the club's roster on every read. They ship with store build 5. (#699, `docs/plans/native-widgets.md`)
+
+### A health check that reads nothing (2026-10-22)
+
+`GET /api/health` answers `{ ok, build }` without touching the database, a cookie or a rate limit; it is the path Azure's health check probes. The only other public read touches the database, and Azure replaces a server that fails its probe for an hour, so a database blip would have recycled a healthy one. The database stays the smoke test's job. (#701)
 
 ### Multi-group is on (2026-10-22)
 
@@ -121,6 +158,22 @@ request. The second gap — a signed-out ask cannot name its club, so a future
 second club's PIN-less member would be looked up in BPM — is recorded on the
 Phase 6 list; it needs a design choice before the first outside club, and is
 not a gate for the flip.
+
+### The app's icon counts what you owe, and long-press opens three shortcuts (2026-10-21)
+
+The red number on the app's icon counts what you owe once it is final (settled sessions not reported paid, plus finished stringing), set only after a read that worked; it never asks for permission. Long-press the icon for Sign up for <day>, What I owe and Request stringing. The installed web app gets the same badge. In the store app from build 5. (#689, `docs/plans/native-badge-shortcuts.md`)
+
+### The stringing screens, second design pass (2026-10-21)
+
+One money field everywhere (`MoneyInput`, the `$` inside the box): dollars had been drawn three different ways. A bad price shows as an error that a screen reader announces. The mono font only on figures. The date picker opens above its field when there is no room below, so the last weeks of the string-purchase date are reachable inside a sheet. The stringing files now fail the build on any new style drift. (#697)
+
+### Rename a string on the shelf, and pick its colours (2026-10-21)
+
+A string's sheet on the bench has a Name field and a colour picker. A rename carries the price, catalog link and colours with it, and stock still counts the old name as the new one. Colours come from a fixed fourteen-colour palette and show as dots on the Stringing tab and as "On the reel" on the string's page. (#681)
+
+### The running build at the bottom of Profile (2026-10-21)
+
+Profile ends with "Version 1e69865": the first seven characters of the commit the phone is running, so "is the fix live on my phone?" has an answer. (#670)
 
 ### Two plan reviews answered: multi-group is not live because the flip waits on a backfill re-run, and the shuttle burst stays (2026-10-21)
 

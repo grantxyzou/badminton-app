@@ -1,7 +1,7 @@
 # Client error beacon
 
 Track: usage metrics (docs/plans/usage-metrics.md) — knowing what is broken without a player having to say so.
-Status: in-flight
+Status: shipped 2026-10-25 (#711)
 
 ## Problem
 Grant (2026-10-24): "When a button or feature fails how would we know without you in it?" Today the daily health check proves the site and API answer; a screen that crashes in a player's browser reaches no server, so nobody hears of it unless a player reports it.
