@@ -15,6 +15,10 @@ import { useTabReturn } from '@/lib/tabActivity';
 import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+/** The card's reads, named once: Home primes them before the card mounts. */
+export const unpaidPath = (name: string) => `/api/players/unpaid?name=${encodeURIComponent(name)}`;
+export const CREDIT_PATH = '/api/credit';
 const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
 
 interface UnpaidSession {
@@ -118,7 +122,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   useEffect(() => {
     if (!creditOn || !name) return;
     let cancelled = false;
-    sharedFetch('/api/credit')
+    sharedFetch(CREDIT_PATH)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { balanceCents?: number } | null) => {
         // A failed read shows no credit line — the balance card's job is what
@@ -162,7 +166,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
     // name is always the signed-in identity (non-empty) when this renders.
     if (!name) return;
     let cancelled = false;
-    sharedFetch(`/api/players/unpaid?name=${encodeURIComponent(name)}`)
+    sharedFetch(unpaidPath(name))
       .then(async (r) => {
         if (r.status === 403) return { forbidden: true as const };
         if (!r.ok) throw new Error(`unpaid fetch ${r.status}`);

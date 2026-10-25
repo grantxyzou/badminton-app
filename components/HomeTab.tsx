@@ -16,8 +16,8 @@ import type { Tab } from '@/components/HomeShell';
 import { getIdentity, setIdentity } from '@/lib/identity';
 import CardSkeleton, { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
-import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
-import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
+import UnpaidSessionsCard, { CREDIT_PATH, unpaidPath } from '@/components/UnpaidSessionsCard';
+import SkillLeadCard, { SKILL_LEAD_HEIGHT, assessmentsPath } from './home/SkillLeadCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
@@ -188,10 +188,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       // wave behind it (lib/sharedRead.ts `primeFetch`). First load only — a
       // refetch finds the cards mounted and reading for themselves.
       if (memberName) {
-        const q = encodeURIComponent(memberName);
-        primeFetch(`/api/players/unpaid?name=${q}`);
-        if (isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) primeFetch('/api/credit');
-        primeFetch(`/api/assessments?name=${q}`);
+        primeFetch(unpaidPath(memberName));
+        if (isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) primeFetch(CREDIT_PATH);
+        primeFetch(assessmentsPath(memberName));
       }
     }
     setWeekLoadError(false);
