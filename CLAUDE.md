@@ -354,7 +354,9 @@ submitted by Grant on device.
   checkout builds the widgets; Xcode had raised the app's minimum iOS to its
   "recommended" variable while doing it, and `native-shell-projects` now pins
   the floors (app 15.0, widget 17.0). Store build 5 (#719) is the first that
-  carries the widgets, the icon badge and the shortcuts.
+  carries the widgets, the icon badge and the shortcuts; the iPhone is on 6
+  (#724) because TestFlight already held a 6, and Android stays at 5. Bump
+  from whatever the store holds, not from what the project says.
 - **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`
   answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`,
   `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path
