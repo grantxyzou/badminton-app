@@ -186,7 +186,7 @@ export default function SteppedGameLoggerSheet({
       });
       if (!res.ok) throw new Error(String(res.status));
       // The widget keeps a finished game until it is saved here; tell it.
-      if (prefill) void markWidgetGameSaved();
+      if (prefill) void markWidgetGameSaved(prefill);
       onLogged();
       setStep('done');
     } catch {
@@ -371,7 +371,7 @@ export default function SteppedGameLoggerSheet({
                 <Stepper label={t('yourScore')} value={mine} onChange={setMine} accent />
                 <Stepper label={t('theirScore')} value={theirs} onChange={setTheirs} />
               </div>
-              {/* The widget scores Green against Blue and cannot know which
+              {/* The widget scores A side against B side and cannot know which
                   side you were on: one tap turns the score round. */}
               {prefill && (
                 <button

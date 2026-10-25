@@ -260,10 +260,10 @@ conditional.
   band draws only from `useClubTension`'s cohort. The tension chart is on a
   FIXED 20–30 lb scale so every band is measured on the same ruler.
 
-### Racket FIT engine (`NEXT_PUBLIC_FLAG_RACKET_FIT`, Phase 2, 2026-09-09)
+### Racket FIT engine (Phase 2, 2026-09-09; its flag `NEXT_PUBLIC_FLAG_RACKET_FIT` retired 2026-10-24)
 
 `lib/racketFit.ts` replaces the seven scorers below on the racket branch of
-`GET /api/recommend` when the flag is on; off, that branch is unchanged. Spec:
+`GET /api/recommend`; the old branch is gone from the route. Spec:
 `docs/superpowers/specs/2026-09-07-racket-fit-design.md`. Pure, no I/O.
 
 - **A distance model against a TARGET SPEC**, not rule scorers. Target =
@@ -347,7 +347,7 @@ conditional.
   retires. `maxFlexDemand` is still exported for that legacy path only — the
   fit engine no longer reads it.
 
-### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`) — the OFF branch of the flag above
+### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`) — off the route since the flag above retired (2026-10-24); `recommendRackets` stays for Phase 4
 
 Scores the **fourteen check-in skill ratings** rather than the old
 `Member.stage` (optional, rarely set — so it showed nearly everyone the same

@@ -32,13 +32,24 @@ public class BpmWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
     /// sign-out with the rest, and the parked game dropped once Add a game
     /// has logged it.
     static let scoreKeys = ["score.game", "score.pending", "score.gamesTonight"]
+    static let scoreGameKey = "score.game"
     static let scorePendingKey = "score.pending"
+    static let scoreTonightKey = "score.gamesTonight"
 
     private var store: UserDefaults? { UserDefaults(suiteName: Self.appGroup) }
 
+    /// https anywhere, or plain http on localhost ITSELF — parsed, never a
+    /// string prefix: `http://localhost.example.com` starts with
+    /// `http://localhost` and is somebody else's server.
+    static func isAllowedBaseUrl(_ raw: String) -> Bool {
+        guard let url = URL(string: raw), let scheme = url.scheme?.lowercased() else { return false }
+        if scheme == "https" { return true }
+        return scheme == "http" && url.host?.lowercased() == "localhost"
+    }
+
     @objc func setSession(_ call: CAPPluginCall) {
         guard let token = call.getString("token"), !token.isEmpty,
-              let baseUrl = call.getString("baseUrl"), baseUrl.hasPrefix("https://") || baseUrl.hasPrefix("http://localhost")
+              let baseUrl = call.getString("baseUrl"), Self.isAllowedBaseUrl(baseUrl)
         else {
             call.reject("token and an https baseUrl are required")
             return
@@ -74,17 +85,44 @@ public class BpmWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
-    /// Add a game logged the score the widget was holding (lib/gameIntent.ts).
+    /// Add a game logged the score the widget was holding (lib/gameIntent.ts):
+    /// that game is marked saved in tonight's list (`FinishedGame` in
+    /// BPMScoreWidget.swift — edited here as plain JSON, because the extension's
+    /// types are not in this target, which is why its fields are numbers and
+    /// booleans). The app says WHICH score when it knows; without one, the
+    /// finished game still on screen is the one, else the newest unsaved.
     @objc func scoreSaved(_ call: CAPPluginCall) {
-        store?.removeObject(forKey: Self.scorePendingKey)
-        // A finished game still on screen is the one just saved too.
-        if let store = store, let data = store.data(forKey: "score.game"),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let points = json["points"] as? [String] {
-            var a = 0, b = 0
-            for pt in points { if pt == "a" { a += 1 } else { b += 1 } }
-            let over = a >= 30 || b >= 30 || (a >= 21 && a - b >= 2) || (b >= 21 && b - a >= 2)
-            if over { store.removeObject(forKey: "score.game") }
+        if let store = store {
+            let a = call.getInt("a"), b = call.getInt("b")
+            let matches: (Int, Int) -> Bool = { pa, pb in a == nil || b == nil || (pa == a && pb == b) }
+            var tonight = (store.data(forKey: Self.scoreTonightKey)
+                .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [[String: Any]]) ?? []
+            var marked = false
+            // The finished game still on screen leaves the court for the list, saved.
+            if let data = store.data(forKey: Self.scoreGameKey),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let points = json["points"] as? [String] {
+                var pa = 0, pb = 0
+                for pt in points { if pt == "a" { pa += 1 } else { pb += 1 } }
+                let over = pa >= 30 || pb >= 30 || (pa >= 21 && pa - pb >= 2) || (pb >= 21 && pb - pa >= 2)
+                if over && matches(pa, pb) {
+                    let gameNo = (json["gameNo"] as? Int) ?? 0
+                    tonight.removeAll { ($0["gameNo"] as? Int) == gameNo }
+                    tonight.append(["gameNo": gameNo, "a": pa, "b": pb, "finishedAt": Date().timeIntervalSince1970, "saved": true])
+                    store.removeObject(forKey: Self.scoreGameKey)
+                    marked = true
+                }
+            }
+            if !marked, let i = tonight.lastIndex(where: {
+                !(($0["saved"] as? Bool) ?? false) && matches(($0["a"] as? Int) ?? -1, ($0["b"] as? Int) ?? -1)
+            }) {
+                tonight[i]["saved"] = true
+            }
+            // The one-slot park that preceded the list; never written again.
+            store.removeObject(forKey: Self.scorePendingKey)
+            if let data = try? JSONSerialization.data(withJSONObject: tonight) {
+                store.set(data, forKey: Self.scoreTonightKey)
+            }
         }
         Self.reloadTimelines()
         call.resolve()

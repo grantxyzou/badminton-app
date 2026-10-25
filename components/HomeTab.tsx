@@ -16,8 +16,8 @@ import type { Tab } from '@/components/HomeShell';
 import { getIdentity, setIdentity } from '@/lib/identity';
 import CardSkeleton, { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
-import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
-import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
+import UnpaidSessionsCard, { CREDIT_PATH, unpaidPath } from '@/components/UnpaidSessionsCard';
+import SkillLeadCard, { SKILL_LEAD_HEIGHT, assessmentsPath } from './home/SkillLeadCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
@@ -31,7 +31,7 @@ import { primeHaptics, tapSuccess } from '@/lib/haptics';
 import ShuttleBurst, { type BurstOrigin } from './home/ShuttleBurst';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
-import { sharedFetch } from '@/lib/sharedRead';
+import { primeFetch, sharedFetch } from '@/lib/sharedRead';
 import { primeMemberAvatars } from '@/lib/useMemberAvatars';
 import { useEverOpened } from '@/lib/useEverOpened';
 
@@ -181,7 +181,18 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // Once a week has loaded, the content stays while it refreshes; a refetch
     // that fails still sets weekLoadError below, which replaces the week with
     // the error, so stale data never stands in for a failure.
-    if (!weekLoadedRef.current) setLoading(true);
+    if (!weekLoadedRef.current) {
+      setLoading(true);
+      // The balance and skill cards mount only once the week below has
+      // landed; start their reads NOW, beside it, so they are not a second
+      // wave behind it (lib/sharedRead.ts `primeFetch`). First load only — a
+      // refetch finds the cards mounted and reading for themselves.
+      if (memberName) {
+        primeFetch(unpaidPath(memberName));
+        if (isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) primeFetch(CREDIT_PATH);
+        primeFetch(assessmentsPath(memberName));
+      }
+    }
     setWeekLoadError(false);
     setSessionMissing(false);
     try {
@@ -222,7 +233,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     } finally {
       setLoading(false);
     }
-  }, [reportFetchFailure]);
+  }, [reportFetchFailure, memberName]);
 
   useEffect(() => {
     // The server-verified member IS the user, and the state above was

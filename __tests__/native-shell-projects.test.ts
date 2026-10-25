@@ -88,6 +88,24 @@ describe('ios/', () => {
     expect(pbx).not.toContain('TARGETED_DEVICE_FAMILY = "1,2";');
   });
 
+  // Xcode, adding the widget target (2026-10-25), rewrote both targets' floor to
+  // $(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET). That is whatever the Xcode on the
+  // desk recommends, so the app's minimum iOS would rise silently with an Xcode
+  // update and older iPhones could no longer install it. The app stays on 15.0;
+  // the widget extension needs 17.0 for interactive widgets (Button(intent:),
+  // containerBackground), and iOS simply does not offer it below that.
+  it('pins the minimum iOS of the app and of the widget extension', () => {
+    const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');
+    expect(pbx).not.toContain('RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET');
+    const configs = pbx.split('isa = XCBuildConfiguration;').slice(1);
+    const appFloors = configs.filter((c) => c.includes('INFOPLIST_FILE = App/Info.plist;'))
+      .map((c) => /IPHONEOS_DEPLOYMENT_TARGET = ([\d.]+);/.exec(c)?.[1]);
+    const widgetFloors = configs.filter((c) => c.includes('INFOPLIST_FILE = BPMWidget/Info.plist;'))
+      .map((c) => /IPHONEOS_DEPLOYMENT_TARGET = ([\d.]+);/.exec(c)?.[1]);
+    expect(appFloors).toEqual(['15.0', '15.0']);
+    expect(widgetFloors).toEqual(['17.0', '17.0']);
+  });
+
   it('ships a privacy manifest that does not track', () => {
     const priv = read('ios', 'App', 'App', 'PrivacyInfo.xcprivacy');
     expect(priv).toMatch(/<key>NSPrivacyTracking<\/key>\s*<false\/>/);
@@ -145,6 +163,11 @@ describe('ios/', () => {
       expect(pbx).toMatch(new RegExp(`/\\* ${f.replace('.', '\\.')} in Sources \\*/,`));
     }
     expect(read('ios', 'App', 'App', 'BpmWidgetPlugin.swift')).toContain('jsName = "BpmWidget"');
+    // The base URL is PARSED: a string prefix let `http://localhost.example.com`
+    // through as local (security review, 2026-10-24).
+    const plugin = read('ios', 'App', 'App', 'BpmWidgetPlugin.swift');
+    expect(plugin).not.toContain('hasPrefix("http://localhost")');
+    expect(plugin).toContain('url.host?.lowercased() == "localhost"');
   });
 
   it('names one App Group for the app, the widget and the stores that share it', () => {

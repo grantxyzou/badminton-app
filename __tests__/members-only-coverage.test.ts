@@ -120,7 +120,7 @@ const ROUTES: Record<string, Entry> = {
   'stats/insight': owner,
   'stats/level': owner,
   'stats/partners': owner,
-  'kudos/eligible': { kind: 'authed', helper: 'verifyMemberAuth' },
+  'kudos/eligible': { kind: 'authed', helper: 'requireGroupMember' },
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
   // The home-screen widget's bearer pass (docs/plans/native-widgets.md), re-read against the membership.

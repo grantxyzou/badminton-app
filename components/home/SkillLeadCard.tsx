@@ -150,6 +150,9 @@ function NextLine() {
   );
 }
 
+/** The card's first read, named once: Home primes it before the card mounts. */
+export const assessmentsPath = (name: string) => `/api/assessments?name=${encodeURIComponent(name)}`;
+
 export default function SkillLeadCard({ name, club, onOpen }: { name: string; club: string; onOpen: () => void }) {
   const t = useTranslations('home.skillLead');
   const locale = useLocale();
@@ -160,7 +163,7 @@ export default function SkillLeadCard({ name, club, onOpen }: { name: string; cl
     const q = encodeURIComponent(name);
     (async () => {
       try {
-        const res = await sharedFetch(`/api/assessments?name=${q}`);
+        const res = await sharedFetch(assessmentsPath(name));
         if (!res.ok) throw new Error(String(res.status));
         const d = (await res.json()) as { assessments?: Snapshot[] };
         const snapshots = Array.isArray(d.assessments) ? d.assessments : [];

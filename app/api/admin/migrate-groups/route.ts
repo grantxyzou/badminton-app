@@ -2,9 +2,15 @@
  * The Phase 2 backfill (`lib/groupBackfill.ts`), behind three locks.
  *
  *   GET  — status: is `groups/bpm` there, who has a membership, how many
- *          rows in each group container still carry no `groupId`. Admin
- *          cookie only; read-only, and the number the Phase 5 flip is gated
- *          on ("zero unstamped for a week").
+ *          rows in each group container still carry no `groupId`, and
+ *          `leaks` — every row `groupScope()` caught crossing between clubs
+ *          (`lib/groupLeaks.ts`). Read-only.
+ *
+ * BOTH ARE OPERATOR-ONLY (2026-10-24): an admin of the operator's club, BPM.
+ * With groups on, `isAdminAuthedWithMember` admits the admin of ANY club, and
+ * this status is deployment-wide — every club's member counts and every
+ * leak, which names two clubs at once. Another club's admin gets a 403, the
+ * same rule as `GET /api/reports/feedback`.
  *   POST — `{ dryRun: true }` counts what a run would do and writes nothing;
  *          `{ dryRun: false }` does it. Admin cookie AND `x-migration-key`
  *          equal to `MIGRATION_KEY` (App Settings), compared in constant time.
@@ -15,7 +21,10 @@
  *          has no ceiling; the summary's `remaining` names what is left.
  *
  * Prod order (the spec): deploy flag-off → GET → dry run → run → GET zeros →
- * flag on → a week without `[group-leak]` → `TOLERATE_UNSTAMPED = false`.
+ * flag on → a second club runs one session end to end → `leaks` reads zero →
+ * `TOLERATE_UNSTAMPED = false`. (Until 2026-10-24 the gate was "a week of the
+ * log stream without `[group-leak]`", which needed a person watching logs for
+ * a week and proved little while BPM was the only club.)
  * Idempotent: a second run reports `exists` / `existing` / zero stamped, so
  * "run until the status is all zeros" is the whole operating procedure — and
  * with the limit that is literal, not aspirational: keep POSTing while
@@ -26,17 +35,35 @@ import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { MIGRATION_KEY_HEADER, migrationKeyConfigured, migrationKeyMatches } from '@/lib/migrationKey';
 import { backfillStatus, runBackfill, DEFAULT_SCAN_CAP, DEFAULT_ROW_BUDGET } from '@/lib/groupBackfill';
+import { readGroupLeaks } from '@/lib/groupLeaks';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
 
 export const dynamic = 'force-dynamic';
 
+/** The operator's club is the one whose admin may read and run this. */
+const operatorOnly = () => NextResponse.json({ error: 'operator_only' }, { status: 403 });
+
 export async function GET(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
+  if (auth.groupId !== BPM_GROUP_ID) return operatorOnly();
+  let status: Awaited<ReturnType<typeof backfillStatus>>;
   try {
-    return NextResponse.json(await backfillStatus());
+    status = await backfillStatus();
   } catch (error) {
     console.error('GET /api/admin/migrate-groups:', error);
     return NextResponse.json({ error: 'status_failed' }, { status: 500 });
   }
+  // A failed leak read is said, never shown as zero: "no leaks" is the answer
+  // the strict-mode switch waits for, so a lying zero would flip it.
+  let leaks: Awaited<ReturnType<typeof readGroupLeaks>> | { error: 'read_failed' };
+  try {
+    leaks = await readGroupLeaks();
+  } catch (error) {
+    console.error('GET /api/admin/migrate-groups leaks:', error);
+    leaks = { error: 'read_failed' };
+  }
+  return NextResponse.json({ ...status, leaks });
 }
 
 export async function POST(req: NextRequest) {
@@ -45,7 +72,9 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(`migrate-groups:${ip}`, 5, 15 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
+  if (auth.groupId !== BPM_GROUP_ID) return operatorOnly();
   if (!migrationKeyConfigured()) {
     return NextResponse.json({ error: 'migration_key_not_configured' }, { status: 503 });
   }

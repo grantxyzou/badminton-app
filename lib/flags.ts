@@ -21,7 +21,6 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
-  | 'NEXT_PUBLIC_FLAG_RACKET_FIT'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
   | 'NEXT_PUBLIC_FLAG_STORE_CREDIT'
   | 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR';
@@ -62,10 +61,10 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   },
   NEXT_PUBLIC_FLAG_MULTI_GROUP: {
     description:
-      'Several clubs in the one deployment (docs/plans/multi-group.md) — the explicit Stage-2 choice, made 2026-09-07 so strangers who install the store app have somewhere to go. Read SERVER-SIDE: off, every request resolves to groupId "bpm" and nothing observable changes; on, the cookie claim plus a membership check decide. Phase 0 ships no behaviour at all — only lib/groupScope.ts (the container classification), the mock store\'s @groupId filter, and the additive types — so the flag is registered before anything reads it.',
+      'Several clubs in the one deployment (docs/plans/multi-group.md) — the explicit Stage-2 choice, made 2026-09-07 so strangers who install the store app have somewhere to go. Read SERVER-SIDE: off, every request resolves to groupId "bpm" and nothing observable changes; on, the cookie claim plus a membership check decide. ON in production since 2026-10-22 (Phase 5), after the migrate-groups status read all zeros and mismatched 0; off is the whole rollback, since nothing is migrated that older code cannot read.',
     owner: 'grant',
     plannedRemoval: '2026-12-15',
-    note: 'About two weeks after the intended Phase 5 cutover. Retiring it means deleting the "resolve to bpm" branch AND flipping TOLERATE_UNSTAMPED off in lib/groupScope.ts (only after the migrate-groups status read shows zero unstamped rows for a week), not just removing the switch.',
+    note: 'About two weeks after the intended Phase 5 cutover. Retiring it means deleting the "resolve to bpm" branch AND flipping TOLERATE_UNSTAMPED off in lib/groupScope.ts (only after a second club has run one session end to end and the migrate-groups status shows zero unstamped rows and zero recorded leaks), not just removing the switch.',
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
@@ -77,12 +76,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description: 'Skill-scored equipment recommendations: the racket engine (lib/racketRecommend.ts) AND the string pairing engine (lib/stringPair.ts), both reached through GET /api/recommend. On for bpm-next, off on bpm-stable, which falls back to the coarse stage-derived racket pick. Renamed from NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER when string pairing landed and the old name stopped describing what it gates.',
     owner: 'grant',
     plannedRemoval: '2026-11-19',
-  },
-  NEXT_PUBLIC_FLAG_RACKET_FIT: {
-    description: 'The racket FIT engine (lib/racketFit.ts) — a distance model against a target spec anchored on the member\'s current racket and their fit answers — in place of the seven skill-proxy scorers in lib/racketRecommend.ts, on the racket branch of GET /api/recommend. Off → that branch is unchanged byte-for-byte. Phase 2 of docs/plans/racket-fit-engine.md.',
-    owner: 'grant',
-    plannedRemoval: '2026-10-23',
-    note: 'Retiring this flag means deleting the OFF branch: recommendRackets, its seven scorers and lib/recommend.ts\'s stage-derived fallback (Phase 4 of the plan), plus the transitional English renderer lib/fitReasonText.ts once the client reads reason KEYS. Pull GEAR_RECOMMENDER forward at the same time — it will have no off branch left.',
   },
   NEXT_PUBLIC_FLAG_LEDGER_MIRROR: {
     description:
@@ -119,8 +112,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_NATIVE_MIGRATE;
     case 'NEXT_PUBLIC_FLAG_MULTI_GROUP':
       return process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
-    case 'NEXT_PUBLIC_FLAG_RACKET_FIT':
-      return process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
     case 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO':
       return process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
     case 'NEXT_PUBLIC_FLAG_STORE_CREDIT':

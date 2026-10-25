@@ -7,9 +7,12 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Bundle;
 import android.view.View;
 import android.widget.RemoteViews;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -18,7 +21,11 @@ import java.util.Locale;
  * not exported — that moves the game in {@link BpmScoreStore} and redraws.
  * Nothing reaches the server until Save game, which opens Add a game with the
  * score (`bpm://open?tab=skills&game=21-18`, routed by lib/widgetBridge.ts).
- * The iPhone twin is BPMScoreWidget.swift.
+ *
+ * Two layouts by height: 4 × 2 is the scorer; from 4 × 3 up it is the
+ * court-side scoreboard with tonight's games (WidgetScoreLarge on the design
+ * canvas), the same ids filled the same way. The iPhone twin is
+ * BPMScoreWidget.swift.
  */
 public class BpmScoreWidgetProvider extends AppWidgetProvider {
 
@@ -30,16 +37,32 @@ public class BpmScoreWidgetProvider extends AppWidgetProvider {
     static final String EXTRA_SIDE = "side";
     static final String EXTRA_PENDING = "pending";
 
+    /** The large layout earns its name at this height (dp): 4 × 3 and 4 × 4. */
+    private static final int LARGE_MIN_HEIGHT_DP = 200;
+
+    private static final int[] ROW = { R.id.score_tn_1, R.id.score_tn_2, R.id.score_tn_3, R.id.score_tn_4 };
+    private static final int[] ROW_NO = { R.id.score_tn_1_no, R.id.score_tn_2_no, R.id.score_tn_3_no, R.id.score_tn_4_no };
+    private static final int[] ROW_SC = { R.id.score_tn_1_sc, R.id.score_tn_2_sc, R.id.score_tn_3_sc, R.id.score_tn_4_sc };
+    private static final int[] ROW_WIN = { R.id.score_tn_1_win, R.id.score_tn_2_win, R.id.score_tn_3_win, R.id.score_tn_4_win };
+    private static final int[] ROW_ST = { R.id.score_tn_1_st, R.id.score_tn_2_st, R.id.score_tn_3_st, R.id.score_tn_4_st };
+
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         for (int id : ids) draw(context, manager, id);
     }
 
     @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
+        // Resized: the other layout, same game.
+        draw(context, manager, id);
+    }
+
+    @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (ACTION_START.equals(action)) {
-            BpmScoreStore.start(context);
+        if (ACTION_START.equals(action) || ACTION_NEXT.equals(action)) {
+            // A finished game still on screen joins tonight's list, not lost.
+            BpmScoreStore.startNext(context);
         } else if (ACTION_POINT.equals(action)) {
             BpmScoreStore.Game g = BpmScoreStore.game(context);
             String side = intent.getStringExtra(EXTRA_SIDE);
@@ -53,14 +76,8 @@ public class BpmScoreWidgetProvider extends AppWidgetProvider {
                 g.points.setLength(g.points.length() - 1);
                 BpmScoreStore.setGame(context, g);
             }
-        } else if (ACTION_NEXT.equals(action)) {
-            // Keeps the finished one waiting to save and starts 0–0.
-            BpmScoreStore.Game done = BpmScoreStore.game(context);
-            if (done != null && done.isOver()) BpmScoreStore.setPending(context, done);
-            BpmScoreStore.setGame(context, null);
-            BpmScoreStore.start(context);
         } else if (ACTION_DISCARD.equals(action)) {
-            if (intent.getBooleanExtra(EXTRA_PENDING, false)) BpmScoreStore.setPending(context, null);
+            if (intent.getBooleanExtra(EXTRA_PENDING, false)) BpmScoreStore.discardPending(context);
             else BpmScoreStore.setGame(context, null);
         } else {
             super.onReceive(context, intent);
@@ -75,51 +92,64 @@ public class BpmScoreWidgetProvider extends AppWidgetProvider {
         for (int id : ids) draw(context, manager, id);
     }
 
+    private static boolean isLarge(AppWidgetManager manager, int id) {
+        Bundle o = manager.getAppWidgetOptions(id);
+        return o != null && o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0) >= LARGE_MIN_HEIGHT_DP;
+    }
+
     private static void draw(Context context, AppWidgetManager manager, int id) {
-        RemoteViews v = new RemoteViews(context.getPackageName(), R.layout.widget_bpm_score);
+        boolean large = isLarge(manager, id);
+        RemoteViews v = new RemoteViews(context.getPackageName(), large ? R.layout.widget_bpm_score_large : R.layout.widget_bpm_score);
         BpmScoreStore.Game game = BpmScoreStore.game(context);
-        BpmScoreStore.Game pending = BpmScoreStore.pending(context);
 
         v.setViewVisibility(R.id.score_idle, View.GONE);
         v.setViewVisibility(R.id.score_play, View.GONE);
         v.setViewVisibility(R.id.score_over, View.GONE);
         v.setViewVisibility(R.id.score_badge, View.GONE);
         v.setViewVisibility(R.id.score_status, View.VISIBLE);
+        v.setTextColor(R.id.score_status, context.getColor(R.color.bpm_widget_muted));
         v.setInt(R.id.score_root, "setBackgroundResource", R.drawable.widget_bpm_bg);
+        if (large) {
+            v.setViewVisibility(R.id.score_tonight, View.GONE);
+            v.setViewVisibility(R.id.score_spacer, View.GONE);
+            v.setViewVisibility(R.id.score_tally, View.GONE);
+        }
 
         if (game == null) {
-            idle(context, v, pending);
+            idle(context, v, large);
         } else if (game.isOver()) {
-            over(context, v, game);
+            over(context, v, game, large);
         } else {
-            playing(context, v, game);
+            playing(context, v, game, large);
         }
-        manager.updateAppWidget(id, views(v));
-    }
-
-    private static RemoteViews views(RemoteViews v) {
-        return v;
+        manager.updateAppWidget(id, v);
     }
 
     // Between games — one tap to start.
-    private static void idle(Context context, RemoteViews v, BpmScoreStore.Game pending) {
+    private static void idle(Context context, RemoteViews v, boolean large) {
         v.setViewVisibility(R.id.score_idle, View.VISIBLE);
         v.setTextViewText(R.id.score_status, "Score");
         v.setTextViewText(R.id.score_idle_sub, "Game " + BpmScoreStore.nextGameNo(context) + " tonight · to " + ScoreRules.GAME_TO);
         v.setOnClickPendingIntent(R.id.score_start, action(context, ACTION_START, null, false, 1));
-        if (pending == null) {
-            v.setViewVisibility(R.id.score_pending_row, View.GONE);
+        if (large) {
+            // The evening so far, and a running tally of the two sides.
+            tonight(context, v, BpmScoreStore.tonight(context), true);
         } else {
-            v.setViewVisibility(R.id.score_pending_row, View.VISIBLE);
-            v.setTextViewText(R.id.score_pending_text, "Game " + pending.gameNo + " · " + pending.a() + "–" + pending.b() + " not saved");
-            v.setOnClickPendingIntent(R.id.score_pending_save, save(context, pending.a(), pending.b(), 2));
-            v.setOnClickPendingIntent(R.id.score_pending_discard, action(context, ACTION_DISCARD, null, true, 3));
+            BpmScoreStore.Finished pending = BpmScoreStore.pending(context);
+            if (pending == null) {
+                v.setViewVisibility(R.id.score_pending_row, View.GONE);
+            } else {
+                v.setViewVisibility(R.id.score_pending_row, View.VISIBLE);
+                v.setTextViewText(R.id.score_pending_text, "Game " + pending.gameNo + " · " + pending.a + "–" + pending.b + " not saved");
+                v.setOnClickPendingIntent(R.id.score_pending_save, save(context, pending.a, pending.b, 2));
+                v.setOnClickPendingIntent(R.id.score_pending_discard, action(context, ACTION_DISCARD, null, true, 3));
+            }
         }
         v.setOnClickPendingIntent(R.id.score_root, open(context, 9));
     }
 
     // Playing — tap a side for its point. The rules keep count with you.
-    private static void playing(Context context, RemoteViews v, BpmScoreStore.Game game) {
+    private static void playing(Context context, RemoteViews v, BpmScoreStore.Game game, boolean large) {
         int a = game.a(), b = game.b();
         char gp = ScoreRules.gamePoint(a, b);
         v.setViewVisibility(R.id.score_play, View.VISIBLE);
@@ -127,14 +157,16 @@ public class BpmScoreWidgetProvider extends AppWidgetProvider {
         // The header says what matters now, in the umpire's words.
         if (gp != ScoreRules.NONE) {
             badge(v, "⚡ GAME POINT · " + ScoreRules.sideName(gp).toUpperCase(Locale.US), R.drawable.widget_bpm_badge_amber, R.color.bpm_widget_on_amber, context);
-            // Game point changes the whole widget: an amber wash and rim.
+            // Game point changes the whole widget: an amber wash (no rim — the widget draws no strokes).
             v.setInt(R.id.score_root, "setBackgroundResource", R.drawable.widget_bpm_bg_amber);
         } else if (ScoreRules.nextPointWins(a, b)) {
             badge(v, "29 ALL · NEXT POINT WINS", R.drawable.widget_bpm_badge_light, R.color.bpm_widget_on_badge, context);
         } else if (ScoreRules.allAt(a, b) >= 0) {
             badge(v, ScoreRules.allAt(a, b) + " ALL · WIN BY TWO", R.drawable.widget_bpm_badge_light, R.color.bpm_widget_on_badge, context);
         } else if (game.atInterval()) {
-            v.setTextViewText(R.id.score_status, "Interval");
+            // The large has room to say what the interval is also for.
+            v.setTextViewText(R.id.score_status, large ? "Interval · change ends" : "Interval");
+            v.setTextColor(R.id.score_status, context.getColor(large ? R.color.bpm_widget_primary : R.color.bpm_widget_secondary));
         } else {
             v.setTextViewText(R.id.score_status, "Game " + game.gameNo + " · to " + ScoreRules.GAME_TO);
         }
@@ -142,7 +174,8 @@ public class BpmScoreWidgetProvider extends AppWidgetProvider {
         side(context, v, 'a', a, game.serving() == 'a', gp == 'a', R.id.score_side_a, R.id.score_a_pts, R.id.score_a_plus, R.id.score_a_serve, 4);
         side(context, v, 'b', b, game.serving() == 'b', gp == 'b', R.id.score_side_b, R.id.score_b_pts, R.id.score_b_plus, R.id.score_b_serve, 5);
         v.setOnClickPendingIntent(R.id.score_undo, action(context, ACTION_UNDO, null, false, 6));
-        v.setInt(R.id.score_undo, "setAlpha", game.points.length() == 0 ? 90 : 255);
+        // View.setAlpha(float) is remotable; the int form is not on a LinearLayout.
+        v.setFloat(R.id.score_undo, "setAlpha", game.points.length() == 0 ? 0.4f : 1f);
     }
 
     private static void side(Context context, RemoteViews v, char side, int points, boolean serving, boolean gamePoint,
@@ -167,7 +200,7 @@ public class BpmScoreWidgetProvider extends AppWidgetProvider {
     }
 
     // Game over — save it, or start the next.
-    private static void over(Context context, RemoteViews v, BpmScoreStore.Game game) {
+    private static void over(Context context, RemoteViews v, BpmScoreStore.Game game, boolean large) {
         int a = game.a(), b = game.b();
         char w = ScoreRules.winner(a, b);
         v.setViewVisibility(R.id.score_over, View.VISIBLE);
@@ -178,6 +211,60 @@ public class BpmScoreWidgetProvider extends AppWidgetProvider {
         v.setOnClickPendingIntent(R.id.score_save, save(context, a, b, 7));
         v.setOnClickPendingIntent(R.id.score_next, action(context, ACTION_NEXT, null, false, 8));
         v.setOnClickPendingIntent(R.id.score_discard, action(context, ACTION_DISCARD, null, false, 10));
+        if (large) {
+            // The game on screen is not in the list yet; the list is the rest of the night.
+            List<BpmScoreStore.Finished> earlier = new ArrayList<>();
+            for (BpmScoreStore.Finished f : BpmScoreStore.tonight(context)) if (f.gameNo != game.gameNo) earlier.add(f);
+            tonight(context, v, earlier, false);
+        }
+    }
+
+    /**
+     * Tonight's games on the large layout: the last four, each with its score
+     * and winner; a "Not saved" row is a tap into Add a game with that score,
+     * exactly as Save game is.
+     */
+    private static void tonight(Context context, RemoteViews v, List<BpmScoreStore.Finished> games, boolean withTally) {
+        v.setViewVisibility(R.id.score_tonight, View.VISIBLE);
+        v.setViewVisibility(R.id.score_spacer, View.VISIBLE);
+        if (games.isEmpty()) {
+            v.setViewVisibility(R.id.score_tonight_empty, View.VISIBLE);
+            v.setViewVisibility(R.id.score_tn_label, View.GONE);
+            for (int row : ROW) v.setViewVisibility(row, View.GONE);
+            return;
+        }
+        v.setViewVisibility(R.id.score_tonight_empty, View.GONE);
+        v.setViewVisibility(R.id.score_tn_label, View.VISIBLE);
+        int from = Math.max(0, games.size() - ROW.length);
+        for (int i = 0; i < ROW.length; i++) {
+            int at = from + i;
+            if (at >= games.size()) {
+                v.setViewVisibility(ROW[i], View.GONE);
+                continue;
+            }
+            BpmScoreStore.Finished f = games.get(at);
+            char w = f.winner();
+            v.setViewVisibility(ROW[i], View.VISIBLE);
+            v.setTextViewText(ROW_NO[i], "Game " + f.gameNo);
+            v.setTextViewText(ROW_SC[i], f.a + "–" + f.b);
+            v.setTextViewText(ROW_WIN[i], w == ScoreRules.NONE ? "" : ScoreRules.sideName(w));
+            v.setTextColor(ROW_WIN[i], context.getColor(w == 'b' ? R.color.bpm_widget_blue : R.color.bpm_widget_green));
+            v.setTextViewText(ROW_ST[i], f.saved ? "Saved" : "Not saved");
+            if (f.saved) {
+                v.setOnClickPendingIntent(ROW[i], open(context, 20 + i));
+            } else {
+                v.setOnClickPendingIntent(ROW[i], save(context, f.a, f.b, 20 + i));
+            }
+        }
+        if (withTally) {
+            int a = 0, b = 0;
+            for (BpmScoreStore.Finished f : games) {
+                if (f.winner() == 'a') a++;
+                else if (f.winner() == 'b') b++;
+            }
+            v.setViewVisibility(R.id.score_tally, View.VISIBLE);
+            v.setTextViewText(R.id.score_tally, "A side " + a + " · B side " + b + " tonight");
+        }
     }
 
     // ── Taps ──

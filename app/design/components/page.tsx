@@ -119,7 +119,7 @@ function Row({ title, caption, children }: { title: string; caption?: string; ch
 
 function StateLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.6, minWidth: 84, display: 'inline-block' }}>
+    <span style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.6, minWidth: 84, display: 'inline-block' }}>
       {children}
     </span>
   );
@@ -216,24 +216,24 @@ export default function ComponentsPage() {
       {/* ── Status banners — 3 tones per specimen/15 ───────────────────── */}
       <Row title="STATUS BANNERS" caption="Per preview/15-status-banners.html — radius 12, padding 12×14, icon 22, title 13/600, body 12 @ 0.72. Three tones: green (success) · orange (waitlist / warning) · red (error).">
         <div className="status-banner-green">
-          <span className="material-icons" aria-hidden style={{ fontSize: 22, color: 'var(--accent)' }}>check_circle</span>
+          <span className="material-icons" aria-hidden style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent)' }}>check_circle</span>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent)' }}>Signed up — see you Thursday</div>
-            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 'var(--space-05)' }}>Paid · PIN saved</div>
+            <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: 'var(--accent)' }}>Signed up — see you Thursday</div>
+            <div style={{ fontSize: 'var(--fs-sm)', opacity: 0.72, marginTop: 'var(--space-05)' }}>Paid · PIN saved</div>
           </div>
         </div>
         <div className="status-banner-orange">
-          <span className="material-icons" aria-hidden style={{ fontSize: 22, color: 'var(--sev-med-text)' }}>watch_later</span>
+          <span className="material-icons" aria-hidden style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--sev-med-text)' }}>watch_later</span>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--sev-med-text)' }}>You&apos;re on the waitlist</div>
-            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 'var(--space-05)' }}>Position #2 of 3</div>
+            <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: 'var(--sev-med-text)' }}>You&apos;re on the waitlist</div>
+            <div style={{ fontSize: 'var(--fs-sm)', opacity: 0.72, marginTop: 'var(--space-05)' }}>Position #2 of 3</div>
           </div>
         </div>
         <div className="status-banner-red">
-          <span className="material-icons" aria-hidden style={{ fontSize: 22, color: 'var(--sev-crit-text)' }}>error</span>
+          <span className="material-icons" aria-hidden style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--sev-crit-text)' }}>error</span>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--sev-crit-text)' }}>Sign-up is closed</div>
-            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 'var(--space-05)' }}>Session filled at 6:30 PM</div>
+            <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: 'var(--sev-crit-text)' }}>Sign-up is closed</div>
+            <div style={{ fontSize: 'var(--fs-sm)', opacity: 0.72, marginTop: 'var(--space-05)' }}>Session filled at 6:30 PM</div>
           </div>
         </div>
       </Row>
@@ -248,15 +248,15 @@ export default function ComponentsPage() {
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <span className="pill-paid">
-            <span className="material-icons" aria-hidden style={{ fontSize: 13 }}>check_circle</span>
+            <span className="material-icons" aria-hidden style={{ fontSize: 'var(--icon-xs)' }}>check_circle</span>
             Paid
           </span>
           <span className="pill-waitlist">
-            <span className="material-icons" aria-hidden style={{ fontSize: 13 }}>watch_later</span>
+            <span className="material-icons" aria-hidden style={{ fontSize: 'var(--icon-xs)' }}>watch_later</span>
             Waitlist
           </span>
           <span className="pill-admin">
-            <span className="material-icons" aria-hidden style={{ fontSize: 13 }}>shield</span>
+            <span className="material-icons" aria-hidden style={{ fontSize: 'var(--icon-xs)' }}>shield</span>
             Admin
           </span>
         </div>
@@ -351,7 +351,7 @@ export default function ComponentsPage() {
             { name: 'error',                color: '#fca5a5' },
           ].map((i) => (
             <div key={i.name} style={{ display: 'grid', placeItems: 'center', gap: 'var(--space-1)' }}>
-              <span className="material-icons" aria-hidden style={{ fontSize: 24, color: i.color }}>{i.name}</span>
+              <span className="material-icons" aria-hidden style={{ fontSize: 'var(--icon-lg)', color: i.color }}>{i.name}</span>
               <code className="bpm-mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{i.name}</code>
             </div>
           ))}

@@ -171,9 +171,15 @@ struct WidgetPalette {
     let track: Color
     let rule: Color
     let background: LinearGradient
-    /// A solid badge in the text colour, and the text to put on it.
+    /// Text on a green fill (the Join / Start / Save chips) and on an amber one
+    /// (the game-point badge): dark on the bright dark-mode tints, white on the
+    /// deeper light-mode ones — dark-on-#16a34a did not pass.
+    let onGreen: Color
+    let onAmber: Color
+    /// A solid badge in the text colour, and the text to put on it: the ground's
+    /// own colour, so it reads in both modes (it was navy-on-navy in light).
     var badge: Color { primary.opacity(0.92) }
-    var onBadge: Color { Color(red: 0.06, green: 0.09, blue: 0.16) }
+    let onBadge: Color
 
     static func make(_ scheme: ColorScheme) -> WidgetPalette {
         if scheme == .light {
@@ -187,7 +193,10 @@ struct WidgetPalette {
                 track: Color.black.opacity(0.1),
                 rule: Color.black.opacity(0.08),
                 background: LinearGradient(colors: [.white, Color(red: 0.95, green: 0.96, blue: 0.96)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+                                           startPoint: .topLeading, endPoint: .bottomTrailing),
+                onGreen: .white,
+                onAmber: .white,
+                onBadge: .white)
         }
         return WidgetPalette(
             primary: .white,
@@ -200,7 +209,10 @@ struct WidgetPalette {
             rule: Color.white.opacity(0.08),
             background: LinearGradient(colors: [Color(red: 0.11, green: 0.10, blue: 0.10),
                                                 Color(red: 0.06, green: 0.06, blue: 0.06)],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing))
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+            onGreen: Color(red: 0.02, green: 0.18, blue: 0.09),
+            onAmber: Color(red: 0.23, green: 0.13, blue: 0.01),
+            onBadge: Color(red: 0.06, green: 0.09, blue: 0.16))
     }
 }
 
@@ -220,10 +232,7 @@ struct Header: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "figure.badminton")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(p.green)
-                .widgetAccentable()
+            BPMMark(p: p)
             Text("BPM").font(.system(size: 11, weight: .bold)).foregroundStyle(p.secondary)
             Spacer(minLength: 4)
             if let trailing = trailing {
@@ -246,6 +255,23 @@ struct FillBar: View {
             }
         }
         .frame(height: 5)
+    }
+}
+
+/// The BPM mark beside the name: the app's own shuttle, the image the icon and
+/// the launch screen use (`public/brand/launch/shuttle.png`, in the extension's
+/// catalog as BPMShuttle). Grant, 2026-10-25: the line-drawn shuttle "should
+/// not exist anywhere" — never a redrawn mark, always this one.
+struct BPMMark: View {
+    let p: WidgetPalette
+    var size: CGFloat = 16
+
+    var body: some View {
+        Image("BPMShuttle")
+            .renderingMode(.original)
+            .resizable()
+            .scaledToFit()
+            .frame(height: size)
     }
 }
 
@@ -309,7 +335,7 @@ struct WeekBlock: View {
                             Text(status.isFull ? "Join waitlist" : "Join")
                                 .font(.system(size: 11, weight: .bold))
                                 .padding(.horizontal, 10).padding(.vertical, 3)
-                                .foregroundStyle(status.isFull ? p.amber : Color(red: 0.02, green: 0.18, blue: 0.09))
+                                .foregroundStyle(status.isFull ? p.amber : p.onGreen)
                                 .background(Capsule().fill(status.isFull ? p.amber.opacity(0.18) : p.green))
                         }
                         .buttonStyle(.plain)
@@ -691,7 +717,12 @@ struct BPMWeekView: View {
                     BalanceBlock(owed: snap.owed, p: p).frame(width: 90, alignment: .trailing)
                 }
             }
+            // The three sections share the height, a rule centred in each gap:
+            // one spacer at the end left the bottom third empty (Grant's first
+            // light-mode screenshot, 2026-10-24).
+            Spacer(minLength: 0)
             Rectangle().fill(p.rule).frame(height: 1)
+            Spacer(minLength: 0)
             Link(destination: WidgetLink.stats) {
                 if let level = snap.level {
                     LevelBlock(level: level, p: p)
@@ -707,12 +738,15 @@ struct BPMWeekView: View {
             // step, or the strings wearing in by TIME since the restring. No
             // finished job, no section — the large widget closes the gap.
             if let stringing = snap.stringing {
+                Spacer(minLength: 0)
                 Rectangle().fill(p.rule).frame(height: 1)
+                Spacer(minLength: 0)
                 Link(destination: WidgetLink.stringing) {
                     StringingBlock(stringing: stringing, p: p)
                 }
+            } else {
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
         }
     }
 

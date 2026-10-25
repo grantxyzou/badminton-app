@@ -41,9 +41,18 @@ ten minutes, more than one in five), Join goes back to opening the app.
   cookie, read only from an `Authorization: Bearer` header by the
   `/api/widget` routes, and re-checked against the membership on every read,
   so a removed member's widget goes dark on its next refresh. Sixty days; the
-  app re-mints it on every open. Stateless, so there is no per-device revoke:
-  signing out clears it from the device, removal from the club stops it
-  server-side, and rotating `SESSION_SECRET` stops every pass at once.
+  app re-mints it on every open. Removal from the club stops it server-side,
+  and rotating `SESSION_SECRET` stops every pass at once.
+- **2026-10-24 — sign-out revokes the pass on the server too.** The pass is
+  stateless, so clearing the device copy could not reach one already copied
+  off the phone, and it would have lived its sixty days (the 24 Oct security
+  review). `clearWidgets` now also calls `DELETE /api/widget/token`, which
+  stamps `widgetPassNotBefore` on the membership (the Member doc with groups
+  off); `requireWidgetMember` refuses any pass minted before it, compared in
+  whole seconds so a sign-in a moment later works. Per PERSON per club, not
+  per device: a second phone's pass dies too, and comes back when that phone's
+  app re-mints — a tap on its widget forces one (`NativeBridge`), so "Open BPM"
+  is the whole recovery.
 - **Join and Undo are the sign-up route, not a copy of it.** `POST` /
   `DELETE /api/widget/join` re-enter `POST` / `DELETE /api/players` as the
   member the pass names (a five-minute member cookie the server builds and
@@ -131,7 +140,10 @@ ten minutes, more than one in five), Join goes back to opening the app.
   button because the widget cannot know which side was yours). Saving tells
   the plugin (`scoreSaved`) so the widget lets the game go; "Next game" parks a
   finished game as pending until it is saved or discarded. The sides are
-  **Green and Blue**, not "us and them" (Grant: "I dont like the language").
+  **A side and B side** since 2026-10-24 (Grant, on the canvas: "Green team
+  and Blue team name should be A side and B side"); the green and blue tints
+  stay as each side's colour. They were Green and Blue for a day, chosen over
+  "us and them" (Grant: "I dont like the language").
   The calls are the umpire's (`lib/scoreRules.ts` is the spec; the Swift and
   Java ports are held to `__tests__/score-rules.test.ts`): to 21, won by two,
   capped at 30; "game point" for the side one rally from winning; "20 all",
@@ -150,6 +162,53 @@ ten minutes, more than one in five), Join goes back to opening the app.
   The score widget also lost a doubled 16 pt margin — the system already adds
   the widget's content margins — and its type grew ("the content can take up
   more space in the widget").
+- **2026-10-24 — the header is the BPM mark and the name; the boards are
+  light.** The first screenshot of a live widget (light mode) matched none of
+  the boards, which had been drawn as a dark "liquid glass" target before the
+  code existed; the score boards are now drawn from the Swift, in light mode as
+  on Grant's phone. iOS labels every widget with the app's name underneath, so
+  the header's "BPM" is redundant — kept anyway (Grant: "Dont drop I want BPM
+  and logo to get implemented"), and the stand-in badminton figure became the
+  real mark. A first cut drew the shuttle from `public/brand/bpm-logo.svg` as
+  paths; Grant, 2026-10-25, on the canvas: "This should not exist anywhere.
+  Remove and use the BPM logo the same one as our app, loading screen." The
+  mark is the launch screen's own image, `public/brand/launch/shuttle.png` —
+  `BPMShuttle` in the extension's asset catalog (`ios/App/BPMWidget/Assets.xcassets`,
+  committed now) and `drawable-nodpi/widget_bpm_shuttle.png` on Android —
+  never a redrawn one. The same pass fixed two light-mode contrast
+  bugs only a light screenshot showed: dark-green text on the deeper light
+  green, and a navy badge with navy text (`onGreen` / `onAmber` / `onBadge`
+  are per scheme now). The large score widget was drawn first
+  (`WidgetScoreLarge` and `WidgetScoreLargeDark` on the canvas), then built the
+  next day (below).
+- **2026-10-25 — the score widget has a large size, and the night has a
+  list.** Grant: "build the big score keep widget", from the boards. The large
+  (`.systemLarge`; on Android the same 4 × 2 widget resized to 4 × 3 or 4 × 4,
+  picked by height in `BpmScoreWidgetProvider` the way the week widget picks
+  its layouts) is the court-side scoreboard: 92 pt digits, a full-width "Undo
+  last point", "Interval · change ends", and the two things the medium had no
+  room for — the result at 48 pt, and **tonight's games**. A finished game now
+  goes into a list on the phone (`FinishedGame` / `score.gamesTonight` on iOS,
+  `Finished` / `tonight` in `BpmScoreStore`) with its score, winner and
+  whether Add a game has logged it; "Next game" never loses one, a "Not
+  saved" row is a tap into Add a game with that score, and the idle screen
+  carries the tally ("A side 2 · B side 1 tonight"). Yesterday's games are
+  dropped on read; sign-out clears the list with the rest. The medium's
+  one-slot "pending" became a READING of that list (the newest unsaved game);
+  the old `score.pending` key is folded in once and never written again. To
+  mark the RIGHT game saved when the night has several, `markWidgetGameSaved`
+  now passes the score the widget handed over (`scoreSaved({ a, b })`); an
+  older binary ignores the argument and marks the game on screen, as before.
+  Kept on the phone only — the server never sees a game until it is saved.
+- **2026-10-25 — the score widget draws no strokes at all.** Grant on the
+  canvas, twice: "no stroke remove them" (the side tiles) and, after that
+  landed, "There is still a stroke on the widget" — the amber rim the game
+  point frame kept. Game point is now the amber wash alone, plus the badge and
+  the amber tile; the Undo and Reset chips lost their hairline too. On a
+  phone a 1.5 pt rim around a widget reads as a selection outline, not a
+  signal, so the colour does the work. Boards, Swift and Android changed
+  together; `widget_bpm_bg_amber.xml` and `widget_bpm_chip.xml` carry the
+  rule in a comment.
 - **2026-10-23 — no Live Activity yet, for either.** Grant asked "is it hard
   to have the widgets live?" A Live Activity would put the score on the lock
   screen and in the Dynamic Island, but it needs an `ActivityAttributes` file

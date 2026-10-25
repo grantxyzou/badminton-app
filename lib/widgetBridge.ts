@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { hasNativePlugin, isNative } from './native';
-import { gameParam, parseGameParam } from './scoreRules';
+import { gameParam, parseGameParam, type Score } from './scoreRules';
 
 /**
  * The app's half of the home-screen widget (docs/plans/native-widgets.md).
@@ -32,8 +32,9 @@ interface BpmWidgetPlugin {
   setSession(opts: { token: string; expiresAt: string; baseUrl: string }): Promise<void>;
   clear(): Promise<void>;
   reload(): Promise<void>;
-  /** The score widget's finished game was logged in Add a game. */
-  scoreSaved(): Promise<void>;
+  /** The score widget's finished game was logged in Add a game — which one,
+   *  when the app knows (the large size lists every game of the night). */
+  scoreSaved(opts?: { a: number; b: number }): Promise<void>;
 }
 
 /**
@@ -104,19 +105,30 @@ export async function reloadWidgets(): Promise<void> {
 
 /**
  * Add a game logged the score the widget was holding (lib/gameIntent.ts): the
- * widget drops it and goes back to "Keep score". Never throws.
+ * widget marks that game saved in tonight's list and goes back to "Keep
+ * score". Pass the score the widget handed over (as it arrived, A side first
+ * — the sheet's Swap does not change which game it was) so the right game is
+ * marked when the night has several. Never throws.
  */
-export async function markWidgetGameSaved(): Promise<void> {
+export async function markWidgetGameSaved(score?: Score | null): Promise<void> {
   if (!widgetAvailable()) return;
   try {
-    await (await bpmWidget()).widget.scoreSaved();
+    await (await bpmWidget()).widget.scoreSaved(score ? { a: score.a, b: score.b } : undefined);
   } catch {
     /* an older binary: the widget keeps offering Save until Discard */
   }
 }
 
-/** Signing out: a shared phone must not keep the last person's week on its
- *  home screen. The widget then shows "Open BPM and sign in". */
+/**
+ * Signing out: a shared phone must not keep the last person's week on its
+ * home screen. The widget then shows "Open BPM and sign in".
+ *
+ * Two clears, together: the device's copy through the plugin, and the pass
+ * itself on the server (`DELETE /api/widget/token` stamps the membership so
+ * anything minted before now is refused — a copy taken off the phone would
+ * otherwise outlive the sign-out by sixty days). Called while the member
+ * cookie is still set; the revoke is best-effort like everything here.
+ */
 export async function clearWidgets(): Promise<void> {
   try {
     localStorage.removeItem(WIDGET_MINTED_KEY);
@@ -125,7 +137,10 @@ export async function clearWidgets(): Promise<void> {
   }
   if (!widgetAvailable()) return;
   try {
-    await (await bpmWidget()).widget.clear();
+    await Promise.allSettled([
+      fetch(`${BASE}/api/widget/token`, { method: 'DELETE', cache: 'no-store' }),
+      bpmWidget().then(({ widget }) => widget.clear()),
+    ]);
   } catch {
     /* nothing to clear */
   }

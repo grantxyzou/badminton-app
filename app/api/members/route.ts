@@ -1,17 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { publicMember } from '@/lib/publicShapes';
-import { groupScope } from '@/lib/groupScope';
+import { groupScope, BPM_GROUP_ID } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rosterMembers, adminAddToRoster, rosterPublicRows } from '@/lib/roster';
-import { rosterNameHolder, renameRosterMember, removeFromRoster, setMembershipCanGift, RosterNameTakenError } from '@/lib/groups';
+import {
+  rosterNameHolder,
+  renameRosterMember,
+  removeFromRoster,
+  addMembership,
+  setMembershipRole,
+  setMembershipCanGift,
+  readMembership,
+  RosterNameTakenError,
+} from '@/lib/groups';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { randomBytes } from 'crypto';
 import { normalizeAvatar } from '@/lib/memberAvatar';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+
+/**
+ * WHICH COPY A WRITE REACHES (security review, 2026-10-24).
+ *
+ * With groups on, `role`, `active` and `name` are facts about THIS roster and
+ * are written to the MEMBERSHIP — the only place flag-on auth and the roster
+ * read them. Until this, the Roster sheet's "make admin" and "restore" wrote
+ * `Member.role` / `Member.active` alone, which nothing read with the flag on,
+ * so neither did anything in production from the day the flag flipped.
+ *
+ * The Member fields are the flag-off values and the rollback copy, and
+ * flag-off IS BPM: only BPM's admin (or the flag off) writes them. An admin of
+ * another club writing `Member.role = 'admin'` onto a person who is also in
+ * BPM would have minted a BPM admin for the day the flag came off, and
+ * `Member.active = false` would have locked them out of every club at once.
+ */
+const writesMemberCopy = (adminGroupId: string) => !groupsOn() || adminGroupId === BPM_GROUP_ID;
+const ownerImmutable = () => NextResponse.json({ error: 'owner_immutable' }, { status: 403 });
 
 export async function GET(req: NextRequest) {
   const gate = await requireMember(req);
@@ -151,12 +178,21 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
   try {
     const body = await req.json();
     const { id } = body;
     if (typeof id !== 'string') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+    // An admin edits people on THEIR roster. Without this, any member who
+    // created a club of their own held an admin cookie that could rewrite or
+    // deactivate anyone whose id they had read off a roster (security review,
+    // 2026-10-24). A removed membership still counts, so a restore works.
+    const membership = groupsOn() ? await readMembership(auth.groupId, id) : undefined;
+    if (groupsOn() && !membership) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
     const container = getContainer('members');
@@ -166,6 +202,27 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updates: Record<string, unknown> = {};
+    const memberCopy = writesMemberCopy(auth.groupId);
+
+    // `active` FIRST, on the membership: a removal releases the roster name and
+    // a restore reserves it again (`addMembership` rejoins a removed row), so
+    // the rename below acts on a row in its final state. The owner cannot be
+    // removed this way — hand the group on first.
+    if (membership && typeof body.active === 'boolean') {
+      if (body.active === false && membership.status === 'active') {
+        if (!(await removeFromRoster(auth.groupId, id))) return ownerImmutable();
+      } else if (body.active === true && membership.status !== 'active') {
+        const rosterName = typeof body.name === 'string' && body.name.trim()
+          ? body.name.trim().slice(0, 50)
+          : membership.name;
+        try {
+          await addMembership({ groupId: auth.groupId, memberId: id, name: rosterName, joinedVia: 'admin' });
+        } catch (err) {
+          if (err instanceof RosterNameTakenError) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+          throw err;
+        }
+      }
+    }
     if (typeof body.name === 'string') {
       const nextName = body.name.trim().slice(0, 50);
       // A rename must not collide with another member. POST already refuses a
@@ -178,7 +235,7 @@ export async function PATCH(req: NextRequest) {
         // Per-group: the reservation is the clash check, and the membership's
         // roster name (what `GET /api/members` shows and what sign-up resolves)
         // moves with the Member's display name.
-        const groupId = resolveGroupId(req);
+        const groupId = auth.groupId;
         const holder = await rosterNameHolder(groupId, nextName);
         if (holder && holder !== id) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
         try {
@@ -201,12 +258,28 @@ export async function PATCH(req: NextRequest) {
           return NextResponse.json({ error: 'name_taken' }, { status: 409 });
         }
       }
-      updates.name = nextName;
+      if (memberCopy) updates.name = nextName;
     }
     if (typeof body.stage === 'number') updates.stage = Math.max(1, Math.min(4, body.stage));
     if (body.stage === null) updates.stage = undefined;
-    if (typeof body.active === 'boolean') updates.active = body.active;
-    if (typeof body.role === 'string' && ['admin', 'member'].includes(body.role)) updates.role = body.role;
+    if (memberCopy && typeof body.active === 'boolean') updates.active = body.active;
+    if (typeof body.role === 'string' && ['admin', 'member'].includes(body.role)) {
+      if (groupsOn()) {
+        // Re-read: the `active` step above may have removed or revived the row.
+        // A removed membership keeps no role (a rejoin starts as member). The
+        // owner is an admin already and is demoted only by handing the group
+        // on — the Roster sheet sends `admin` for them, which is a no-op here.
+        const current = await readMembership(auth.groupId, id);
+        if (current?.status === 'active') {
+          if (current.role === 'owner') {
+            if (body.role !== 'admin') return ownerImmutable();
+          } else if (current.role !== body.role && !(await setMembershipRole(auth.groupId, id, body.role))) {
+            return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+          }
+        }
+      }
+      if (memberCopy) updates.role = body.role;
+    }
     // Orthogonal to `role` on purpose — see Member.canString.
     if (typeof body.canString === 'boolean') updates.canString = body.canString;
     // The third switch: may give out gift cards (docs/plans/gift-card-ledger.md).
@@ -216,7 +289,7 @@ export async function PATCH(req: NextRequest) {
     // copy. Someone not on this roster is a 404, not a silent no-op.
     if (typeof body.canGift === 'boolean') {
       updates.canGift = body.canGift;
-      if (groupsOn() && !(await setMembershipCanGift(resolveGroupId(req), id, body.canGift))) {
+      if (groupsOn() && !(await setMembershipCanGift(auth.groupId, id, body.canGift))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
     }
@@ -242,7 +315,7 @@ export async function PATCH(req: NextRequest) {
     // with /api/players PIN updates.
     if (clearPin && typeof existing?.name === 'string') {
       try {
-        const scope = groupScope(resolveGroupId(req));
+        const scope = groupScope(auth.groupId);
         // '' when there is no session: matches nothing, nothing to mirror.
         const sessionId = (await getActiveSessionId(scope.groupId)) ?? '';
         const matches = await scope.query<Record<string, unknown> & { id: string }>('players', {
@@ -273,7 +346,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
   try {
     const body = await req.json();
     const { id } = body;
@@ -282,6 +356,19 @@ export async function DELETE(req: NextRequest) {
     }
 
     const container = getContainer('members');
+
+    if (groupsOn()) {
+      // A club admin removes someone from THEIR roster and nothing more. A hard
+      // delete erases the PERSON from every club, so it is not one club's call
+      // (account deletion is `DELETE /api/members/me`); and someone off this
+      // roster is not this admin's to touch at all.
+      if (body.hard === true) {
+        return NextResponse.json({ error: 'hard_delete_disabled' }, { status: 403 });
+      }
+      if (!(await readMembership(auth.groupId, id))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
 
     if (body.hard === true) {
       await container.item(id, id).delete();
@@ -294,9 +381,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
     // With groups on, this is removal from THIS roster (status `removed`,
-    // name released); `Member.active` is still flipped for the flag-off
-    // readers until Phase 3's per-group route replaces this one.
-    if (groupsOn()) await removeFromRoster(resolveGroupId(req), id);
+    // name released). `Member.active` is the flag-off value and the rollback
+    // copy, written only by BPM's admin — see `writesMemberCopy`.
+    if (groupsOn() && !(await removeFromRoster(auth.groupId, id))) return ownerImmutable();
+    if (!writesMemberCopy(auth.groupId)) {
+      return NextResponse.json(publicMember({ ...existing, active: false } as Record<string, unknown>));
+    }
     const { resource: updated } = await container.items.upsert({ ...existing, active: false });
     return NextResponse.json(publicMember(updated as Record<string, unknown> | undefined));
   } catch (error) {

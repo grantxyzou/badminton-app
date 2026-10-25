@@ -10,15 +10,8 @@ import { invalidateGroupCalibration } from '@/lib/levelStore';
 
 export const dynamic = 'force-dynamic';
 
-let ready: Promise<void> | null = null;
 function ensureGames(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('gameResults', '/sessionId').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('gameResults', '/sessionId');
 }
 
 function names(raw: unknown): string[] | null {

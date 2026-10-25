@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
  * and clears it on sign-out.
  */
 
-const widget = vi.hoisted(() => ({ setSession: vi.fn(), clear: vi.fn(), reload: vi.fn() }));
+const widget = vi.hoisted(() => ({ setSession: vi.fn(), clear: vi.fn(), reload: vi.fn(), scoreSaved: vi.fn() }));
 // Shaped like Capacitor's real proxy: EVERY property is a native method, `then`
 // included, and an unknown one throws "not implemented". A plain object here
 // is what let a promise resolved with the proxy drop every call unnoticed.
@@ -23,7 +23,7 @@ vi.mock('@capacitor/core', () => ({
     }),
 }));
 
-import { syncWidgetPass, clearWidgets, reloadWidgets, widgetOpenTarget, WIDGET_MINTED_KEY } from '@/lib/widgetBridge';
+import { syncWidgetPass, clearWidgets, reloadWidgets, markWidgetGameSaved, widgetOpenTarget, WIDGET_MINTED_KEY } from '@/lib/widgetBridge';
 
 function nativeShell(pluginAvailable = true) {
   (window as unknown as { Capacitor?: unknown }).Capacitor = {
@@ -101,6 +101,22 @@ describe('clearWidgets and reloadWidgets', () => {
     expect(localStorage.getItem(WIDGET_MINTED_KEY)).toBeNull();
   });
 
+  it('sign-out also revokes the pass on the server, and only from the store app', async () => {
+    await clearWidgets();
+    expect(fetchMock).not.toHaveBeenCalled();
+    nativeShell();
+    await clearWidgets();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/api\/widget\/token$/), expect.objectContaining({ method: 'DELETE' }));
+    expect(widget.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed revoke never blocks the sign-out', async () => {
+    nativeShell();
+    fetchMock.mockRejectedValue(new Error('offline'));
+    widget.clear.mockRejectedValue(new Error('UNIMPLEMENTED'));
+    await expect(clearWidgets()).resolves.toBeUndefined();
+  });
+
   it('reload is a no-op off the store app', async () => {
     await reloadWidgets();
     expect(widget.reload).not.toHaveBeenCalled();
@@ -130,5 +146,23 @@ describe('widgetOpenTarget', () => {
   it('is not a widget link otherwise', () => {
     expect(widgetOpenTarget(new URL('bpm://auth/return?c=x'))).toBeNull();
     expect(widgetOpenTarget(new URL('https://bpm.grantzou.com/bpm/?tab=skills'))).toBeNull();
+  });
+});
+
+describe('markWidgetGameSaved', () => {
+  it('tells the widget WHICH game was logged, so the right one of the night is marked', async () => {
+    nativeShell();
+    await markWidgetGameSaved({ a: 21, b: 18 });
+    expect(widget.scoreSaved).toHaveBeenCalledWith({ a: 21, b: 18 });
+  });
+
+  it('still works with no score (the game on screen), and never off the shell', async () => {
+    nativeShell();
+    await markWidgetGameSaved();
+    expect(widget.scoreSaved).toHaveBeenCalledWith(undefined);
+    widget.scoreSaved.mockReset();
+    delete (window as unknown as { Capacitor?: unknown }).Capacitor;
+    await markWidgetGameSaved({ a: 21, b: 18 });
+    expect(widget.scoreSaved).not.toHaveBeenCalled();
   });
 });

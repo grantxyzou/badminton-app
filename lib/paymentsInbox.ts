@@ -68,17 +68,8 @@ export interface PaymentsSettingsDoc {
 }
 
 
-let paymentsReady: Promise<void> | null = null;
 export function ensurePayments(): Promise<void> {
-  if (!paymentsReady) {
-    paymentsReady = Promise.all([ensureContainer('payments', '/id'), ensureClubSettings()])
-      .then(() => undefined)
-      .catch((err) => {
-        paymentsReady = null;
-        throw err;
-      });
-  }
-  return paymentsReady;
+  return Promise.all([ensureContainer('payments', '/id'), ensureClubSettings()]).then(() => undefined);
 }
 
 export async function readPaymentsSettings(groupId: string): Promise<PaymentsSettingsDoc | undefined> {

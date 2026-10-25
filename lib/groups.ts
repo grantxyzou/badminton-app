@@ -35,24 +35,15 @@ import type { Group, GroupSettings, Membership, MembershipRole, NameReservation 
 
 // ---------------------------------------------------------------------------
 // Provisioning — both are new containers, so a route must ensure them before
-// first use. Lazy promise, the `app/api/skills/route.ts` pattern; a failure
-// clears the memo so the next call retries rather than caching the outage.
+// first use. `ensureContainer` memoizes per process and forgets a failure,
+// so the next call retries rather than caching the outage.
 // ---------------------------------------------------------------------------
 
-let ready: Promise<void> | null = null;
 function ensureReady(): Promise<void> {
-  if (!ready) {
-    ready = Promise.all([
-      ensureContainer('groups', '/id'),
-      ensureContainer('memberships', '/groupId'),
-    ])
-      .then(() => undefined)
-      .catch((err) => {
-        ready = null;
-        throw err;
-      });
-  }
-  return ready;
+  return Promise.all([
+    ensureContainer('groups', '/id'),
+    ensureContainer('memberships', '/groupId'),
+  ]).then(() => undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -523,6 +514,23 @@ export async function setMembershipCanGift(
   if (!m || m.status !== 'active') return undefined;
   if ((m.canGift === true) === canGift) return m;
   return groupScope(groupId).replace('memberships', { ...m, canGift }, groupId);
+}
+
+/**
+ * Refuse every widget pass minted before now (lib/widget.ts). Sign-out clears
+ * the pass from the device, but cannot reach a copy already taken off it;
+ * the membership remembers the sign-out instead, and the next sign-in mints a
+ * pass dated after it. Resolves `undefined` when there is no membership here.
+ */
+export async function revokeWidgetPasses(
+  groupId: string,
+  memberId: string,
+  at: string = new Date().toISOString(),
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m) return undefined;
+  return groupScope(groupId).replace('memberships', { ...m, widgetPassNotBefore: at }, groupId);
 }
 
 // ---------------------------------------------------------------------------

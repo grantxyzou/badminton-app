@@ -21,7 +21,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { verifyMemberAuth } from '@/lib/auth';
+import { requireGroupMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isValidTension, formatJobNo } from '@/lib/stringing';
@@ -45,15 +45,8 @@ const REQUESTS_PER_HOUR = 10;
 const MAX_OPEN_PER_MEMBER = 3;
 const OPEN_STATUSES = ['requested', 'received', 'strung', 'ready'];
 
-let ready: Promise<void> | null = null;
 function ensureJobs(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('stringingJobs', '/memberId').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
+  return ensureContainer('stringingJobs', '/memberId');
 }
 
 function label(value: unknown, max = 80): string | null {
@@ -73,8 +66,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  // Identity from the cookie. Never the body — see the file docblock.
-  const caller = verifyMemberAuth(req);
+  // Identity from the cookie. Never the body — see the file docblock. And the
+  // membership re-read, so a removed member's cookie cannot file a request
+  // that pushes every admin on the roster (security review, 2026-10-24).
+  const caller = await requireGroupMember(req);
   if (!caller) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }

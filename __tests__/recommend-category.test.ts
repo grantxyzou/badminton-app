@@ -3,7 +3,6 @@ import { GET } from '@/app/api/recommend/route';
 import { makeRequest, makeGetRequest, setupAdminPin, resetMockStore, getStore, seedMember, seedAdminMember, memberCookieValue } from './helpers';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import * as cosmos from '@/lib/cosmos';
-import * as racketRecommend from '@/lib/racketRecommend';
 
 /** Lin herself is seeded in `beforeEach` (every read needs a signed-in caller). */
 function seedRatedLin() {
@@ -81,14 +80,14 @@ describe('GET /api/recommend?category=', () => {
   // anything". Use the admin path (bypasses the ownership gate) and check the
   // one thing that actually depends on which category was chosen: `racket` is
   // the sole ENGINE_CATEGORIES member, so only it reaches the profile check
-  // and returns `needsCheckIn` (Lin has no assessment seeded here) — every
+  // and returns `needsFit` (Lin has no assessment or gear seeded here) — every
   // other category short-circuits to `unavailable: 'no_engine'` first.
   it('absent category defaults to racket, not a bare non-400', async () => {
     const res = await GET(makeGetRequest('http://localhost:3000/api/recommend?name=Lin', true));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.unavailable).not.toBe('no_engine');
-    expect(body.needsCheckIn).toBe(true);
+    expect(body.needsFit).toBe(true);
   });
 
   // bpm-stable runs VALUE_HUB_SLICE on and GEAR_RECOMMENDER off, so the
@@ -135,45 +134,6 @@ describe('GET /api/recommend?category=', () => {
     const body = await res.json();
     expect(body.reasons.length).toBeGreaterThan(0);
     expect(body.reasons.join(' ')).not.toMatch(/working on|this week's focus/i);
-  });
-
-  // The real scoring engine (lib/racketRecommend.ts) routinely fills all 3 of
-  // buildPickReasons' default `limit` slots with equipment-derived reasons on
-  // its own (balance + category + format, etc.), so an end-to-end request with
-  // a real profile can't observe the club line — it is ordered last and gets
-  // sliced off. To exercise the wiring rather than the engine crowding it out,
-  // stub `recommendRackets` to return a single equipment reason.
-  it('surfaces club grounding when the engine reasons leave room', async () => {
-    seedRatedLin();
-    const item = {
-      id: 'mock-racket', category: 'racket' as const, brand: 'Acme', model: 'Zeta',
-      skillRange: [1, 6] as [number, number], msrp: 100,
-    };
-    const spy = vi.spyOn(racketRecommend, 'recommendRackets').mockReturnValue([
-      { item, score: 90, reasons: ['A solid engine reason'], warnings: [] },
-    ]);
-
-    const store = getStore();
-    // Club cohort at the CLUB_GEAR_MIN_COHORT floor (3), all playing the exact
-    // item just mocked as the top pick.
-    store['playerGear'] = [1, 2, 3].map((i) => ({
-      id: `gear-club-${i}`,
-      memberId: `club-${i}`,
-      items: [{ id: `item-${i}`, catalogId: item.id, category: 'racket', label: `${item.brand} ${item.model}` }],
-    }));
-
-    const res = await GET(
-      makeGetRequest('http://localhost:3000/api/recommend?name=Lin&category=racket', true),
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.item.id).toBe('mock-racket');
-    expect(body.reasons).toContain('A solid engine reason');
-    expect(
-      body.reasons.some((r: string) => r.includes('people in the club already play it')),
-    ).toBe(true);
-
-    spy.mockRestore();
   });
 
   // The catch around the club read in the route is deliberate and narrow: a

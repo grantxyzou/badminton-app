@@ -5,6 +5,7 @@ import {
   resetMockStore,
   getStore,
   setupAdminPin,
+  seedMember,
   seedTestAdminMember,
   makeRequest,
   makeAdminRequest,
@@ -23,7 +24,11 @@ import type { StringingJob } from '../lib/types';
 const FLAG = 'NEXT_PUBLIC_FLAG_STRINGING';
 const flagBefore = process.env[FLAG];
 
+/** The player must exist as an ACTIVE member: the route re-reads the
+ *  membership, so a cookie for nobody is a 401, not a requester. */
 function playerReq(name: string, body: Record<string, unknown>) {
+  const rows = (getStore()['members'] ?? []) as Array<{ name?: string; active?: boolean }>;
+  if (!rows.some((m) => m.name === name && m.active !== false)) seedMember(name);
   return makeRequest('POST', 'http://x/api/stringing/requests', body, {
     Cookie: `member_session=${memberCookieValue(name)}`,
   });
@@ -83,7 +88,8 @@ describe('a player cannot file as somebody else', () => {
 
     const stored = (getStore()['stringingJobs'] ?? []) as StringingJob[];
     expect(stored).toHaveLength(1);
-    expect(stored[0].memberId).toBe('member-wei');
+    const wei = (getStore()['members'] as { id: string; name: string }[]).find((m) => m.name === 'wei')!;
+    expect(stored[0].memberId).toBe(wei.id);
     expect(stored[0].memberName).toBe('wei');
   });
 });
