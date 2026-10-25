@@ -63,6 +63,8 @@ export interface MetricsInput {
    * and then every usage figure is null rather than zero.
    */
   usageEvents?: Array<{ memberId: string; kind: string; at: string; tab?: string; via?: string }>;
+  /** `client_error` rows from the last 7 days (docs/plans/client-error-beacon.md). */
+  errorEvents?: Array<{ memberId: string; at: string; tab?: string }>;
   /**
    * Every `sign_in` through the PWA-to-app migration link, all time (bounded
    * only by the events container's TTL). Kept apart from `usageEvents`
@@ -131,6 +133,16 @@ export interface ClubMetrics {
     paidWithin7dRate: number | null;
   };
   usage: UsageMetrics;
+  /** Screens that crashed for roster members in the last 7 days. Zero is a real answer: the beacon is always on. */
+  clientErrors: ClientErrorMetrics;
+}
+
+/** Screens that crashed for roster members (docs/plans/client-error-beacon.md). */
+export interface ClientErrorMetrics {
+  last7d: number;
+  members7d: number;
+  /** Crashes by tab; a crash with no tab named is under `unknown`. */
+  byTab: Record<string, number>;
 }
 
 /**
@@ -377,7 +389,28 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
       paidWithin7dRate: ratio(daysToPay.filter((d) => d <= 7).length, daysToPay.length),
     },
     usage,
+    clientErrors: computeClientErrors(input.errorEvents ?? [], rosterIds, input.now),
   };
+}
+
+function computeClientErrors(
+  raw: NonNullable<MetricsInput['errorEvents']>,
+  rosterIds: Set<string>,
+  now: Date,
+): ClientErrorMetrics {
+  const since = now.getTime() - 7 * DAY;
+  const members = new Set<string>();
+  const byTab: Record<string, number> = {};
+  let last7d = 0;
+  for (const e of raw) {
+    const t = Date.parse(e.at);
+    if (!Number.isFinite(t) || t < since || t > now.getTime() || !rosterIds.has(e.memberId)) continue;
+    last7d += 1;
+    members.add(e.memberId);
+    const tab = e.tab ?? 'unknown';
+    byTab[tab] = (byTab[tab] ?? 0) + 1;
+  }
+  return { last7d, members7d: members.size, byTab };
 }
 
 function computeUsage(

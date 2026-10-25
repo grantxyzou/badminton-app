@@ -10,6 +10,7 @@
 
 import { useEffect } from 'react';
 import { APP_NAME } from '@/lib/brand';
+import { reportClientError } from '@/lib/engagement';
 
 /**
  * The LAST boundary. Catches what `app/error.tsx` structurally cannot.
@@ -45,6 +46,7 @@ export default function GlobalError({
     // WebView goes nowhere useful, but it is reachable over Safari Web
     // Inspector when someone is actually debugging a device.
     console.error('global-error boundary caught:', error);
+    reportClientError('render');
   }, [error]);
 
   return (

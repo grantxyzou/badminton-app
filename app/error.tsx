@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { looksLikeChunkError } from '@/lib/chunkError';
 import { APP_SHORT_NAME } from '@/lib/brand';
 import { useClientSubscription } from '@/lib/useClientValue';
+import { reportClientError } from '@/lib/engagement';
 
 /**
  * The app-wide render boundary. Everything inside the root layout that is not
@@ -89,6 +90,8 @@ export default function AppError({ error }: { error: Error & { digest?: string }
   useEffect(() => {
     // Surface, never swallow — there is no telemetry sink in this app.
     console.error('[AppError] caught:', error);
+    // A stale-chunk error is a deploy, not a bug: it reloads itself above.
+    if (!looksLikeChunkError(error)) reportClientError('render');
   }, [error]);
 
   useEffect(() => {
