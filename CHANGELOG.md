@@ -62,9 +62,9 @@ Grant's call. "How you use the app" in the privacy policy now says that when a s
 
 Grant: "When a button or feature fails how would we know without you in it?" When a screen breaks for a signed-in player, the app now records one `client_error` event: which kind of failure and which tab, never the message, the stack or the address. At most three per page load, and none for the "new version" error that reloads itself. The count (last 7 days, this club only) is in `GET /api/admin/slice0` and in the metrics report, so the daily health check sees it. (#711, `docs/plans/client-error-beacon.md`)
 
-### Store build 5 carries the widgets (2026-10-24 to 25)
+### Store builds 5 (Android) and 6 (iPhone) carry the widgets (2026-10-24 to 25)
 
-The iPhone widget extension's Xcode target is committed (#716), so a fresh checkout builds it; Xcode had raised the app's minimum iOS on its own while making it, and it is back at 15 (the widget needs 17). Build numbers go from 4 to 5 on both platforms (#719): build 4 predates the widgets, the icon badge and the long-press menu, and this is the build that ships them.
+The iPhone widget extension's Xcode target is committed (#716), so a fresh checkout builds it; Xcode had raised the app's minimum iOS on its own while making it, and it is back at 15 (the widget needs 17). Build numbers go from 4 to 5 on both platforms (#719): build 4 predates the widgets, the icon badge and the long-press menu, and this is the build that ships them. The iPhone then moved to 6 (#724): TestFlight already held a 6, uploaded two minutes after the 5, so the next archive at 5 would have been refused as a duplicate. Android stays at 5, which is what Play holds.
 
 ### Home's second wave starts with the first (2026-10-24)
 
@@ -108,7 +108,7 @@ is operator-only now (an admin of BPM). The plan's review moves to 2026-11-25.
 
 ### Home-screen widgets (2026-10-22)
 
-This week's session and your place in it, your balance and (on the large size) your level, on iPhone and Android, plus lock-screen widgets that hide the amount until Face ID. Join and Undo work from the widget itself and go through the same sign-up rules as Home's button. A widget has no cookies, so the app gives it its own pass, which only the widget routes accept and which is re-checked against the club's roster on every read. They ship with store build 5. (#699, `docs/plans/native-widgets.md`)
+This week's session and your place in it, your balance and (on the large size) your level, on iPhone and Android, plus lock-screen widgets that hide the amount until Face ID. Join and Undo work from the widget itself and go through the same sign-up rules as Home's button. A widget has no cookies, so the app gives it its own pass, which only the widget routes accept and which is re-checked against the club's roster on every read. They ship with store build 5 on Android and 6 on iPhone. (#699, `docs/plans/native-widgets.md`)
 
 ### A health check that reads nothing (2026-10-22)
 
@@ -165,7 +165,7 @@ not a gate for the flip.
 
 ### The app's icon counts what you owe, and long-press opens three shortcuts (2026-10-21)
 
-The red number on the app's icon counts what you owe once it is final (settled sessions not reported paid, plus finished stringing), set only after a read that worked; it never asks for permission. Long-press the icon for Sign up for <day>, What I owe and Request stringing. The installed web app gets the same badge. In the store app from build 5. (#689, `docs/plans/native-badge-shortcuts.md`)
+The red number on the app's icon counts what you owe once it is final (settled sessions not reported paid, plus finished stringing), set only after a read that worked; it never asks for permission. Long-press the icon for Sign up for <day>, What I owe and Request stringing. The installed web app gets the same badge. In the store app from build 5 on Android and 6 on iPhone. (#689, `docs/plans/native-badge-shortcuts.md`)
 
 ### The stringing screens, second design pass (2026-10-21)
 
