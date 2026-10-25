@@ -168,6 +168,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // resolves — kicking you off the tab you were on. Only bounce once the
   // verdict is actually KNOWN (a successful probe), never on the unknown.
   const [adminKnown, setAdminKnown] = useState(false);
+  /** This shell's `GET /api/admin` said the admin cookie is live, so the Admin
+   *  tab can draw its console without asking again (`AdminTab` knownAuthed). */
+  const [adminCookieLive, setAdminCookieLive] = useState(false);
   /* `?dev` is the one landing param that is NEVER stripped from the URL below,
      so it stays readable for the life of the page and is a plain read rather
      than something to capture into state on mount. */
@@ -676,6 +679,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       }
       // Unknown ≠ known-false: the same preservation, without the offline flag.
       if (member === UNKNOWN) return;
+      setAdminCookieLive((auth as { authed?: boolean }).authed === true);
       setShowAdmin(
         (auth as { authed?: boolean }).authed === true ||
         (member as { role?: string }).role === 'admin',
@@ -871,9 +875,33 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // An admin's Admin tab is not opened early (KEPT_ON_VISIT), but its CODE is
   // fetched once the rest is in, so the first tap on Admin waits only for its
   // data, not for the chunk too. Nobody else downloads it.
+  //
+  // The loaded module is KEPT and rendered directly. Through `dynamic()` alone
+  // the first tap still suspended — React cannot see that a fresh `import()`
+  // promise is already settled — and React holds a suspended screen behind its
+  // fallback for at least ~300 ms, so the code being in hand bought nothing
+  // (measured 2026-10-25: 300 ms of idle between the tap and the first read).
+  //
+  // Once Admin has been opened through `dynamic()` the swap is skipped: a
+  // different component type would remount the console and read it all again.
+  const [PreloadedAdminTab, setPreloadedAdminTab] = useState<typeof AdminTab | null>(null);
+  const adminOpenedRef = useRef(false);
   useEffect(() => {
-    if (preloaded && showAdmin) void import('@/components/AdminTab').catch(() => {});
-  }, [preloaded, showAdmin]);
+    if (activeTab === 'admin') adminOpenedRef.current = true;
+  }, [activeTab]);
+  useEffect(() => {
+    if (!preloaded || !showAdmin || PreloadedAdminTab || adminOpenedRef.current) return;
+    let cancelled = false;
+    import('@/components/AdminTab')
+      .then((m) => {
+        if (!cancelled && !adminOpenedRef.current) setPreloadedAdminTab(() => m.default);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [preloaded, showAdmin, PreloadedAdminTab]);
+  const AdminTabView = PreloadedAdminTab ?? AdminTab;
 
 
   return (
@@ -1038,7 +1066,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           {showAdmin && (activeTab === 'admin' || kept.includes('admin')) && (
             <div key={`admin-${refreshNonce}-${tabNonce.admin ?? 0}`} {...{ [TAB_PANEL_ATTR]: 'admin' }} hidden={activeTab !== 'admin'} className="motion-fade">
               <TabActiveContext.Provider value={activeTab === 'admin'}>
-                <AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary>
+                <AdminErrorBoundary><AdminTabView onExit={() => setActiveTab('profile')} knownAuthed={adminCookieLive} /></AdminErrorBoundary>
               </TabActiveContext.Provider>
             </div>
           )}

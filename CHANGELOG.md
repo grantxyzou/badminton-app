@@ -52,6 +52,16 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 Grant: "why does it always say error when the content is too long". The release form pre-fills its notes box with the whole `Unreleased` section of this file, which is never cut when a release is published from the form, so it had grown to about 87,000 characters against the 24,000 the draft accepts, and every draft stopped at "too long" before asking anything. The box now holds only the entries dated on or after the day the last release went out (`lib/releaseNotes.ts`), about 10,000 characters for v2.3, and the line under it says which day it was narrowed to. Entries from the publish day itself stay in, since a release can go out mid-day.
 
+### Admin's first open starts loading at once (2026-10-25)
+
+Grant: "Admin still loads taking some time." Timed on a local build with simulated database delay, the first tap on Admin spent about 0.3 s doing nothing, then asked the server "is this an admin?" again (the app had just asked), and only then started the console's reads. The slowest of those was the full e-transfer inbox, which reads every member's balance to fill one menu row.
+
+- **No pause before the console.** The Admin code downloaded in the background is now used directly. Through `dynamic()` alone React still suspended on the first tap and held its placeholder for its minimum ~300 ms.
+- **No second admin check in front of the reads.** When the app's own check already said yes, the console draws at once and the tab's check runs behind it; a refusal still shows the PIN form.
+- **The E-transfers menu row reads two numbers** (`GET /api/admin/payments?count=1`): set up or not, and how many wait. It used to read the whole inbox: 17 database trips against 2.
+
+Locally the tap-to-first-read time fell from about 330 ms to about 40 ms, and the screen settled in 0.61 s instead of 0.84 s; production adds the phone's network time to each step that was removed.
+
 ### The privacy policy names the crash records (2026-10-25)
 
 Grant's call. "How you use the app" in the privacy policy now says that when a screen stops working for a signed-in member, the app records that it failed and which tab it was on, never the screen's content or the error's details, and that the organiser sees those only as totals, like the rest. English and Chinese, and the policy's date moves to 25 October 2026. (`docs/plans/client-error-beacon.md`)
@@ -66,9 +76,9 @@ Grant's call. "How you use the app" in the privacy policy now says that when a s
 
 Grant: "When a button or feature fails how would we know without you in it?" When a screen breaks for a signed-in player, the app now records one `client_error` event: which kind of failure and which tab, never the message, the stack or the address. At most three per page load, and none for the "new version" error that reloads itself. The count (last 7 days, this club only) is in `GET /api/admin/slice0` and in the metrics report, so the daily health check sees it. (#711, `docs/plans/client-error-beacon.md`)
 
-### Store build 5 carries the widgets (2026-10-24 to 25)
+### Store builds 5 (Android) and 6 (iPhone) carry the widgets (2026-10-24 to 25)
 
-The iPhone widget extension's Xcode target is committed (#716), so a fresh checkout builds it; Xcode had raised the app's minimum iOS on its own while making it, and it is back at 15 (the widget needs 17). Build numbers go from 4 to 5 on both platforms (#719): build 4 predates the widgets, the icon badge and the long-press menu, and this is the build that ships them.
+The iPhone widget extension's Xcode target is committed (#716), so a fresh checkout builds it; Xcode had raised the app's minimum iOS on its own while making it, and it is back at 15 (the widget needs 17). Build numbers go from 4 to 5 on both platforms (#719): build 4 predates the widgets, the icon badge and the long-press menu, and this is the build that ships them. The iPhone then moved to 6 (#724): TestFlight already held a 6, uploaded two minutes after the 5, so the next archive at 5 would have been refused as a duplicate. Android stays at 5, which is what Play holds.
 
 ### Home's second wave starts with the first (2026-10-24)
 
@@ -112,7 +122,7 @@ is operator-only now (an admin of BPM). The plan's review moves to 2026-11-25.
 
 ### Home-screen widgets (2026-10-22)
 
-This week's session and your place in it, your balance and (on the large size) your level, on iPhone and Android, plus lock-screen widgets that hide the amount until Face ID. Join and Undo work from the widget itself and go through the same sign-up rules as Home's button. A widget has no cookies, so the app gives it its own pass, which only the widget routes accept and which is re-checked against the club's roster on every read. They ship with store build 5. (#699, `docs/plans/native-widgets.md`)
+This week's session and your place in it, your balance and (on the large size) your level, on iPhone and Android, plus lock-screen widgets that hide the amount until Face ID. Join and Undo work from the widget itself and go through the same sign-up rules as Home's button. A widget has no cookies, so the app gives it its own pass, which only the widget routes accept and which is re-checked against the club's roster on every read. They ship with store build 5 on Android and 6 on iPhone. (#699, `docs/plans/native-widgets.md`)
 
 ### A health check that reads nothing (2026-10-22)
 
@@ -169,7 +179,7 @@ not a gate for the flip.
 
 ### The app's icon counts what you owe, and long-press opens three shortcuts (2026-10-21)
 
-The red number on the app's icon counts what you owe once it is final (settled sessions not reported paid, plus finished stringing), set only after a read that worked; it never asks for permission. Long-press the icon for Sign up for <day>, What I owe and Request stringing. The installed web app gets the same badge. In the store app from build 5. (#689, `docs/plans/native-badge-shortcuts.md`)
+The red number on the app's icon counts what you owe once it is final (settled sessions not reported paid, plus finished stringing), set only after a read that worked; it never asks for permission. Long-press the icon for Sign up for <day>, What I owe and Request stringing. The installed web app gets the same badge. In the store app from build 5 on Android and 6 on iPhone. (#689, `docs/plans/native-badge-shortcuts.md`)
 
 ### The stringing screens, second design pass (2026-10-21)
 
