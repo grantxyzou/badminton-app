@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { sharedRead, resetSharedReads } from '../lib/sharedRead';
+import { sharedRead, sharedFetch, primeFetch, resetSharedReads } from '../lib/sharedRead';
 
 /**
  * Two cards, one screen, one request. The three endpoints this exists for are
@@ -109,5 +109,53 @@ describe('sharedFetch', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+/**
+ * Home starts the balance and skill cards' reads beside the week's, before the
+ * cards exist. The card's own `sharedFetch` must take that request rather than
+ * make a second one — and only once, so a refetch after a payment is fresh.
+ */
+describe('primeFetch', () => {
+  beforeEach(() => { resetSharedReads(); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); resetSharedReads(); });
+
+  function stub() {
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }));
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  it('the first sharedFetch of a primed path takes the primed request', async () => {
+    const fetchMock = stub();
+    primeFetch('/api/credit');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await sharedFetch('/api/credit');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('is taken once: the next sharedFetch goes to the server', async () => {
+    const fetchMock = stub();
+    primeFetch('/api/credit');
+    await sharedFetch('/api/credit');
+    await sharedFetch('/api/credit');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('a primed read nobody took for 5s is not handed out', async () => {
+    vi.useFakeTimers();
+    const fetchMock = stub();
+    primeFetch('/api/credit');
+    vi.advanceTimersByTime(5001);
+    await sharedFetch('/api/credit');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('priming twice makes one request', () => {
+    const fetchMock = stub();
+    primeFetch('/api/credit');
+    primeFetch('/api/credit');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
