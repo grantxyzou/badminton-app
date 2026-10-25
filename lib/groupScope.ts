@@ -30,6 +30,7 @@
  */
 
 import type { SqlParameter } from '@azure/cosmos';
+import { recordGroupLeak } from './groupLeaks';
 import { CONTAINERS, containersOfScope, pkFieldOf, type ContainerScope, type ContainersOfScope } from './containers';
 // A cycle with ./cosmos, and a safe one: neither module touches the other's
 // exports at evaluation time, only inside functions.
@@ -42,8 +43,9 @@ export const BPM_GROUP_ID = 'bpm';
  * Transition tolerance. While `true`, a row with NO `groupId` is read as BPM's
  * — production data predates the field, and the backfill
  * (`POST /api/admin/migrate-groups`, Phase 2) stamps it in place. Flip to
- * `false` in Phase 5, only after that route's status read has shown zero
- * unstamped rows in every group-scoped container for a week.
+ * `false` only after a SECOND club has run one session end to end and that
+ * route's status read shows zero unstamped rows and zero recorded `leaks`
+ * (Grant, 2026-10-24 — not a week of log watching while BPM is alone).
  */
 export const TOLERATE_UNSTAMPED = true;
 
@@ -286,30 +288,43 @@ export interface GroupScope {
   remove(container: GroupContainer, id: string, pkValue?: string): Promise<boolean>;
 }
 
+/**
+ * The JS re-check every query row passes through: a row of another club is
+ * DROPPED, logged as `[group-leak]`, and written down (`lib/groupLeaks.ts`)
+ * so the leak can be read back later without anyone watching the log stream.
+ * Exported so a test can hand it the foreign row the mock store never lets
+ * through.
+ */
+export function keepGroupRows<T>(container: GroupContainer, groupId: string, tolerate: boolean, rows: unknown[]): T[] {
+  const out: T[] = [];
+  for (const row of rows) {
+    if (row && typeof row === 'object' && matchesGroup(row as { groupId?: unknown }, groupId, tolerate)) {
+      out.push(row as T);
+    } else {
+      // The message is a CONSTANT and every value rides in the payload.
+      // `console.error(str, obj)` treats `str` as a FORMAT string, so
+      // interpolating `groupId` — which since Phase 3 can arrive in a request
+      // body — let a caller inject `%s`/`%o` or a newline into it. Garbled
+      // output is the harmless half; the real one is that `[group-leak]` is
+      // the sentinel the strict-mode switch is gated on, and forged lines in
+      // it would poison that gate. Flagged by CodeQL as js/tainted-format-string.
+      console.error('[group-leak] a row outside its group reached the accessor', {
+        container,
+        groupId,
+        id: (row as { id?: unknown } | null)?.id,
+      });
+      // Not awaited: the read is already answered correctly. Never rejects.
+      void recordGroupLeak(container, groupId, row);
+    }
+  }
+  return out;
+}
+
 export function groupScope(groupId: string): GroupScope {
   const tolerate = TOLERATE_UNSTAMPED;
 
   function keep<T>(container: GroupContainer, rows: unknown[]): T[] {
-    const out: T[] = [];
-    for (const row of rows) {
-      if (row && typeof row === 'object' && matchesGroup(row as { groupId?: unknown }, groupId, tolerate)) {
-        out.push(row as T);
-      } else {
-        // The message is a CONSTANT and every value rides in the payload.
-        // `console.error(str, obj)` treats `str` as a FORMAT string, so
-        // interpolating `groupId` — which since Phase 3 can arrive in a request
-        // body — let a caller inject `%s`/`%o` or a newline into it. Garbled
-        // output is the harmless half; the real one is that `[group-leak]` is
-        // the sentinel Phase 5's flag flip is gated on, and forged lines in it
-        // would poison that gate. Flagged by CodeQL as js/tainted-format-string.
-        console.error('[group-leak] a row outside its group reached the accessor', {
-          container,
-          groupId,
-          id: (row as { id?: unknown } | null)?.id,
-        });
-      }
-    }
-    return out;
+    return keepGroupRows<T>(container, groupId, tolerate, rows);
   }
 
   function pkValueFor(container: GroupContainer, id: string, pkValue: string | undefined): string {

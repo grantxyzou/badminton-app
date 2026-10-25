@@ -4,7 +4,7 @@
 block reserved for Stage-2 (#81): multi-GROUP inside the one deployment, not the
 SaaS the April memo costed — no billing, no marketing site, no super-admin plane.
 **Status:** in-flight (Phases 0–4 landed and the production backfill ran on 2026-09-10 — BPM is group #1, 72/72 memberships, `mismatched: 0`. The flag went ON in production on 2026-10-22 (#700), the same day the backfill re-run read `mismatched: 0` (Decisions, 2026-10-22); what remains is the clean-week review below. Phases 5–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
-**Review on:** 2026-10-29 — the flag went on 2026-10-22: was the week after it clean of `[group-leak]` in the App Service log stream? If so, set `TOLERATE_UNSTAMPED` to false and stop dual-writing `Member.role`.
+**Review on:** 2026-11-25 — has a SECOND club been created and run one session end to end (created, invited someone, they signed up, the session settled)? If not, move this date a month on and do NOT ask Grant about leaks. If so, read `leaks` on `GET /api/admin/migrate-groups`: zero means set `TOLERATE_UNSTAMPED` to false and stop dual-writing `Member.role`; anything else names the container and the club that asked.
 
 ## Problem
 
@@ -270,6 +270,24 @@ don't copy.
   could see — `requireMember` already refused an inactive account — it made
   the roster agree with the accounts, which is what the flag reads. The flag
   PR followed the same day; the week of `[group-leak]` starts at its deploy.
+- **2026-10-24 — leaks are written down, and nobody watches for them until a
+  second club has run a session (Grant: "dont ask me to monitor group leak
+  until there is a second group created and completed one end to end. Also
+  trake what got leaksed").** Two changes. The gate moves: with BPM the only
+  club there is no other club's row for a query to let through, so a quiet
+  week of logs proved little and cost a person watching a log stream. Strict
+  mode now waits for a second club to be created and run one session end to
+  end, then for the status read. And every drop is KEPT: `groupScope()`'s JS
+  re-check, which already dropped a foreign row and logged `[group-leak]`,
+  now also writes one `kind: 'groupLeak'` record per distinct (container,
+  asking club, row id) to the GLOBAL `groups` container (`lib/groupLeaks.ts`)
+  — the row's id and both clubs, never its contents — and
+  `GET /api/admin/migrate-groups` reports them as `leaks` (total, newest 25).
+  A failed read of them says `read_failed`, never zero, because zero is the
+  answer the switch waits for. Reading the route for this found it admitted
+  ANY club's admin once groups were on, and its status is deployment-wide
+  (every club's counts, and leaks naming two clubs), so `GET` and `POST` are
+  operator-only now — an admin of BPM, as `GET /api/reports/feedback` is.
 
 ## Shape
 

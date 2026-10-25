@@ -48,6 +48,21 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Group leaks are written down, and the leak watch waits for a second club (2026-10-24)
+
+Grant: "dont ask me to monitor group leak until there is a second group created
+and completed one end to end. Also trake what got leaksed". `groupScope()`
+already dropped any query row belonging to another club and logged
+`[group-leak]`; it now also writes one record per distinct leak (container,
+the club that asked, the club the row belongs to, the row's id — never its
+contents) to the global `groups` container, and the operator's
+`GET /api/admin/migrate-groups` status reports them as `leaks`. Turning off
+the old-data fallback (`TOLERATE_UNSTAMPED`) now waits for a second club to run
+one session end to end and for that read to show zero, instead of a week of
+someone watching the log stream. The same route turned out to admit any
+club's admin once groups were on, while its status covers every club, so it
+is operator-only now (an admin of BPM). The plan's review moves to 2026-11-25.
+
 ### Racket fit flag retired (2026-10-24)
 
 `NEXT_PUBLIC_FLAG_RACKET_FIT` was already `'true'` in production; the fit engine is now the only racket recommender in `GET /api/recommend`. Nothing changes on screen.
