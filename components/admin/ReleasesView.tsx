@@ -68,6 +68,7 @@ export default function ReleasesView({ onBack }: Props) {
       {form.kind !== 'hidden' ? (
         <ReleaseForm
           latestVersion={releases[0]?.version}
+          latestPublishedAt={releases[0]?.publishedAt}
           initialRecord={form.kind === 'edit' ? form.record : undefined}
           onPublished={() => { setForm({ kind: 'hidden' }); load(); }}
           onCancel={() => setForm({ kind: 'hidden' })}

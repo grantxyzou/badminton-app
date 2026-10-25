@@ -5,9 +5,12 @@ import { useTranslations } from 'next-intl';
 import type { Release } from '@/lib/types';
 import { MAX_PROMPT_CHARS } from '@/lib/claudeLimits';
 import { suggestReleaseVersion } from '@/lib/releaseVersion';
+import { changelogSince, vancouverDay } from '@/lib/releaseNotes';
 
 interface ReleaseFormProps {
   latestVersion?: string;
+  /** When `latestVersion` went out; the pre-fill keeps only CHANGELOG entries since that day. */
+  latestPublishedAt?: string;
   initialRecord?: Release;
   onPublished: (release: Release) => void;
   onCancel: () => void;
@@ -29,7 +32,7 @@ interface ChangelogUnreleased {
   source?: 'unreleased' | 'published-fallback' | 'empty';
 }
 
-export default function ReleaseForm({ latestVersion, initialRecord, onPublished, onCancel }: ReleaseFormProps) {
+export default function ReleaseForm({ latestVersion, latestPublishedAt, initialRecord, onPublished, onCancel }: ReleaseFormProps) {
   const t = useTranslations('admin.releases');
   const isEdit = !!initialRecord;
   const [version, setVersion] = useState(() => initialRecord?.version ?? suggestReleaseVersion(latestVersion, undefined));
@@ -39,6 +42,8 @@ export default function ReleaseForm({ latestVersion, initialRecord, onPublished,
   const [changelogMeta, setChangelogMeta] = useState<{
     generatedAt: string;
     source?: 'unreleased' | 'published-fallback' | 'empty';
+    /** The Vancouver day the pre-fill was narrowed to, when it was. */
+    sinceDay?: string;
   } | null>(null);
 
   // Pull the CHANGELOG Unreleased section baked by scripts/extract-unreleased.mjs
@@ -55,12 +60,16 @@ export default function ReleaseForm({ latestVersion, initialRecord, onPublished,
       if (data.suggestedVersion) {
         setVersion(data.source === 'published-fallback' ? data.suggestedVersion : suggestReleaseVersion(latestVersion, data.suggestedVersion));
       }
-      if (data.text) setRawNotes(data.text);
-      if (data.generatedAt) setChangelogMeta({ generatedAt: data.generatedAt, source: data.source });
+      // The Unreleased section is never cut on publish, so it holds every entry
+      // since September; narrowed here to what is new since the last release.
+      const sinceDay = data.source === 'unreleased' && latestPublishedAt ? vancouverDay(latestPublishedAt) ?? undefined : undefined;
+      const text = sinceDay ? changelogSince(data.text, sinceDay) : data.text;
+      if (text) setRawNotes(text);
+      if (data.generatedAt) setChangelogMeta({ generatedAt: data.generatedAt, source: data.source, sinceDay });
     } catch {
       /* swallow — changelog is optional */
     }
-  }, [latestVersion]);
+  }, [latestVersion, latestPublishedAt]);
 
   useEffect(() => {
     if (!isEdit) loadFromChangelog();
@@ -212,7 +221,9 @@ ${rawNotes}`;
             <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
               {changelogMeta?.source === 'published-fallback'
                 ? `Pre-filled from the most recent published version (Unreleased section was empty; baked ${changelogFreshness}). Override the version above if you're drafting the next release instead.`
-                : `Pre-filled from CHANGELOG.md Unreleased (baked ${changelogFreshness}). Edit freely — AI will polish on next step.`}
+                : changelogMeta?.sinceDay
+                  ? `Pre-filled with the CHANGELOG.md entries dated ${changelogMeta.sinceDay} or later, the day ${latestVersion} went out (baked ${changelogFreshness}). Entries from that day may already be in it; trim them before drafting.`
+                  : `Pre-filled from CHANGELOG.md Unreleased (baked ${changelogFreshness}). Edit freely — AI will polish on next step.`}
             </p>
           )}
         </div>

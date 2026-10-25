@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### "Draft with AI" on release notes works again (2026-10-25)
+
+Grant: "why does it always say error when the content is too long". The release form pre-fills its notes box with the whole `Unreleased` section of this file, which is never cut when a release is published from the form, so it had grown to about 87,000 characters against the 24,000 the draft accepts, and every draft stopped at "too long" before asking anything. The box now holds only the entries dated on or after the day the last release went out (`lib/releaseNotes.ts`), about 10,000 characters for v2.3, and the line under it says which day it was narrowed to. Entries from the publish day itself stay in, since a release can go out mid-day.
+
 ### Admin's first open starts loading at once (2026-10-25)
 
 Grant: "Admin still loads taking some time." Timed on a local build with simulated database delay, the first tap on Admin spent about 0.3 s doing nothing, then asked the server "is this an admin?" again (the app had just asked), and only then started the console's reads. The slowest of those was the full e-transfer inbox, which reads every member's balance to fill one menu row.
