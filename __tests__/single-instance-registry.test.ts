@@ -50,6 +50,7 @@ const REGISTRY: ReadonlyArray<{ file: string; name: string; scaleOut: ScaleOut; 
   { file: 'lib/groupLeaks.ts', name: 'recorded', scaleOut: 'safe', note: 'leaks this process has written; a second instance writes its own first sighting, which the store refuses as a duplicate id' },
   { file: 'lib/sharedRead.ts', name: 'inflight', scaleOut: 'browser', note: 'client-side fetch dedupe for cards that mount together' },
   { file: 'lib/sharedRead.ts', name: 'inflightFetches', scaleOut: 'browser', note: 'client-side fetch dedupe for cards that mount together' },
+  { file: 'lib/sharedRead.ts', name: 'primed', scaleOut: 'browser', note: 'one-shot early read handed to a card that mounts later' },
   { file: 'lib/useInsight.ts', name: 'cache', scaleOut: 'browser', note: 'client hook' },
   { file: 'lib/useMemberAvatars.ts', name: 'byName', scaleOut: 'browser', note: 'client hook, module-cached roster avatars' },
   { file: 'lib/useMemberAvatars.ts', name: 'listeners', scaleOut: 'browser', note: 'client hook subscriber set' },

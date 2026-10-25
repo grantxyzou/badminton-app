@@ -12,6 +12,7 @@ import { useOnline } from '@/lib/useOnline';
 import Collapse from './primitives/Collapse';
 import { useRevealReady } from './primitives/Reveal';
 import { useTabReturn } from '@/lib/tabActivity';
+import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
@@ -117,7 +118,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   useEffect(() => {
     if (!creditOn || !name) return;
     let cancelled = false;
-    fetch(`${BASE}/api/credit`, { cache: 'no-store' })
+    sharedFetch('/api/credit')
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { balanceCents?: number } | null) => {
         // A failed read shows no credit line — the balance card's job is what
@@ -161,7 +162,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
     // name is always the signed-in identity (non-empty) when this renders.
     if (!name) return;
     let cancelled = false;
-    fetch(`${BASE}/api/players/unpaid?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
+    sharedFetch(`/api/players/unpaid?name=${encodeURIComponent(name)}`)
       .then(async (r) => {
         if (r.status === 403) return { forbidden: true as const };
         if (!r.ok) throw new Error(`unpaid fetch ${r.status}`);

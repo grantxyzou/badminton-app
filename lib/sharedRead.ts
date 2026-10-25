@@ -29,10 +29,41 @@ const inflight = new Map<string, Entry>();
 
 const inflightFetches = new Map<string, Promise<Response>>();
 
+/**
+ * A read started early for a card that is not mounted yet, handed to the
+ * first `sharedFetch` of that path and then forgotten.
+ *
+ * Home's balance and skill cards mount only once the week's reads have
+ * landed, so their own reads used to START then: a second wave behind the
+ * first (trace of 2026-10-24: the week landed at 1.6s, the balance at 2.3s).
+ * Home primes them beside the week's reads instead. One-shot, so a refetch
+ * after a payment goes to the server; `PRIMED_MS` drops one nobody took (the
+ * week failed and the card never mounted).
+ */
+const PRIMED_MS = 5000;
+
+const primed = new Map<string, Entry & { promise: Promise<Response> }>();
+
+export function primeFetch(path: string): void {
+  if (primed.has(path)) return;
+  const promise = fetch(`${BASE}${path}`, { cache: 'no-store' });
+  // The taker sees a rejection; an untaken one must not surface as unhandled.
+  promise.catch(() => {});
+  primed.set(path, { at: Date.now(), promise });
+}
+
+function takePrimed(path: string): Promise<Response> | null {
+  const hit = primed.get(path);
+  if (!hit) return null;
+  primed.delete(path);
+  return Date.now() - hit.at < PRIMED_MS ? hit.promise : null;
+}
+
 /** Test seam: a suite that asserts on fetch counts must start from nothing. */
 export function resetSharedReads(): void {
   inflight.clear();
   inflightFetches.clear();
+  primed.clear();
 }
 
 /**
@@ -58,7 +89,7 @@ export function resetSharedReads(): void {
 export function sharedFetch(path: string): Promise<Response> {
   let promise = inflightFetches.get(path);
   if (!promise) {
-    promise = fetch(`${BASE}${path}`, { cache: 'no-store' });
+    promise = takePrimed(path) ?? fetch(`${BASE}${path}`, { cache: 'no-store' });
     inflightFetches.set(path, promise);
     const done = () => {
       if (inflightFetches.get(path) === promise) inflightFetches.delete(path);
