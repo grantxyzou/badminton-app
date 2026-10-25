@@ -72,6 +72,14 @@ shot loops only for as long as the page actually takes.
   profile (150 ms latency, 4x CPU): page at 0.5 s, Home complete at 2.05 s, the
   other tabs open at 2.1 s, splash gone at 2.3 s onto a Home with no skeleton
   showing. A reload still skips it.
+- **The full shot is the floor, and it is never cut** (2026-10-24, at the
+  review). Grant found the launch slower and Home's cards still loading after
+  it; leaving at hydration was offered and declined: "At least play the full
+  animation once. Never cut over when the first one is still playing." So the
+  speed fix goes into Home's reads, not the splash: a trace showed Home in two
+  waves (the balance and skill cards' reads starting only once the week's had
+  landed, 2.3 s in), and Home now starts them together (`primeFetch` in
+  `lib/sharedRead.ts`). The shot and the settle wait are unchanged.
 - **The shot in flight BECOMES the final shot** (`shotTakeover`). The handoff
   says to wait for the current shot's trail to clear and then play the final
   one. But a loading shot and the final shot are the same frames until the
