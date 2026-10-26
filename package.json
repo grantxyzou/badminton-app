@@ -22,7 +22,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.135.0",
+    "@anthropic-ai/sdk": "^1.1.0",
     "@azure/cosmos": "^4.10.1",
     "@capacitor-firebase/messaging": "^8.5.2",
     "@capacitor/android": "^8.5.3",
