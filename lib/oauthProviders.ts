@@ -1,7 +1,9 @@
 /**
- * Lazily-constructed `arctic` clients for Google and Apple.
+ * Lazily-constructed OAuth clients for Google and Apple (`lib/oauth/`, in-house
+ * since `arctic` was deprecated upstream in July 2026 —
+ * docs/plans/oauth-library-replacement.md; same shape, same requests).
  *
- * `arctic` is used for the HANDSHAKE ONLY — it builds the authorization URL and
+ * They are used for the HANDSHAKE ONLY — it builds the authorization URL and
  * exchanges the code. It has no opinion about sessions, storage or users, which
  * is exactly why it was chosen: `member_session` stays the session of record,
  * so `isAdminAuthedWithMember`'s live Cosmos role re-check keeps working and
@@ -13,7 +15,8 @@
  * but not Apple shows one button instead of failing when the second is tapped.
  * That is the legible-fail posture applied to configuration.
  */
-import { Google, Apple } from 'arctic';
+import { GoogleOAuth } from '@/lib/oauth/google';
+import { AppleOAuth } from '@/lib/oauth/apple';
 import { requireRedirectOrigin } from '@/lib/appOrigin';
 
 export type ProviderName = 'google' | 'apple';
@@ -33,26 +36,25 @@ export function appOrigin(_fallbackUrl: string): string {
   return requireRedirectOrigin();
 }
 
-export function googleClient(origin: string): Google | null {
+export function googleClient(origin: string): GoogleOAuth | null {
   const id = process.env.GOOGLE_CLIENT_ID;
   const secret = process.env.GOOGLE_CLIENT_SECRET;
   // Same check as configuredProviders, or /start would happily redirect to
   // Google carrying a placeholder and fail there instead of here.
   if (!isRealCredential(id) || !isRealCredential(secret)) return null;
-  return new Google(id!, secret!, redirectUri('google', origin));
+  return new GoogleOAuth(id!, secret!, redirectUri('google', origin));
 }
 
 /**
  * Apple's `client_secret` is an ES256 JWT signed with a `.p8` key, with a
- * 6-month maximum lifetime. `arctic` generates it internally per request from
- * the key, so there is nothing to rotate on a schedule — the reason to take
- * this dependency at all, since hand-rolling that JWT is the most error-prone
- * part of Sign in with Apple.
+ * 6-month maximum lifetime. `AppleOAuth` signs a fresh five-minute one per
+ * request from the key (as `arctic` did), so there is nothing to rotate on a
+ * schedule.
  *
  * `APPLE_PRIVATE_KEY` holds the PEM with literal `\n` escapes (env vars cannot
  * carry real newlines), so they are converted back before parsing.
  */
-export function appleClient(origin: string): Apple | null {
+export function appleClient(origin: string): AppleOAuth | null {
   const clientId = process.env.APPLE_CLIENT_ID;
   const teamId = process.env.APPLE_TEAM_ID;
   const keyId = process.env.APPLE_KEY_ID;
@@ -68,10 +70,10 @@ export function appleClient(origin: string): Apple | null {
 
   const der = pkcs8FromPem(pem!);
   if (!der) return null;
-  return new Apple(clientId!, teamId!, keyId!, der, redirectUri('apple', origin));
+  return new AppleOAuth(clientId!, teamId!, keyId!, der, redirectUri('apple', origin));
 }
 
-/** Strips the PEM armour and base64-decodes to the DER bytes arctic expects. */
+/** Strips the PEM armour and base64-decodes to the PKCS#8 DER bytes the signer expects. */
 export function pkcs8FromPem(pem: string): Uint8Array | null {
   const body = pem
     .replace(/\\n/g, '\n')

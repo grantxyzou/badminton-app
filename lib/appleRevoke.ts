@@ -12,12 +12,15 @@ import {
  * app that offers it and lets people delete their account. Called when an
  * account is deleted and when Apple is disconnected from one.
  *
- * WHY THE CLIENT SECRET IS SIGNED HERE AND NOT BY `arctic`
- * --------------------------------------------------------
- * `arctic` signs Apple's client-secret JWT for the code exchange, but its
- * `Apple` class has no revoke method and keeps `createClientSecret` private.
- * So this file signs the same ES256 JWT with `node:crypto`, from the same
- * `.p8` key and the same `pkcs8FromPem` decoding.
+ * WHY THE CLIENT SECRET IS SIGNED HERE AND NOT BY THE SIGN-IN CLIENT
+ * -------------------------------------------------------------------
+ * This file predates the sign-in signer: `arctic`, which did the code exchange
+ * until 2026-10, had no revoke method and kept `createClientSecret` private.
+ * So this file signs its own ES256 JWT with `node:crypto`, from the same `.p8`
+ * key and the same `pkcs8FromPem` decoding. The in-house sign-in signer
+ * (`lib/oauth/apple.ts`) copies arctic's claims, which differ from these in
+ * one place: `aud` there is an array. Folding the two together is a follow-up
+ * (docs/plans/oauth-library-replacement.md).
  *
  * `dsaEncoding: 'ieee-p1363'` IS LOAD-BEARING. Node's default ECDSA signature
  * is DER-encoded (~70–72 bytes); a JWS ES256 signature is the raw 64-byte

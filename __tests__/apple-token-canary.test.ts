@@ -25,7 +25,11 @@ const ALLOWED: Record<string, string[]> = {
   storeAppleRefreshToken: ['lib/authIdentity.ts', 'app/api/auth/apple/callback/route.ts'],
   // The only reader: to send it to Apple's revoke endpoint.
   readAppleRefreshToken: ['lib/authIdentity.ts', 'lib/appleRevoke.ts'],
-  refreshToken: ['lib/authIdentity.ts', 'lib/appleRevoke.ts', 'app/api/auth/apple/callback/route.ts'],
+  // lib/oauth/tokenRequest.ts holds the generic accessor on the token response,
+  // the one `arctic` held inside node_modules (where this scan never looked)
+  // until the in-house client replaced it on 2026-10-27. It reads the field off
+  // the provider's answer and hands it to the callback; it stores nothing.
+  refreshToken: ['lib/authIdentity.ts', 'lib/appleRevoke.ts', 'app/api/auth/apple/callback/route.ts', 'lib/oauth/tokenRequest.ts'],
 };
 
 function sourceFiles(dir: string, out: string[] = []): string[] {

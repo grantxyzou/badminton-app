@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Google and Apple sign-in no longer depend on a deprecated library (2026-10-27)
+
+The library that ran the Google and Apple sign-in handshake, `arctic`, was deprecated by its author in July 2026, with no successor. The two calls it made for each provider (build the sign-in link, exchange the code) now live in `lib/oauth/`, about 150 lines over `fetch` and `node:crypto`. They send exactly the requests `arctic` sent, checked byte for byte against requests recorded from `arctic` before it was removed, and the package and its five `@oslojs` dependencies are gone. Nothing changes for players. The proof that counts is one real Google and one real Apple sign-in on production after the deploy.
+
 ### "Draft with AI" on release notes works again (2026-10-25)
 
 Grant: "why does it always say error when the content is too long". The release form pre-fills its notes box with the whole `Unreleased` section of this file, which is never cut when a release is published from the form, so it had grown to about 87,000 characters against the 24,000 the draft accepts, and every draft stopped at "too long" before asking anything. The box now holds only the entries dated on or after the day the last release went out (`lib/releaseNotes.ts`), about 10,000 characters for v2.3, and the line under it says which day it was narrowed to. Entries from the publish day itself stay in, since a release can go out mid-day.
