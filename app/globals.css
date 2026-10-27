@@ -4828,6 +4828,16 @@ html:root[data-theme="light"] {
   background: rgba(255, 255, 255, 0.035);
   border-color: rgba(255, 255, 255, 0.08);
 }
+
+/* Money tiles three-up on a phone (Ledger: In and out, Still owed). The 28px
+   .num cannot hold "$3435.56" in a third of a phone card, and a 1fr column
+   will not shrink below its content, so the row ran off the card. The figure
+   steps down to the stat size and is written short by fmtMoneyTile
+   (lib/fmt.ts); the grid uses minmax(0, 1fr) so it can never push past. */
+.cc-tile-money .num {
+  font-size: var(--fs-stat);
+  white-space: nowrap;
+}
 [data-theme="light"] .cc-tile-static:hover {
   background: rgba(0, 0, 0, 0.025);
   border-color: rgba(0, 0, 0, 0.08);

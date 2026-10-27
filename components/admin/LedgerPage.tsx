@@ -10,7 +10,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
-import { fmtSessionLabel } from '@/lib/fmt';
+import { fmtMoneyTile, fmtSessionLabel } from '@/lib/fmt';
 import { useOnline } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -281,17 +281,17 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
 
       {/* ── In and out ── */}
       <Section title="In and out" subtitle={`${money(data.covered)} covered by you · ${bySession.length} session${bySession.length === 1 ? '' : 's'} settled`}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
-          <div className="cc-tile cc-tile-static">
-            <span className="num">{money(collected.total)}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
+          <div className="cc-tile cc-tile-static cc-tile-money">
+            <span className="num">{fmtMoneyTile(collected.total)}</span>
             <span className="lbl">Collected</span>
           </div>
-          <div className="cc-tile cc-tile-static">
-            <span className="num">{money(outlay.total)}</span>
+          <div className="cc-tile cc-tile-static cc-tile-money">
+            <span className="num">{fmtMoneyTile(outlay.total)}</span>
             <span className="lbl">Outlay</span>
           </div>
-          <div className={`cc-tile cc-tile-static${data.net < 0 ? ' warn' : ''}`}>
-            <span className="num">{money(data.net)}</span>
+          <div className={`cc-tile cc-tile-static cc-tile-money${data.net < 0 ? ' warn' : ''}`}>
+            <span className="num">{fmtMoneyTile(data.net)}</span>
             <span className="lbl">Net</span>
           </div>
         </div>
@@ -323,16 +323,16 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
           </p>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
-              <div className="cc-tile cc-tile-static">
-                <span className="num">{money(outstanding.sessions)}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
+              <div className="cc-tile cc-tile-static cc-tile-money">
+                <span className="num">{fmtMoneyTile(outstanding.sessions)}</span>
                 <span className="lbl">Sessions</span>
               </div>
-              <div className="cc-tile cc-tile-static">
-                <span className="num">{money(outstanding.stringing)}</span>
+              <div className="cc-tile cc-tile-static cc-tile-money">
+                <span className="num">{fmtMoneyTile(outstanding.stringing)}</span>
                 <span className="lbl">Stringing</span>
               </div>
-              <div className="cc-tile cc-tile-static">
+              <div className="cc-tile cc-tile-static cc-tile-money">
                 <span className="num">{outstanding.people}</span>
                 <span className="lbl">{outstanding.people === 1 ? 'Person' : 'People'}</span>
               </div>
