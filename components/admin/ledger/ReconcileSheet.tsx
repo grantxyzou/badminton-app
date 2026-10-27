@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
+import { reconcileFailureFrom, reconcileFailureMessage } from '@/lib/reconcileFailure';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -74,11 +75,15 @@ export default function ReconcileSheet({ open, onClose, onChanged }: { open: boo
     setCheckError('');
     try {
       const res = await fetch(`${BASE}/api/admin/ledger/reconcile`, { method: 'POST' });
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        setCheckError(await reconcileFailureFrom(res));
+        return;
+      }
       setReport((await res.json()) as Report);
       onChanged();
     } catch {
-      setCheckError("Couldn't run the check — try again.");
+      // fetch threw: no answer at all (offline, a dropped connection).
+      setCheckError(reconcileFailureMessage(null, null));
     } finally {
       setChecking(false);
     }

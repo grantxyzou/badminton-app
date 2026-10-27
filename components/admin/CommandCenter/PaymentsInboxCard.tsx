@@ -10,6 +10,7 @@ import { useOnline } from '@/lib/useOnline';
 import type { EtransferPayment, PaymentAllocation } from '@/lib/types';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { reconcileFailureFrom, reconcileFailureMessage } from '@/lib/reconcileFailure';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -281,10 +282,14 @@ function ReconcileRow({ reconcile, onDone }: { reconcile: NonNullable<Inbox['rec
     setError('');
     try {
       const res = await fetch(`${BASE}/api/admin/ledger/reconcile`, { method: 'POST' });
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        setError(await reconcileFailureFrom(res));
+        return;
+      }
       onDone();
     } catch {
-      setError("Couldn't run the check — try again.");
+      // fetch threw: no answer at all (offline, a dropped connection).
+      setError(reconcileFailureMessage(null, null));
     } finally {
       setBusy(false);
     }
