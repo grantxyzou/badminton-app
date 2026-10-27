@@ -1,8 +1,8 @@
 # Replace `arctic` for the Google and Apple handshake
 
 **Track:** Store launch — Google and Apple sign-in are the store-listing credentials (behind `NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` until it retired 2026-10-15), and the library that performs their handshake is deprecated upstream.
-**Status:** in-flight (built 2026-10-27; ships when Grant has signed in with Google AND Apple on production after the deploy)
-**Review on:** 2026-11-03 — Did one real Google and one real Apple sign-in succeed on production after the cutover, and has any `exchange_failed` appeared since? If either failed, the revert is one PR.
+**Status:** shipped 2026-10-27 (#735, f6db6fb). Grant signed in with Google and with Apple on production right after the deploy, and both worked. #713 is closed.
+**Review on:** 2026-11-24 — Has any member hit `exchange_failed` on Google or Apple since the cutover? If none, drop this line. The open follow-up is folding `lib/appleRevoke.ts` onto `AppleOAuth.createClientSecret`.
 
 ## Problem
 
