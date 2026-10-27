@@ -2,7 +2,7 @@
 
 **Track:** North Star pillar 4 (traffic/recommendations strong enough to suggest equipment purchases) — stringing is the one paid equipment service the app sells, and its only door is one Home card.
 **Status:** in-flight
-**Review on:** 2026-10-26 — From `stringingJobs.createdAt`: did requests per month from repeat shop customers rise in the six weeks after ship vs the six before?
+**Review on:** 2026-12-14 — Of the shop customers who passed eight weeks since their last racket came back, how many sent a new request within six weeks of passing it? (The first anyone passes it is 2026-11-02.)
 
 ## Problem
 
@@ -23,6 +23,17 @@ before. No rise: the reminder is noise; remove the line.
 Nothing records who SAW the reminder, so this reads
 the cohort the reminder can reach, not the people it reached — add an
 `app/api/events` kind first if that distinction ever decides anything.
+
+**Read on 2026-10-27: no answer yet, because the reminder has never been shown.**
+The reminder appears only once eight weeks have passed since a racket came back. The
+earliest shop racket came back on 2026-09-07, so the first reminder can show on
+2026-11-02. Nobody is due today. Taken literally, the criterion reads a rise: 4 jobs
+before ship and 10 after, with repeat requests going from 1 to 4. But all four repeat
+requests came in before any reminder could have shown. The shop opened on 2026-08-30,
+so the window before ship held only two weeks of shop. The rise is the shop being
+new, not the reminder. The criterion is replaced by the one in the header, which counts
+only people the reminder could reach, and only after it could reach them.
+With six shop customers it will be a small number; read it as a yes or a no, not a rate.
 
 ## Non-goals
 
