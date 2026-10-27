@@ -1,8 +1,8 @@
 # Replace `arctic` for the Google and Apple handshake
 
 **Track:** Store launch — Google and Apple sign-in are the store-listing credentials (behind `NEXT_PUBLIC_FLAG_AUTH_PROVIDERS` until it retired 2026-10-15), and the library that performs their handshake is deprecated upstream.
-**Status:** intent
-**Review on:** 2026-10-26 — Has `arctic` needed a fix we could not take, or has either provider changed an endpoint? If neither, is the hand-rolled handshake shipped behind the replayed-exchange tests below, or is this plan still a note?
+**Status:** in-flight (built 2026-10-27; ships when Grant has signed in with Google AND Apple on production after the deploy)
+**Review on:** 2026-11-03 — Did one real Google and one real Apple sign-in succeed on production after the cutover, and has any `exchange_failed` appeared since? If either failed, the revert is one PR.
 
 ## Problem
 
@@ -25,7 +25,15 @@ Kill this plan and keep `arctic` pinned if, by the review date, a maintained suc
 
 ## Decisions
 
-Proposed, not yet made — recorded so the review has something to hold to:
+**Review answered 2026-10-27** (it was due 26 Oct). `arctic` needed no fix and neither provider changed an endpoint. But the deprecation is now deliberate: the author deprecated `arctic` in July 2026 (npm shows the generic "no longer supported"), and the README points users to example code in the repo's `/code` folder, not to a successor. So the first kill clause (a maintained drop-in) is NOT met, and the plan goes ahead.
+
+**Built as proposed, with one substitution for Grant to accept or reject.** The kill criterion asks for proof against a REPLAYED real exchange per provider. Capturing one needs a real sign-in on a dev machine, and Apple's `form_post` cannot run on localhost. Instead, `arctic` itself, the library that carried every production sign-in, was the recording source while it was still installed: `__tests__/fixtures/oauth-arctic-requests.json` holds its exact requests (URL, method, headers including Content-Length, body) for fixed fake inputs, and `__tests__/oauth-in-house.test.ts` holds the new client to them byte for byte. Apple's client secret is compared by its decoded header and payload under a frozen clock (key order included, since it sets Content-Length), and its signature is VERIFIED against the test key's public half, which catches the DER-signature trap. What this does not prove is the provider's response side. That is what the post-deploy sign-ins are for, and why they are the ship gate.
+
+**The Apple signer copies arctic, not `lib/appleRevoke.ts`.** The two differ: arctic's `aud` is an array, appleRevoke's a string. arctic's was accepted by Apple on every sign-in, while revocation failures are swallowed by design, so nothing proves appleRevoke's form has ever been accepted. appleRevoke stays untouched (a non-goal here). Folding it onto the sign-in signer is a follow-up worth one PR.
+
+**`User-Agent: arctic` is kept**, so the providers see exactly the request they always have.
+
+Proposed before the build, kept for the record:
 
 - **Hand-roll the two calls rather than adopt `openid-client`.** The surface is four functions: Google authorization URL (with PKCE `S256` challenge), Google token POST (`code`, `code_verifier`, client id and secret, redirect URI), Apple authorization URL (`response_mode=form_post`), Apple token POST (`client_secret` = the ES256 JWT `lib/appleRevoke.ts` already knows how to sign). That is ~120 lines over `fetch` and `crypto`, the same posture `lib/fcm.ts` took for FCM ("zero dependencies") and the reason it was chosen there: a dependency that does one HTTP round trip is a dependency you own the failure modes of anyway. `openid-client` would replace one deprecated dependency with a large maintained one whose discovery and JWKS machinery this app does not use.
 - **Keep `googleClient()` / `appleClient()`'s exported shape.** The four route call sites (`auth/{google,apple}/{start,callback}`) call `createAuthorizationURL` and `validateAuthorizationCode` and nothing else; a same-shaped in-house client means the routes and their tests do not change, and the cutover is one import.
@@ -36,9 +44,9 @@ Proposed, not yet made — recorded so the review has something to hold to:
 
 | Piece | File |
 |---|---|
-| Google authorization URL + PKCE + token exchange | `lib/oauth/google.ts` (new) |
-| Apple authorization URL + token exchange | `lib/oauth/apple.ts` (new); client-secret JWT via `lib/appleRevoke.ts`'s signer, lifted into `lib/oauth/appleSecret.ts` |
+| Shared token POST, `OAuthTokens`, `OAuthRequestError` | `lib/oauth/tokenRequest.ts` |
+| Google authorization URL + PKCE + token exchange | `lib/oauth/google.ts` |
+| Apple authorization URL + token exchange + client-secret JWT (arctic's claims) | `lib/oauth/apple.ts` |
 | Same-shaped `googleClient` / `appleClient` | `lib/oauthProviders.ts` (import swap only) |
-| Replayed-exchange fixtures | `__tests__/oauth-google-exchange.test.ts`, `__tests__/oauth-apple-exchange.test.ts` |
-| Import canary | `__tests__/oauth-lib-canary.test.ts` |
-| Dependency removal | `package.json`, `package-lock.json` |
+| Recorded-request fixtures, parity tests, response contract, import canary | `__tests__/fixtures/oauth-arctic-requests.json`, `__tests__/oauth-in-house.test.ts` |
+| Dependency removal | `package.json`; `package-lock.json` edited by hand to drop only the seven `arctic`/`@oslojs` entries (a local `npm uninstall` also rewrote unrelated `libc` lines) |

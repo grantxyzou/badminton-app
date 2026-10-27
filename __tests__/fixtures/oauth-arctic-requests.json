@@ -1,0 +1,90 @@
+{
+  "_note": "Recorded from arctic 3.7.0 on 2026-10-27, the library that carried every production Google and Apple sign-in until it was replaced (docs/plans/oauth-library-replacement.md). Inputs are fixed fakes. The in-house client must produce the same requests; the Apple client_secret is compared by its decoded header and payload (the signature is random), with a fresh test key. Do not regenerate: arctic is gone.",
+  "google": {
+    "inputs": {
+      "clientId": "test-client.apps.googleusercontent.com",
+      "clientSecret": "test-secret",
+      "redirectURI": "https://bpm.example/bpm/api/auth/google/callback",
+      "state": "state123~ref456",
+      "codeVerifier": "verifier-abcdefghijklmnopqrstuvwxyz0123456789-_",
+      "scopes": [
+        "openid",
+        "profile",
+        "email"
+      ],
+      "code": "4/code-xyz"
+    },
+    "authorizationURL": "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=test-client.apps.googleusercontent.com&redirect_uri=https%3A%2F%2Fbpm.example%2Fbpm%2Fapi%2Fauth%2Fgoogle%2Fcallback&state=state123%7Eref456&code_challenge_method=S256&code_challenge=X_alKfuhiZuETb6zlFH3M-Qb9V8bD1InLMzAuTv5qyc&scope=openid+profile+email",
+    "tokenRequest": {
+      "url": "https://oauth2.googleapis.com/token",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Basic dGVzdC1jbGllbnQuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb206dGVzdC1zZWNyZXQ=",
+        "content-length": "187",
+        "content-type": "application/x-www-form-urlencoded",
+        "user-agent": "arctic"
+      },
+      "body": "grant_type=authorization_code&code=4%2Fcode-xyz&redirect_uri=https%3A%2F%2Fbpm.example%2Fbpm%2Fapi%2Fauth%2Fgoogle%2Fcallback&code_verifier=verifier-abcdefghijklmnopqrstuvwxyz0123456789-_"
+    }
+  },
+  "apple": {
+    "inputs": {
+      "clientId": "com.example.bpm.web",
+      "teamId": "TEAM123456",
+      "keyId": "KEY1234567",
+      "redirectURI": "https://bpm.example/bpm/api/auth/apple/callback",
+      "state": "stateA",
+      "scopes": [
+        "name",
+        "email"
+      ],
+      "code": "c.apple-code",
+      "nowMs": 1800000000000
+    },
+    "authorizationURL": "https://appleid.apple.com/auth/authorize?response_type=code&client_id=com.example.bpm.web&state=stateA&scope=name+email&redirect_uri=https%3A%2F%2Fbpm.example%2Fbpm%2Fapi%2Fauth%2Fapple%2Fcallback",
+    "tokenRequest": {
+      "url": "https://appleid.apple.com/auth/token",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "content-length": "477",
+        "content-type": "application/x-www-form-urlencoded",
+        "user-agent": "arctic"
+      },
+      "bodyWithoutClientSecret": [
+        [
+          "grant_type",
+          "authorization_code"
+        ],
+        [
+          "code",
+          "c.apple-code"
+        ],
+        [
+          "redirect_uri",
+          "https://bpm.example/bpm/api/auth/apple/callback"
+        ],
+        [
+          "client_id",
+          "com.example.bpm.web"
+        ]
+      ],
+      "clientSecretHeader": {
+        "typ": "JWT",
+        "alg": "ES256",
+        "kid": "KEY1234567"
+      },
+      "clientSecretPayload": {
+        "iss": "TEAM123456",
+        "exp": 1800000300,
+        "aud": [
+          "https://appleid.apple.com"
+        ],
+        "sub": "com.example.bpm.web",
+        "iat": 1800000000
+      },
+      "signatureBytes": 64
+    }
+  }
+}

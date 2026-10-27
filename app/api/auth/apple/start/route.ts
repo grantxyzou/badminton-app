@@ -8,7 +8,8 @@
  *    cookie is written in `form_post` mode (SameSite=None; Secure) — a
  *    cross-site POST strips even Lax.
  * 2. No PKCE verifier. Apple's web flow authenticates the client with an ES256
- *    JWT client secret instead, which `arctic` generates from the `.p8` key.
+ *    JWT client secret instead, which `AppleOAuth` (lib/oauth/apple.ts) signs
+ *    from the `.p8` key.
  *
  * Because the state cookie must be Secure, **this flow cannot run over
  * http://localhost** — see docs/auth-provider-setup.md.
