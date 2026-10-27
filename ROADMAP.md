@@ -11,11 +11,11 @@
 - ❌ Generic court/venue booking platform
 - ❌ Multi-tenant **SaaS** — billing, a marketing site, a super-admin plane, subdomains. (**Multi-GROUP inside the one deployment was explicitly chosen on 2026-09-07** as the Stage-2 (#81) initiative, for the store launch: `docs/plans/multi-group.md`. Its Phase 0 ran alongside the Stats racket-fit rebuild by Grant's decision — a WIP-cap override for that phase only; Phase 1 onward is sequenced AFTER the Stats PRs merge.)
 - ❌ Any new user-facing surface that doesn't serve a named track below
-- ❌ Real-offline/PWA, native app, payments processing, social feed
+- ❌ Real-offline/PWA, card payments processing, social feed. (*Native app struck 2026-10-25:* the Capacitor shell went on both stores on 2026-10-07, `docs/plans/native-shell.md`. E-transfer matching, the ledger and store credit record money, they don't process it; taking cards stays a non-goal until it is decided on purpose, `docs/plans/payments.md` Phase 3.)
 
 **Change Rule (the gate):** every new work item must name the track or critical-path step it serves. **Names none → it's drift → GitHub issue in a `later`/parking milestone, NOT started.**
 
-**WIP cap:** one active workstream carried to *shipped-and-live-in-production* before the next starts. Unmerged branches are where drift hides (this is enforced by observation: >2 in-flight branches = stop and converge).
+**WIP cap:** one active workstream, the *focus*, carried to *shipped-and-live-in-production* before the next starts. Alongside it, at most two more Claude sessions, and each must be a small fix or review that ends in one PR or one issue (Grant, 2026-10-25: "3 sessions, 1 focus"; the `/sessions` check-in enforces it). Unmerged branches are where drift hides (this is enforced by observation: >3 in-flight branches = stop and converge).
 
 **Kill-criteria honored:** do NOT fan out value-hub tracks 1–4 until Slice-0 passes its written kill-criterion in `docs/plans/value-hub-slice-0.md`. No speculative multi-track building.
 
@@ -25,7 +25,7 @@
 
 > **Production:** https://bpm.grantzou.com/bpm (app service `vnext-badminton-app` — the name is inverted; verify by DNS, never by name)
 > **Stack:** Next.js 16 · Azure App Service (single, B1) · Cosmos DB · Anthropic Claude API
-> **Last updated:** 2026-10-24 (§3 and §5 re-pointed at the live trackers; the sections below them are a dated record)
+> **Last updated:** 2026-10-25 (LOCKED block: native app struck from the non-goals, WIP cap set to 3 sessions with 1 focus; §3 and §5 point at the live trackers, and the sections below them are a dated record)
 >
 > **This file is the index.** Detail lives elsewhere — don't duplicate it here:
 > - **What shipped** → `CHANGELOG.md` (per-version, not chronological by design)
