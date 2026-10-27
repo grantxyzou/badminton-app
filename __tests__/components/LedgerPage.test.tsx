@@ -70,9 +70,10 @@ describe('<LedgerPage />', () => {
     render(<LedgerPage onBack={() => {}} />);
     await waitFor(() => expect(screen.getByText('Collected')).toBeTruthy());
     const inOut = screen.getByRole('region', { name: 'In and out' });
-    expect(within(inOut).getByText('$240.00')).toBeTruthy();
-    expect(within(inOut).getByText('$445.00')).toBeTruthy();
-    expect(within(inOut).getByText('−$205.00')).toBeTruthy(); // a minus before the dollar, never "$-"
+    // Tiles are written short by fmtMoneyTile: whole dollars from $10, a negative in brackets, never "$-".
+    expect(within(inOut).getByText('$240')).toBeTruthy();
+    expect(within(inOut).getByText('$445')).toBeTruthy();
+    expect(within(inOut).getByText('($205)')).toBeTruthy();
     expect(within(inOut).getByText(/\$12\.00 covered by you · 1 session settled/)).toBeTruthy();
 
     const by = screen.getByRole('region', { name: 'Collected by' });
@@ -81,8 +82,9 @@ describe('<LedgerPage />', () => {
     expect(within(by).getByText('Store credit')).toBeTruthy();
 
     const owed = screen.getByRole('region', { name: 'Still owed' });
-    expect(within(owed).getAllByText('$15.00').length).toBeGreaterThan(0); // the tile (cents) and Cara's row (dollars) agree
-    expect(within(owed).getByText('$28.00')).toBeTruthy();
+    expect(within(owed).getByText('$15')).toBeTruthy(); // the tile, short
+    expect(within(owed).getByText('$15.00')).toBeTruthy(); // Cara's row keeps the exact figure
+    expect(within(owed).getByText('$28')).toBeTruthy();
     expect(within(owed).getByText('People')).toBeTruthy();
     expect(within(owed).getByText('Cara')).toBeTruthy();
 

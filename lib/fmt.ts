@@ -70,3 +70,26 @@ export function fmtTime(iso: string | undefined): string {
     return iso.slice(11, 16);
   }
 }
+
+/**
+ * A money figure for a stat TILE: three tiles side by side on a 390px phone
+ * leave each number 75px at `--fs-stat` (20px Space Grotesk), measured
+ * 2026-10-27. Cents do not fit past $9.99: "$999.99" is 77px, "($205.00)" 92.
+ *
+ * Grant's ladder (2026-10-27): $9.99 · $480 · $3.4K · $99K · $1.2M, and a
+ * negative in accounting brackets, ($205). Takes CENTS, as the ledger does.
+ * Rows and receipts keep the exact figure; this is for tiles only.
+ */
+export function fmtMoneyTile(cents: number): string {
+  const dollars = Math.abs(cents) / 100;
+  const tenth = (n: number) => n.toFixed(1).replace(/\.0$/, '');
+  // 999.5, 9,950 and 999,500 are where a rounded figure would roll into the
+  // next rung, so it takes that rung's form ($1K, never $1000 or $10.0K).
+  const s =
+    dollars < 10 ? `$${dollars.toFixed(2)}`
+    : dollars < 999.5 ? `$${Math.round(dollars)}`
+    : dollars < 9_950 ? `$${tenth(dollars / 1_000)}K`
+    : dollars < 999_500 ? `$${Math.round(dollars / 1_000)}K`
+    : `$${tenth(dollars / 1_000_000)}M`;
+  return cents < 0 ? `(${s})` : s;
+}
