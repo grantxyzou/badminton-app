@@ -29,6 +29,8 @@ const NOMINAL_W = 300;
 const PILL_PAD = 6;
 /** The corner hint's distance from the plot's edges, in px (--space-3 = 8). */
 const HINT_INSET = 8;
+/** How far the selected ring reaches past its dot, in px (the box-shadow below). */
+const SELECTED_RING_PX = 5;
 /** Ink at 10%, so the guides hold on cream as on dark. */
 const GUIDE = 'color-mix(in srgb, var(--text-primary) 10%, transparent)';
 
@@ -143,7 +145,9 @@ export default function StringMap({
       width,
       height: PLOT_H,
       selected: selectedMark >= 0 ? selectedMark : null,
-      sizes: marks.map((m) => (m.members.length > 1 ? CLUSTER_PX : DOT_PX)),
+      // The selected mark wears its ring, so its label starts past the ring,
+      // not past the dot: a pill drawn against the dot cut the ring in half.
+      sizes: marks.map((m, i) => (m.members.length > 1 ? CLUSTER_PX : DOT_PX) + (i === selectedMark ? SELECTED_RING_PX * 2 : 0)),
       unlabelled: marks.map((m) => m.members.length > 1),
       reserved: hint ? [hint] : [],
     });
@@ -196,10 +200,9 @@ export default function StringMap({
         style={{
           gridRow: 1,
           gridColumn: 2,
+          // No box: the plot is drawn straight on the card's glass (Grant,
+          // 2026-10-28), so the dashed cross is the only frame it has.
           position: 'relative',
-          borderRadius: 'var(--radius-lg)',
-          background: 'var(--inner-card-bg)',
-          border: '1px solid var(--inner-card-border)',
         }}
       >
         {/* Where to start, in the corner nothing is drawn over. */}
@@ -216,8 +219,8 @@ export default function StringMap({
           ) : (
             <>
               {/* Midpoint guides: decoration, not data. */}
-              <span aria-hidden="true" style={{ position: 'absolute', left: '50%', top: 8, bottom: 8, borderLeft: `1px dashed ${GUIDE}` }} />
-              <span aria-hidden="true" style={{ position: 'absolute', top: '50%', left: 8, right: 8, borderTop: `1px dashed ${GUIDE}` }} />
+              <span aria-hidden="true" style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, borderLeft: `1px dashed ${GUIDE}` }} />
+              <span aria-hidden="true" style={{ position: 'absolute', top: '50%', left: 0, right: 0, borderTop: `1px dashed ${GUIDE}` }} />
             </>
           )}
 
@@ -273,7 +276,7 @@ export default function StringMap({
                     border: out ? '2px solid var(--text-muted)' : 'none',
                     // No transition: the ring jumps, which is also what
                     // reduced motion asks for.
-                    boxShadow: isSel ? '0 0 0 3px var(--page-bg), 0 0 0 5px var(--text-primary)' : 'none',
+                    boxShadow: isSel ? `0 0 0 3px var(--page-bg), 0 0 0 ${SELECTED_RING_PX}px var(--text-primary)` : 'none',
                   }}
                 >
                   {many ? m.members.length : null}
