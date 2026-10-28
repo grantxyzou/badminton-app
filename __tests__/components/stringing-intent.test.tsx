@@ -11,7 +11,7 @@ import { resetSharedReads } from '../../lib/sharedRead';
 import {
   STRINGING_INTENT_KEY,
   hasStringingIntent,
-  requestStringing, requestStringingAt,
+  requestStringing, requestStringingAt, requestStringingWith,
   takeStringingIntent,
 } from '../../lib/stringingIntent';
 
@@ -127,6 +127,14 @@ describe('the tension card row', () => {
 const stepperAt = (n: number) => (_: string, el: Element | null) =>
   el?.classList.contains('fs-stat') === true && el.textContent === `${n}lb`;
 
+/** The tension is step 2 of the request sheet: answer step 1 to reach it. */
+async function toTensionStep() {
+  await screen.findByRole('radiogroup', { name: 'Which string?' });
+  fireEvent.change(screen.getByLabelText('Which racket?'), { target: { value: 'Astrox 99 Pro' } });
+  fireEvent.click(screen.getByRole('radio', { name: /BG80 white/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Next: string tension' }));
+}
+
 function renderStringing() {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
@@ -140,7 +148,7 @@ describe('arriving on Stringing', () => {
     mockApi(true);
     requestStringingAt(24);
     renderStringing();
-    await screen.findByRole('radiogroup', { name: 'Which string?' });
+    await toTensionStep();
     await waitFor(() => expect(screen.getByText(stepperAt(24))).toBeTruthy());
     expect(hasStringingIntent()).toBe(false);
   });
@@ -149,10 +157,11 @@ describe('arriving on Stringing', () => {
     mockApi(true);
     requestStringingAt(22);
     renderStringing();
-    await screen.findByRole('radiogroup', { name: 'Which string?' });
+    await toTensionStep();
     await waitFor(() => expect(screen.getByText(stepperAt(22))).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: enMessages.recovery.close }));
     fireEvent.click(await screen.findByRole('button', { name: 'Submit a request' }));
+    await toTensionStep();
     await waitFor(() => expect(screen.getByText(stepperAt(26))).toBeTruthy());
   });
 
@@ -165,5 +174,22 @@ describe('arriving on Stringing', () => {
     // Consumed once the identity is read too, which can land a render after
     // "Coming soon" — on a slow CI runner it did (PR #702).
     await waitFor(() => expect(hasStringingIntent()).toBe(false));
+  });
+});
+
+describe('arriving from a string\'s page', () => {
+  it('opens the request form with that string picked', async () => {
+    mockApi(true);
+    requestStringingWith('BG80 white');
+    renderStringing();
+    await waitFor(() => expect(screen.getByRole('radio', { name: /BG80 white/ }).getAttribute('aria-checked')).toBe('true'));
+    expect(hasStringingIntent()).toBe(false);
+  });
+
+  it('ignores a malformed marker rather than reading it as a tension', () => {
+    sessionStorage.setItem('badminton_stringing_intent', '{"string": 24}');
+    expect(takeStringingIntent()).toBeNull();
+    sessionStorage.setItem('badminton_stringing_intent', '{not json');
+    expect(takeStringingIntent()).toBeNull();
   });
 });

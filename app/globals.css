@@ -4567,6 +4567,28 @@ button.sheet-row { cursor: pointer; }
   border: 1px solid var(--inner-card-border);
 }
 
+/* A segment of the widget-style progress bar (the request sheet's Sent
+   screen): a short pill per stage, lit once reached. */
+.bpm-seg {
+  flex: 1;
+  height: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+.bpm-seg--on {
+  background: var(--accent);
+}
+
+/* A rating meter's fill (components/stringing/RatingMeters.tsx). It travels
+   to a new value on change only — the Fill recipe of the motion system — so a
+   string switched on the map slides its bars rather than snapping them. */
+.bpm-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-normal) var(--ease-out-quart);
+}
+
 /* Warn — the one answer an amber banner asks for ("Review the change"). SOLID,
    unlike its tinted siblings: it sits ON an amber banner, where a tint of the
    same amber would vanish into the fill. Dark ink on amber in both themes. */

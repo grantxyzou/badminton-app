@@ -8,7 +8,7 @@ import RegisterSwitch from '@/components/primitives/RegisterSwitch';
 import CardSkeleton, { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import StringingCard from '@/components/stringing/StringingCard';
-import { hasStringingIntent } from '@/lib/stringingIntent';
+import { hasStringingIntent, requestStringingWith } from '@/lib/stringingIntent';
 import { useTabActive } from '@/lib/tabActivity';
 import StringerJobsCard from '@/components/stringing/StringerJobsCard';
 import StringsWeOfferCard from '@/components/stringing/StringsWeOfferCard';
@@ -138,7 +138,13 @@ export default function StringingTab({ isAdmin = false, view: controlled, onView
         {current === 'strings' && (
           <RevealGroup>
             <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.shelf} />}>
-              <StringsWeOfferCard showEmpty />
+              <StringsWeOfferCard
+                showEmpty
+                // A string's page "Restring with this string": the request
+                // lives on Submit request, which remounts on the switch and
+                // reads the marker the way Stats' tension link does.
+                onRestring={(label) => { requestStringingWith(label); setView('racket'); }}
+              />
             </RevealSlot>
           </RevealGroup>
         )}

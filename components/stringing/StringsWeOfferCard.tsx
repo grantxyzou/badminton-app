@@ -89,6 +89,9 @@ interface Props {
   /** The whole register rather than one card among others: say "nothing
    *  listed" instead of rendering nothing. */
   showEmpty?: boolean;
+  /** A string's page "Restring with this string": the tab opens the request
+   *  with it picked. */
+  onRestring?: (label: string) => void;
 }
 
 /** The pricing doc's two player-facing extras. */
@@ -97,7 +100,7 @@ interface OtherPrices {
   note: string;
 }
 
-export default function StringsWeOfferCard({ showEmpty = false }: Props) {
+export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Props) {
   const t = useTranslations('home.stringing.offer');
   const tSetup = useTranslations('stats.gear.setup');
   const catalog = useCatalog('string');
@@ -480,6 +483,8 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
 
       <StringDetailSheet
         item={openEntry?.item ?? null}
+        label={openEntry?.label ?? null}
+        onRestring={onRestring}
         open={openEntry?.item != null}
         onClose={() => setOpen(null)}
         price={openEntry && shelf ? shelfPrice(shelf, openEntry.label) : undefined}

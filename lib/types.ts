@@ -1072,6 +1072,24 @@ export interface PlayerStringingJob {
   updatedAt: string;
 }
 
+/** How one string suits a member's own racket — `GET /api/stringing/fit`
+ *  (docs/plans/stringing-canvas-redesign.md, Decision 9). */
+export type FitVerdict = 'good_match' | 'worth_a_look' | 'not_for_frame';
+
+export interface StringFit {
+  /** "Yonex Astrox 88D Pro" — the frame the pairing was scored against. */
+  racket: string;
+  verdict: FitVerdict;
+  /** The engine's first reason, or null when it gave none / rejected the pair. */
+  reason: string | null;
+  frameTension: [number, number] | null;
+  stringTension: [number, number] | null;
+  /** The player's level as the string engine reads it. */
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  /** The catalog's level line for the string, e.g. "Intermediate", verbatim. */
+  stringLevel: string | null;
+}
+
 /** The diff a player is asked to agree to. No stringer, no memberId, no
  *  proposer — just what changes, from what, to what. */
 export interface PlayerPendingEdit {
