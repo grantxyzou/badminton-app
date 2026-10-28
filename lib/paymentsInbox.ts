@@ -592,7 +592,7 @@ export async function releaseHoldIfSettled(scope: GroupScope, memberId: string |
       (p) => p.waitlisted && p.id !== held.id && p.heldForUnpaid !== true && p.timestamp < held.timestamp,
     ).length;
     const room = activeCount + aheadOnList < (session?.maxPlayers ?? defaultMaxPlayers());
-    await scope.replace('players', { ...held, heldForUnpaid: false, waitlisted: room ? false : true }, sessionId);
+    await scope.replace('players', { ...held, heldForUnpaid: false, waitlisted: room ? false : true, ...(room ? { promotedAt: new Date().toISOString() } : {}) }, sessionId);
   } catch (err) {
     console.error('payments: releasing the hold failed', err);
   }

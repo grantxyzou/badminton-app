@@ -21,6 +21,7 @@ import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCook
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
+import { promoteFromWaitlist } from '@/lib/waitlistPromote';
 import type { RecoveryEvent, Session } from '@/lib/types';
 
 /**
@@ -831,6 +832,10 @@ export async function PATCH(req: NextRequest) {
     // Promoting by hand ends the unpaid hold: the row is no longer held, and a
     // stale flag would let a later payment treat it as still waiting.
     if (body.waitlisted === false) updates.heldForUnpaid = undefined;
+    // When it left the waitlist, for the late-cancel exemption; a row sent
+    // back to the waitlist is waiting again, so the stamp goes.
+    if (body.waitlisted === false && existing.waitlisted === true) updates.promotedAt = new Date().toISOString();
+    if (body.waitlisted === true) updates.promotedAt = undefined;
     if (typeof body.writtenOff === 'boolean') {
       updates.writtenOff = body.writtenOff;
       // Mutual exclusion: writtenOff:true forces paid:false. If the client
@@ -874,6 +879,12 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await scope.upsert('players', { ...existing, ...updates });
+    // An admin removed someone holding a spot: the first person waiting takes it.
+    // (Not on a move BACK to the waitlist — the first in line is often that same
+    // person, and promoting them would undo the admin.)
+    if (body.removed === true && existing.removed !== true && existing.waitlisted !== true) {
+      await promoteFromWaitlist(scope, sessionId);
+    }
     if (updates.paid === true && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && typeof existing.memberId === 'string') {
       await releaseHoldIfSettled(scope, existing.memberId);
     }
@@ -926,10 +937,11 @@ export async function DELETE(req: NextRequest) {
     if (isAdmin && typeof body.purgeOne === 'string') {
       // A miss must say so: the raw delete used to throw a Cosmos 404 here,
       // and a green 200 for a row that was never deleted is worse than that.
-      const victim = await scope.read<{ id: string; memberId?: string }>('players', body.purgeOne, sessionId);
+      const victim = await scope.read<{ id: string; memberId?: string; removed?: boolean; waitlisted?: boolean }>('players', body.purgeOne, sessionId);
       const removed = await scope.remove('players', body.purgeOne, sessionId);
       if (!removed) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       if (victim) await mirrorRowDeleted(scope, victim);
+      if (victim && victim.removed !== true && victim.waitlisted !== true) await promoteFromWaitlist(scope, sessionId);
       return NextResponse.json({ success: true });
     }
 
@@ -1042,7 +1054,11 @@ export async function DELETE(req: NextRequest) {
         console.error('DELETE player: late-cancel policy read failed, cancelling without it', err);
       }
       const verdict = lateCancelVerdict(startIso, Date.now(), policyHours);
-      if (verdict.late) {
+      // Moved off the waitlist INSIDE the window (docs/plans/waitlist-auto-promote.md):
+      // they never chose a late spot, so giving it back is not a late cancel.
+      const promotedAt = typeof player.promotedAt === 'string' ? Date.parse(player.promotedAt) : NaN;
+      const promotedLate = Number.isFinite(promotedAt) && lateCancelVerdict(startIso, promotedAt, policyHours).late;
+      if (verdict.late && !promotedLate) {
         if (body.acknowledgeLateFee !== true) {
           return NextResponse.json({ error: 'late_cancel', hours: policyHours }, { status: 409 });
         }
@@ -1061,6 +1077,8 @@ export async function DELETE(req: NextRequest) {
       cancelledBySelf: !isAdmin,
       ...lateStamp,
     });
+    // A confirmed spot just opened: the first person waiting takes it.
+    if (player.waitlisted !== true) await promoteFromWaitlist(scope, sessionId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE player error:', error);
