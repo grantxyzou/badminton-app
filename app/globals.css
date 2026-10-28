@@ -4565,7 +4565,9 @@ button.sheet-row { cursor: pointer; }
 }
 
 /* An inner row: one line of facts inside a card, label left, value right.
-   The inner-card material at the inner-row spec (12px radius, 12px padding). */
+   The inner-card material at the inner-row spec (12px radius, 12px padding).
+   Fill only, no stroke: the Stats tab's inner containers carry none, and the
+   Stringing tab follows it (Grant, 2026-10-28). */
 .bpm-inner-row {
   display: flex;
   align-items: center;
@@ -4574,7 +4576,6 @@ button.sheet-row { cursor: pointer; }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
 }
 
 /* A segment of the widget-style progress bar (the request sheet's Sent
@@ -4602,12 +4603,12 @@ button.sheet-row { cursor: pointer; }
 /* One racket on the bench or a stringer's queue (components/stringing/JobCard.tsx).
    The inner-card material at 16px radius and 16px padding — the canvas's
    bench card, a step up from the 12/12 inner row because each one carries a
-   full-width action of its own. A press dims it like any pressable card. */
+   full-width action of its own. A press dims it like any pressable card.
+   Fill only, like the inner row above. */
 .bpm-job-card {
   padding: var(--space-5);
   border-radius: var(--radius-xl);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
   transition: transform var(--duration-press) var(--ease-out-quart);
 }
 .bpm-job-card:has(> button:first-child:active) {
@@ -4993,6 +4994,13 @@ html:root[data-theme="light"] {
 [data-theme="light"] .cc-mini-card {
   background: rgba(0, 0, 0, 0.025);
   border-color: rgba(0, 0, 0, 0.08);
+}
+/* The Stringing tab draws its containers fill-only, as Stats does (Grant,
+   2026-10-28): the bench's Archived and set-up rows lose the rim here and
+   keep it everywhere else. Transparent rather than none, so the row keeps
+   its size. (0,2,1) outranks the light rule above. */
+html[data-tab="stringing"] .cc-mini-card {
+  border-color: transparent;
 }
 
 /* Session selector chip — horizontal session nav for PaymentsCard

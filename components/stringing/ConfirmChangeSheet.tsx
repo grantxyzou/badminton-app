@@ -156,7 +156,6 @@ export default function ConfirmChangeSheet({
                   padding: 'var(--space-4)',
                   borderRadius: 'var(--radius-lg)',
                   background: 'var(--inner-card-bg)',
-                  border: '1px solid var(--inner-card-border)',
                 }}
               >
                 <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{r.label}</span>

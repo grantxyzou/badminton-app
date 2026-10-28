@@ -382,8 +382,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
                   style={{
                     padding: 'var(--space-4)',
                     borderRadius: 'var(--radius-lg)',
-                    background: 'color-mix(in srgb, var(--accent) 6%, transparent)',
-                    border: '1px solid color-mix(in srgb, var(--accent) 45%, transparent)',
+                    background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 'var(--space-2)',

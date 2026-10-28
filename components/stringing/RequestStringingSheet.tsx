@@ -32,12 +32,13 @@ const ROW: React.CSSProperties = {
   padding: 'var(--space-4)',
   borderRadius: 'var(--radius-lg)',
   background: 'var(--inner-card-bg)',
-  border: '1px solid var(--inner-card-border)',
+  // Fill only, as on Stats: the radio says which row is picked, the tint
+  // backs it up. A button's own border has to be switched off by name.
+  border: 'none',
   color: 'inherit',
 };
 const ROW_ON: React.CSSProperties = {
-  background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
-  border: '1px solid color-mix(in srgb, var(--accent) 45%, transparent)',
+  background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
 };
 
 interface Props {

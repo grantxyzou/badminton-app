@@ -375,7 +375,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                       borderRadius: 'var(--radius-lg)',
                       textAlign: 'left',
                       background: on ? 'var(--banner-green-bg)' : 'var(--inner-card-bg)',
-                      border: `1px solid ${on ? 'var(--banner-green-border)' : 'var(--inner-card-border)'}`,
+                      border: 'none',
                       ...(busy || !online ? { opacity: 0.5, pointerEvents: 'none' as const } : {}),
                     }}
                   >
@@ -705,7 +705,6 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                   padding: 'var(--space-4)',
                   borderRadius: 'var(--radius-lg)',
                   background: 'var(--inner-card-bg)',
-                  border: '1px solid var(--inner-card-border)',
                 }}
               >
                 {forceError && (
