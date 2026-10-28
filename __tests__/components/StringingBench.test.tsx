@@ -344,13 +344,16 @@ describe('intake shows the stringer what the player will read', () => {
     expect(price.value).toBe('28');
   });
 
-  it('previews the BAND live as the price is typed', async () => {
-    // The stringer should never have to guess what the other side reads. This
-    // is the same rule as the API strip, made visible at the moment the number
-    // is chosen rather than discovered afterwards.
+  it('previews what the player will read, live, as the price is typed', async () => {
+    // The stringer should never have to guess what the other side reads. The
+    // player sees the exact figure now (docs/plans/stringing-canvas-redesign.md),
+    // whole when whole.
     openIntake();
     fireEvent.change(await screen.findByLabelText('Your price'), { target: { value: '30' } });
-    await waitFor(() => expect(screen.getByText('$28–32')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('$30')).toBeDefined());
+    fireEvent.change(screen.getByLabelText('Your price'), { target: { value: '34.5' } });
+    await waitFor(() => expect(screen.getByText('$34.50')).toBeDefined());
+    expect(screen.queryByText('$28–32')).toBeNull();
   });
 
   it('offers every BPM account, not just this week’s roster', async () => {

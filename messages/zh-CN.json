@@ -18,6 +18,8 @@
       "noneAction": "设置 PIN"
     },
     "stringing": {
+      "notPriced": "还没定价",
+      "quoted": "报价",
       "registers": {
         "racket": "申请穿线",
         "strings": "价格详情",
@@ -40,7 +42,9 @@
       "stringerSaveError": "保存失败，再试一次。",
       "stringerUndo": "撤销",
       "confirm": {
-        "banner": "有改动，请确认",
+        "review": "查看修改",
+        "bannerBody": "你同意之前，账单不会变。",
+        "banner": "穿线师建议了一处修改",
         "title": "待确认的修改",
         "intro": "你的 {racket} 有更新。你同意之前，账单不会变。",
         "price": "价格",
@@ -48,8 +52,8 @@
         "tension": "磅数",
         "racket": "球拍",
         "unpriced": "未定价",
-        "accept": "没问题",
-        "decline": "不用了",
+        "accept": "确认",
+        "decline": "取消这个修改请求",
         "working": "保存中…",
         "error": "保存失败，再试一次。",
         "gone": "这条修改已经处理过了，不用再确认。",
@@ -58,10 +62,10 @@
       "jobsError": "球拍加载失败。",
       "retry": "重试",
       "steps": {
-        "submit": "提交申请",
-        "dropOff": "交付球拍",
-        "track": "查看进度",
-        "collect": "取拍付款"
+        "submit": "申请",
+        "dropOff": "送拍",
+        "track": "穿线",
+        "collect": "取拍"
       },
       "requestTitle": "申请穿线",
       "requestSubtitle": "告诉穿线师你的要求，场次上把拍子交过去。",
@@ -85,7 +89,7 @@
       },
       "ready": {
         "title": "球拍穿好了",
-        "body": "{racket}（{jobNo}）已经穿好，下次场次来拿。"
+        "body": "下次场次来拿。"
       },
       "sendCta": "发送申请",
       "requestSending": "发送中…",
@@ -124,7 +128,7 @@
       },
       "title": "穿线服务",
       "subtitle": "在这里申请穿线，查看球拍进度。",
-      "soon": "敬请期待",
+      "soon": "暂停中",
       "shopUnavailable": "暂时无法确认穿线服务是否开放。",
       "offer": {
         "title": "现有拍线",

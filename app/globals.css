@@ -4554,6 +4554,39 @@ button.sheet-row { cursor: pointer; }
   }
 }
 
+/* An inner row: one line of facts inside a card, label left, value right.
+   The inner-card material at the inner-row spec (12px radius, 12px padding). */
+.bpm-inner-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+}
+
+/* Warn — the one answer an amber banner asks for ("Review the change"). SOLID,
+   unlike its tinted siblings: it sits ON an amber banner, where a tint of the
+   same amber would vanish into the fill. Dark ink on amber in both themes. */
+.cc-btn-warn {
+  background: var(--sev-warn);
+  border-color: var(--sev-warn);
+  color: #1a1206;
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .cc-btn-warn:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+}
+/* Light `--sev-warn` is a deep amber (#b45309): dark ink on it reads ~3:1,
+   white ~5.8:1. */
+[data-theme="light"] .cc-btn-warn {
+  color: #fff;
+}
+
 [data-theme="light"] .cc-btn-primary {
   background: rgba(22, 163, 74, 0.12);
   border-color: rgba(22, 163, 74, 0.45);
@@ -5414,6 +5447,9 @@ html:root[data-theme="light"] {
   padding-inline: var(--space-1);
   text-align: center;
   line-height: var(--lh-snug);
+  /* One word a step since the canvas pass (Request · Drop off · Stringing ·
+     Pick up), so each label holds one line instead of wrapping unevenly. */
+  white-space: nowrap;
   color: var(--text-muted);
 }
 .bpm-steps__label--here {

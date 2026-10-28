@@ -62,6 +62,10 @@ interface Props {
    * Crosses follow at the usual +2.
    */
   initialTension?: number | null;
+  /** Opens the form with this shelf string picked — a string's page,
+   *  "Restring with this string". Ignored when it is not on the shelf or is
+   *  out of stock, so a stale link never picks what cannot be had. */
+  initialString?: string | null;
 }
 
 /**
@@ -97,7 +101,7 @@ interface Props {
  * back to the custom path rather than presenting an empty dropdown. An empty
  * select is a dead end; a text box is not.
  */
-export default function RequestStringingSheet({ open, onClose, onRequested, gear, initialTension = null }: Props) {
+export default function RequestStringingSheet({ open, onClose, onRequested, gear, initialTension = null, initialString = null }: Props) {
   const t = useTranslations('home.stringing');
   // `close` lives in the shared namespace — every sheet in the app uses it.
   const tCommon = useTranslations('recovery');
@@ -169,6 +173,22 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     setCrosses(initialTension ? crossesFor(initialTension) : 28);
     setCustom(false);
   }, [open, initialTension]);
+
+  /* The string a string's page asked for, picked once per opening and only
+     once the shelf has answered (it loads after the sheet mounts). */
+  const [stringApplied, setStringApplied] = useState(false);
+  useEffect(() => {
+    if (open) setStringApplied(false);
+  }, [open]);
+  useEffect(() => {
+    if (!open || stringApplied || !initialString || !shelf) return;
+    setStringApplied(true);
+    const label = shelf.strings.find((l) => l.toLowerCase() === initialString.toLowerCase());
+    if (label && shelf.stock?.[label] !== 'out') {
+      setOwnString(false);
+      setPickedString(label);
+    }
+  }, [open, stringApplied, initialString, shelf]);
 
   // The own-string price (docs/plans/bench-redesign.md, PR 2). Unread or
   // failed reads as "Ask", which is what the row said before it existed.

@@ -2,10 +2,8 @@
  * The EMAIL adapter for `PlayerNotice`. One of the two doors the seam in
  * `lib/stringingNotify.ts` describes; the other is in-app.
  *
- * It takes a `PlayerNotice` and nothing else about the job, which is the whole
- * point of that type: there is no parameter here through which an exact price
- * could arrive, so "Grant quoted you $30.00" cannot be written by accident.
- * The band (`$28–32`) is all this module can see.
+ * It takes a `PlayerNotice` and nothing else about the job, so the copy here
+ * cannot drift from what the in-app card says — the quote included ("$30").
  *
  * FAILS SOFT, ALWAYS. Sending is triggered by an ADMIN moving a job along the
  * bench. If the mail server is down, the bench must still work — the admin's
@@ -54,7 +52,7 @@ async function send(to: string, subject: string, text: string): Promise<MailResu
  *  racket they are holding is how an app teaches people to ignore it. */
 export function composeEmail(notice: PlayerNotice, playerName: string, clubName: string = APP_NAME): { subject: string; text: string } | null {
   const racket = `${notice.racketLabel} (${notice.jobNo})`;
-  const price = notice.priceRange ? `\nEstimate: ${notice.priceRange}` : '';
+  const price = notice.quote ? `\nQuote: ${notice.quote}` : '';
 
   if (notice.key === 'ready_for_you') {
     const when = notice.readyBy ? `\nReady since: ${notice.readyBy}` : '';

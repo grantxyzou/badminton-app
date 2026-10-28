@@ -160,7 +160,7 @@ describe('arriving on Stringing', () => {
     mockApi(false);
     requestStringingAt(24);
     renderStringing();
-    expect(await screen.findByText('Coming soon')).toBeTruthy();
+    expect(await screen.findByText('Closed')).toBeTruthy();
     expect(screen.queryByLabelText('Which racket?')).toBeNull();
     // Consumed once the identity is read too, which can land a render after
     // "Coming soon" — on a slow CI runner it did (PR #702).

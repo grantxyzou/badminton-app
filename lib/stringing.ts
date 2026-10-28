@@ -105,46 +105,7 @@ export function playerStageIndex(status: StringingStatus): number {
   return PLAYER_TRACK.indexOf(playerStageFor(status));
 }
 
-/**
- * Width of the price band shown to players, in cents.
- *
- * WHY A QUANTISED BAND AND NOT A ± MARGIN. The obvious reading of the design's
- * "$30 exact → $28–32 shown" is a symmetric ±$2. That would defeat the whole
- * point: a symmetric band's MIDPOINT is the exact price, so every player could
- * recover the figure the band exists to hide.
- *
- * Snapping to a fixed $4 grid instead means several real prices share one band
- * — $28, $29, $30 and $31 all display as "$28–32" — so the band genuinely
- * carries less information than the price. It also reproduces the design's own
- * example exactly.
- */
-export const PRICE_BAND_CENTS = 400;
-
-export interface PriceBand {
-  lowCents: number;
-  highCents: number;
-}
-
-/**
- * The band a price falls in. Returns null for an absent price rather than a
- * band around zero — "not quoted yet" and "quoted at nothing" are different
- * things, and the UI says so differently.
- */
-export function priceBand(priceCents: number | null | undefined): PriceBand | null {
-  if (typeof priceCents !== 'number' || !Number.isFinite(priceCents) || priceCents < 0) {
-    return null;
-  }
-  const low = Math.floor(priceCents / PRICE_BAND_CENTS) * PRICE_BAND_CENTS;
-  return { lowCents: low, highCents: low + PRICE_BAND_CENTS };
-}
-
-/** "$28–32". Whole dollars: a band expressed to the cent would look exact. */
-export function formatPriceBand(band: PriceBand | null): string | null {
-  if (!band) return null;
-  return `$${Math.round(band.lowCents / 100)}–${Math.round(band.highCents / 100)}`;
-}
-
-/** "$30.00" — the stringer's own view, never sent to a player. */
+/** "$30.00" — the stringer's own view (the job detail's price input). */
 export function formatPriceExact(priceCents: number | null | undefined): string | null {
   if (typeof priceCents !== 'number' || !Number.isFinite(priceCents)) return null;
   return `$${(priceCents / 100).toFixed(2)}`;
@@ -215,4 +176,13 @@ export function crossesFor(mains: number): number {
  */
 export function isConventionalPair(mains: number, crosses: number): boolean {
   return crosses === crossesFor(mains);
+}
+
+/**
+ * The tension as a player asked for it: one number when the crosses are the
+ * usual +2 ("26" — the request sheet's "Main + Cross" stepper), both when they
+ * are not ("26/30"). The bench always shows both; the stringer needs them.
+ */
+export function playerTensionText(mains: number, crosses: number): string {
+  return isConventionalPair(mains, crosses) ? String(mains) : `${mains}/${crosses}`;
 }

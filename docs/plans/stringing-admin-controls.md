@@ -54,7 +54,8 @@ part that touches somebody else's money) is the last of the four to ship.
   otherwise.
 - **Telling the admin when a player declines.** The bench shows it; a push to the person
   already looking at the app is noise.
-- **Reopening the price wall generally.** The exact price is exposed *only* inside a
+- **Superseded 2026-10-28** by [`stringing-canvas-redesign.md`](stringing-canvas-redesign.md), which shows a player their own job's exact price. The original non-goal read:
+  **Reopening the price wall generally.** The exact price is exposed *only* inside a
   pending-change diff, because you cannot ask someone to agree to a range.
 
 ## Decisions

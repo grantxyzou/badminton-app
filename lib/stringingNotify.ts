@@ -6,23 +6,22 @@
  *
  * WHY THIS EXISTS AS A SEAM AND NOT AS THREE SEND FUNCTIONS
  * --------------------------------------------------------
- * The route's `toPlayerJob` carefully strips the stringer's exact price and
- * replaces it with a band. A notification is the same job description leaving
- * the server by a different door — and it is the door where the strip is most
- * likely to be forgotten, because the copy gets written by hand at the call
- * site rather than derived from a type.
+ * A notification is the same job description leaving the server by a
+ * different door, and the door where a rule is most likely to be forgotten,
+ * because the copy gets written by hand at the call site rather than derived
+ * from a type. So every channel's copy starts here.
  *
- * "Grant quoted you $30.00" in an email would defeat the entire price rule
- * while every API test stayed green, because no test looks at an email body.
- * So the price NEVER reaches this module in exact form: `buildPlayerNotice`
- * takes a job and does its own banding, and there is no parameter through
- * which a caller could pass the real figure.
+ * The price is EXACT since 2026-10-28 (docs/plans/stringing-canvas-redesign.md
+ * — it was a $4 band, "$28–32", until Grant: "dont hide"), and it is for the
+ * email only. The push builders never read `quote`: a banner renders on a
+ * locked phone, in front of whoever is standing there.
  *
  * The other rule carries over too: the bench's status words never appear.
  * Copy is chosen by `PlayerStage`, so a new bench status cannot leak into an
  * email by default any more than it can into the API.
  */
-import { playerStageFor, priceBand, formatPriceBand } from './stringing';
+import { playerStageFor } from './stringing';
+import { fmtMoney } from './fmt';
 import type { PlayerStage } from './stringing';
 import type { StringingJob } from './types';
 
@@ -34,8 +33,9 @@ export interface PlayerNotice {
   key: PlayerStage;
   jobNo: string;
   racketLabel: string;
-  /** "$28–32", or null when the job has not been priced. Never exact. */
-  priceRange: string | null;
+  /** "$30", exact, or null when the job has not been priced. For the EMAIL
+   *  only: a push carries no money, because it renders on a locked phone. */
+  quote: string | null;
   readyBy: string | null;
   /** Which stages are worth interrupting someone for — see `shouldNotify`. */
   channels: NotifyChannel[];
@@ -69,9 +69,7 @@ export function channelsFor(stage: PlayerStage): NotifyChannel[] {
 /**
  * The single constructor for anything a player is told about a job.
  *
- * Takes the whole job rather than a price, on purpose: there is no parameter
- * here through which an exact figure could be passed, so an adapter cannot
- * accidentally be handed one.
+ * Takes the whole job, so every adapter formats the price the same way.
  */
 export function buildPlayerNotice(job: StringingJob): PlayerNotice {
   const stage = playerStageFor(job.status);
@@ -79,7 +77,7 @@ export function buildPlayerNotice(job: StringingJob): PlayerNotice {
     key: stage,
     jobNo: job.jobNo,
     racketLabel: job.racketLabel,
-    priceRange: formatPriceBand(priceBand(job.priceCents)),
+    quote: typeof job.priceCents === 'number' ? fmtMoney(job.priceCents / 100) : null,
     readyBy: job.readyBy,
     channels: channelsFor(stage),
   };

@@ -21,9 +21,8 @@ import { formatServicePrice } from '@/lib/stringingRateCard';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
-  priceBand,
-  formatPriceBand,
 } from '@/lib/stringing';
+import { fmtMoney } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -459,7 +458,7 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
           <div>
             <DatePicker value={readyBy} onChange={setReadyBy} placeholder={t('readyByPlaceholder')} />
           </div>
-          {/* The band, shown live. The stringer should never have to guess what
+          {/* What the player will read, shown live. The stringer should never guess what
               the other side reads — that is the rule the whole feature rests on. */}
           <div
             className="fs-sm"
@@ -477,7 +476,7 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
             {priceCents === undefined || priceCents === null ? (
               <span style={{ fontWeight: 600 }}>{t('unpriced')}</span>
             ) : (
-              <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{formatPriceBand(priceBand(priceCents))}</span>
+              <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{fmtMoney(priceCents / 100)}</span>
             )}
           </div>
         </div>

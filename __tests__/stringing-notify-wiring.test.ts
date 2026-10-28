@@ -46,20 +46,18 @@ beforeEach(() => {
   delete process.env.GMAIL_APP_PASSWORD;
 });
 
-describe('composeEmail — the price rule survives the second door', () => {
+describe('composeEmail — the email says what the card says', () => {
   /**
-   * THE RULE THE WHOLE FEATURE RESTS ON. `toPlayerJob` bands the price for the
-   * API; an email is the same description leaving by another exit, and it is
-   * where a hand-written string would defeat it while every API test stayed
-   * green.
+   * An email is the same job description leaving by another door, so it
+   * quotes the figure the card shows: exact, whole dollars when whole.
    */
-  it('never puts the exact price in the body, only the band', () => {
+  it('quotes the exact price, formatted as the card formats it', () => {
     const notice = buildPlayerNotice(job({ priceCents: 3000 }));
     const copy = composeEmail(notice, 'Lin')!;
 
+    expect(copy.text).toContain('Quote: $30');
     expect(copy.text).not.toContain('30.00');
-    expect(copy.text).not.toContain('$30');
-    expect(copy.text).toContain(notice.priceRange!);
+    expect(copy.text).not.toContain('–');
   });
 
   it('says the racket is ready, and names the job', () => {
@@ -78,9 +76,9 @@ describe('composeEmail — the price rule survives the second door', () => {
     }
   });
 
-  it('omits the estimate line entirely when the job has no price yet', () => {
+  it('omits the quote line entirely when the job has no price yet', () => {
     const copy = composeEmail(buildPlayerNotice(job({ priceCents: null })), 'Lin')!;
-    expect(copy.text).not.toContain('Estimate:');
+    expect(copy.text).not.toContain('Quote:');
   });
 });
 

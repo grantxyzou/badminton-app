@@ -7,12 +7,12 @@ import StringingCard from '../../components/stringing/StringingCard';
 import enMessages from '../../messages/en.json';
 
 /**
- * The Home card. "Coming soon" is the DEFAULT, not the fallback for one case.
+ * The Submit request register: the service card, then a card per racket
+ * (docs/plans/stringing-canvas-redesign.md).
  *
- * It stays that way for a closed shop, for a failed probe, and for a throttled
- * one — anything short of a confirmed `open: true`. Rendering the live card on
- * an unknown answer would offer a button that the server answers with 409, so
- * the modest version is the honest one whenever we cannot tell.
+ * Nothing short of a confirmed `open: true` offers the request button:
+ * rendering it on an unknown answer would offer a button the server answers
+ * with 409. A closed shop says "Closed"; an unknown one says it could not check.
  */
 function wrap(hasIdentity = true) {
   return render(
@@ -44,11 +44,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('Coming soon is the default', () => {
-  it('stays Coming soon while the shop is closed', async () => {
+describe('closed is said plainly', () => {
+  it('says Closed while the shop is closed', async () => {
     mockApi(false);
     wrap();
-    expect(await screen.findByText('Coming soon')).toBeDefined();
+    expect(await screen.findByText('Closed')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 
@@ -56,11 +56,11 @@ describe('Coming soon is the default', () => {
   // probe used to render "Coming soon" — a shop that could not be READ said it
   // was closed. It now says it could not check, with Retry. The safety half is
   // unchanged: no request button on a guess, because tapping it would 409.
-  it('says it could not check, not Coming soon, when the shop answer is UNKNOWN', async () => {
+  it('says it could not check, not Closed, when the shop answer is UNKNOWN', async () => {
     mockApi(null);
     wrap();
     expect(await screen.findByText(/Couldn.t check whether the stringing service is open/)).toBeDefined();
-    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.queryByText('Closed')).toBeNull();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
@@ -69,13 +69,13 @@ describe('Coming soon is the default', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     wrap();
     expect(await screen.findByText(/Couldn.t check whether the stringing service is open/)).toBeDefined();
-    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.queryByText('Closed')).toBeNull();
   });
 
-  it('shows a skeleton, not Coming soon, while the shop has not answered', () => {
+  it('shows a skeleton, not Closed, while the shop has not answered', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
     wrap();
-    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.queryByText('Closed')).toBeNull();
   });
 });
 
@@ -84,7 +84,7 @@ describe('once the admin opens the shop', () => {
     mockApi(true);
     wrap();
     expect(await screen.findByRole('button', { name: 'Submit a request' })).toBeDefined();
-    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.queryByText('Closed')).toBeNull();
   });
 
   it('asks a signed-out visitor for a name instead of failing later', async () => {
@@ -100,68 +100,50 @@ describe('once the admin opens the shop', () => {
     expect(screen.getByText(enMessages.home.stringing.needName)).toBeDefined();
   });
 
-  it('shows a racket already with the stringer, in the player’s own words', async () => {
-    mockApi(true, [
-      {
-        id: 'j1',
-        jobNo: 'J-0001',
-        stage: 'being_strung',
-        stageIndex: 1,
-        racketLabel: 'Astrox 99 Pro',
-        stringLabel: 'BG80',
-        tensionMains: 26,
-        tensionCrosses: 28,
-        method: 'Zach',
-        priceRange: '$28–32',
-        readyBy: null,
-        paid: false,
-        createdAt: '',
-        updatedAt: '',
-      },
-    ]);
-    wrap();
-    // Behind the collapse now: with a racket in, the card opens showing the
-    // RAIL, and the racket is what expanding reveals.
-    fireEvent.click(await screen.findByRole('button', { name: /Stringing service/i }));
-
-    expect(await screen.findByText('Astrox 99 Pro')).toBeDefined();
-    // The player's vocabulary and a BAND — never "strung", never an exact figure.
-    expect(screen.getByText(/Being strung/)).toBeDefined();
-    expect(screen.getByText(/\$28–32/)).toBeDefined();
-  });
-
-  it('does NOT offer a collapse when there is no racket', async () => {
-    // With nothing in, the card is two rows and a chevron would offer to hide
-    // "Submit a request" — the only reason the card is there.
-    mockApi(true, []);
-    wrap();
-    expect(await screen.findByRole('button', { name: 'Submit a request' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Stringing service/i })).toBeNull();
-  });
-
-  it('collapses to the RAIL when a racket is in, and expands to the racket', async () => {
-    mockApi(true, [
-      { id: 'j1', jobNo: 'J-1', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox 99 Pro',
+  it('shows a racket already with the stringer, in the player’s own words, with the exact quote', async () => {
+    mockApi(true, [{ id: 'j1', jobNo: 'J-0001', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox 99 Pro',
         stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, method: 'Zach',
-        priceRange: '$28-32', amountDue: null, readyBy: null, paid: false, createdAt: '', updatedAt: '' },
-    ]);
+        quote: 30, amountDue: null, readyBy: null, paid: false, pendingEdit: null, createdAt: '', updatedAt: '' }]);
     wrap();
-    // Collapsed: the rail is the glance answer, and it is all there is.
-    expect(await screen.findByText('Track progress')).toBeDefined();
-    expect(screen.queryByText('Astrox 99 Pro')).toBeNull();
-    // The CTA stays in BOTH states. Hiding it when collapsed also caused a
-    // visible jump — `active` is null until the jobs fetch lands, so the card
-    // rendered expanded and snapped shut when data arrived.
-    expect(screen.getByRole('button', { name: 'Submit a request' })).toBeDefined();
-
-    fireEvent.click(screen.getByRole('button', { name: /Stringing service/i }));
-
-    // Expanded: the detail, and the ways in.
+    // Its own card, open: no fold to tap (Grant: "Does not need collapseing").
     expect(await screen.findByText('Astrox 99 Pro')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Submit a request' })).toBeDefined();
-    // The rail stays — it is the spine of the card, not a collapsed summary
-    // that gets swapped out for the detail.
-    expect(screen.getByText('Track progress')).toBeDefined();
+    // The player's vocabulary, never "strung" — and the stringer's figure,
+    // exactly (Grant: "dont hide"), never the old $28–32 band.
+    expect(screen.getByText('Being strung')).toBeDefined();
+    expect(screen.getByText('Quoted')).toBeDefined();
+    expect(screen.getByText('$30')).toBeDefined();
+    expect(screen.queryByText(/–/)).toBeNull();
+    // The spec line names one tension for the usual +2 pair.
+    expect(screen.getByText('J-0001 · BG80 · 26 lb')).toBeDefined();
+  });
+
+  it('says "Not priced yet" for a racket with no quote, never $0', async () => {
+    mockApi(true, [{ ...{ id: 'j1', jobNo: 'J-0001', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox 99 Pro',
+        stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, method: 'Zach',
+        quote: 30, amountDue: null, readyBy: null, paid: false, pendingEdit: null, createdAt: '', updatedAt: '' }, stage: 'with_stringer', quote: null }]);
+    wrap();
+    expect(await screen.findByText('With the stringer')).toBeDefined();
+    expect(screen.getByText('Not priced yet')).toBeDefined();
+    expect(screen.queryByText('$0')).toBeNull();
+  });
+
+  it('shows no price at all while the racket is still in the bag', async () => {
+    mockApi(true, [{ ...{ id: 'j1', jobNo: 'J-0001', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox 99 Pro',
+        stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, method: 'Zach',
+        quote: 30, amountDue: null, readyBy: null, paid: false, pendingEdit: null, createdAt: '', updatedAt: '' }, stage: 'awaiting_dropoff' }]);
+    wrap();
+    expect(await screen.findByText('Waiting for your racket')).toBeDefined();
+    expect(screen.queryByText('Quoted')).toBeNull();
+  });
+
+  it('never folds: there is no collapse control, with or without a racket', async () => {
+    mockApi(true, [{ id: 'j1', jobNo: 'J-0001', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox 99 Pro',
+        stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, method: 'Zach',
+        quote: 30, amountDue: null, readyBy: null, paid: false, pendingEdit: null, createdAt: '', updatedAt: '' }]);
+    wrap();
+    await screen.findByText('Astrox 99 Pro');
+    expect(screen.queryByRole('button', { name: /Stringing service/i })).toBeNull();
+    expect(document.querySelector('[aria-expanded]')).toBeNull();
   });
 
   it('survives a job with no stage rather than taking Home down', async () => {
@@ -207,28 +189,24 @@ describe('once the admin opens the shop', () => {
 });
 
 describe('the process strip', () => {
-  it('does NOT draw the rail until there is a job', async () => {
-    // Four steps and ~90px of vertical space describing a process nobody has
-    // started — an explanation charged against the height of a card with
-    // nothing to report. The card still offers the way in; it just does not
-    // pay for a progress display yet.
+  it('does NOT draw a strip until there is a job', async () => {
     mockApi(true, []);
     wrap();
     await screen.findByRole('button', { name: 'Submit a request' });
-    expect(screen.queryByText('Drop off your racket')).toBeNull();
-    expect(screen.queryByText('Track progress')).toBeNull();
+    expect(document.querySelector('ol.bpm-steps')).toBeNull();
   });
 
-  it('draws the rail the moment a racket is actually in', async () => {
-    mockApi(true, [
-      { id: 'j1', jobNo: 'J-1', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox',
+  it('draws one strip per racket, in the canvas words', async () => {
+    mockApi(true, [{ id: 'j1', jobNo: 'J-0001', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox 99 Pro',
         stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, method: 'Zach',
-        priceRange: '$28-32', amountDue: null, readyBy: null, paid: false, createdAt: '', updatedAt: '' },
-    ]);
+        quote: 30, amountDue: null, readyBy: null, paid: false, pendingEdit: null, createdAt: '', updatedAt: '' }, { ...{ id: 'j1', jobNo: 'J-0001', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox 99 Pro',
+        stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, method: 'Zach',
+        quote: 30, amountDue: null, readyBy: null, paid: false, pendingEdit: null, createdAt: '', updatedAt: '' }, id: 'j2', jobNo: 'J-0002', racketLabel: 'Thruster F' }]);
     wrap();
-    const strip = (await screen.findByText('Drop off your racket')).closest('ol')!;
-    expect(strip).not.toBeNull();
-    expect(strip.textContent).toContain('Track progress');
+    await screen.findByText('Thruster F');
+    const strips = document.querySelectorAll('ol.bpm-steps');
+    expect(strips).toHaveLength(2);
+    expect(strips[0].textContent).toBe('RequestDrop offStringingPick up');
   });
 
   it('drops the prose subtitle the strip replaced', async () => {
@@ -238,15 +216,14 @@ describe('the process strip', () => {
     expect(screen.queryByText(/Hand Grant your racket/i)).toBeNull();
   });
 
-  it('is a text ROW, not a button that competes with sign-up', async () => {
-    // As a filled block this outweighed the sign-up button — the week's actual
-    // decision — from inside the group below it. Home gets exactly one primary.
+  it('is the tab\'s one real button, with nothing on this tab to compete with', async () => {
+    // Grant: "This is not Request anymore. Its the next action." It was a
+    // text row while the card sat on Home under the week's sign-up.
     mockApi(true, []);
     wrap();
     const cta = await screen.findByRole('button', { name: 'Submit a request' });
-    expect(cta.className).toContain('bpm-row-link');
-    expect(cta.className).not.toContain('cc-btn-primary');
-    expect(cta.className).not.toContain('cc-btn-secondary');
+    expect(cta.className).toContain('cc-btn-primary');
+    expect(cta.className).not.toContain('bpm-row-link');
   });
 });
 
@@ -344,7 +321,7 @@ describe('the restring reminder', () => {
       {
         id: 'j1', jobNo: 'J-0001', stage: 'being_strung', stageIndex: 1,
         racketLabel: 'Astrox 99 Pro', stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 26,
-        method: '', priceRange: null, amountDue: null, readyBy: null, paid: false,
+        method: '', quote: null, amountDue: null, readyBy: null, paid: false,
         pendingEdit: null, createdAt: '', updatedAt: '',
       },
     ], weeksAgo(20));
@@ -362,38 +339,59 @@ describe('every open racket is listed', () => {
     {
       id: 'j2', jobNo: 'J-0002', stage: 'with_stringer', stageIndex: 0,
       racketLabel: 'Nanoflare 800 Pro', stringLabel: 'Exbolt 63', tensionMains: 27, tensionCrosses: 29,
-      method: '', priceRange: null, amountDue: null, readyBy: null, paid: false,
+      method: '', quote: null, amountDue: null, readyBy: null, paid: false,
       pendingEdit: null, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-02T00:00:00Z',
     },
     {
       id: 'j1', jobNo: 'J-0001', stage: 'ready_for_you', stageIndex: 2,
       racketLabel: 'Astrox 88D Pro', stringLabel: 'BG80 white', tensionMains: 26, tensionCrosses: 28,
-      method: '', priceRange: '$28–32', amountDue: 30, readyBy: null, paid: false,
+      method: '', quote: 30, amountDue: 30, readyBy: null, paid: false,
       pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', priceFrom: null, priceTo: 30 },
       createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-03T00:00:00Z',
     },
   ];
 
-  it('renders a row per open job, not only the first', async () => {
+  it('renders a card per open job, not only the first', async () => {
     mockApi(true, two);
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: /Stringing service/ }));
     expect(await screen.findByText('Nanoflare 800 Pro')).toBeDefined();
     expect(screen.getByText('Astrox 88D Pro')).toBeDefined();
+    expect(screen.getAllByRole('region')).toHaveLength(2);
   });
 
-  it('shows the ready and confirm banners for the job that has them, even when it is not the newest', async () => {
-    mockApi(true, two);
+  it('puts the banner on the racket that has the news, even when it is not the newest', async () => {
+    mockApi(true, [two[0], { ...two[1], pendingEdit: null }]);
     wrap();
-    expect(await screen.findByText('Your racket is ready')).toBeDefined();
-    expect(screen.getByText(/Astrox 88D Pro \(J-0001\) is strung/)).toBeDefined();
-    expect(screen.getByText(/Please confirm/)).toBeDefined();
+    const ready = await screen.findByText('Your racket is ready');
+    const card = ready.closest('section')!;
+    expect(card.textContent).toContain('Astrox 88D Pro');
+    expect(card.textContent).toContain('$30');
+    expect(screen.getByRole('region', { name: 'Nanoflare 800 Pro' }).textContent).not.toContain('ready');
+  });
+
+  it('asks about a change on that racket, with the price diff and one button', async () => {
+    mockApi(true, [two[0], { ...two[1], pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', priceFrom: 34, priceTo: 38 } }]);
+    wrap();
+    const banner = await screen.findByText('The stringer suggested a change');
+    const card = banner.closest('section')!;
+    expect(card.textContent).toContain('Astrox 88D Pro');
+    expect(card.textContent).toContain('$34');
+    expect(card.textContent).toContain('$38');
+    expect(screen.getAllByRole('button', { name: 'Review the change' })).toHaveLength(1);
+  });
+
+  it('opens the confirm sheet from the banner\'s button', async () => {
+    mockApi(true, [{ ...two[1], pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', priceFrom: 34, priceTo: 38 } }]);
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Review the change' }));
+    expect(await screen.findByText('A change to confirm')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Cancel this request' })).toBeDefined();
   });
 
   it('still shows the one racket when there is only one', async () => {
     mockApi(true, [two[0]]);
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: /Stringing service/ }));
     expect(await screen.findByText('Nanoflare 800 Pro')).toBeDefined();
     expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
   });

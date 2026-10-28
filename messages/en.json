@@ -18,6 +18,8 @@
       "noneAction": "Set a PIN"
     },
     "stringing": {
+      "notPriced": "Not priced yet",
+      "quoted": "Quoted",
       "registers": {
         "racket": "Submit request",
         "strings": "Pricing details",
@@ -40,7 +42,9 @@
       "stringerSaveError": "That didn't save. Try again.",
       "stringerUndo": "Undo",
         "confirm": {
-          "banner": "Something changed. Please confirm",
+          "review": "Review the change",
+          "bannerBody": "Nothing changes on your bill until you say yes.",
+          "banner": "The stringer suggested a change",
           "title": "A change to confirm",
           "intro": "Your {racket} has an update. Nothing changes on your bill until you say yes.",
           "price": "Price",
@@ -48,8 +52,8 @@
           "tension": "Tension",
           "racket": "Racket",
           "unpriced": "Not priced",
-          "accept": "That's fine",
-          "decline": "No thanks",
+          "accept": "Confirm",
+          "decline": "Cancel this request",
           "working": "Saving…",
           "error": "That didn't save. Try again.",
           "gone": "That change is no longer waiting, so there's nothing to answer.",
@@ -58,10 +62,10 @@
         "jobsError": "Couldn't load your rackets.",
         "retry": "Try again",
         "steps": {
-          "submit": "Submit a request",
-          "dropOff": "Drop off your racket",
-          "track": "Track progress",
-          "collect": "Pick up and pay"
+          "submit": "Request",
+          "dropOff": "Drop off",
+          "track": "Stringing",
+          "collect": "Pick up"
         },
         "requestTitle": "Request stringing",
         "requestSubtitle": "Tell the stringer what you'd like, then hand over the racket at the session.",
@@ -85,7 +89,7 @@
         },
         "ready": {
           "title": "Your racket is ready",
-          "body": "{racket} ({jobNo}) is strung and waiting. Grab it at the next session."
+          "body": "Grab it at the next session."
         },
         "sendCta": "Send the request",
         "requestSending": "Sending…",
@@ -124,7 +128,7 @@
         },
       "title": "Stringing service",
       "subtitle": "Request and track the progress of your racket here.",
-      "soon": "Coming soon",
+      "soon": "Closed",
       "shopUnavailable": "Couldn\u2019t check whether the stringing service is open.",
       "offer": {
         "title": "Strings in stock",

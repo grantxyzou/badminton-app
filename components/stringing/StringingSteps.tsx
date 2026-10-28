@@ -45,8 +45,8 @@ export function stepForStage(stage: PlayerStage | null): number {
  *
  * Horizontal because the four steps are a SEQUENCE and reading them as one
  * line is the point; stacked, they read as four unrelated facts. Labels are
- * small and wrap — four columns across a phone leaves room for about two words
- * a line, which is why the copy is short.
+ * one word each and hold one line: four columns across a phone leave room for
+ * about that.
  *
  * All geometry lives in `.bpm-steps*` in globals.css. Nothing here hand-types
  * a pixel: the dot size and the rail thickness are tokens, and the rail
