@@ -20,12 +20,14 @@ import CardSkeleton, { AdminTabSkeleton } from '@/components/primitives/CardSkel
 
 /**
  * Placeholder heights for the Stringing tab's registers. `service` is the
- * service card's skeleton, the size of its first frame (84px in the "Coming
- * soon" state); `shelf` is the Strings register's, measured at 390px. Here, like STATS_HEIGHTS, so the chunk fallback and
+ * service card's skeleton, the size of its most common frame (open, nothing
+ * in); `shelf` is the Strings register's, measured at 390px. Here, like STATS_HEIGHTS, so the chunk fallback and
  * the tab read one set of numbers.
  */
 export const STRINGING_HEIGHTS = {
-  service: 84,
+  // The open service card with nothing in (title, Submit a request, See
+  // pricing details): 172 at 390px, measured 2026-10-28 after the canvas pass.
+  service: 172,
   // 679 at 390px on the MAP (five strings linked to the catalog, which is
   // how production opens); the list view of three unlinked strings is 462.
   shelf: 679,

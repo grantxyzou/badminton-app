@@ -18,6 +18,10 @@ export const MIN_SPAN = 4;
 export const SAME_POINT_SPREAD = 10;
 /** The visible dot. */
 export const DOT_PX = 14;
+/** A dot standing for several strings on one point, big enough for its count. */
+export const CLUSTER_PX = 22;
+/** How far a zoomed cluster's strings sit from its centre, in px. */
+export const RING_RADIUS = 52;
 /** Between a dot and its label. */
 export const LABEL_GAP = 2;
 
@@ -104,8 +108,8 @@ export interface PlacedLabel extends Rect {
 
 const SIDES: LabelSide[] = ['right', 'left', 'above', 'below'];
 
-function rectFor(dot: Point, w: number, h: number, side: LabelSide): PlacedLabel {
-  const r = DOT_PX / 2 + LABEL_GAP;
+function rectFor(dot: Point, w: number, h: number, side: LabelSide, size = DOT_PX): PlacedLabel {
+  const r = size / 2 + LABEL_GAP;
   switch (side) {
     case 'right': return { side, x: dot.x + r, y: dot.y - h / 2, w, h };
     case 'left': return { side, x: dot.x - r - w, y: dot.y - h / 2, w, h };
@@ -139,9 +143,19 @@ export function placeLabels(input: {
   width: number;
   height: number;
   selected: number | null;
+  /** Each dot's diameter, when they differ (a cluster is bigger). */
+  sizes?: readonly number[];
+  /** Dots that want no label (a cluster shows its count instead). */
+  unlabelled?: readonly boolean[];
+  /** Space nothing may cover, e.g. the plot's corner hint. */
+  reserved?: readonly Rect[];
 }): (PlacedLabel | null)[] {
   const { dots, widths, labelHeight: h, width, height, selected } = input;
-  const dotRects: Rect[] = dots.map((d) => ({ x: d.x - DOT_PX / 2, y: d.y - DOT_PX / 2, w: DOT_PX, h: DOT_PX }));
+  const size = (i: number) => input.sizes?.[i] ?? DOT_PX;
+  const dotRects: Rect[] = [
+    ...dots.map((d, i) => ({ x: d.x - size(i) / 2, y: d.y - size(i) / 2, w: size(i), h: size(i) })),
+    ...(input.reserved ?? []),
+  ];
   const out: (PlacedLabel | null)[] = dots.map(() => null);
   const placed: Rect[] = [];
   const order = selected !== null && selected >= 0 && selected < dots.length
@@ -149,7 +163,8 @@ export function placeLabels(input: {
     : dots.map((_, i) => i);
 
   for (const i of order) {
-    const candidates = SIDES.map((side) => rectFor(dots[i], widths[i], h, side));
+    if (input.unlabelled?.[i] && i !== selected) continue;
+    const candidates = SIDES.map((side) => rectFor(dots[i], widths[i], h, side, size(i)));
     let pick = candidates.find((r) => inside(r, width, height) && !dotRects.some((d) => overlaps(r, d)) && !placed.some((p) => overlaps(r, p))) ?? null;
     if (!pick && i === selected) {
       pick = candidates.find((r) => inside(r, width, height)) ?? clampInto(candidates[0], width, height);
@@ -168,4 +183,39 @@ function clampInto(r: PlacedLabel, width: number, height: number): PlacedLabel {
     x: Math.max(0, Math.min(width - r.w, r.x)),
     y: Math.max(0, Math.min(height - r.h, r.y)),
   };
+}
+
+/** Strings that share one point on the map: their indices, in input order. */
+export interface Cluster {
+  key: string;
+  members: number[];
+}
+
+/**
+ * Strings with IDENTICAL scores, grouped (Grant, on the crowded map: "How do we
+ * handel large list of maps? they overlapp"). Spreading them 10px apart stopped
+ * two dots hiding each other and still left five labels fighting for one
+ * spot; one dot with its count, opened by a tap, does not.
+ */
+export function clusterPoints(items: readonly MapInput[]): Cluster[] {
+  const byKey = new Map<string, number[]>();
+  items.forEach((i, n) => {
+    const key = `${i.durability}|${i.value}`;
+    byKey.set(key, [...(byKey.get(key) ?? []), n]);
+  });
+  return [...byKey.entries()].map(([key, members]) => ({ key, members }));
+}
+
+/**
+ * A zoomed cluster's strings, evenly round a ring centred in the plot,
+ * starting at the top and going clockwise. One string sits at the centre.
+ */
+export function ringPositions(count: number, width: number, height: number, radius = RING_RADIUS): Point[] {
+  const cx = width / 2;
+  const cy = height / 2;
+  if (count <= 1) return [{ x: cx, y: cy }];
+  return Array.from({ length: count }, (_, i) => {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / count;
+    return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  });
 }

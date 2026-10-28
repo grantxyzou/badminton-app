@@ -2453,6 +2453,12 @@ html:root .ink-button {
     color: var(--text-primary);
   }
 }
+/* Flush with the content edge, for a quiet link that reads as part of a
+   left-aligned column (the request sheet's "I have a racket that is not
+   listed here" — the canvas, 2026-10-28) rather than a centred aside. */
+.link-quiet--flush {
+  padding-inline: 0;
+}
 
 .btn-ghost {
   background: var(--btn-ghost-bg);
@@ -4587,6 +4593,21 @@ button.sheet-row { cursor: pointer; }
   inset: 0 auto 0 0;
   border-radius: var(--radius-pill);
   transition: width var(--duration-normal) var(--ease-out-quart);
+}
+
+/* One racket on the bench or a stringer's queue (components/stringing/JobCard.tsx).
+   The inner-card material at 16px radius and 16px padding — the canvas's
+   bench card, a step up from the 12/12 inner row because each one carries a
+   full-width action of its own. A press dims it like any pressable card. */
+.bpm-job-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  transition: transform var(--duration-press) var(--ease-out-quart);
+}
+.bpm-job-card:has(> button:first-child:active) {
+  transform: scale(0.98);
 }
 
 /* Warn — the one answer an amber banner asks for ("Review the change"). SOLID,

@@ -142,6 +142,8 @@ describe('the intake suggests the player’s own gear', () => {
       return Promise.resolve({ ok: true, status: 200, json: async () => body() } as Response);
     }));
     wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
+    // The name list appears once something is typed (the Recent chips stand in before).
+    fireEvent.change(await screen.findByLabelText('Search by name'), { target: { value: 'Lin' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Lin' }));
     const racket = screen.getByLabelText('Racket, e.g. Astrox 99 Pro') as HTMLInputElement;
     const rows = await screen.findByRole('group', { name: "Lin's rackets" });
@@ -166,6 +168,8 @@ describe('the intake suggests the player’s own gear', () => {
       return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as Response);
     }));
     wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
+    // The name list appears once something is typed (the Recent chips stand in before).
+    fireEvent.change(await screen.findByLabelText('Search by name'), { target: { value: 'Lin' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Lin' }));
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByRole('group', { name: "Lin's rackets" })).toBeNull();

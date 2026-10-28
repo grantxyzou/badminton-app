@@ -7,7 +7,11 @@ import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
-import { dueFor, dueStyle, todayIso, formatReadyBy } from '@/lib/stringingDue';
+import { dueFor, todayIso } from '@/lib/stringingDue';
+import { fmtMoney } from '@/lib/fmt';
+import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
+import JobCard, { nextStatusOf } from '@/components/stringing/JobCard';
+import CardHeader from '@/components/primitives/CardHeader';
 import type { StringingJob } from '@/lib/types';
 import SwipeRow from '@/components/primitives/SwipeRow';
 import ActionRow from '@/components/primitives/ActionRow';
@@ -20,9 +24,7 @@ import OtherPricesCard from './OtherPricesCard';
 import HoleCountsCard from './HoleCountsCard';
 import { useHoleLookup } from '@/components/stringing/useHoleLookup';
 import { StateLink } from '@/components/primitives/StateCard';
-import StatusBadge from '@/components/primitives/StatusBadge';
 import RegisterSwitch from '@/components/primitives/RegisterSwitch';
-import { STATUS_TONE } from '@/components/stringing/statusTone';
 import ListRow from '@/components/primitives/ListRow';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -64,6 +66,8 @@ interface Props {
 
 export default function StringingPage({ onBack, crumb, embedded = false, onTakeover }: Props) {
   const t = useTranslations('admin.stringing');
+  // The next-step words, shared with a stringer's queue, live with the player copy.
+  const tPlayer = useTranslations('home.stringing');
   const online = useOnline();
   const [jobs, setJobs] = useState<StringingJob[] | null>(null);
   // Tri-state, not `jobs ?? []`. A failed load must never render as an empty
@@ -90,6 +94,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   /* One target at a time, so only one sheet can ever be open — same shape as
      PaymentsCard's per-row menu. */
   const [actionTarget, setActionTarget] = useState<StringingJob | null>(null);
+  /** The job a card's own next-step button is moving, and whether it failed. */
+  const [moving, setMoving] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState(false);
   /* Two-step, in-sheet. Reset every time the sheet opens, so a confirm armed
@@ -285,13 +292,52 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
    * `pointer-events: none` above it and the menu button opting back in. That is
    * the same shape `PaymentsCard` arrived at.
    */
+  /** The next step from the card itself — the one tap a bench is for. A
+   *  status move notifies the player (the route does), like the job screen's. */
+  async function advance(job: StringingJob, status: StringingStatus) {
+    if (moving || !online) return;
+    setMoving(job.id);
+    setMoveError(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: job.memberId, status }),
+      });
+      if (!res.ok) throw new Error(`advance ${res.status}`);
+      await Promise.all([load(), loadArchive()]);
+    } catch {
+      setMoveError(true);
+    } finally {
+      setMoving(null);
+    }
+  }
+
+  async function markPaid(job: StringingJob) {
+    if (moving || !online) return;
+    setMoving(job.id);
+    setMoveError(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: job.memberId, paid: true }),
+      });
+      if (!res.ok) throw new Error(`paid ${res.status}`);
+      await loadArchive();
+    } catch {
+      setMoveError(true);
+    } finally {
+      setMoving(null);
+    }
+  }
+
   function renderJob(job: StringingJob, inArchive: boolean) {
-    const tone = STATUS_TONE[job.status] ?? STATUS_TONE.requested;
-    const due = dueFor(job, today);
     const pinned = typeof job.prioritizedAt === 'string';
     // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
     // archive, where the whole risk is money quietly going out of sight.
     const owed = isBillable(job) ? (job.priceCents ?? 0) / 100 : null;
+    const next = inArchive ? null : nextStatusOf(job.status, STRINGING_FLOW);
 
     return (
       <SwipeRow
@@ -314,125 +360,75 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           onAction: () => void patchJob(job, { archived: !inArchive }),
         }}
       >
-        <div className="glass-card p-4" style={{ position: 'relative' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedId(job.id);
-              setView('detail');
-            }}
-            aria-label={t('actions.open')}
-            style={{ position: 'absolute', inset: 0 }}
-          />
-          <div
-            style={{
-              position: 'relative',
-              pointerEvents: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--space-2)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
-              {/* Grows to fill the row, so the status sits beside the menu at the
-                  far edge. With three children under space-between it floated
-                  in the middle of the row, aligned to nothing (Grant's
-                  screenshot, 2026-10-12). */}
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flex: '1 1 auto', minWidth: 0 }}>
-                {pinned && (
-                  <span className="material-icons icon-xs" style={{ color: 'var(--accent)' }}>
-                    star
-                  </span>
-                )}
-                <span
-                  className="fs-lg"
-                  style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                >
-                  {job.memberName}
-                </span>
-                <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                  {job.jobNo}
-                </span>
-              </span>
-              <span style={{ flex: '0 0 auto' }}>
-                <StatusBadge variant="state" tone={tone}>{t(`status.${job.status}`)}</StatusBadge>
-              </span>
+        <JobCard
+          job={job}
+          today={today}
+          holes={holes.forLabel(job.racketLabel).holes}
+          pinned={pinned}
+          owed={inArchive ? owed : null}
+          onOpen={() => {
+            setSelectedId(job.id);
+            setView('detail');
+          }}
+          openLabel={t('actions.open')}
+          more={
+            <button
+              type="button"
+              onClick={() => {
+                setActionTarget(job);
+                setActionError(false);
+                setConfirmingDelete(false);
+                setDeleteError(false);
+              }}
+              aria-label={t('actions.more', { name: job.memberName })}
+              /* A 44px hit area, pulled in by negative margins so the glyph
+                 does not move (audit 2026-10-11, A3). */
+              style={{
+                color: 'var(--ink-faint)',
+                minWidth: 44,
+                minHeight: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: 'calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) 0',
+              }}
+            >
+              <span className="material-icons icon-md">more_vert</span>
+            </button>
+          }
+          action={
+            next ? (
               <button
                 type="button"
-                onClick={() => {
-                  setActionTarget(job);
-                  setActionError(false);
-                  setConfirmingDelete(false);
-                  setDeleteError(false);
-                }}
-                aria-label={t('actions.more', { name: job.memberName })}
-                /* 18×24 measured in the browser (audit 2026-10-11, A3), under
-                   the 24px floor of WCAG 2.5.8. A 44px hit area, pulled in by
-                   negative margins so the glyph does not move. */
-                style={{
-                  pointerEvents: 'auto',
-                  flex: '0 0 auto',
-                  color: 'var(--ink-faint)',
-                  minWidth: 44,
-                  minHeight: 44,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: 'calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) 0',
-                }}
+                className="cc-btn cc-btn-secondary"
+                style={{ flex: 1 }}
+                disabled={moving !== null || !online}
+                onClick={() => void advance(job, next)}
               >
-                <span className="material-icons icon-md">more_vert</span>
+                {tPlayer('stringerAdvance', { status: tPlayer(`next.${next}`) })}
               </button>
-            </div>
-            <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>
-              {job.racketLabel}
-              {holes.forLabel(job.racketLabel).holes !== null && (
-                <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
-                  {' · '}{t('holes.holesValue', { count: holes.forLabel(job.racketLabel).holes as number })}
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
-              {/* Words in the body face, the tension in mono: mono is for data,
-                  and a string's name is not. --text-muted, the secondary ink
-                  the rest of the row's helper text uses. */}
-              <span className="fs-sm" style={{ color: 'var(--text-muted)', minWidth: 0 }}>
-                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} ·{' '}
-                <span style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
-                  {job.tensionMains}/{job.tensionCrosses} {t('lb')}
-                </span>
-              </span>
-              {/* URGENCY, not price. A bench is scanned for what is late, and
-                  the exact figure lives one tap away on the detail screen —
-                  where it is also the only place it belongs.
-
-                  The archive is the one exception, and only for money still
-                  outstanding: archiving does not forgive a debt, so the row
-                  that hides the job has to say what it is hiding. */}
-              {inArchive && owed !== null ? (
-                <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>
-                  {t('archive.stillOwed', { amount: owed.toFixed(2) })}
-                </span>
-              ) : (
-                <span className="fs-sm" style={{ ...dueStyle(due.tone), flex: '0 0 auto' }}>
-                  {/* Suppressed for a picked-up job: the status chip on the row
-                      above already says "Picked up", and printing it twice in
-                      one row is noise on a screen whose whole job is scanning. */}
-                  {due.key === 'pickedUp'
-                    ? ''
-                    : due.key === 'overdue'
-                      ? t('due.overdue', { days: due.days ?? 0 })
-                      : due.key === 'onDate'
-                        ? (formatReadyBy(due.date) ?? t('due.noDate'))
-                        : t(`due.${due.key}`)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+            ) : inArchive && owed !== null ? (
+              <button
+                type="button"
+                className="cc-btn cc-btn-secondary"
+                style={{ flex: 1 }}
+                disabled={moving !== null || !online}
+                onClick={() => void markPaid(job)}
+              >
+                {t('markPaid')}
+              </button>
+            ) : undefined
+          }
+        />
       </SwipeRow>
     );
   }
+
+  /* The intake's Recent chips: the members on the newest jobs, open or
+     archived, each once. */
+  const recentMembers = [...(jobs ?? []), ...(archivedJobs ?? [])]
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .reduce<{ id: string; name: string }[]>((acc, j) => (acc.some((m) => m.id === j.memberId) ? acc : [...acc, { id: j.memberId, name: j.memberName }]), []);
 
   if (view === 'detail' && selected) {
     return (
@@ -467,9 +463,17 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   };
   const actionSheet = (
     <BottomSheet open={actionTarget !== null} onClose={closeActions} ariaLabel={t('actions.title')}>
+      {/* Titled with the racket, the bench's unit (the canvas, 2026-10-28):
+          a member with two rackets in made "Lin" ambiguous. */}
       <BottomSheetHeader onClose={closeActions} closeLabel={t('actions.close')}>
-        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
-          {actionTarget?.memberName ?? ''}
+        <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{actionTarget?.racketLabel ?? ''}</span>
+          {actionTarget && (
+            <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)' }}>{actionTarget.jobNo}</span>
+              {' · '}{tPlayer('stringerFor', { name: actionTarget.memberName })}
+            </span>
+          )}
         </span>
       </BottomSheetHeader>
       <BottomSheetBody>
@@ -533,7 +537,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                   ? t('actions.deleteConfirmOwed', {
                       name: actionTarget.memberName,
                       racket: actionTarget.racketLabel,
-                      amount: targetOwed.toFixed(2),
+                      amount: fmtMoney(targetOwed),
                     })
                   : t('actions.deleteConfirm', {
                       name: actionTarget.memberName,
@@ -586,7 +590,18 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           {!archiveError && archivedJobs !== null && archivedJobs.length === 0 && (
             <EmptyState icon="inventory_2">{t('archive.empty')}</EmptyState>
           )}
-          {archivedJobs?.map((job) => renderJob(job, true))}
+          {moveError && <p className="field-error" role="alert">{t('actions.error')}</p>}
+          {archivedJobs !== null && archivedJobs.length > 0 && (
+            <section className="glass-card p-5 flex flex-col gap-3" aria-label={t('archive.pickedUp')}>
+              <CardHeader
+                compact
+                icon="inventory_2"
+                title={t('archive.pickedUp')}
+                subtitle={t('archive.summary', { count: archivedJobs.length, owing: archivedJobs.filter((j) => isBillable(j)).length })}
+              />
+              {archivedJobs.map((job) => renderJob(job, true))}
+            </section>
+          )}
         </div>
         {actionSheet}
       </div>
@@ -618,6 +633,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       <div className="animate-slideInRight">
         <StringingIntake
           crumb={crumb}
+          recent={recentMembers}
           onBack={() => setView('bench')}
           onCreated={() => {
             setView('bench');
@@ -750,7 +766,24 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           <EmptyState icon="sports_tennis">{mine ? t('emptyMine') : t('empty')}</EmptyState>
         )}
 
-        {jobs?.map((job) => renderJob(job, false))}
+        {/* ONE card holding a card per racket (the canvas, 2026-10-28; Grant:
+            "clean up this card"), with the count and what is late in its
+            header — the line a bench is scanned for. */}
+        {jobs !== null && jobs.length > 0 && (
+          <section className="glass-card p-5 flex flex-col gap-3" aria-label={t('jobsTitle')}>
+            <CardHeader
+              compact
+              icon="sports_tennis"
+              title={t('jobsTitle')}
+              subtitle={(() => {
+                const late = jobs.filter((j) => dueFor(j, today).key === 'overdue').length;
+                return late > 0 ? t('jobsSummaryLate', { open: jobs.length, late }) : t('jobsSummary', { open: jobs.length });
+              })()}
+            />
+            {moveError && <p className="field-error" role="alert">{t('actions.error')}</p>}
+            {jobs.map((job) => renderJob(job, false))}
+          </section>
+        )}
 
         {/* The page's one accent action. */}
         <button

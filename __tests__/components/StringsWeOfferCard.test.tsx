@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import StringsWeOfferCard from '../../components/stringing/StringsWeOfferCard';
 import { resetCatalogCache } from '@/components/stats/useCatalog';
@@ -63,15 +63,20 @@ describe('the map', () => {
     const pressed = within(map).getAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true');
     expect(pressed.map((b) => b.getAttribute('aria-label'))).toEqual(['Yonex Exbolt 63: power 9 out of 10, durability 5 out of 10']);
     expect(screen.getByText('$32')).toBeDefined();
-    expect(screen.getByText('Power 9/10 · Durability 5/10 · Control 7/10')).toBeDefined();
-    expect(screen.getByText(enMessages.home.stringing.offer.subtitleMap)).toBeDefined();
+    // The card's ratings are meters now, with whose ratings they are.
+    expect(screen.getAllByText('Power').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Durability').length).toBeGreaterThan(0);
+    // The subtitle names the view; the icon beside it switches.
+    expect(screen.getByText('Map view')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Show as a list' })).toBeDefined();
   });
 
   it('moves the panel when a dot is tapped, without opening the sheet', async () => {
     mockApi(['BG80', 'BG66', 'BG65']);
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /^Yonex BG65:/ }));
-    expect(screen.getByText('BG65 is for you')).toBeDefined();
+    // The panel follows: the card names the string the dot stands for.
+    expect(screen.getAllByText('Yonex BG65').length).toBeGreaterThan(0);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -93,11 +98,41 @@ describe('the map', () => {
     expect(screen.getByText('House').closest('button')).toBeNull();
   });
 
-  it('shows a legend only when some string has a band', async () => {
-    mockApi(['BG80', 'BG66', 'BG65']);
+  it('draws no stock legend, and says stock on the card only when it is low or out', async () => {
+    // Grant, on the map: "Does user care about stock here?"
+    mockApi(['BG80', 'BG66', 'BG65'], { stock: { BG80: 'in', BG66: 'low', BG65: 'in' } });
     wrap();
     await screen.findByRole('group', { name: 'Strings by power and durability' });
     expect(screen.queryByText('In stock')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
+    expect(screen.getByText('Low on stock')).toBeDefined();
+  });
+
+  it('puts strings with identical scores on ONE dot with their count, and zooms in on a tap', async () => {
+    // Grant: "How do we handel large list of maps? they overlapp".
+    resetCatalogCache();
+    CATALOG.push(str('s-twin', 'BG80 Twin', 8, 6));
+    try {
+      const links = { BG80: 's-80', BG66: 's-66', BG65: 's-65', Twin: 's-twin' };
+      vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+        if (String(url).includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
+        return Promise.resolve({ ok: true, json: async () => ({ strings: ['BG80', 'Twin', 'BG66', 'BG65'], links }) } as Response);
+      }));
+      wrap();
+      const cluster = await screen.findByRole('button', { name: '2 strings: BG80, BG80 Twin' });
+      expect(cluster.textContent).toBe('2');
+      fireEvent.click(cluster);
+      // Zoomed: only the two, a way back, and what they share.
+      const map = screen.getByRole('group', { name: '2 strings at Power 8 · Durability 6' });
+      expect(within(map).getAllByRole('button')).toHaveLength(2);
+      expect(screen.getByRole('status').textContent).toBe('2 strings at Power 8 · Durability 6');
+      fireEvent.click(within(map).getByRole('button', { name: /^Yonex BG80 Twin:/ }));
+      expect(within(map).getByRole('button', { name: /^Yonex BG80 Twin:/ }).getAttribute('aria-pressed')).toBe('true');
+      fireEvent.click(screen.getByRole('button', { name: 'All strings' }));
+      expect(screen.getByRole('group', { name: 'Strings by power and durability' })).toBeDefined();
+    } finally {
+      CATALOG.pop();
+    }
   });
 });
 
@@ -146,7 +181,8 @@ describe('the list', () => {
   it('is one tap away, sorted by power, and remembered', async () => {
     mockApi(['BG65', 'BG80', 'BG66']);
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: 'List' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
+    expect(screen.getByText('List view')).toBeDefined();
     expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
     const rows = screen.getAllByText(/^Yonex /).map((n) => n.textContent);
     expect(rows).toEqual(['Yonex BG66', 'Yonex BG80', 'Yonex BG65']);
@@ -157,8 +193,39 @@ describe('the list', () => {
     mockApi(['BG80', 'BG66', 'Unrated']);
     wrap();
     await screen.findByText('Yonex BG80');
-    expect(screen.queryByRole('button', { name: 'List' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show as a list' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
+  });
+
+  it('opens on the list for a long shelf, unless the member chose the map', async () => {
+    resetCatalogCache();
+    const extra = Array.from({ length: 6 }, (_, i) => str(`s-x${i}`, `Extra ${i}`, 4 + i, 4 + i));
+    CATALOG.push(...extra);
+    try {
+      const labels = ['BG80', 'BG66', 'BG65', ...extra.map((e) => e.model)];
+      const links: Record<string, string> = { BG80: 's-80', BG66: 's-66', BG65: 's-65', ...Object.fromEntries(extra.map((e) => [e.model, e.id])) };
+      vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+        if (String(url).includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
+        return Promise.resolve({ ok: true, json: async () => ({ strings: labels, links }) } as Response);
+      }));
+      wrap();
+      expect(await screen.findByText('List view')).toBeDefined();
+      cleanup();
+      localStorage.setItem('bpm:strings-view', 'map');
+      wrap();
+      expect(await screen.findByText('Map view')).toBeDefined();
+    } finally {
+      CATALOG.splice(CATALOG.length - extra.length, extra.length);
+    }
+  });
+
+  it('names a row by power, control and durability, with no stock tag', async () => {
+    mockApi(['BG65', 'BG80', 'BG66'], { stock: { BG80: 'low' } });
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
+    const row = screen.getByText('Yonex BG80').closest('button')!;
+    expect(row.textContent).toContain('Power 8 · Control 7 · Durability 6');
+    expect(row.textContent).not.toContain('Low on stock');
   });
 
   it('shows "Ask" for a null price and nothing when none is set', async () => {
@@ -194,30 +261,21 @@ function wrapWith(node: React.ReactNode) {
   return render(<NextIntlClientProvider locale="en" messages={enMessages}>{node}</NextIntlClientProvider>);
 }
 
-describe('the rest of the prices', () => {
-  it('lists a restring with your own string, and the stringer’s note', async () => {
+describe('the stringer\'s note', () => {
+  // "Bring your own string" and its price left this card for the request
+  // sheet's own row, where the choice is made (docs/plans/stringing-canvas-redesign.md).
+  it('shows the note, and no own-string row', async () => {
     mockWithPricing(['BG80', 'BG66'], { ownStringCents: 1800, note: 'Ready in about a week.' });
     wrapWith(<StringsWeOfferCard />);
-    const own = await screen.findByText('Bring your own string');
-    expect(within(own.parentElement as HTMLElement).getByText('$18')).toBeDefined();
-    expect(screen.getByText('Ready in about a week.')).toBeDefined();
+    expect(await screen.findByText('Ready in about a week.')).toBeDefined();
+    expect(screen.queryByText('Bring your own string')).toBeNull();
+    expect(screen.queryByText('$18')).toBeNull();
   });
 
-  it('says Ask when no own-string price is set', async () => {
-    mockWithPricing(['BG80', 'BG66'], { ownStringCents: null, note: '' });
-    wrapWith(<StringsWeOfferCard />);
-    const own = await screen.findByText('Bring your own string');
-    expect(within(own.parentElement as HTMLElement).getByText('Ask')).toBeDefined();
-  });
-
-  it('says the other prices did not load, rather than guess or go quiet', async () => {
-    // The Strings register is the only place the own-string price lives now,
-    // so a failed read must be visible (local review, 2026-10-12).
+  it('says the note did not load, rather than go quiet', async () => {
     mockWithPricing(['BG80', 'BG66'], 'fail');
     wrapWith(<StringsWeOfferCard />);
     expect((await screen.findByRole('alert')).textContent).toBe(enMessages.home.stringing.offer.pricesError);
-    expect(screen.queryByText('Bring your own string')).toBeNull();
-    expect(screen.queryByText('Ask')).toBeNull();
   });
 });
 
@@ -263,8 +321,7 @@ describe('failures and unknowns (design-system audit, 2026-10-12)', () => {
     wrapWith(<StringsWeOfferCard />);
     await screen.findByText(O.pricesError);
     fireEvent.click(screen.getByRole('button', { name: O.retry }));
-    expect(await screen.findByText('Bring your own string')).toBeDefined();
-    expect(screen.getByText('$18')).toBeDefined();
+    await waitFor(() => expect(screen.queryByText(O.pricesError)).toBeNull());
   });
 
   it('keeps the card on screen while the string list is asked for again', async () => {
@@ -292,7 +349,7 @@ describe('failures and unknowns (design-system audit, 2026-10-12)', () => {
     wrap();
     await screen.findByText('Yonex BG80');
     expect(screen.getByText(O.subtitle)).toBeDefined();
-    expect(screen.queryByText(O.subtitleMap)).toBeNull();
+    expect(screen.queryByText('Map view')).toBeNull();
   });
 });
 

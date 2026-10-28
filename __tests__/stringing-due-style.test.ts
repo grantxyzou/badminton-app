@@ -20,11 +20,16 @@ describe('dueStyle', () => {
     expect(dueStyle('soon').color).toContain('--pill-waitlist-text');
   });
 
-  it('is the only copy: neither row keeps its own colour table', () => {
-    for (const f of ['components/admin/CommandCenter/StringingPage.tsx', 'components/stringing/StringerJobsCard.tsx']) {
+  it('is the only copy: both lists draw their rows with JobCard, which uses it', () => {
+    // The bench and a stringer's queue share one card since the canvas pass
+    // (docs/plans/stringing-canvas-redesign.md), so the due colours live there.
+    expect(readFileSync('components/stringing/JobCard.tsx', 'utf8')).toMatch(/dueStyle\(/);
+    for (const f of ['components/admin/CommandCenter/StringingPage.tsx', 'components/stringing/StringerJobsCard.tsx', 'components/stringing/JobCard.tsx']) {
       const src = readFileSync(f, 'utf8');
       expect(src, f).not.toMatch(/const DUE_FG/);
-      expect(src, f).toMatch(/dueStyle\(/);
+    }
+    for (const f of ['components/admin/CommandCenter/StringingPage.tsx', 'components/stringing/StringerJobsCard.tsx']) {
+      expect(readFileSync(f, 'utf8'), f).toMatch(/<JobCard/);
     }
   });
 });

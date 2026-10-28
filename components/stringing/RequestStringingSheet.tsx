@@ -432,7 +432,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
           {kitUnreadable && gear?.loadError ? t('kitUnavailable') : t('noRacketsYet')}
         </p>
       ) : (
-        <button type="button" onClick={() => setCustomRacket((v) => !v)} className="link-quiet" style={{ justifySelf: 'start' }}>
+        <button type="button" onClick={() => setCustomRacket((v) => !v)} className="link-quiet link-quiet--flush" style={{ justifySelf: 'start' }}>
           {typingRacket ? t('backToKit') : t('otherRacket')}
         </button>
       )}
@@ -618,7 +618,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
         <button
           type="button"
           onClick={() => (splitTension ? setSplitTension(false) : splitApart())}
-          className="link-quiet"
+          className="link-quiet link-quiet--flush"
           style={{ justifySelf: 'start' }}
         >
           {splitTension ? t('standardRequest') : t('customRequest')}

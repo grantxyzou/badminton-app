@@ -66,6 +66,7 @@ export const ICON_NAMES = [
   'lock',
   'lock_clock',
   'logout',
+  'map',
   'more_horiz',
   'more_vert',
   'notifications',

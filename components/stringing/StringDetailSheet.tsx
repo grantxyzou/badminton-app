@@ -265,7 +265,8 @@ function FitSection({ state, onRetry }: { state: FitState; onRetry: () => void }
       {/* The section's place, held while the engine answers: an absent
           section that pops in would push the colours and the button down. */}
       {state.status === 'loading' ? (
-        <CardSkeleton height={148} />
+        // 186 at 390px, measured 2026-10-28 (a reason on two lines, both checks).
+        <CardSkeleton height={186} />
       ) : state.status === 'failed' ? (
         <ErrorState
           message={t('fitError')}
