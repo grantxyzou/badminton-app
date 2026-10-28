@@ -16,7 +16,9 @@ import {
   TENSION_MAX_LB,
   crossesFor,
   isConventionalPair,
+  playerTensionText,
 } from '@/lib/stringing';
+import { usePush } from '@/lib/usePush';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -62,23 +64,31 @@ interface Props {
    * Crosses follow at the usual +2.
    */
   initialTension?: number | null;
+  /** Opens the form with this shelf string picked — a string's page,
+   *  "Restring with this string". Ignored when it is not on the shelf or is
+   *  out of stock, so a stale link never picks what cannot be had. */
+  initialString?: string | null;
 }
 
 /**
- * A player asking for a restring — the intake form.
+ * A player asking for a restring — the intake form, in TWO STEPS
+ * (docs/plans/stringing-canvas-redesign.md, Decision 6):
  *
- * TWO STATES, AND THE SIMPLE ONE IS THE DEFAULT
+ *   1. what — the racket, the string, its colour;
+ *   2. how tight — the tension, a summary with the price, and Send.
  *
- * Standard: pick a string the club stocks, and set ONE tension
- * number. The crosses are derived at +2 lb (`crossesFor`), because that is
- * what a stringer would have chosen anyway — cross strings are shorter and
- * woven through the mains, so they finish looser at the same reference
- * tension. Asking a player for two numbers invites a pair nobody would pick.
+ * Then the Sent screen: what to do next (drop the racket off), the job's
+ * progress as the widget draws it, and the one opt-in that makes "get notified"
+ * true — Turn on notifications.
  *
- * Custom: the string becomes free text and the tension splits into mains and
- * crosses, set independently. Unconventional pairs are HINTED at, never
- * refused — someone who wants 28/28 is entitled to it, and blocking would be
- * the app overruling them about their own racket.
+ * ONE TENSION NUMBER BY DEFAULT. The crosses are derived at +2 lb
+ * (`crossesFor`), because that is what a stringer would have chosen anyway —
+ * cross strings are shorter and woven through the mains, so they finish looser
+ * at the same reference tension. "Separate tension requests for Main and
+ * Cross" splits them; unconventional pairs are HINTED at, never refused —
+ * someone who wants 28/28 is entitled to it. Splitting the tension no longer
+ * turns the string into free text: the two were one "Custom request" switch,
+ * and asking for 26/30 threw away the string the player had just picked.
  *
  * WHY THE LIST IS ADMIN-FED. A free-text string field produces "bg80",
  * "BG-80", "Bg 80 white" and "yonex 80" for one spool, and the person who has
@@ -87,17 +97,17 @@ interface Props {
  *
  * THE LIST IS A SHORT SHELF (docs/design/strings-shelf-spec.md, design 2f):
  * one radio row per string with its gauge, the club's price and a stock band.
- * Out of stock can't be picked — the band is advisory and the server does not
- * refuse, so Custom request stays open as the way round. A string in more than
+ * Out of stock can't be picked; the server does not refuse, and the stringer
+ * can say so in person. A string in more than
  * one colour asks which, as `stringColor`, kept OFF the label so stock still
  * matches the job to its reel. "Bring my own string" is the last row and sends
  * what they type as the label.
  *
- * When nothing is stocked yet — or the list could not be read — the form falls
- * back to the custom path rather than presenting an empty dropdown. An empty
- * select is a dead end; a text box is not.
+ * When nothing is stocked yet — or the list could not be read — step 1 asks
+ * for the string as free text rather than presenting an empty list. An empty
+ * list is a dead end; a text box is not.
  */
-export default function RequestStringingSheet({ open, onClose, onRequested, gear, initialTension = null }: Props) {
+export default function RequestStringingSheet({ open, onClose, onRequested, gear, initialTension = null, initialString = null }: Props) {
   const t = useTranslations('home.stringing');
   // `close` lives in the shared namespace — every sheet in the app uses it.
   const tCommon = useTranslations('recovery');
@@ -123,7 +133,9 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const [customString, setCustomString] = useState('');
   const [tension, setTension] = useState(26);
   const [crosses, setCrosses] = useState(28);
-  const [custom, setCustom] = useState(false);
+  /** Mains and crosses set apart ("Separate tension requests…"). */
+  const [splitTension, setSplitTension] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
   const [busy, setBusy] = useState(false);
 
   const kit = gear?.rackets ?? [];
@@ -167,8 +179,25 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     setCustomString('');
     setTension(initialTension ?? 26);
     setCrosses(initialTension ? crossesFor(initialTension) : 28);
-    setCustom(false);
+    setSplitTension(false);
+    setStep(1);
   }, [open, initialTension]);
+
+  /* The string a string's page asked for, picked once per opening and only
+     once the shelf has answered (it loads after the sheet mounts). */
+  const [stringApplied, setStringApplied] = useState(false);
+  useEffect(() => {
+    if (open) setStringApplied(false);
+  }, [open]);
+  useEffect(() => {
+    if (!open || stringApplied || !initialString || !shelf) return;
+    setStringApplied(true);
+    const label = shelf.strings.find((l) => l.toLowerCase() === initialString.toLowerCase());
+    if (label && shelf.stock?.[label] !== 'out') {
+      setOwnString(false);
+      setPickedString(label);
+    }
+  }, [open, stringApplied, initialString, shelf]);
 
   // The own-string price (docs/plans/bench-redesign.md, PR 2). Unread or
   // failed reads as "Ask", which is what the row said before it existed.
@@ -220,13 +249,12 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     };
   }, []);
 
-  // No list, or a list we could not read, means the dropdown has nothing to
-  // offer. Forcing custom is the only honest option — once we KNOW. While the
-  // list loads, neither control shows (like the racket field above).
+  // No list, or a list we could not read, means there is nothing to pick.
+  // Free text is the only honest option — once we KNOW. While the list
+  // loads, neither control shows (like the racket field above).
   const stringsLoading = stringsStatus === 'loading';
   const offered = shelf?.strings ?? [];
   const mustBeCustom = stringsStatus === 'failed' || (stringsStatus === 'ready' && offered.length === 0);
-  const isCustom = custom || mustBeCustom;
 
   const itemFor = (label: string): CatalogItem | null => {
     const id = shelf?.links[label];
@@ -243,17 +271,26 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const colours = stringColours(pickedItem);
   /* More than one colour asks which; a single colour (or a two-tone, which is
      one name) is sent as it is; an unlinked string or your own sends none. */
-  const stringColor = isCustom || ownString ? '' : colours.length > 1 ? pickedColour : colours[0]?.name ?? '';
+  const stringColor = mustBeCustom || ownString ? '' : colours.length > 1 ? pickedColour : colours[0]?.name ?? '';
 
   const clamp = (n: number) => Math.max(TENSION_MIN_LB, Math.min(TENSION_MAX_LB, n));
-  const stringLabel = (isCustom ? customString : ownString ? ownLabel : pickedString).trim();
+  const stringLabel = (mustBeCustom ? customString : ownString ? ownLabel : pickedString).trim();
   const mains = tension;
-  const finalCrosses = isCustom ? crosses : crossesFor(mains);
-  const canSubmit = !busy && online && !!racketLabel.trim() && !!stringLabel;
+  const finalCrosses = splitTension ? crosses : crossesFor(mains);
+  /** Step 1 is answered: a racket and a string. Out of stock is unpickable. */
+  const canContinue = !!racketLabel.trim() && !!stringLabel;
+  const canSubmit = !busy && online && canContinue;
   // Unknown shows no figure at all, like a string with no price set: saying
   // "Ask" off a failed read would be a failure dressed as an answer.
   const ownPriceText = ownPriceCents === 'unknown' ? null : formatServicePrice(ownPriceCents) ?? t('offer.priceAsk');
-  const summaryPrice = ownString ? ownPriceText : pickedString ? priceText(pickedString) : null;
+  const summaryPrice = ownString ? ownPriceText : !mustBeCustom && pickedString ? priceText(pickedString) : null;
+
+  /* A colour is asked only of a string in more than one, and the catalog can
+     answer after the string was picked (a "Restring with this string" link
+     picks before the catalog loads). Default to the first, as a tap does. */
+  useEffect(() => {
+    if (colours.length > 1 && !colours.some((c) => c.name === pickedColour)) setPickedColour(colours[0].name);
+  }, [colours, pickedColour]);
 
   function pick(label: string) {
     if (isOut(label)) return;
@@ -262,13 +299,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     setPickedColour(stringColours(itemFor(label))[0]?.name ?? '');
   }
 
-  function enterCustom() {
-    // Carry the simple choice forward rather than resetting: someone opening
-    // custom usually wants to ADJUST what they had, not start over.
-    const carried = ownString ? ownLabel : pickedString;
-    if (!customString && carried) setCustomString(carried);
+  function splitApart() {
+    // From the usual pair, so the crosses start where they were.
     setCrosses(crossesFor(tension));
-    setCustom(true);
+    setSplitTension(true);
   }
 
   async function submit() {
@@ -358,289 +392,358 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     );
   }
 
-  return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('requestTitle')}>
-      {/* `onClose` on the header renders the shared ✕ (SheetCloseButton):
-          this sheet once passed a bare string and shipped with no visible way
-          out, then hand-rolled its own button; the primitive is the one
-          44px target every sheet shares. */}
-      <BottomSheetHeader onClose={onClose} closeLabel={tCommon('close')}>
-        <span className="fs-lg" style={{ fontWeight: 600 }}>{t('requestTitle')}</span>
-      </BottomSheetHeader>
-      <BottomSheetBody>
-        {done ? (
-          <div className="motion-fade" style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p role="status" className="fs-md" style={{ margin: '0', color: 'var(--text-primary)' }}>
-              {t('requestSent')}
-            </p>
-            <button
-              type="button"
-              onClick={onClose}
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ width: '100%' }}
-            >
-              {t('requestDone')}
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+  const tensionText = `${playerTensionText(mains, finalCrosses)} ${t('lb')}`;
+  const summary = [stringLabel, stringColor, tensionText].filter(Boolean).join(' · ');
+
+  /** Step 1: the racket, the string, its colour. */
+  const whatStep = (
+    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+      <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
+        {t('requestSubtitle')}
+      </p>
+
+      {/* The kit first, typing second — the stringer is the one who has to
+          reconcile "Astrox 88D", "astrox88d" and "88d pro" for one racket. */}
+      {kitLoading ? (
+        /* Neither control yet. A disabled placeholder says "we are asking"
+           without asserting an answer. */
+        <input type="text" value="" disabled readOnly placeholder={t('pickRacket')} aria-label={t('whichRacket')} />
+      ) : typingRacket ? (
+        <input
+          type="text"
+          value={racketLabel}
+          onChange={(e) => setRacketLabel(e.target.value)}
+          placeholder={t('racketPlaceholder')}
+          aria-label={t('whichRacket')}
+          maxLength={80}
+          autoFocus
+        />
+      ) : (
+        <select value={racketLabel} onChange={(e) => setRacketLabel(e.target.value)} aria-label={t('whichRacket')}>
+          <option value="">{t('pickRacket')}</option>
+          {kit.map((r) => (
+            <option key={r.id} value={r.label}>{r.label}</option>
+          ))}
+        </select>
+      )}
+
+      {mustTypeRacket ? (
+        <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
+          {kitUnreadable && gear?.loadError ? t('kitUnavailable') : t('noRacketsYet')}
+        </p>
+      ) : (
+        <button type="button" onClick={() => setCustomRacket((v) => !v)} className="link-quiet link-quiet--flush" style={{ justifySelf: 'start' }}>
+          {typingRacket ? t('backToKit') : t('otherRacket')}
+        </button>
+      )}
+
+      {/* Its own section, set apart from the racket above (Grant: "Section is
+          too close"). */}
+      <div style={{ display: 'grid', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+        <span className="section-label-muted">{t('whichString')}</span>
+        {stringsLoading ? (
+          <input type="text" value="" disabled readOnly placeholder={t('pickString')} aria-label={t('whichString')} />
+        ) : mustBeCustom ? (
+          <>
+            <input
+              type="text"
+              value={customString}
+              onChange={(e) => setCustomString(e.target.value)}
+              placeholder={t('stringPlaceholder')}
+              aria-label={t('stringPlaceholder')}
+              maxLength={80}
+            />
             <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-              {t('requestSubtitle')}
+              {stringsStatus === 'failed' ? t('stringsUnavailable') : t('noStringsYet')}
             </p>
-
-            {/* The kit first, typing second — mirroring the string control right
-
-                below, and for the same reason: the stringer is the one who has to
-
-                reconcile "Astrox 88D", "astrox88d" and "88d pro" for one racket. */}
-
-            {kitLoading ? (
-              /* Neither control yet. A disabled placeholder says "we are
-                 asking" without asserting an answer, and does not steal focus
-                 into a field that is about to be replaced. */
+          </>
+        ) : (
+          <>
+            {/* Once, for the whole list: a failed catalog says nothing about
+                any one string, so no row claims to be "not in the catalog". */}
+            {catalog.loadError && (
+              <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('offer.catalogError')}</p>
+            )}
+            <div role="radiogroup" aria-label={t('whichString')} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {offered.map((label) => {
+                const item = itemFor(label);
+                const on = !ownString && pickedString === label;
+                const out = isOut(label);
+                const band = shelf?.stock?.[label] ?? null;
+                const price = priceText(label);
+                const mm = typeof item?.attributes?.gaugeMm === 'number' ? item.attributes.gaugeMm : null;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    aria-disabled={out || undefined}
+                    aria-label={out ? t('outOfStock', { name: label }) : undefined}
+                    onClick={() => pick(label)}
+                    style={{ ...ROW, ...(on ? ROW_ON : null), cursor: out ? 'default' : 'pointer', opacity: out ? 0.5 : 1 }}
+                  >
+                    <span className="material-icons icon-lg" aria-hidden="true" style={{ flex: 'none', color: on ? 'var(--accent)' : 'var(--text-muted)' }}>
+                      {on ? 'radio_button_checked' : 'radio_button_unchecked'}
+                    </span>
+                    {item && (
+                      <span aria-hidden="true" style={{ flex: 'none', width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: typeBand(stringTypeOf(item)), display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {mm !== null ? mm.toFixed(2) : ''}
+                      </span>
+                    )}
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{label}</span>
+                      {(item || !catalog.loadError) && (
+                        <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
+                          {item ? stringSpecLine(item, (k) => tSetup(k)) : t('offer.unknown')}
+                        </span>
+                      )}
+                    </span>
+                    {/* The price, and stock only when it changes the choice:
+                        "In stock" on every row was noise (Grant: "Does user
+                        care about stock here?"). */}
+                    {(price || (band && band !== 'in')) && (
+                      <span style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-1)' }}>
+                        {price && <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>{price}</span>}
+                        {band && band !== 'in' && <StockBadge band={band} />}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={ownString}
+                onClick={() => { setOwnString(true); setPickedString(''); }}
+                style={{ ...ROW, ...(ownString ? ROW_ON : null), cursor: 'pointer' }}
+              >
+                <span className="material-icons icon-lg" aria-hidden="true" style={{ flex: 'none', color: ownString ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {ownString ? 'radio_button_checked' : 'radio_button_unchecked'}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{t('bringOwn')}</span>
+                  <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>{t('bringOwnSub')}</span>
+                </span>
+                {ownPriceText && (
+                  <span className="fs-md" style={{ flex: 'none', fontFamily: 'var(--font-mono)', color: ownPriceCents === null ? 'var(--text-muted)' : 'var(--text-primary)' }}>{ownPriceText}</span>
+                )}
+              </button>
+            </div>
+            {/* Mounted, not <Collapse>d: Collapse holds its content at
+                visibility:hidden until a layout effect, so `autoFocus` ran on
+                an unfocusable field and the keyboard never came up. */}
+            {ownString && (
               <input
                 type="text"
-                value=""
-                disabled
-                readOnly
-                placeholder={t('pickRacket')}
-                aria-label={t('whichRacket')}
-              />
-            ) : typingRacket ? (
-              <input
-                type="text"
-                value={racketLabel}
-                onChange={(e) => setRacketLabel(e.target.value)}
-                placeholder={t('racketPlaceholder')}
-                aria-label={t('whichRacket')}
+                value={ownLabel}
+                onChange={(e) => setOwnLabel(e.target.value)}
+                placeholder={t('bringOwnPlaceholder')}
+                aria-label={t('bringOwnPlaceholder')}
                 maxLength={80}
                 autoFocus
               />
-            ) : (
-              <select
-                value={racketLabel}
-                onChange={(e) => setRacketLabel(e.target.value)}
-                aria-label={t('whichRacket')}
-              >
-                <option value="">{t('pickRacket')}</option>
-                {kit.map((r) => (
-                  <option key={r.id} value={r.label}>{r.label}</option>
-                ))}
-              </select>
             )}
-
-
-            {mustTypeRacket ? (
-              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-                {kitUnreadable && gear?.loadError ? t('kitUnavailable') : t('noRacketsYet')}
-
-              </p>
-            ) : (
-              <button
-
-                type="button"
-
-                onClick={() => setCustomRacket((v) => !v)}
-
-                className="link-quiet"
-
-              >
-
-                {typingRacket ? t('backToKit') : t('otherRacket')}
-
-              </button>
-
-            )}
-
-            {stringsLoading && !custom ? (
-              /* Asking, not answering: the same disabled placeholder the racket
-                 field uses while the kit loads. */
-              <input
-                type="text"
-                value=""
-                disabled
-                readOnly
-                placeholder={t('pickString')}
-                aria-label={t('whichString')}
-              />
-            ) : isCustom ? (
-              <input
-                type="text"
-                value={customString}
-                onChange={(e) => setCustomString(e.target.value)}
-                placeholder={t('stringPlaceholder')}
-                aria-label={t('stringPlaceholder')}
-                maxLength={80}
-              />
-            ) : (
-              <>
-                <span className="section-label-muted">{t('whichString')}</span>
-                {/* Once, for the whole list: a failed catalog says nothing about
-                    any one string, so no row claims to be "not in the catalog". */}
-                {catalog.loadError && (
-                  <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('offer.catalogError')}</p>
-                )}
-                <div role="radiogroup" aria-label={t('whichString')} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                  {offered.map((label) => {
-                    const item = itemFor(label);
-                    const on = !ownString && pickedString === label;
-                    const out = isOut(label);
-                    const band = shelf?.stock?.[label] ?? null;
-                    const price = priceText(label);
-                    const mm = typeof item?.attributes?.gaugeMm === 'number' ? item.attributes.gaugeMm : null;
+            {colours.length > 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
+                <span className="section-label-muted">{t('colour')}</span>
+                <div role="radiogroup" aria-label={t('colour')} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-2)' }}>
+                  {colours.map((c) => {
+                    const on = pickedColour === c.name;
                     return (
                       <button
-                        key={label}
+                        key={c.name}
                         type="button"
                         role="radio"
                         aria-checked={on}
-                        aria-disabled={out || undefined}
-                        aria-label={out ? t('outOfStock', { name: label }) : undefined}
-                        onClick={() => pick(label)}
-                        style={{ ...ROW, ...(on ? ROW_ON : null), cursor: out ? 'default' : 'pointer', opacity: out ? 0.5 : 1 }}
+                        onClick={() => setPickedColour(c.name)}
+                        style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
                       >
-                        <span className="material-icons icon-lg" aria-hidden="true" style={{ flex: 'none', color: on ? 'var(--accent)' : 'var(--text-muted)' }}>
-                          {on ? 'radio_button_checked' : 'radio_button_unchecked'}
+                        {/* The app's chip (`.filter-chip`), inside a 44px hit area. */}
+                        <span className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'}>
+                          <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: '50%', background: c.fill, boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)' }} />
+                          {c.name}
                         </span>
-                        {item && (
-                          <span aria-hidden="true" style={{ flex: 'none', width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: typeBand(stringTypeOf(item)), display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {mm !== null ? mm.toFixed(2) : ''}
-                          </span>
-                        )}
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{label}</span>
-                          {(item || !catalog.loadError) && (
-                            <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
-                              {item ? stringSpecLine(item, (k) => tSetup(k)) : t('offer.unknown')}
-                            </span>
-                          )}
-                        </span>
-                        {(price || band) && (
-                          <span style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-1)' }}>
-                            {price && <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>{price}</span>}
-                            {band && <StockBadge band={band} />}
-                          </span>
-                        )}
                       </button>
                     );
                   })}
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={ownString}
-                    onClick={() => { setOwnString(true); setPickedString(''); }}
-                    style={{ ...ROW, ...(ownString ? ROW_ON : null), cursor: 'pointer' }}
-                  >
-                    <span className="material-icons icon-lg" aria-hidden="true" style={{ flex: 'none', color: ownString ? 'var(--accent)' : 'var(--text-muted)' }}>
-                      {ownString ? 'radio_button_checked' : 'radio_button_unchecked'}
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span className="fs-md" style={{ display: 'block', color: 'var(--text-primary)' }}>{t('bringOwn')}</span>
-                      <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>{t('bringOwnSub')}</span>
-                    </span>
-                    {ownPriceText && (
-                      <span className="fs-md" style={{ flex: 'none', fontFamily: 'var(--font-mono)', color: ownPriceCents === null ? 'var(--text-muted)' : 'var(--text-primary)' }}>{ownPriceText}</span>
-                    )}
-                  </button>
                 </div>
-                {/* Mounted, not <Collapse>d: Collapse holds its content at
-                    visibility:hidden until a layout effect, so `autoFocus` ran
-                    on an unfocusable field and the keyboard never came up. And
-                    this column is a grid with a gap, which a collapsing child
-                    cannot animate (the gap snaps). */}
-                {ownString && (
-                  <input
-                    type="text"
-                    value={ownLabel}
-                    onChange={(e) => setOwnLabel(e.target.value)}
-                    placeholder={t('bringOwnPlaceholder')}
-                    aria-label={t('bringOwnPlaceholder')}
-                    maxLength={80}
-                    autoFocus
-                  />
-                )}
-                {colours.length > 1 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
-                    <span className="section-label-muted">{t('colour')}</span>
-                    <div role="radiogroup" aria-label={t('colour')} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-2)' }}>
-                      {colours.map((c) => {
-                        const on = pickedColour === c.name;
-                        return (
-                          <button
-                            key={c.name}
-                            type="button"
-                            role="radio"
-                            aria-checked={on}
-                            onClick={() => setPickedColour(c.name)}
-                            style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
-                          >
-                            {/* The app's chip (`.filter-chip`), inside a 44px hit area. */}
-                            <span className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'}>
-                              <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: '50%', background: c.fill, boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)' }} />
-                              {c.name}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('colourNote')}</p>
-                  </div>
-                )}
-              </>
-            )}
-
-            {isCustom ? (
-              <>
-                {stepper(t('mains'), mains, setTension)}
-                {stepper(t('crosses'), crosses, setCrosses)}
-                {!isConventionalPair(mains, crosses) && (
-                  <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-                    {t('unusualPair', { suggested: crossesFor(mains) })}
-                  </p>
-                )}
-              </>
-            ) : (
-              stepper(t('tension'), tension, setTension)
-            )}
-
-            {stringsLoading ? null : mustBeCustom ? (
-              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-                {stringsStatus === 'failed' ? t('stringsUnavailable') : t('noStringsYet')}
-              </p>
-            ) : (
-              <button
-                type="button"
-                onClick={() => (custom ? setCustom(false) : enterCustom())}
-                className="link-quiet"
-              >
-                {custom ? t('standardRequest') : t('customRequest')}
-              </button>
-            )}
-
-            {!isCustom && stringLabel && (
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--inner-card-border)' }}>
-                <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>
-                  {stringColor
-                    ? t('summary', { string: stringLabel, colour: stringColor, tension: mains })
-                    : t('summaryNoColour', { string: stringLabel, tension: mains })}
-                </span>
-                {summaryPrice && <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryPrice}</span>}
               </div>
             )}
+          </>
+        )}
+      </div>
 
-            {error && <p className="field-error" role="alert">{error}</p>}
+      {/* Dimmed until step 1 is answered — the same disabled rule as every
+          cc-btn — rather than hidden, so the way on is always in view. */}
+      <button
+        type="button"
+        onClick={() => setStep(2)}
+        disabled={!canContinue}
+        className="cc-btn cc-btn-primary cc-btn-lg"
+        style={{ width: '100%' }}
+      >
+        {t('nextTension')}
+      </button>
+    </div>
+  );
+
+  /** Step 2: how tight, what it comes to, and Send. */
+  const howStep = (
+    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-secondary)' }}>bolt</span>
+          <span className="fs-md" style={{ fontWeight: 600 }}>{t('tensionTitle')}</span>
+        </span>
+        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('tensionHint')}</p>
+      </div>
+
+      {/* Keyed so the swap between one stepper and two crossfades
+          (.motion-fade), the way every replaced surface in the app does. */}
+      <div key={splitTension ? 'split' : 'one'} className="motion-fade" style={{ display: 'grid', gap: 'var(--space-4)' }}>
+        {splitTension ? (
+          <>
+            {stepper(t('mains'), mains, setTension)}
+            {stepper(t('crosses'), crosses, setCrosses)}
+            {!isConventionalPair(mains, crosses) && (
+              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
+                {t('unusualPair', { suggested: crossesFor(mains) })}
+              </p>
+            )}
+          </>
+        ) : (
+          stepper(t('tension'), tension, setTension)
+        )}
+        <button
+          type="button"
+          onClick={() => (splitTension ? setSplitTension(false) : splitApart())}
+          className="link-quiet link-quiet--flush"
+          style={{ justifySelf: 'start' }}
+        >
+          {splitTension ? t('standardRequest') : t('customRequest')}
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--inner-card-border)' }}>
+        <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{summary}</span>
+        {summaryPrice && <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryPrice}</span>}
+      </div>
+
+      {error && <p className="field-error" role="alert">{error}</p>}
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!canSubmit}
+        className="cc-btn cc-btn-primary cc-btn-lg"
+        style={{ width: '100%' }}
+      >
+        {busy ? t('requestSending') : t('sendCta')}
+      </button>
+    </div>
+  );
+
+  /** Sent: what to do next, the progress as the widget draws it, and the one
+   *  opt-in that makes "get notified" true. */
+  const sentStep = (
+    <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+      <p role="status" className="fs-md" style={{ margin: '0', color: 'var(--text-primary)' }}>
+        {t('sentBody')}
+      </p>
+      <div className="bpm-inner-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--space-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+          <span className="section-label-muted">{t('sentLabel')}</span>
+          <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{t('sentNext')}</span>
+        </div>
+        <span className="fs-base" style={{ color: 'var(--text-primary)' }}>
+          {[racketLabel.trim(), stringLabel, tensionText].filter(Boolean).join(' · ')}
+        </span>
+        <SegmentedProgress current={0} labels={[t('segRequested'), t('segWithStringer'), t('segBeingStrung'), t('segReady')]} />
+      </div>
+      <NotifyButton label={t('turnOnNotifications')} />
+      <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+        {t('requestDone')}
+      </button>
+    </div>
+  );
+
+  const title = done ? t('sentTitle') : t('requestTitle');
+
+  return (
+    <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
+      {/* `onClose` on the header renders the shared ✕ (SheetCloseButton). */}
+      <BottomSheetHeader onClose={onClose} closeLabel={tCommon('close')}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
+          {!done && step === 2 && (
             <button
               type="button"
-              onClick={submit}
-              disabled={!canSubmit}
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ width: '100%' }}
+              onClick={() => setStep(1)}
+              aria-label={t('back')}
+              style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', margin: 'calc(-1 * var(--space-4)) 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-4))', color: 'var(--text-secondary)' }}
             >
-              {busy ? t('requestSending') : t('sendCta')}
+              <span className="material-icons icon-lg" aria-hidden="true">chevron_left</span>
             </button>
-          </div>
-        )}
+          )}
+          <span className="fs-lg" style={{ fontWeight: 600 }}>{title}</span>
+          {!done && (
+            <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('stepOf', { step, total: 2 })}</span>
+          )}
+        </span>
+      </BottomSheetHeader>
+      <BottomSheetBody>
+        {/* Keyed by the step so each one crossfades in (.motion-fade). */}
+        <div key={done ? 'sent' : step} className="motion-fade">
+          {done ? sentStep : step === 1 ? whatStep : howStep}
+        </div>
       </BottomSheetBody>
     </BottomSheet>
+  );
+}
+
+/**
+ * The job's progress the way the home-screen widget draws it: four segments,
+ * the reached ones lit, the stage words under them. On the Sent screen it is
+ * at the first segment — what was just done — so "Drop it off" reads as next.
+ */
+function SegmentedProgress({ current, labels }: { current: number; labels: string[] }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      <div aria-hidden="true" style={{ display: 'flex', gap: 'var(--space-1)' }}>
+        {labels.map((l, i) => (
+          <span key={l} className={`bpm-seg${i <= current ? ' bpm-seg--on' : ''}`} />
+        ))}
+      </div>
+      <ol className="fs-2xs" style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)', margin: 0, padding: 0, listStyle: 'none', color: 'var(--text-muted)' }}>
+        {labels.map((l, i) => (
+          <li key={l} aria-current={i === current ? 'step' : undefined} style={i === current ? { color: 'var(--text-primary)', fontWeight: 600 } : undefined}>{l}</li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/**
+ * "Turn on notifications", only when it would change something — not when
+ * push is already on, or impossible on this device (a browser tab on an
+ * iPhone, a denied permission), where the button would be a promise this
+ * screen cannot keep. Its own component so `usePush` (which probes, and on the
+ * native shell listens for token rotation) mounts only on the Sent screen,
+ * not under every Stringing tab render.
+ */
+function NotifyButton({ label }: { label: string }) {
+  const push = usePush();
+  const online = useOnline();
+  if (push.state.status !== 'off') return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void push.enable()}
+      disabled={push.busy || !online}
+      className="cc-btn cc-btn-secondary cc-btn-lg"
+      style={{ width: '100%' }}
+    >
+      <span className="material-icons icon-md" aria-hidden="true">notifications</span>
+      {label}
+    </button>
   );
 }

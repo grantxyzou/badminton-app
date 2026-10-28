@@ -86,4 +86,10 @@ describe('todayIso', () => {
   it('zero-pads', () => {
     expect(todayIso(new Date(2026, 0, 5))).toBe('2026-01-05');
   });
+
+  it('never marks a READY racket late: the work is done, only collecting it is left', () => {
+    const due = dueFor({ readyBy: '2026-10-20', status: 'ready', paidAt: '2026-10-21T00:00:00Z' }, '2026-10-28');
+    expect(due.key).not.toBe('overdue');
+    expect(due.tone).toBe('ok');
+  });
 });

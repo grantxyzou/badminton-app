@@ -15,7 +15,6 @@ import {
   AXIS_MAX,
   MAP_AXES,
   axisValueOf,
-  bestForOf,
   controlOf,
   durabilityOf,
   feelOf,
@@ -24,7 +23,6 @@ import {
   powerOf,
   shelfPrice,
   sortShelf,
-  stockColour,
   type MapAxis,
   type Shelf,
   type ShelfEntry,
@@ -33,21 +31,29 @@ import {
 import StringDetailSheet from './StringDetailSheet';
 import StringMap, { type MapDot } from './StringMap';
 import StockBadge from './StockBadge';
+import RatingMeters, { ratingSourceKey } from './RatingMeters';
 import { ColourDots } from './StringColours';
-import { formatServicePrice } from '@/lib/stringingRateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const VIEW_KEY = 'bpm:strings-view';
+/** `--duration-sheet` in globals.css: a sheet's close, waited out before a hand-off. */
+const SHEET_CLOSE_MS = 180;
 const AXIS_KEY = 'bpm:strings-axis';
 type View = 'map' | 'list';
 
-function readView(): View {
+/** The view the member last picked, or null when they never have. */
+function readView(): View | null {
   try {
-    return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'map';
+    const v = localStorage.getItem(VIEW_KEY);
+    return v === 'list' || v === 'map' ? v : null;
   } catch {
-    return 'map';
+    return null;
   }
 }
+
+/** Past this many strings the List opens first: a map of nine or more is a
+ *  crowd to pick through, where a list is a read (the canvas, 2026-10-28). */
+const MAP_DEFAULT_MAX = 8;
 
 /** The side axis the member last picked; power, the map's original, otherwise. */
 function readAxis(): MapAxis {
@@ -89,6 +95,9 @@ interface Props {
   /** The whole register rather than one card among others: say "nothing
    *  listed" instead of rendering nothing. */
   showEmpty?: boolean;
+  /** A string's page "Restring with this string": the tab opens the request
+   *  with it picked. */
+  onRestring?: (label: string) => void;
 }
 
 /** The pricing doc's two player-facing extras. */
@@ -97,7 +106,7 @@ interface OtherPrices {
   note: string;
 }
 
-export default function StringsWeOfferCard({ showEmpty = false }: Props) {
+export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Props) {
   const t = useTranslations('home.stringing.offer');
   const tSetup = useTranslations('stats.gear.setup');
   const catalog = useCatalog('string');
@@ -108,7 +117,7 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
   const [learnOpen, setLearnOpen] = useState(false);
   // Read once on mount. The card renders nothing until its data arrives, so
   // there is no server markup for a stored choice to disagree with.
-  const [view, setView] = useState<View>(() => (typeof window === 'undefined' ? 'map' : readView()));
+  const [storedView, setView] = useState<View | null>(() => (typeof window === 'undefined' ? null : readView()));
   const [axis, setAxis] = useState<MapAxis>(() => (typeof window === 'undefined' ? 'power' : readAxis()));
   /** Picked on the map; persists while the tab is mounted. */
   const [picked, setPicked] = useState<string | null>(null);
@@ -177,17 +186,10 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
       message={t('pricesError')}
       action={<button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOtherAttempt((n) => n + 1)}>{t('retry')}</button>}
     />
-  ) : other ? (
-    <div className="flex flex-col gap-2" style={{ padding: '0 var(--space-4)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-3)' }}>
-        <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('ownString')}</span>
-        <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {/* "Ask" rather than $0: no fixed price is not the same as free. */}
-          {formatServicePrice(other.ownStringCents) ?? t('priceAsk')}
-        </span>
-      </div>
-      {other.note && <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>{other.note}</p>}
-    </div>
+  ) : other?.note ? (
+    // The stringer's note. "Bring your own string" and its price left this
+    // card for the request sheet's own row, where the choice is made.
+    <p className="fs-sm" style={{ color: 'var(--text-muted)', padding: '0 var(--space-4)' }}>{other.note}</p>
   ) : null;
 
   if (empty) {
@@ -201,6 +203,8 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
   }
 
   const bandOf = (label: string): StockBand | null => shelf?.stock?.[label] ?? null;
+  // A remembered choice wins; with none, a long shelf opens on the list.
+  const view: View = storedView ?? (entries.length > MAP_DEFAULT_MAX ? 'list' : 'map');
   const plotted = entries.filter(isPlottable);
   const notOnMap = entries.filter((e) => !isPlottable(e));
   // Too few to plot is list-only: a map of two dots says nothing.
@@ -252,13 +256,10 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
     durability: durabilityOf(e.item)!,
     band: bandOf(e.label),
   }));
-  // A legend for bands nobody has is a key to nothing.
-  const anyBand = plotted.some((e) => bandOf(e.label) !== null);
   const openEntry = entries.find((e) => e.label === open) ?? null;
 
   const row = (e: ShelfEntry) => {
     const price = priceText(e.label);
-    const band = bandOf(e.label);
     const p = powerOf(e.item);
     const d = durabilityOf(e.item);
     // A failed catalog knows nothing about ANY string, which is not the same as
@@ -266,7 +267,9 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
     const subtitle = !e.item
       ? (catalog.loadError ? null : t('unknown'))
       : p !== null && d !== null
-        ? t('listLine', { power: p, durability: d })
+        ? (controlOf(e.item) !== null
+          ? t('listLineControl', { power: p, control: controlOf(e.item)!, durability: d })
+          : t('listLine', { power: p, durability: d }))
         : stringSpecLine(e.item, (k) => tSetup(k));
     return (
       <li key={e.label}>
@@ -278,7 +281,7 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
           const content = {
             title: (
               <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{name(e)}</span>
+                <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{e.label}</span>
                 {/* The colours on the reel, when the stringer has said. */}
                 <ColourDots ids={shelf?.colours[e.label] ?? []} />
               </span>
@@ -286,12 +289,9 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
             subtitle,
             trailing: (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)', flex: 'none' }}>
-              {(price || band) && (
-                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-1)' }}>
-                  {price && <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>{price}</span>}
-                  {band && <StockBadge band={band} />}
-                </span>
-              )}
+              {/* The price only: stock is on the string's page, and on the
+                  map's card when it is low or out. */}
+              {price && <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>{price}</span>}
               {e.item && <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>}
             </span>
             ),
@@ -316,10 +316,25 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      {/* Compact, like the other two registers' cards: a card that NAMES its
-          subject. The axis copy belongs to the map, so the list says only
-          what the prices are for. */}
-      <CardHeader compact icon="storefront" title={t('title')} subtitle={showMap ? t('subtitleMap') : t('subtitle')} />
+      {/* The subtitle names the view; the icon beside it switches (Grant:
+          "Map view", "List view"). Nothing to switch with too few to plot. */}
+      <CardHeader
+        compact
+        icon="storefront"
+        title={t('title')}
+        subtitle={mapOn ? t(view === 'map' ? 'viewNameMap' : 'viewNameList') : t('subtitle')}
+        action={mapOn ? (
+          <button
+            type="button"
+            onClick={() => pickView(view === 'map' ? 'list' : 'map')}
+            aria-label={t(view === 'map' ? 'switchToList' : 'switchToMap')}
+            className="cc-btn cc-btn-ghost"
+            style={{ width: 44, height: 44, padding: 0, justifyContent: 'center' }}
+          >
+            <span className="material-icons icon-md" aria-hidden="true">{view === 'map' ? 'format_list_bulleted' : 'map'}</span>
+          </button>
+        ) : undefined}
+      />
       {catalog.loadError && status !== 'failed' && (
         <p className="fs-sm" role="status" style={{ color: 'var(--text-muted)' }}>{t('catalogError')}</p>
       )}
@@ -330,38 +345,15 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
         <ErrorState message={t('loadError')} action={<button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAttempt((n) => n + 1)}>{t('retry')}</button>} />
       ) : (
         <>
-          {mapOn && (
-            /* Two pressed/unpressed buttons, not tabs: there is no tabpanel or
-               arrow-key model behind them, so `role="tab"` promised more than
-               it did. */
-            <div role="group" aria-label={t('viewLabel')} style={{ display: 'flex', columnGap: 'var(--space-2)' }}>
-              {(['map', 'list'] as const).map((v) => {
-                const on = view === v;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => pickView(v)}
-                    style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
-                  >
-                    {/* The app's chip (`.filter-chip`), inside a 44px hit area. */}
-                    <span className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'}>
-                      {t(v === 'map' ? 'viewMap' : 'viewList')}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {showMap ? (
             <>
               {/* What runs up the side. Pressed buttons, not tabs, for the same
                   reason as the Map/List pair above: nothing behind them is a
                   tabpanel. */}
               {axes.length > 1 && (
-                <div className="segment-control flex" role="group" aria-label={t('axisSwitchLabel')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+                <span className="fs-sm" style={{ flex: 'none', color: 'var(--text-muted)' }}>{t('compareBy')}</span>
+                <div className="segment-control flex" role="group" aria-label={t('axisSwitchLabel')} style={{ flex: 1 }}>
                   {axes.map((a) => (
                     <button
                       key={a}
@@ -374,6 +366,7 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
                     </button>
                   ))}
                 </div>
+                </div>
               )}
               <StringMap
                 dots={dots}
@@ -381,27 +374,8 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
                 onSelect={setPicked}
                 yLabel={t(`axisUp_${shownAxis}`)}
                 mapLabel={t(`mapLabel_${shownAxis}`)}
+                axisName={t(`axisName_${shownAxis}`)}
               />
-              {anyBand && (
-                <div className="fs-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)', color: 'var(--text-muted)' }}>
-                  {(['in', 'low', 'out'] as const).map((b) => (
-                    <span key={b} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          width: 8,
-                          height: 8,
-                          boxSizing: 'border-box',
-                          borderRadius: '50%',
-                          background: b === 'out' ? 'transparent' : stockColour(b),
-                          border: b === 'out' ? '1.5px solid var(--text-muted)' : 'none',
-                        }}
-                      />
-                      {t(`stock_${b}`)}
-                    </span>
-                  ))}
-                </div>
-              )}
               {selected && (
                 <div
                   aria-live="polite"
@@ -416,23 +390,30 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    <span className="fs-lg" style={{ fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>{name(selected)}</span>
+                    <span className="fs-lg" style={{ fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>{selected.label}</span>
                     {priceText(selected.label) && (
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)', flex: 'none' }}>{priceText(selected.label)}</span>
                     )}
                   </div>
-                  <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {controlOf(selected.item) !== null && feelOf(selected.item) !== null
-                      ? t('numbersFeel', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)!, control: controlOf(selected.item)!, feel: feelOf(selected.item)! })
-                      : controlOf(selected.item) !== null
-                        ? t('numbers', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)!, control: controlOf(selected.item)! })
-                        : t('listLine', { power: powerOf(selected.item)!, durability: durabilityOf(selected.item)! })}
-                  </span>
-                  {bestForOf(selected.item) && (
-                    <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{bestForOf(selected.item)}</p>
+                  {ratingSourceKey(selected.item?.attributes?.ratingSource) && (
+                    <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {ratingSourceKey(selected.item?.attributes?.ratingSource) === 'brand'
+                        ? t('ratedByShort', { brand: selected.item!.brand })
+                        : t('ratedCommunityShort')}
+                    </span>
                   )}
+                  <RatingMeters
+                    rows={(['power', 'control', 'durability'] as const).flatMap((key) => {
+                      const value = key === 'power' ? powerOf(selected.item) : key === 'control' ? controlOf(selected.item) : durabilityOf(selected.item);
+                      return value === null ? [] : [{ key, label: t(key), value }];
+                    })}
+                  />
+                  {feelOf(selected.item) !== null && <FeelScale value={feelOf(selected.item)!} />}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    {bandOf(selected.label) ? <StockBadge band={bandOf(selected.label)!} /> : <span />}
+                    {/* Stock only when it changes the choice (Grant: "In
+                        stock, Low on stock, Out of stock" — and "Does user
+                        care about stock here?"). */}
+                    {bandOf(selected.label) && bandOf(selected.label) !== 'in' ? <StockBadge band={bandOf(selected.label)!} /> : <span />}
                     <button
                       type="button"
                       onClick={() => setOpen(selected.label)}
@@ -480,6 +461,14 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
 
       <StringDetailSheet
         item={openEntry?.item ?? null}
+        label={openEntry?.label ?? null}
+        onRestring={onRestring ? (label) => {
+          // Let this sheet close on its own (--duration-sheet) before the tab
+          // switches register and the request sheet rises: switching first
+          // unmounted it mid-sheet, a cut instead of a hand-off.
+          setOpen(null);
+          window.setTimeout(() => onRestring(label), SHEET_CLOSE_MS);
+        } : undefined}
         open={openEntry?.item != null}
         onClose={() => setOpen(null)}
         price={openEntry && shelf ? shelfPrice(shelf, openEntry.label) : undefined}
@@ -487,6 +476,25 @@ export default function StringsWeOfferCard({ showEmpty = false }: Props) {
         clubCount={openEntry ? shelf?.players[openEntry.label] ?? null : null}
         clubColours={openEntry ? shelf?.colours[openEntry.label] ?? [] : []}
       />
+    </div>
+  );
+}
+
+/**
+ * Feel as a position, not a score: soft to hard is a preference, so it is a
+ * marker on a scale with its word, never a bar that fills (more is not better).
+ */
+function FeelScale({ value }: { value: number }) {
+  const t = useTranslations('home.stringing.offer');
+  const v = Math.max(1, Math.min(5, Math.round(value)));
+  const pct = ((v - 1) / 4) * 100;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <span className="section-label" style={{ color: 'var(--text-secondary)' }}>{t('feelLabel')}</span>
+      <div aria-hidden="true" style={{ position: 'relative', height: 'var(--space-3)', borderRadius: 'var(--radius-pill)', background: 'var(--inner-card-bg)', boxShadow: 'inset 0 0 0 1px var(--inner-card-border)' }}>
+        <span style={{ position: 'absolute', top: 'calc(-1 * var(--space-05))', bottom: 'calc(-1 * var(--space-05))', left: `calc(${pct}% - var(--space-1))`, width: 'var(--space-3)', borderRadius: 'var(--radius-pill)', background: 'var(--text-primary)', transition: 'left var(--duration-normal) var(--ease-out-quart)' }} />
+      </div>
+      <span className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t(`feelWord_${v}`)}</span>
     </div>
   );
 }

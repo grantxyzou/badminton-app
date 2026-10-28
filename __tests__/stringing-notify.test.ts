@@ -39,24 +39,18 @@ function job(over: Partial<StringingJob> = {}): StringingJob {
   };
 }
 
-describe('a notice can never carry the exact price', () => {
-  it('bands the price, exactly as the API does', () => {
-    expect(buildPlayerNotice(job({ priceCents: 3000 })).priceRange).toBe('$28–32');
+describe('a notice quotes the exact price, as the card does', () => {
+  it('formats the quote the way the card does: whole dollars when whole', () => {
+    expect(buildPlayerNotice(job({ priceCents: 3000 })).quote).toBe('$30');
+    expect(buildPlayerNotice(job({ priceCents: 3450 })).quote).toBe('$34.50');
   });
 
-  it('leaks nothing exact for ANY price, on any stage', () => {
-    // Brute force rather than a spot check: the failure mode is one branch
-    // somewhere forgetting to band, and a single example would miss it.
+  it('never carries the raw cents, for any price, on any stage', () => {
     for (const status of STRINGING_FLOW) {
       for (const priceCents of [999, 2800, 2999, 3000, 3001, 4200, 12345]) {
         const notice = buildPlayerNotice(job({ status, priceCents }));
-        // Against the notice's OWN values, not the whole serialised blob:
-        // scanning the blob made `priceCents: 0` fail on the "0" inside
-        // "J-0042", which is a false alarm about the job number rather than a
-        // leak. A $0 job has nothing to hide anyway.
-        const values = Object.values(notice).map(String).join('|');
-        expect(values).not.toContain((priceCents / 100).toFixed(2));
-        expect(values).not.toContain(String(priceCents));
+        expect(notice).not.toHaveProperty('priceCents');
+        expect(notice.quote).toBe(Number.isInteger(priceCents / 100) ? `$${priceCents / 100}` : `$${(priceCents / 100).toFixed(2)}`);
       }
     }
   });
@@ -71,7 +65,8 @@ describe('a notice can never carry the exact price', () => {
   });
 
   it('says "not priced yet" rather than "free"', () => {
-    expect(buildPlayerNotice(job({ priceCents: null })).priceRange).toBeNull();
+    expect(buildPlayerNotice(job({ priceCents: null })).quote).toBeNull();
+    expect(buildPlayerNotice(job({ priceCents: 0 })).quote).toBe('$0');
   });
 });
 

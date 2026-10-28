@@ -8,17 +8,14 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
-import { dueFor, dueStyle, todayIso, formatReadyBy } from '@/lib/stringingDue';
-import StatusBadge from '@/components/primitives/StatusBadge';
-import { STATUS_TONE } from '@/components/stringing/statusTone';
+import { todayIso } from '@/lib/stringingDue';
+import JobCard, { nextStatusOf } from './JobCard';
 import type { StringerJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
 import { useTabReturn } from '@/lib/tabActivity';
 import { useHoleLookup } from '@/components/stringing/useHoleLookup';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-
-/** Urgency ink, the same four the bench uses for its due column. */
 
 /**
  * The bench, for the person actually holding the racket.
@@ -70,8 +67,6 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
      previous status; the route allows any move. The push already sent is not
      retracted (audit 2026-10-11, finding 08). */
   const [lastMove, setLastMove] = useState<{ jobId: string; from: StringingStatus; to: StringingStatus } | null>(null);
-  // Bench words for the due line; the stringer is working the bench.
-  const tAdmin = useTranslations('admin.stringing');
   const today = todayIso();
   // Read only once there is a job to show (docs/plans/grommet-holes.md, Phase 4).
   const holes = useHoleLookup(!!jobs && jobs.length > 0);
@@ -172,92 +167,48 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
       {saveError && <p className="field-error" role="alert">{t('stringerSaveError')}</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {jobs.map((job) => {
-          const idx = STRINGING_FLOW.indexOf(job.status);
-          const nextStatus = idx >= 0 && idx < STRINGING_FLOW.length - 1
-            ? STRINGING_FLOW[idx + 1]
-            : null;
+          const nextStatus = nextStatusOf(job.status, STRINGING_FLOW);
+          const undoable = lastMove?.jobId === job.id && job.status === lastMove.to;
           return (
-            /* Tier 2 inside the card, the same surface and the same rules as
-               the bench row: who/what on the left, the status pill on the
-               right; words in the body face, only the tension in mono. */
-            <div
+            /* The bench's own card (JobCard), with no money on it: the
+               stringer's projection carries none, so `paidAt` is left
+               unknown and the card never says "unpaid". */
+            <JobCard
               key={job.id}
-              className="glass-card-soft"
-              style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-4)' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flex: '1 1 auto', minWidth: 0 }}>
-                  <span className="fs-md" style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {job.racketLabel}
-                  </span>
-                  <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', flex: 'none' }}>
-                    {job.jobNo}
-                  </span>
-                </span>
-                <StatusBadge variant="state" tone={STATUS_TONE[job.status] ?? STATUS_TONE.requested}>
-                  {tAdmin(`status.${job.status}`)}
-                </StatusBadge>
-              </div>
-              {/* The spec, which is the whole reason they opened this. */}
-              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
-                {job.stringLabel}{job.stringColor ? ` · ${job.stringColor}` : ''} ·{' '}
-                <span style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
-                  {job.tensionMains}/{job.tensionCrosses} {tAdmin('lb')}
-                </span>
-                {(() => {
-                  const n = holes.forLabel(job.racketLabel).holes;
-                  return n !== null ? <>{' · '}{tAdmin('holes.holesValue', { count: n })}</> : null;
-                })()}
-                {' · '}
-                {t('stringerFor', { name: job.memberName })}
-              </span>
-              {/* The date, in the bench's own words and colours. The API sent
-                  it all along; the one person who has to hit it was the one
-                  not shown it (audit 2026-10-11, finding 09). */}
-              {(() => {
-                const due = dueFor({ readyBy: job.readyBy, status: job.status, paidAt: null }, today);
-                if (due.key === 'pickedUp' || due.key === 'readyUnpaid') return null;
-                const label =
-                  due.key === 'overdue'
-                    ? tAdmin('due.overdue', { days: due.days ?? 0 })
-                    : due.key === 'onDate'
-                      ? tAdmin('readyBy', { date: formatReadyBy(due.date) ?? due.date ?? '' })
-                      : tAdmin(`due.${due.key}`);
-                return (
-                  <span className="fs-sm" style={dueStyle(due.tone)}>
-                    {label}
-                  </span>
-                );
-              })()}
-              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-                {nextStatus && (
-                  <button
-                    type="button"
-                    className="cc-btn cc-btn-secondary"
-                    style={{ flex: 1 }}
-                    disabled={busy !== null || !online}
-                    onClick={() => void advance(job, nextStatus)}
-                  >
-                    {/* The status WORD from the locale, not the key: "Mark
-                        picked up" happened to read fine in English and rendered
-                        "标记为ready" in Chinese (audit 2026-10-11, finding 08). */}
-                    {t('stringerAdvance', { status: t(`next.${nextStatus}`) })}
-                  </button>
-                )}
-                {/* Only while the job still sits where THIS card put it: if the
-                    admin moved it on in between, undo would revert their move. */}
-                {lastMove?.jobId === job.id && job.status === lastMove.to && (
-                  <button
-                    type="button"
-                    className="cc-btn cc-btn-ghost"
-                    disabled={busy !== null || !online}
-                    onClick={() => void advance(job, lastMove.from, true)}
-                  >
-                    {t('stringerUndo')}
-                  </button>
-                )}
-              </div>
-            </div>
+              job={job}
+              today={today}
+              holes={holes.forLabel(job.racketLabel).holes}
+              action={nextStatus || undoable ? (
+                <>
+                  {nextStatus && (
+                    <button
+                      type="button"
+                      className="cc-btn cc-btn-secondary"
+                      style={{ flex: 1 }}
+                      disabled={busy !== null || !online}
+                      onClick={() => void advance(job, nextStatus)}
+                    >
+                      {/* The status WORD from the locale, not the key: "Mark
+                          picked up" happened to read fine in English and
+                          rendered "标记为ready" in Chinese (audit 2026-10-11, finding 08). */}
+                      {t('stringerAdvance', { status: t(`next.${nextStatus}`) })}
+                    </button>
+                  )}
+                  {/* Only while the job still sits where THIS card put it: if
+                      the admin moved it on in between, undo would revert their move. */}
+                  {undoable && (
+                    <button
+                      type="button"
+                      className="cc-btn cc-btn-ghost"
+                      disabled={busy !== null || !online}
+                      onClick={() => void advance(job, lastMove!.from, true)}
+                    >
+                      {t('stringerUndo')}
+                    </button>
+                  )}
+                </>
+              ) : undefined}
+            />
           );
         })}
       </div>

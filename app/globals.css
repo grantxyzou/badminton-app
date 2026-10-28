@@ -542,6 +542,8 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
   --border: rgba(255, 255, 255, 0.12);
   --border-subtle: rgba(255, 255, 255, 0.06);
   --sev-warn: #f59e0b;
+  /* Ink on a solid --sev-warn fill (the cc-btn-warn button). */
+  --on-warn: #1a1206;
   --bg-surface: #1a1a1a;
   --bg-elevated: #1a1a1a;
   /* Pinned sheet footer scrim — `--page-bg` at 72%, so the list stays
@@ -557,6 +559,8 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
   --border: rgba(0, 0, 0, 0.08);
   --border-subtle: rgba(0, 0, 0, 0.05);
   --sev-warn: #b45309;
+  /* Light --sev-warn is a deep amber: white reads ~5.8:1 on it. */
+  --on-warn: #fff;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
   --sheet-footer-bg: rgba(250, 248, 245, 0.78);
@@ -2452,6 +2456,12 @@ html:root .ink-button {
   .link-quiet:hover {
     color: var(--text-primary);
   }
+}
+/* Flush with the content edge, for a quiet link that reads as part of a
+   left-aligned column (the request sheet's "I have a racket that is not
+   listed here" — the canvas, 2026-10-28) rather than a centred aside. */
+.link-quiet--flush {
+  padding-inline: 0;
 }
 
 .btn-ghost {
@@ -4554,6 +4564,71 @@ button.sheet-row { cursor: pointer; }
   }
 }
 
+/* An inner row: one line of facts inside a card, label left, value right.
+   The inner-card material at the inner-row spec (12px radius, 12px padding). */
+.bpm-inner-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+}
+
+/* A segment of the widget-style progress bar (the request sheet's Sent
+   screen): a short pill per stage, lit once reached. */
+.bpm-seg {
+  flex: 1;
+  height: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+.bpm-seg--on {
+  background: var(--accent);
+}
+
+/* A rating meter's fill (components/stringing/RatingMeters.tsx). It travels
+   to a new value on change only — the Fill recipe of the motion system — so a
+   string switched on the map slides its bars rather than snapping them. */
+.bpm-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-normal) var(--ease-out-quart);
+}
+
+/* One racket on the bench or a stringer's queue (components/stringing/JobCard.tsx).
+   The inner-card material at 16px radius and 16px padding — the canvas's
+   bench card, a step up from the 12/12 inner row because each one carries a
+   full-width action of its own. A press dims it like any pressable card. */
+.bpm-job-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  transition: transform var(--duration-press) var(--ease-out-quart);
+}
+.bpm-job-card:has(> button:first-child:active) {
+  transform: scale(0.98);
+}
+
+/* Warn — the one answer an amber banner asks for ("Review the change"). SOLID,
+   unlike its tinted siblings: it sits ON an amber banner, where a tint of the
+   same amber would vanish into the fill. Dark ink on amber in both themes. */
+.cc-btn-warn {
+  background: var(--sev-warn);
+  border-color: var(--sev-warn);
+  color: var(--on-warn);
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .cc-btn-warn:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+}
+
 [data-theme="light"] .cc-btn-primary {
   background: rgba(22, 163, 74, 0.12);
   border-color: rgba(22, 163, 74, 0.45);
@@ -5414,6 +5489,9 @@ html:root[data-theme="light"] {
   padding-inline: var(--space-1);
   text-align: center;
   line-height: var(--lh-snug);
+  /* One word a step since the canvas pass (Request · Drop off · Stringing ·
+     Pick up), so each label holds one line instead of wrapping unevenly. */
+  white-space: nowrap;
   color: var(--text-muted);
 }
 .bpm-steps__label--here {

@@ -1,17 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { isBillable, stringingCharges, stringingTotal } from '../lib/stringingBilling';
-import { formatPriceBand, priceBand } from '../lib/stringing';
 import type { StringingStatus } from '../lib/stringing';
 import type { StringingJob } from '../lib/types';
 
 /**
  * When a stringing job stops being a quote and becomes a bill.
  *
- * The rest of this feature hides the stringer's exact figure behind a
- * quantised band. A balance line is the one place that must NOT: you cannot
- * total a range, and you cannot ask somebody to pay one. These tests pin where
- * the wall ends, because "just show the band on the receipt too" is the
- * plausible-sounding change that would break the total.
+ * A quote is what the stringer wrote down; a bill is what is owed once the
+ * job is finished, priced and unpaid. These tests pin when one becomes the
+ * other, and that the bill is the exact figure, summed in cents.
  */
 function job(over: Partial<StringingJob> = {}): StringingJob {
   const now = '2026-08-27T00:00:00.000Z';
@@ -40,13 +37,13 @@ function job(over: Partial<StringingJob> = {}): StringingJob {
   };
 }
 
-describe('a bill is a number, not a range', () => {
-  it('charges the EXACT price, never the band', () => {
-    // $30.00 shows to a player as "$28–32" everywhere else. On a receipt it
-    // has to be $30, or the total is fiction.
+describe('a bill is the exact figure', () => {
+  it('charges the EXACT price', () => {
     const [charge] = stringingCharges([job({ priceCents: 3000 })]);
     expect(charge.amount).toBe(30);
-    expect(formatPriceBand(priceBand(3000))).toBe('$28–32');
+    // Never rounded: a $34.50 restring is a $34.50 line.
+    const [half] = stringingCharges([job({ priceCents: 3450 })]);
+    expect(half.amount).toBe(34.5);
   });
 
   it('sums in cents so the total agrees with its own lines', () => {

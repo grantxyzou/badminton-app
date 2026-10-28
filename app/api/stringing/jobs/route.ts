@@ -4,14 +4,18 @@
  *
  * ONE ROUTE, TWO AUDIENCES, AND THE STRIP IS THE POINT
  * ---------------------------------------------------
- * A stringer sees `StringingJob`: the exact price, who owns the job, the bench
- * status. A player sees `PlayerStringingJob`: a price BAND, no stringer, and
- * the player vocabulary. `toPlayerJob` is the only way a job reaches a
- * non-admin, so the strip cannot be forgotten at a call site — the same shape
- * the codebase already uses for `deleteToken` and `pinHash`.
+ * The bench sees `StringingJob`: everything, the bench status included. A
+ * player sees `PlayerStringingJob`: their own job's quote and bill, no
+ * stringer, and the player vocabulary. A stringer who is not an admin sees
+ * `StringerJob`: the spec and none of the money. `toPlayerJob` and
+ * `toStringerJob` are the only ways a job reaches a non-admin, so a strip
+ * cannot be forgotten at a call site — the same shape the codebase uses for
+ * `deleteToken` and `pinHash`.
  *
- * `priceCents` is therefore a strip-canary. Any new endpoint returning a job to
- * a player must go through `toPlayerJob`; search for it before adding one.
+ * The player's price was a $4 band until 2026-10-28; it is exact now
+ * (docs/plans/stringing-canvas-redesign.md). `priceCents` stays a
+ * strip-canary for the STRINGER, and the raw field never leaves the server
+ * for anyone else — a player gets `quote`, in dollars, for their own job.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
@@ -28,8 +32,6 @@ import {
   isValidTension,
   playerStageFor,
   playerStageIndex,
-  priceBand,
-  formatPriceBand,
   formatJobNo,
 } from '@/lib/stringing';
 import { isBillable } from '@/lib/stringingBilling';
@@ -104,11 +106,9 @@ const ARCHIVED_SQL = '(IS_DEFINED(c.archivedAt) AND NOT IS_NULL(c.archivedAt))';
 /**
  * The proposed-change diff a player is shown, or null.
  *
- * THE PRICE WALL'S ONE DOCUMENTED EXCEPTION. Both figures are exact dollars,
- * because you cannot ask somebody to agree to "$28–32" — the whole point of
- * asking is that they know the number. It is narrow by construction: nothing is
- * emitted unless a proposal is outstanding, and each field appears only if that
- * field is actually changing. Every other path still gets the band.
+ * Both figures are exact dollars, like the quote. Nothing is emitted unless a
+ * proposal is outstanding, and each field appears only if that field is
+ * actually changing.
  *
  * Note what is NOT here: `proposedBy`. A player is told the club changed
  * something, not which volunteer typed it.
@@ -141,7 +141,7 @@ export function toPlayerPendingEdit(job: StringingJob): PlayerPendingEdit | null
  *
  * A third projection, and it exists because the two that came before answer
  * different questions. The bench view is "everything, you own this club"; the
- * player view is "your racket, and a price band". A stringer needs the SPEC —
+ * player view is "your racket, and what it costs". A stringer needs the SPEC —
  * what to put on, at what tension, for whom — and none of the money. What the
  * club charges is not their business, and `priceCents` stays a strip-canary
  * for them exactly as it is for a player.
@@ -181,18 +181,15 @@ export function toPlayerJob(job: StringingJob): PlayerStringingJob {
     tensionMains: job.tensionMains,
     tensionCrosses: job.tensionCrosses,
     method: job.method,
-    // A band, never the figure. `formatPriceBand` returns null for an unpriced
-    // job, which the UI renders as "Grant will confirm" rather than as free.
-    priceRange: formatPriceBand(priceBand(job.priceCents)),
+    // The quote, exact (docs/plans/stringing-canvas-redesign.md). Null for an
+    // unpriced job, which the card says as "Not priced yet", never as free.
+    quote: typeof job.priceCents === 'number' ? job.priceCents / 100 : null,
     /**
      * The EXACT amount, but only once the job is billable.
      *
-     * Not a hole in the price wall — the end of it. The band hides a
-     * PROVISIONAL figure; once the racket is finished and priced, the player
-     * has a bill, and a bill is a number. Sending it here is also what stops
-     * the app contradicting itself: without this the Home card showed
-     * "$28–32" directly above a balance line reading "$30" for the same
-     * racket, which is the sort of thing that makes someone distrust both.
+     * Separate from the quote because they answer different questions: the
+     * quote is what the stringer has written down, the bill is what is owed
+     * now (finished, priced, unpaid) and is the figure the balance card adds.
      */
     amountDue: isBillable(job) ? Math.round(job.priceCents!) / 100 : null,
     readyBy: job.readyBy,
@@ -333,8 +330,7 @@ export async function GET(req: NextRequest) {
       .filter((j) => !isArchived(j))
       .sort(benchOrder)
       .map(toPlayerJob);
-    // A date and nothing else — no price, no stringer — so the price wall is
-    // not touched by it.
+    // A date and nothing else — no price, no stringer.
     return NextResponse.json({ jobs, view: 'player', lastStrungAt: lastStrungFromJobs(resources) });
   } catch (err) {
     // Never `catch { return [] }` — a load failure must not render as "no

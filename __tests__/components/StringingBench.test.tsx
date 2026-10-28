@@ -208,7 +208,7 @@ describe('the shop sign', () => {
     // still need finishing.
     respondShop(false);
     wrap(<StringingPage onBack={() => {}} />);
-    expect(await screen.findByText('Wei')).toBeDefined();
+    expect(await screen.findByText(/for Wei/)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Add job' })).toBeDefined();
   });
 });
@@ -314,6 +314,13 @@ describe('intake shows the stringer what the player will read', () => {
     wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
   }
 
+  /** The intake lists names once something is typed (Grant: "if search is
+   *  there why list name out?"). */
+  async function searchFor(name: string) {
+    fireEvent.change(await screen.findByLabelText('Search by name'), { target: { value: name } });
+    return screen.findByText(name);
+  }
+
   it('fills the price from the shelf string typed, until the stringer types one', async () => {
     // docs/plans/bench-redesign.md, PR 2: each string's restring price is the
     // price, so a walk-up on a shelf string should not need it typed twice.
@@ -344,13 +351,16 @@ describe('intake shows the stringer what the player will read', () => {
     expect(price.value).toBe('28');
   });
 
-  it('previews the BAND live as the price is typed', async () => {
-    // The stringer should never have to guess what the other side reads. This
-    // is the same rule as the API strip, made visible at the moment the number
-    // is chosen rather than discovered afterwards.
+  it('previews what the player will read, live, as the price is typed', async () => {
+    // The stringer should never have to guess what the other side reads. The
+    // player sees the exact figure now (docs/plans/stringing-canvas-redesign.md),
+    // whole when whole.
     openIntake();
     fireEvent.change(await screen.findByLabelText('Your price'), { target: { value: '30' } });
-    await waitFor(() => expect(screen.getByText('$28–32')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('$30')).toBeDefined());
+    fireEvent.change(screen.getByLabelText('Your price'), { target: { value: '34.5' } });
+    await waitFor(() => expect(screen.getByText('$34.50')).toBeDefined());
+    expect(screen.queryByText('$28–32')).toBeNull();
   });
 
   it('offers every BPM account, not just this week’s roster', async () => {
@@ -358,7 +368,7 @@ describe('intake shows the stringer what the player will read', () => {
     // racket on a night they are not booked. Filtering to signups would make
     // the common case the impossible one.
     openIntake();
-    expect(await screen.findByText('Wei')).toBeDefined();
+    expect(await searchFor('Wei')).toBeDefined();
     expect(screen.getByText(/walk-ups included/i)).toBeDefined();
   });
 
@@ -366,7 +376,7 @@ describe('intake shows the stringer what the player will read', () => {
     // So a racket can be logged in ten seconds at a session and priced later,
     // instead of the form demanding a figure while someone stands waiting.
     openIntake();
-    fireEvent.click(await screen.findByText('Wei'));
+    fireEvent.click(await searchFor('Wei'));
     fireEvent.change(screen.getByLabelText(/Racket, e.g./i), { target: { value: 'Astrox' } });
     fireEvent.change(screen.getByLabelText(/String, e.g./i), { target: { value: 'BG80' } });
 
@@ -378,7 +388,7 @@ describe('intake shows the stringer what the player will read', () => {
 
   it('blocks a price that is not a number', async () => {
     openIntake();
-    fireEvent.click(await screen.findByText('Wei'));
+    fireEvent.click(await searchFor('Wei'));
     fireEvent.change(screen.getByLabelText('Your price'), { target: { value: 'thirty' } });
     expect(screen.getByText(/doesn't look like a price/i)).toBeDefined();
   });
@@ -452,7 +462,7 @@ describe('the archive', () => {
     wrap(<StringingPage onBack={() => {}} />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Archived (1)' })).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Archived (1)' }));
-    await waitFor(() => expect(screen.getByText('Still owed $32.00')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Still owes $32')).toBeDefined());
   });
 
   it('shows an error rather than an empty archive when the load fails', async () => {
@@ -529,7 +539,7 @@ describe('deleting says what it destroys', () => {
     await waitFor(() =>
       expect(
         screen.getByText(
-          "Delete Wei's Astrox 99 Pro? The $32.00 they still owe disappears from their balance, and this cannot be undone.",
+          "Delete Wei's Astrox 99 Pro? The $32 they still owe disappears from their balance, and this cannot be undone.",
         ),
       ).toBeDefined(),
     );
@@ -808,7 +818,7 @@ describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', ()
     const onTakeover = vi.fn();
     wrap(<StringingPage embedded onBack={() => {}} onTakeover={onTakeover} />);
     await screen.findByText('J-0042');
-    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.actions.open }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${enMessages.admin.stringing.actions.open} · `) }));
     await waitFor(() => expect(onTakeover).toHaveBeenLastCalledWith(true));
   });
 
@@ -819,7 +829,7 @@ describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', ()
     respondEmbedded();
     wrap(<StringingPage embedded crumb="Stringing" onBack={() => {}} onTakeover={() => {}} />);
     await screen.findByText('J-0042');
-    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.actions.open }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${enMessages.admin.stringing.actions.open} · `) }));
     expect(await screen.findByText('Stringing')).toBeDefined();
     expect(screen.queryByText('Admin')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));

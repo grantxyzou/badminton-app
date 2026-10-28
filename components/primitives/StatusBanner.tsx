@@ -38,6 +38,12 @@ export interface StatusBannerProps {
    * states, which appear more often and shouldn't draw a victory lap.
    */
   celebrate?: boolean;
+  /** A figure at the far edge of the row, e.g. the amount on "Your racket is
+   *  ready". Kept out of `body` so it lines up as data, not as prose. */
+  trailing?: ReactNode;
+  /** A button under the row, full width — the one thing the banner asks for
+   *  ("Review the change"). The banner becomes a column to hold it. */
+  action?: ReactNode;
 }
 
 const TONE_CLASS: Record<StatusTone, string> = {
@@ -58,16 +64,25 @@ const TITLE_TONE_CLASS: Record<StatusTone, string> = {
   danger: 'text-red-400',
 };
 
-export default function StatusBanner({ tone, icon, title, body, celebrate }: StatusBannerProps) {
-  return (
-    <div className={`${TONE_CLASS[tone]}${celebrate ? ' status-celebrate' : ''}`}>
+export default function StatusBanner({ tone, icon, title, body, celebrate, trailing, action }: StatusBannerProps) {
+  const row = (
+    <>
       <span className={`material-icons icon-status ${ICON_TONE_CLASS[tone]}`} aria-hidden="true">
         {icon}
       </span>
-      <div>
+      <div style={trailing ? { flex: 1, minWidth: 0 } : undefined}>
         <p className={`font-semibold fs-md ${TITLE_TONE_CLASS[tone]}`}>{title}</p>
         {body && <p className="fs-sm text-gray-400 mt-0.5">{body}</p>}
       </div>
+      {trailing && <span style={{ flex: 'none' }}>{trailing}</span>}
+    </>
+  );
+  const className = `${TONE_CLASS[tone]}${celebrate ? ' status-celebrate' : ''}`;
+  if (!action) return <div className={className}>{row}</div>;
+  return (
+    <div className={className} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>{row}</div>
+      {action}
     </div>
   );
 }

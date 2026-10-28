@@ -11,7 +11,7 @@ import { resetSharedReads } from '../../lib/sharedRead';
 import {
   STRINGING_INTENT_KEY,
   hasStringingIntent,
-  requestStringing, requestStringingAt,
+  requestStringing, requestStringingAt, requestStringingWith,
   takeStringingIntent,
 } from '../../lib/stringingIntent';
 
@@ -127,6 +127,22 @@ describe('the tension card row', () => {
 const stepperAt = (n: number) => (_: string, el: Element | null) =>
   el?.classList.contains('fs-stat') === true && el.textContent === `${n}lb`;
 
+/** The tension is step 2 of the request sheet: answer step 1 to reach it. */
+async function toTensionStep() {
+  // A generous wait: three reads (shop, jobs, shelf) land before the list
+  // does, and under a loaded full-suite run 1s was not always enough.
+  await screen.findByRole('radiogroup', { name: 'Which string?' }, { timeout: 4000 });
+  // The racket field is DISABLED while the player's rackets load (it says
+  // "asking", not "you have none"); typing into it then is lost, which is what
+  // left CI on step 1 with Next dimmed. Wait for it as a person would.
+  await waitFor(() => expect((screen.getByLabelText('Which racket?') as HTMLInputElement).disabled).toBe(false), { timeout: 4000 });
+  fireEvent.change(screen.getByLabelText('Which racket?'), { target: { value: 'Astrox 99 Pro' } });
+  fireEvent.click(screen.getByRole('radio', { name: /BG80 white/ }));
+  const next = screen.getByRole('button', { name: 'Next: string tension' });
+  await waitFor(() => expect((next as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(next);
+}
+
 function renderStringing() {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
@@ -140,8 +156,8 @@ describe('arriving on Stringing', () => {
     mockApi(true);
     requestStringingAt(24);
     renderStringing();
-    await screen.findByRole('radiogroup', { name: 'Which string?' });
-    await waitFor(() => expect(screen.getByText(stepperAt(24))).toBeTruthy());
+    await toTensionStep();
+    await waitFor(() => expect(screen.getByText(stepperAt(24))).toBeTruthy(), { timeout: 4000 });
     expect(hasStringingIntent()).toBe(false);
   });
 
@@ -149,21 +165,39 @@ describe('arriving on Stringing', () => {
     mockApi(true);
     requestStringingAt(22);
     renderStringing();
-    await screen.findByRole('radiogroup', { name: 'Which string?' });
-    await waitFor(() => expect(screen.getByText(stepperAt(22))).toBeTruthy());
+    await toTensionStep();
+    await waitFor(() => expect(screen.getByText(stepperAt(22))).toBeTruthy(), { timeout: 4000 });
     fireEvent.click(screen.getByRole('button', { name: enMessages.recovery.close }));
     fireEvent.click(await screen.findByRole('button', { name: 'Submit a request' }));
-    await waitFor(() => expect(screen.getByText(stepperAt(26))).toBeTruthy());
+    await toTensionStep();
+    await waitFor(() => expect(screen.getByText(stepperAt(26))).toBeTruthy(), { timeout: 4000 });
   });
 
   it('a closed shop consumes the marker and opens nothing', async () => {
     mockApi(false);
     requestStringingAt(24);
     renderStringing();
-    expect(await screen.findByText('Coming soon')).toBeTruthy();
+    expect(await screen.findByText('Closed')).toBeTruthy();
     expect(screen.queryByLabelText('Which racket?')).toBeNull();
     // Consumed once the identity is read too, which can land a render after
     // "Coming soon" — on a slow CI runner it did (PR #702).
     await waitFor(() => expect(hasStringingIntent()).toBe(false));
+  });
+});
+
+describe('arriving from a string\'s page', () => {
+  it('opens the request form with that string picked', async () => {
+    mockApi(true);
+    requestStringingWith('BG80 white');
+    renderStringing();
+    await waitFor(() => expect(screen.getByRole('radio', { name: /BG80 white/ }).getAttribute('aria-checked')).toBe('true'));
+    expect(hasStringingIntent()).toBe(false);
+  });
+
+  it('ignores a malformed marker rather than reading it as a tension', () => {
+    sessionStorage.setItem('badminton_stringing_intent', '{"string": 24}');
+    expect(takeStringingIntent()).toBeNull();
+    sessionStorage.setItem('badminton_stringing_intent', '{not json');
+    expect(takeStringingIntent()).toBeNull();
   });
 });

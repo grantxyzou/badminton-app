@@ -21,9 +21,8 @@ import { formatServicePrice } from '@/lib/stringingRateCard';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
-  priceBand,
-  formatPriceBand,
 } from '@/lib/stringing';
+import { fmtMoney } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -32,9 +31,12 @@ interface Props {
   /** The header's crumb, from whichever screen opened the bench. */
   crumb?: string;
   onCreated: () => void;
+  /** The members on the bench's most recent jobs, newest first — the "Recent"
+   *  chips (Grant: "if search is there why list name out?"). */
+  recent?: PickableMember[];
 }
 
-interface PickableMember {
+export interface PickableMember {
   id: string;
   name: string;
 }
@@ -55,7 +57,7 @@ interface PickableMember {
  * be logged in ten seconds at a session and priced later at the bench, instead
  * of the form demanding a figure while someone stands waiting.
  */
-export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
+export default function StringingIntake({ onBack, onCreated, crumb, recent = [] }: Props) {
   const t = useTranslations('admin.stringing');
   const online = useOnline();
 
@@ -172,9 +174,18 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
   const matches = useMemo(() => {
     if (!members) return [];
     const q = search.trim().toLowerCase();
-    if (!q) return members.slice(0, 8);
+    // Nothing typed lists nobody: the search is the way in, and the Recent
+    // chips above it are the shortcut.
+    if (!q) return [];
     return members.filter((m) => m.name.toLowerCase().includes(q)).slice(0, 8);
   }, [members, search]);
+
+  /* Three, and only people still on the member list: a recent job's member
+     who has since left must not be a chip that saves a job for nobody. */
+  const recentPicks = useMemo(() => {
+    const live = members ? new Set(members.map((m) => m.id)) : null;
+    return recent.filter((m) => live === null || live.has(m.id)).slice(0, 3);
+  }, [recent, members]);
 
   const clamp = (n: number) => Math.max(TENSION_MIN_LB, Math.min(TENSION_MAX_LB, n));
 
@@ -284,11 +295,29 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
                 aria-label={t('searchMembers')}
                 maxLength={50}
               />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-                {matches.map((m) => (
-                  <ListRow key={m.id} onClick={() => setPicked(m)} title={<span className="fs-md">{m.name}</span>} />
-                ))}
-              </div>
+              {!search.trim() && recentPicks.length > 0 && (
+                <div role="group" aria-label={t('recent')} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                  <span className="fs-sm" style={{ color: 'var(--text-muted)', marginRight: 'var(--space-1)' }}>{t('recent')}</span>
+                  {recentPicks.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setPicked(m)}
+                      style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
+                    >
+                      {/* The app's chip (`.filter-chip`), inside a 44px hit area. */}
+                      <span className="filter-chip">{m.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {matches.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                  {matches.map((m) => (
+                    <ListRow key={m.id} onClick={() => setPicked(m)} title={<span className="fs-md">{m.name}</span>} />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -459,7 +488,7 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
           <div>
             <DatePicker value={readyBy} onChange={setReadyBy} placeholder={t('readyByPlaceholder')} />
           </div>
-          {/* The band, shown live. The stringer should never have to guess what
+          {/* What the player will read, shown live. The stringer should never guess what
               the other side reads — that is the rule the whole feature rests on. */}
           <div
             className="fs-sm"
@@ -477,7 +506,7 @@ export default function StringingIntake({ onBack, onCreated, crumb }: Props) {
             {priceCents === undefined || priceCents === null ? (
               <span style={{ fontWeight: 600 }}>{t('unpriced')}</span>
             ) : (
-              <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{formatPriceBand(priceBand(priceCents))}</span>
+              <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{fmtMoney(priceCents / 100)}</span>
             )}
           </div>
         </div>

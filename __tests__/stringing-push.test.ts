@@ -83,10 +83,9 @@ beforeEach(() => {
 
 describe('buildStringingPayload — a lock screen is not a private surface', () => {
   /**
-   * The band exists to hide a PROVISIONAL figure, and `amountDue` exists
-   * because a bill is a number. A notification is neither situation: it renders
-   * on a locked phone, in a gym, in front of whoever is standing there. So it
-   * carries NO money at all — not the exact price, and not the band either.
+   * A notification renders on a locked phone, in a gym, in front of whoever
+   * is standing there. So it carries NO money at all — not the quote the
+   * email carries, and not the bill.
    */
   it('carries no money of any kind, for any price, on any notifying stage', () => {
     for (const status of STRINGING_FLOW) {
@@ -97,8 +96,8 @@ describe('buildStringingPayload — a lock screen is not a private surface', () 
         const text = `${payload.title}|${payload.body}`;
         expect(text).not.toContain((priceCents / 100).toFixed(2));
         expect(text).not.toContain(String(priceCents));
-        // Not the band either — that is the point of this test.
-        expect(text).not.toContain(notice.priceRange ?? '__no_band__');
+        // Not the email's quote either — that is the point of this test.
+        expect(text).not.toContain(notice.quote ?? '__no_quote__');
         expect(text).not.toContain('$');
       }
     }

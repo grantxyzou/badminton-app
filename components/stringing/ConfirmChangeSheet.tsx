@@ -6,16 +6,17 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import { announceBalanceChanged } from '@/lib/balanceRefresh';
+import { fmtMoney } from '@/lib/fmt';
 import type { PlayerStringingJob } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
- * "Grant changed something — is that alright?"
+ * "The stringer changed something — is that alright?"
  *
- * The only thing a player may write to their own job, and the reason the
- * price wall has an exception: the figures here are EXACT, because you cannot
- * ask somebody to agree to "$28–32". Every other surface still shows the band.
+ * The only thing a player may write to their own job. The figures are exact
+ * dollars, whole when whole ("$34 → $38", never rounded), like every price the
+ * player sees.
  *
  * It renders a DIFF, not a form. The player is not editing anything — they are
  * answering yes or no to something already written down, and showing them
@@ -24,7 +25,11 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * Declining is a real answer with its own button, not a dismissal. Closing the
  * sheet leaves the question open, which is correct: "I haven't decided" and
  * "no" are different, and a racket sitting unanswered is a conversation to have
- * in person rather than a state the app should guess at.
+ * in person rather than a state the app should guess at. The button reads
+ * "Keep original" (Grant, 2026-10-28): the job stands as it was. It was briefly
+ * "Cancel this request", which read as calling off the restring; that is its
+ * own button on the racket's card, while the racket is still in the bag
+ * (docs/plans/stringing-canvas-redesign.md, Decision 2).
  */
 export default function ConfirmChangeSheet({
   job,
@@ -54,11 +59,14 @@ export default function ConfirmChangeSheet({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ decision }),
       });
-      // 409 is its own message. The likely cause is a stale sheet — Grant
-      // withdrew the change, or it was answered on another device — and
-      // "try again" would be a lie, so it says to refresh instead.
+      // 409 is its own message. The likely cause is a stale sheet — the
+      // stringer withdrew the change, or it was answered on another device —
+      // and "try again" would be a lie. The card behind is re-read too, so its
+      // banner stops asking (Grant: "Why doesnt the button on previous screen
+      // update?").
       if (res.status === 409) {
         setError('gone');
+        onAnswered();
         return;
       }
       if (!res.ok) throw new Error(`answer ${res.status}`);
@@ -90,7 +98,7 @@ export default function ConfirmChangeSheet({
   }
   if (edit && edit.priceTo !== undefined) {
     const money = (v: number | null | undefined) =>
-      v === null || v === undefined ? t('confirm.unpriced') : `$${v.toFixed(2)}`;
+      v === null || v === undefined ? t('confirm.unpriced') : fmtMoney(v);
     rows.push({ label: t('confirm.price'), from: money(edit.priceFrom), to: money(edit.priceTo) });
   }
 
@@ -113,6 +121,9 @@ export default function ConfirmChangeSheet({
               the change, and there is nothing left to answer. It said "Pull to
               refresh" in red, inside a sheet, where pulling does nothing. */}
           {error === 'gone' ? (
+            // Appears into the sheet that is already up (the Appear recipe):
+            // the diff and buttons it replaces go in the same frame.
+            <div className="motion-fade">
             <EmptyState
               action={
                 <button type="button" className="cc-btn cc-btn-ghost" onClick={onClose}>
@@ -122,12 +133,17 @@ export default function ConfirmChangeSheet({
             >
               {t('confirm.gone')}
             </EmptyState>
+            </div>
           ) : error ? (
             <p className="field-error" role="alert">
               {t('confirm.error')}
             </p>
           ) : null}
 
+          {/* Nothing left to answer once it is gone: the diff and both buttons
+              go, so the sheet cannot offer an answer the server will refuse. */}
+          {error !== 'gone' && (
+          <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {rows.map((r) => (
               <div
@@ -182,6 +198,8 @@ export default function ConfirmChangeSheet({
               {t('confirm.decline')}
             </button>
           </div>
+          </>
+          )}
         </div>
       </BottomSheetBody>
     </BottomSheet>

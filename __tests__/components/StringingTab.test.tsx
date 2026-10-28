@@ -99,7 +99,8 @@ describe('everyone gets Racket and Strings', () => {
     wrap(<StringingTab />);
     fireEvent.click(await screen.findByRole('button', { name: R.strings }));
     expect(await screen.findByText('Strings in stock')).toBeDefined();
-    expect(await screen.findByText('Bring your own string')).toBeDefined();
+    // "Bring your own string" lives on the request sheet's row now.
+    expect(screen.queryByText('Bring your own string')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 

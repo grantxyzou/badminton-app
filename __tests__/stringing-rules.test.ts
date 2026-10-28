@@ -6,8 +6,7 @@ import {
   canTransition,
   playerStageFor,
   playerStageIndex,
-  priceBand,
-  formatPriceBand,
+  playerTensionText,
   formatPriceExact,
   isValidTension,
   formatJobNo,
@@ -21,44 +20,13 @@ import {
  * the vocabulary split that keeps the bench's words off the player's screen.
  */
 
-describe('the price band actually hides the price', () => {
-  it('reproduces the design: $30.00 shows as $28–32', () => {
-    expect(formatPriceBand(priceBand(3000))).toBe('$28–32');
-  });
-
-  it('does NOT let a player recover the exact price from the band', () => {
-    // THE WHOLE POINT. The obvious reading of "$30 → $28–32" is a symmetric
-    // ±$2 margin — and a symmetric band's midpoint IS the price, so every
-    // player could just average the two numbers and read it straight off.
-    //
-    // Snapping to a fixed grid means several real prices share one band, so
-    // the band genuinely carries less information than the price does.
-    const sameBand = [2800, 2900, 3000, 3100].map((c) => formatPriceBand(priceBand(c)));
-    expect(new Set(sameBand).size).toBe(1);
-    expect(sameBand[0]).toBe('$28–32');
-
-    // And the midpoint of the band is NOT the price for most members of it.
-    const midpoint = (2800 + 3200) / 2;
-    expect([2800, 2900, 3100].every((c) => c !== midpoint)).toBe(true);
-  });
-
-  it('never reports a band narrower than the grid', () => {
-    for (const cents of [0, 1, 99, 100, 2799, 2800, 999999]) {
-      const band = priceBand(cents)!;
-      expect(band.highCents - band.lowCents).toBe(400);
-      // The real price is always inside the band it is shown as.
-      expect(cents).toBeGreaterThanOrEqual(band.lowCents);
-      expect(cents).toBeLessThan(band.highCents);
-    }
-  });
-
-  it('distinguishes "not quoted yet" from "quoted at nothing"', () => {
-    // null is not a band around zero — the UI says different things for
-    // "Grant hasn't priced this" and "this one's free".
-    expect(priceBand(null)).toBeNull();
-    expect(priceBand(undefined)).toBeNull();
-    expect(priceBand(-1)).toBeNull();
-    expect(formatPriceBand(priceBand(0))).toBe('$0–4');
+describe('prices and tensions as the two sides read them', () => {
+  it('names one tension when the crosses are the usual +2, both when they are not', () => {
+    // The request sheet's "Main + Cross" stepper is one number; a separate
+    // pair is shown as the pair (docs/plans/stringing-canvas-redesign.md).
+    expect(playerTensionText(26, 28)).toBe('26');
+    expect(playerTensionText(26, 30)).toBe('26/30');
+    expect(playerTensionText(28, 28)).toBe('28/28');
   });
 
   it('formats the exact price only through the stringer-facing helper', () => {

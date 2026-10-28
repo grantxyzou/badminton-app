@@ -93,3 +93,15 @@ export function fmtMoneyTile(cents: number): string {
     : `$${tenth(dollars / 1_000_000)}M`;
   return cents < 0 ? `(${s})` : s;
 }
+
+/**
+ * Dollars as a person reads a price: `$30` when whole, `$30.50` when not.
+ *
+ * Never rounded. A `$34.50` restring must not read `$35` on the card and
+ * `$34.50` on the bill, which is what a `Math.round` here would do. The
+ * stringing surfaces share this one; three older private copies (the balance
+ * card, the payments card, a player's profile sheet) say the same thing.
+ */
+export function fmtMoney(dollars: number): string {
+  return Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
+}

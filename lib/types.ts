@@ -936,8 +936,9 @@ export interface StringingJob {
   /** Free text, e.g. "Zach · 2 strings, 4 knots". A note, not an enum: the
    *  method is a fact about how this club strings, not a setting to configure. */
   method: string;
-  /** STRINGER-ONLY. Stripped from every player-facing response and replaced by
-   *  a band — see `priceBand` for why a band and not a margin. */
+  /** The price. A player sees it on their OWN job, exactly, as `quote`
+   *  (docs/plans/stringing-canvas-redesign.md, Grant 2026-10-28: "dont hide");
+   *  a stringer who is not an admin never does (`toStringerJob`). */
   priceCents: number | null;
   /** ISO date the racket is promised back. */
   readyBy: string | null;
@@ -967,6 +968,11 @@ export interface StringingJob {
    * so.
    */
   archivedAt?: string | null;
+  /** The PLAYER cancelled the request before handing the racket over
+   *  (`POST /api/stringing/jobs/[id]/cancel`, only while `requested`). The job
+   *  is archived in the same write; this says who took it off the bench and
+   *  when. Absent or null: nobody cancelled it. */
+  cancelledAt?: string | null;
   /**
    * Pinned to the top of the bench. Absent or null means unpinned.
    *
@@ -1038,7 +1044,7 @@ export interface StringerJob {
 }
 
 /** What a PLAYER is allowed to see of their own job. Note what is missing:
- *  `priceCents`, `stringerId`, and the bench's `status` vocabulary. */
+ *  `stringerId`, and the bench's `status` vocabulary. */
 export interface PlayerStringingJob {
   id: string;
   jobNo: string;
@@ -1050,29 +1056,43 @@ export interface PlayerStringingJob {
   tensionMains: number;
   tensionCrosses: number;
   method: string;
-  /** "$28–32" while the price is still provisional. */
-  priceRange: string | null;
+  /** The quoted price in dollars, exact, or null when not priced yet. It
+   *  replaced a $4 band ("$28–32") on 2026-10-28 — a player was shown a range
+   *  for a figure the stringer had already written down. */
+  quote: number | null;
   /** The exact amount owed, in dollars, once the job is billable — finished,
-   *  priced and unpaid. Null at every other point. A quote is a range; a bill
-   *  is a number. See lib/stringingBilling.ts. */
+   *  priced and unpaid. Null at every other point. See lib/stringingBilling.ts. */
   amountDue: number | null;
   readyBy: string | null;
   paid: boolean;
   /**
    * A change waiting on this player's answer, or null.
    *
-   * THE ONE DOCUMENTED EXCEPTION TO THE PRICE WALL, and it is only safe
-   * because it is named. `priceFrom` / `priceTo` are EXACT dollars, not a
-   * band — you cannot ask somebody to agree to a range, and a bill they have
-   * agreed to is a number by definition. It appears only while a proposal is
-   * outstanding, and only for the fields actually being changed.
-   *
-   * `raterName` on kudos is the precedent: an exception that exists, is
-   * written down, and is structurally impossible to widen by accident.
+   * `priceFrom` / `priceTo` are exact dollars, like `quote`. It appears only
+   * while a proposal is outstanding, and only for the fields actually being
+   * changed.
    */
   pendingEdit: PlayerPendingEdit | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** How one string suits a member's own racket — `GET /api/stringing/fit`
+ *  (docs/plans/stringing-canvas-redesign.md, Decision 9). */
+export type FitVerdict = 'good_match' | 'worth_a_look' | 'not_for_frame';
+
+export interface StringFit {
+  /** "Yonex Astrox 88D Pro" — the frame the pairing was scored against. */
+  racket: string;
+  verdict: FitVerdict;
+  /** The engine's first reason, or null when it gave none / rejected the pair. */
+  reason: string | null;
+  frameTension: [number, number] | null;
+  stringTension: [number, number] | null;
+  /** The player's level as the string engine reads it. */
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  /** The catalog's level line for the string, e.g. "Intermediate", verbatim. */
+  stringLevel: string | null;
 }
 
 /** The diff a player is asked to agree to. No stringer, no memberId, no

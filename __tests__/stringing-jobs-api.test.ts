@@ -73,8 +73,8 @@ afterEach(() => {
   else process.env[FLAG] = flagBefore;
 });
 
-describe('the exact price never reaches a player', () => {
-  it('strips priceCents and sends a band instead', async () => {
+describe('a player sees their own quote, exactly, and never the raw field', () => {
+  it('sends the quote in dollars and strips priceCents', async () => {
     await seedJob({ priceCents: 3000 });
     const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
     expect(res.status).toBe(200);
@@ -82,11 +82,13 @@ describe('the exact price never reaches a player', () => {
 
     expect(body.view).toBe('player');
     expect(body.jobs).toHaveLength(1);
-    expect(body.jobs[0].priceRange).toBe('$28–32');
+    // Exact since 2026-10-28 (docs/plans/stringing-canvas-redesign.md), and
+    // never the band it replaced.
+    expect(body.jobs[0].quote).toBe(30);
+    expect(body.jobs[0]).not.toHaveProperty('priceRange');
 
-    // Asserted on the SERIALISED body, not on a typed view: the failure this
-    // guards against is the figure riding along in JSON while the UI shows a
-    // range, which a shape-only assertion would miss.
+    // Asserted on the SERIALISED body: the stored field and its cents stay
+    // on the server; the player gets dollars under their own name.
     const raw = JSON.stringify(body);
     expect(raw).not.toContain('priceCents');
     expect(raw).not.toContain('3000');
@@ -168,8 +170,8 @@ describe('the exact amount crosses only when it is a BILL', () => {
       const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
       const [job] = (await res.json()).jobs;
       expect(job.amountDue).toBeNull();
-      // The quote is still what they see.
-      expect(job.priceRange).toBe('$28–32');
+      // The quote is still what they see, exactly.
+      expect(job.quote).toBe(30);
     }
   });
 

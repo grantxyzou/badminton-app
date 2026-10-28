@@ -9,6 +9,9 @@ import {
   DOT_PX,
   MIN_SPAN,
   SAME_POINT_SPREAD,
+  clusterPoints,
+  ringPositions,
+  CLUSTER_PX,
   type Rect,
 } from '../lib/stringMap';
 
@@ -125,5 +128,43 @@ describe('client safety', () => {
     // there and testable here (client-server-import-canary walks the rest).
     const src = readFileSync(join(process.cwd(), 'lib', 'stringMap.ts'), 'utf8');
     expect(src).not.toMatch(/^import /m);
+  });
+});
+
+describe('clusters and the zoom ring (docs/plans/stringing-canvas-redesign.md)', () => {
+  it('groups strings with IDENTICAL scores, in input order, and nothing else', () => {
+    const c = clusterPoints([
+      { value: 8, durability: 7 }, { value: 9, durability: 7 }, { value: 8, durability: 7 }, { value: 8, durability: 6 },
+    ]);
+    expect(c.map((g) => g.members)).toEqual([[0, 2], [1], [3]]);
+    // Every string is in exactly one cluster: the counts sum to the plotted strings.
+    expect(c.reduce((n, g) => n + g.members.length, 0)).toBe(4);
+  });
+
+  it('fans a zoomed cluster evenly round the centre, from the top, clockwise', () => {
+    const [top, right, bottom, left] = ringPositions(4, 200, 100, 50);
+    expect(top).toEqual({ x: 100, y: 0 });
+    expect(right.x).toBeCloseTo(150);
+    expect(bottom.y).toBeCloseTo(100);
+    expect(left.x).toBeCloseTo(50);
+    expect(ringPositions(1, 200, 100)).toEqual([{ x: 100, y: 50 }]);
+  });
+
+  it('labels no cluster but the selected one, and keeps labels off reserved space', () => {
+    const out = placeLabels({
+      dots: [{ x: 40, y: 50 }, { x: 150, y: 50 }],
+      widths: [30, 30],
+      labelHeight: 14,
+      width: 200,
+      height: 100,
+      selected: null,
+      sizes: [CLUSTER_PX, DOT_PX],
+      unlabelled: [true, false],
+      // Everything right of 160 is the corner hint.
+      reserved: [{ x: 160, y: 0, w: 40, h: 100 }],
+    });
+    expect(out[0]).toBeNull();
+    expect(out[1]).not.toBeNull();
+    expect(out[1]!.x + out[1]!.w).toBeLessThanOrEqual(160);
   });
 });
