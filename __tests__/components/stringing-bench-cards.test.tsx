@@ -96,7 +96,7 @@ describe('the archive card', () => {
     wrap(<StringingPage onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Archived/ }));
     const card = await screen.findByRole('region', { name: 'Picked up' });
-    expect(within(card).getByText('1 job · 1 still owe')).toBeDefined();
+    expect(within(card).getByText('1 job · 1 still owes')).toBeDefined();
     expect(within(card).getByText('Still owes $28')).toBeDefined();
     fireEvent.click(within(card).getByRole('button', { name: 'Mark paid' }));
     await waitFor(() => {
@@ -143,5 +143,29 @@ describe('the intake\'s Recent chips', () => {
     await waitFor(() => expect(within(recent).getAllByRole('button').map((b) => b.textContent)).toEqual(['Kento', 'Lin']));
     fireEvent.click(within(recent).getByRole('button', { name: 'Lin' }));
     expect(await screen.findByText('Change')).toBeDefined();
+  });
+});
+
+describe('a ready racket is never late (review, 2026-10-28)', () => {
+  it('past its date, a ready job shows the date quietly on a stringer\'s queue, never "late"', () => {
+    wrap(
+      <JobCard
+        job={{ racketLabel: 'Nanoflare 1000Z', jobNo: 'J-0004', status: 'ready', stringLabel: 'BG65', tensionMains: 24, tensionCrosses: 26, memberName: 'Akane', readyBy: '2026-10-20' }}
+        today="2026-10-28"
+      />,
+    );
+    expect(screen.queryByText(/late/)).toBeNull();
+  });
+
+  it('names each card\'s open button for its own job', () => {
+    wrap(
+      <JobCard
+        job={{ racketLabel: 'Astrox 88D Pro', jobNo: 'J-0001', status: 'received', stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, memberName: 'Lin', readyBy: null, paidAt: null }}
+        today="2026-10-28"
+        onOpen={() => {}}
+        openLabel="Open this job"
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Open this job · Astrox 88D Pro · J-0001 · for Lin' })).toBeDefined();
   });
 });

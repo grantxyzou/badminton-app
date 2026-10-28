@@ -389,6 +389,15 @@ describe('every open racket is listed', () => {
     expect(screen.getByRole('button', { name: 'Cancel this request' })).toBeDefined();
   });
 
+  it('shows no amount on a ready racket that is already paid — the quote is not a bill', async () => {
+    // A racket paid before pickup (credit, an e-transfer) owes nothing; the
+    // balance card says $0, so the banner must not say $30.
+    mockApi(true, [{ ...two[1], pendingEdit: null, amountDue: null, paid: true, quote: 30 }]);
+    wrap();
+    const ready = await screen.findByText('Your racket is ready');
+    expect(ready.closest('section')!.textContent).not.toContain('$30');
+  });
+
   it('still shows the one racket when there is only one', async () => {
     mockApi(true, [two[0]]);
     wrap();

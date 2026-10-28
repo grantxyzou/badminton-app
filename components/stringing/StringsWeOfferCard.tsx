@@ -281,7 +281,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
           const content = {
             title: (
               <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{name(e)}</span>
+                <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{e.label}</span>
                 {/* The colours on the reel, when the stringer has said. */}
                 <ColourDots ids={shelf?.colours[e.label] ?? []} />
               </span>
@@ -390,7 +390,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    <span className="fs-lg" style={{ fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>{name(selected)}</span>
+                    <span className="fs-lg" style={{ fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>{selected.label}</span>
                     {priceText(selected.label) && (
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)', flex: 'none' }}>{priceText(selected.label)}</span>
                     )}

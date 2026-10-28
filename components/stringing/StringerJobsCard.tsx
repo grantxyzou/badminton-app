@@ -17,8 +17,6 @@ import { useHoleLookup } from '@/components/stringing/useHoleLookup';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-/** Urgency ink, the same four the bench uses for its due column. */
-
 /**
  * The bench, for the person actually holding the racket.
  *

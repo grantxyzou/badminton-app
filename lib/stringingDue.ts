@@ -82,6 +82,10 @@ export function dueFor(
   if (due === null || today === null) return { key: 'noDate', tone: 'ok' };
 
   const days = Math.round((due - today) / DAY_MS);
+  // A READY racket is never late: the work is done, and only collecting it
+  // is left. Past its date it shows the date, quietly (a stringer's queue
+  // knows no payment, and a paid ready job owes nothing).
+  if (days < 0 && job.status === 'ready') return { key: 'onDate', date: job.readyBy!, tone: 'ok' };
   if (days < 0) return { key: 'overdue', days: -days, tone: 'overdue' };
   if (days === 0) return { key: 'today', tone: 'soon' };
   if (days === 1) return { key: 'tomorrow', tone: 'soon' };

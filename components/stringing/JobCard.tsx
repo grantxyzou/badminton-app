@@ -89,7 +89,14 @@ export default function JobCard({
   return (
     <div className="bpm-job-card" style={{ position: 'relative' }}>
       {onOpen && (
-        <button type="button" onClick={onOpen} aria-label={openLabel ?? job.racketLabel} style={{ position: 'absolute', inset: 0, borderRadius: 'inherit' }} />
+        // Named for THIS job: a bench of identical "Open this job" buttons
+        // tells a screen reader nothing about which.
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={[openLabel, job.racketLabel, job.jobNo, t('stringerFor', { name: job.memberName })].filter(Boolean).join(' · ')}
+          style={{ position: 'absolute', inset: 0, borderRadius: 'inherit' }}
+        />
       )}
       <div style={{ position: 'relative', pointerEvents: onOpen ? 'none' : undefined, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>

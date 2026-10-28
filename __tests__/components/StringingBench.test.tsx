@@ -818,7 +818,7 @@ describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', ()
     const onTakeover = vi.fn();
     wrap(<StringingPage embedded onBack={() => {}} onTakeover={onTakeover} />);
     await screen.findByText('J-0042');
-    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.actions.open }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${enMessages.admin.stringing.actions.open} · `) }));
     await waitFor(() => expect(onTakeover).toHaveBeenLastCalledWith(true));
   });
 
@@ -829,7 +829,7 @@ describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', ()
     respondEmbedded();
     wrap(<StringingPage embedded crumb="Stringing" onBack={() => {}} onTakeover={() => {}} />);
     await screen.findByText('J-0042');
-    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.actions.open }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${enMessages.admin.stringing.actions.open} · `) }));
     expect(await screen.findByText('Stringing')).toBeDefined();
     expect(screen.queryByText('Admin')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));

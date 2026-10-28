@@ -542,6 +542,8 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
   --border: rgba(255, 255, 255, 0.12);
   --border-subtle: rgba(255, 255, 255, 0.06);
   --sev-warn: #f59e0b;
+  /* Ink on a solid --sev-warn fill (the cc-btn-warn button). */
+  --on-warn: #1a1206;
   --bg-surface: #1a1a1a;
   --bg-elevated: #1a1a1a;
   /* Pinned sheet footer scrim — `--page-bg` at 72%, so the list stays
@@ -557,6 +559,8 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
   --border: rgba(0, 0, 0, 0.08);
   --border-subtle: rgba(0, 0, 0, 0.05);
   --sev-warn: #b45309;
+  /* Light --sev-warn is a deep amber: white reads ~5.8:1 on it. */
+  --on-warn: #fff;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
   --sheet-footer-bg: rgba(250, 248, 245, 0.78);
@@ -4616,18 +4620,13 @@ button.sheet-row { cursor: pointer; }
 .cc-btn-warn {
   background: var(--sev-warn);
   border-color: var(--sev-warn);
-  color: #1a1206;
+  color: var(--on-warn);
   font-weight: 600;
 }
 @media (hover: hover) {
   .cc-btn-warn:hover:not(:disabled) {
     filter: brightness(1.08);
   }
-}
-/* Light `--sev-warn` is a deep amber (#b45309): dark ink on it reads ~3:1,
-   white ~5.8:1. */
-[data-theme="light"] .cc-btn-warn {
-  color: #fff;
 }
 
 [data-theme="light"] .cc-btn-primary {

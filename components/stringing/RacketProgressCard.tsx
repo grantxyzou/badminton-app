@@ -55,11 +55,13 @@ export default function RacketProgressCard({ job, onReview }: { job: PlayerStrin
     </span>
   ) : null;
 
-  const bill = job.amountDue ?? job.quote;
+  // The BILL only — what the balance card adds. A racket paid before pickup
+  // (credit, an e-transfer) owes nothing, and its quote is no longer a bill.
+  const bill = job.amountDue;
 
   return (
     <section className="glass-card p-5" aria-label={job.racketLabel} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', minHeight: 44 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
         <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)', flex: 'none' }}>sports_tennis</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span className="bpm-h3" style={{ display: 'block' }}>{job.racketLabel}</span>

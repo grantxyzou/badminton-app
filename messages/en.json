@@ -1849,7 +1849,7 @@
           "unarchive": "Restore"
         },
         "archive": {
-          "summary": "{count, plural, one {# job} other {# jobs}}{owing, plural, =0 {} other { · # still owe}}",
+          "summary": "{count, plural, one {# job} other {# jobs}}{owing, plural, =0 {} one { · # still owes} other { · # still owe}}",
           "pickedUp": "Picked up",
           "open": "Archived ({count})",
           "openUnknown": "Archived",

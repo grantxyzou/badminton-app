@@ -76,7 +76,7 @@ describe('the map', () => {
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /^Yonex BG65:/ }));
     // The panel follows: the card names the string the dot stands for.
-    expect(screen.getAllByText('Yonex BG65').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('BG65').length).toBeGreaterThan(0);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -184,15 +184,16 @@ describe('the list', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
     expect(screen.getByText('List view')).toBeDefined();
     expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
-    const rows = screen.getAllByText(/^Yonex /).map((n) => n.textContent);
-    expect(rows).toEqual(['Yonex BG66', 'Yonex BG80', 'Yonex BG65']);
+    // By the SHELF name, what a request sends; sorted by power.
+    const rows = screen.getAllByRole('listitem').map((li) => li.textContent ?? '');
+    expect(rows.map((r) => r.match(/^BG\d+/)?.[0])).toEqual(['BG66', 'BG80', 'BG65']);
     expect(localStorage.getItem('bpm:strings-view')).toBe('list');
   });
 
   it('is all there is, with no toggle, when fewer than three strings plot', async () => {
     mockApi(['BG80', 'BG66', 'Unrated']);
     wrap();
-    await screen.findByText('Yonex BG80');
+    await screen.findByText('BG80');
     expect(screen.queryByRole('button', { name: 'Show as a list' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
   });
@@ -223,7 +224,7 @@ describe('the list', () => {
     mockApi(['BG65', 'BG80', 'BG66'], { stock: { BG80: 'low' } });
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
-    const row = screen.getByText('Yonex BG80').closest('button')!;
+    const row = screen.getByText('BG80').closest('button')!;
     expect(row.textContent).toContain('Power 8 · Control 7 · Durability 6');
     expect(row.textContent).not.toContain('Low on stock');
   });
@@ -231,8 +232,8 @@ describe('the list', () => {
   it('shows "Ask" for a null price and nothing when none is set', async () => {
     mockApi(['BG80', 'BG66'], { prices: { BG80: null } });
     wrap();
-    const bg80 = (await screen.findByText('Yonex BG80')).closest('button')!;
-    const bg66 = screen.getByText('Yonex BG66').closest('button')!;
+    const bg80 = (await screen.findByText('BG80')).closest('button')!;
+    const bg66 = screen.getByText('BG66').closest('button')!;
     expect(bg80.textContent).toContain('Ask');
     expect(bg66.textContent).not.toMatch(/\$|Ask/);
   });
@@ -341,13 +342,13 @@ describe('failures and unknowns (design-system audit, 2026-10-12)', () => {
     fireEvent.click(await screen.findByRole('button', { name: O.retry }));
     expect(screen.getByText(O.title)).toBeDefined();
     answer({ ok: true, json: async () => ({ strings: ['BG80'], links: { BG80: 's-80' } }) } as Response);
-    expect(await screen.findByText('Yonex BG80')).toBeDefined();
+    expect(await screen.findByText('BG80')).toBeDefined();
   });
 
   it('keeps the map\'s axis copy to the map', async () => {
     mockApi(['BG80', 'BG66', 'Unrated']);
     wrap();
-    await screen.findByText('Yonex BG80');
+    await screen.findByText('BG80');
     expect(screen.getByText(O.subtitle)).toBeDefined();
     expect(screen.queryByText('Map view')).toBeNull();
   });
@@ -376,7 +377,7 @@ describe('the colours on the reel', () => {
     expect(await screen.findByRole('img', { name: 'Colours: White, Yellow' })).toBeDefined();
     // Only the string the stringer described carries dots.
     expect(screen.getAllByRole('img', { name: /^Colours:/ })).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: /Yonex BG80/ }));
+    fireEvent.click(screen.getByText('BG80').closest('button')!);
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByText('On the reel')).toBeDefined();
     expect(within(sheet).getByText('Yellow')).toBeDefined();

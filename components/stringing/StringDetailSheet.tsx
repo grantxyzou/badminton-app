@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
+import { isRefused } from '@/lib/apiFetch';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { cadRange } from '@/lib/catalogPrice';
@@ -91,7 +92,9 @@ export default function StringDetailSheet({
   const num = (k: string) => (typeof a[k] === 'number' ? (a[k] as number) : null);
   const text = (k: string) => (typeof a[k] === 'string' && (a[k] as string).trim() ? (a[k] as string) : null);
   const type = stringTypeOf(item);
-  const feel = text('feel')?.toLowerCase();
+  // The catalog's five feels, read as the hero's three words.
+  const feelRaw = text('feel')?.toLowerCase();
+  const feel = feelRaw === 'medium-soft' ? 'soft' : feelRaw === 'medium-hard' ? 'hard' : feelRaw;
   const mm = num('gaugeMm');
   const gaugeClass = text('gaugeClass')?.toLowerCase();
   const shopRange = item ? cadRange(item) : null;
@@ -126,7 +129,9 @@ export default function StringDetailSheet({
     let cancelled = false;
     setFit({ status: 'loading' });
     fetch(`${BASE}/api/stringing/fit?id=${encodeURIComponent(itemId)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`fit ${r.status}`))))
+      // Refused (an expired session) is not a failure to retry: the section
+      // simply has nothing to say about a member it cannot see.
+      .then((r) => (isRefused(r) ? { fit: null } : r.ok ? r.json() : Promise.reject(new Error(`fit ${r.status}`))))
       .then((d) => {
         if (cancelled) return;
         setFit(d && d.fit ? { status: 'ready', fit: d.fit as StringFit } : { status: 'none' });
@@ -253,7 +258,9 @@ export default function StringDetailSheet({
   );
 }
 
-const VERDICT_TONE = { good_match: 'paid', worth_a_look: 'unpaid', not_for_frame: 'waitlist' } as const;
+// Amber for a caution, the muted pill for a no: "Not for this frame" is an
+// answer, not an alarm, and it must not read milder than "Worth a look".
+const VERDICT_TONE = { good_match: 'paid', worth_a_look: 'waitlist', not_for_frame: 'unpaid' } as const;
 
 /** "Based on your racket and skill" — or nothing, when the engine cannot say. */
 function FitSection({ state, onRetry }: { state: FitState; onRetry: () => void }) {
@@ -306,7 +313,7 @@ function FitCard({ fit }: { fit: StringFit }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}>
+    <div className="bpm-inner-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
         <span className="material-icons icon-md" aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }}>sports_tennis</span>
         <span style={{ flex: 1, minWidth: 0 }}>
