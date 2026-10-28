@@ -132,9 +132,15 @@ async function toTensionStep() {
   // A generous wait: three reads (shop, jobs, shelf) land before the list
   // does, and under a loaded full-suite run 1s was not always enough.
   await screen.findByRole('radiogroup', { name: 'Which string?' }, { timeout: 4000 });
+  // The racket field is DISABLED while the player's rackets load (it says
+  // "asking", not "you have none"); typing into it then is lost, which is what
+  // left CI on step 1 with Next dimmed. Wait for it as a person would.
+  await waitFor(() => expect((screen.getByLabelText('Which racket?') as HTMLInputElement).disabled).toBe(false), { timeout: 4000 });
   fireEvent.change(screen.getByLabelText('Which racket?'), { target: { value: 'Astrox 99 Pro' } });
   fireEvent.click(screen.getByRole('radio', { name: /BG80 white/ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Next: string tension' }));
+  const next = screen.getByRole('button', { name: 'Next: string tension' });
+  await waitFor(() => expect((next as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(next);
 }
 
 function renderStringing() {
@@ -160,11 +166,11 @@ describe('arriving on Stringing', () => {
     requestStringingAt(22);
     renderStringing();
     await toTensionStep();
-    await waitFor(() => expect(screen.getByText(stepperAt(22))).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(stepperAt(22))).toBeTruthy(), { timeout: 4000 });
     fireEvent.click(screen.getByRole('button', { name: enMessages.recovery.close }));
     fireEvent.click(await screen.findByRole('button', { name: 'Submit a request' }));
     await toTensionStep();
-    await waitFor(() => expect(screen.getByText(stepperAt(26))).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(stepperAt(26))).toBeTruthy(), { timeout: 4000 });
   });
 
   it('a closed shop consumes the marker and opens nothing', async () => {
