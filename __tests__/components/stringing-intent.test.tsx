@@ -129,7 +129,9 @@ const stepperAt = (n: number) => (_: string, el: Element | null) =>
 
 /** The tension is step 2 of the request sheet: answer step 1 to reach it. */
 async function toTensionStep() {
-  await screen.findByRole('radiogroup', { name: 'Which string?' });
+  // A generous wait: three reads (shop, jobs, shelf) land before the list
+  // does, and under a loaded full-suite run 1s was not always enough.
+  await screen.findByRole('radiogroup', { name: 'Which string?' }, { timeout: 4000 });
   fireEvent.change(screen.getByLabelText('Which racket?'), { target: { value: 'Astrox 99 Pro' } });
   fireEvent.click(screen.getByRole('radio', { name: /BG80 white/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Next: string tension' }));
@@ -149,7 +151,7 @@ describe('arriving on Stringing', () => {
     requestStringingAt(24);
     renderStringing();
     await toTensionStep();
-    await waitFor(() => expect(screen.getByText(stepperAt(24))).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(stepperAt(24))).toBeTruthy(), { timeout: 4000 });
     expect(hasStringingIntent()).toBe(false);
   });
 

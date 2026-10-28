@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useOnline } from '@/lib/useOnline';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import { fmtMoney } from '@/lib/fmt';
 import { playerTensionText, type PlayerStage } from '@/lib/stringing';
@@ -31,8 +33,26 @@ function Money({ value, size = 'md' }: { value: number; size?: 'md' | 'lg' }) {
  * The quote is the stringer's exact figure (Grant: "dont hide"); the bill on
  * Ready is `amountDue`, which is what the balance card adds.
  */
-export default function RacketProgressCard({ job, onReview }: { job: PlayerStringingJob; onReview: () => void }) {
+export default function RacketProgressCard({
+  job,
+  onReview,
+  onCancel,
+}: {
+  job: PlayerStringingJob;
+  onReview: () => void;
+  /** Calls the request off while the racket is still in the bag. Resolves
+   *  whether it worked; the card stays, saying so, when it did not. */
+  onCancel?: () => Promise<boolean>;
+}) {
   const t = useTranslations('home.stringing');
+  const online = useOnline();
+  /** Two taps to cancel: the first asks, the second does it. */
+  const [cancelStep, setCancelStep] = useState<'idle' | 'asking' | 'busy' | 'failed'>('idle');
+  async function cancel() {
+    if (!onCancel) return;
+    setCancelStep('busy');
+    setCancelStep((await onCancel()) ? 'idle' : 'failed');
+  }
   const stage = job.stage as PlayerStage;
   const edit = job.pendingEdit;
   const ready = stage === 'ready_for_you';
@@ -94,9 +114,29 @@ export default function RacketProgressCard({ job, onReview }: { job: PlayerStrin
 
       <StringingSteps current={stepForStage(stage)} />
 
-      {!edit && !ready && (
+      {/* Still in the bag: the one point where calling it off is clean — no
+          racket to hand back, nothing owed. Asked first, then done. */}
+      {!edit && stage === 'awaiting_dropoff' && onCancel && cancelStep !== 'idle' ? (
+        <div className="bpm-inner-row motion-fade" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+          <span className="fs-base" style={{ color: 'var(--text-primary)' }}>{t('cancelAsk')}</span>
+          {cancelStep === 'failed' && <p className="field-error" role="alert">{t('cancelError')}</p>}
+          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+            <button type="button" className="cc-btn cc-btn-ghost" style={{ flex: 1 }} onClick={() => setCancelStep('idle')} disabled={cancelStep === 'busy'}>
+              {t('cancelKeep')}
+            </button>
+            <button type="button" className="cc-btn cc-btn-danger" style={{ flex: 1 }} onClick={() => void cancel()} disabled={cancelStep === 'busy' || !online}>
+              {t('cancelGo')}
+            </button>
+          </div>
+        </div>
+      ) : !edit && !ready && (
         <div className="bpm-inner-row">
           <span className="fs-base" style={{ color: 'var(--text-secondary)' }}>{t(`stage.${stage}`)}</span>
+          {stage === 'awaiting_dropoff' && onCancel && (
+            <button type="button" className="link-quiet link-quiet--flush" onClick={() => setCancelStep('asking')} disabled={!online}>
+              {t('cancelCta')}
+            </button>
+          )}
           {stage !== 'awaiting_dropoff' && (
             job.quote !== null ? (
               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>

@@ -18,6 +18,11 @@
       "noneAction": "设置 PIN"
     },
     "stringing": {
+      "cancelError": "取消失败，再试一次。",
+      "cancelGo": "取消申请",
+      "cancelKeep": "保留",
+      "cancelAsk": "取消这个申请？目前不收费。",
+      "cancelCta": "取消申请",
       "segReady": "可取",
       "segBeingStrung": "正在穿线",
       "segWithStringer": "穿线师已收到",
@@ -67,7 +72,7 @@
         "racket": "球拍",
         "unpriced": "未定价",
         "accept": "确认",
-        "decline": "取消这个修改请求",
+        "decline": "保持原样",
         "working": "保存中…",
         "error": "保存失败，再试一次。",
         "gone": "这条修改已经处理过了，不用再确认。",
@@ -1649,6 +1654,7 @@
   },
   "admin": {
     "stringing": {
+      "cancelledByPlayer": "球员已取消",
       "recent": "最近",
       "jobsSummaryLate": "{open} 单进行中 · {late} 单逾期",
       "jobsSummary": "{open} 单进行中",

@@ -9,7 +9,7 @@ import type { PlayerStringingJob } from '../../lib/types';
 
 /**
  * "A change to confirm" (docs/plans/stringing-canvas-redesign.md, Decisions 2-4):
- * exact dollars, whole when whole; Confirm / Cancel this request; and a stale
+ * exact dollars, whole when whole; Confirm / Keep original; and a stale
  * sheet (a 409) that stops offering answers and re-reads the card behind it.
  */
 const job: PlayerStringingJob = {
@@ -47,18 +47,18 @@ describe('ConfirmChangeSheet', () => {
     expect(screen.queryByText('$39')).toBeNull();
   });
 
-  it('answers with Confirm and Cancel this request', () => {
+  it('answers with Confirm and Keep original', () => {
     vi.stubGlobal('fetch', vi.fn());
     wrap();
     expect(screen.getByRole('button', { name: 'Confirm' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Cancel this request' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Keep original' })).toBeDefined();
   });
 
-  it('Cancel this request DECLINES the change; it does not cancel the restring', async () => {
+  it('Keep original DECLINES the change; the job stands as it was', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response);
     vi.stubGlobal('fetch', fetchMock);
     const { onAnswered } = wrap();
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel this request' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep original' }));
     await waitFor(() => expect(onAnswered).toHaveBeenCalled());
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toContain('/api/stringing/jobs/j2/accept');
@@ -73,7 +73,7 @@ describe('ConfirmChangeSheet', () => {
     expect(await screen.findByText(enMessages.home.stringing.confirm.gone)).toBeDefined();
     expect(onAnswered).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Cancel this request' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Keep original' })).toBeNull();
     expect(screen.queryByText('$38.50')).toBeNull();
   });
 });

@@ -25,6 +25,8 @@ export interface JobCardJob {
    * says "unpaid" about a racket it cannot see the money for.
    */
   paidAt?: string | null;
+  /** The player called the request off before handing the racket over. */
+  cancelledAt?: string | null;
 }
 
 /**
@@ -120,7 +122,9 @@ export default function JobCard({
         </div>
         {/* Words in the body face; the spec is what the stringer opened it for. */}
         <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{spec}</span>
-        {owed !== null ? (
+        {job.cancelledAt ? (
+          <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{tAdmin('cancelledByPlayer')}</span>
+        ) : owed !== null ? (
           <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>
             {tAdmin('archive.stillOwed', { amount: fmtMoney(owed) })}
           </span>

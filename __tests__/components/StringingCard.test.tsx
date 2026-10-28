@@ -386,7 +386,7 @@ describe('every open racket is listed', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Review the change' }));
     expect(await screen.findByText('A change to confirm')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Confirm' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Cancel this request' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Keep original' })).toBeDefined();
   });
 
   it('shows no amount on a ready racket that is already paid — the quote is not a bill', async () => {
@@ -396,6 +396,20 @@ describe('every open racket is listed', () => {
     wrap();
     const ready = await screen.findByText('Your racket is ready');
     expect(ready.closest('section')!.textContent).not.toContain('$30');
+  });
+
+  it('offers Cancel request only while the racket is still in the bag, asking first', async () => {
+    const waiting = { ...two[0], id: 'jw', stage: 'awaiting_dropoff', quote: null };
+    const fetchMock = mockApi(true, [waiting, { ...two[1], pendingEdit: null }]);
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel request' }));
+    // Only one racket can be cancelled: the ready one has no such button.
+    expect(screen.getByText('Cancel this request? Nothing is owed yet.')).toBeDefined();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel request' })[0]);
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find((c) => String(c[0]).includes('/api/stringing/jobs/jw/cancel'));
+      expect(call?.[1]?.method).toBe('POST');
+    });
   });
 
   it('still shows the one racket when there is only one', async () => {

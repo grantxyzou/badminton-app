@@ -968,6 +968,11 @@ export interface StringingJob {
    * so.
    */
   archivedAt?: string | null;
+  /** The PLAYER cancelled the request before handing the racket over
+   *  (`POST /api/stringing/jobs/[id]/cancel`, only while `requested`). The job
+   *  is archived in the same write; this says who took it off the bench and
+   *  when. Absent or null: nobody cancelled it. */
+  cancelledAt?: string | null;
   /**
    * Pinned to the top of the bench. Absent or null means unpinned.
    *

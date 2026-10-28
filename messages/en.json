@@ -18,6 +18,11 @@
       "noneAction": "Set a PIN"
     },
     "stringing": {
+      "cancelError": "Couldn't cancel that. Try again.",
+      "cancelGo": "Cancel request",
+      "cancelKeep": "Keep it",
+      "cancelAsk": "Cancel this request? Nothing is owed yet.",
+      "cancelCta": "Cancel request",
       "segReady": "Ready",
       "segBeingStrung": "Being strung",
       "segWithStringer": "With the stringer",
@@ -67,7 +72,7 @@
           "racket": "Racket",
           "unpriced": "Not priced",
           "accept": "Confirm",
-          "decline": "Cancel this request",
+          "decline": "Keep original",
           "working": "Saving…",
           "error": "That didn't save. Try again.",
           "gone": "That change is no longer waiting, so there's nothing to answer.",
@@ -1661,6 +1666,7 @@
   },
   "admin": {
     "stringing": {
+      "cancelledByPlayer": "Cancelled by the player",
       "recent": "Recent",
       "jobsSummaryLate": "{open} open · {late} late",
       "jobsSummary": "{open} open",

@@ -26,9 +26,10 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * sheet leaves the question open, which is correct: "I haven't decided" and
  * "no" are different, and a racket sitting unanswered is a conversation to have
  * in person rather than a state the app should guess at. The button reads
- * "Cancel this request" (Grant, on the canvas): it cancels the stringer's
- * REQUEST to change the job, which then stands as it was — the restring
- * itself is not cancelled (docs/plans/stringing-canvas-redesign.md, Decision 2).
+ * "Keep original" (Grant, 2026-10-28): the job stands as it was. It was briefly
+ * "Cancel this request", which read as calling off the restring; that is its
+ * own button on the racket's card, while the racket is still in the bag
+ * (docs/plans/stringing-canvas-redesign.md, Decision 2).
  */
 export default function ConfirmChangeSheet({
   job,

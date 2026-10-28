@@ -32,7 +32,7 @@ Either one means reverting the part responsible: the exact quote, or the single 
 ## Non-goals
 
 - **No new job statuses.** No new stored fields on `StringingJob` either, beyond what is listed under Decisions.
-- **No player-side cancellation of a job.** "Cancel this request" declines the stringer's proposed change; it does not delete the restring (see Decisions).
+- **No player-side cancellation once the stringer has the racket.** Cancelling is offered only while it is still in the player's bag (Decision 2).
 - **No push-body money.** The lock-screen rule in CLAUDE.md stands: a push still carries no price.
 - **Admin job detail, set-up and shelf sheets are not redrawn.** The canvas's `StrJobDetail`, `StrJobWaiting`, `StrJobChange`, `StrSetup` and `StrShelfSheet` frames record the screens as they are today.
 - **No admin i18n.** The admin surfaces stay English-only by decision.
@@ -46,7 +46,10 @@ Either one means reverting the part responsible: the exact quote, or the single 
    - `priceBand` / `formatPriceBand` / `PRICE_BAND_CENTS` are deleted along with their tests.
    - The response field is renamed rather than kept beside the new one. `PlayerStringingJob` is a response shape, not a stored one, and its only reader is this app's bundle, which deploys with the route (the widget, `ios/` and `android/` read no stringing money). Leaving the band in the payload would let one stale reader keep showing "$28–32" beside "$30".
    - The docs that state the wall are corrected in the same change: CLAUDE.md's "A quote is a range; a bill is a number", the `PlayerStringingJob` and `ConfirmChangeSheet` docblocks, and `stringing-admin-controls.md`'s non-goal.
-2. **"Cancel this request" is the existing `decline`.** In the frame, the request is the STRINGER's proposed change, and the racket is already on the bench. A player cancelling the whole job would need a new destructive route and a policy for a racket physically in someone's hands. That is out of scope. Decline (`accept/route.ts`) clears `pendingEdit`, stamps `pendingEditDeclinedAt`, and the old spec and bill stand; the bench reads "declined", not "cancelled". The WORDING is the open question for Grant: a player may read "Cancel this request" as cancelling the restring.
+2. **The confirm sheet's no is "Keep original"; cancelling is its own button** (Grant, 2026-10-28, after the first build said "Cancel this request").
+   - **Keep original** is the existing `decline`: it clears `pendingEdit`, stamps `pendingEditDeclinedAt`, and leaves the old spec and bill standing. "Cancel this request" read as calling off the restring, which it never did.
+   - **Cancel request** sits on the racket's own card, only while it reads "Waiting for your racket" (`requested`). It asks first. `POST /api/stringing/jobs/[id]/cancel` archives the job and stamps `cancelledAt`, from the caller's own partition only. The bench's archive shows "Cancelled by the player".
+   - **After hand-over there is no cancel button.** The route answers 409 `already_received`, because getting a racket back is a conversation, not a tap.
 3. **The 409 "gone" answer refreshes the card.** `ConfirmChangeSheet` calls `onAnswered()` on a 409 and hides the diff and both buttons. Only the "no longer waiting" line and Close remain, so the card behind it loses the stale banner. This supersedes frame `StrConfirmGone`, which still draws the diff and buttons under Close.
 4. **Money is whole dollars when whole, through ONE helper.** `fmtMoney` (integer → `$30`, otherwise `$30.50`) already exists as a private copy in `StringingCard`, `UnpaidSessionsCard`, `PaymentsCard` and `PlayerProfileSheet`. It is hoisted into `lib/fmt.ts` and the stringing surfaces use it: the confirm diff (today `toFixed(2)`), the quote, the Ready banner, and on the bench "Still owes $28" and the delete copy. A `$34.50` quote must never round to `$35`. The admin job detail keeps its `$26.00` input format (not redrawn); the other three copies are a later sweep.
 5. **One card per racket, no fold.** `StringingCard` splits in two:

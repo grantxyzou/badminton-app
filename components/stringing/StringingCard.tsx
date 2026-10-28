@@ -120,6 +120,19 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
     if (open === true) loadJobs();
   }, [open, loadJobs]);
 
+  /** The player calls off a request whose racket is still in the bag.
+   *  Re-reads on success (the card leaves); a refusal — the stringer took the
+   *  racket meanwhile — re-reads too, so the card shows where it really is. */
+  const cancelRequest = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${id}/cancel`, { method: 'POST' });
+      if (res.ok || res.status === 409) loadJobs();
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }, [loadJobs]);
+
   // Arrived from Stats' "Get it strung at 24 lb", or from a string's page
   // ("Restring with this string"): open the form at that number, or with that
   // string picked. Waits for the shop's answer and for the identity, which the tab
@@ -275,7 +288,7 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
         </div>
 
         {openJobs.map((j) => (
-          <RacketProgressCard key={j.id} job={j} onReview={() => setConfirmingJob(j)} />
+          <RacketProgressCard key={j.id} job={j} onReview={() => setConfirmingJob(j)} onCancel={() => cancelRequest(j.id)} />
         ))}
       </div>
 
