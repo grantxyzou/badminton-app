@@ -120,6 +120,9 @@ export default function ConfirmChangeSheet({
               the change, and there is nothing left to answer. It said "Pull to
               refresh" in red, inside a sheet, where pulling does nothing. */}
           {error === 'gone' ? (
+            // Appears into the sheet that is already up (the Appear recipe):
+            // the diff and buttons it replaces go in the same frame.
+            <div className="motion-fade">
             <EmptyState
               action={
                 <button type="button" className="cc-btn cc-btn-ghost" onClick={onClose}>
@@ -129,6 +132,7 @@ export default function ConfirmChangeSheet({
             >
               {t('confirm.gone')}
             </EmptyState>
+            </div>
           ) : error ? (
             <p className="field-error" role="alert">
               {t('confirm.error')}

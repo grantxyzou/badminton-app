@@ -1,7 +1,7 @@
 # Stringing tab — the canvas redesign
 
 **Track:** North Star pillar 4 (equipment service), the same track as [`stringing-tabs.md`](stringing-tabs.md) and [`stringing-audit-fixes.md`](stringing-audit-fixes.md): this redraws the player half and the bench of the one paid thing the app sells.
-**Status:** in-flight
+**Status:** in-flight (implemented on `claude/confident-davinci-rmk8rt`, awaiting Grant's review)
 **Review on:** 2026-11-25 — From `stringingJobs`, in the four weeks after ship: what share of player-origin requests were sent from the new two-step sheet without an admin re-pricing them, and how many "Review the change" answers were Cancel against Confirm? Before ship, unanswered changes were the norm.
 
 ## Problem
@@ -121,6 +121,7 @@ Either one means reverting the part responsible: the exact quote, or the single 
 
 - **Time.** Due lines stay the bench's `dueFor(job, todayIso())`, unchanged: `todayIso()` is the VIEWER's local date and `readyBy` a UTC-midnight day, compared day to day; there is no club zone. "Strung N weeks ago" stays `restringDueWeeks`.
 - **Data.** Ratings come from the catalog attributes (`repulsion` = power, `control`, `durability`, `hittingSound`, `feelScale`), never re-derived. Cluster counts sum to the plotted strings.
+- **Correction to the plan review.** A stringer's queue already hid "Ready · unpaid" (`StringerJobsCard` skipped that key). The real gap was that a Ready job there showed no date at all. `JobCard` now treats an unknown payment as paid for the due line only, so the date shows.
 - **Cost.**
   - The quote is `priceCents / 100` unrounded.
   - The confirm diff's figures are exactly `priceFrom` / `priceTo`.
@@ -128,9 +129,13 @@ Either one means reverting the part responsible: the exact quote, or the single 
   - Delete copy is `isBillable` × price.
   - Nothing on the balance path changes.
 - **Design system.** Spacing, design, loading and sheet-size canaries. No raw px/hex. Inner cards at 12/12 (the bench's at 16/16 is a named exception per the canvas).
-- **Motion.**
-  - The step change crossfades (`.motion-fade`, keyed by step).
-  - The separate-tension reveal is a `<Collapse>`.
-  - The zoom moves dots by transform at `--duration-normal`, dropped under reduced motion.
-  - Next-step buttons press like `cc-btn`.
-  - No new keyframes.
+- **Motion** (reviewed 2026-10-28; every recipe is from the motion system, and no keyframe is new):
+  - **Appear** (`.motion-fade`, keyed):
+    - the request sheet's step change and the Sent screen;
+    - the swap between one tension stepper and two — a crossfade rather than the planned `<Collapse>`, because the sheet's column is a grid with a gap, which a collapsing child cannot animate (the gap snaps);
+    - the map's zoom in and out — a crossfade rather than the planned transform, because the marks on each side are different marks (a cluster dot against its strings);
+    - the confirm sheet's "no longer waiting".
+  - **Fill**: rating meters travel to a new value (`.bpm-meter-fill`, `--duration-normal`) and the feel marker slides, so switching strings on the map moves the bars rather than snapping them.
+  - **Press**: a job card scales to 0.98 under a finger (`.bpm-job-card`), and next-step and Review buttons are `cc-btn`.
+  - **Open**: sheets keep `<BottomSheet>`'s 180 ms. "Restring with this string" waits that long for the string page to close before the request sheet rises.
+  - **Unchanged**: status banners keep their slide-in on mount, the selection ring still jumps (no transition, which is also what reduced motion asks for), and reduced motion drops every width, left and transform transition through the global rule, keeping opacity.

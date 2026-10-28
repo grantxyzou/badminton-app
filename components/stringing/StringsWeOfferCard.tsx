@@ -36,6 +36,8 @@ import { ColourDots } from './StringColours';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const VIEW_KEY = 'bpm:strings-view';
+/** `--duration-sheet` in globals.css: a sheet's close, waited out before a hand-off. */
+const SHEET_CLOSE_MS = 180;
 const AXIS_KEY = 'bpm:strings-axis';
 type View = 'map' | 'list';
 
@@ -460,7 +462,13 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
       <StringDetailSheet
         item={openEntry?.item ?? null}
         label={openEntry?.label ?? null}
-        onRestring={onRestring}
+        onRestring={onRestring ? (label) => {
+          // Let this sheet close on its own (--duration-sheet) before the tab
+          // switches register and the request sheet rises: switching first
+          // unmounted it mid-sheet, a cut instead of a hand-off.
+          setOpen(null);
+          window.setTimeout(() => onRestring(label), SHEET_CLOSE_MS);
+        } : undefined}
         open={openEntry?.item != null}
         onClose={() => setOpen(null)}
         price={openEntry && shelf ? shelfPrice(shelf, openEntry.label) : undefined}
