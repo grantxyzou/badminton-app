@@ -2,7 +2,7 @@
 
 **Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); follow-on to `docs/plans/motion-pass.md`; requested directly by the owner on 2026-10-03
 **Status:** shipped 2026-10-05 (phases 1–5)
-**Review on:** 2026-11-04 — the kill criterion, on a PHONE: record a cold and a warm load of Home and Stats. Does any card appear above one already on screen, and does a warm tab switch feel slower than before? The same recording checks the launch screen's 2026-10-24 decision (`docs/plans/launch-screen.md`): after the full shot, does Home land complete now that its reads start in one wave (#717)? (Phases 2–5 all landed: #510, #512, #513, #515, follow-ups #538. Moved from 2026-10-24: not recorded yet.)
+**Reviewed:** 2026-10-29 — passed on a phone after one fix (#747); see "Review outcome" at the end. No further review scheduled.
 
 ## Problem
 
@@ -101,3 +101,13 @@ Grant, on his phone: "A little slow." The ordering rule was too strict — a car
 | Canaries | `__tests__/components/Reveal.test.tsx`, `__tests__/tab-fallback-canary.test.ts`, `__tests__/design-canary.test.ts`, `__tests__/loading-canary.test.ts` (ratchet — each phase deletes its entries) |
 | The rule | CLAUDE.md → Design System → Motion system → "Loading" |
 | Spec | `docs/superpowers/specs/2026-10-03-loading-cascade-design.md` |
+
+## Review outcome (2026-10-29)
+
+Grant recorded a cold and a warm open of Home and Stats on his iPhone (2026-10-28), read frame by frame.
+
+- **Warm:** a tab switch reads nothing and shows the kept tab at once. No card arrived above one already on screen.
+- **Cold, Home and Stats:** passed. After the launch screen's full shot, Home landed complete, which confirms its 2026-10-24 decision (#717).
+- **Cold, Admin:** failed once. "Needs you" was a space-less slot (`placeholder={null}`), so past `SPACELESS_WAIT_MS` the cards below showed, and the late card then shoved "This week" down. It now holds a measured placeholder (`CONSOLE_HEIGHTS.needsYouEyebrow` / `needsYouList`) and closes through `canBeEmpty` when there is nothing to show (#747). Grant re-checked a cold open of Admin on the phone the next day: nothing moves.
+
+The kill criterion did not fire again.
