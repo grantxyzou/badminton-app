@@ -513,11 +513,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const addToCalendar = calendarOk && session?.datetime ? (
     <button
       type="button"
-      className="link-quiet link-quiet--flush"
-      style={{ gap: 'var(--space-2)', textDecoration: 'none' }}
+      className="state-link"
       onClick={() => { void addSessionToCalendar(session, t('signup.calendarFallbackTitle')).catch(() => {}); }}
     >
-      <span className="material-icons icon-sm" aria-hidden="true">event</span>
       {t('signup.addToCalendar')}
     </button>
   ) : undefined;
