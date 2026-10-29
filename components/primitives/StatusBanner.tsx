@@ -81,7 +81,7 @@ export default function StatusBanner({ tone, icon, title, body, celebrate, trail
   if (!action) return <div className={className}>{row}</div>;
   return (
     <div className={className} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>{row}</div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-4)' }}>{row}</div>
       {action}
     </div>
   );

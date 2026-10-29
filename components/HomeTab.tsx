@@ -34,6 +34,7 @@ import { renderMarkdown } from '@/lib/miniMarkdown';
 import { primeFetch, sharedFetch } from '@/lib/sharedRead';
 import { primeMemberAvatars } from '@/lib/useMemberAvatars';
 import { useEverOpened } from '@/lib/useEverOpened';
+import { addSessionToCalendar, canAddToCalendar } from '@/lib/addToCalendar';
 
 // HomeTab itself stays eager (it carries the LCP announcement), but the
 // sheets it can open do not need to: each is behind a tap or a one-shot
@@ -503,12 +504,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     </p>
   );
 
-  const sessionWhen = session
-    ? `${format.dateTime(new Date(session.datetime), DAY_LONG)}, ${format.dateTime(new Date(session.datetime), TIME_SHORT)}`
-    : undefined;
-  const sessionWhenWhere = sessionWhen && session?.locationName
-    ? tStates('signedUpWhenWhere', { when: sessionWhen, place: session.locationName })
-    : sessionWhen;
+  /* "Add to calendar" in place of the when-and-where line, which repeated
+     the tiles right above the card (docs/plans/add-to-calendar.md). Known
+     only after mount: whether the store app's binary carries the plugin is a
+     runtime fact, and SSR must not guess it. */
+  const [calendarOk, setCalendarOk] = useState(false);
+  useEffect(() => { setCalendarOk(canAddToCalendar()); }, []);
+  const addToCalendar = calendarOk && session?.datetime ? (
+    <button
+      type="button"
+      className="state-link state-link--quiet"
+      onClick={() => { void addSessionToCalendar(session, t('signup.calendarFallbackTitle')).catch(() => {}); }}
+    >
+      {t('signup.addToCalendar')}
+    </button>
+  ) : undefined;
 
   const announcementCard = (a: Announcement) => (
     <div className="glass-card p-5 space-y-2">
@@ -723,9 +733,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 tone="success"
                 icon="check_circle"
                 title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
-                /* The plan itself, not "see you soon": the line people
-                   paste into the group chat is when and where. */
-                body={sessionWhenWhere}
+                body={addToCalendar}
                 celebrate={signupEntrance === 'pop'}
               />
             </div>

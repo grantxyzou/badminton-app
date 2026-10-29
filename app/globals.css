@@ -2275,6 +2275,13 @@ html:root .state-link {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* A secondary action inside a message that already has a coloured title (the
+   sign-up banner's "Add to calendar"): the line's own ink and weight, the
+   underline alone saying "tap". Two bold coloured lines read as two headlines. */
+html:root .state-link--quiet {
+  color: inherit;
+  font-weight: inherit;
+}
 html:root .state-link:focus-visible {
   outline: 2px solid var(--tone-ink, var(--accent));
   outline-offset: 2px;
@@ -3439,9 +3446,20 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   border-radius: 12px;
   padding: var(--space-4) var(--space-5);
   display: flex;
-  align-items: center;
+  /* The icon belongs to the TITLE, not the block: centred across a title and
+     a body line, it floated between the two (Grant, 2026-10-28: "icon should
+     always align to the header"). */
+  align-items: flex-start;
   gap: var(--space-4);
   animation: statusBannerIn var(--duration-normal) var(--ease-glass) both;
+}
+/* A box exactly one title line tall (the title is `.fs-md`), with the 22px
+   glyph centred in it: top-aligned alone, the icon's centre sat 2px below
+   the title's. Stays on the first line when the title wraps. */
+:is(.status-banner-green, .status-banner-orange, .status-banner-red) .icon-status {
+  height: calc(var(--fs-md) * var(--lh-tight));
+  display: flex;
+  align-items: center;
 }
 .status-banner-green { background: var(--banner-green-solid); }
 .status-banner-orange { background: var(--banner-orange-solid); }
