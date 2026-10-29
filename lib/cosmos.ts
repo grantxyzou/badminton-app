@@ -603,7 +603,12 @@ function seedDevSixFeathers(now: Date) {
     ownerMemberId: memberIdOf('Chong Wei'),
     createdAt,
     createdBy: memberIdOf('Chong Wei'),
-    settings: { skipDates: [], maxPlayers: 32, lateCancelHours: 72 },
+    settings: {
+      skipDates: [],
+      maxPlayers: 32,
+      lateCancelHours: 72,
+      run: { style: 'members_first', playersPerCourt: 8, money: 'off' },
+    },
   });
 
   mockStore.members ??= [];

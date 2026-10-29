@@ -6,6 +6,7 @@ import { shareSignup } from '@/lib/signupShare';
 import { shareTextOrCopy } from '@/lib/shareText';
 import { formatRosterText } from '@/lib/rosterText';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { useClubRun } from '@/lib/useClubRun';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -86,6 +87,10 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const [shareCopied, setShareCopied] = useState(false);
   const [listCopied, setListCopied] = useState(false);
   const { group } = useCurrentGroup();
+  // A club that collects money outside the app has no bill to finalize or
+  // share (lib/clubRun.ts). Hidden only on a known answer.
+  const { run, known: runKnown } = useClubRun();
+  const moneyOff = runKnown && run.money === 'off';
   const [togglingSignup, setTogglingSignup] = useState(false);
 
   // Build a ready-to-paste sign-up invite and share it (native share sheet on
@@ -443,7 +448,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       <div className="grid grid-cols-2 gap-2">
         {/* Post-settle: re-share the frozen bill. Settling itself lives in the
             footer "Finalize cost" action, beside Advance. */}
-        {isSettled && onShareCost ? (
+        {isSettled && onShareCost && !moneyOff ? (
           <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
             <span className="material-icons fs-lg align-middle">share</span>
             Share again — ${session.settled?.costPerPerson} each
@@ -452,7 +457,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         <button
           type="button"
           onClick={shareSignupLink}
-          className={isSettled && onShareCost ? 'cc-btn cc-btn-secondary' : 'cc-btn cc-btn-primary'}
+          className={isSettled && onShareCost && !moneyOff ? 'cc-btn cc-btn-secondary' : 'cc-btn cc-btn-primary'}
           title="Copy/share a sign-up invite link for the group chat."
         >
           <span className="material-icons fs-lg align-middle">share</span>
@@ -472,7 +477,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             Edit details
           </button>
         )}
-        {isSettled && (
+        {isSettled && !moneyOff && (
           <button
             type="button"
             onClick={editBill}
@@ -490,12 +495,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           week's decisions are above; these close it out. Advance keeps its
           confirm sheet since it's hard to reverse (a stray tap must not
           archive the week). */}
-      {(!isSettled || onAdvance) && (
+      {((!isSettled && !moneyOff) || onAdvance) && (
         <div
           className="flex justify-center items-center flex-wrap"
           style={{ gap: 'var(--space-1)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
         >
-          {!isSettled && (
+          {!isSettled && !moneyOff && (
             <button
               type="button"
               onClick={sendBill}
@@ -506,7 +511,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               {settling ? 'Finalizing…' : 'Finalize cost'}
             </button>
           )}
-          {!isSettled && onAdvance && (
+          {!isSettled && !moneyOff && onAdvance && (
             <span className="fs-sm" style={{ color: 'var(--text-muted)' }} aria-hidden="true">·</span>
           )}
           {onAdvance && (

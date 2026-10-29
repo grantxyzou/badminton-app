@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server';
 import { isFlagOn } from '@/lib/flags';
 import type { GroupSettings } from '@/lib/types';
+import { clubRunOf, type ClubRun } from '@/lib/clubRun';
 
 export const groupsOn = (): boolean => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -70,6 +71,8 @@ export function isGroupIdShape(value: string): boolean {
  * admin reads the whole object through `GET /api/admin/settings`, which is
  * where it belongs.
  */
-export function memberVisibleSettings(settings: GroupSettings): Pick<GroupSettings, 'maxPlayers' | 'skipDates'> {
-  return { maxPlayers: settings.maxPlayers, skipDates: settings.skipDates };
+export function memberVisibleSettings(settings: GroupSettings): Pick<GroupSettings, 'maxPlayers' | 'skipDates'> & { run: ClubRun } {
+  // `run` is how the club runs its week — nothing in it is about a person or
+  // money owed, and members' screens follow it (lib/clubRun.ts).
+  return { maxPlayers: settings.maxPlayers, skipDates: settings.skipDates, run: clubRunOf(settings) };
 }

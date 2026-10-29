@@ -1,4 +1,5 @@
 import type { StringingStatus, PlayerStage } from './stringing';
+import type { ClubRun } from './clubRun';
 import type { StatsPrivacy } from './statsPrivacy';
 import type { MemberAvatar } from './memberAvatar';
 import type { StoredAccessRequest } from './accessRequest';
@@ -302,6 +303,12 @@ export interface GroupSettings {
    * row is stamped `lateCancel`. Read only through `lateCancelHoursOf`.
    */
   lateCancelHours?: number;
+  /**
+   * How the club runs its week (docs/plans/six-feathers-onboarding.md): a style
+   * and the settings it fills in. Absent = how BPM Core runs. Read only through
+   * `clubRunOf` (lib/clubRun.ts).
+   */
+  run?: ClubRun;
 }
 
 /** Container `groups`, PK `/id`. Group #1 is `'bpm'`; new groups get a random hex id. */

@@ -25,6 +25,7 @@ import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
 import ETransferRecipientEditor from './CommandCenter/ETransferRecipientEditor';
 import SkipDatesEditor from './CommandCenter/SkipDatesEditor';
 import LateCancelEditor from './CommandCenter/LateCancelEditor';
+import ClubRunPage from './CommandCenter/ClubRunPage';
 import ClubNameEditor from './CommandCenter/ClubNameEditor';
 import { isFlagOn } from '@/lib/flags';
 import { TabActiveContext, useTabActive, useTabReturn } from '@/lib/tabActivity';
@@ -48,7 +49,7 @@ const VIEW_KEY = 'badminton_admin_view';
 const RESTORABLE: ReadonlySet<AdminView> = new Set<AdminView>([
   'session-details', 'members', 'birds', 'releases', 'ledger', 'announcements', 'etransfer',
   'skip-dates', 'late-cancel', 'past-sessions', 'stringing', 'catalog-gaps', 'metrics', 'invite', 'gift-cards',
-  'sign-in-readiness', 'etransfers', 'club-name',
+  'sign-in-readiness', 'etransfers', 'club-name', 'club-run',
 ]);
 function storeView(v: AdminView | null) {
   try {
@@ -194,6 +195,14 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
         <div className="animate-slideInRight space-y-3">
           <AdminBackHeader onBack={goBack} title="Late cancellations" />
           <LateCancelEditor />
+        </div>
+      );
+    }
+    if (view === 'club-run') {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBack} title="How your club runs" />
+          <ClubRunPage onOpenLateCancel={() => push('late-cancel')} />
         </div>
       );
     }

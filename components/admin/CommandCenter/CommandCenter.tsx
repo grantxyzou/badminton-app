@@ -21,6 +21,8 @@ import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton, { CONSOLE_HEIGHTS } from '@/components/primitives/CardSkeleton';
 import { sharedFetch } from '@/lib/sharedRead';
+import { useClubRun } from '@/lib/useClubRun';
+import { CLUB_STYLES } from '@/lib/clubRun';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -56,6 +58,11 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
   const [benchCount, setBenchCount] = useState<{ waiting: number; late: number } | null>(null);
   const stringingOn = isFlagOn('NEXT_PUBLIC_FLAG_STRINGING');
   const giftCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
+  // How this club runs (lib/clubRun.ts). Money surfaces hide only on a KNOWN
+  // "off": while the club is still being read they render as they always did.
+  const { run, known: runKnown } = useClubRun();
+  const moneyOff = runKnown && run.money === 'off';
+  const styleLabel = run.style === 'custom' ? 'Custom' : CLUB_STYLES[run.style].label;
   useEffect(() => {
     if (!stringingOn) return;
     let cancelled = false;
@@ -210,7 +217,9 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
     },
     {
       title: 'Money',
-      rows: [
+      // A club that collects money outside the app has none of these to keep;
+      // turning money back on is on "How your club runs".
+      rows: moneyOff ? [] : [
         { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
         // The inbox, reminders, the unpaid hold and the ledger check.
         ...(paymentsAutoOn
@@ -223,6 +232,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
     {
       title: 'Club',
       rows: [
+        { icon: 'tune', label: 'How your club runs', meta: runKnown ? styleLabel : undefined, onClick: () => setView('club-run') },
         ...(stringingOn
           ? [{ icon: 'sports_tennis', label: 'Stringing bench', meta: benchTrailing, accent: !!benchTrailing, onClick: () => setView('stringing') }]
           : []),
@@ -290,11 +300,13 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
         onChanged={() => setLocalRefresh((n) => n + 1)}
       />
       </RevealSlot>
-      <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>
-        <div id="cc-payments" style={{ scrollMarginTop: 'var(--space-9)' }}>
-          <PaymentsCard refreshKey={composedRefresh} onOpenPlayer={openPlayer} />
-        </div>
-      </RevealSlot>
+      {!moneyOff && (
+        <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>
+          <div id="cc-payments" style={{ scrollMarginTop: 'var(--space-9)' }}>
+            <PaymentsCard refreshKey={composedRefresh} onOpenPlayer={openPlayer} />
+          </div>
+        </RevealSlot>
+      )}
 
       {/* AT A GLANCE: the two numbers worth seeing without a tap. */}
       <ProfileEyebrow>At a glance</ProfileEyebrow>

@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react';
 import NeedsYouCard from '@/components/admin/CommandCenter/NeedsYouCard';
+import { announceClubRun } from '@/lib/useClubRun';
+import { applyStyle } from '@/lib/clubRun';
 
 /**
  * Admin audit, 2026-10-12: Profile said "3 need you" and the Command Center
@@ -42,6 +44,17 @@ describe('<NeedsYouCard />', () => {
     expect(h.onOpenPayments).toHaveBeenCalled();
     expect(h.onOpenBirds).toHaveBeenCalled();
     expect(h.onOpenBench).toHaveBeenCalled();
+  });
+
+  it('counts nobody unpaid for a club that collects its money outside the app', async () => {
+    // Nothing is ever billed there, so every player would read as unpaid
+    // (docs/plans/six-feathers-onboarding.md, found on the demo seed).
+    stub({ players: [{ paid: false }, { paid: false }], birds: { currentStock: 2, burnPerSession: 2 } });
+    render(<NeedsYouCard refreshKey={0} {...handlers()} />);
+    expect(await screen.findByText('2 unpaid this session')).toBeDefined();
+    act(() => announceClubRun(applyStyle('members_first')));
+    await waitFor(() => expect(screen.queryByText('2 unpaid this session')).toBeNull());
+    expect(screen.getByText('Birds: reorder now')).toBeDefined();
   });
 
   it('renders nothing when nothing needs anyone', async () => {

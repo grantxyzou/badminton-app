@@ -44,6 +44,7 @@ Nobody in the club has asked for an app. Ian has not been asked yet. This is Gra
   - Low-balance nudges: a new check in the daily `POST /api/payments/remind` run.
   - Late cancels: settle reads rows stamped `lateCancel`.
 - **The chat format is the spec for the copied list.** The text keeps open spots as empty numbers, because that is how the chat reads "how many are left", and a numbered waiting list. The order is `compareBySignup`, the one the capacity check uses, so the text and the app never disagree. It is English only, like every admin surface.
+- **Six Feathers is a real club with its own settings, not a demo** (Grant, 2026-10-29: "Treat the real demo club as a real group just with different setting configuration on how the group run this will help BPM long term too scale for different management style"). Every rule the club runs by is a per-club setting (`GroupSettings.run`, `lib/clubRun.ts`), and a **style** fills them in: `first_come` is BPM, `members_first` is Six Feathers, and any hand edit makes a club `custom`. Grant creates the production club and owns it; Ian becomes an admin when he agrees (handing over ownership is not built). The roster goes in with the real names from the chat — names only, no phone numbers or e-transfer address. A setting joins the model in the PR that makes it do something, and the styles carry only those.
 - **The demo seed uses famous players' names, never the club's.** The fixture-name rule in CLAUDE.md applies twice over here: Grant knows these people.
 
 ## Fit, as found in the code (2026-10-28)
@@ -65,9 +66,19 @@ Nobody in the club has asked for an app. Ian has not been asked yet. This is Gra
 - **One invite per person.** Bringing 35 people in takes 35 one-time invites, at 30 an hour per IP, and each invitee needs email, Google or Apple to sign up (`lib/invites.ts`).
 - **Names the admin adds by hand are stuck.** Signed out, "I play here already" resolves the name in BPM: `app/api/members/access-request/route.ts` and `app/api/auth/claim-name/route.ts` use `resolveGroupId`, which falls back to BPM. Pre-adding a name also makes that person's invite sign-up answer `name_taken` (`app/api/auth/signup/route.ts`). This is open as Phase 6 of `docs/superpowers/plans/2026-09-07-multi-group.md`.
 
-**A list-only club will see "N unpaid this session" in Needs you** (`components/admin/CommandCenter/NeedsYouCard.tsx`), because nobody ever settles a session that has no cost. Seen on the demo seed. It needs a quiet answer before the pilot, either "no cost set" or a club setting that turns money off.
+**A list-only club will see "N unpaid this session" in Needs you** (`components/admin/CommandCenter/NeedsYouCard.tsx`), because nobody ever settles a session that has no cost. Seen on the demo seed. Answered by the `money: 'off'` setting (step A below).
 
 ## Plan
+
+Revised 2026-10-29: these rules ship as settings any club can choose, and Six Feathers is created in production with the "Members first" style. The order:
+- **A** (shipped): the model, "How your club runs", players per court, and money off.
+- **B**: paste a roster, marking members and drop-ins.
+- **C**: claim a pre-added name.
+- **D**: last week's list carries over.
+- **E**: the members-first window, and the waitlist moving up.
+- **F**: guests.
+
+The original order follows for the record.
 
 1. **PR 1, the pitch kit (this change).**
    - This file.
@@ -99,3 +110,11 @@ Nobody in the club has asked for an app. Ian has not been asked yet. This is Gra
 | "Copy list" | `components/admin/CommandCenter/NextSessionCard.tsx` |
 | The demo club | `lib/cosmos.ts` (`seedDevSixFeathers`) |
 | Tests | `__tests__/roster-text.test.ts` |
+| How a club runs (pure: styles, `clubRunOf`, `parseClubRun`, `capacityForCourts`) | `lib/clubRun.ts` |
+| `GroupSettings.run` (additive) | `lib/types.ts` |
+| Read and write it | `app/api/admin/settings/route.ts`; members see it through `memberVisibleSettings` in `lib/groupRoutes.ts` |
+| The admin screens' reading, current after a save | `lib/useClubRun.ts` |
+| "How your club runs" | `components/admin/CommandCenter/ClubRunPage.tsx` |
+| Money off: Payments, Money rows, bill actions, "N unpaid" | `components/admin/CommandCenter/CommandCenter.tsx`, `components/admin/CommandCenter/NextSessionCard.tsx`, `lib/useAdminNeedsYou.ts` |
+| Spots follow the courts | `components/admin/AdvanceSessionForm.tsx`, `components/admin/CommandCenter/SetupPage.tsx` |
+| Tests for the settings | `__tests__/club-run.test.ts`, `__tests__/admin-settings-club-run.test.ts`, `__tests__/components/ClubRunPage.test.tsx`, `__tests__/components/NeedsYouCard.test.tsx` |

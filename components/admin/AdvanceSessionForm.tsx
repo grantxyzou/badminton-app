@@ -5,6 +5,7 @@ import type { Session, BirdPurchase } from '@/lib/types';
 import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
 import { shareSignup } from '@/lib/signupShare';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { capacityForCourts, clubRunOf, type ClubRun } from '@/lib/clubRun';
 import { isNoActiveSession } from '@/lib/apiFetch';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
@@ -145,13 +146,17 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   // date through.
   const [skipCheckFailed, setSkipCheckFailed] = useState(false);
   const [skipAttempt, setSkipAttempt] = useState(0);
+  // How the club runs (lib/clubRun.ts), from the same read: a club whose spots
+  // follow its courts gets the cap worked out when the courts change.
+  const [run, setRun] = useState<ClubRun | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' })
       .then(r => { if (!r.ok) throw new Error(`settings ${r.status}`); return r.json(); })
-      .then((data: { skipDates?: string[] }) => {
+      .then((data: { skipDates?: string[]; run?: unknown }) => {
         if (cancelled) return;
         setSkipDates(Array.isArray(data?.skipDates) ? data.skipDates : []);
+        setRun(clubRunOf({ run: data?.run }));
         setSkipCheckFailed(false);
       })
       .catch(() => { if (!cancelled) setSkipCheckFailed(true); });
@@ -385,7 +390,22 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <Label text="Courts">
-              <input id="advance-courts" name="courts" type="number" min={1} max={20} value={courts ?? ''} onChange={e => setCourts(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
+              <input
+                id="advance-courts"
+                name="courts"
+                type="number"
+                min={1}
+                max={20}
+                value={courts ?? ''}
+                onChange={e => {
+                  const next = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                  setCourts(next);
+                  // Spots follow the courts for a club that runs that way; the
+                  // cap stays editable for the week that needs an exception.
+                  const cap = run ? capacityForCourts(next, run) : null;
+                  if (cap !== null) setMaxPlayers(cap);
+                }}
+              />
             </Label>
             <Label text="Max players">
               <input id="advance-max-players" name="maxPlayers" type="number" min={1} max={100} value={maxPlayers ?? ''} onChange={e => setMaxPlayers(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
