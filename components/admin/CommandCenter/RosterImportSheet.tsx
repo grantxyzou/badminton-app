@@ -224,11 +224,8 @@ export default function RosterImportSheet({
 
   return (
     <BottomSheet open={open} onClose={close} ariaLabel="Import a list">
-      <BottomSheetHeader>
-        <span className="bpm-h3">Import a list</span>
-        <button type="button" onClick={close} aria-label="Close" className="cc-btn cc-btn-ghost" disabled={busy}>
-          <span className="material-icons icon-md" aria-hidden="true">close</span>
-        </button>
+      <BottomSheetHeader onClose={close} closeLabel="Close">
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Import a list</span>
       </BottomSheetHeader>
       <BottomSheetBody>
         {step.at === 'input' && (
@@ -339,7 +336,7 @@ export default function RosterImportSheet({
                                 aria-checked={row.regular === value}
                                 disabled={busy}
                                 onClick={() => updateRow(i, (r) => remark(r, value))}
-                                className={`flex-1 flex items-center justify-center fs-xs rounded-full ${row.regular === value ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                                className={`flex-1 flex items-center justify-center px-3 fs-xs rounded-full ${row.regular === value ? 'segment-tab-active' : 'segment-tab-inactive'}`}
                               >
                                 {value ? 'Member' : 'Drop-in'}
                               </button>
