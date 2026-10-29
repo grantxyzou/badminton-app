@@ -759,7 +759,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               body={
                 heldForUnpaid
                   ? tStates('heldBody')
-                  : `${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`
+                  : (
+                    <>
+                      {`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
+                      <br />
+                      {tStates('waitlistAutoMove')}
+                    </>
+                  )
               }
             />
             <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} />
