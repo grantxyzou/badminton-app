@@ -477,6 +477,9 @@ export async function POST(req: NextRequest) {
         // it would tag a later removal "Late" and ride along in the roster.
         lateCancel: undefined,
         lateCancelHoursBefore: undefined,
+        // Rejoining is a choice, not a hand-off: an old promotion must not
+        // exempt this sign-up's cancel (docs/plans/waitlist-auto-promote.md).
+        promotedAt: undefined,
         waitlisted: startWaitlisted,
         heldForUnpaid: heldForUnpaid ? true : undefined,
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
@@ -827,6 +830,8 @@ export async function PATCH(req: NextRequest) {
     if (body.removed === false) {
       updates.lateCancel = undefined;
       updates.lateCancelHoursBefore = undefined;
+      // The admin chose this restore; an old promotion's exemption does not carry over.
+      updates.promotedAt = undefined;
     }
     if (typeof body.waitlisted === 'boolean') updates.waitlisted = body.waitlisted;
     // Promoting by hand ends the unpaid hold: the row is no longer held, and a

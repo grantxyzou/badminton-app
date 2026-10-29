@@ -43,6 +43,7 @@ Every one is best-effort AFTER its primary write; a send failure logs and never 
 | Announcement posted | `app/api/announcements/route.ts` | `sendPushToAll` — the one remaining unnarrowed caller; a cross-group leak the day multi-group turns on |
 | Access request / join | `lib/joinNotify.ts`, `app/api/members/access-request/route.ts` | the group's admins |
 | Stringing status moved | `lib/stringingNotifyDispatch.ts` | the job's member (no price in the body) |
+| Moved off the waitlist (a spot opened) | `lib/waitlistPromote.ts`, from `DELETE`/`PATCH /api/players` and `PUT /api/session` | the promoted member (`docs/plans/waitlist-auto-promote.md`) |
 | Payment reminder (settle +3 / +7 days) | `lib/paymentReminders.ts`, via the club's Gmail script | the member owing (no amount in the body) |
 | Admin self-test | `app/api/push/test/route.ts` | the calling admin |
 

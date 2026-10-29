@@ -132,12 +132,38 @@ describe('waitlist auto-promote', () => {
   it('a row promoted inside the late-cancel window can give the spot back without the late tag', async () => {
     seedGroup('bpm', { settings: { skipDates: [], maxPlayers: 12, lateCancelHours: 48 } });
     const { cara } = seedFull();
-    await DELETE(makeRequest('DELETE', URL, { name: 'Alice', deleteToken: TOKEN }));
+    await DELETE(makeRequest('DELETE', URL, { name: 'Alice', deleteToken: TOKEN, acknowledgeLateFee: true }));
+    expect(rowOf(cara.id).waitlisted).toBe(false);
     rowOf(cara.id).deleteToken = TOKEN;
     const res = await DELETE(makeRequest('DELETE', URL, { name: 'Cara', deleteToken: TOKEN }));
     expect(res.status).toBe(200);
     expect(rowOf(cara.id).removed).toBe(true);
     expect(rowOf(cara.id).lateCancel).toBeUndefined();
+  });
+
+  it('rejoining after a promoted cancel is a choice: the next late cancel is tagged', async () => {
+    seedGroup('bpm', { settings: { skipDates: [], maxPlayers: 12, lateCancelHours: 48 } });
+    const { cara } = seedFull();
+    await DELETE(makeRequest('DELETE', URL, { name: 'Alice', deleteToken: TOKEN, acknowledgeLateFee: true }));
+    expect(typeof rowOf(cara.id).promotedAt).toBe('string');
+    // Cara gives the spot back, then rejoins: the same row comes back into play.
+    Object.assign(rowOf(cara.id), { removed: true, removedAt: new Date().toISOString() });
+    const { POST } = await import('@/app/api/players/route');
+    const signup = await POST(makeAdminRequest('POST', URL, { name: 'Cara' }));
+    expect(signup.status).toBe(201);
+    const { deleteToken } = await signup.json();
+    expect(rowOf(cara.id).promotedAt).toBeUndefined();
+    const res = await DELETE(makeRequest('DELETE', URL, { name: 'Cara', deleteToken }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: 'late_cancel' });
+  });
+
+  it('an admin restore drops an old promotedAt', async () => {
+    seedSession(SESSION_ID, { maxPlayers: 3 });
+    const p = seedPlayer(SESSION_ID, 'Cara', { removed: true, promotedAt: new Date().toISOString() });
+    const cara = { id: p.id };
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { id: cara.id, removed: false }))).status).toBe(200);
+    expect(rowOf(cara.id).promotedAt).toBeUndefined();
   });
 
   it('a row promoted BEFORE the window still meets the late-cancel rule', async () => {
