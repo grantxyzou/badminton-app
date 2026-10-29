@@ -5052,6 +5052,38 @@ html[data-tab="stringing"] .cc-mini-card {
   background: rgba(0, 0, 0, 0.05);
 }
 
+/* One of several choices drawn as a row, with a radio glyph and a line of
+   description ("How your club runs" picks its style this way). Inner-row spec:
+   12px radius and 12px padding on the inner-card material — `cc-mini-card`
+   sets no padding, and a style picker built on it put the glyph against the
+   border. The chosen row takes the green inner tint, the app's mark for an
+   active choice (segment-tab-active, `.cc-session-chip[aria-selected]`), so it
+   is not carried by the glyph alone. Press is the card scale. */
+.cc-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--duration-press) var(--ease-out-quart),
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+.cc-choice:active { transform: scale(0.98); }
+.cc-choice[aria-checked="true"] {
+  background: var(--inner-card-green-bg);
+  border-color: var(--inner-card-green-border);
+}
+.cc-choice:disabled { opacity: 0.5; pointer-events: none; }
+
 /* Dot indicator — scroll-position pagination markers. Same theme split
    as cc-mini-card so they don't vanish over light backgrounds. */
 .cc-dot {

@@ -65,7 +65,7 @@ describe('ClubRunPage', () => {
     render(<ClubRunPage />);
     fireEvent.click(await screen.findByRole('radio', { name: '6 per court' }));
     await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 6, money: 'off' }]));
-    expect(await screen.findByText(/Custom: your settings below/)).toBeDefined();
+    expect(await screen.findByText(/Custom: your rules below/)).toBeDefined();
   });
 
   it('says a failed load in words, with no switches to tap', async () => {

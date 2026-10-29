@@ -6,6 +6,8 @@ import Collapse from '@/components/primitives/Collapse';
 import EmptyState from '@/components/primitives/EmptyState';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
 import Switch from '@/components/primitives/Switch';
+import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
+import SettingsList from '@/components/profile/SettingsList';
 import { isRefused } from '@/lib/apiFetch';
 import { useOnline } from '@/lib/useOnline';
 import { announceClubRun } from '@/lib/useClubRun';
@@ -17,8 +19,13 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 export const PLAYERS_PER_COURT_PRESETS = [4, 6, 8] as const;
 const DEFAULT_PER_COURT = 8;
 
-/** The page's height while it loads: the style card, measured at 430px (2026-10-29). */
-export const CLUB_RUN_PAGE_HEIGHT = 196;
+/**
+ * The page's loading frame, card by card, so nothing moves when the settings
+ * arrive. Measured at 430px (2026-10-29) in the state most clubs are in — BPM's
+ * "First come, first served", where spots do not follow the courts and the
+ * per-court choice is closed.
+ */
+export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64 } as const;
 
 const STYLE_ORDER = ['first_come', 'members_first'] as const;
 
@@ -89,7 +96,21 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
     }
   }
 
-  if (loading) return <CardSkeleton height={CLUB_RUN_PAGE_HEIGHT} />;
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-5" aria-busy="true">
+        <section className="flex flex-col gap-2">
+          <ProfileEyebrow>Style</ProfileEyebrow>
+          <CardSkeleton height={CLUB_RUN_HEIGHTS.style} />
+        </section>
+        <section className="flex flex-col gap-2">
+          <ProfileEyebrow>Rules</ProfileEyebrow>
+          <CardSkeleton height={CLUB_RUN_HEIGHTS.spots} />
+          <CardSkeleton height={CLUB_RUN_HEIGHTS.money} />
+        </section>
+      </div>
+    );
+  }
 
   if (loadState === 'failed') {
     return (
@@ -130,111 +151,120 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
   const moneyOn = run.money === 'split';
 
   return (
-    <div className="flex flex-col gap-3 motion-fade">
-      <section className="glass-card p-4 space-y-3" aria-label="Style">
-        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
-          Start from the style closest to how your club plays. You can change any setting below afterwards.
-        </p>
-        <div className="flex flex-col gap-2" role="radiogroup" aria-label="Club style">
-          {STYLE_ORDER.map((key) => {
-            const style = CLUB_STYLES[key];
-            const selected = run.style === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                disabled={busy}
-                onClick={() => { if (!selected) void persist(applyStyle(key)); }}
-                className="cc-mini-card w-full text-left flex items-start gap-3"
-              >
-                <span
-                  className="material-icons"
-                  aria-hidden="true"
-                  style={{ fontSize: 'var(--icon-md)', color: selected ? 'var(--accent)' : 'var(--text-muted)', marginTop: 'var(--space-05)' }}
-                >
-                  {selected ? 'radio_button_checked' : 'radio_button_unchecked'}
-                </span>
-                <span className="flex flex-col" style={{ gap: 'var(--space-05)', minWidth: 0 }}>
-                  <span className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{style.label}</span>
-                  <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{style.summary}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        {run.style === 'custom' && (
+    <div className="flex flex-col gap-5 motion-fade">
+      {/* Grouped the way the Command Center groups its settings: an eyebrow
+          over each kind of thing, a choice first and the rules it fills in
+          below it. */}
+      <section className="flex flex-col gap-2" aria-label="Style">
+        <ProfileEyebrow>Style</ProfileEyebrow>
+        <div className="glass-card space-y-3">
           <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
-            Custom: your settings below no longer match either style.
+            Start from the style closest to how your club plays. You can change any rule below afterwards.
           </p>
+          <div className="flex flex-col gap-2" role="radiogroup" aria-label="Club style">
+            {STYLE_ORDER.map((key) => {
+              const style = CLUB_STYLES[key];
+              const selected = run.style === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={busy}
+                  onClick={() => { if (!selected) void persist(applyStyle(key)); }}
+                  className="cc-choice"
+                >
+                  <span
+                    className="material-icons icon-md"
+                    aria-hidden="true"
+                    style={{ flex: 'none', color: selected ? 'var(--accent)' : 'var(--text-muted)', marginTop: 'var(--space-05)' }}
+                  >
+                    {selected ? 'radio_button_checked' : 'radio_button_unchecked'}
+                  </span>
+                  <span className="flex flex-col" style={{ gap: 'var(--space-05)', minWidth: 0 }}>
+                    <span className="fs-md" style={{ fontWeight: 600 }}>{style.label}</span>
+                    <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{style.summary}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {run.style === 'custom' && (
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              Custom: your rules below no longer match either style.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-label="Rules">
+        <ProfileEyebrow>Rules</ProfileEyebrow>
+        <section className="glass-card space-y-3" aria-label="Spots">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>
+                Spots follow the courts
+              </p>
+              <p id="club-run-per-court" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                {perCourtOn ? `${run.playersPerCourt} players per court` : 'Off · you type the max players each week'}
+              </p>
+            </div>
+            <Switch
+              checked={perCourtOn}
+              onChange={(next) => void persist(withSetting(run, 'playersPerCourt', next ? DEFAULT_PER_COURT : null))}
+              ariaLabel="Spots follow the courts"
+              ariaDescribedBy="club-run-per-court"
+              disabled={busy}
+            />
+          </div>
+          <Collapse open={perCourtOn} spaceAbove="var(--space-3)">
+            <div className="segment-control flex" role="radiogroup" aria-label="Players per court">
+              {PLAYERS_PER_COURT_PRESETS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  role="radio"
+                  aria-checked={run.playersPerCourt === n}
+                  onClick={() => { if (run.playersPerCourt !== n) void persist(withSetting(run, 'playersPerCourt', n)); }}
+                  disabled={busy}
+                  className={`flex-1 flex items-center justify-center fs-sm rounded-full ${run.playersPerCourt === n ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                >
+                  {n} per court
+                </button>
+              ))}
+            </div>
+          </Collapse>
+        </section>
+
+        <section className="glass-card" aria-label="Money">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>
+                Collect money in the app
+              </p>
+              <p id="club-run-money" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                {moneyOn
+                  ? 'On · split the court cost and track who has paid'
+                  : 'Off · you collect money outside the app, so Payments is hidden'}
+              </p>
+            </div>
+            <Switch
+              checked={moneyOn}
+              onChange={(next) => void persist(withSetting(run, 'money', next ? 'split' : 'off'))}
+              ariaLabel="Collect money in the app"
+              ariaDescribedBy="club-run-money"
+              disabled={busy}
+            />
+          </div>
+        </section>
+
+        {/* A way to another page is a settings row, as everywhere in admin —
+            not a free-standing button. */}
+        {onOpenLateCancel && (
+          <SettingsList rows={[{ icon: 'schedule', label: 'Late cancellations', onClick: onOpenLateCancel }]} />
         )}
       </section>
-
-      <section className="glass-card p-4 space-y-3" aria-label="Spots">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>
-              Spots follow the courts
-            </p>
-            <p id="club-run-per-court" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
-              {perCourtOn ? `${run.playersPerCourt} players per court` : 'Off · you type the max players each week'}
-            </p>
-          </div>
-          <Switch
-            checked={perCourtOn}
-            onChange={(next) => void persist(withSetting(run, 'playersPerCourt', next ? DEFAULT_PER_COURT : null))}
-            ariaLabel="Spots follow the courts"
-            ariaDescribedBy="club-run-per-court"
-            disabled={busy}
-          />
-        </div>
-        <Collapse open={perCourtOn} spaceAbove="var(--space-3)">
-          <div className="segment-control flex" role="radiogroup" aria-label="Players per court">
-            {PLAYERS_PER_COURT_PRESETS.map((n) => (
-              <button
-                key={n}
-                type="button"
-                role="radio"
-                aria-checked={run.playersPerCourt === n}
-                onClick={() => { if (run.playersPerCourt !== n) void persist(withSetting(run, 'playersPerCourt', n)); }}
-                disabled={busy}
-                className={`flex-1 flex items-center justify-center fs-sm rounded-full ${run.playersPerCourt === n ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-              >
-                {n} per court
-              </button>
-            ))}
-          </div>
-        </Collapse>
-      </section>
-
-      <section className="glass-card p-4 space-y-3" aria-label="Money">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>
-              Collect money in the app
-            </p>
-            <p id="club-run-money" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
-              {moneyOn
-                ? 'On · split the court cost and track who has paid'
-                : 'Off · you collect money outside the app, so Payments is hidden'}
-            </p>
-          </div>
-          <Switch
-            checked={moneyOn}
-            onChange={(next) => void persist(withSetting(run, 'money', next ? 'split' : 'off'))}
-            ariaLabel="Collect money in the app"
-            ariaDescribedBy="club-run-money"
-            disabled={busy}
-          />
-        </div>
-      </section>
-
-      {onOpenLateCancel && (
-        <button type="button" className="cc-btn cc-btn-ghost" onClick={onOpenLateCancel}>
-          Late cancellations →
-        </button>
-      )}
 
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>
