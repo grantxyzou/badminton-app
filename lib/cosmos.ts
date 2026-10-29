@@ -814,6 +814,11 @@ function getMockContainer(name: string) {
             // the field so the mock can honour the clause instead of silently
             // returning every row, which would make the Mine/All split look
             // broken in tests while working in Cosmos.
+            // A plus-one's row names its host here, not in `memberId`
+            // (docs/plans/plus-one.md); the host's balance reads it by this.
+            if ('@guestOf' in params) {
+              results = results.filter((r) => r.guestOf === params['@guestOf']);
+            }
             if ('@stringerId' in params) {
               results = results.filter((r) => r.stringerId === params['@stringerId']);
             }

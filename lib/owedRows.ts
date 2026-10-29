@@ -53,7 +53,7 @@ export async function loadOwedInputs(
   // run at once. Legacy rows carry a name and no memberId; alias-linked names
   // are a different name on the same person. `names` is already lowercased.
   const names = [...identity.names];
-  const [byMemberId, byName] = await Promise.all([
+  const [byMemberId, byName, byGuestOf] = await Promise.all([
     identity.memberId
       ? scope.query<Player>('players', {
           where: 'c.memberId = @memberId',
@@ -66,9 +66,18 @@ export async function loadOwedInputs(
           params: [{ name: '@names', value: names }],
         })
       : Promise.resolve([] as Player[]),
+    // The guests this person brought: their shares are this person's lines
+    // (docs/plans/plus-one.md). A third query, for the same no-`OR` reason.
+    identity.memberId
+      ? scope.query<Player>('players', {
+          where: 'c.guestOf = @guestOf',
+          params: [{ name: '@guestOf', value: identity.memberId }],
+        })
+      : Promise.resolve([] as Player[]),
   ]);
   keep(byMemberId);
   keep(byName);
+  keep(byGuestOf);
   const players = [...byId.values()];
 
   const sessionIds = [...new Set(players.map((p) => p.sessionId).filter((s): s is string => typeof s === 'string'))];

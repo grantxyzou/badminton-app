@@ -396,8 +396,16 @@ export async function anonymizePlayerRows(
     [{ name: '@name', value: lowerName }],
     (row) => sameName(row, lowerName),
   );
+  // The guests they brought (docs/plans/plus-one.md): a guest row names its
+  // host in `guestOf` and in its display name, so it is anonymized with them.
+  const byGuestOf = await queryAll(
+    'players',
+    'c.guestOf = @guestOf',
+    [{ name: '@guestOf', value: memberId }],
+    (row) => row.guestOf === memberId,
+  );
   const seen = new Set<string>();
-  const rows = [...byId, ...byName].filter((r) => {
+  const rows = [...byId, ...byName, ...byGuestOf].filter((r) => {
     const id = String(r.id);
     if (seen.has(id)) return false;
     seen.add(id);
@@ -411,6 +419,8 @@ export async function anonymizePlayerRows(
       deleteToken: _dt,
       pinHash: _ph,
       memberId: _mid,
+      guestOf: _go,
+      guestName: _gn,
       ...rest
     } = row as Record<string, unknown>;
 

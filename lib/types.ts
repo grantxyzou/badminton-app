@@ -157,6 +157,14 @@ export interface Player {
    */
   promotedAt?: string;
   /**
+   * A plus-one (docs/plans/plus-one.md): the HOST's memberId. A guest row has
+   * no `memberId` of its own and is never matched by name — it is the host's
+   * line on the host's balance, and the ledger charges it to the host.
+   */
+  guestOf?: string;
+  /** The guest's own first name; `name` is the display form, "Alex (Lin's guest)". */
+  guestName?: string;
+  /**
    * When each payment reminder for this row went out (docs/plans/payments.md,
    * Phase 1b): one at settle + 3 days, one at + 7, then never again.
    */
@@ -310,6 +318,11 @@ export interface GroupSettings {
    * row is stamped `lateCancel`. Read only through `lateCancelHoursOf`.
    */
   lateCancelHours?: number;
+  /**
+   * Members may bring one guest a session (docs/plans/plus-one.md). Absent =
+   * off. Read only through `guestsAllowedOf`.
+   */
+  guestsAllowed?: true;
   /**
    * How the club runs its week (docs/plans/six-feathers-onboarding.md): a style
    * and the settings it fills in. Absent = how BPM Core runs. Read only through
