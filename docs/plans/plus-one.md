@@ -32,7 +32,7 @@ not earning its place: remove the button and keep the admin path.
 - No guest-specific pricing. A guest pays the same share as anyone.
 - No change to how the admin adds a named player today.
 
-## Proposal (for Grant to confirm)
+## Proposal (confirmed by Grant, 2026-10-28)
 
 1. **A guest takes a spot.** The guest is a row of their own in `players`, so
    the cap, the cost split, the waitlist and its auto-promote all count them
@@ -53,11 +53,6 @@ not earning its place: remove the button and keep the admin path.
    (`lib/invites.ts`) for that name. Joining is the normal invite sign-up; the
    guest's past shares stay on the host's balance, where they were paid.
 
-Still open:
-
-- Late-cancel tag for a guest cancelled inside the window? (Recommendation:
-  the same rule as the host, tagged on the guest's row.)
-
 <!--
 Everything above is written BEFORE the work and is the gate for starting it.
 Everything below is appended AS the work proceeds.
@@ -73,6 +68,10 @@ Everything below is appended AS the work proceeds.
   through the existing one-time invite rather than turning the guest row into
   an account: the row has no credential, and an invite is the only way into a
   club (security rule 13).
+- **A guest follows the late-cancel rule like anyone** (Grant, 2026-10-29). A
+  guest cancelled inside the club's window, alone or with the host, is tagged
+  Late on the guest's own row (`lib/cancelPolicy.ts`), and a guest promoted
+  inside the window is exempt, as members are.
 - **A guest is its own `players` row, not a `guests: 1` count on the host's
   row** (proposed). A count would have to be taught to every place that counts
   rows — capacity, `costSplit`, `planPromotions`, the roster, settle, the
