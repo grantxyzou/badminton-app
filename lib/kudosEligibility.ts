@@ -87,15 +87,16 @@ async function rosterNames(groupId: string, sessionId: string): Promise<string[]
   try {
     // `@sessionId`, not `@sid`: the mock filters by parameter NAME, and `@sid`
     // was one it did not know — so this returned every row in tests.
-    const resources = await groupScope(groupId).query<{ name?: string; removed?: boolean; sessionId?: string }>('players', {
-      select: 'c.name, c.removed, c.sessionId',
+    const resources = await groupScope(groupId).query<{ name?: string; removed?: boolean; sessionId?: string; guestOf?: string }>('players', {
+      select: 'c.name, c.removed, c.sessionId, c.guestOf',
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
       partitionKey: sessionId,
     });
     // The JS re-filter stays for parity with real Cosmos either way.
     return resources
-      .filter((p) => p && p.sessionId === sessionId && p.removed !== true && typeof p.name === 'string')
+      // A plus-one has no account to receive kudos (docs/plans/plus-one.md).
+      .filter((p) => p && p.sessionId === sessionId && p.removed !== true && !p.guestOf && typeof p.name === 'string')
       .map((p) => p.name as string);
   } catch {
     return [];

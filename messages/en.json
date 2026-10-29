@@ -371,7 +371,25 @@
       "notEnough": "Your credit doesn\u2019t cover a whole session yet \u2014 it stays for next time.",
       "error": "Couldn\u2019t use your credit \u2014 try again."
     },
+    "guest": {
+      "bring": "Bring a guest",
+      "namePlaceholder": "Their first name",
+      "add": "Add",
+      "adding": "Adding\u2026",
+      "cancel": "Cancel",
+      "coming": "{name} is coming with you",
+      "waiting": "{name} is on the waitlist",
+      "note": "Their share goes on your balance.",
+      "remove": "Remove",
+      "removeAnyway": "Remove anyway",
+      "invalidName": "Use a first name, up to 20 letters.",
+      "addFailed": "Couldn\u2019t add your guest. Try again.",
+      "removeFailed": "Couldn\u2019t remove your guest. Try again.",
+      "rosterName": "{guest} ({host}\u2019s guest)",
+      "cancelNote": "{name} will be taken off too."
+    },
     "balance": {
+        "guestLine": "{name}, your guest",
         "groupSessions": "Badminton",
         "groupStringing": "Stringing",
       "title": "Balance",

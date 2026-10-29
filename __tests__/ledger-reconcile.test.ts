@@ -242,3 +242,20 @@ describe('the admin route', () => {
     expect((await reconcilePost(makeAdminRequest('POST', `${BASE}/admin/ledger/reconcile`, {}))).status).toBe(404);
   });
 });
+
+describe('a plus-one (docs/plans/plus-one.md)', () => {
+  it("the guest's share is the host's line on the roster path, charged to the host, and reconciles clean", async () => {
+    const guest = seedPlayer('session-2026-09-17', "Alex (Viktor's guest)", {
+      guestOf: viktor.id, guestName: 'Alex', owedAmount: 12, settledAt: '2026-09-18T00:00:00Z',
+    });
+    const roster = await computeOwedForRoster(groupScope('bpm'));
+    expect(roster.find((r) => r.memberId === viktor.id)!.balance.sessions.map((s) => s.playerId)).toContain(guest.id);
+
+    await backfill();
+    const charge = (getStore()['ledger'] as LedgerEntry[]).find((e) => e.ref?.id === guest.id && e.kind === 'charge');
+    expect(charge?.memberId).toBe(viktor.id);
+    const r = await runReconcile('bpm');
+    expect(r.mismatches).toEqual([]);
+    expect(r.unlisted).toBe(1); // still only the legacy Old Row
+  });
+});

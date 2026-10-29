@@ -37,6 +37,7 @@ export default function WhoElseIsIn({
   waitlist = [],
   me,
   onKudos,
+  guests = [],
 }: {
   /** The active roster, in sign-up order. */
   active: string[];
@@ -45,6 +46,8 @@ export default function WhoElseIsIn({
   me: string | null;
   /** Present only when the viewer may give kudos (they are on this roster). */
   onKudos?: (name: string) => void;
+  /** Roster labels that are someone's plus-one: no account, so no kudos. */
+  guests?: string[];
 }) {
   const t = useTranslations('home.signup');
   const tPlayers = useTranslations('players');
@@ -72,7 +75,7 @@ export default function WhoElseIsIn({
       <span className="roster-row__pos">{position}</span>
       <MemberAvatar name={n} size={24} />
       <span className="roster-row__name">{n}</span>
-      {kudos && onKudos && !isMe(n) && (
+      {kudos && onKudos && !isMe(n) && !guests.includes(n) && (
         <button
           type="button"
           className="roster-row__kudos"

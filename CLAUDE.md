@@ -132,8 +132,11 @@ read in `app/api/admin/slice0/route.ts`.
 ### Waitlist
 Full session + `POST { waitlist: true }` → `waitlisted: true`. An admin promotes by hand via `PATCH { waitlisted: false }` — capacity-checked. **A freed spot is filled automatically since 2026-10-28** (`lib/waitlistPromote.ts`, `docs/plans/waitlist-auto-promote.md`): a cancel of a confirmed spot, an admin removal (`DELETE`, purge-one, `PATCH removed: true`) or a RAISED `maxPlayers` promotes waitlisters in sign-up order (`compareBySignup`) into every free spot and pushes each one — never a `heldForUnpaid` row, never once the session has started, never on a settled session, and never on an admin's move BACK to the waitlist (the first in line is often that same person). Adding a COURT moves nobody: `courts` and `maxPlayers` are separate fields. Every promotion stamps `Player.promotedAt`; a cancel by a row promoted inside the club's late-cancel window is not tagged late, and a rejoin or an admin restore clears the stamp.
 
+### Plus-one
+A club may let members bring one guest a session (`groups.settings.guestsAllowed`, off by default; `docs/plans/plus-one.md`, `lib/plusOne.ts`). The guest is a `players` row of their own with `guestOf: <host memberId>` and NO `memberId`, so the cap, the split and the waitlist count them unchanged; the row's `name` is a display form ("Alex (Lin's guest)") that cannot be a roster name. **A guest row is its HOST's money**: `matchesIdentity` matches it to the host and never by name, `loadOwedInputs` reads it by `@guestOf`, and the ledger charges it to the host. It leaves with the host, is cancelled only through the host's cookie (`DELETE { guest: true }`), and is anonymized when the host's account is deleted.
+
 ### Invite List
-`session.approvedNames` — when non-empty, `POST /api/players` enforces case-insensitive name match (403 otherwise). Admins bypass.
+`session.approvedNames` is a dead field: nothing writes it, and `POST /api/players` stopped reading it when members-only made an account the gate (rule 13).
 
 ### Sign-Up Gating
 `session.signupOpen` (boolean) — `false` blocks non-admin sign-ups. New sessions via advance always start `signupOpen: false`. `session.deadline` enforced server-side.

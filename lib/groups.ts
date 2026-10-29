@@ -234,6 +234,18 @@ export async function setLateCancelHours(groupId: string, hours: number | null):
   });
 }
 
+/**
+ * Switch plus-ones on or off for the club (docs/plans/plus-one.md). Off REMOVES
+ * the key, for the reason `setLateCancelHours` gives. Resolves `undefined` when
+ * the group record is missing.
+ */
+export async function setGuestsAllowed(groupId: string, on: boolean): Promise<Group | undefined> {
+  return mutateGroup(groupId, (group) => {
+    const { guestsAllowed: _previous, ...rest } = group.settings;
+    return { ...group, settings: on ? { ...rest, guestsAllowed: true as const } : rest };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // memberships (GROUP_SCOPED, PK /groupId) — through the accessor
 // ---------------------------------------------------------------------------

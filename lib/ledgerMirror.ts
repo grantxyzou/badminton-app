@@ -102,10 +102,12 @@ export function voidOf(entry: Pick<LedgerEntry, 'id' | 'memberId' | 'account' | 
 
 // ── Entry builders (pure) ──────────────────────────────────────────────────
 
-const memberOf = (row: Pick<Player, 'memberId'>) => row.memberId ?? UNLINKED_LEDGER_ID;
+// A plus-one's row is charged to its HOST (docs/plans/plus-one.md): the guest
+// has no account, and the host's balance is where Home shows the line.
+const memberOf = (row: Pick<Player, 'memberId' | 'guestOf'>) => row.memberId ?? row.guestOf ?? UNLINKED_LEDGER_ID;
 
 /** The charge a settled row carries. `null` when it carries none (resplit-covered → 0). */
-export function chargeEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'owedAmount' | 'settledAt'>, session: Pick<Session, 'datetime'>): NewEntry | null {
+export function chargeEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'settledAt'>, session: Pick<Session, 'datetime'>): NewEntry | null {
   const amountCents = cents(row.owedAmount);
   if (amountCents <= 0 || !row.settledAt) return null;
   return {
@@ -121,7 +123,7 @@ export function chargeEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 
 }
 
 /** A payment against a settled row. Keyed by the e-transfer's payment doc, else by when it was marked, else `legacy`. */
-export function paymentEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'owedAmount' | 'paidAt' | 'paidVia' | 'paymentId'>): NewEntry | null {
+export function paymentEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'paidAt' | 'paidVia' | 'paymentId'>): NewEntry | null {
   const amountCents = cents(row.owedAmount);
   if (amountCents <= 0) return null;
   const via = row.paidVia ?? 'manual';
@@ -140,7 +142,7 @@ export function paymentEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' |
 }
 
 /** An absorb cover: the admin ate this share. `n` = how many covers this row has had before. */
-export function coverEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'owedAmount' | 'settledAt' | 'coverMode'>, n: number): NewEntry | null {
+export function coverEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'settledAt' | 'coverMode'>, n: number): NewEntry | null {
   const amountCents = cents(row.owedAmount);
   if (amountCents <= 0) return null;
   return {
@@ -167,7 +169,7 @@ export function coverEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | '
  * such row until a backfill. Settle writes it now, with the SAME id and date
  * the backfill computes, so the two agree and the second 409s.
  */
-export function paymentEntryAtSettle(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'owedAmount' | 'paid' | 'paidAt' | 'paidVia' | 'paymentId' | 'settledAt'>): NewEntry | null {
+export function paymentEntryAtSettle(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'paid' | 'paidAt' | 'paidVia' | 'paymentId' | 'settledAt'>): NewEntry | null {
   if (row.paid !== true) return null;
   const p = paymentEntry({ ...row, paidAt: row.paidAt ?? row.settledAt });
   if (!p) return null;
@@ -327,7 +329,7 @@ export async function mirrorSettle(scope: GroupScope, session: Pick<Session, 'id
 }
 
 /** After `DELETE /api/session/settle`: void every live charge/cover of the rows that were settled, and the court cost. */
-export async function mirrorUnsettle(scope: GroupScope, session: Pick<Session, 'id'>, rows: Pick<Player, 'id' | 'memberId'>[]): Promise<void> {
+export async function mirrorUnsettle(scope: GroupScope, session: Pick<Session, 'id'>, rows: Pick<Player, 'id' | 'memberId' | 'guestOf'>[]): Promise<void> {
   if (!on()) return;
   try {
     for (const row of rows) {
@@ -384,7 +386,7 @@ export async function mirrorUncover(scope: GroupScope, prev: Player): Promise<vo
 }
 
 /** A settled row hard-deleted (purgeAll / purgeOne): its charge is void; a received payment is real money and stays. */
-export async function mirrorRowDeleted(scope: GroupScope, row: Pick<Player, 'id' | 'memberId'>): Promise<void> {
+export async function mirrorRowDeleted(scope: GroupScope, row: Pick<Player, 'id' | 'memberId' | 'guestOf'>): Promise<void> {
   if (!on()) return;
   try {
     await voidLive(scope, memberOf(row), row.id, 'charge', 'row_deleted');

@@ -34,6 +34,8 @@ export interface UnpaidSession {
   remindedCount: number;
   /** ISO — when the latest of them went out, or null. */
   lastRemindedAt: string | null;
+  /** Set when this is a plus-one's share on the host's balance: the guest's name. */
+  guestName?: string;
 }
 
 /** One payable line, in cents, for matching an amount against. */
@@ -106,6 +108,7 @@ export function unpaidSessionsFrom(
         settledAt: typeof p.settledAt === 'string' ? p.settledAt : null,
         remindedCount: Array.isArray(p.remindedAt) ? p.remindedAt.length : 0,
         lastRemindedAt: Array.isArray(p.remindedAt) && p.remindedAt.length > 0 ? p.remindedAt[p.remindedAt.length - 1] : null,
+        ...(typeof p.guestOf === 'string' && p.guestOf ? { guestName: p.guestName ?? p.name } : {}),
       });
     }
   }

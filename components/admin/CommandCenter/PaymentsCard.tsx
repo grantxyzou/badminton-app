@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
+import InviteCard from './InviteCard';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -42,6 +43,9 @@ interface Player {
   owedAmount?: number;
   writtenOff?: boolean;
   coverMode?: 'absorb' | 'resplit';
+  /** A plus-one: the host's memberId and the guest's own name (docs/plans/plus-one.md). */
+  guestOf?: string;
+  guestName?: string;
 }
 
 /**
@@ -124,6 +128,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
   const [actionTarget, setActionTarget] = useState<Player | null>(null);
   const [actionError, setActionError] = useState('');
   const [coverTarget, setCoverTarget] = useState<Player | null>(null);
+  // A plus-one the admin is inviting to join the club (docs/plans/plus-one.md).
+  const [inviteFor, setInviteFor] = useState<string | null>(null);
   // cover-only = "Cover their $X" ActionRow (v1.5/A). cover-and-remove =
   // intercepting a remove that would orphan a settled, unpaid debt (v1.5/C).
   const [coverMode, setCoverMode] = useState<CoverSheetMode>('cover-only');
@@ -1040,16 +1046,47 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             {isCurrentSession && (
               <ActionRow icon="person_remove" label="Remove from session" onClick={actionRemove} />
             )}
-            <ActionRow icon="key" label="Generate recovery code" onClick={actionResetAccess} />
-            <ActionRow
-              icon="lock_clock"
-              label="Clear PIN"
-              hint={actionTarget?.memberId ? undefined : 'No linked member'}
-              disabled={!actionTarget?.memberId}
-              onClick={actionClearPin}
-              destructive
-            />
+            {/* A plus-one has no account (docs/plans/plus-one.md): the way in is an
+                invite, and there is no PIN or recovery code to manage. */}
+            {actionTarget?.guestOf ? (
+              <ActionRow
+                icon="person_add"
+                label="Invite to the club"
+                hint={`A one-time link for ${actionTarget.guestName ?? actionTarget.name} to join`}
+                onClick={() => { const p = actionTarget; setActionTarget(null); setInviteFor(p.guestName ?? p.name); }}
+              />
+            ) : (
+              <>
+                <ActionRow icon="key" label="Generate recovery code" onClick={actionResetAccess} />
+                <ActionRow
+                  icon="lock_clock"
+                  label="Clear PIN"
+                  hint={actionTarget?.memberId ? undefined : 'No linked member'}
+                  disabled={!actionTarget?.memberId}
+                  onClick={actionClearPin}
+                  destructive
+                />
+              </>
+            )}
           </div>
+        </BottomSheetBody>
+      </BottomSheet>
+
+      <BottomSheet open={inviteFor !== null} onClose={() => setInviteFor(null)} ariaLabel="Invite to the club">
+        <BottomSheetHeader>
+          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Invite {inviteFor} to the club</span>
+          <button
+            type="button"
+            onClick={() => setInviteFor(null)}
+            aria-label="Close"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
+          </button>
+        </BottomSheetHeader>
+        <BottomSheetBody>
+          {/* The club's own invite card: one link, one person, seven days. */}
+          {inviteFor !== null && <InviteCard bare />}
         </BottomSheetBody>
       </BottomSheet>
 

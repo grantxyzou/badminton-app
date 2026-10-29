@@ -4,9 +4,10 @@ import { publicMember } from '@/lib/publicShapes';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
-import { readGroup, renameGroup, setLateCancelHours, updateGroupSettings } from '@/lib/groups';
+import { readGroup, renameGroup, setGuestsAllowed, setLateCancelHours, updateGroupSettings } from '@/lib/groups';
 import { cleanString, GROUP_NAME_MIN, GROUP_NAME_MAX } from '@/lib/groupRoutes';
 import { isValidLateCancelHours, lateCancelHoursOf } from '@/lib/cancelPolicy';
+import { guestsAllowedOf } from '@/lib/plusOne';
 import { clubRunOf, parseClubRun } from '@/lib/clubRun';
 import { recipientOf } from '@/lib/payTo';
 import type { ETransferRecipient } from '@/lib/types';
@@ -74,6 +75,8 @@ export async function GET(req: NextRequest) {
       // The group record only, flag on or off (docs/plans/late-cancel-fee.md):
       // a new field has no Member-doc history to fall back to. null = off.
       lateCancelHours: lateCancelHoursOf(group?.settings),
+      // Plus-ones (docs/plans/plus-one.md): the group record only, like the window.
+      guestsAllowed: guestsAllowedOf(group?.settings),
       // The CLUB's name (`Group.name`), flag on or off: the group record exists
       // from the backfill on, and it is what the flip will show members. Null
       // before the record exists.
@@ -92,7 +95,7 @@ export async function PATCH(req: NextRequest) {
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();
 
-  let body: { skipDates?: unknown; eTransferRecipient?: unknown; lateCancelHours?: unknown; groupName?: unknown; run?: unknown };
+  let body: { skipDates?: unknown; eTransferRecipient?: unknown; lateCancelHours?: unknown; guestsAllowed?: unknown; groupName?: unknown; run?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -107,6 +110,9 @@ export async function PATCH(req: NextRequest) {
   }
   if (body.lateCancelHours !== undefined && body.lateCancelHours !== null && !isValidLateCancelHours(body.lateCancelHours)) {
     return NextResponse.json({ error: 'Invalid lateCancelHours' }, { status: 400 });
+  }
+  if (body.guestsAllowed !== undefined && typeof body.guestsAllowed !== 'boolean') {
+    return NextResponse.json({ error: 'Invalid guestsAllowed' }, { status: 400 });
   }
   // The same rule as creating a club (`POST /api/groups`): trimmed, 2–40 chars.
   const groupName = body.groupName !== undefined ? cleanString(body.groupName, GROUP_NAME_MIN, GROUP_NAME_MAX) : undefined;
@@ -125,7 +131,7 @@ export async function PATCH(req: NextRequest) {
     // record ONLY, so a save with no record would be a 200 that stored
     // nothing. Refuse it up front, before anything else in the body is written.
     const groupId = resolveGroupId(req);
-    if ((body.lateCancelHours !== undefined || groupName !== undefined || run) && !(await readGroup(groupId))) {
+    if ((body.lateCancelHours !== undefined || body.guestsAllowed !== undefined || groupName !== undefined || run) && !(await readGroup(groupId))) {
       return NextResponse.json({ error: 'no_group' }, { status: 409 });
     }
     const container = getContainer('members');
@@ -150,6 +156,9 @@ export async function PATCH(req: NextRequest) {
     });
     if (body.lateCancelHours !== undefined) {
       await setLateCancelHours(groupId, body.lateCancelHours as number | null);
+    }
+    if (typeof body.guestsAllowed === 'boolean') {
+      await setGuestsAllowed(groupId, body.guestsAllowed);
     }
     if (run) {
       await updateGroupSettings(groupId, { run });

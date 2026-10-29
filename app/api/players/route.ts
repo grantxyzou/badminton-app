@@ -22,6 +22,8 @@ import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryH
 import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import { promoteFromWaitlist } from '@/lib/waitlistPromote';
+import { cleanGuestName, guestDisplayName, guestsAllowedOf, isGuestRow } from '@/lib/plusOne';
+import type { ActiveMember } from '@/lib/auth';
 import type { RecoveryEvent, Session } from '@/lib/types';
 
 /**
@@ -58,6 +60,97 @@ async function reconcileCapacity(
   }
   await scope.remove('players', doc.id, sessionId);
   return 'full';
+}
+
+/** A host's guests still in this session (docs/plans/plus-one.md). */
+async function guestsOf(scope: GroupScope, sessionId: string, hostMemberId: string): Promise<Array<Player & Record<string, unknown>>> {
+  const rows = await scope.query<Player & Record<string, unknown>>('players', {
+    where: 'c.sessionId = @sessionId AND c.guestOf = @guestOf',
+    params: [{ name: '@sessionId', value: sessionId }, { name: '@guestOf', value: hostMemberId }],
+    partitionKey: sessionId,
+  });
+  return rows.filter((r) => r.sessionId === sessionId && r.guestOf === hostMemberId && r.removed !== true);
+}
+
+/**
+ * Soft-remove a host's guests, each with its own late-cancel stamp when the
+ * host cancelled themselves. Resolves how many held a CONFIRMED spot, so the
+ * caller knows whether the waitlist should move.
+ */
+async function removeGuests(
+  scope: GroupScope,
+  sessionId: string,
+  hostMemberId: string,
+  bySelf: boolean,
+  stampOf: (row: Player) => { lateCancel?: true; lateCancelHoursBefore?: number } = () => ({}),
+): Promise<number> {
+  const guests = await guestsOf(scope, sessionId, hostMemberId);
+  const now = new Date().toISOString();
+  for (const g of guests) {
+    const { lateCancel: _l, lateCancelHoursBefore: _h, ...unstamped } = g;
+    await scope.upsert('players', { ...unstamped, removed: true, removedAt: now, cancelledBySelf: bySelf, ...stampOf(g) });
+  }
+  return guests.filter((g) => g.waitlisted !== true).length;
+}
+
+/**
+ * ADD A PLUS-ONE (docs/plans/plus-one.md): the signed-in host brings one
+ * guest to the ACTIVE session. The guest is a row of their own with
+ * `guestOf: host` and no `memberId` — no account, no cookie, no member doc —
+ * and goes on the waitlist when the session is full or the host is waiting
+ * there themselves. The host must hold a row, and not one held for unpaid
+ * sessions: auto-promote skips a held row, so a guest beside a held host would
+ * be moved up while the person who brought them waits.
+ */
+async function addGuest(req: NextRequest, body: { guest?: unknown }, host: ActiveMember | null): Promise<NextResponse> {
+  if (!host) return unauthorized();
+  const guestName = cleanGuestName((body.guest as { name?: unknown } | null)?.name);
+  if (!guestName) return NextResponse.json({ error: 'invalid_guest_name' }, { status: 400 });
+
+  const scope = groupScope(resolveGroupId(req));
+  const sessionId = await getActiveSessionId(scope.groupId);
+  if (!sessionId) return noActiveSession();
+  const [sessionData, group, rows] = await Promise.all([
+    scope.read<Session>('sessions', sessionId, sessionId),
+    readGroup(scope.groupId),
+    scope.query<Player>('players', {
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
+    }),
+  ]);
+  if (!guestsAllowedOf(group?.settings)) return NextResponse.json({ error: 'guests_off' }, { status: 403 });
+  if (sessionData?.signupOpen === false) return NextResponse.json({ error: 'Sign-ups are not open yet' }, { status: 403 });
+  if (sessionData?.deadline && new Date() > new Date(sessionData.deadline)) {
+    return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
+  }
+  // Settle froze the bill on the rows it found; a row added after owes nothing.
+  if (sessionData?.settled) return NextResponse.json({ error: 'session_settled' }, { status: 409 });
+
+  const live = rows.filter((r) => r.sessionId === sessionId && r.removed !== true);
+  const hostRow = live.find((r) => r.memberId === host.memberId);
+  if (!hostRow) return NextResponse.json({ error: 'host_not_signed_up' }, { status: 409 });
+  if (hostRow.heldForUnpaid === true) return NextResponse.json({ error: 'host_held' }, { status: 409 });
+  if (live.some((r) => r.guestOf === host.memberId)) return NextResponse.json({ error: 'guest_exists' }, { status: 409 });
+
+  const maxPlayers = sessionData?.maxPlayers ?? defaultMaxPlayers();
+  const startWaitlisted = hostRow.waitlisted === true || live.filter((r) => r.waitlisted !== true).length >= maxPlayers;
+  const guest = {
+    id: randomBytes(12).toString('hex'),
+    name: guestDisplayName(guestName, host.name),
+    guestName,
+    guestOf: host.memberId,
+    sessionId,
+    timestamp: new Date().toISOString(),
+    paid: false,
+    removed: false,
+    waitlisted: startWaitlisted,
+  };
+  await scope.create('players', guest);
+  // The same race close as a sign-up (#79); a guest past the cap waits.
+  let waitlisted = startWaitlisted;
+  if (!startWaitlisted) waitlisted = (await reconcileCapacity(scope, sessionId, guest, maxPlayers, true)) === 'waitlisted';
+  return NextResponse.json(publicPlayer({ ...guest, waitlisted }), { status: 201 });
 }
 
 export async function GET(req: NextRequest) {
@@ -144,6 +237,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    // A plus-one is the caller's OWN guest, so even an admin brings one as a member.
+    if (body.guest !== undefined) return await addGuest(req, body, signedIn ?? (await requireGroupMember(req)));
     const sessionId = admin && typeof body.sessionId === 'string'
       ? body.sessionId
       : await getActiveSessionId(resolveGroupId(req));
@@ -424,7 +519,8 @@ export async function POST(req: NextRequest) {
     // `account_claim_needs_approval` refusal that guarded the cookie-less path
     // retired with NEXT_PUBLIC_FLAG_MEMBERS_ONLY (2026-10-17).
 
-    const anyExisting = existingRes;
+    // A guest's row is never this person's, whatever it is called (lib/plusOne.ts).
+    const anyExisting = existingRes.filter((p) => !isGuestRow(p as Pick<Player, 'guestOf'>));
     const activeRecord = anyExisting.find((p: { removed?: boolean }) => !p.removed);
     const removedRecord = anyExisting.find((p: { removed?: boolean }) => p.removed);
 
@@ -884,14 +980,20 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await scope.upsert('players', { ...existing, ...updates });
+    // An admin removed someone: their guest leaves with them (docs/plans/plus-one.md).
+    const guestsGone = body.removed === true && existing.removed !== true && typeof existing.memberId === 'string'
+      ? await removeGuests(scope, sessionId, existing.memberId, false)
+      : 0;
     // An admin removed someone holding a spot: the first person waiting takes it.
     // (Not on a move BACK to the waitlist — the first in line is often that same
     // person, and promoting them would undo the admin.)
-    if (body.removed === true && existing.removed !== true && existing.waitlisted !== true) {
+    if (body.removed === true && existing.removed !== true && (existing.waitlisted !== true || guestsGone > 0)) {
       await promoteFromWaitlist(scope, sessionId);
     }
-    if (updates.paid === true && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && typeof existing.memberId === 'string') {
-      await releaseHoldIfSettled(scope, existing.memberId);
+    // A guest's payment is the host's (their balance is where it was owed).
+    const paidBy = typeof existing.memberId === 'string' ? existing.memberId : typeof existing.guestOf === 'string' ? existing.guestOf : null;
+    if (updates.paid === true && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && paidBy) {
+      await releaseHoldIfSettled(scope, paidBy);
     }
     // The ledger mirror, on TRANSITIONS only (docs/plans/payments.md, Phase 2).
     // `existing` is the row before the write: a void needs the old paidAt.
@@ -946,7 +1048,10 @@ export async function DELETE(req: NextRequest) {
       const removed = await scope.remove('players', body.purgeOne, sessionId);
       if (!removed) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       if (victim) await mirrorRowDeleted(scope, victim);
-      if (victim && victim.removed !== true && victim.waitlisted !== true) await promoteFromWaitlist(scope, sessionId);
+      const guestsGone = victim && victim.removed !== true && typeof victim.memberId === 'string'
+        ? await removeGuests(scope, sessionId, victim.memberId, false)
+        : 0;
+      if (victim && victim.removed !== true && (victim.waitlisted !== true || guestsGone > 0)) await promoteFromWaitlist(scope, sessionId);
       return NextResponse.json({ success: true });
     }
 
@@ -964,6 +1069,64 @@ export async function DELETE(req: NextRequest) {
         )
       );
       return NextResponse.json({ success: true, count: active.length });
+    }
+
+    /**
+     * LATE CANCELLATION (docs/plans/late-cancel-fee.md). The club's policy is
+     * read at most once per request, and only once the caller is known to own
+     * the row being cancelled: asking earlier would let anyone holding a name
+     * probe whether that player's cancel would count as late. A failed policy
+     * read FAILS OPEN — nobody is kept in a spot they are trying to give back
+     * because a settings read hiccuped; the miss is logged.
+     */
+    type LateStamp = { lateCancel?: true; lateCancelHoursBefore?: number };
+    let policy: Promise<{ hours: number | null; startIso?: string }> | null = null;
+    const readPolicy = () => (policy ??= (async () => {
+      try {
+        const [group, session] = await Promise.all([
+          readGroup(scope.groupId),
+          scope.read<{ id: string; datetime?: string }>('sessions', sessionId, sessionId),
+        ]);
+        return {
+          hours: lateCancelHoursOf(group?.settings),
+          startIso: typeof session?.datetime === 'string' ? session.datetime : undefined,
+        };
+      } catch (err) {
+        console.error('DELETE player: late-cancel policy read failed, cancelling without it', err);
+        return { hours: null };
+      }
+    })());
+    /** Whether a player's own cancel of this row is late, and the stamp it then carries. A waitlist row never is. */
+    const lateOf = async (row: Record<string, unknown>): Promise<{ late: boolean; stamp: LateStamp }> => {
+      if (row.waitlisted === true) return { late: false, stamp: {} };
+      const { hours, startIso } = await readPolicy();
+      const verdict = lateCancelVerdict(startIso, Date.now(), hours);
+      // Moved off the waitlist INSIDE the window (docs/plans/waitlist-auto-promote.md):
+      // they never chose a late spot, so giving it back is not a late cancel.
+      const promotedAt = typeof row.promotedAt === 'string' ? Date.parse(row.promotedAt) : NaN;
+      const promotedLate = Number.isFinite(promotedAt) && lateCancelVerdict(startIso, promotedAt, hours).late;
+      return verdict.late && !promotedLate
+        ? { late: true, stamp: { lateCancel: true, lateCancelHoursBefore: verdict.hoursBefore ?? 0 } }
+        : { late: false, stamp: {} };
+    };
+
+    // A host cancels their plus-one (docs/plans/plus-one.md). Addressed by the
+    // HOST's own cookie, never by a name: a guest has no account and no token.
+    if (body.guest === true) {
+      const host = await requireGroupMember(req);
+      if (!host || host.groupId !== scope.groupId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const [guest] = await guestsOf(scope, sessionId, host.memberId);
+      if (!guest) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+      const late = await lateOf(guest);
+      if (late.late && body.acknowledgeLateFee !== true) {
+        return NextResponse.json({ error: 'late_cancel', hours: (await readPolicy()).hours }, { status: 409 });
+      }
+      const { lateCancel: _l, lateCancelHoursBefore: _h, ...unstamped } = guest;
+      await scope.upsert('players', { ...unstamped, removed: true, removedAt: new Date().toISOString(), cancelledBySelf: true, ...late.stamp });
+      if (guest.waitlisted !== true) await promoteFromWaitlist(scope, sessionId);
+      return NextResponse.json({ success: true });
     }
 
     const trimmedName = typeof body.name === 'string' ? body.name.trim() : '';
@@ -994,7 +1157,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 });
     }
 
-    const player = resources[0];
+    // A guest's row is cancelled through its host (above), never by name — a
+    // member who shares a guest's name must not reach it. An admin removes any row.
+    const player = isAdmin ? resources[0] : resources.find((r) => !isGuestRow(r as Pick<Player, 'guestOf'>));
+    if (!player) {
+      return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+    }
 
     /**
      * A NON-ADMIN CANCELS WITH THE ROW'S TOKEN OR AS THE ROW'S OWN MEMBER.
@@ -1031,44 +1199,26 @@ export async function DELETE(req: NextRequest) {
     }
 
     /**
-     * LATE CANCELLATION (docs/plans/late-cancel-fee.md). Asked only AFTER the
-     * caller is known to own the row: checking earlier would let anyone holding
-     * a name probe whether that player's cancel would count as late.
-     *
-     * A player's own confirmed spot, inside the club's window: without
-     * `acknowledgeLateFee: true` the answer is 409 `late_cancel` and nothing
-     * changes; the client shows the fee warning and resends. The stamp follows
-     * LATENESS, not the acknowledgement — a client that acknowledges up front
-     * skips the warning, never the record. Admins (whose cancels are already
-     * `cancelledBySelf: false`) and waitlist rows are exempt. A failed policy
-     * read FAILS OPEN: nobody is kept in a spot they are trying to give back
-     * because a settings read hiccuped; the miss is logged.
+     * The row's own late verdict, and its guests' (docs/plans/plus-one.md):
+     * a host's guests leave with the host, whoever removes the host. A
+     * player's own spot inside the club's window answers 409 `late_cancel`
+     * without `acknowledgeLateFee: true` and nothing changes; the client shows
+     * the fee warning and resends. The stamp follows LATENESS, not the
+     * acknowledgement — a client that acknowledges up front skips the warning,
+     * never the record. Admins (whose cancels are already
+     * `cancelledBySelf: false`) are exempt.
      */
-    let lateStamp: { lateCancel?: true; lateCancelHoursBefore?: number } = {};
-    if (!isAdmin && player.waitlisted !== true) {
-      let policyHours: number | null = null;
-      let startIso: string | undefined;
-      try {
-        const [group, session] = await Promise.all([
-          readGroup(scope.groupId),
-          scope.read<{ id: string; datetime?: string }>('sessions', sessionId, sessionId),
-        ]);
-        policyHours = lateCancelHoursOf(group?.settings);
-        startIso = typeof session?.datetime === 'string' ? session.datetime : undefined;
-      } catch (err) {
-        console.error('DELETE player: late-cancel policy read failed, cancelling without it', err);
+    const hostId = !isGuestRow(player as Pick<Player, 'guestOf'>) && typeof player.memberId === 'string' ? player.memberId : null;
+    let lateStamp: LateStamp = {};
+    const guestStamps = new Map<string, LateStamp>();
+    if (!isAdmin) {
+      const guests = hostId ? await guestsOf(scope, sessionId, hostId) : [];
+      const [own, ...theirs] = await Promise.all([lateOf(player), ...guests.map((g) => lateOf(g))]);
+      if ((own.late || theirs.some((v) => v.late)) && body.acknowledgeLateFee !== true) {
+        return NextResponse.json({ error: 'late_cancel', hours: (await readPolicy()).hours }, { status: 409 });
       }
-      const verdict = lateCancelVerdict(startIso, Date.now(), policyHours);
-      // Moved off the waitlist INSIDE the window (docs/plans/waitlist-auto-promote.md):
-      // they never chose a late spot, so giving it back is not a late cancel.
-      const promotedAt = typeof player.promotedAt === 'string' ? Date.parse(player.promotedAt) : NaN;
-      const promotedLate = Number.isFinite(promotedAt) && lateCancelVerdict(startIso, promotedAt, policyHours).late;
-      if (verdict.late && !promotedLate) {
-        if (body.acknowledgeLateFee !== true) {
-          return NextResponse.json({ error: 'late_cancel', hours: policyHours }, { status: 409 });
-        }
-        lateStamp = { lateCancel: true, lateCancelHoursBefore: verdict.hoursBefore ?? 0 };
-      }
+      lateStamp = own.stamp;
+      guests.forEach((g, i) => guestStamps.set(g.id, theirs[i].stamp));
     }
 
     // Soft delete — mark as removed instead of destroying the record. Any
@@ -1082,8 +1232,9 @@ export async function DELETE(req: NextRequest) {
       cancelledBySelf: !isAdmin,
       ...lateStamp,
     });
+    const guestsGone = hostId ? await removeGuests(scope, sessionId, hostId, !isAdmin, (g) => guestStamps.get(g.id) ?? {}) : 0;
     // A confirmed spot just opened: the first person waiting takes it.
-    if (player.waitlisted !== true) await promoteFromWaitlist(scope, sessionId);
+    if (player.waitlisted !== true || guestsGone > 0) await promoteFromWaitlist(scope, sessionId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE player error:', error);

@@ -101,9 +101,12 @@ export async function resolveIdentity(
 /** Does this player row belong to the resolved identity? memberId is the strong
  *  signal; name membership covers legacy/alias rows. */
 export function matchesIdentity(
-  p: Pick<Player, 'name' | 'memberId'>,
+  p: Pick<Player, 'name' | 'memberId' | 'guestOf'>,
   idy: Pick<ResolvedIdentity, 'memberId' | 'names'>,
 ): boolean {
+  // A plus-one's row is its HOST's line (docs/plans/plus-one.md), and ONLY its
+  // host's: never matched by name, or a guest called Lin would bill member Lin.
+  if (typeof p.guestOf === 'string' && p.guestOf) return !!idy.memberId && p.guestOf === idy.memberId;
   if (idy.memberId && p.memberId === idy.memberId) return true;
   return typeof p.name === 'string' && idy.names.has(p.name.toLowerCase());
 }
