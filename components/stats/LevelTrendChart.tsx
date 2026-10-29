@@ -4,8 +4,9 @@ import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useId } from 'react';
+import type { TrailPoint } from '@/lib/levelRead';
+import type { LevelState } from '@/lib/useLevelRead';
 import { PHASE_BANDS, type Phase } from '@/lib/assessment';
-import type { UseCheckIn, CheckInSnapshot } from './useCheckIn';
 
 /**
  * Your level over time.
@@ -16,12 +17,12 @@ import type { UseCheckIn, CheckInSnapshot } from './useCheckIn';
  * in those terms: "We should introduce a trend chart of the level change
  * overtime."
  *
- * WHAT IT PLOTS, AND WHAT IT COSTS. `(takenAt, overall)` per snapshot. Both are
- * frozen onto the doc at write time by `app/api/assessments/route.ts`, so this
- * is a read of data we already hold and already fetch — no new container, no
- * new field, no new endpoint. It deliberately does NOT call `getCanonicalLevel`:
- * that does two unbounded container scans and answers with a CURRENT value, not
- * a series.
+ * WHAT IT PLOTS: the canonical level as of each check-in (`CanonicalLevel.trail`,
+ * `docs/plans/one-level.md`), ending on the level the LEVEL tile above shows.
+ * It plotted each check-in's raw score until 2026-10-29, so the chart said
+ * 2.6 → 3.4 under a tile that said 3.1. The caller reads it (`useLevelRead`,
+ * re-read on a saved check-in) and hands it in, so this stays a drawing of the
+ * data it is given — which is what lets the design specimen render it.
  *
  * THE X AXIS IS TIME, NOT SESSIONS. Indexing on sessions attended would make
  * the line say something about turning up rather than about improving — the
@@ -72,14 +73,11 @@ interface Point {
   overall: number;
 }
 
-/** Snapshots that can actually be plotted, oldest first. */
-export function plottable(snapshots: CheckInSnapshot[]): Array<{ at: number; overall: number }> {
-  return snapshots
-    .map((s) => ({
-      at: s.takenAt ? new Date(s.takenAt).getTime() : NaN,
-      overall: typeof s.overall === 'number' ? s.overall : NaN,
-    }))
-    .filter((s) => Number.isFinite(s.at) && Number.isFinite(s.overall))
+/** The trail as plot rows, oldest first. */
+export function plottableTrail(trail: TrailPoint[]): Array<{ at: number; overall: number }> {
+  return trail
+    .map((p) => ({ at: new Date(p.at).getTime(), overall: p.level }))
+    .filter((p) => Number.isFinite(p.at) && Number.isFinite(p.overall))
     .sort((a, b) => a.at - b.at);
 }
 
@@ -138,7 +136,7 @@ function Frame({ title, aside, children }: { title: string; aside?: React.ReactN
   );
 }
 
-export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
+export default function LevelTrendChart({ level, onRetry }: { level: LevelState; onRetry: () => void }) {
   const t = useTranslations('stats.assess');
   const tStats = useTranslations('stats');
   const format = useFormatter();
@@ -147,14 +145,14 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
   // A failed read is NOT an empty history. Saying "one check-in so far" to a
   // member with years of them, because their network blipped, is exactly the
   // failure the tri-state exists to prevent.
-  if (checkIn.status === 'forbidden') return null;
-  if (checkIn.status === 'error') {
+  if (level.status === 'forbidden') return null;
+  if (level.status === 'error') {
     return (
       <Frame title={t('trendTitle')}>
         <ErrorState
           message={t('trendError')}
           action={
-            <button type="button" className="cc-btn cc-btn-ghost" onClick={checkIn.reload}>
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={onRetry}>
               {tStats('retry')}
             </button>
           }
@@ -164,9 +162,11 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
   }
   // Loading reserves the space silently — a spinner for a strip is noise, and
   // the height is already held.
-  if (checkIn.status === 'loading') return <Frame title={t('trendTitle')}>{null}</Frame>;
+  if (level.status === 'loading' || !level.data) {
+    return <Frame title={t('trendTitle')}>{null}</Frame>;
+  }
 
-  const rows = plottable(checkIn.snapshots);
+  const rows = plottableTrail(level.data.trail);
   if (rows.length === 0) {
     return (
       <Frame title={t('trendTitle')}>

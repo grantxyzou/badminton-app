@@ -5,6 +5,8 @@ import { useTranslations, useLocale } from 'next-intl';
 import StatCard from './StatCard';
 import type { UseCheckIn } from './useCheckIn';
 import { sharedRead } from '@/lib/sharedRead';
+import { lastChange } from '@/lib/levelRead';
+import { useLevelRead } from '@/lib/useLevelRead';
 
 
 /**
@@ -56,7 +58,6 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
   const t = useTranslations('stats.overview');
   const locale = useLocale();
 
-  const [level, setLevel] = useState<Tile<number | null>>(PENDING);
   const [games, setGames] = useState<Tile<number>>(PENDING);
   const [kudos, setKudos] = useState<Tile<number>>(PENDING);
 
@@ -70,24 +71,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     // through `sharedRead` because `YourRecordCard` and `KudosReceivedCard`
     // ask for the same two on this screen; the read is shared, the states
     // stay separate.
-    const get = (url: string) => sharedRead<Record<string, unknown>>(url) as Promise<{ level?: { level?: unknown }; games?: unknown[]; kudos?: { count?: number }[] }>;
-
-    get(`/api/stats/level?name=${n}`)
-      .then((d) => {
-        if (!live) return;
-        const raw = d?.level?.level;
-        setLevel({ status: 'ready', data: typeof raw === 'number' ? raw : null });
-      })
-      .catch((e: Error) => live && setLevel({ status: e?.message === '403' ? 'forbidden' : 'error', data: null }));
-
-    // The check-in history is NOT read here any more. The level number and its
-    // delta still come from different places — the canonical level folds games
-    // and legacy stage, while the "since April" comparison needs the raw
-    // history — but that history now arrives from `useCheckIn`, the single
-    // owner. This card, `SkillTrendCard` and the sheet were each reading
-    // `/api/assessments` separately and could disagree mid-flight. The
-    // independence that matters is preserved: a failed history still only
-    // degrades the CAPTION, never the number.
+    const get = (url: string) => sharedRead<Record<string, unknown>>(url) as Promise<{ games?: unknown[]; kudos?: { count?: number }[] }>;
 
     get(`/api/games?all=true&name=${n}`)
       .then((d) => live && setGames({ status: 'ready', data: (d?.games ?? []).length }))
@@ -111,6 +95,13 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     };
   }, [activeName]);
 
+  // The level and its "since …" come from ONE read (`docs/plans/one-level.md`):
+  // the number is the canonical level and the change is the step between the
+  // last two points of its trail, so the caption adds up to the number. The
+  // caption used to be the raw check-in jump (3.1 "▲ 0.8"). Re-read after a
+  // saved check-in, which moves both.
+  const level = useLevelRead(activeName, checkIn?.savedAt ?? 0);
+
   if (!activeName) return null;
 
   const monthOf = (iso?: string) => {
@@ -127,22 +118,12 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     levelCaption = t('loadError');
   } else if (level.status === 'forbidden') {
     levelCaption = BLANK;
-  } else if (level.status === 'ready' && level.data !== null) {
-    levelValue = level.data.toFixed(1);
-    // Gate on the OWNER's status, never on a null-coalesced length: a failed
-    // history and an empty one both read as `[]`, and the caption below makes a
-    // claim about which it is.
-    const snaps = checkIn?.status === 'ready' ? checkIn.snapshots : [];
-    const prev = snaps.length > 1 ? snaps[snaps.length - 2] : undefined;
-    const latest = snaps[snaps.length - 1];
-    const month = monthOf(prev?.takenAt);
-    if (
-      prev &&
-      month &&
-      typeof prev.overall === 'number' &&
-      typeof latest?.overall === 'number'
-    ) {
-      const delta = latest.overall - prev.overall;
+  } else if (level.status === 'ready' && level.data && level.data.level !== null) {
+    levelValue = level.data.level.toFixed(1);
+    const change = lastChange(level.data.trail);
+    const month = monthOf(change?.since);
+    if (change && month) {
+      const delta = change.delta;
       // Never render "▲ 0.0" — a delta the member can't perceive reads as a
       // change that didn't happen.
       if (Math.abs(delta) < 0.05) {
@@ -174,7 +155,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
       ? t('levelAriaError')
       : level.status === 'loading'
         ? t('levelAriaLoading')
-        : level.status === 'ready' && level.data !== null
+        : level.status === 'ready' && level.data && level.data.level !== null
           ? t('levelAriaKnown', { level: levelValue })
           : t('levelAriaUnknown');
 

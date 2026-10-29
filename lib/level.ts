@@ -62,6 +62,11 @@ export interface CanonicalLevel {
    *  hasn't confirmed yet. Drives the "on track for X — confirm next check-in"
    *  hint. Null when the confirmed phase is already current or smoothing is off. */
   pendingPromotion?: Phase | null;
+  /** The level as of each check-in, oldest first, the last point being `level`
+   *  itself (`docs/plans/one-level.md`). Every "since …" change a member reads
+   *  is the difference between two points of this, so it adds up to the
+   *  numbers on screen. Empty when the level does not come from check-ins. */
+  trail?: { at: string; level: number }[];
   computedAt: string;
 }
 
@@ -142,6 +147,43 @@ export function smoothSelfLevel(
   return sumW > 0 ? round1(clampLevel(sumWV / sumW)) : null;
 }
 
+/** The EWMA of `pts[0..idx]` anchored at `pts[idx]`: the smoothed level "as
+ *  of" that check-in. Shared by the phase trajectory and the trail. */
+function smoothedAsOf(pts: { takenAt: string; overall: number }[], idx: number): number {
+  const anchor = pts[idx].takenAt;
+  let sumW = 0;
+  let sumWV = 0;
+  for (let j = 0; j <= idx; j++) {
+    const w = Math.pow(0.5, ageDays(pts[j].takenAt, anchor) / SMOOTH_HALF_LIFE_DAYS);
+    sumW += w;
+    sumWV += w * pts[j].overall;
+  }
+  return sumW > 0 ? sumWV / sumW : pts[idx].overall;
+}
+
+/**
+ * The canonical level as of each check-in (`CanonicalLevel.trail`). Past
+ * points are the self component alone — no game calibration was kept for any
+ * earlier date, and an invented one would be a number nobody could check — and
+ * the last point is the current level, games included, so the trail ends on
+ * the number the member is shown. Empty when there is no level or no rated
+ * check-in to hang it on (a legacy-stage estimate has no history).
+ */
+export function levelTrail(
+  snapshots: { takenAt: string; overall: number | null }[],
+  level: number | null,
+  smoothing = true,
+): { at: string; level: number }[] {
+  const pts = validSorted(snapshots);
+  if (level === null || pts.length === 0) return [];
+  return pts.map((p, i) => ({
+    at: p.takenAt,
+    level: i === pts.length - 1
+      ? level
+      : round1(clampLevel(smoothing ? smoothedAsOf(pts, i) : p.overall)),
+  }));
+}
+
 /** Band minimum for a phase (1.0 if somehow unknown). */
 function bandMin(phase: Phase | null): number {
   if (!phase) return 1.0;
@@ -181,18 +223,7 @@ export function resolvePhaseTrajectory(
   const pts = validSorted(snapshots);
   if (pts.length === 0) return { phase: null, pendingPromotion: null };
 
-  /** Prefix EWMA anchored at pts[idx] — the smoothed level "as of" that check-in. */
-  const smoothedAt = (idx: number): number => {
-    const anchor = pts[idx].takenAt;
-    let sumW = 0;
-    let sumWV = 0;
-    for (let j = 0; j <= idx; j++) {
-      const w = Math.pow(0.5, ageDays(pts[j].takenAt, anchor) / SMOOTH_HALF_LIFE_DAYS);
-      sumW += w;
-      sumWV += w * pts[j].overall;
-    }
-    return sumW > 0 ? sumWV / sumW : pts[idx].overall;
-  };
+  const smoothedAt = (idx: number): number => smoothedAsOf(pts, idx);
 
   let confirmed = placePhase(smoothedAt(0));
   let prevQualifying: Phase | null = null;
@@ -366,6 +397,7 @@ export function deriveLevel(inputs: LevelInputs): CanonicalLevel {
     explanation,
     blindSpot: bs,
     pendingPromotion,
+    trail: levelTrail(selfSnapshots ?? [], level, inputs.smoothing ?? false),
     computedAt: now,
   };
 }

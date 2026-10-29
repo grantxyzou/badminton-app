@@ -17,7 +17,8 @@ import { getIdentity, setIdentity } from '@/lib/identity';
 import CardSkeleton, { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import UnpaidSessionsCard, { CREDIT_PATH, unpaidPath } from '@/components/UnpaidSessionsCard';
-import SkillLeadCard, { SKILL_LEAD_HEIGHT, assessmentsPath } from './home/SkillLeadCard';
+import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
+import { levelPath } from '@/lib/levelRead';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
@@ -191,7 +192,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (memberName) {
         primeFetch(unpaidPath(memberName));
         if (isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) primeFetch(CREDIT_PATH);
-        primeFetch(assessmentsPath(memberName));
+        primeFetch(levelPath(memberName));
       }
     }
     setWeekLoadError(false);
