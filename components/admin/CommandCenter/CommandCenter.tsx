@@ -279,7 +279,19 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       <RevealSlot canBeEmpty placeholder={null}>
         <AccessRequestsCard refreshKey={composedRefresh} />
       </RevealSlot>
-      <RevealSlot canBeEmpty placeholder={null}>
+      {/* Holds its place: for an admin it almost always has rows (dormant
+          members alone keep it open), and space-less it arrived ~1.5s into a
+          cold open ABOVE "This week" and shoved it down (Grant's phone
+          recording, 2026-10-28). Empty, the placeholder closes. */}
+      <RevealSlot
+        canBeEmpty
+        placeholder={
+          <div className="flex flex-col gap-2" aria-hidden="true">
+            <div className="shimmer-line rounded-lg" style={{ height: CONSOLE_HEIGHTS.needsYouEyebrow, width: '22%' }} />
+            <CardSkeleton height={CONSOLE_HEIGHTS.needsYouList} />
+          </div>
+        }
+      >
         <NeedsYouCard
           refreshKey={composedRefresh}
           onOpenPayments={() => document.getElementById('cc-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}

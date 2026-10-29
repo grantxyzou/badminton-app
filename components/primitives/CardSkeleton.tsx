@@ -95,6 +95,10 @@ export const CONSOLE_HEIGHTS = {
   // the admin regroup, plus the Sign-in readiness and E-transfers rows that
   // joined them (re-measured 2026-10-21, 430px, all flags on).
   settings: 779,
+  // Needs you: the eyebrow, then a list of TWO rows (48 + a 1px divider + 48)
+  // — the usual count, unpaid and dormant (measured 2026-10-28, 430px).
+  needsYouEyebrow: 16.5,
+  needsYouList: 97,
 } as const;
 
 /**
