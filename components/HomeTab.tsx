@@ -513,7 +513,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const addToCalendar = calendarOk && session?.datetime ? (
     <button
       type="button"
-      className="state-link"
+      className="state-link state-link--quiet"
       onClick={() => { void addSessionToCalendar(session, t('signup.calendarFallbackTitle')).catch(() => {}); }}
     >
       {t('signup.addToCalendar')}

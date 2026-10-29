@@ -2275,6 +2275,13 @@ html:root .state-link {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* A secondary action inside a message that already has a coloured title (the
+   sign-up banner's "Add to calendar"): the line's own ink and weight, the
+   underline alone saying "tap". Two bold coloured lines read as two headlines. */
+html:root .state-link--quiet {
+  color: inherit;
+  font-weight: inherit;
+}
 html:root .state-link:focus-visible {
   outline: 2px solid var(--tone-ink, var(--accent));
   outline-offset: 2px;
