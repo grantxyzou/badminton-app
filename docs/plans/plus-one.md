@@ -48,13 +48,13 @@ not earning its place: remove the button and keep the admin path.
 4. **The guest needs a first name**, shown on the roster as "Alex (Lin's
    guest)", so the admin and the court know who to expect.
 
-Open questions:
+5. **A guest can become a club member.** On the roster, the admin's menu on a
+   guest row offers "Invite to the club", which mints a one-time invite
+   (`lib/invites.ts`) for that name. Joining is the normal invite sign-up; the
+   guest's past shares stay on the host's balance, where they were paid.
 
-- Club switch? A club setting "Members can bring a guest", OFF by default, or
-  on for everyone? (Recommendation: a switch, off by default — a club with a
-  waitlist every week may not want guests competing for spots.)
-- Does an invite list (`session.approvedNames`) block guests? (Recommendation:
-  no — the host is on the list and vouches for them.)
+Still open:
+
 - Late-cancel tag for a guest cancelled inside the window? (Recommendation:
   the same rule as the host, tagged on the guest's row.)
 
@@ -65,6 +65,14 @@ Everything below is appended AS the work proceeds.
 
 ## Decisions
 
+- **A club switch, off by default** (Grant, 2026-10-28, over "always on"). A
+  club with a waitlist every week may not want guests competing for spots.
+- **An invite list binds guests too** (Grant, 2026-10-28, over "the host
+  vouches"). With `session.approvedNames` set, the guest's name must be on it.
+- **A guest can be promoted to a club member** (Grant, 2026-10-28). It goes
+  through the existing one-time invite rather than turning the guest row into
+  an account: the row has no credential, and an invite is the only way into a
+  club (security rule 13).
 - **A guest is its own `players` row, not a `guests: 1` count on the host's
   row** (proposed). A count would have to be taught to every place that counts
   rows — capacity, `costSplit`, `planPromotions`, the roster, settle, the
@@ -91,6 +99,7 @@ Everything below is appended AS the work proceeds.
 | Add / cancel a guest | `app/api/players/route.ts` `POST` / `DELETE` (host cancel removes the guest) |
 | Guest share on the host's balance | `lib/owedRows.ts`, `lib/owedBalance.ts` |
 | Ledger charge under the host | `lib/ledgerMirror.ts`, `lib/ledgerBackfill.ts` |
+| "Invite to the club" on a guest row | `components/admin/` roster menu → `lib/invites.ts` |
 | Club switch | `groups.settings` via `/api/admin/settings` |
 | "Bring a guest" on the sign-up card; roster label | `components/HomeTab.tsx`, `components/home/WhoElseIsIn.tsx` |
 | Mock store `@guestOf` | `lib/cosmos.ts` |
