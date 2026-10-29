@@ -7,6 +7,8 @@ import { resolveBirdUsages } from '@/lib/birdWrite';
 import { sendPushToMembers } from '@/lib/push';
 import { rosterMemberIds } from '@/lib/roster';
 import { buildSignupOpenPayload } from '@/lib/pushMessages';
+import { defaultMaxPlayers } from '@/lib/defaults';
+import { promoteFromWaitlist } from '@/lib/waitlistPromote';
 import type { BirdUsage, ETransferRecipient } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
@@ -205,6 +207,13 @@ export async function PUT(req: NextRequest) {
     if (shouldNotify) sessionData.signupOpenNotifiedAt = now;
 
     const resource = await scope.upsert('sessions', sessionData);
+
+    // More spots than before: the people waiting take them, in sign-up order
+    // (docs/plans/waitlist-auto-promote.md). Best-effort, never fails the save.
+    const prevMax = typeof existing.maxPlayers === 'number' ? existing.maxPlayers : defaultMaxPlayers();
+    if (typeof updates.maxPlayers === 'number' && updates.maxPlayers > prevMax) {
+      await promoteFromWaitlist(scope, sessionId);
+    }
 
     // Persist first, notify best-effort — a push failure must never fail the
     // admin's toggle (same posture as app/api/report/route.ts).

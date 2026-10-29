@@ -149,6 +149,13 @@ export interface Player {
    */
   heldForUnpaid?: boolean;
   /**
+   * When this row last left the waitlist — automatically when a spot opened
+   * (`lib/waitlistPromote.ts`), by an admin's tap, or by the paid-hold release
+   * (docs/plans/waitlist-auto-promote.md). A promotion that landed inside the
+   * club's late-cancel window exempts this row's cancel from the late tag.
+   */
+  promotedAt?: string;
+  /**
    * When each payment reminder for this row went out (docs/plans/payments.md,
    * Phase 1b): one at settle + 3 days, one at + 7, then never again.
    */

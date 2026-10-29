@@ -61,6 +61,33 @@ export function buildSignupOpenPayload(session: Partial<Session>): PushPayload {
   };
 }
 
+/**
+ * A spot opened and this person was moved off the waitlist
+ * (docs/plans/waitlist-auto-promote.md). The day is named in Vancouver time —
+ * session times display there whatever the server's zone (CLAUDE.md), and an
+ * evening session read in UTC lands on the next day. No money: a banner shows
+ * on a lock screen.
+ */
+export function buildWaitlistPromotedPayload(session: Partial<Session>): PushPayload {
+  let day: string | undefined;
+  const parsed = typeof session.datetime === 'string' ? Date.parse(session.datetime) : NaN;
+  if (Number.isFinite(parsed)) {
+    try {
+      day = new Intl.DateTimeFormat('en-CA', { weekday: 'long', timeZone: 'America/Vancouver' }).format(new Date(parsed));
+    } catch {
+      day = undefined;
+    }
+  }
+  return {
+    title: "You're in",
+    body: day
+      ? `A spot opened for ${day}'s session. If you can't make it, cancel from Home.`
+      : "A spot opened and you're off the waitlist. If you can't make it, cancel from Home.",
+    url: `${BASE}/`,
+    tag: safeTag(`waitlist-in-${session.id ?? session.sessionId ?? 'current'}`),
+  };
+}
+
 /** Fixed payload for the admin transport self-test. */
 export function buildTestPayload(): PushPayload {
   return {
