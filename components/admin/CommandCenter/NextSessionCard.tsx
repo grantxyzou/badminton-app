@@ -3,7 +3,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { fmtSessionLabel as fmtDate, fmtDeadline, fmtTime } from '@/lib/fmt';
 import { shareSignup } from '@/lib/signupShare';
+import { shareTextOrCopy } from '@/lib/shareText';
+import { formatRosterText } from '@/lib/rosterText';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { useClubRun } from '@/lib/useClubRun';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -33,6 +36,8 @@ interface Session {
 
 interface Player {
   id: string;
+  name: string;
+  timestamp?: string;
   removed?: boolean;
   waitlisted?: boolean;
 }
@@ -70,6 +75,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const [session, setSession] = useState<Session | null>(null);
   const [activeCount, setActiveCount] = useState<number>(0);
   const [waitlistCount, setWaitlistCount] = useState<number>(0);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const loadedRef = useRef(false);
@@ -79,7 +85,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // (it used to sit next to "Edit details") shouldn't trigger it.
   const [confirmingAdvance, setConfirmingAdvance] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [listCopied, setListCopied] = useState(false);
   const { group } = useCurrentGroup();
+  // A club that collects money outside the app has no bill to finalize or
+  // share (lib/clubRun.ts). Hidden only on a known answer.
+  const { run, known: runKnown } = useClubRun();
+  const moneyOff = runKnown && run.money === 'off';
   const [togglingSignup, setTogglingSignup] = useState(false);
 
   // Build a ready-to-paste sign-up invite and share it (native share sheet on
@@ -103,6 +114,30 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       setTimeout(() => setShareCopied(false), 1500);
     }
   }, [session?.datetime, group?.name]);
+
+  // The week's list as chat text (lib/rosterText.ts): a club that runs its
+  // week in a group chat posts this instead of a hand-edited copy, so the chat
+  // stays the broadcast and the app stays the one list.
+  const shareList = useCallback(async () => {
+    if (typeof window === 'undefined' || !session) return;
+    const link = `${window.location.origin}${BASE}`;
+    const outcome = await shareTextOrCopy({
+      title: group?.name ?? 'Sign-up list',
+      text: formatRosterText({
+        groupName: group?.name,
+        datetime: session.datetime,
+        courts: session.courts,
+        maxPlayers: session.maxPlayers,
+        players,
+        link,
+      }),
+      url: link,
+    });
+    if (outcome === 'copied') {
+      setListCopied(true);
+      setTimeout(() => setListCopied(false), 1500);
+    }
+  }, [session, players, group?.name]);
 
   const load = useCallback(async () => {
     // Skeleton on the first load only: a save or cover used to blink this
@@ -137,6 +172,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           setSession(null);
           setActiveCount(0);
           setWaitlistCount(0);
+          setPlayers([]);
           setLoadError(false);
           loadedRef.current = true;
           return;
@@ -144,10 +180,11 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       }
       if (!sessionRes.ok || !playersRes.ok) throw new Error('next session load failed');
       const s = (await sessionRes.json()) as Session;
-      const players = (await playersRes.json()) as Player[];
+      const rows = (await playersRes.json()) as Player[];
       setSession(s);
-      setActiveCount(players.filter((p) => !p.removed && !p.waitlisted).length);
-      setWaitlistCount(players.filter((p) => !p.removed && p.waitlisted).length);
+      setPlayers(rows);
+      setActiveCount(rows.filter((p) => !p.removed && !p.waitlisted).length);
+      setWaitlistCount(rows.filter((p) => !p.removed && p.waitlisted).length);
       setLoadError(false);
       loadedRef.current = true;
     } catch {
@@ -411,7 +448,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       <div className="grid grid-cols-2 gap-2">
         {/* Post-settle: re-share the frozen bill. Settling itself lives in the
             footer "Finalize cost" action, beside Advance. */}
-        {isSettled && onShareCost ? (
+        {isSettled && onShareCost && !moneyOff ? (
           <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
             <span className="material-icons fs-lg align-middle">share</span>
             Share again — ${session.settled?.costPerPerson} each
@@ -420,18 +457,27 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         <button
           type="button"
           onClick={shareSignupLink}
-          className={isSettled && onShareCost ? 'cc-btn cc-btn-secondary' : 'cc-btn cc-btn-primary'}
+          className={isSettled && onShareCost && !moneyOff ? 'cc-btn cc-btn-secondary' : 'cc-btn cc-btn-primary'}
           title="Copy/share a sign-up invite link for the group chat."
         >
           <span className="material-icons fs-lg align-middle">share</span>
           {shareCopied ? 'Copied ✓' : 'Share sign-up'}
+        </button>
+        <button
+          type="button"
+          onClick={shareList}
+          className="cc-btn cc-btn-secondary"
+          title="Copy/share this week's numbered list for the group chat."
+        >
+          <span className="material-icons fs-lg align-middle">format_list_numbered</span>
+          {listCopied ? 'Copied ✓' : 'Copy list'}
         </button>
         {onEdit && (
           <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
             Edit details
           </button>
         )}
-        {isSettled && (
+        {isSettled && !moneyOff && (
           <button
             type="button"
             onClick={editBill}
@@ -449,12 +495,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           week's decisions are above; these close it out. Advance keeps its
           confirm sheet since it's hard to reverse (a stray tap must not
           archive the week). */}
-      {(!isSettled || onAdvance) && (
+      {((!isSettled && !moneyOff) || onAdvance) && (
         <div
           className="flex justify-center items-center flex-wrap"
           style={{ gap: 'var(--space-1)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
         >
-          {!isSettled && (
+          {!isSettled && !moneyOff && (
             <button
               type="button"
               onClick={sendBill}
@@ -465,7 +511,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               {settling ? 'Finalizing…' : 'Finalize cost'}
             </button>
           )}
-          {!isSettled && onAdvance && (
+          {!isSettled && !moneyOff && onAdvance && (
             <span className="fs-sm" style={{ color: 'var(--text-muted)' }} aria-hidden="true">·</span>
           )}
           {onAdvance && (

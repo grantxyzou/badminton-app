@@ -6,6 +6,7 @@ import { isNoActiveSession } from '@/lib/apiFetch';
 import { sharedFetch } from '@/lib/sharedRead';
 import { isDormant, type DormantInput } from '@/lib/dormant';
 import { dueFor, todayIso } from '@/lib/stringingDue';
+import { useClubRun } from '@/lib/useClubRun';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -72,6 +73,10 @@ export function useAdminNeedsYou(enabled: boolean, refreshKey = 0): AdminNeedsYo
   const [stringing, setStringing] = useState<AdminNeedsYou['stringing']>(null);
   const [breakdown, setBreakdown] = useState<AdminNeedsYou['breakdown']>(null);
   const [loadError, setLoadError] = useState(false);
+  // A club that collects its money outside the app has nobody "unpaid" here:
+  // nothing is ever billed, so every player would count (lib/clubRun.ts).
+  const { run, known: runKnown } = useClubRun();
+  const moneyOff = runKnown && run.money === 'off';
 
   // Inlined into the effect rather than hoisted into a `useCallback` the effect
   // then calls. Nothing outside this hook ever invoked it, and the indirection
@@ -129,7 +134,7 @@ export function useAdminNeedsYou(enabled: boolean, refreshKey = 0): AdminNeedsYo
         if (cancelled) return;
 
         const active = players.filter((p) => !p.removed && !p.waitlisted);
-        const unpaid = active.filter((p) => p.paid !== true).length;
+        const unpaid = moneyOff ? 0 : active.filter((p) => p.paid !== true).length;
 
         // Burn rate comes from the API on a last-60d window, so stock and burn
         // span the same window (see the mixed-window gotcha in CLAUDE.md).
@@ -165,7 +170,7 @@ export function useAdminNeedsYou(enabled: boolean, refreshKey = 0): AdminNeedsYo
     return () => {
       cancelled = true;
     };
-  }, [enabled, refreshKey]);
+  }, [enabled, refreshKey, moneyOff]);
 
   return { needsYou, stringing, breakdown, loadError };
 }

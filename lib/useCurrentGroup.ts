@@ -12,6 +12,8 @@ export interface CurrentGroup {
   rosterName: string;
   isOwner: boolean;
   memberCount: number;
+  /** The member-visible settings (`memberVisibleSettings`); `run` is read through `clubRunOf`. */
+  settings?: { run?: unknown };
 }
 
 export interface GroupListEntry {

@@ -9,6 +9,7 @@ import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/rec
 import { withLocalTz } from '@/lib/fmt';
 import { shareOrSaveImage } from '@/lib/shareImage';
 import type { BirdPurchase, Session } from '@/lib/types';
+import { capacityForCourts, clubRunOf, type ClubRun } from '@/lib/clubRun';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -59,6 +60,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
      moment you backspaced the last digit it snapped straight back to 1. Clamp
      where the value is USED, not while it is being typed. */
   const [courts, setCourts] = useState<number | null>(2);
+  // How the club runs (lib/clubRun.ts): spots may follow the courts.
+  const [run, setRun] = useState<ClubRun | null>(null);
   const [maxPlayers, setMaxPlayers] = useState<number | null>(12);
   const [costPerCourt, setCostPerCourt] = useState<number | null>(null);
   const [signupOpen, setSignupOpen] = useState(true);
@@ -101,7 +104,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       const session = sessionRes.ok ? await sessionRes.json() as Session : null;
       const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock?: number } : null;
       const players = playersRes.ok ? await playersRes.json() as Array<{ name?: string; removed?: boolean; waitlisted?: boolean }> : [];
-      const settings = settingsRes.ok ? await settingsRes.json() as { eTransferRecipient?: { name: string; email: string; memo?: string } | null } : null;
+      const settings = settingsRes.ok ? await settingsRes.json() as { eTransferRecipient?: { name: string; email: string; memo?: string } | null; run?: unknown } : null;
+      if (settings) setRun(clubRunOf({ run: settings.run }));
       const costs = recentCostsRes.ok ? await recentCostsRes.json() as { costs: number[] } : null;
 
       if (session) {
@@ -338,7 +342,20 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         </Field>
         <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
           <Field label="Courts" style={{ flex: 1 }}>
-            <input type="number" inputMode="numeric" min={1} max={20} value={courts ?? ''} onChange={(e) => setCourts(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={20}
+              value={courts ?? ''}
+              onChange={(e) => {
+                const next = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                setCourts(next);
+                // Spots follow the courts for a club that runs that way; the cap stays editable.
+                const cap = run ? capacityForCourts(next, run) : null;
+                if (cap !== null) setMaxPlayers(cap);
+              }}
+            />
           </Field>
           <Field label="Max players" style={{ flex: 1 }}>
             <input type="number" inputMode="numeric" min={1} max={100} value={maxPlayers ?? ''} onChange={(e) => setMaxPlayers(e.target.value === '' ? null : parseInt(e.target.value, 10))} />

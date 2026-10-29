@@ -182,6 +182,13 @@ function seedDevAdminIfRequested(containerName: string) {
  * payments, so Admin → Metrics has something to draw
  * (docs/plans/usage-metrics.md). The extra names are famous players too.
  *
+ * Set `SEED_DEV_SCENARIO=six-feathers` for `fresh-thursday` plus a SECOND
+ * club run the way a WhatsApp club runs (docs/plans/six-feathers-onboarding.md):
+ * a full 4-court Saturday list of 32, a waiting list of drop-ins, and a 72-hour
+ * late-cancel window. Sign in as Chong Wei (PIN 1357) for the organiser, or
+ * Taufik (PIN 2468) for a member. Needs the multi-group flag on
+ * (`npm run dev:next:mock`).
+ *
  * Plays well with SEED_DEV_ADMIN — they seed different docs and both can
  * be active simultaneously. Refuses when real Cosmos is configured.
  */
@@ -189,14 +196,22 @@ function seedDevScenarioIfRequested(containerName: string) {
   if (g._devScenarioSeeded) return;
   if (process.env.COSMOS_CONNECTION_STRING) return;
   const scenario = process.env.SEED_DEV_SCENARIO;
-  if (scenario !== 'fresh-thursday' && scenario !== 'played-thursday' && scenario !== 'metrics-history') return;
+  if (
+    scenario !== 'fresh-thursday' &&
+    scenario !== 'played-thursday' &&
+    scenario !== 'metrics-history' &&
+    scenario !== 'six-feathers'
+  ) return;
   // `played-thursday` is a session that JUST happened (3h ago) so the
   // post-session windows are open — the game logger, the give-kudos card, and
   // calibration all have live data. `fresh-thursday` is the upcoming (+48h)
   // signup-open session. Both seed the same members + catalog + Lin check-ins.
   const played = scenario === 'played-thursday';
   // Only seed once, on first access to any container we care about.
-  if (containerName !== 'sessions' && containerName !== 'members') return;
+  // `memberships` and `groups` too: with groups on, a name-and-PIN sign-in
+  // reads the roster before it reads any member, and a seed that waited for
+  // `members` answered that first sign-in "no such person".
+  if (!['sessions', 'members', 'memberships', 'groups'].includes(containerName)) return;
 
   const now = new Date();
   const sessionDate = new Date(now.getTime() + (played ? -3 * 60 * 60 * 1000 : 2 * 24 * 60 * 60 * 1000));
@@ -461,6 +476,7 @@ function seedDevScenarioIfRequested(containerName: string) {
   }
 
   if (scenario === 'metrics-history') seedDevMetricsHistory(now);
+  if (scenario === 'six-feathers') seedDevSixFeathers(now);
 
   g._devScenarioSeeded = true;
   console.warn(
@@ -548,6 +564,146 @@ function seedDevMetricsHistory(now: Date) {
       if (d % 7 === r) mockStore.events!.push({ ...base, id: randomBytes(8).toString('hex'), kind: 'sign_in', at: at(r + 1), via: r % 3 ? 'pin' : 'google' });
     });
   }
+}
+
+/**
+ * The second club for `SEED_DEV_SCENARIO=six-feathers`. Its ids carry the
+ * `${groupId}:` prefix a real new group gets (`groupDocId`), so the two clubs
+ * sit side by side the way they would in production. Names are famous players,
+ * like every fixture here, and none of them is a name from the real club's
+ * chat — "is this the seed or real data?" must never be a question.
+ */
+const DEV_SIX_FEATHERS_GROUP_ID = 'dev-six-feathers';
+
+function seedDevSixFeathers(now: Date) {
+  const groupId = DEV_SIX_FEATHERS_GROUP_ID;
+  if (mockStore.groups?.find((r) => r.id === groupId)) return;
+  const DAY = 24 * 60 * 60 * 1000;
+  const createdAt = new Date(now.getTime() - 21 * DAY).toISOString();
+  const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const memberIdOf = (name: string) => `dev-sf-${slug(name)}`;
+
+  // 32 on this week's list (4 courts × 8), four regulars out this week, and
+  // three drop-ins waiting — the shape of the club's own chat.
+  const confirmed = [
+    'Chong Wei', 'Taufik', 'Hendra', 'Ahsan', 'Gideon', 'Tzu Ying', 'Ratchanok', 'Saina',
+    'Srikanth', 'Prannoy', 'Lakshya', 'Satwik', 'Chirag', 'Ginting', 'Jonatan', 'Yuqi',
+    'Chen Long', 'Haifeng', 'Yunlei', 'Zhang Nan', 'Yaqiong', 'Greysia', 'Apriyani', 'Nozomi',
+    'Misaki', 'Ayaka', 'Kirsty', 'Beiwen', 'Kean Yew', 'Antonsen', 'Mathias', 'Se Young',
+  ];
+  const outThisWeek = ['Seung Jae', 'Yuta', 'Arisa', 'Hoki'];
+  const waiting = ['Kodai', 'Popov', 'Hongyang'];
+  const pins: Record<string, string> = { 'Chong Wei': '1357', Taufik: '2468' };
+
+  mockStore.groups ??= [];
+  mockStore.groups.push({
+    id: groupId,
+    name: 'Six Feathers (demo)',
+    sport: 'badminton',
+    ownerMemberId: memberIdOf('Chong Wei'),
+    createdAt,
+    createdBy: memberIdOf('Chong Wei'),
+    settings: {
+      skipDates: [],
+      maxPlayers: 32,
+      lateCancelHours: 72,
+      run: { style: 'members_first', playersPerCourt: 8, money: 'off' },
+    },
+  });
+
+  mockStore.members ??= [];
+  mockStore.memberships ??= [];
+  for (const name of [...confirmed, ...outThisWeek, ...waiting]) {
+    const id = memberIdOf(name);
+    const pin = pins[name];
+    let pinHash: string | undefined;
+    if (pin) {
+      const salt = randomBytes(16);
+      pinHash = `${salt.toString('hex')}:${scryptSync(pin, salt, 32, { N: 16384, r: 8, p: 1 }).toString('hex')}`;
+    }
+    mockStore.members.push({
+      id,
+      name,
+      role: 'member',
+      active: true,
+      sessionCount: 0,
+      createdAt,
+      ...(pinHash ? { pinHash } : {}),
+    });
+    const nameLower = name.trim().toLowerCase();
+    const owner = name === 'Chong Wei';
+    mockStore.memberships.push({
+      id: `${groupId}:${id}`,
+      groupId,
+      memberId: id,
+      name,
+      nameLower,
+      role: owner ? 'owner' : 'member',
+      status: 'active',
+      joinedAt: createdAt,
+      joinedVia: owner ? 'create' : 'admin',
+    });
+    mockStore.memberships.push({ id: `${groupId}:name:${nameLower}`, groupId, kind: 'name', memberId: id, nameLower });
+  }
+
+  // The next Saturday at least two days out, 7 PM in the club's zone: a
+  // demo that says "Sat 12:25 AM" (now + 2 days) reads as a broken app. Two
+  // days out keeps it inside the 72-hour late-cancel window, so a member's
+  // cancel shows the warning. The offset is read for that date, so a DST
+  // change in between is honoured.
+  const zone = 'America/Vancouver';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(now);
+  const todayNoon = Date.parse(`${today}T12:00:00Z`);
+  let ahead = (6 - new Date(todayNoon).getUTCDay() + 7) % 7;
+  if (ahead < 2) ahead += 7;
+  const day = new Date(todayNoon + ahead * DAY);
+  const offset = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'longOffset' })
+    .formatToParts(day)
+    .find((part) => part.type === 'timeZoneName')
+    ?.value.replace('GMT', '') || '-08:00';
+  const datetime = `${day.toISOString().slice(0, 10)}T19:00:00${offset}`;
+  const sessionDate = new Date(datetime);
+  const sessionId = sessionIdFromDate(datetime, groupId);
+  const opened = new Date(now.getTime() - 3 * DAY);
+  mockStore.sessions ??= [];
+  mockStore.sessions.push({
+    id: sessionId,
+    sessionId,
+    groupId,
+    title: 'Saturday Badminton',
+    datetime,
+    endDatetime: new Date(sessionDate.getTime() + 3 * 60 * 60 * 1000).toISOString(),
+    deadline: new Date(sessionDate.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+    courts: 4,
+    costPerCourt: 0,
+    maxPlayers: 32,
+    signupOpen: true,
+    signupOpenedAt: opened.toISOString(),
+    locationName: 'Courts 1–4',
+    createdAt: opened.toISOString(),
+  });
+  const pointerId = groupDocId(groupId, POINTER_ID);
+  mockStore.sessions.push({
+    id: pointerId,
+    sessionId: pointerId,
+    groupId,
+    activeSessionId: sessionId,
+    updatedAt: now.toISOString(),
+  });
+
+  mockStore.players ??= [];
+  [...confirmed, ...waiting].forEach((name, i) => {
+    mockStore.players!.push({
+      id: `dev-sf-player-${slug(name)}`,
+      sessionId,
+      groupId,
+      name,
+      memberId: memberIdOf(name),
+      timestamp: new Date(opened.getTime() + (i + 1) * 7 * 60 * 1000).toISOString(),
+      waitlisted: i >= confirmed.length,
+      removed: false,
+    });
+  });
 }
 
 /** Monotonic across the whole mock store — an etag only has to be unique. */

@@ -7,6 +7,7 @@ import { isFlagOn } from '@/lib/flags';
 import { readGroup, renameGroup, setLateCancelHours, updateGroupSettings } from '@/lib/groups';
 import { cleanString, GROUP_NAME_MIN, GROUP_NAME_MAX } from '@/lib/groupRoutes';
 import { isValidLateCancelHours, lateCancelHoursOf } from '@/lib/cancelPolicy';
+import { clubRunOf, parseClubRun } from '@/lib/clubRun';
 import { recipientOf } from '@/lib/payTo';
 import type { ETransferRecipient } from '@/lib/types';
 
@@ -77,6 +78,9 @@ export async function GET(req: NextRequest) {
       // from the backfill on, and it is what the flip will show members. Null
       // before the record exists.
       groupName: group?.name ?? null,
+      // How the club runs (lib/clubRun.ts), defaults filled in. The group
+      // record only, like the late-cancel window: there is no Member copy.
+      run: clubRunOf(group?.settings),
     });
   } catch (error) {
     console.error('GET /api/admin/settings error:', error);
@@ -88,7 +92,7 @@ export async function PATCH(req: NextRequest) {
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();
 
-  let body: { skipDates?: unknown; eTransferRecipient?: unknown; lateCancelHours?: unknown; groupName?: unknown };
+  let body: { skipDates?: unknown; eTransferRecipient?: unknown; lateCancelHours?: unknown; groupName?: unknown; run?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -110,12 +114,18 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_name' }, { status: 400 });
   }
 
+  // The whole run object or nothing; the style is worked out from the values.
+  const run = body.run !== undefined ? parseClubRun(body.run) : undefined;
+  if (body.run !== undefined && !run) {
+    return NextResponse.json({ error: 'Invalid run' }, { status: 400 });
+  }
+
   try {
-    // The late-cancellation window lives on the group record ONLY, so a save
-    // with no record would be a 200 that stored nothing. Refuse it up front,
-    // before anything else in the body is written.
+    // The late-cancellation window and the run settings live on the group
+    // record ONLY, so a save with no record would be a 200 that stored
+    // nothing. Refuse it up front, before anything else in the body is written.
     const groupId = resolveGroupId(req);
-    if ((body.lateCancelHours !== undefined || groupName !== undefined) && !(await readGroup(groupId))) {
+    if ((body.lateCancelHours !== undefined || groupName !== undefined || run) && !(await readGroup(groupId))) {
       return NextResponse.json({ error: 'no_group' }, { status: 409 });
     }
     const container = getContainer('members');
@@ -140,6 +150,9 @@ export async function PATCH(req: NextRequest) {
     });
     if (body.lateCancelHours !== undefined) {
       await setLateCancelHours(groupId, body.lateCancelHours as number | null);
+    }
+    if (run) {
+      await updateGroupSettings(groupId, { run });
     }
     // The club's name lives on the group record ONLY — it has no Member-doc
     // copy, because a club is not a person's setting.
