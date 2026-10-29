@@ -25,6 +25,9 @@ function mockFetchByUrl(handlers: ReadonlyArray<readonly [string, () => Promise<
   );
 }
 
+/** The caption element whose whole text is `text` (the arrow is its own span). */
+const caption = (text: string) =>
+  screen.queryAllByText((_, el) => el?.tagName === 'SPAN' && el.textContent === text)[0] ?? null;
 const OK_LEVEL = ['/api/stats/level', () => jsonResponse({ level: { level: 2.9 } })] as const;
 /** The level read with its trail (`docs/plans/one-level.md`): the caption is
  *  the step between its last two points. */
@@ -184,7 +187,7 @@ describe('OverviewStrip', () => {
       { takenAt: '2026-08-10T00:00:00.000Z', overall: 2.9 },
     ]));
     await waitFor(() => expect(screen.getByText(/since April/)).toBeTruthy());
-    expect(screen.getByText(/▲ 0.4 since April/)).toBeTruthy();
+    expect(caption('▲ 0.4 since April')).toBeTruthy();
   });
 
   it('the change adds up to the number shown: it is the level trail, never the raw check-in jump', async () => {
@@ -196,8 +199,23 @@ describe('OverviewStrip', () => {
       { takenAt: '2026-10-24T00:00:00.000Z', overall: 3.43 },
     ]));
     await waitFor(() => expect(screen.getByText('3.1')).toBeTruthy());
-    expect(screen.getByText(/▲ 0.5 since September/)).toBeTruthy();
+    expect(caption('▲ 0.5 since September')).toBeTruthy();
     expect(screen.queryByText(/0\.8/)).toBeNull();
+  });
+
+  it('only a rise\'s arrow is green; the words stay the muted grey of the other captions', async () => {
+    mockFetchByUrl([levelWithTrail(3.1, [['2026-09-24T00:00:00.000Z', 2.6], ['2026-10-24T00:00:00.000Z', 3.1]]), OK_GAMES, OK_KUDOS]);
+    renderStrip('Lin', stubCheckIn([]));
+    await waitFor(() => expect(screen.getByText('▲')).toBeTruthy());
+    expect(screen.getByText('▲').getAttribute('style')).toContain('var(--accent)');
+    expect(caption('▲ 0.5 since September')!.getAttribute('style')).toContain('var(--text-muted)');
+  });
+
+  it('a fall\'s arrow stays grey: a dip is not a failure', async () => {
+    mockFetchByUrl([levelWithTrail(2.9, [['2026-09-24T00:00:00.000Z', 3.2], ['2026-10-24T00:00:00.000Z', 2.9]]), OK_GAMES, OK_KUDOS]);
+    renderStrip('Lin', stubCheckIn([]));
+    await waitFor(() => expect(caption('▼ 0.3 since September')).toBeTruthy());
+    expect(screen.getByText(/▼/).getAttribute('style') ?? '').not.toContain('var(--accent)');
   });
 
   it('says "Your baseline" on a first snapshot rather than inventing a delta', async () => {

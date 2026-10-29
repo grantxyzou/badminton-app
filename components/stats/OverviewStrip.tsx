@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import StatCard from './StatCard';
 import type { UseCheckIn } from './useCheckIn';
 import { sharedRead } from '@/lib/sharedRead';
 import { lastChange } from '@/lib/levelRead';
@@ -113,7 +112,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
 
   // ── Level tile ────────────────────────────────────────────────────────────
   let levelValue: string = t('noValue');
-  let levelCaption: string = t('takeCheckIn');
+  let levelCaption: ReactNode = t('takeCheckIn');
   if (level.status === 'error') {
     levelCaption = t('loadError');
   } else if (level.status === 'forbidden') {
@@ -130,7 +129,12 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
         levelCaption = t('levelWith', { month });
       } else {
         const mag = Math.abs(delta).toFixed(1);
-        levelCaption = delta > 0 ? t('up', { delta: mag, month }) : t('down', { delta: mag, month });
+        // Only a rise's arrow is green: the caption is quiet grey like its
+        // neighbours', and green marks the one thing worth a glance. A fall
+        // stays grey — red here would call a dip a failure (Grant, 2026-10-29).
+        levelCaption = delta > 0
+          ? t.rich('up', { delta: mag, month, arrow: (c) => <span style={{ color: 'var(--accent)' }}>{c}</span> })
+          : t.rich('down', { delta: mag, month, arrow: (c) => <>{c}</> });
       }
     } else {
       // One snapshot (or no usable trend) — there is nothing to compare to yet.
@@ -140,8 +144,8 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     levelCaption = BLANK;
   }
 
-  // `StatCard`'s button path wraps label + value + unit + caption in ONE
-  // <button>, so an aria-label REPLACES all of it. A single literal would erase
+  // The level tile is ONE <button> wrapping label + value + unit + caption,
+  // so an aria-label REPLACES all of it. A single literal would erase
   // the number from the accessibility tree, and "no level yet" and "couldn't
   // load" are different facts — the same distinction the visible caption makes.
   // The chain mirrors the caption's tri-state arm for arm, INCLUDING loading.
@@ -164,32 +168,32 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     // the space unevenly (the level's wrapper has none, the glass tiles have
     // 16px a side), so "equal" flex tiles measured 102/138/138px.
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)', alignItems: 'stretch' }}>
-      {/* Three equal tiles (Grant, 2026-09-14). The level still leads by its
-          filled accent material, not by being wider. */}
-      <div style={{ minWidth: 0 }}>
-        <StatCard
-          tone="accent"
-          size="tile"
-          label={t('level')}
-          value={levelValue}
-          unit={levelValue === t('noValue') ? undefined : t('ofFive')}
-          caption={levelCaption}
-          /**
-           * THE DOOR. This strip sits above the register switch, so it is the
-           * one element visible on all four registers — and it was purely
-           * presentational: it told every member the single most useful thing
-           * they could do ("Take a check-in") and gave them no way to do it.
-           *
-           * Tappable in EVERY state, the failed one included. Direct precedent
-           * in `components/stats/CLAUDE.md`: the kit card's "Your fit" row
-           * lives outside the error fork because opening a sheet is not a
-           * mutation, and on the day the read fails it is the only door.
-           */
-          // Not a door while signed out: the check-in it opens would be refused.
-          onClick={checkIn && level.status !== 'forbidden' ? () => checkIn.openFrom('strip') : undefined}
-          ariaLabel={checkIn && level.status !== 'forbidden' ? levelAria : undefined}
-        />
-      </div>
+      {/* Three equal tiles (Grant, 2026-09-14), one material. The level used
+          to lead by a filled green slab; in light mode that read as a dark
+          block on a pale page ("This colour... it feels odd", 2026-10-29). It
+          now leads by colour alone — its number and a rise's arrow in green —
+          the same in both themes. */}
+      <GlassTile
+        label={t('level')}
+        value={levelValue}
+        unit={levelValue === t('noValue') ? undefined : t('ofFive')}
+        caption={levelCaption}
+        valueColor="var(--accent)"
+        /**
+         * THE DOOR. This strip sits above the register switch, so it is the
+         * one element visible on all four registers — and it was purely
+         * presentational: it told every member the single most useful thing
+         * they could do ("Take a check-in") and gave them no way to do it.
+         *
+         * Tappable in EVERY state, the failed one included. Direct precedent
+         * in `components/stats/CLAUDE.md`: the kit card's "Your fit" row
+         * lives outside the error fork because opening a sheet is not a
+         * mutation, and on the day the read fails it is the only door.
+         */
+        // Not a door while signed out: the check-in it opens would be refused.
+        onClick={checkIn && level.status !== 'forbidden' ? () => checkIn.openFrom('strip') : undefined}
+        ariaLabel={checkIn && level.status !== 'forbidden' ? levelAria : undefined}
+      />
       <GlassTile
         label={t('games')}
         value={countText(games, t('noValue'))}
@@ -214,25 +218,24 @@ function countText(tile: Tile<number>, dash: string): string {
 function GlassTile({
   label,
   value,
+  unit,
   caption,
   valueColor = 'var(--text-primary)',
+  onClick,
+  ariaLabel,
 }: {
   label: string;
   value: ReactNode;
-  caption: string;
+  /** Small unit beside the value ("/5"). */
+  unit?: string;
+  caption: ReactNode;
   valueColor?: string;
+  /** Set, the whole tile is a button (the level tile's check-in door). */
+  onClick?: () => void;
+  ariaLabel?: string;
 }) {
-  return (
-    <div
-      className="glass-card p-4"
-      style={{
-        flex: 1,
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-1)',
-      }}
-    >
+  const inner = (
+    <>
       <span
         style={{
           fontSize: 'var(--fs-2xs)',
@@ -244,18 +247,47 @@ function GlassTile({
       >
         {label}
       </span>
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 'var(--fs-stat-lg)',
-          fontWeight: 700,
-          color: valueColor,
-          lineHeight: 1,
-        }}
-      >
-        {value}
+      <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--fs-stat-lg)',
+            fontWeight: 700,
+            color: valueColor,
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </span>
+        {unit && <span className="fs-sm" style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{unit}</span>}
       </span>
       <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{caption}</span>
+    </>
+  );
+  const layout: CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-1)',
+  };
+  if (onClick) {
+    return (
+      // `stat-card` lends the press scale (globals.css, the press ladder).
+      <button
+        type="button"
+        className="glass-card p-4 stat-card"
+        onClick={onClick}
+        aria-label={ariaLabel}
+        style={{ ...layout, width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <div className="glass-card p-4" style={layout}>
+      {inner}
     </div>
   );
 }
