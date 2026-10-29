@@ -17,6 +17,8 @@ public class MainActivity extends BridgeActivity {
         // In-app plugins are registered before the bridge starts; packaged
         // ones are found on their own. The widget's pass and redraws
         // (docs/plans/native-widgets.md).
+        // "Add to calendar" (docs/plans/add-to-calendar.md).
+        registerPlugin(BpmCalendarPlugin.class);
         registerPlugin(BpmWidgetPlugin.class);
         super.onCreate(savedInstanceState);
         // A notification posted to a channel that does not exist is dropped

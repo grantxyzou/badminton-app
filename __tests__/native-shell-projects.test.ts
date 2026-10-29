@@ -170,6 +170,19 @@ describe('ios/', () => {
     expect(plugin).toContain('url.host?.lowercased() == "localhost"');
   });
 
+  /* "Add to calendar" (docs/plans/add-to-calendar.md). The app's floor is
+     iOS 15, where the event editor needs calendar access: without the usage
+     string, asking for it crashes the app. */
+  it('registers the calendar plugin, in the target, with its usage string', () => {
+    expect(read('ios', 'App', 'App', 'MainViewController.swift')).toContain('registerPluginInstance(BpmCalendarPlugin())');
+    const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');
+    expect(pbx).toMatch(/\/\* BpmCalendarPlugin\.swift in Sources \*\/,/);
+    const plugin = read('ios', 'App', 'App', 'BpmCalendarPlugin.swift');
+    expect(plugin).toContain('jsName = "BpmCalendar"');
+    expect(plugin).toContain('#available(iOS 17.0, *)');
+    expect(plist).toContain('<key>NSCalendarsUsageDescription</key>');
+  });
+
   it('names one App Group for the app, the widget and the stores that share it', () => {
     const group = 'group.com.motioncraft.bpm';
     expect(read('ios', 'App', 'App', 'App.entitlements')).toContain(`<string>${group}</string>`);
@@ -249,6 +262,16 @@ describe('android/', () => {
     expect(receiver).toContain('android.appwidget.action.APPWIDGET_UPDATE');
     expect(receiver).toContain('@xml/bpm_widget_info');
     expect(read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmWidgetPlugin.java')).toContain('@CapacitorPlugin(name = "BpmWidget")');
+  });
+
+  /* "Add to calendar" (docs/plans/add-to-calendar.md): an in-app plugin on
+     each platform, registered by hand like the widget's. */
+  it('registers the calendar plugin', () => {
+    const activity = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'MainActivity.java');
+    expect(activity).toContain('registerPlugin(BpmCalendarPlugin.class);');
+    const plugin = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmCalendarPlugin.java');
+    expect(plugin).toContain('@CapacitorPlugin(name = "BpmCalendar")');
+    expect(plugin).toContain('Intent.ACTION_INSERT');
   });
 
   it('does not commit google-services.json', () => {

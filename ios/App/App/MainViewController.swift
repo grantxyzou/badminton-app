@@ -9,5 +9,7 @@ class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         // The home-screen widget's pass and redraws (docs/plans/native-widgets.md).
         bridge?.registerPluginInstance(BpmWidgetPlugin())
+        // "Add to calendar": the system's New Event screen (docs/plans/add-to-calendar.md).
+        bridge?.registerPluginInstance(BpmCalendarPlugin())
     }
 }

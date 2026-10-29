@@ -82,13 +82,16 @@ describe('signing up', () => {
     expect(await screen.findByText('Kento and 2 others have signed up')).toBeDefined();
   });
 
-  it('confirms with the plan itself, without dropping Home into the skeleton', async () => {
+  it('confirms with Add to calendar, without dropping Home into the skeleton', async () => {
     renderHome();
     await screen.findByText('Signing up as Lin');
     fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
 
     expect(await screen.findByText('Lin, you have signed up for this week!')).toBeDefined();
-    expect(screen.getByText(/ at Test Gym$/)).toBeDefined();
+    // Not the date and place again (the tiles above already say it): the one
+    // useful next step (docs/plans/add-to-calendar.md).
+    expect(screen.getByRole('button', { name: /Add to calendar/ })).toBeDefined();
+    expect(screen.queryByText(/ at Test Gym$/)).toBeNull();
     // Lin is not in their own "who else" line.
     expect(screen.getByText('Kento and 2 others have signed up')).toBeDefined();
     // All of that landed while the background refresh is still in flight

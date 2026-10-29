@@ -14,6 +14,7 @@ import {
 
 import { GET as playersGET } from '@/app/api/players/route';
 import { GET as sessionGET } from '@/app/api/session/route';
+import { GET as sessionCalendarGET } from '@/app/api/session/calendar/route';
 import { GET as membersGET } from '@/app/api/members/route';
 import { GET as membersMeGET } from '@/app/api/members/me/route';
 import { GET as announcementsGET } from '@/app/api/announcements/route';
@@ -62,6 +63,8 @@ const ROUTES: Record<string, Entry> = {
   // ── Club data, members only ──────────────────────────────────────────────
   players: GATED,
   session: GATED,
+  // This week's session as an .ics (docs/plans/add-to-calendar.md).
+  'session/calendar': GATED,
   members: GATED,
   'members/me': GATED,
   announcements: GATED,
@@ -276,6 +279,7 @@ describe('behaviour of the gated routes', () => {
   const CASES: Array<[string, Handler, string]> = [
     ['players', playersGET as Handler, 'http://localhost/api/players'],
     ['session', sessionGET as Handler, 'http://localhost/api/session'],
+    ['session/calendar', sessionCalendarGET as Handler, 'http://localhost/api/session/calendar'],
     ['members', membersGET as Handler, 'http://localhost/api/members'],
     ['members/me', membersMeGET as Handler, 'http://localhost/api/members/me?name=Lin'],
     ['announcements', announcementsGET as Handler, 'http://localhost/api/announcements'],

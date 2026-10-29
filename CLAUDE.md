@@ -357,6 +357,15 @@ submitted by Grant on device.
   carries the widgets, the icon badge and the shortcuts; the iPhone is on 6
   (#724) because TestFlight already held a 6, and Android stays at 5. Bump
   from whatever the store holds, not from what the project says.
+- **Add to calendar** (`docs/plans/add-to-calendar.md`, 2026-10-28): the
+  sign-up banner's one action. In the store app it is the in-house
+  `BpmCalendar` plugin (iOS `BpmCalendarPlugin.swift`, Android
+  `BpmCalendarPlugin.java`), which opens the platform's OWN New Event screen
+  filled in — nothing is written without the person tapping Add; on the web it
+  is `GET /api/session/calendar`, a members-only `text/calendar` URL.
+  `lib/calendarEvent.ts` builds the event for both. iOS 17+ needs no calendar
+  access; 15–16 asks once (`NSCalendarsUsageDescription`, canary-pinned). A
+  store build without the plugin shows no button rather than a dead one.
 - **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`
   answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`,
   `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path
