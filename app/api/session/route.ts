@@ -9,6 +9,8 @@ import { rosterMemberIds } from '@/lib/roster';
 import { buildSignupOpenPayload } from '@/lib/pushMessages';
 import { defaultMaxPlayers } from '@/lib/defaults';
 import { promoteFromWaitlist } from '@/lib/waitlistPromote';
+import { readGroup } from '@/lib/groups';
+import { guestsAllowedOf } from '@/lib/plusOne';
 import type { BirdUsage, ETransferRecipient } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
@@ -56,9 +58,15 @@ export async function GET(req: NextRequest) {
     const scope = groupScope(resolveGroupId(req));
     const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    const session = (await scope.read<SessionDoc>('sessions', sessionId, sessionId))
-      ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
-    return NextResponse.json(isAdminAuthed(req) ? session : stripForPublic(session));
+    // The club record rides beside the session read (one point read) so Home
+    // knows whether to offer a plus-one (docs/plans/plus-one.md).
+    const [stored, group] = await Promise.all([
+      scope.read<SessionDoc>('sessions', sessionId, sessionId),
+      readGroup(scope.groupId),
+    ]);
+    const session = stored ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
+    const out = { ...(isAdminAuthed(req) ? session : stripForPublic(session)), guestsAllowed: guestsAllowedOf(group?.settings) };
+    return NextResponse.json(out);
   } catch (error) {
     // A failed read is a 503, never a default session with a 200. The client's
     // `loadError` path exists for exactly this, and can only fire on a non-ok

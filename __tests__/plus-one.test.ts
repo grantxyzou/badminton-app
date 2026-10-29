@@ -266,3 +266,28 @@ describe('plus-one: money', () => {
     expect(active.removed).toBe(true);
   });
 });
+
+describe('plus-one: the club switch', () => {
+  beforeEach(() => {
+    setupAdminPin();
+    resetMockStore();
+    seedAdminMember();
+    seedPointer(SESSION_ID);
+  });
+
+  it('the admin turns it on, and the session read tells Home', async () => {
+    const { PATCH: settingsPATCH } = await import('@/app/api/admin/settings/route');
+    const { GET: sessionGET } = await import('@/app/api/session/route');
+    seed({ guests: false });
+    const before = await sessionGET(makeAdminRequest('GET', 'http://localhost:3000/api/session'));
+    expect((await before.json()).guestsAllowed).toBe(false);
+
+    const res = await settingsPATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/admin/settings', { guestsAllowed: true }));
+    expect(res.status).toBe(200);
+    const after = await sessionGET(makeAdminRequest('GET', 'http://localhost:3000/api/session'));
+    expect((await after.json()).guestsAllowed).toBe(true);
+    expect((await addGuest()).status).toBe(201);
+
+    expect((await settingsPATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/admin/settings', { guestsAllowed: 'yes' }))).status).toBe(400);
+  });
+});

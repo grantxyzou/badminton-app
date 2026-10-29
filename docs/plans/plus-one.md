@@ -1,7 +1,7 @@
 # Plus-one — a member brings a guest
 
 **Track:** admin cost-automation (North Star pillar 3) — today a guest is added by the admin by hand, becomes a roster member, and is chased for their share separately.
-**Status:** intent
+**Status:** in-flight
 **Review on:** 2026-12-16 — how many sessions since ship had a guest row, and how many guest shares were paid on the host's balance? None = nobody brings guests through the app; drop the feature rather than grow it.
 
 ## Problem
@@ -63,7 +63,10 @@ Everything below is appended AS the work proceeds.
 - **A club switch, off by default** (Grant, 2026-10-28, over "always on"). A
   club with a waitlist every week may not want guests competing for spots.
 - **An invite list binds guests too** (Grant, 2026-10-28, over "the host
-  vouches"). With `session.approvedNames` set, the guest's name must be on it.
+  vouches") — and is moot today: nothing writes `session.approvedNames` and
+  `POST /api/players` no longer reads it (members-only replaced it), so there
+  is no list for a guest to be on. If the list ever returns, the guest's name
+  is checked against it like anyone's.
 - **A guest can be promoted to a club member** (Grant, 2026-10-28). It goes
   through the existing one-time invite rather than turning the guest row into
   an account: the row has no credential, and an invite is the only way into a
@@ -73,12 +76,11 @@ Everything below is appended AS the work proceeds.
   Late on the guest's own row (`lib/cancelPolicy.ts`), and a guest promoted
   inside the window is exempt, as members are.
 - **A guest is its own `players` row, not a `guests: 1` count on the host's
-  row** (proposed). A count would have to be taught to every place that counts
+  row**. A count would have to be taught to every place that counts
   rows — capacity, `costSplit`, `planPromotions`, the roster, settle, the
   receipt — and each copy is a chance to disagree. A row is already understood
   by all of them.
-- **The guest row carries `guestOf: <host memberId>` and NO `memberId`**
-  (proposed). A `memberId` would make the guest the host everywhere a row is
+- **The guest row carries `guestOf: <host memberId>` and NO `memberId`**. A `memberId` would make the guest the host everywhere a row is
   read by member — kudos eligibility, stats, the "already signed up" check, the
   ledger partition — and the host could not sign up beside their own guest.
   The money half is the one place that must read `guestOf`: `loadOwedInputs`
@@ -90,6 +92,29 @@ Everything below is appended AS the work proceeds.
   is NO filter in the mock (CLAUDE.md, the mock store gotcha), so a test would
   see every row as a guest.
 
+- **The row's `name` is a display form that cannot be a roster name**, "Alex
+  (Lin's guest)" (`lib/plusOne.ts`), with the plain name in `guestName`.
+  Several reads still tie a row to a person by name — the sign-up duplicate
+  check, the self-cancel lookup, older code after a rollback — and a guest
+  called Lin must never be member Lin. `matchesIdentity` adds the rule
+  structurally: a row with `guestOf` matches its host and nobody else, never by
+  name. Brackets are refused in a guest name so one cannot imitate the form.
+- **No guest beside a host held for unpaid sessions** (409 `host_held`).
+  Auto-promote skips a held row, so a waitlisted guest of a held host would be
+  moved up while the person who brought them waits.
+- **A guest leaves with the host, whoever removes the host** — the host's own
+  cancel, an admin's remove, PATCH `removed`, purge-one. A guest left behind
+  would hold a spot billed to someone who is not coming. Each guest row gets
+  its own late verdict; one warning covers both.
+- **A guest is cancelled through the host's cookie** (`DELETE { guest: true }`),
+  never by name, and has no `deleteToken`. A member cannot reach another
+  host's guest; an admin removes any row.
+- **No kudos to a guest** (no account to receive them) and **no push when a
+  waitlisted guest is promoted** (no account to push to; the host is not told
+  either — a follow-up if anyone asks).
+- **Account deletion anonymizes the guests a host brought**: their rows name
+  the host in `guestOf` and in the display name.
+
 ## Shape
 
 | Piece | File |
@@ -97,9 +122,13 @@ Everything below is appended AS the work proceeds.
 | `Player.guestOf`, `Player.guestName` (additive) | `lib/types.ts` |
 | Add / cancel a guest | `app/api/players/route.ts` `POST` / `DELETE` (host cancel removes the guest) |
 | Guest share on the host's balance | `lib/owedRows.ts`, `lib/owedBalance.ts` |
-| Ledger charge under the host | `lib/ledgerMirror.ts`, `lib/ledgerBackfill.ts` |
-| "Invite to the club" on a guest row | `components/admin/` roster menu → `lib/invites.ts` |
-| Club switch | `groups.settings` via `/api/admin/settings` |
-| "Bring a guest" on the sign-up card; roster label | `components/HomeTab.tsx`, `components/home/WhoElseIsIn.tsx` |
+| Rules and display name | `lib/plusOne.ts` |
+| Who a row belongs to | `lib/playerIdentity.ts` `matchesIdentity` |
+| Ledger charge under the host | `lib/ledgerMirror.ts` `memberOf` (the backfill uses the same builders) |
+| Account deletion | `lib/memberPurge.ts` `anonymizePlayerRows` |
+| "Invite to the club" on a guest row | `components/admin/CommandCenter/PaymentsCard.tsx` → `InviteCard` |
+| Club switch | `groups.settings.guestsAllowed`, `lib/groups.ts` `setGuestsAllowed`, `/api/admin/settings`, `components/admin/CommandCenter/GuestsEditor.tsx`; reported to Home on `GET /api/session` |
+| "Bring a guest" on the sign-up card; roster label | `components/home/PlusOneRow.tsx`, `components/HomeTab.tsx`, `components/home/WhoElseIsIn.tsx` |
+| The guest's line on the balance | `components/UnpaidSessionsCard.tsx` |
 | Mock store `@guestOf` | `lib/cosmos.ts` |
 | Tests | `__tests__/plus-one.test.ts` |

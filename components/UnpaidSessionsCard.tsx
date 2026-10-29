@@ -23,6 +23,10 @@ const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
 
 interface UnpaidSession {
   sessionId: string;
+  /** The row this line is for — two lines share a session when one is a guest's. */
+  playerId?: string;
+  /** A plus-one's share on the host's balance (docs/plans/plus-one.md). */
+  guestName?: string;
   date: string;
   owedAmount: number;
   /** The bill is frozen — only these count toward the icon's badge. */
@@ -345,11 +349,12 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
               )}
               {lineItems.map((s) => (
                 <div
-                  key={s.sessionId}
+                  key={s.playerId ?? s.sessionId}
                   style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}
                 >
                   <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                     {format.dateTime(new Date(s.date), DAY_SHORT)}
+                    {s.guestName ? ` · ${tBal('guestLine', { name: s.guestName })}` : ''}
                   </span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                     {fmtMoney(s.owedAmount)}

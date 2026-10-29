@@ -371,7 +371,25 @@
       "notEnough": "余额还不够支付一整次活动，会留到下次使用。",
       "error": "余额使用失败，请重试。"
     },
+    "guest": {
+      "bring": "带一位朋友",
+      "namePlaceholder": "朋友的名字",
+      "add": "添加",
+      "adding": "正在添加…",
+      "cancel": "取消",
+      "coming": "{name}会和你一起来",
+      "waiting": "{name}在候补名单上",
+      "note": "朋友的费用会算在你的账上。",
+      "remove": "移除",
+      "removeAnyway": "仍然移除",
+      "invalidName": "请输入名字，最多 20 个字符。",
+      "addFailed": "无法添加朋友，请重试。",
+      "removeFailed": "无法移除朋友，请重试。",
+      "rosterName": "{guest}（{host}的朋友）",
+      "cancelNote": "{name}也会一起被移除。"
+    },
     "balance": {
+      "guestLine": "{name}（你的朋友）",
       "groupSessions": "羽毛球",
       "groupStringing": "穿线",
       "title": "待付金额",

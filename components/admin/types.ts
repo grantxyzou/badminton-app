@@ -12,6 +12,7 @@ export type AdminView =
   | 'etransfer'
   | 'skip-dates'
   | 'late-cancel'
+  | 'guests'
   | 'club-run'
   | 'past-sessions'
   | 'stringing'

@@ -46,6 +46,9 @@ export interface Session {
   /** @deprecated Legacy single-object shape; read via normalizeBirdUsages. */
   birdUsage?: BirdUsage;
   showCostBreakdown?: boolean;
+  /** RESPONSE-ONLY, never stored: `GET /api/session` reports whether the
+   *  club lets members bring a guest (docs/plans/plus-one.md). */
+  guestsAllowed?: boolean;
   /** prev* fields are written together at advance time; they're related
    *  but kept as flat fields rather than nested because existing prod
    *  records already have the flat shape and the schema rule forbids

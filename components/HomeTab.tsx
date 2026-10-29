@@ -26,6 +26,7 @@ import PageHeader from '@/components/primitives/PageHeader';
 import { OFFER_PIN_KEY } from '@/lib/offerPin';
 import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
+import PlusOneRow from './home/PlusOneRow';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
 import { primeHaptics, tapSuccess } from '@/lib/haptics';
 import ShuttleBurst, { type BurstOrigin } from './home/ShuttleBurst';
@@ -144,6 +145,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
      ONE confirmation sheet for both lists: coming off a waitlist is not the same
      event as giving up a confirmed spot, and `isWaitlisted` picks the wording. */
   const tPlayers = useTranslations('players');
+  const tGuest = useTranslations('home.guest');
   const tClose = useTranslations('recovery');
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelError, setCancelError] = useState('');
@@ -320,12 +322,31 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     ? waitlistPlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase() && p.heldForUnpaid === true)
     : false;
 
+  // A plus-one (docs/plans/plus-one.md): the viewer's own row, and the guest
+  // it brought. A guest row carries `guestOf`, never the viewer's name.
+  const myRow = currentUser
+    ? players.find((p) => !p.guestOf && p.name.toLowerCase() === currentUser.toLowerCase())
+    : undefined;
+  const myGuest = myRow?.memberId ? players.find((p) => p.guestOf === myRow.memberId) ?? null : null;
+  // The roster shows a guest by their own name and their host's, in the reader's language.
+  const hostNameOf = (memberId: string) => players.find((p) => !p.guestOf && p.memberId === memberId)?.name;
+  const rosterLabel = (p: Player) => {
+    if (!p.guestOf) return p.name;
+    const host = hostNameOf(p.guestOf);
+    return host ? tGuest('rosterName', { guest: p.guestName ?? p.name, host }) : p.name;
+  };
+  const guestLabels = players.filter((p) => p.guestOf).map(rosterLabel);
+  const activeLabels = activePlayers.map(rosterLabel);
+  const waitlistLabels = waitlistPlayers.map(rosterLabel);
+
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
   const needsCredential = !!memberName && hasCredential === false;
   const spotsTotal = session?.maxPlayers ?? maxPlayers;
   const isDeadlinePast = session ? new Date() > new Date(session.deadline) : false;
   const isSessionFinished = session?.endDatetime ? new Date() > new Date(session.endDatetime) : false;
   const isSignupClosed = session ? session.signupOpen === false : false;
+  // The server holds every rule; this only decides whether to OFFER it.
+  const canAddGuest = session?.guestsAllowed === true && !isDeadlinePast && !isSignupClosed && !session.settled;
 
   const isDeadlineApproaching = session?.deadline
     ? (() => { const diff = new Date(session.deadline).getTime() - Date.now(); return diff > 0 && diff <= 24 * 60 * 60 * 1000; })()
@@ -435,7 +456,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       }
       if (id) setIdentity({ ...id, token: '' });
       const me = currentUser.toLowerCase();
-      setPlayers((prev) => prev.filter((p) => p.name.toLowerCase() !== me));
+      // The guest leaves with the host (docs/plans/plus-one.md).
+      const host = myRow?.memberId;
+      setPlayers((prev) => prev.filter((p) => p.name.toLowerCase() !== me && !(host && p.guestOf === host)));
       setSignupEntrance('none');
       setCancelError('');
       closeCancel();
@@ -737,7 +760,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 celebrate={signupEntrance === 'pop'}
               />
             </div>
-            <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} onKudos={setKudosFor} />
+            <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
+            <PlusOneRow guest={myGuest} canAdd={canAddGuest} online={online} onChanged={() => void loadData()} />
             <button
               type="button"
               className="link-quiet"
@@ -776,7 +800,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   )
               }
             />
-            <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} />
+            <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
+            <PlusOneRow guest={myGuest} canAdd={canAddGuest && !heldForUnpaid} online={online} onChanged={() => void loadData()} />
             <button
               type="button"
               className="link-quiet"
@@ -795,7 +820,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
-            <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} />
+            <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             {signupName && (
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
               {signingUpAs}
@@ -837,7 +862,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 </span>
               </p>
             </div>
-            <WhoElseIsIn active={activePlayers.map((p) => p.name)} waitlist={waitlistPlayers.map((p) => p.name)} me={currentUser} />
+            <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             {signupName && (
             <form onSubmit={handleSignUp} className="space-y-3">
               {signingUpAs}
@@ -953,6 +978,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             <div key="cancel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <p className="fs-base m-0" style={{ color: 'var(--text-secondary)' }}>
                 {isWaitlisted ? tPlayers('leaveSheetBody') : tPlayers('cancelSheetBody')}
+                {myGuest && ` ${tGuest('cancelNote', { name: myGuest.guestName ?? myGuest.name })}`}
               </p>
               {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
