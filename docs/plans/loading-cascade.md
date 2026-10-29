@@ -2,7 +2,7 @@
 
 **Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); follow-on to `docs/plans/motion-pass.md`; requested directly by the owner on 2026-10-03
 **Status:** shipped 2026-10-05 (phases 1–5)
-**Review on:** 2026-10-24 — the kill criterion, on a PHONE: record a cold and a warm load of Home and Stats. Does any card appear above one already on screen, and does a warm tab switch feel slower than before? (Phases 2–5 all landed: #510, #512, #513, #515, follow-ups #538.)
+**Review on:** 2026-11-04 — the kill criterion, on a PHONE: record a cold and a warm load of Home and Stats. Does any card appear above one already on screen, and does a warm tab switch feel slower than before? The same recording checks the launch screen's 2026-10-24 decision (`docs/plans/launch-screen.md`): after the full shot, does Home land complete now that its reads start in one wave (#717)? (Phases 2–5 all landed: #510, #512, #513, #515, follow-ups #538. Moved from 2026-10-24: not recorded yet.)
 
 ## Problem
 

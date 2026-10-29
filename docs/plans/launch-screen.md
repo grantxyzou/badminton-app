@@ -2,7 +2,6 @@
 
 **Track:** native shell / store launch — the first screen a store download shows
 **Status:** in-flight
-**Review on:** 2026-10-28 — since 2026-10-21 a signed-in launch plays the shot and waits for Home again (now to preload, `docs/plans/tab-keep-alive.md`): has anyone said opening the app feels slower, or that it opens complete?
 
 ## Problem
 
