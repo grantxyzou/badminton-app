@@ -336,7 +336,8 @@
       "waitlistTitle": "You're on the waitlist",
       "heldTitle": "Settle up to grab your spot",
       "heldBody": "You owe for a couple of past sessions. You'll move into a spot as soon as your e-transfer lands, if there's still room.",
-      "waitlistPositionLabel": "Position #{position} of {total}"
+      "waitlistPositionLabel": "Position #{position} of {total}",
+      "waitlistAutoMove": "You'll be moved up automatically."
     },
     "cost": {
       "label": "Estimated cost",
