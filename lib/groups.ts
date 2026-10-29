@@ -55,6 +55,16 @@ export function rosterNameKey(name: string): string {
   return name.trim().toLowerCase();
 }
 
+/**
+ * The fold a PERSON reads as one name (`Chris L.` and `chris l`). Advisory
+ * only: the reservation is keyed by `rosterNameKey`, so two names this fold
+ * joins can both be held, and nothing may be refused on it. Shared by the
+ * backfill's `similar` count and the roster import's `similar` rows.
+ */
+export function looseNameKey(name: string): string {
+  return rosterNameKey(name).replace(/[^\p{L}\p{N}]/gu, '');
+}
+
 export function membershipId(groupId: string, memberId: string): string {
   return `${groupId}:${memberId}`;
 }
@@ -526,6 +536,24 @@ export async function setMembershipCanGift(
   if (!m || m.status !== 'active') return undefined;
   if ((m.canGift === true) === canGift) return m;
   return groupScope(groupId).replace('memberships', { ...m, canGift }, groupId);
+}
+
+/**
+ * Mark someone a member or a drop-in IN ONE GROUP (docs/plans/roster-import.md).
+ * Per club for the same reason as `canGift`: a person can be a regular in one
+ * club and a drop-in at another. Resolves `undefined` when there is no active
+ * membership here.
+ */
+export async function setMembershipRegular(
+  groupId: string,
+  memberId: string,
+  regular: boolean,
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m || m.status !== 'active') return undefined;
+  if (m.regular === regular) return m;
+  return groupScope(groupId).replace('memberships', { ...m, regular }, groupId);
 }
 
 /**

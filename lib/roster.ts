@@ -17,7 +17,7 @@
 import { randomBytes } from 'crypto';
 import { getContainer } from './cosmos';
 import { isFlagOn } from './flags';
-import { listMemberships, addMembership, rosterNameHolder, releaseRosterName } from './groups';
+import { listMemberships, addMembership, rosterNameHolder, releaseRosterName, readMembership, RosterNameTakenError } from './groups';
 import type { Member, Membership } from './types';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
@@ -179,4 +179,76 @@ export async function adminAddToRoster(
 export async function rosterMemberIds(groupId: string): Promise<Set<string>> {
   if (!groupsOn()) return new Set((await rosterMembers(groupId)).map((e) => e.member.id));
   return new Set((await listMemberships(groupId)).map((m) => m.memberId));
+}
+
+/** The longest roster name an admin may give (the Roster sheet's own limit). */
+export const ROSTER_NAME_MAX = 50;
+
+/**
+ * What adding one name to this roster did. `exists` is someone already ACTIVE
+ * under that name here (with their id, so a caller can mark them); `taken` is
+ * a lost race for the reservation between the read and the write.
+ */
+export type AddRosterNameResult =
+  | { outcome: 'added' | 'rejoined'; member: Member }
+  | { outcome: 'exists'; memberId: string }
+  | { outcome: 'taken' };
+
+/**
+ * AN ADMIN ADDS ONE NAME — the one decision `POST /api/members` and the
+ * roster import (`POST /api/members/import`) both make, so the add sheet and
+ * an imported list cannot disagree about what a name means here. The name is
+ * assumed trimmed, non-empty and at most `ROSTER_NAME_MAX`; the callers
+ * validate it because each words the refusal its own way.
+ *
+ * Groups on: an active holder of the name is `exists`; otherwise
+ * `adminAddToRoster` rejoins a removed holder or creates a new person.
+ * Groups off: the `members` scan BPM always used — an inactive match is
+ * reactivated, an active one is `exists`.
+ */
+export async function addRosterName(groupId: string, name: string): Promise<AddRosterNameResult> {
+  if (groupsOn()) {
+    const holderId = await rosterNameHolder(groupId, name);
+    if (holderId) {
+      const holding = await readMembership(groupId, holderId);
+      if (holding?.status === 'active') return { outcome: 'exists', memberId: holderId };
+    }
+    try {
+      const { member, created } = await adminAddToRoster(groupId, name);
+      return { outcome: created ? 'added' : 'rejoined', member };
+    } catch (err) {
+      // THE LOST RACE: two admins adding the same name at once, one of them
+      // loses `reserveRosterName` between the holder read and the create.
+      if (err instanceof RosterNameTakenError) return { outcome: 'taken' };
+      throw err;
+    }
+  }
+
+  const container = getContainer('members');
+  const { resources: existing } = await container.items
+    .query<Member>({
+      query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name)',
+      parameters: [{ name: '@name', value: name }],
+    })
+    .fetchAll();
+  // Re-checked in JS: the mock applies one filter per parameter name and
+  // would hand back every member if the name ever stopped matching.
+  const same = (existing ?? []).filter((m) => typeof m.name === 'string' && m.name.trim().toLowerCase() === name.toLowerCase());
+  const live = same.find((m) => m.active !== false);
+  if (live) return { outcome: 'exists', memberId: live.id };
+  const inactive = same[0];
+  if (inactive) {
+    const { resource } = await container.items.upsert({ ...inactive, active: true });
+    return { outcome: 'rejoined', member: (resource ?? { ...inactive, active: true }) as unknown as Member };
+  }
+  const fresh: Member = {
+    id: randomBytes(12).toString('hex'),
+    name,
+    role: 'member',
+    sessionCount: 0,
+    createdAt: new Date().toISOString(),
+    active: true,
+  };
+  const { resource } = await container.items.create(fresh);
+  return { outcome: 'added', member: (resource ?? fresh) as Member };
 }

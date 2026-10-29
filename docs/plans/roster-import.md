@@ -1,7 +1,7 @@
 # Roster import — bring your list
 
 **Track:** multi-group critical path — "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). This is step B of `docs/plans/six-feathers-onboarding.md`. A club with 35 members cannot start on BPM until it can bring its list in one go.
-**Status:** intent
+**Status:** in-flight
 **Review on:** 2026-12-02 — has any club imported a list, and how many names did the admin fix by hand afterwards? None imported = park C (claiming a name) along with this; many fixes = the parser guessed wrong, so narrow it to the formats that worked.
 
 ## Problem
@@ -25,13 +25,17 @@ Nobody at Six Feathers has asked for this. Ian has not been asked about BPM yet 
 - **No edits to existing people** beyond member vs drop-in (Q1). An import never renames anyone, changes a role, or removes anybody missing from the list.
 - **Guests are not imported.** "Jenny (Josh)" is a plus-one, and plus-ones have their own home since #751 (`docs/plans/plus-one.md`).
 
-## Proposed — for Grant to confirm
+## Decisions
 
-- **Q1. Re-importing.** When a pasted name is already on the roster, should the import update only whether they are a member or a drop-in? Recommended: yes. BPM Core could then mark its regulars from one paste. Everything else about an existing person stays untouched.
-- **Q2. Defaults for a chat list.** Names above "Waiting list" come in as members and names below it as drop-ins, and the admin can flip any row in the preview. Recommended: yes. Six Feathers removes drop-ins on Sunday, so names above the heading are mostly regulars.
-- **Q3. Is "member vs drop-in" stored in this step?** It is a new field, `Membership.regular`. The rule here is that a field joins the model only when something reads it. Recommended: yes. The Roster page reads it in this step as a label and a filter, and step D (last week's list carries over) is the first behaviour built on it. The alternative is to import names only and add the field with D; that is safe, but it means a second pass over the list later.
+- **Re-importing updates member vs drop-in, and nothing else** (Q1, Grant 2026-10-29: "yes to all three"). A name already on the roster is re-marked when the paste marks it differently. Its name, role and everything else stay as they are. BPM Core can mark its regulars from one paste.
+- **A chat list's defaults come from the "Waiting list" heading** (Q2, yes). Names above the heading are members and names below are drop-ins. The admin can flip any row in the preview, so a wrong guess costs one tap.
+- **`Membership.regular` is stored in this step** (Q3, yes). The Roster page reads it in the same change: a "Drop-in" label on the row, "Members" and "Drop-ins" filter chips (shown only once anyone is marked), and an "In this club" choice in the person's sheet. The sheet is how one person gets re-marked without pasting a list again. The plan had not listed it, but without it the mark could only be fixed by re-importing.
+- **The mark lives only on the membership.** Unlike `canGift` it has no `Member` copy: with groups off there is no club to say "member of", so the field is ignored, and the preview hides the toggle for people already on the roster (`marksStored: false`).
+- **The add sheet and the import share one function** (`addRosterName`). Groups off, its `members` scan now answers "exists" when ANY active Member holds the name. The old route reactivated an inactive same-name Member even when an active one existed, which made two live people with one name.
+- **Every row can be unticked,** not only the `similar` ones the plan named, so a misread line ("Saturday badminton") costs one tap instead of a wrong person on the roster.
+- **A date or time header needs a digit beside the month or weekday word.** May, Jun and Sun are people's names too, and a plain list of them must not be skipped.
 
-## Shape (proposed)
+## Shape
 
 ### The parser: one pure function, three inputs
 
@@ -95,12 +99,15 @@ After a successful import, the sheet leaves a top toast ("32 people added") and 
 
 | piece | file |
 |---|---|
-| Parser (pure) | new `lib/rosterImport.ts` |
+| Parser (pure) | `lib/rosterImport.ts` |
 | `addRosterName`, shared with `POST /api/members` | `lib/roster.ts` |
 | `looseNameKey` (moved) and `setMembershipRegular` | `lib/groups.ts` |
 | `Membership.regular?: boolean` (additive; absent = not marked) | `lib/types.ts` |
-| Preview and import | new `app/api/members/import/route.ts` |
-| The sheet, plus the label and filter | new `components/admin/CommandCenter/RosterImportSheet.tsx`, `components/admin/CommandCenter/RosterPage.tsx` |
+| Preview and import | `app/api/members/import/route.ts` |
+| Where each row lands (classify, run) | `lib/rosterImportRun.ts` |
+| The sheet, plus the label, filter and "In this club" | `components/admin/CommandCenter/RosterImportSheet.tsx`, `components/admin/CommandCenter/RosterPage.tsx` |
+| `PATCH /api/members { regular }`, and `regular` on the admin `GET` | `app/api/members/route.ts` |
+| Tests | `__tests__/roster-import-parse.test.ts`, `__tests__/group-roster-import.test.ts` |
 
 ### Tests
 

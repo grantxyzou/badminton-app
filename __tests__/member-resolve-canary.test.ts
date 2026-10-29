@@ -34,6 +34,8 @@ const ALLOWED: ReadonlyArray<readonly [string, string]> = [
   [join('app', 'api', 'stats', 'club', 'bands', 'route.ts'),
    'readPrivacy reads statsPrivacy, which is WRITTEN to the active row by members/me — a different key, correctly filtered'],
   [join('app', 'api', 'members', 'route.ts'), 'the members directory itself'],
+  [join('lib', 'roster.ts'),
+   "addRosterName's groups-off branch, moved out of POST /api/members so the roster import shares it: an ADD must see inactive Members too (to reactivate one), which the active-only resolver cannot answer"],
   [join('app', 'api', 'members', 'me', 'route.ts'), 'self-service member record'],
   [join('app', 'api', 'players', 'route.ts'), 'sign-up: matches a member to a player row'],
   [join('app', 'api', 'players', 'recover', 'route.ts'), 'PIN sign-in'],

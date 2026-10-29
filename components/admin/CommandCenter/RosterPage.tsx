@@ -8,6 +8,9 @@ import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
+import RosterImportSheet from './RosterImportSheet';
+import SettingsList from '@/components/profile/SettingsList';
+import StatusBadge from '@/components/primitives/StatusBadge';
 import { fmtShortDate } from '@/lib/fmt';
 import MemberAvatar from '@/components/primitives/MemberAvatar';
 import { normalizeAvatar } from '@/lib/memberAvatar';
@@ -36,7 +39,17 @@ interface RowData {
   isYou: boolean;
 }
 
-export type FilterKey = 'all' | 'recent' | 'regulars' | 'casual' | 'dormant';
+export type FilterKey = 'all' | 'recent' | 'regulars' | 'casual' | 'dormant' | 'members' | 'dropins';
+
+/**
+ * This club's member-or-drop-in mark (`Membership.regular`, sent to admins by
+ * `GET /api/members`; docs/plans/roster-import.md). `null` = not marked.
+ * Unrelated to the "Regulars" chip, which counts recent sessions.
+ */
+function regularOf(m: Member): boolean | null {
+  const v = (m as Member & { regular?: unknown }).regular;
+  return typeof v === 'boolean' ? v : null;
+}
 
 function Sparkline({ presence }: { presence: Array<1 | null> }) {
   return (
@@ -84,6 +97,8 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
   const [formCanGift, setFormCanGift] = useState(false);
   const [formActive, setFormActive] = useState(true);
   const [formAlias, setFormAlias] = useState('');
+  const [formRegular, setFormRegular] = useState<boolean | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [savingForm, setSavingForm] = useState(false);
   const [deletingForm, setDeletingForm] = useState(false);
   const [formError, setFormError] = useState('');
@@ -211,13 +226,18 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
       if (filter === 'regulars') return r.status === 'regular';
       if (filter === 'casual') return r.status === 'casual';
       if (filter === 'dormant') return r.status === 'dormant';
+      if (filter === 'members') return regularOf(r.member) === true;
+      if (filter === 'dropins') return regularOf(r.member) === false;
       return true;
     }).sort((a, b) => a.member.name.localeCompare(b.member.name));
   }, [rows, search, filter]);
 
   const counts = useMemo(() => {
-    const c = { all: rows.length, recent: 0, regulars: 0, casual: 0, dormant: 0 };
+    const c = { all: rows.length, recent: 0, regulars: 0, casual: 0, dormant: 0, members: 0, dropins: 0 };
     for (const r of rows) {
+      const mark = regularOf(r.member);
+      if (mark === true) c.members++;
+      if (mark === false) c.dropins++;
       if (r.recentCount > 0) c.recent++;
       if (r.status === 'regular') c.regulars++;
       if (r.status === 'casual') c.casual++;
@@ -254,6 +274,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
     setFormActive(r.member.active !== false);
     setFormCanString(r.member.canString === true);
     setFormCanGift(r.member.canGift === true);
+    setFormRegular(regularOf(r.member));
     const alias = aliases.find((a) => a.appName.toLowerCase() === r.member.name.toLowerCase());
     setFormAlias(alias?.etransferName ?? '');
     setFormError('');
@@ -290,6 +311,8 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
             active: formActive,
             canString: formCanString,
             canGift: formCanGift,
+            // Only once someone has been marked: an unmarked person stays unmarked.
+            ...(formRegular !== null ? { regular: formRegular } : {}),
           }),
         });
         if (!res.ok) {
@@ -452,11 +475,22 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
     ['regulars', 'Regulars', counts.regulars],
     ['casual', 'Casual', counts.casual],
     ['dormant', 'Dormant', counts.dormant],
+    // Only once a club marks people (an import, or the sheet): two chips at 0
+    // on every roster would ask a question nobody has been asked.
+    ...(counts.members + counts.dropins > 0
+      ? ([['members', 'Members', counts.members], ['dropins', 'Drop-ins', counts.dropins]] as Array<[FilterKey, string, number]>)
+      : []),
   ];
 
   return (
     <div className="motion-fade" style={{ position: 'relative', minHeight: '60vh' }}>
       <AdminBackHeader onBack={onBack} title="Roster" />
+
+      {/* Bring a whole list in at once (docs/plans/roster-import.md). A way to
+          another sheet is a settings row, as everywhere in admin. */}
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <SettingsList rows={[{ icon: 'group_add', label: 'Import a list', meta: 'Paste or CSV', onClick: () => setImportOpen(true) }]} />
+      </div>
 
       {/* Search */}
       <div
@@ -619,6 +653,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                         ADMIN
                       </span>
                     )}
+                    {regularOf(r.member) === false && <StatusBadge variant="muted">Drop-in</StatusBadge>}
                     {r.hasAlias && (
                       <span className="material-icons" style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-faint)' }} title="E-transfer alias linked">
                         article_person
@@ -757,6 +792,24 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                   </div>
                 </Field>
 
+                {/* This club's mark, set by an import or here. Shown once the
+                    person has one, or to give them one. */}
+                <Field label="In this club">
+                  <div style={{ display: 'inline-flex', gap: 'var(--space-2)' }}>
+                    {([true, false] as const).map((value) => (
+                      <button
+                        key={String(value)}
+                        type="button"
+                        onClick={() => setFormRegular(value)}
+                        aria-pressed={formRegular === value}
+                        className={formRegular === value ? 'cc-btn cc-btn-primary' : 'cc-btn cc-btn-secondary'}
+                      >
+                        {value ? 'Member' : 'Drop-in'}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
                 <label className="cc-checkbox">
                   <input
                     type="checkbox"
@@ -852,6 +905,8 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
           </div>
         </BottomSheetBody>
       </BottomSheet>
+
+      <RosterImportSheet open={importOpen} onClose={() => setImportOpen(false)} onImported={() => void load()} />
 
       <ResetAccessSheet
         open={resetSheet.open}

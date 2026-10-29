@@ -52,6 +52,7 @@ import { containersOfScope, pkFieldOf, type ContainerName } from './containers';
 import { BPM_GROUP_ID, groupScope } from './groupScope';
 import {
   rosterNameKey,
+  looseNameKey,
   createGroup,
   readGroup,
   readMembership,
@@ -276,14 +277,6 @@ export async function backfillStatus(opts: { scanCap?: number } = {}): Promise<B
     scanCap,
   };
 }
-
-/**
- * ADVISORY ONLY — what a PERSON would read as the same name. Folds away
- * punctuation and spacing on top of the reservation key. Never used to claim
- * anything is blocked: the reservation does not fold these together, so they
- * coexist perfectly well.
- */
-const looseNameKey = (name: string) => rosterNameKey(name).replace(/[^\p{L}\p{N}]/gu, '');
 
 /**
  * One name as the RESERVATION sees it: the roster name, and whether the

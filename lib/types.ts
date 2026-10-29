@@ -400,6 +400,14 @@ export interface Membership {
    */
   canGift?: boolean;
   /**
+   * A MEMBER of this club rather than a drop-in (docs/plans/roster-import.md).
+   * Set by the roster import or the Roster sheet; the Roster page labels and
+   * filters by it, and "last week's list carries over" will read it. Not the
+   * Roster page's "Regulars" chip, which counts recent sessions. Additive;
+   * absent = not marked either way.
+   */
+  regular?: boolean;
+  /**
    * A widget pass minted BEFORE this instant is refused (lib/widget.ts).
    * Stamped by `DELETE /api/widget/token` when the person signs out of the
    * store app: sign-out clears the pass from the device, but a pass already
