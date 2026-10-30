@@ -190,11 +190,12 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
               );
             })}
           </div>
-          {run.style === 'custom' && (
+          {/* Opens when a hand edit leaves both styles (the motion system's Open). */}
+          <Collapse open={run.style === 'custom'} spaceAbove="var(--space-3)">
             <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
               Custom: your rules below no longer match either style.
             </p>
-          )}
+          </Collapse>
         </div>
       </section>
 

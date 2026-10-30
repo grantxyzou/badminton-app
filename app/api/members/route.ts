@@ -5,7 +5,7 @@ import { groupScope, BPM_GROUP_ID } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
-import { rosterMembers, adminAddToRoster, rosterPublicRows } from '@/lib/roster';
+import { rosterMembers, rosterPublicRows, addRosterName } from '@/lib/roster';
 import {
   rosterNameHolder,
   renameRosterMember,
@@ -13,11 +13,10 @@ import {
   addMembership,
   setMembershipRole,
   setMembershipCanGift,
+  setMembershipRegular,
   readMembership,
   RosterNameTakenError,
 } from '@/lib/groups';
-import { resolveActiveMemberId } from '@/lib/memberResolve';
-import { randomBytes } from 'crypto';
 import { normalizeAvatar } from '@/lib/memberAvatar';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
@@ -60,7 +59,10 @@ export async function GET(req: NextRequest) {
     const resources = entries.map((e) =>
       // `joinedAt` is when they joined THIS group: the dormant grace period
       // (lib/dormant.ts) runs from it. Admin-only; a non-admin returned above.
-      e.membership ? { ...e.member, active: e.membership.status === 'active', joinedAt: e.membership.joinedAt } : e.member,
+      // `regular` is this club's member-vs-drop-in mark (absent = unmarked).
+      e.membership
+        ? { ...e.member, active: e.membership.status === 'active', joinedAt: e.membership.joinedAt, regular: e.membership.regular }
+        : e.member,
     );
     // Strip pinHash even for admins — it's a strip-canary per CLAUDE.md.
     // Admin clients have no use for the scrypt hash; if they need to verify
@@ -87,90 +89,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name too long (max 50 chars)' }, { status: 400 });
     }
 
-    const container = getContainer('members');
-    const strip = publicMember;
-
-    // With groups on a name is unique PER GROUP, so the global scan below
-    // would refuse a name another club uses and, worse, reactivate that
-    // club's soft-deleted person onto this roster. `adminAddToRoster` owns
-    // the decision (rejoin the name's holder here, else a new person).
-    if (groupsOn()) {
-      const groupId = resolveGroupId(req);
-      if (await resolveActiveMemberId(groupId, trimmedName)) {
-        // SAY WHAT IS WRONG AND WHAT TO DO. A roster name is unique inside a
-        // club by construction, so this 409 is the ONLY moment the constraint
-        // is ever visible — it cannot be discovered in advance, because the
-        // clash cannot be created. "Member already exists" left an admin with
-        // no idea whether they had double-added the same person or hit a
-        // genuine name clash between two different ones, and no idea that a
-        // roster name is a per-club thing they are free to change.
-        return NextResponse.json(
-          {
-            error:
-              'Someone on this roster already goes by that name. Roster names have to be unique inside a group — give this person a distinct one, such as adding a last initial.',
-            code: 'roster_name_taken',
-          },
-          { status: 409 },
-        );
-      }
-      try {
-        const { member, created } = await adminAddToRoster(groupId, trimmedName);
-        return NextResponse.json(strip(member as unknown as Record<string, unknown>), { status: created ? 201 : 200 });
-      } catch (err) {
-        // THE LOST RACE lands here: `adminAddToRoster` reads the holder first,
-        // but two admins adding the same name concurrently means one of them
-        // loses `reserveRosterName` between that read and the create. Without
-        // this catch it fell through to the generic handler as a 500 — so the
-        // one path where the constraint is genuinely enforced was the one path
-        // that never explained itself, which is the opposite of this change's
-        // whole point.
-        if (!(err instanceof RosterNameTakenError)) throw err;
-        return NextResponse.json(
-          {
-            error:
-              'Someone on this roster already goes by that name. Roster names have to be unique inside a group — give this person a distinct one, such as adding a last initial.',
-            code: 'roster_name_taken',
-          },
-          { status: 409 },
-        );
-      }
+    // One owner for what a name means on this roster (lib/roster.ts), shared
+    // with the roster import so the add sheet and an imported list cannot
+    // disagree. With groups on a name is unique PER GROUP: a global scan would
+    // refuse a name another club uses and, worse, reactivate that club's
+    // soft-deleted person onto this roster.
+    const result = await addRosterName(resolveGroupId(req), trimmedName);
+    if (result.outcome === 'added' || result.outcome === 'rejoined') {
+      return NextResponse.json(publicMember(result.member as unknown as Record<string, unknown>), {
+        status: result.outcome === 'added' ? 201 : 200,
+      });
     }
-
-    // Check for existing member with same name (case-insensitive)
-    const { resources: existing } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name)',
-        parameters: [{ name: '@name', value: trimmedName }],
-      })
-      .fetchAll();
-
-    if (existing.length > 0) {
-      // If inactive, reactivate instead of creating duplicate
-      const inactive = existing.find((m: { active?: boolean }) => m.active === false);
-      if (inactive) {
-        const reactivated = { ...inactive, active: true };
-        const { resource } = await container.items.upsert(reactivated);
-        return NextResponse.json(publicMember(resource as Record<string, unknown> | undefined), { status: 200 });
-      }
+    if (!groupsOn()) {
       return NextResponse.json(
         { error: 'A member with that name already exists.', code: 'member_exists' },
         { status: 409 },
       );
     }
-
-    const member = {
-      id: randomBytes(12).toString('hex'),
-      name: trimmedName,
-      role: 'member' as const,
-      stage: undefined,
-      sessionCount: 0,
-      lastSeen: undefined,
-      createdAt: new Date().toISOString(),
-      active: true,
-    };
-
-    const { resource } = await container.items.create(member);
-    return NextResponse.json(publicMember(resource as Record<string, unknown> | undefined), { status: 201 });
+    // SAY WHAT IS WRONG AND WHAT TO DO. A roster name is unique inside a club
+    // by construction, so this 409 is the ONLY moment the constraint is ever
+    // visible — it cannot be discovered in advance, because the clash cannot
+    // be created. `taken` (a lost race between two admins) answers the same:
+    // it is the one path where the constraint is genuinely enforced, and it
+    // used to fall through as a 500.
+    return NextResponse.json(
+      {
+        error:
+          'Someone on this roster already goes by that name. Roster names have to be unique inside a group — give this person a distinct one, such as adding a last initial.',
+        code: 'roster_name_taken',
+      },
+      { status: 409 },
+    );
   } catch (error) {
     console.error('POST members error:', error);
     return NextResponse.json({ error: 'Failed to create member' }, { status: 500 });
@@ -290,6 +239,15 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.canGift === 'boolean') {
       updates.canGift = body.canGift;
       if (groupsOn() && !(await setMembershipCanGift(auth.groupId, id, body.canGift))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
+
+    // Member or drop-in, IN THIS CLUB (docs/plans/roster-import.md). Only the
+    // membership carries it — there is no flag-off copy, so with groups off
+    // the field is ignored rather than written somewhere nothing reads.
+    if (typeof body.regular === 'boolean' && groupsOn()) {
+      if (!(await setMembershipRegular(auth.groupId, id, body.regular))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
     }

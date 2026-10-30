@@ -72,11 +72,11 @@ Nobody in the club has asked for an app. Ian has not been asked yet. This is Gra
 
 Revised 2026-10-29: these rules ship as settings any club can choose, and Six Feathers is created in production with the "Members first" style. The order:
 - **A** (shipped): the model, "How your club runs", players per court, and money off.
-- **B**: paste a roster, marking members and drop-ins.
+- **B** (built): paste a roster or pick a `.csv`, marking members and drop-ins (`docs/plans/roster-import.md`).
 - **C**: claim a pre-added name.
 - **D**: last week's list carries over.
-- **E**: the members-first window, and the waitlist moving up.
-- **F**: guests.
+- **E**: the members-first window. The waitlist moving up into a freed spot shipped on its own (`docs/plans/waitlist-auto-promote.md`), so E is only the window now.
+- **F**: guests. Shipped as plus-one (`docs/plans/plus-one.md`, #751); what remains is checking that a guest written "Jenny (Josh)" maps onto it.
 
 The original order follows for the record.
 

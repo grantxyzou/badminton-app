@@ -84,8 +84,10 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // Advancing archives the week and is hard to reverse; a single stray tap
   // (it used to sit next to "Edit details") shouldn't trigger it.
   const [confirmingAdvance, setConfirmingAdvance] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
-  const [listCopied, setListCopied] = useState(false);
+  // `null` until the first copy, so the label fades only when it CHANGES —
+  // never on the console's first paint (the motion system's Appear).
+  const [shareCopied, setShareCopied] = useState<boolean | null>(null);
+  const [listCopied, setListCopied] = useState<boolean | null>(null);
   const { group } = useCurrentGroup();
   // A club that collects money outside the app has no bill to finalize or
   // share (lib/clubRun.ts). Hidden only on a known answer.
@@ -461,7 +463,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           title="Copy/share a sign-up invite link for the group chat."
         >
           <span className="material-icons fs-lg align-middle">share</span>
-          {shareCopied ? 'Copied ✓' : 'Share sign-up'}
+          <span key={String(shareCopied)} className={shareCopied === null ? undefined : 'motion-fade'}>{shareCopied ? 'Copied ✓' : 'Share sign-up'}</span>
         </button>
         <button
           type="button"
@@ -470,7 +472,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           title="Copy/share this week's numbered list for the group chat."
         >
           <span className="material-icons fs-lg align-middle">format_list_numbered</span>
-          {listCopied ? 'Copied ✓' : 'Copy list'}
+          <span key={String(listCopied)} className={listCopied === null ? undefined : 'motion-fade'}>{listCopied ? 'Copied ✓' : 'Copy list'}</span>
         </button>
         {onEdit && (
           <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
