@@ -1496,8 +1496,8 @@
       "loadError": "加载失败",
       "baseline": "你的起点",
       "levelWith": "与{month}持平",
-      "up": "▲ {delta}，自 {month}",
-      "down": "▼ {delta}，自 {month}"
+      "up": "<arrow>▲</arrow> {delta}，自 {month}",
+      "down": "<arrow>▼</arrow> {delta}，自 {month}"
     },
     "level": {
       "ofFive": "/ 5"

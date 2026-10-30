@@ -3,8 +3,9 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
-import LevelTrendChart, { plottable, phaseReading } from '../../components/stats/LevelTrendChart';
-import type { UseCheckIn, CheckInSnapshot } from '../../components/stats/useCheckIn';
+import LevelTrendChart, { plottableTrail, phaseReading } from '../../components/stats/LevelTrendChart';
+import type { LevelState } from '../../lib/useLevelRead';
+import type { TrailPoint } from '../../lib/levelRead';
 
 /**
  * Your level over time.
@@ -16,32 +17,27 @@ import type { UseCheckIn, CheckInSnapshot } from '../../components/stats/useChec
  * years of history.
  */
 
-function stub(snapshots: CheckInSnapshot[], status: UseCheckIn['status'] = 'ready'): UseCheckIn {
-  return {
-    snapshots,
-    status,
-    latest: snapshots[snapshots.length - 1],
-    previous: undefined,
-    open: false,
-    openFrom: () => {},
-    close: () => {},
-    reload: () => {},
-    onSaved: () => {},
-    savedAt: 0,
-  };
+/** The level read the chart is handed: the canonical level's trail
+ *  (`docs/plans/one-level.md`), ending on the current level. */
+function stub(trail: TrailPoint[], status: LevelState['status'] = 'ready'): LevelState {
+  return status === 'ready'
+    ? { status, data: { level: trail.length ? trail[trail.length - 1].level : null, trail } }
+    : { status, data: null };
 }
 
-function renderChart(checkIn: UseCheckIn) {
+function renderChart(level: LevelState) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages} timeZone="UTC">
-      <LevelTrendChart checkIn={checkIn} />
+      <LevelTrendChart level={level} onRetry={() => {}} />
     </NextIntlClientProvider>,
   );
 }
 
+const pt = (at: string, level: number): TrailPoint => ({ at, level });
+
 const TWO = [
-  { takenAt: '2026-04-10T00:00:00.000Z', overall: 2.5 },
-  { takenAt: '2026-08-10T00:00:00.000Z', overall: 2.9 },
+  pt('2026-04-10T00:00:00.000Z', 2.5),
+  pt('2026-08-10T00:00:00.000Z', 2.9),
 ];
 
 afterEach(cleanup);
@@ -100,8 +96,8 @@ describe('LevelTrendChart', () => {
     // Two nearly identical readings must NOT fill the plot. A 0.02 wobble drawn
     // as a mountain is the lying-empty-state rule wearing a chart.
     const flat = [
-      { takenAt: '2026-04-10T00:00:00.000Z', overall: 2.90 },
-      { takenAt: '2026-08-10T00:00:00.000Z', overall: 2.92 },
+      pt('2026-04-10T00:00:00.000Z', 2.90),
+      pt('2026-08-10T00:00:00.000Z', 2.92),
     ];
     const { container } = renderChart(stub(flat));
     const pts = container.querySelector('polyline')!.getAttribute('points')!.split(' ');
@@ -111,11 +107,11 @@ describe('LevelTrendChart', () => {
 
   it('orders by takenAt and keeps uneven gaps — time, not sessions attended', () => {
     const outOfOrder = [
-      { takenAt: '2026-08-10T00:00:00.000Z', overall: 3.0 },
-      { takenAt: '2026-01-10T00:00:00.000Z', overall: 2.0 },
-      { takenAt: '2026-02-10T00:00:00.000Z', overall: 2.5 },
+      pt('2026-08-10T00:00:00.000Z', 3.0),
+      pt('2026-01-10T00:00:00.000Z', 2.0),
+      pt('2026-02-10T00:00:00.000Z', 2.5),
     ];
-    const rows = plottable(outOfOrder);
+    const rows = plottableTrail(outOfOrder);
     expect(rows.map((r) => r.overall)).toEqual([2.0, 2.5, 3.0]);
 
     const { container } = renderChart(stub(outOfOrder));
@@ -130,10 +126,14 @@ describe('LevelTrendChart', () => {
     expect(xs[1] - xs[0]).toBeLessThan(xs[2] - xs[1]);
   });
 
-  it('drops a snapshot with no usable date or score rather than plotting a guess', () => {
-    expect(plottable([{ takenAt: undefined, overall: 3 }])).toHaveLength(0);
-    expect(plottable([{ takenAt: '2026-04-10T00:00:00.000Z', overall: null }])).toHaveLength(0);
-    expect(plottable([{ takenAt: 'not-a-date', overall: 3 }])).toHaveLength(0);
+  it('drops a point with no usable date or level rather than plotting a guess', () => {
+    expect(plottableTrail([pt('not-a-date', 3)])).toHaveLength(0);
+    expect(plottableTrail([pt('2026-04-10T00:00:00.000Z', Number.NaN)])).toHaveLength(0);
+  });
+
+  it('hides itself on a refused read, like the rest of the locked card', () => {
+    const { container } = renderChart(stub([], 'forbidden'));
+    expect(container.textContent).toBe('');
   });
 
   // ── The phase reading (Stats canvas, 2026-10-20) ──────────────────────────

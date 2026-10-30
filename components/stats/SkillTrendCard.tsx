@@ -8,6 +8,7 @@ import DimensionBars from './DimensionBars';
 import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Phase } from '@/lib/assessment';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import LevelTrendChart from './LevelTrendChart';
+import { useLevelRead } from '@/lib/useLevelRead';
 import type { UseCheckIn } from './useCheckIn';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -73,6 +74,9 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   const loadError = checkIn?.status === 'error';
   const format = useFormatter();
   const openRegister = useOpenStatsRegister();
+  // The chart's data: the canonical level and its trail, re-read on a saved
+  // check-in (`docs/plans/one-level.md`). Called before any early return.
+  const levelRead = useLevelRead(activeName, checkIn?.savedAt ?? 0);
 
   const latest = snapshots[snapshots.length - 1];
   const prev = snapshots.length > 1 ? snapshots[snapshots.length - 2] : undefined;
@@ -164,7 +168,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
        the two-button footer are gone. */
     <div className="space-y-3">
       <CardFrame header={header}>
-      {checkIn && <LevelTrendChart checkIn={checkIn} />}
+      {checkIn && <LevelTrendChart level={levelRead} onRetry={levelRead.reload} />}
 
       <div className="you-panel">
         <div className="you-panel-head">

@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### One level everywhere (2026-10-29)
+
+The app showed a member two different levels. Home's "Your level is climbing" card quoted the latest check-in's raw score (Lin: 3.4, "+0.8 since September"), while the Stats LEVEL tile showed the canonical level, the smoothed check-ins blended with logged games (3.1), under a caption that was the raw jump again ("▲ 0.8"), so nothing on screen added up. "Your level over time" plotted the raw scores (2.6 → 3.4). All three now show the canonical level, and every "since …" change is the step between two points of its new trail, the level as of each check-in, which `GET /api/stats/level` returns as an additive `trail` (`docs/plans/one-level.md`). Lin now reads 3.1, "+0.5 since September", on Home, the tile and the chart alike, and the chart's sentence reads its phase off the same 3.1.
+
+The LEVEL tile also lost its filled green slab, which in light mode read as a dark block on a pale page (Grant: "This colour... it feels odd"). It is now the same glass as the Games and Kudos tiles beside it, in both themes, and leads by colour alone: its number and a rise's ▲ are green, the "0.5 since September" words the same grey as the other captions, and a fall's ▼ stays grey.
+
 ### Google and Apple sign-in no longer depend on a deprecated library (2026-10-27)
 
 The library that ran the Google and Apple sign-in handshake, `arctic`, was deprecated by its author in July 2026, with no successor. The two calls it made for each provider (build the sign-in link, exchange the code) now live in `lib/oauth/`, about 150 lines over `fetch` and `node:crypto`. They send exactly the requests `arctic` sent, checked byte for byte against requests recorded from `arctic` before it was removed, and the package and its five `@oslojs` dependencies are gone. Nothing changes for players. The proof that counts is one real Google and one real Apple sign-in on production after the deploy.

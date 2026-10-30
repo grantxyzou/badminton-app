@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import StatCard from './StatCard';
 import type { UseCheckIn } from './useCheckIn';
 import { sharedRead } from '@/lib/sharedRead';
+import { lastChange } from '@/lib/levelRead';
+import { useLevelRead } from '@/lib/useLevelRead';
 
 
 /**
@@ -56,7 +57,6 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
   const t = useTranslations('stats.overview');
   const locale = useLocale();
 
-  const [level, setLevel] = useState<Tile<number | null>>(PENDING);
   const [games, setGames] = useState<Tile<number>>(PENDING);
   const [kudos, setKudos] = useState<Tile<number>>(PENDING);
 
@@ -70,24 +70,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     // through `sharedRead` because `YourRecordCard` and `KudosReceivedCard`
     // ask for the same two on this screen; the read is shared, the states
     // stay separate.
-    const get = (url: string) => sharedRead<Record<string, unknown>>(url) as Promise<{ level?: { level?: unknown }; games?: unknown[]; kudos?: { count?: number }[] }>;
-
-    get(`/api/stats/level?name=${n}`)
-      .then((d) => {
-        if (!live) return;
-        const raw = d?.level?.level;
-        setLevel({ status: 'ready', data: typeof raw === 'number' ? raw : null });
-      })
-      .catch((e: Error) => live && setLevel({ status: e?.message === '403' ? 'forbidden' : 'error', data: null }));
-
-    // The check-in history is NOT read here any more. The level number and its
-    // delta still come from different places — the canonical level folds games
-    // and legacy stage, while the "since April" comparison needs the raw
-    // history — but that history now arrives from `useCheckIn`, the single
-    // owner. This card, `SkillTrendCard` and the sheet were each reading
-    // `/api/assessments` separately and could disagree mid-flight. The
-    // independence that matters is preserved: a failed history still only
-    // degrades the CAPTION, never the number.
+    const get = (url: string) => sharedRead<Record<string, unknown>>(url) as Promise<{ games?: unknown[]; kudos?: { count?: number }[] }>;
 
     get(`/api/games?all=true&name=${n}`)
       .then((d) => live && setGames({ status: 'ready', data: (d?.games ?? []).length }))
@@ -111,6 +94,13 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     };
   }, [activeName]);
 
+  // The level and its "since …" come from ONE read (`docs/plans/one-level.md`):
+  // the number is the canonical level and the change is the step between the
+  // last two points of its trail, so the caption adds up to the number. The
+  // caption used to be the raw check-in jump (3.1 "▲ 0.8"). Re-read after a
+  // saved check-in, which moves both.
+  const level = useLevelRead(activeName, checkIn?.savedAt ?? 0);
+
   if (!activeName) return null;
 
   const monthOf = (iso?: string) => {
@@ -122,34 +112,29 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
 
   // ── Level tile ────────────────────────────────────────────────────────────
   let levelValue: string = t('noValue');
-  let levelCaption: string = t('takeCheckIn');
+  let levelCaption: ReactNode = t('takeCheckIn');
   if (level.status === 'error') {
     levelCaption = t('loadError');
   } else if (level.status === 'forbidden') {
     levelCaption = BLANK;
-  } else if (level.status === 'ready' && level.data !== null) {
-    levelValue = level.data.toFixed(1);
-    // Gate on the OWNER's status, never on a null-coalesced length: a failed
-    // history and an empty one both read as `[]`, and the caption below makes a
-    // claim about which it is.
-    const snaps = checkIn?.status === 'ready' ? checkIn.snapshots : [];
-    const prev = snaps.length > 1 ? snaps[snaps.length - 2] : undefined;
-    const latest = snaps[snaps.length - 1];
-    const month = monthOf(prev?.takenAt);
-    if (
-      prev &&
-      month &&
-      typeof prev.overall === 'number' &&
-      typeof latest?.overall === 'number'
-    ) {
-      const delta = latest.overall - prev.overall;
+  } else if (level.status === 'ready' && level.data && level.data.level !== null) {
+    levelValue = level.data.level.toFixed(1);
+    const change = lastChange(level.data.trail);
+    const month = monthOf(change?.since);
+    if (change && month) {
+      const delta = change.delta;
       // Never render "▲ 0.0" — a delta the member can't perceive reads as a
       // change that didn't happen.
       if (Math.abs(delta) < 0.05) {
         levelCaption = t('levelWith', { month });
       } else {
         const mag = Math.abs(delta).toFixed(1);
-        levelCaption = delta > 0 ? t('up', { delta: mag, month }) : t('down', { delta: mag, month });
+        // Only a rise's arrow is green: the caption is quiet grey like its
+        // neighbours', and green marks the one thing worth a glance. A fall
+        // stays grey — red here would call a dip a failure (Grant, 2026-10-29).
+        levelCaption = delta > 0
+          ? t.rich('up', { delta: mag, month, arrow: (c) => <span style={{ color: 'var(--accent)' }}>{c}</span> })
+          : t.rich('down', { delta: mag, month, arrow: (c) => <>{c}</> });
       }
     } else {
       // One snapshot (or no usable trend) — there is nothing to compare to yet.
@@ -159,8 +144,8 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     levelCaption = BLANK;
   }
 
-  // `StatCard`'s button path wraps label + value + unit + caption in ONE
-  // <button>, so an aria-label REPLACES all of it. A single literal would erase
+  // The level tile is ONE <button> wrapping label + value + unit + caption,
+  // so an aria-label REPLACES all of it. A single literal would erase
   // the number from the accessibility tree, and "no level yet" and "couldn't
   // load" are different facts — the same distinction the visible caption makes.
   // The chain mirrors the caption's tri-state arm for arm, INCLUDING loading.
@@ -174,7 +159,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
       ? t('levelAriaError')
       : level.status === 'loading'
         ? t('levelAriaLoading')
-        : level.status === 'ready' && level.data !== null
+        : level.status === 'ready' && level.data && level.data.level !== null
           ? t('levelAriaKnown', { level: levelValue })
           : t('levelAriaUnknown');
 
@@ -183,32 +168,32 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     // the space unevenly (the level's wrapper has none, the glass tiles have
     // 16px a side), so "equal" flex tiles measured 102/138/138px.
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)', alignItems: 'stretch' }}>
-      {/* Three equal tiles (Grant, 2026-09-14). The level still leads by its
-          filled accent material, not by being wider. */}
-      <div style={{ minWidth: 0 }}>
-        <StatCard
-          tone="accent"
-          size="tile"
-          label={t('level')}
-          value={levelValue}
-          unit={levelValue === t('noValue') ? undefined : t('ofFive')}
-          caption={levelCaption}
-          /**
-           * THE DOOR. This strip sits above the register switch, so it is the
-           * one element visible on all four registers — and it was purely
-           * presentational: it told every member the single most useful thing
-           * they could do ("Take a check-in") and gave them no way to do it.
-           *
-           * Tappable in EVERY state, the failed one included. Direct precedent
-           * in `components/stats/CLAUDE.md`: the kit card's "Your fit" row
-           * lives outside the error fork because opening a sheet is not a
-           * mutation, and on the day the read fails it is the only door.
-           */
-          // Not a door while signed out: the check-in it opens would be refused.
-          onClick={checkIn && level.status !== 'forbidden' ? () => checkIn.openFrom('strip') : undefined}
-          ariaLabel={checkIn && level.status !== 'forbidden' ? levelAria : undefined}
-        />
-      </div>
+      {/* Three equal tiles (Grant, 2026-09-14), one material. The level used
+          to lead by a filled green slab; in light mode that read as a dark
+          block on a pale page ("This colour... it feels odd", 2026-10-29). It
+          now leads by colour alone — its number and a rise's arrow in green —
+          the same in both themes. */}
+      <GlassTile
+        label={t('level')}
+        value={levelValue}
+        unit={levelValue === t('noValue') ? undefined : t('ofFive')}
+        caption={levelCaption}
+        valueColor="var(--accent)"
+        /**
+         * THE DOOR. This strip sits above the register switch, so it is the
+         * one element visible on all four registers — and it was purely
+         * presentational: it told every member the single most useful thing
+         * they could do ("Take a check-in") and gave them no way to do it.
+         *
+         * Tappable in EVERY state, the failed one included. Direct precedent
+         * in `components/stats/CLAUDE.md`: the kit card's "Your fit" row
+         * lives outside the error fork because opening a sheet is not a
+         * mutation, and on the day the read fails it is the only door.
+         */
+        // Not a door while signed out: the check-in it opens would be refused.
+        onClick={checkIn && level.status !== 'forbidden' ? () => checkIn.openFrom('strip') : undefined}
+        ariaLabel={checkIn && level.status !== 'forbidden' ? levelAria : undefined}
+      />
       <GlassTile
         label={t('games')}
         value={countText(games, t('noValue'))}
@@ -233,25 +218,24 @@ function countText(tile: Tile<number>, dash: string): string {
 function GlassTile({
   label,
   value,
+  unit,
   caption,
   valueColor = 'var(--text-primary)',
+  onClick,
+  ariaLabel,
 }: {
   label: string;
   value: ReactNode;
-  caption: string;
+  /** Small unit beside the value ("/5"). */
+  unit?: string;
+  caption: ReactNode;
   valueColor?: string;
+  /** Set, the whole tile is a button (the level tile's check-in door). */
+  onClick?: () => void;
+  ariaLabel?: string;
 }) {
-  return (
-    <div
-      className="glass-card p-4"
-      style={{
-        flex: 1,
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-1)',
-      }}
-    >
+  const inner = (
+    <>
       <span
         style={{
           fontSize: 'var(--fs-2xs)',
@@ -263,18 +247,47 @@ function GlassTile({
       >
         {label}
       </span>
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 'var(--fs-stat-lg)',
-          fontWeight: 700,
-          color: valueColor,
-          lineHeight: 1,
-        }}
-      >
-        {value}
+      <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--fs-stat-lg)',
+            fontWeight: 700,
+            color: valueColor,
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </span>
+        {unit && <span className="fs-sm" style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{unit}</span>}
       </span>
       <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{caption}</span>
+    </>
+  );
+  const layout: CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-1)',
+  };
+  if (onClick) {
+    return (
+      // `stat-card` lends the press scale (globals.css, the press ladder).
+      <button
+        type="button"
+        className="glass-card p-4 stat-card"
+        onClick={onClick}
+        aria-label={ariaLabel}
+        style={{ ...layout, width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <div className="glass-card p-4" style={layout}>
+      {inner}
     </div>
   );
 }

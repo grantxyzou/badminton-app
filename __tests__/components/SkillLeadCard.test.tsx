@@ -15,25 +15,28 @@ import { resetSharedReads } from '@/lib/sharedRead';
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 beforeEach(() => resetSharedReads());
 
-const snap = (takenAt: string, overall: number | null) => ({ takenAt, overall });
+/** A level read: the canonical level and its trail (`docs/plans/one-level.md`). */
+const pt = (at: string, level: number) => ({ at, level });
+const read = (...trail: { at: string; level: number }[]) => ({ level: trail.length ? trail[trail.length - 1].level : null, trail });
+const unrated = { level: null, trail: [] };
 const bands = (cohort: number, t = 5.8, p = 6.1, m = 5.4) => ({ cohort, minCohort: 3, dimensionMedians: { technical: t, physical: p, mental: m } });
 
 describe('leadFor — which line a member gets', () => {
   it('never rated, spread known: the group line', () => {
-    expect(leadFor([], bands(12))).toEqual({ kind: 'spread', cohort: 12, technical: 5.8, physical: 6.1, mental: 5.4 });
+    expect(leadFor(unrated, bands(12))).toEqual({ kind: 'spread', cohort: 12, technical: 5.8, physical: 6.1, mental: 5.4 });
   });
   it('never rated, below the cohort floor: "fewer than N", and no medians', () => {
-    expect(leadFor([], bands(2))).toEqual({ kind: 'first', min: 3 });
+    expect(leadFor(unrated, bands(2))).toEqual({ kind: 'first', min: 3 });
   });
   it('never rated, bands unreadable: the unrated line makes no claim about the group', () => {
-    expect(leadFor([], null)).toEqual({ kind: 'unrated' });
-    expect(leadFor([], bands(12, 5.8, 6.1, null as unknown as number))).toEqual({ kind: 'unrated' });
+    expect(leadFor(unrated, null)).toEqual({ kind: 'unrated' });
+    expect(leadFor(unrated, bands(12, 5.8, 6.1, null as unknown as number))).toEqual({ kind: 'unrated' });
   });
   it('rated once: the level, and that a second rating shows the change', () => {
-    expect(leadFor([snap('2026-09-01', 6.2)], null)).toEqual({ kind: 'once', level: 6.2, at: '2026-09-01' });
+    expect(leadFor(read(pt('2026-09-01', 6.2)), null)).toEqual({ kind: 'once', level: 6.2, at: '2026-09-01' });
   });
   it('rated twice: the level and the change since the PREVIOUS one, not the first', () => {
-    const lead = leadFor([snap('2026-07-01', 5.0), snap('2026-09-01', 5.9), snap('2026-10-01', 6.2)], null);
+    const lead = leadFor(read(pt('2026-07-01', 5.0), pt('2026-09-01', 5.9), pt('2026-10-01', 6.2)), null);
     expect(lead.kind).toBe('trend');
     if (lead.kind === 'trend') {
       expect(lead.level).toBe(6.2);
@@ -43,14 +46,13 @@ describe('leadFor — which line a member gets', () => {
     }
   });
   it('the trend line carries only the most recent six check-ins', () => {
-    const many = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => snap(`2026-0${i}-01`, 2 + i / 10));
-    const lead = leadFor(many, null);
+    const many = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => pt(`2026-0${i}-01`, 2 + i / 10));
+    const lead = leadFor(read(...many), null);
     expect(lead.kind === 'trend' && lead.points.length).toBe(6);
     expect(lead.kind === 'trend' && lead.points[0]).toBeCloseTo(2.3, 5);
   });
-  it('a snapshot with no overall cannot be quoted: it is skipped, never read as zero', () => {
-    expect(leadFor([snap('2026-09-01', null), snap('2026-10-01', 6.2)], null)).toEqual({ kind: 'once', level: 6.2, at: '2026-10-01' });
-    expect(leadFor([snap('2026-09-01', null)], null)).toEqual({ kind: 'plain' });
+  it('a level with no check-in under it (a saved-stage estimate) is the plain line, never a bare number', () => {
+    expect(leadFor({ level: 2.5, trail: [] }, bands(12))).toEqual({ kind: 'plain' });
   });
 });
 
@@ -87,7 +89,7 @@ function mockFetch(answer: (url: string) => { status: number; body: unknown } | 
 
 describe('<SkillLeadCard />', () => {
   it('renders the trend line for a member rated twice, from the two reads it is allowed', async () => {
-    const calls = mockFetch((u) => (u.includes('/api/assessments') ? { status: 200, body: { assessments: [snap('2026-09-03T10:00:00Z', 5.9), snap('2026-10-01T10:00:00Z', 6.2)] } } : undefined));
+    const calls = mockFetch((u) => (u.includes('/api/stats/level') ? { status: 200, body: { level: read(pt('2026-09-03T10:00:00Z', 5.9), pt('2026-10-01T10:00:00Z', 6.2)) } } : undefined));
     wrap(<SkillLeadCard name="Lin" club="BPM Badminton" onOpen={() => {}} />);
     expect(await screen.findByText('Your level is climbing')).toBeTruthy();
     expect(screen.getByText('6.2')).toBeTruthy();
@@ -100,14 +102,14 @@ describe('<SkillLeadCard />', () => {
   });
 
   it('a drop reads as a dip with a minus, never as a rise', async () => {
-    mockFetch((u) => (u.includes('/api/assessments') ? { status: 200, body: { assessments: [snap('2026-09-03T10:00:00Z', 3.4), snap('2026-10-01T10:00:00Z', 3.1)] } } : undefined));
+    mockFetch((u) => (u.includes('/api/stats/level') ? { status: 200, body: { level: read(pt('2026-09-03T10:00:00Z', 3.4), pt('2026-10-01T10:00:00Z', 3.1)) } } : undefined));
     wrap(<SkillLeadCard name="Lin" club="BPM Badminton" onOpen={() => {}} />);
     expect(await screen.findByText('Your level dipped a little')).toBeTruthy();
     expect(screen.getByText('−0.3 since September')).toBeTruthy();
   });
 
   it('rated once: the level and the ask for a second check-in', async () => {
-    mockFetch((u) => (u.includes('/api/assessments') ? { status: 200, body: { assessments: [snap('2026-09-03T10:00:00Z', 3.2)] } } : undefined));
+    mockFetch((u) => (u.includes('/api/stats/level') ? { status: 200, body: { level: read(pt('2026-09-03T10:00:00Z', 3.2)) } } : undefined));
     wrap(<SkillLeadCard name="Lin" club="BPM Badminton" onOpen={() => {}} />);
     expect(await screen.findByText('One more check-in to see it move')).toBeTruthy();
     expect(screen.getByText('3.2')).toBeTruthy();
@@ -115,7 +117,7 @@ describe('<SkillLeadCard />', () => {
   });
 
   it('never rated: the club\'s average levels by name, and "Add yours"', async () => {
-    mockFetch((u) => u.includes('/api/assessments') ? { status: 200, body: { assessments: [] } }
+    mockFetch((u) => u.includes('/api/stats/level') ? { status: 200, body: { level: unrated } }
       : u.includes('/api/stats/club/bands') ? { status: 200, body: bands(12, 3.1, 3.4, 2.9) } : undefined);
     wrap(<SkillLeadCard name="Lin" club="BPM Badminton" onOpen={() => {}} />);
     expect(await screen.findByText("This is BPM Badminton's average skill level")).toBeTruthy();
@@ -125,7 +127,7 @@ describe('<SkillLeadCard />', () => {
   });
 
   it('below the cohort floor: no bars, no medians', async () => {
-    mockFetch((u) => u.includes('/api/assessments') ? { status: 200, body: { assessments: [] } }
+    mockFetch((u) => u.includes('/api/stats/level') ? { status: 200, body: { level: unrated } }
       : u.includes('/api/stats/club/bands') ? { status: 200, body: bands(2, 3.1, 3.4, 2.9) } : undefined);
     wrap(<SkillLeadCard name="Lin" club="BPM Badminton" onOpen={() => {}} />);
     expect(await screen.findByText('Fewer than 3 people in BPM Badminton have rated so far')).toBeTruthy();
@@ -134,7 +136,7 @@ describe('<SkillLeadCard />', () => {
   });
 
   it('a failed history read renders the plain line — never "unrated", never a number', async () => {
-    mockFetch((u) => (u.includes('/api/assessments') ? { status: 500, body: { error: 'load_failed' } } : undefined));
+    mockFetch((u) => (u.includes('/api/stats/level') ? { status: 500, body: { error: 'load_failed' } } : undefined));
     wrap(<SkillLeadCard name="Lin" club="BPM Badminton" onOpen={() => {}} />);
     expect(await screen.findByText('Your level, trend and tips live in Stats')).toBeTruthy();
     expect(screen.queryByText(/average skill level/)).toBeNull();
@@ -142,7 +144,7 @@ describe('<SkillLeadCard />', () => {
   });
 
   it('the tap records a Stats open led from Home, then opens Stats', async () => {
-    const calls = mockFetch((u) => (u.includes('/api/assessments') ? { status: 200, body: { assessments: [snap('2026-09-01', 6.2)] } } : undefined));
+    const calls = mockFetch((u) => (u.includes('/api/stats/level') ? { status: 200, body: { level: read(pt('2026-09-01', 6.2)) } } : undefined));
     const onOpen = vi.fn();
     wrap(<SkillLeadCard name="Lin" club="BPM Badminton" onOpen={onOpen} />);
     fireEvent.click(await screen.findByRole('button'));

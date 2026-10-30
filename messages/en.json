@@ -1508,8 +1508,8 @@
       "loadError": "Couldn't load",
       "baseline": "Your baseline",
       "levelWith": "level with {month}",
-      "up": "▲ {delta} since {month}",
-      "down": "▼ {delta} since {month}"
+      "up": "<arrow>▲</arrow> {delta} since {month}",
+      "down": "<arrow>▼</arrow> {delta} since {month}"
     },
     "level": {
       "ofFive": "/ 5"

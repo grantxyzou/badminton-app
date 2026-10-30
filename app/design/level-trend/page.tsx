@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import LevelTrendChart from '@/components/stats/LevelTrendChart';
-import type { UseCheckIn, CheckInSnapshot } from '@/components/stats/useCheckIn';
+import type { LevelState } from '@/lib/useLevelRead';
+import type { TrailPoint } from '@/lib/levelRead';
 
 /* ────────────────────────────────────────────────────────────────────────
    Level trend — every state on one screen.
@@ -18,22 +19,15 @@ import type { UseCheckIn, CheckInSnapshot } from '@/components/stats/useCheckIn'
    member with years of history.
 ──────────────────────────────────────────────────────────────────────── */
 
-function stub(snapshots: CheckInSnapshot[], status: UseCheckIn['status'] = 'ready'): UseCheckIn {
-  return {
-    snapshots,
-    status,
-    latest: snapshots[snapshots.length - 1],
-    previous: undefined,
-    open: false,
-    openFrom: () => {},
-    close: () => {},
-    reload: () => {},
-    onSaved: () => {},
-    savedAt: 0,
-  };
+function stub(trail: TrailPoint[], status: LevelState['status'] = 'ready'): LevelState {
+  return status === 'ready'
+    ? { status, data: { level: trail.length ? trail[trail.length - 1].level : null, trail } }
+    : { status, data: null };
 }
 
-const at = (iso: string, overall: number): CheckInSnapshot => ({ takenAt: `${iso}T00:00:00.000Z`, overall });
+const noop = () => {};
+
+const at = (iso: string, level: number): TrailPoint => ({ at: `${iso}T00:00:00.000Z`, level });
 
 /** Two check-ins four months apart — the minimum that is honestly a line. */
 const LESS = [at('2026-04-10', 2.5), at('2026-08-10', 2.9)];
@@ -85,10 +79,9 @@ export default function LevelTrendSpecimen() {
         <Link href="/design" className="fs-sm" style={{ color: 'var(--accent)' }}>← Design</Link>
         <h1 className="bpm-h1" style={{ margin: 0 }}>Level trend</h1>
         <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', maxWidth: '62ch' }}>
-          The real <code>LevelTrendChart</code> with fabricated data. It plots{' '}
-          <code>(takenAt, overall)</code> straight off the stored check-ins — no new
-          container, no new endpoint, and no <code>getCanonicalLevel</code>, which
-          answers with a current value rather than a series.
+          The real <code>LevelTrendChart</code> with fabricated data. It plots the
+          canonical level as of each check-in (<code>CanonicalLevel.trail</code>), ending
+          on the level the Stats tile shows.
         </p>
       </header>
 
@@ -96,42 +89,42 @@ export default function LevelTrendSpecimen() {
         title="More data"
         note="A year of real-ish use: uneven gaps, a dip in October, a plateau in February, a recovery through spring. The x-axis is TIME, so the three-month gap over winter is visibly wider than the three-week one before it — a chart indexed on sessions attended would space these evenly and quietly say something about turning up rather than about improving."
       >
-        <LevelTrendChart checkIn={stub(MORE)} />
+        <LevelTrendChart level={stub(MORE)} onRetry={noop} />
       </Case>
 
       <Case
         title="Less data"
         note="Two check-ins, four months apart. The minimum that is honestly a line."
       >
-        <LevelTrendChart checkIn={stub(LESS)} />
+        <LevelTrendChart level={stub(LESS)} onRetry={noop} />
       </Case>
 
       <Case
         title="One check-in — the invitation"
         note="The point, no line, and the sentence that makes the case for a second check-in structurally rather than by asking. It states a fact about the data, not a demand on the person: no week count, no 'overdue', nothing that scolds. Drawing a line through one point would be a claim about a trend that does not exist yet."
       >
-        <LevelTrendChart checkIn={stub([at('2026-08-10', 2.9)])} />
+        <LevelTrendChart level={stub([at('2026-08-10', 2.9)])} onRetry={noop} />
       </Case>
 
       <Case
         title="Empty — no check-in at all"
         note="Same reserved height as a drawn chart, in the muted EMPTY voice rather than the alert voice. It used to render nothing and collapse the box, which made everything below it jump on each read. No axis is drawn — an axis with no data on it is furniture — but the space is still held."
       >
-        <LevelTrendChart checkIn={stub([])} />
+        <LevelTrendChart level={stub([])} onRetry={noop} />
       </Case>
 
       <Case
         title="Error — the read failed"
         note="THE CASE THIS COMPONENT EXISTS TO GET RIGHT. A failed read and an empty history both arrive as an empty array. Rendering the one-check-in copy here would tell a member with years of history that they have none — the lying-empty-state rule, produced by the collapse itself. So the status is tri-state and this branch is a loud failure, never a quiet zero."
       >
-        <LevelTrendChart checkIn={stub([], 'error')} />
+        <LevelTrendChart level={stub([], 'error')} onRetry={noop} />
       </Case>
 
       <Case
         title="Flat — two readings 0.02 apart"
         note="The y-axis is pinned to the 1–5 level scale and never scales to the data. Auto-scaling would turn this into a dramatic climb, which is the same dishonesty as a truncated bar chart."
       >
-        <LevelTrendChart checkIn={stub(FLAT)} />
+        <LevelTrendChart level={stub(FLAT)} onRetry={noop} />
       </Case>
     </div>
   );

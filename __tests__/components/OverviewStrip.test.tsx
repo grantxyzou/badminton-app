@@ -25,7 +25,14 @@ function mockFetchByUrl(handlers: ReadonlyArray<readonly [string, () => Promise<
   );
 }
 
+/** The caption element whose whole text is `text` (the arrow is its own span). */
+const caption = (text: string) =>
+  screen.queryAllByText((_, el) => el?.tagName === 'SPAN' && el.textContent === text)[0] ?? null;
 const OK_LEVEL = ['/api/stats/level', () => jsonResponse({ level: { level: 2.9 } })] as const;
+/** The level read with its trail (`docs/plans/one-level.md`): the caption is
+ *  the step between its last two points. */
+const levelWithTrail = (level: number, trail: Array<[string, number]>) =>
+  ['/api/stats/level', () => jsonResponse({ level: { level, trail: trail.map(([at, l]) => ({ at, level: l })) } })] as const;
 const OK_TREND = [
   '/api/assessments',
   () =>
@@ -173,14 +180,42 @@ describe('OverviewStrip', () => {
   });
 
   // ── Delta captions ──────────────────────────────────────────────────────
-  it('renders an up delta against the previous snapshot', async () => {
-    mockFetchByUrl([OK_LEVEL, OK_GAMES, OK_KUDOS]);
+  it('renders an up delta against the level at the previous check-in', async () => {
+    mockFetchByUrl([levelWithTrail(2.9, [['2026-04-10T00:00:00.000Z', 2.5], ['2026-08-10T00:00:00.000Z', 2.9]]), OK_GAMES, OK_KUDOS]);
     renderStrip('Lin', stubCheckIn([
       { takenAt: '2026-04-10T00:00:00.000Z', overall: 2.5 },
       { takenAt: '2026-08-10T00:00:00.000Z', overall: 2.9 },
     ]));
     await waitFor(() => expect(screen.getByText(/since April/)).toBeTruthy());
-    expect(screen.getByText(/▲ 0.4 since April/)).toBeTruthy();
+    expect(caption('▲ 0.4 since April')).toBeTruthy();
+  });
+
+  it('the change adds up to the number shown: it is the level trail, never the raw check-in jump', async () => {
+    // Lin, 2026-10-29: check-ins 2.6 → 3.4, canonical level 3.1. The tile
+    // said 3.1 "▲ 0.8"; 0.8 is the raw jump and nothing on screen was 2.3.
+    mockFetchByUrl([levelWithTrail(3.1, [['2026-09-24T00:00:00.000Z', 2.6], ['2026-10-24T00:00:00.000Z', 3.1]]), OK_GAMES, OK_KUDOS]);
+    renderStrip('Lin', stubCheckIn([
+      { takenAt: '2026-09-24T00:00:00.000Z', overall: 2.64 },
+      { takenAt: '2026-10-24T00:00:00.000Z', overall: 3.43 },
+    ]));
+    await waitFor(() => expect(screen.getByText('3.1')).toBeTruthy());
+    expect(caption('▲ 0.5 since September')).toBeTruthy();
+    expect(screen.queryByText(/0\.8/)).toBeNull();
+  });
+
+  it('only a rise\'s arrow is green; the words stay the muted grey of the other captions', async () => {
+    mockFetchByUrl([levelWithTrail(3.1, [['2026-09-24T00:00:00.000Z', 2.6], ['2026-10-24T00:00:00.000Z', 3.1]]), OK_GAMES, OK_KUDOS]);
+    renderStrip('Lin', stubCheckIn([]));
+    await waitFor(() => expect(screen.getByText('▲')).toBeTruthy());
+    expect(screen.getByText('▲').getAttribute('style')).toContain('var(--accent)');
+    expect(caption('▲ 0.5 since September')!.getAttribute('style')).toContain('var(--text-muted)');
+  });
+
+  it('a fall\'s arrow stays grey: a dip is not a failure', async () => {
+    mockFetchByUrl([levelWithTrail(2.9, [['2026-09-24T00:00:00.000Z', 3.2], ['2026-10-24T00:00:00.000Z', 2.9]]), OK_GAMES, OK_KUDOS]);
+    renderStrip('Lin', stubCheckIn([]));
+    await waitFor(() => expect(caption('▼ 0.3 since September')).toBeTruthy());
+    expect(screen.getByText(/▼/).getAttribute('style') ?? '').not.toContain('var(--accent)');
   });
 
   it('says "Your baseline" on a first snapshot rather than inventing a delta', async () => {
@@ -190,7 +225,7 @@ describe('OverviewStrip', () => {
   });
 
   it('never renders a 0.0 delta — an imperceptible change reads as level', async () => {
-    mockFetchByUrl([OK_LEVEL, OK_GAMES, OK_KUDOS]);
+    mockFetchByUrl([levelWithTrail(2.9, [['2026-04-10T00:00:00.000Z', 2.92], ['2026-08-10T00:00:00.000Z', 2.9]]), OK_GAMES, OK_KUDOS]);
     renderStrip('Lin', stubCheckIn([
       { takenAt: '2026-04-10T00:00:00.000Z', overall: 2.92 },
       { takenAt: '2026-08-10T00:00:00.000Z', overall: 2.9 },

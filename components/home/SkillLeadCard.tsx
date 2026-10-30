@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { sharedFetch } from '@/lib/sharedRead';
 import { recordEngagement } from '@/lib/engagement';
 import { useRevealReady } from '@/components/primitives/Reveal';
+import { lastChange, levelPath, parseLevelRead, type LevelRead } from '@/lib/levelRead';
 
 /**
  * The lead's height at 400px, measured 2026-10-15 on the tallest state (the
@@ -16,8 +17,7 @@ import { useRevealReady } from '@/components/primitives/Reveal';
  */
 export const SKILL_LEAD_HEIGHT = 160;
 
-/** A self-rating is 1–5: every skill has five anchors (`lib/assessment.ts`),
- *  and the overall and dimension scores are averages of those ratings. */
+/** The level is 1–5, the self-assessment scale (`lib/level.ts`). */
 const LEVEL_MAX = 5;
 
 /** The trend line draws at most this many check-ins; more is a smear at 124px. */
@@ -38,10 +38,15 @@ const SPARK_POINTS = 6;
  *   - never rated: the club's average levels as bars, and "Add yours";
  *     below the cohort floor, "fewer than N" and no bars;
  *   - rated once: the level out of 5 and a dotted line to the next check-in;
- *   - rated twice or more: the level, the change since the previous one, and
- *     a line through the recent check-ins.
+ *   - rated twice or more: the level, the change since the previous check-in,
+ *     and a line through the recent ones.
  * A read that fails renders the plain state — no number — rather than the
  * unrated one, because a failed read is not evidence of anything.
+ *
+ * THE NUMBER IS THE CANONICAL LEVEL (`docs/plans/one-level.md`), the one the
+ * Stats tile shows, and every point of the line is that level as of a
+ * check-in (`CanonicalLevel.trail`). It was the latest check-in's raw score,
+ * so Home said 3.4 and Stats 3.1 for the same member.
  *
  * Both reads go through `sharedFetch`, so Stats, opened a tap later, pays
  * nothing extra for the same two requests. The tap stamps
@@ -57,28 +62,28 @@ type Lead =
   | { kind: 'trend'; level: number; delta: number; since: string; points: number[] }
   | { kind: 'plain' };
 
-interface Snapshot { takenAt: string; overall: number | null }
 interface Bands { cohort: number; minCohort: number; dimensionMedians: Record<'technical' | 'physical' | 'mental', number | null> }
 
 function isNum(v: unknown): v is number { return typeof v === 'number' && Number.isFinite(v); }
 
-/** The lead for a member whose history has been read; the bands only matter
+/** The lead for a member whose level has been read; the bands only matter
  *  when there is none. Exported for its own test — the card is the thin part. */
-export function leadFor(snapshots: Snapshot[], bands: Bands | null): Lead {
-  const rated = snapshots.filter((s) => isNum(s.overall));
-  if (rated.length >= 2) {
-    const latest = rated[rated.length - 1];
-    const previous = rated[rated.length - 2];
+export function leadFor(read: LevelRead, bands: Bands | null): Lead {
+  const trail = read.trail;
+  const change = lastChange(trail);
+  if (change) {
     return {
       kind: 'trend',
-      level: latest.overall as number,
-      delta: (latest.overall as number) - (previous.overall as number),
-      since: previous.takenAt,
-      points: rated.slice(-SPARK_POINTS).map((s) => s.overall as number),
+      level: trail[trail.length - 1].level,
+      delta: change.delta,
+      since: change.since,
+      points: trail.slice(-SPARK_POINTS).map((p) => p.level),
     };
   }
-  if (rated.length === 1) return { kind: 'once', level: rated[0].overall as number, at: rated[0].takenAt };
-  if (snapshots.length > 0) return { kind: 'plain' }; // rated, but no overall to quote
+  if (trail.length === 1) return { kind: 'once', level: trail[0].level, at: trail[0].at };
+  // A level with no check-in under it (an estimate from a saved stage) has no
+  // history to draw, and quoting it alone would be a number without a source.
+  if (isNum(read.level)) return { kind: 'plain' };
   if (!bands) return { kind: 'unrated' };
   if (bands.cohort < bands.minCohort) return { kind: 'first', min: bands.minCohort };
   const m = bands.dimensionMedians;
@@ -150,8 +155,6 @@ function NextLine() {
   );
 }
 
-/** The card's first read, named once: Home primes it before the card mounts. */
-export const assessmentsPath = (name: string) => `/api/assessments?name=${encodeURIComponent(name)}`;
 
 export default function SkillLeadCard({ name, club, onOpen }: { name: string; club: string; onOpen: () => void }) {
   const t = useTranslations('home.skillLead');
@@ -163,12 +166,11 @@ export default function SkillLeadCard({ name, club, onOpen }: { name: string; cl
     const q = encodeURIComponent(name);
     (async () => {
       try {
-        const res = await sharedFetch(assessmentsPath(name));
+        const res = await sharedFetch(levelPath(name));
         if (!res.ok) throw new Error(String(res.status));
-        const d = (await res.json()) as { assessments?: Snapshot[] };
-        const snapshots = Array.isArray(d.assessments) ? d.assessments : [];
+        const read = parseLevelRead(await res.json());
         let bands: Bands | null = null;
-        if (snapshots.length === 0) {
+        if (!isNum(read.level)) {
           // The spread is only worth a request for someone with no history.
           // A failed bands read leaves `bands` null: the unrated state makes
           // no claim about the group, so it is honest without one.
@@ -177,7 +179,7 @@ export default function SkillLeadCard({ name, club, onOpen }: { name: string; cl
             if (b.ok) bands = (await b.json()) as Bands;
           } catch { /* unrated state, no number */ }
         }
-        if (!cancelled) setLead(leadFor(snapshots, bands));
+        if (!cancelled) setLead(leadFor(read, bands));
       } catch {
         if (!cancelled) setLead({ kind: 'plain' });
       }
