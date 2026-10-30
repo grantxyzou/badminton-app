@@ -228,26 +228,34 @@ export default function RosterImportSheet({
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Import a list</span>
       </BottomSheetHeader>
       <BottomSheetBody>
+        {/* Each step replaces the last inside the same sheet: keyed so the
+            swap replays the fade (the motion system's Appear). */}
         {step.at === 'input' && (
-          <div className="flex flex-col gap-4">
-            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
-              Paste names one per line, a numbered list from a group chat, or cells copied from a spreadsheet.
-              Only names are kept — phone and email columns are left out.
+          <div key="input" className="motion-fade flex flex-col gap-4">
+            <label className="flex flex-col gap-2">
+              <span className="section-label-muted">Your list</span>
+              <textarea
+                value={text}
+                onChange={(e) => { setText(e.target.value); setSource('paste'); setFileName(null); }}
+                rows={8}
+                placeholder={'1. Lin\n2. Viktor\n3. Carolina\n\nWaiting list\n1. Kento'}
+                disabled={busy}
+              />
+            </label>
+            <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              One name per line, a numbered list from a group chat, or cells copied from a spreadsheet. Only names are
+              kept — phone and email columns are left out.
             </p>
-            <textarea
-              value={text}
-              onChange={(e) => { setText(e.target.value); setSource('paste'); setFileName(null); }}
-              rows={8}
-              placeholder={'1. Lin\n2. Viktor\n3. Carolina\n\nWaiting list\n1. Kento'}
-              aria-label="Your list"
-              disabled={busy}
-            />
             <div className="flex items-center gap-3">
               <button type="button" className="cc-btn cc-btn-secondary" onClick={() => fileRef.current?.click()} disabled={busy}>
                 <span className="material-icons icon-sm" aria-hidden="true">format_list_bulleted</span>
                 Choose a .csv file
               </button>
-              {fileName && <span className="fs-sm" style={{ color: 'var(--text-muted)', minWidth: 0 }}>{fileName}</span>}
+              {fileName && (
+                <span key={fileName} className="motion-fade fs-sm" style={{ color: 'var(--text-muted)', minWidth: 0 }}>
+                  {fileName}
+                </span>
+              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -257,42 +265,40 @@ export default function RosterImportSheet({
               />
             </div>
             {error && <p className="field-error" role="alert">{error}</p>}
-            <div className="flex justify-end gap-3">
-              <button type="button" className="cc-btn cc-btn-ghost" onClick={close} disabled={busy}>Cancel</button>
-              <button
-                type="button"
-                className="cc-btn cc-btn-primary"
-                onClick={() => void check()}
-                disabled={busy || !online || text.trim() === ''}
-              >
-                {busy ? 'Checking…' : 'Check the list'}
-              </button>
-            </div>
+            <button
+              type="button"
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              onClick={() => void check()}
+              disabled={busy || !online || text.trim() === ''}
+            >
+              {busy ? 'Checking…' : 'Check the list'}
+            </button>
           </div>
         )}
 
         {step.at === 'preview' && (
-          <div className="flex flex-col gap-4">
-            <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>{countLine(step.rows)}</p>
-            {(step.parsed.ignoredColumns.length > 0 || step.parsed.guests.length > 0 || step.parsed.skippedLines.length > 0) && (
-              <ul className="fs-sm flex flex-col gap-1" style={{ margin: 0, paddingLeft: 'var(--space-6)', color: 'var(--text-muted)' }}>
-                {step.parsed.ignoredColumns.length > 0 && (
-                  <li>Left out: {step.parsed.ignoredColumns.join(', ')}</li>
-                )}
-                {step.parsed.guests.length > 0 && (
-                  <li>
-                    Guests, not imported: {step.parsed.guests.map((g) => `${g.name} (${g.host})`).join(', ')}. Their host
-                    brings them as a plus-one.
-                  </li>
-                )}
-                {step.parsed.skippedLines.length > 0 && (
-                  <li>
-                    {step.parsed.skippedLines.length === 1 ? 'One line' : `${step.parsed.skippedLines.length} lines`} didn’t
-                    look like a name: {step.parsed.skippedLines.slice(0, 3).map((l) => `“${l}”`).join(', ')}
-                    {step.parsed.skippedLines.length > 3 ? '…' : ''}
-                  </li>
-                )}
-              </ul>
+          <div key="preview" className="motion-fade flex flex-col gap-4">
+            {/* Re-read on every tick or toggle: keyed, so a new count fades in. */}
+            <p key={countLine(step.rows)} className="motion-fade fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>
+              {countLine(step.rows)}
+            </p>
+            {step.parsed.ignoredColumns.length > 0 && (
+              <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                Left out: {step.parsed.ignoredColumns.join(', ')}
+              </p>
+            )}
+            {step.parsed.guests.length > 0 && (
+              <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                Guests, not imported: {step.parsed.guests.map((g) => `${g.name} (${g.host})`).join(', ')}. Their host
+                brings them as a plus-one.
+              </p>
+            )}
+            {step.parsed.skippedLines.length > 0 && (
+              <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                {step.parsed.skippedLines.length === 1 ? 'One line' : `${step.parsed.skippedLines.length} lines`} didn’t
+                look like a name: {step.parsed.skippedLines.slice(0, 3).map((l) => `“${l}”`).join(', ')}
+                {step.parsed.skippedLines.length > 3 ? '…' : ''}
+              </p>
             )}
             <ul className="flex flex-col gap-2" style={{ margin: 0, padding: 0, listStyle: 'none' }} aria-label="Names in your list">
               {step.rows.map((row, i) => {
@@ -302,6 +308,7 @@ export default function RosterImportSheet({
                   row.kind === 'similar' ? row.include
                   : alreadyHere ? step.marksStored
                   : row.kind !== 'duplicate' && row.kind !== 'invalid';
+                const note = noteFor(row);
                 return (
                   <li key={`${i}:${row.name}`}>
                     <ListRow
@@ -324,10 +331,12 @@ export default function RosterImportSheet({
                           {row.name || '—'}
                         </span>
                       }
-                      subtitle={noteFor(row)}
+                      subtitle={<span key={note} className="motion-fade">{note}</span>}
                       trailing={
+                        // A "looks like" row grows its toggle when ticked: faded in,
+                        // not snapped. Every other row has it from the start.
                         markable && (
-                          <div className="segment-control flex" role="radiogroup" aria-label={`${row.name}: member or drop-in`}>
+                          <div className={`segment-control flex${row.kind === 'similar' ? ' motion-fade' : ''}`} role="radiogroup" aria-label={`${row.name}: member or drop-in`}>
                             {([true, false] as const).map((value) => (
                               <button
                                 key={String(value)}
@@ -350,13 +359,15 @@ export default function RosterImportSheet({
               })}
             </ul>
             {error && <p className="field-error" role="alert">{error}</p>}
-            <div className="flex justify-end gap-3">
-              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setStep({ at: 'input' })} disabled={busy}>
+            {/* Two choices side by side, as in the bench's remove confirmation. */}
+            <div className="flex gap-3">
+              <button type="button" className="cc-btn cc-btn-ghost" style={{ flex: 1 }} onClick={() => setStep({ at: 'input' })} disabled={busy}>
                 Back
               </button>
               <button
                 type="button"
                 className="cc-btn cc-btn-primary"
+                style={{ flex: 1 }}
                 onClick={() => void runImport()}
                 disabled={busy || !online || picked === 0}
               >
@@ -367,7 +378,7 @@ export default function RosterImportSheet({
         )}
 
         {step.at === 'results' && (
-          <div className="flex flex-col gap-4">
+          <div key="results" className="motion-fade flex flex-col gap-4">
             <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>
               Most of the list is in. These need another look:
             </p>
@@ -383,12 +394,10 @@ export default function RosterImportSheet({
                   </li>
                 ))}
             </ul>
-            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+            <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
               Importing the same list again adds only what’s missing.
             </p>
-            <div className="flex justify-end">
-              <button type="button" className="cc-btn cc-btn-primary" onClick={close}>Done</button>
-            </div>
+            <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" onClick={close}>Done</button>
           </div>
         )}
       </BottomSheetBody>

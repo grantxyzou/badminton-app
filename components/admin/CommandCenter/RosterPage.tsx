@@ -531,6 +531,9 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
               key={k}
               type="button"
               onClick={() => setFilter(k)}
+              // The member/drop-in chips arrive with the first mark (an import):
+              // they fade in rather than pop into the row.
+              className={k === 'members' || k === 'dropins' ? 'motion-fade' : undefined}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
