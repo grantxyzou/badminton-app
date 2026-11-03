@@ -8,7 +8,7 @@ none.
 
 | | Player (member) | Stringer | Admin |
 |---|---|---|---|
-| How you get it | Sign up / be added to the roster | An admin ticks "Can string" on your roster entry (`Member.canString`) | `Member.role === 'admin'` (or a name in `ADMIN_NAMES`); with groups on, an `owner`/`admin` membership, handed out by an organiser |
+| How you get it | Sign up / be added to the roster | An admin ticks "Can string" on your roster entry — per club (`Membership.canString`; `Member.canString` with groups off) | `Member.role === 'admin'` (or a name in `ADMIN_NAMES`); with groups on, an `owner`/`admin` membership, handed out by an organiser |
 | Proven by | `member_session` cookie (or the row's `deleteToken`) | the same `member_session`, plus the flag re-read on every request | a separate `admin_session` cookie, minted by `POST /api/admin` with the admin's own PIN |
 | Sign up / join waitlist | Themselves | Themselves | Anyone, past the invite list, deadline and `signupOpen` |
 | Cancel a spot | Their own | Their own | Anyone's, plus purge / clear all |
@@ -40,8 +40,13 @@ are enumerable through the roster.
 ## Stringer
 
 Someone who strings rackets **without** being handed payments, the roster and
-everyone's data. `Member.canString` is deliberately separate from `role`; see
-its docblock in `lib/types.ts`.
+everyone's data. `canString` is deliberately separate from `role`; see its
+docblock in `lib/types.ts`. **It is held per club** (roles v2 PR 2,
+2026-11-03): `Membership.canString` is what the bench reads through
+`canStringIn` in `lib/roster.ts`, so Zach stringing for BPM is not on
+club-x's bench until club-x's admin ticks the box. Any admin grants it; the
+organiser rule is for ranks and gift cards. A BPM row never set reads
+`Member.canString`, so the stringers from before the move stayed on.
 
 - `GET /api/stringing/jobs?view=stringer` returns only jobs whose `stringerId`
   is the caller, projected through `toStringerJob`. That projection has **no
