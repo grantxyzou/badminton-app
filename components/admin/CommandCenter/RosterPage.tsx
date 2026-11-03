@@ -16,6 +16,8 @@ import MemberAvatar from '@/components/primitives/MemberAvatar';
 import { normalizeAvatar } from '@/lib/memberAvatar';
 import type { Member, Alias } from '@/lib/types';
 import { isNewMember } from '@/lib/dormant';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -92,7 +94,14 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
-  const [formRole, setFormRole] = useState<'member' | 'admin'>('member');
+  const [formRole, setFormRole] = useState<'member' | 'admin' | 'owner'>('member');
+  // Ranks are an ORGANISER's to hand out (docs/plans/roles-v2.md). Tri-state:
+  // until the current club has answered, the rank is shown but not editable —
+  // unknown is not "not allowed". With groups off every admin keeps the power.
+  const { group: currentGroup, loading: groupLoading } = useCurrentGroup();
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  const rankKnown = !groupsOn || !groupLoading;
+  const callerOrganiser = !groupsOn || currentGroup?.role === 'owner';
   const [formCanString, setFormCanString] = useState(false);
   const [formCanGift, setFormCanGift] = useState(false);
   const [formActive, setFormActive] = useState(true);
@@ -270,7 +279,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
   function openEditSheet(r: RowData) {
     setEditingId(r.member.id);
     setFormName(r.member.name);
-    setFormRole(r.member.role === 'admin' ? 'admin' : 'member');
+    setFormRole(r.member.groupRole ?? (r.member.role === 'admin' ? 'admin' : 'member'));
     setFormActive(r.member.active !== false);
     setFormCanString(r.member.canString === true);
     setFormCanGift(r.member.canGift === true);
@@ -653,7 +662,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                           letterSpacing: '0.04em',
                         }}
                       >
-                        ADMIN
+                        {r.member.groupRole === 'owner' ? 'ORGANISER' : 'ADMIN'}
                       </span>
                     )}
                     {regularOf(r.member) === false && <StatusBadge variant="muted">Drop-in</StatusBadge>}
@@ -780,19 +789,33 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
 
             {editingId && (
               <>
+                {/* The rank. An organiser's is nobody's to change — they step
+                    down themselves from Profile → Your groups — and only an
+                    organiser hands one out; an admin sees the rank as text. */}
                 <Field label="Role">
-                  <div style={{ display: 'inline-flex', gap: 'var(--space-2)' }}>
-                    {(['member', 'admin'] as const).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setFormRole(r)}
-                        className={formRole === r ? 'cc-btn cc-btn-primary' : 'cc-btn cc-btn-secondary'}
-                      >
-                        {r === 'member' ? 'Member' : 'Admin'}
-                      </button>
-                    ))}
-                  </div>
+                  {formRole === 'owner' ? (
+                    <p style={{ margin: '0', fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>
+                      Organiser. Only they can step down, from their own Profile.
+                    </p>
+                  ) : callerOrganiser && rankKnown ? (
+                    <div style={{ display: 'inline-flex', gap: 'var(--space-2)' }}>
+                      {(['member', 'admin', 'owner'] as const).map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setFormRole(r)}
+                          className={formRole === r ? 'cc-btn cc-btn-primary' : 'cc-btn cc-btn-secondary'}
+                        >
+                          {r === 'member' ? 'Member' : r === 'admin' ? 'Admin' : 'Organiser'}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ margin: '0', fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>
+                      {formRole === 'admin' ? 'Admin' : 'Member'}
+                      {rankKnown && ' — an organiser can change this.'}
+                    </p>
+                  )}
                 </Field>
 
                 {/* This club's mark, set by an import or here. Shown once the
@@ -841,13 +864,16 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                     person may mint gift cards from their own Profile — a
                     raffle, a thank-you — without the console. Every card
                     records who made it; the admin's list says so. */}
+                {/* Organiser-only (docs/plans/roles-v2.md): a gift card is
+                    money the club owes. An admin sees the switch as it stands. */}
                 <label className="cc-checkbox">
                   <input
                     type="checkbox"
                     checked={formCanGift}
+                    disabled={!callerOrganiser || !rankKnown}
                     onChange={(e) => setFormCanGift(e.target.checked)}
                   />
-                  <span>Can give out gift cards</span>
+                  <span>Can give out gift cards{callerOrganiser ? '' : ' (an organiser sets this)'}</span>
                 </label>
 
                 <Field label="Recovery code">

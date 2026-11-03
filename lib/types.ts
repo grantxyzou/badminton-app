@@ -444,6 +444,13 @@ export interface Member {
   id: string;
   name: string;
   role: Role;
+  /**
+   * The rank as THIS club's membership holds it, on the admin roster read
+   * only (`GET /api/members`). `role` above knows two values and collapses an
+   * organiser to `admin` for the flag-off readers; the Roster sheet needs the
+   * third (docs/plans/roles-v2.md). Never stored on the Member doc.
+   */
+  groupRole?: MembershipRole;
   stage?: number;        // 1-5 ACE skill level
   sessionCount: number;
   lastSeen?: string;

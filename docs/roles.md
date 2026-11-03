@@ -8,7 +8,7 @@ none.
 
 | | Player (member) | Stringer | Admin |
 |---|---|---|---|
-| How you get it | Sign up / be added to the roster | An admin ticks "Can string" on your roster entry (`Member.canString`) | `Member.role === 'admin'` (or a name in `ADMIN_NAMES`); with groups on, an `owner`/`admin` membership |
+| How you get it | Sign up / be added to the roster | An admin ticks "Can string" on your roster entry (`Member.canString`) | `Member.role === 'admin'` (or a name in `ADMIN_NAMES`); with groups on, an `owner`/`admin` membership, handed out by an organiser |
 | Proven by | `member_session` cookie (or the row's `deleteToken`) | the same `member_session`, plus the flag re-read on every request | a separate `admin_session` cookie, minted by `POST /api/admin` with the admin's own PIN |
 | Sign up / join waitlist | Themselves | Themselves | Anyone, past the invite list, deadline and `signupOpen` |
 | Cancel a spot | Their own | Their own | Anyone's, plus purge / clear all |
@@ -71,13 +71,32 @@ An admin is also a player. Screens that could show either view ask for one
 explicitly (e.g. `?view=player` on the stringing jobs list), so an admin's Home
 shows their own racket and not the bench.
 
-### Owner (multi-group only)
+### Organiser (multi-group only)
 
 With `NEXT_PUBLIC_FLAG_MULTI_GROUP` on, roles live on a per-group
-`Membership`: `owner | admin | member` (`lib/groups.ts`). `owner` counts as an
-admin (`GROUP_ADMIN_ROLES`), cannot be demoted, and is only handed on when the
-owner deletes their account. With the flag off (today), `Member.role` is the
-role and there is no owner.
+`Membership`: `owner | admin | member` (`lib/groups.ts`), shown as Organiser /
+Admin / Player. `owner` counts as an admin (`GROUP_ADMIN_ROLES`). Since roles
+v2 (`docs/plans/roles-v2.md`, 2026-11-03):
+
+- **A club may have several organisers.** `Group.ownerMemberId` names one of
+  them (the founder, until they go) and always an ACTIVE one — succession
+  repoints it.
+- **Only an organiser hands out a rank** — admin or organiser — and the
+  gift-card switch. `isAdminAuthedWithMember` answers `organiser`; both role
+  routes (`PATCH /api/members`, `PATCH /api/groups/members/[id]`) answer
+  `organiser_only` to an admin changing either. An admin runs the night and
+  grants Stringer.
+- **Nobody removes an organiser**: not another organiser, not an admin
+  (`owner_immutable` on demote, deactivate and remove). They step down
+  themselves — `POST /api/groups/step-down`, Profile → Your groups — and when
+  the LAST organiser steps down or deletes their account the club passes to
+  the longest-serving admin, else the longest-serving player
+  (`reassignOwnership`); a club with nobody left closes. The only person in a
+  club cannot step down (`last_member`).
+- The operator override (PR 3 of the plan) is the one exception, not built yet.
+
+With the flag off, `Member.role` is the role, there is no organiser, and every
+admin keeps the full power the role always had.
 
 ## Why "works for me" is a warning sign
 

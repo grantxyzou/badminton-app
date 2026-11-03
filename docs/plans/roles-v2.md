@@ -1,7 +1,7 @@
 # Roles v2: organisers, badges, and the operator
 
 **Track:** multi-group critical path, "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). A second club needs more than one person in charge, and needs a rule for who can hand out admin.
-**Status:** intent
+**Status:** in-flight — PR 1 (organisers) built 2026-11-03 on #756
 **Review on:** 2026-12-02 — has PR 1 (organisers) shipped, and does any club other than BPM Core have a second organiser or a promoted admin?
 
 ## Problem
@@ -63,7 +63,11 @@ All made by Grant in conversation, 2026-10-30 to 2026-11-01.
 
 ## Shape
 
-Four PRs, in order. Sizes are estimates.
+Four PRs, in order. Sizes are estimates. PR 1 landed with two decisions made in the code:
+
+- **`ownerMemberId` always names an ACTIVE organiser.** Succession repoints it to the longest-serving remaining organiser when the one it named leaves, so code from before v2 (a rollback reads it as THE owner) still finds a real person there. It is the founder only while the founder stays.
+- **The dev seed still makes `SEED_DEV_ADMIN` the sole owner of BPM** (`lib/cosmos.ts`). Left alone on purpose: the seed's job is "the dev admin owns the dev club", which several organisers do not change, and the second organiser is seeded by the tests that need one.
+- **`isAdminAuthedWithMember` answers `organiser`** (flag off: `true`, every admin keeps the power it always had), and both role routes answer `organiser_only`. The sheet sends the rank on every save, so a REAL change is what needs an organiser; an admin saving a name edit passes.
 
 | PR | What | Where | Size |
 |---|---|---|---|

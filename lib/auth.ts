@@ -652,7 +652,7 @@ export function ownsNameOrAdmin(req: NextRequest, name: string): boolean {
  */
 export async function isAdminAuthedWithMember(
   req: NextRequest,
-): Promise<{ authed: true; memberId: string; name: string; groupId: string } | { authed: false }> {
+): Promise<{ authed: true; memberId: string; name: string; groupId: string; organiser: boolean } | { authed: false }> {
   const cookie = req.cookies.get(COOKIE_NAME)?.value;
   if (!cookie) return { authed: false };
   const payload = verifyToken(cookie, 'admin');
@@ -666,14 +666,18 @@ export async function isAdminAuthedWithMember(
     if (!groupsOn()) {
       // Flag off: `Member.role` is the source of truth and the claim is ignored.
       if (resource.role !== 'admin') return { authed: false };
-      return { authed: true, memberId: resource.id, name: resource.name, groupId: BPM_GROUP_ID };
+      // Flag off there is no organiser rank (`docs/roles.md`), and every admin
+      // keeps the full power the role always had, promotion included.
+      return { authed: true, memberId: resource.id, name: resource.name, groupId: BPM_GROUP_ID, organiser: true };
     }
     // Flag on: the role lives on the membership IN THE CLAIMED GROUP. A demotion
     // there takes effect on the next request, same as `Member.role` did.
     const groupId = payload.groupId ?? BPM_GROUP_ID;
     const m = await readGroupAdmin(groupId, resource.id);
     if (!m) return { authed: false };
-    return { authed: true, memberId: resource.id, name: m.name, groupId };
+    // `organiser` is the rank above admin (docs/plans/roles-v2.md): the only
+    // one that hands out ranks and the gift-card switch.
+    return { authed: true, memberId: resource.id, name: m.name, groupId, organiser: m.role === 'owner' };
   } catch {
     return { authed: false };
   }
