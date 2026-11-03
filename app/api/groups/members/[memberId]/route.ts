@@ -8,13 +8,14 @@
  * (an id override is admin-only) does not help when every caller here is an
  * admin of somewhere.
  *
- * THE OWNER IS UNTOUCHABLE from this route, both verbs. `setMembershipRole`
- * refuses to assign or overwrite `owner` and `removeFromRoster` refuses to
- * remove one, so ownership moves only through `reassignOwnership` and a group
- * can never end up with two owners or none. Those refusals resolve `undefined`
- * rather than throwing; this route turns that into a 403 with a reason instead
- * of a 404, because "that person is the owner" is actionable and "not found"
- * is not.
+ * AN ORGANISER IS UNTOUCHABLE from this route, both verbs
+ * (docs/plans/roles-v2.md: nobody removes an organiser — they step down
+ * themselves, `POST /api/groups/step-down`). `setMembershipRole` refuses to
+ * overwrite `owner` and `removeFromRoster` refuses to remove one; those
+ * refusals resolve `undefined` rather than throwing, and this route turns
+ * that into a 403 with a reason instead of a 404, because "that person is an
+ * organiser" is actionable and "not found" is not. A club may have several
+ * organisers, and only an organiser hands out a rank (`organiser_only`).
  *
  * AN ADMIN CANNOT ACT ON THEMSELVES here. Demoting or removing yourself is
  * leaving, which is a different intent with a different confirmation, and
@@ -48,14 +49,14 @@ async function gate(req: NextRequest, memberId: string) {
   }
   const group = await readGroup(auth.groupId);
   if (!group || group.closedAt) return { error: NextResponse.json({ error: 'not_found' }, { status: 404 }) };
-  if (group.ownerMemberId === memberId) {
-    return { error: NextResponse.json({ error: 'owner_immutable' }, { status: 403 }) };
-  }
   const membership = await readMembership(auth.groupId, memberId);
   if (!membership || membership.status !== 'active') {
     return { error: NextResponse.json({ error: 'not_on_roster' }, { status: 404 }) };
   }
-  return { groupId: auth.groupId };
+  if (membership.role === 'owner') {
+    return { error: NextResponse.json({ error: 'owner_immutable' }, { status: 403 }) };
+  }
+  return { groupId: auth.groupId, organiser: auth.organiser };
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
@@ -76,9 +77,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
     }
     const role = (body as Record<string, unknown>)?.role;
-    if (role !== 'admin' && role !== 'member') {
+    if (role !== 'owner' && role !== 'admin' && role !== 'member') {
       return NextResponse.json({ error: 'invalid_role' }, { status: 400 });
     }
+    if (!checked.organiser) return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
 
     const updated = await setMembershipRole(checked.groupId!, memberId, role);
     if (!updated) return NextResponse.json({ error: 'not_on_roster' }, { status: 404 });

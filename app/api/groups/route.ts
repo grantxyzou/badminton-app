@@ -23,7 +23,7 @@ import { verifyMemberAuth, unauthorized } from '@/lib/auth';
 import { completeSignIn } from '@/lib/authSession';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
-import { createGroup, listMembershipsForMember, RosterNameTakenError } from '@/lib/groups';
+import { createGroup, listMembershipsForMember, readGroup, RosterNameTakenError } from '@/lib/groups';
 import { mintInvite } from '@/lib/invites';
 import {
   groupsOn,
@@ -74,8 +74,15 @@ export async function POST(req: NextRequest) {
       cleanString(member.name, ROSTER_NAME_MIN, ROSTER_NAME_MAX);
     if (!rosterName) return NextResponse.json({ error: 'invalid_roster_name' }, { status: 400 });
 
-    const owned = (await listMembershipsForMember(member.id)).filter(
+    // Clubs this person is the NAMED owner of — not every club they help
+    // organise. A club may have several organisers (docs/plans/roles-v2.md),
+    // and being asked to co-run three clubs must not cost someone the right
+    // to found their own.
+    const organising = (await listMembershipsForMember(member.id)).filter(
       (m) => m.status === 'active' && m.role === 'owner',
+    );
+    const owned = (await Promise.all(organising.map((m) => readGroup(m.groupId)))).filter(
+      (g) => g && !g.closedAt && g.ownerMemberId === member.id,
     );
     if (owned.length >= MAX_OWNED_GROUPS) {
       return NextResponse.json({ error: 'too_many_groups' }, { status: 409 });

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import TopBar from '@/components/primitives/TopBar';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import SettingsList from './SettingsList';
 import type { GroupListEntry } from '@/lib/useCurrentGroup';
 
@@ -92,6 +93,11 @@ export default function GroupsPage({
 
   const roleLabel = (role: GroupListEntry['role']) =>
     role === 'owner' ? t('roleOwner') : role === 'admin' ? t('roleAdmin') : t('roleMember');
+
+  // Stepping down is offered for the CURRENT club only: the route acts on
+  // the club the admin cookie names, and a switch is how you get another one.
+  const organiserHere = groups.some((g) => g.current && g.role === 'owner');
+  const [stepDownOpen, setStepDownOpen] = useState(false);
 
   return (
     // NOT wrapped in an element containing only the header — TopBar is
@@ -190,8 +196,66 @@ export default function GroupsPage({
         rows={[
           { icon: 'group_add', label: t('joinAnother'), onClick: onJoinAnother },
           { icon: 'add', label: t('createAnother'), onClick: onCreateAnother },
+          ...(organiserHere ? [{ icon: 'logout', label: t('stepDown.row'), onClick: () => setStepDownOpen(true) }] : []),
         ]}
       />
+      <StepDownSheet open={stepDownOpen} onClose={() => setStepDownOpen(false)} />
     </div>
+  );
+}
+
+/**
+ * The ONE way an organiser stops being one (docs/plans/roles-v2.md: nobody
+ * removes an organiser). `POST /api/groups/step-down` passes the club on
+ * first when they were the last organiser, and refuses the only person in a
+ * club (`last_member`). On success the page RELOADS rather than remounting
+ * the tabs: the shell's own "is this an admin" was read before the change,
+ * and a reload is the one way every reading of it starts over.
+ */
+function StepDownSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useTranslations('groups');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function stepDown(to: 'admin' | 'member') {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/groups/step-down`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error === 'last_member' ? t('stepDown.lastMember') : t('stepDown.failed'));
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError(t('stepDown.failed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('stepDown.title')}>
+      <BottomSheetHeader onClose={onClose}>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('stepDown.title')}</span>
+      </BottomSheetHeader>
+      <BottomSheetBody>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('stepDown.body')}</p>
+          <button type="button" className="cc-btn cc-btn-secondary" disabled={busy} onClick={() => void stepDown('admin')}>
+            {t('stepDown.toAdmin')}
+          </button>
+          <button type="button" className="cc-btn cc-btn-danger" disabled={busy} onClick={() => void stepDown('member')}>
+            {t('stepDown.toMember')}
+          </button>
+          {error && <p className="field-error" role="alert">{error}</p>}
+        </div>
+      </BottomSheetBody>
+    </BottomSheet>
   );
 }

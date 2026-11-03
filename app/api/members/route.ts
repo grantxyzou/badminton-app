@@ -38,6 +38,8 @@ const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
  */
 const writesMemberCopy = (adminGroupId: string) => !groupsOn() || adminGroupId === BPM_GROUP_ID;
 const ownerImmutable = () => NextResponse.json({ error: 'owner_immutable' }, { status: 403 });
+/** Ranks and the gift-card switch are an ORGANISER's to hand out (docs/plans/roles-v2.md). */
+const organiserOnly = () => NextResponse.json({ error: 'organiser_only' }, { status: 403 });
 
 export async function GET(req: NextRequest) {
   const gate = await requireMember(req);
@@ -60,8 +62,11 @@ export async function GET(req: NextRequest) {
       // `joinedAt` is when they joined THIS group: the dormant grace period
       // (lib/dormant.ts) runs from it. Admin-only; a non-admin returned above.
       // `regular` is this club's member-vs-drop-in mark (absent = unmarked).
+      // `groupRole` is the rank as the membership holds it — `role` collapses an
+      // organiser to `admin` for the flag-off readers (`lib/roster.ts`), and
+      // the Roster sheet needs to know who the organisers are.
       e.membership
-        ? { ...e.member, active: e.membership.status === 'active', joinedAt: e.membership.joinedAt, regular: e.membership.regular }
+        ? { ...e.member, active: e.membership.status === 'active', joinedAt: e.membership.joinedAt, regular: e.membership.regular, groupRole: e.membership.role }
         : e.member,
     );
     // Strip pinHash even for admins — it's a strip-canary per CLAUDE.md.
@@ -212,22 +217,32 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.stage === 'number') updates.stage = Math.max(1, Math.min(4, body.stage));
     if (body.stage === null) updates.stage = undefined;
     if (memberCopy && typeof body.active === 'boolean') updates.active = body.active;
-    if (typeof body.role === 'string' && ['admin', 'member'].includes(body.role)) {
+    if (typeof body.role === 'string' && ['owner', 'admin', 'member'].includes(body.role)) {
+      const role = body.role as 'owner' | 'admin' | 'member';
       if (groupsOn()) {
         // Re-read: the `active` step above may have removed or revived the row.
-        // A removed membership keeps no role (a rejoin starts as member). The
-        // owner is an admin already and is demoted only by handing the group
-        // on — the Roster sheet sends `admin` for them, which is a no-op here.
+        // A removed membership keeps no role (a rejoin starts as member). An
+        // ORGANISER's rank is nobody's to take (docs/plans/roles-v2.md): they
+        // step down themselves, so a sheet that sends `owner` or `admin` for
+        // them is a no-op and anything else is refused. A real change is an
+        // organiser's to make — an admin saving a name edit sends the rank
+        // unchanged and passes.
         const current = await readMembership(auth.groupId, id);
         if (current?.status === 'active') {
           if (current.role === 'owner') {
-            if (body.role !== 'admin') return ownerImmutable();
-          } else if (current.role !== body.role && !(await setMembershipRole(auth.groupId, id, body.role))) {
-            return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+            if (role === 'member') return ownerImmutable();
+          } else if (current.role !== role) {
+            if (!auth.organiser) return organiserOnly();
+            if (!(await setMembershipRole(auth.groupId, id, role))) {
+              return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+            }
           }
         }
+      } else if (role === 'owner') {
+        return NextResponse.json({ error: 'invalid_role' }, { status: 400 });
       }
-      if (memberCopy) updates.role = body.role;
+      // The Member copy knows two roles: an organiser is an admin there.
+      if (memberCopy) updates.role = role === 'member' ? 'member' : 'admin';
     }
     // Orthogonal to `role` on purpose — see Member.canString.
     if (typeof body.canString === 'boolean') updates.canString = body.canString;
@@ -236,7 +251,12 @@ export async function PATCH(req: NextRequest) {
     // and the person may be on another roster where nobody granted it. The
     // Member field is still written: it is the flag-off value and the rollback
     // copy. Someone not on this roster is a 404, not a silent no-op.
+    // Gift cards are money the club owes, so the switch is an ORGANISER's to
+    // flip (docs/plans/roles-v2.md); an admin resending it unchanged passes.
     if (typeof body.canGift === 'boolean') {
+      if (body.canGift !== (groupsOn() ? membership?.canGift === true : existing.canGift === true) && !auth.organiser) {
+        return organiserOnly();
+      }
       updates.canGift = body.canGift;
       if (groupsOn() && !(await setMembershipCanGift(auth.groupId, id, body.canGift))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });

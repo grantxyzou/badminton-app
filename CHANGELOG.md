@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Several organisers per club, and only they hand out ranks (2026-11-03)
+
+Any admin could make anyone an admin, and each new admin could make more; a club that two friends run together had no way to say so, because a club held exactly one owner. Now a club may have several organisers, and a rank — admin or organiser — and the gift-card switch are an organiser's alone to hand out; an admin still runs the night and grants Stringer. Nobody removes an organiser, not another organiser and not an admin: they step down themselves from Profile → Your groups, and when the last one steps down or deletes their account the club passes to the longest-serving admin, else the longest-serving player. The privacy policy's "if you're the only organiser, the group closes" now says what the code has done since succession shipped. The reasoning and the three PRs still to come are `docs/plans/roles-v2.md`.
+
 ### One level everywhere (2026-10-29)
 
 The app showed a member two different levels. Home's "Your level is climbing" card quoted the latest check-in's raw score (Lin: 3.4, "+0.8 since September"), while the Stats LEVEL tile showed the canonical level, the smoothed check-ins blended with logged games (3.1), under a caption that was the raw jump again ("▲ 0.8"), so nothing on screen added up. "Your level over time" plotted the raw scores (2.6 → 3.4). All three now show the canonical level, and every "since …" change is the step between two points of its new trail, the level as of each check-in, which `GET /api/stats/level` returns as an additive `trail` (`docs/plans/one-level.md`). Lin now reads 3.1, "+0.5 since September", on Home, the tile and the chart alike, and the chart's sentence reads its phase off the same 3.1.
