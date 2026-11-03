@@ -14,7 +14,7 @@ Nobody outside BPM has reported this yet. It is Grant's read ahead of a second c
 
 ## Kill criterion
 
-- The organiser-only promotion rule stands on its own and is not killed by this.
+- Organiser-only promotion ships regardless; the kill applies only to multiple organisers.
 - If no club other than BPM Core has a second organiser by the review date, stop after PR 1. Do not build anything further on multiple organisers.
 
 ## Non-goals
@@ -23,6 +23,7 @@ Nobody outside BPM has reported this yet. It is Grant's read ahead of a second c
 - **Tester accounts, a beta channel, a staging copy on mock data, a per-club beta.** Rejected 2026-11-01 (Grant: "This app is already huge in implementation and features").
 - **Per-capability switches inside a rank** (an admin without money access). Presets only, until a club asks.
 - **An operator screen.** The override is a key-gated route, like the group backfill.
+- **Organiser-only club settings, keys and a close-club action.** The settings route, the payments-key and reports-key mints and invites stay admin-gated, and no close-club route exists today (`closedAt` is only ever set by succession). The rank table marks these "stay admin for now"; they join the model when a club asks.
 - **A reviewer demo account.** Deferred to the next store submission that asks for one.
 
 ## Decisions
@@ -35,7 +36,7 @@ All made by Grant in conversation, 2026-10-30 to 2026-11-01.
 |---|---|---|---|
 | Rank: what can you do in this club? | Organiser (one or more) · Admin · Player | Membership | Organisers |
 | Badge: what job do you do? | Stringer · Gifter | Membership | Stringer: admin and up. Gifter: organisers only |
-| Account type: do you count? | Staff (no usage beacons) | Member (the person) | The operator only |
+| Account type: do you count? | Staff (no usage beacons) | The `OPERATOR_MEMBER_IDS` setting, no field | The operator only |
 
 **Ranks.**
 
@@ -46,18 +47,19 @@ All made by Grant in conversation, 2026-10-30 to 2026-11-01.
 | Grant or remove Gifter | ✓ | | |
 | Make or remove admins | ✓ | | |
 | Make organisers | ✓ | | |
-| Club settings, keys, close the club | ✓ | | |
+| Club settings, keys (stay admin for now, see Non-goals) | ✓ | ✓ | |
 
 - **Names stay plain in code** (`owner` / `admin` / `member`). The badminton feel lives in `messages/*.json`, where `owner` already reads "Organiser" and `member` reads "Player". Renaming a stored role value would break rollback.
-- **Several organisers per club.** The membership role `owner` may sit on more than one membership. `Group.ownerMemberId` stays (fields are never removed) and now names the **founder**.
+- **Several organisers per club.** The membership role `owner` may sit on more than one membership. `Group.ownerMemberId` stays (fields are never removed) and now names the **founder**. The one-owner invariant is bolted into six places, not one, and PR 1 unbolts every one: `setMembershipRole` and `removeFromRoster` refuse `owner` (`lib/groups.ts`), both role routes answer `owner_immutable` (`PATCH /api/members` and `PATCH`/`DELETE /api/groups/members/[memberId]`, whose docblock promises "never two owners or none"), the dev seed demotes any extra BPM owner (`lib/cosmos.ts`, `seedDevGroupMembership`), and `MAX_OWNED_GROUPS` counts organiser memberships, which would block someone invited to co-run three clubs from founding their own. It counts FOUNDED clubs (`ownerMemberId`) instead. `GET /api/groups/current` answers `isOwner` from the membership role, not `ownerMemberId`.
 - **Nobody removes an organiser.** Not another organiser, not an admin. This beat "founder protected" and "all equal": it closes the falling-out case where whoever acts first keeps the club.
-- **An organiser can step down** to admin or player.
-- **When the last organiser steps down or leaves, the club passes on** through the succession `reassignOwnership` already runs on account deletion: the longest-serving admin, else the longest-serving player. A club with nobody left closes. Grant's answer was "Last player becomes organiser"; the succession covers that case, and the review should confirm the admin-first order is what he meant.
-- **Stringer can be held at any rank.** It stays independent of `role` (`lib/types.ts`, `canString`) and moves from the Member onto the Membership, as `canGift` did on 2026-10-09.
+- **An organiser can step down** to admin or player. This is a NEW route and sheet, not a rule change: `PATCH /api/groups/members/[memberId]` refuses self-targeting on purpose (`cannot_target_self`, "leaving is a different intent with a different confirmation") and nothing under `app/api/groups/` lets a person leave or demote themselves today.
+- **When the last organiser steps down or leaves, the club passes on**: the longest-serving admin, else the longest-serving player, becomes organiser; a club with nobody left closes. That is the order `reassignOwnership` already uses on account deletion, but the function is REWRITTEN, not reused: it is keyed on `ownerMemberId === the person leaving`, so a non-founder organiser deleting their account gets `not_owner` and nothing runs (harmless by accident), and the founder leaving while co-organisers exist would promote an admin over the organisers already there. The new rule is "succession runs only when the last ACTIVE organiser goes". Grant's answer was "Last player becomes organiser"; the succession covers that case, and the review should confirm the admin-first order is what he meant.
+- **The privacy policy sentence is corrected in PR 1, both locales.** `messages/en.json` says "if you're the only organiser of a group, that group closes with it" (the policy and the delete-account sheet, quoted twice in `legal-copy-multi-group.md`). The code has not done that since succession shipped — the club passes to the longest-serving admin or player and closes only when nobody is left — and several organisers add a second mismatch.
+- **Stringer can be held at any rank.** It stays independent of `role` (`lib/types.ts`, `canString`) and moves from the Member onto the Membership, as `canGift` did on 2026-10-09. **This reverses the 2026-10-24 decision** in CLAUDE.md ("`canString` … stays person-level by decision … move it the same way if that ever changes"); PR 2 rewrites that line, `docs/roles.md` and `__tests__/group-admin-scope.test.ts`. There are ten read sites: `stringing/jobs`, `stringing/jobs/[id]`, `stringing/stringers`, `giftcards`, `members`, and `StringingJobDetail`, `RosterPage`, `StringerJobsCard`, `StringingTab` (the components read it off the roster, which already overlays membership fields).
 
 **The operator override.** One person (Grant) can change any club's ranks, including an organiser's, as break-glass for abuse or an orphaned club. "The operator" is today "any admin of BPM" (`app/api/admin/migrate-groups/route.ts`). With several BPM organisers and admins that would hand cross-club power to all of them, so the operator becomes a named list instead (see Shape).
 
-**Staff.** The `app_open`, `tab_view` and `sign_in` usage records skip a staff account. Sign-ups, payments, kudos and stringing still count, because they are real club records counted from their own containers.
+**Staff.** The `app_open`, `tab_view` and `sign_in` usage records skip a staff account. Sign-ups, payments, kudos and stringing still count, because they are real club records counted from their own containers. **The operator list IS the staff list**: no `Member.staff` field and no setter — `POST /api/events` and `recordSignIn` skip any id in `OPERATOR_MEMBER_IDS`. Only those three kinds are skipped: a `client_error` from the operator's phone is still an error.
 
 ## Shape
 
@@ -65,10 +67,10 @@ Four PRs, in order. Sizes are estimates.
 
 | PR | What | Where | Size |
 |---|---|---|---|
-| 1 | Several organisers, organiser-only promotion and Gifter, nobody removes an organiser, step down with succession, roster sheet controls | `lib/groups.ts`, `app/api/members/route.ts`, `components/admin/CommandCenter/RosterPage.tsx`, `docs/roles.md` | Medium-large: the real work |
-| 2 | Stringer onto the Membership, admins grant it | `app/api/members/route.ts`, stringing auth reads | Small |
+| 1 | Several organisers, organiser-only promotion and Gifter, nobody removes an organiser, a step-down route and sheet, succession rewritten, roster sheet controls, the policy sentence | `lib/groups.ts` (`setMembershipRole`, `removeFromRoster`, `reassignOwnership`), `app/api/members/route.ts`, `app/api/groups/members/[memberId]/route.ts`, `app/api/groups/route.ts` (`MAX_OWNED_GROUPS`), `app/api/groups/current/route.ts`, a new leave/step-down route, `lib/cosmos.ts` seed, `components/admin/CommandCenter/RosterPage.tsx`, `components/profile/GroupsPage.tsx`, `messages/*.json`, `docs/roles.md` | Large: the real work |
+| 2 | Stringer onto the Membership, admins grant it | `app/api/members/route.ts`, the ten `canString` read sites, CLAUDE.md line, `docs/roles.md` | Small |
 | 3 | Operator identity and override | see below | Small-medium: about a day of work, one PR |
-| 4 | Staff mark | `POST /api/events` (`app/api/events/route.ts`), `recordSignIn` in `lib/usage.ts` | Tiny |
+| 4 | Staff mark, read off `OPERATOR_MEMBER_IDS` | `POST /api/events` (`app/api/events/route.ts`), `recordSignIn` in `lib/usage.ts` | Tiny; needs only the setting, so it can ship first |
 
 **PR 3 in detail.**
 
@@ -78,4 +80,4 @@ Four PRs, in order. Sizes are estimates.
 4. **Tests.** Non-operator 403, a BPM admin who is not the operator 403, missing key 403, demoting another club's organiser, succession when the last organiser goes, the record written. A `__tests__/group-*.test.ts` file imports the route (the sweep-coverage canary).
 5. **No screen.** It is called the way the backfill is.
 
-Dependency: PR 3 needs PR 1, since an organiser that nobody can remove is what makes an override necessary.
+Dependencies: PR 3 needs PR 1, since an organiser that nobody can remove is what makes an override necessary. PR 4 needs only the `OPERATOR_MEMBER_IDS` setting and can go first.
