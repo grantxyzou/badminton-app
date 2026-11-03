@@ -98,7 +98,14 @@ v2 (`docs/plans/roles-v2.md`, 2026-11-03):
   the longest-serving admin, else the longest-serving player
   (`reassignOwnership`); a club with nobody left closes. The only person in a
   club cannot step down (`last_member`).
-- The operator override (PR 3 of the plan) is the one exception, not built yet.
+- **The operator** (`lib/operator.ts`; the ids in `OPERATOR_MEMBER_IDS`, or
+  an admin of BPM while that is unset) is the one exception:
+  `POST /api/operator/membership` sets any rank in any club, an organiser's
+  included, behind a listed operator's admin cookie AND the migration key,
+  and every use is written down and read back on
+  `GET /api/admin/migrate-groups`. Taking an organiser down passes the club
+  on the way stepping down does. The operator's own app opens, tab views and
+  sign-ins are not counted as usage (staff).
 
 With the flag off, `Member.role` is the role, there is no organiser, and every
 admin keeps the full power the role always had.

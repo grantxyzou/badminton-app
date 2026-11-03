@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Stringer per club, a named operator with a break-glass override, and staff usage left out (2026-11-03)
+
+The rest of roles v2 (`docs/plans/roles-v2.md`). **Stringer is held per club**: a person who strings for one club is not on another club's bench until that club's admin ticks the box, and any admin may (the organiser rule is for ranks and gift cards); the stringers from before the move stayed on BPM's bench. **The operator is a named list** (`OPERATOR_MEMBER_IDS`), not "any admin of BPM", and holds the one exception to "nobody removes an organiser": `POST /api/operator/membership` sets any rank in any club behind the admin cookie, the list and the migration key, passes a club on when it takes the last organiser, and writes every use down where the operator's status read shows it. **The operator is staff**: their own app opens, tab views and sign-ins no longer count on the Metrics page, so one person checking a payment ten times a day cannot carry a small club's daily-active; an error from their phone is still recorded.
+
 ### Several organisers per club, and only they hand out ranks (2026-11-03)
 
 Any admin could make anyone an admin, and each new admin could make more; a club that two friends run together had no way to say so, because a club held exactly one owner. Now a club may have several organisers, and a rank — admin or organiser — and the gift-card switch are an organiser's alone to hand out; an admin still runs the night and grants Stringer. Nobody removes an organiser, not another organiser and not an admin: they step down themselves from Profile → Your groups, and when the last one steps down or deletes their account the club passes to the longest-serving admin, else the longest-serving player. The privacy policy's "if you're the only organiser, the group closes" now says what the code has done since succession shipped. The reasoning and the three PRs still to come are `docs/plans/roles-v2.md`.

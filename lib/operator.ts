@@ -31,6 +31,19 @@ export function operatorMemberIds(): Set<string> {
   return new Set(raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0));
 }
 
+/**
+ * STAFF: the operator's own usage is not a member's usage (roles v2, PR 4).
+ * Ten opens a day to check a payment or look at a fix would carry a club of
+ * thirty's daily-active and stickiness on one person. The three usage kinds
+ * — `app_open`, `tab_view`, `sign_in` — skip a listed id; nothing else does:
+ * a sign-up, a payment, a kudos is a real club record whoever made it, and a
+ * `client_error` from the operator's phone is still an error. The list IS
+ * the staff list — no field, no setter.
+ */
+export function skipsUsageRecord(memberId: string): boolean {
+  return isOperatorId(memberId);
+}
+
 export function operatorListConfigured(): boolean {
   return operatorMemberIds().size > 0;
 }

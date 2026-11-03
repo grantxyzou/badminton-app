@@ -66,7 +66,7 @@ const withKey = (groupId = 'bpm', key: string | null = KEY) => ({
   Cookie: `admin_session=${adminCookieValue({ groupId })}`,
   ...(key ? { 'x-migration-key': key } : {}),
 });
-const override = (body: Record<string, unknown>, headers = withKey()) =>
+const override = (body: Record<string, unknown>, headers: Record<string, string> = withKey()) =>
   overrideRoute(makeRequest('POST', 'http://x/api/operator/membership', body, headers));
 const rowOf = (memberId: string, groupId = 'clubx') =>
   (getStore()['memberships'] as Array<{ id: string; role: string; status: string }>).find((m) => m.id === `${groupId}:${memberId}`)!;
