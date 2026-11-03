@@ -90,7 +90,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/fit-preview': admin(),
   'admin/catalog-gaps': admin(),
   'admin/ledger': admin(),
-  'admin/migrate-groups': admin('isAdminAuthedWithMember'),
+  'admin/migrate-groups': admin('isOperator'),
   'admin/ledger-backfill': admin('isAdminAuthedWithMember'),
   'admin/ledger/reconcile': admin('isAdminAuthedWithMember'),
   'admin/expenses': admin(),
