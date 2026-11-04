@@ -3,7 +3,11 @@
  * Pre-render one list image per catalog racket from the 3D model.
  *
  *   PORT=3106 npm run dev:next:mock        # in another terminal
- *   node scripts/render-racket-images.mjs [--base http://localhost:3106/bpm] [--only <id>]
+ *   node scripts/render-racket-images.mjs [--base http://localhost:3106/bpm] [--only <id>] [--executable <chromium>]
+ *
+ * `--executable` renders in that Chromium with software WebGL (SwiftShader)
+ * instead of system Chrome on the GPU — for a machine with no Chrome, such as
+ * a cloud session (`/opt/pw-browsers/chromium`). Slower, same pixels to the eye.
  *
  * Drives `/design/racket-render` (dev-only) in system Chrome, asks it to render
  * each look in `lib/racketLook.ts`, and writes `public/rackets/<id>.webp` plus
@@ -26,7 +30,10 @@ const only = arg('only', null);
 const outDir = join(process.cwd(), 'public', 'rackets');
 mkdirSync(outDir, { recursive: true });
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-webgl', '--ignore-gpu-blocklist'] });
+const executable = arg('executable', null);
+const browser = await chromium.launch(executable
+  ? { executablePath: executable, headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }
+  : { channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-webgl', '--ignore-gpu-blocklist'] });
 try {
   const page = await browser.newPage({ viewport: { width: 600, height: 900 }, deviceScaleFactor: 1 });
   await page.goto(`${base}/design/racket-render`, { waitUntil: 'networkidle' });
@@ -40,6 +47,7 @@ try {
   let bytes = 0;
   for (const id of ids) {
     const url = await page.evaluate((racketId) => window.__renderRacket(racketId), id);
+    if (!url.startsWith('data:image/webp')) throw new Error(`${id}: the browser returned ${url.slice(0, 20)}, not a WebP`);
     const buf = Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
     writeFileSync(join(outDir, `${id}.webp`), buf);
     bytes += buf.length;

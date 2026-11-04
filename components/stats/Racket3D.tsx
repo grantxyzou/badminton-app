@@ -37,7 +37,7 @@ export default function Racket3D({ look, tweaks, fallbackSrc, label }: Racket3DP
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const geometryKey = `${tweaks.shape ?? 'isometric'}|${tweaks.pattern ?? 'shoulder'}`;
+  const geometryKey = `${tweaks.shape ?? 'isometric'}|${tweaks.pattern ?? 'shoulder'}|${look.liveryId ?? ''}|${tweaks.frame ? 'own' : ''}`;
 
   useEffect(() => {
     let disposed = false;

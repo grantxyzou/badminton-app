@@ -67,7 +67,7 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
   useEffect(() => {
     if (!hasItemLook(racketItemLook)) return;
     let live = true;
-    const { look, tweaks } = modelInputs(racketLook(racketCatalogId), racketItemLook);
+    const { look, tweaks } = modelInputs(racketLook(racketCatalogId), racketItemLook, racketCatalogId);
     import('@/lib/racketSnapshot')
       .then(({ racketSnapshot }) => racketSnapshot(look, tweaks))
       .then((url) => { if (live && url) setRacketImage(url); })

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 /**
  * The studio the racket model was balanced against — lifted from the design's
@@ -7,7 +8,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
  * like plastic without it: ACES filmic tone mapping at 1.15 exposure, a soft
  * sky-to-floor gradient as the environment (a broad sheen rather than one
  * specular pinpoint), a hemisphere wash, a shadow-casting key and a dim warm
- * fill. One module so the live viewer and the pre-rendered list images light
+ * fill. Since the fidelity pass (2026-11-04) the environment is a softbox
+ * room rather than the gradient, at exposure 1.0. One module so the live viewer and the pre-rendered list images light
  * the racket identically.
  *
  * Client-only: loaded through a dynamic `import()`.
@@ -44,30 +46,20 @@ export function createRacketStage(canvas: HTMLCanvasElement, opts: RacketStageOp
   // Filmic rolloff: highlights bloom off instead of clipping to a hard white
   // dot, which is most of what makes a render look plastic.
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.0;
 
   const scene = new THREE.Scene();
 
-  const envCanvas = document.createElement('canvas');
-  envCanvas.width = 16;
-  envCanvas.height = 128;
-  const ectx = envCanvas.getContext('2d');
-  if (ectx) {
-    const grad = ectx.createLinearGradient(0, 0, 0, 128);
-    // eslint-disable-next-line no-restricted-syntax -- environment-map pixels, not UI colour; balanced against the model's materials.
-    grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.44, '#ece9e2'); grad.addColorStop(0.52, '#c9c5bc'); grad.addColorStop(1, '#7e7b74');
-    ectx.fillStyle = grad;
-    ectx.fillRect(0, 0, 16, 128);
-  }
-  const envTex = new THREE.CanvasTexture(envCanvas);
-  envTex.mapping = THREE.EquirectangularReflectionMapping;
-  envTex.colorSpace = THREE.SRGBColorSpace;
+  // A softbox studio (three's RoomEnvironment) for the reflections: lacquer
+  // and clear coat read as paint only when there are lights to catch. At full
+  // strength it washes colours out, hence the low intensity and exposure.
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const envRT = pmrem.fromEquirectangular(envTex);
+  const room = new RoomEnvironment();
+  const envRT = pmrem.fromScene(room, 0.03);
   scene.environment = envRT.texture;
-  scene.environmentIntensity = 1.0;
+  scene.environmentIntensity = 0.32;
   pmrem.dispose();
-  envTex.dispose();
+  room.dispose();
 
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 500);
   camera.position.set(3, 2.2, 4);
