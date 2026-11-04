@@ -119,6 +119,24 @@ const REREADS: string[] = [
   'lib/pageGate.ts#decidePage',
 ];
 
+/**
+ * THE ADMIN COOKIE. `isAdminAuthedWithMember` honours the cutoff (it re-reads
+ * the doc the stamp lives on); the sync `isAdminAuthed` reads nothing and is
+ * blind to it, exactly as it is blind to a demotion. That is fine for a READ —
+ * the page gate already refused the signed-out phone — and it is the contract
+ * the whole app leans on for writes. So every POST/PUT/PATCH/DELETE that calls
+ * the sync check is listed here with why, and a new one fails the build.
+ */
+const ADMIN_SIGNATURE_ONLY = /\bisAdminAuthed\(/;
+const ADMIN_SYNC_WRITES: Record<string, string> = {
+  'app/api/games/route.ts#POST':
+    'only the rule-7 sessionId override; the write itself is gated by verifyLiveMemberAuth or isAdminAuthedWithMember above it',
+  'app/api/kudos/route.ts#POST':
+    'only the rule-7 sessionId override; the rater is requireGroupMember, which already refuses a signed-out session',
+  'app/api/players/route.ts#POST':
+    'short-circuit only: `isAdminAuthed(req) && (await isAdminAuthedWithMember(req)).authed`, so no admin power rests on the signature',
+};
+
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const p = join(dir, name);
@@ -183,5 +201,33 @@ describe('every caller of a cutoff-blind check is classified', () => {
       expect(REREADING.test(body!), `${key} must call a re-reading helper`).toBe(true);
       expect(SIGNATURE_ONLY.test(body!), `${key} calls a cutoff-blind check`).toBe(false);
     }
+  });
+});
+
+describe('no write trusts the admin cookie’s signature alone', () => {
+  const syncWrites = [...fns]
+    .filter(([key, body]) => key.startsWith('app/') && MUTATING.has(key.split('#')[1]) && ADMIN_SIGNATURE_ONLY.test(body))
+    .map(([key]) => key);
+
+  it('every write calling the sync isAdminAuthed is listed with why', () => {
+    const unlisted = syncWrites.filter((key) => !ADMIN_SYNC_WRITES[key]);
+    expect(
+      unlisted,
+      'These writes check the admin cookie without re-reading it, so a demoted or signed-out-everywhere admin passes. ' +
+        'Use isAdminAuthedWithMember, or list the function in ADMIN_SYNC_WRITES with why the sync check grants nothing.',
+    ).toEqual([]);
+  });
+
+  it('no ADMIN_SYNC_WRITES entry is stale, and each re-reads somewhere', () => {
+    for (const [key, reason] of Object.entries(ADMIN_SYNC_WRITES)) {
+      expect(syncWrites, `${key} no longer calls the sync check — delete the entry`).toContain(key);
+      expect(reason.length, key).toBeGreaterThan(10);
+      expect(REREADING.test(fns.get(key)!) || /\bisAdminAuthedWithMember\(/.test(fns.get(key)!), `${key} re-reads nothing`).toBe(true);
+    }
+  });
+
+  it('isAdminAuthedWithMember itself compares the cutoff', () => {
+    expect(fns.get('lib/auth.ts#isAdminAuthedWithMember')).toMatch(/sessionRevoked\(payload\.iat, resource\.sessionsNotBefore\)/);
+    expect(fns.get('lib/auth.ts#isAdminAuthedWithMember')).toMatch(/sessionRevoked\(payload\.iat, m\.sessionsNotBefore\)/);
   });
 });

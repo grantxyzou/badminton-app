@@ -150,6 +150,22 @@ export async function PATCH(req: NextRequest) {
     if (groupsOn() && !membership) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
+    // "Sign out everywhere" ends an ADMIN cookie too (`isAdminAuthedWithMember`),
+    // so on someone who holds a rank it is a move against that rank: an admin
+    // could otherwise sign an organiser — or a fellow admin — out of the
+    // console as often as they liked. Ranks are an organiser's business
+    // (docs/plans/roles-v2.md), so this is too; an admin may still sign out a
+    // member, or themselves. Checked before any write in this handler, so a
+    // refused body changes nothing. Flag off every admin is an organiser.
+    if (
+      body.signOutEverywhere === true &&
+      !auth.organiser &&
+      id !== auth.memberId &&
+      membership?.status === 'active' &&
+      (membership.role === 'owner' || membership.role === 'admin')
+    ) {
+      return organiserOnly();
+    }
 
     const container = getContainer('members');
     const { resource: existing } = await container.item(id, id).read();
@@ -291,7 +307,8 @@ export async function PATCH(req: NextRequest) {
     // membership is re-read. How an organiser takes a name back — a claim
     // approved for the wrong person, a phone that walked off. The Member copy
     // is the flag-off value and rollback copy, written on the same rule as
-    // `role` (only BPM's admin, or with groups off).
+    // `role` (only BPM's admin, or with groups off). It ends their admin cookie
+    // as well, which is why a rank-holder is an organiser's to sign out (above).
     if (body.signOutEverywhere === true) {
       const at = new Date().toISOString();
       if (groupsOn() && !(await signOutEverywhereIn(auth.groupId, id, at))) {

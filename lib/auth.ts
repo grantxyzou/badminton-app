@@ -561,7 +561,8 @@ export async function activeMemberFor(
  * ONLY WHERE THE MEMBERSHIP IS RE-READ: `activeMemberFor` (the page gate,
  * every members-only read, sign-up, the widget) and `readLiveMemberSession`
  * (every write that acts as the member, the page's no-club fallback, the OAuth
- * link). A caller of `verifyMemberAuth`'s signature alone does not see it until
+ * link) for the member cookie, and `isAdminAuthedWithMember` for the admin
+ * one. A caller of `verifyMemberAuth`'s signature alone does not see it until
  * the cookie expires; `__tests__/member-session-cutoff-coverage.test.ts` lists
  * each one with the reason it may.
  */
@@ -667,6 +668,14 @@ export async function requireMember(req: NextRequest): Promise<MemberGate> {
  * Sync admin check — verifies the cookie's signature, AUDIENCE and expiry only.
  * Does NOT re-check the Member's role. Cheaper, used by read-only routes.
  *
+ * Blind to "Sign out everywhere" for the same reason it is blind to a
+ * demotion: it reads no doc. That is safe only because nothing that WRITES
+ * trusts it alone — the page gate (`requireMember`) re-reads, so a signed-out
+ * phone never reaches the admin reads, and a hand-replayed cookie reads until
+ * it expires, as a demoted admin's always has. The writes that call it do so
+ * only beside a re-read; `__tests__/member-session-cutoff-coverage.test.ts`
+ * names each one with why.
+ *
  * The audience is what makes "signature valid" mean something here: the cookie
  * NAME is chosen by the client, so without `typ` this returned true for any
  * signed-in member who replayed their `member_session` value under this name.
@@ -737,6 +746,15 @@ export function ownsNameOrAdmin(req: NextRequest, name: string): boolean {
  * confirm `role === 'admin' && active === true`. Use in routes that mutate
  * data; protects against role demotion taking effect immediately on the next
  * request rather than on next cookie expiry.
+ *
+ * It also honours "Sign out everywhere" (docs/plans/claim-your-name.md): an
+ * `admin_session` minted before the cutoff is refused, read off the doc this
+ * check already holds — the Member with groups off, the membership
+ * `readGroupAdmin` returns with groups on — so it costs no extra read. Before
+ * it did, signing an admin out everywhere (or issuing them a recovery code)
+ * ended their member cookie and left the admin one working for 30 days, and
+ * `requireMember` and `callerMemberId` fall back to it, so the page gate let
+ * the signed-out phone straight back into the app.
  */
 export async function isAdminAuthedWithMember(
   req: NextRequest,
@@ -754,6 +772,7 @@ export async function isAdminAuthedWithMember(
     if (!groupsOn()) {
       // Flag off: `Member.role` is the source of truth and the claim is ignored.
       if (resource.role !== 'admin') return { authed: false };
+      if (sessionRevoked(payload.iat, resource.sessionsNotBefore)) return { authed: false };
       // Flag off there is no organiser rank (`docs/roles.md`), and every admin
       // keeps the full power the role always had, promotion included.
       return { authed: true, memberId: resource.id, name: resource.name, groupId: BPM_GROUP_ID, organiser: true };
@@ -763,6 +782,9 @@ export async function isAdminAuthedWithMember(
     const groupId = payload.groupId ?? BPM_GROUP_ID;
     const m = await readGroupAdmin(groupId, resource.id);
     if (!m) return { authed: false };
+    // The cutoff lives on the membership in the claimed club, exactly where
+    // `activeMemberFor` reads it for the member cookie.
+    if (sessionRevoked(payload.iat, m.sessionsNotBefore)) return { authed: false };
     // `organiser` is the rank above admin (docs/plans/roles-v2.md): the only
     // one that hands out ranks and the gift-card switch.
     return { authed: true, memberId: resource.id, name: m.name, groupId, organiser: m.role === 'owner' };
