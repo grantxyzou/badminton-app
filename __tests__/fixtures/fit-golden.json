@@ -2,7 +2,8 @@
   "_meta": {
     "purpose": "Expert-rated ground truth for lib/racketFit.ts. Each case is a real (anonymised) or stringer-hypothetical member: their gear doc shape, their raw check-in ratings, and the set of rackets the owner and the club stringer agreed are ACCEPTABLE picks (a set, not one) plus any that would be plainly wrong. The test asserts the engine's top three intersects `acceptable` and avoids `unacceptable`. Populated by hand from `scripts/dump-fit-cases.mjs` skeletons (Phase 3); ids are gNN and carry no names. `ratedBy` says who rated it — mark hypotheticals honestly.",
     "howToAdd": "Copy a case, set gear.items[].catalogId to real catalog ids (the test refuses an id the catalog does not have), fill acceptable/unacceptable, set ratedBy and ratedAt.",
-    "pending": "A case with `pending: true` is a DRAFT nobody has rated: the harness prints the engine's current top three beside its `acceptable` list for the owner and the stringer to confirm or correct, and asserts nothing about agreement. It does not count toward the kill criterion's five. Flip `pending` off and set `ratedBy` / `ratedAt` once a person has confirmed it."
+    "pending": "A case with `pending: true` is a DRAFT nobody has rated: the harness prints the engine's current top three beside its `acceptable` list for the owner and the stringer to confirm or correct, and asserts nothing about agreement. It does not count toward the kill criterion's five. Flip `pending` off and set `ratedBy` / `ratedAt` once a person has confirmed it.",
+    "manufacturer": "A case with `rater: 'manufacturer'` is a SECOND OPINION, not expert truth: the brand's own series positioning (Yonex: Astrox = power / head-heavy, Nanoflare = speed / head-light, Arcsaber = control / even; Victor: Thruster = power, Auraspeed = speed, DriveX = all-round; Li-Ning: Axforce = power, Bladex = speed, Halbertec = control) turned into the acceptable set for a player type the brand describes. Marketing, so it is counted apart from the owner's and the stringer's cases and never toward the kill criterion's five; it is asserted like them because a disagreement with every brand at once is worth a red test."
   },
   "engineVersion": "fit-4",
   "catalog": "scripts/data/equipment-catalog.json",
@@ -191,6 +192,325 @@
         "racket-yonex-nanoflare-700-pro",
         "racket-victor-brave-sword-1500",
         "racket-yonex-astrox-88s-pro"
+      ]
+    },
+    {
+      "id": "m01",
+      "rater": "manufacturer",
+      "source": "Yonex Astrox, Victor Thruster and Li-Ning Axforce — every row of the brands' POWER series (the 88S rows excepted: Even by the stringer's relabel, sold as the front-court Astrox) — for the player each brand files there: rear court, fast swing, wants more smash",
+      "note": "The brands' power line: a fast-swinging singles player who wants more smash. Every maker files this player under its head-heavy, stiff series. The acceptable set is the SERIES, generated from the catalog by id prefix (the brand's claim is about the line, not one model), and the unacceptable rows are the other lines' flagships.",
+      "ratedBy": "Manufacturer series guides (Yonex, Victor, Li-Ning), encoded 2026-11-04",
+      "ratedAt": "2026-11-04",
+      "gear": {
+        "fitGoal": "more_power",
+        "fitSwing": "fast",
+        "fitArmComfort": "fine",
+        "fitGrip": "G5",
+        "playFormat": "singles",
+        "items": []
+      },
+      "ratings": [
+        {
+          "skillKey": "clears",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "smashes",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "consistency",
+          "value": 4,
+          "source": "self"
+        },
+        {
+          "skillKey": "footwork",
+          "value": 4,
+          "source": "self"
+        }
+      ],
+      "acceptable": [
+        "racket-li-ning-axforce-10",
+        "racket-li-ning-axforce-100-ii",
+        "racket-li-ning-axforce-100-qilin",
+        "racket-li-ning-axforce-20",
+        "racket-li-ning-axforce-30",
+        "racket-li-ning-axforce-40",
+        "racket-li-ning-axforce-50",
+        "racket-li-ning-axforce-60",
+        "racket-li-ning-axforce-70",
+        "racket-li-ning-axforce-80",
+        "racket-li-ning-axforce-80-ii",
+        "racket-li-ning-axforce-80-light",
+        "racket-li-ning-axforce-90",
+        "racket-li-ning-axforce-90-dragon-max",
+        "racket-li-ning-axforce-90-tiger-max",
+        "racket-li-ning-axforce-big-bang",
+        "racket-li-ning-axforce-cannon",
+        "racket-li-ning-axforce-cannon-pro",
+        "racket-li-ning-axforce-warrior",
+        "racket-victor-thruster-f-c-ultra-cx",
+        "racket-victor-thruster-f-claw",
+        "racket-victor-thruster-f-enhanced-hs",
+        "racket-victor-thruster-f-ultra",
+        "racket-victor-thruster-falcon",
+        "racket-victor-thruster-k-100k",
+        "racket-victor-thruster-k-280-ex",
+        "racket-victor-thruster-k-6",
+        "racket-victor-thruster-k-falcon",
+        "racket-victor-thruster-legend",
+        "racket-victor-thruster-raptor",
+        "racket-victor-thruster-ryuga",
+        "racket-victor-thruster-ryuga-ii",
+        "racket-victor-thruster-ryuga-ii-pro",
+        "racket-victor-thruster-ryuga-metallic",
+        "racket-victor-thruster-ryuga-muse",
+        "racket-yonex-astrox-01-feel",
+        "racket-yonex-astrox-100-game",
+        "racket-yonex-astrox-100-tour",
+        "racket-yonex-astrox-100va-game",
+        "racket-yonex-astrox-100va-tour",
+        "racket-yonex-astrox-100va-zz",
+        "racket-yonex-astrox-100zz",
+        "racket-yonex-astrox-70",
+        "racket-yonex-astrox-77-play",
+        "racket-yonex-astrox-77-pro",
+        "racket-yonex-astrox-77-tour",
+        "racket-yonex-astrox-88-play",
+        "racket-yonex-astrox-88d-game",
+        "racket-yonex-astrox-88d-pro",
+        "racket-yonex-astrox-88d-tour",
+        "racket-yonex-astrox-99-game",
+        "racket-yonex-astrox-99-play",
+        "racket-yonex-astrox-99-pro",
+        "racket-yonex-astrox-99-pro-3rd-gen",
+        "racket-yonex-astrox-99-tour",
+        "racket-yonex-astrox-attack-9",
+        "racket-yonex-astrox-lite-43i",
+        "racket-yonex-astrox-nextage"
+      ],
+      "unacceptable": [
+        "racket-yonex-nanoflare-700-pro",
+        "racket-yonex-nanoflare-1000z",
+        "racket-victor-auraspeed-90k",
+        "racket-li-ning-bladex-800",
+        "racket-yonex-arcsaber-7-pro"
+      ]
+    },
+    {
+      "id": "m02",
+      "rater": "manufacturer",
+      "source": "Yonex Nanoflare, Victor Auraspeed and Jetspeed, Li-Ning Bladex — every row of the brands' SPEED series (the Bladex 800 Power excepted, head-heavy by name) — for a doubles player with a medium swing who wants to be quicker on the flat",
+      "note": "The brands' speed line: a doubles player with a medium swing who wants to be quicker on the flat exchange. Head-light, medium-to-stiff. The acceptable set is the SERIES, generated from the catalog by id prefix (the brand's claim is about the line, not one model), and the unacceptable rows are the other lines' flagships.",
+      "ratedBy": "Manufacturer series guides (Yonex, Victor, Li-Ning), encoded 2026-11-04",
+      "ratedAt": "2026-11-04",
+      "gear": {
+        "fitGoal": "faster",
+        "fitSwing": "medium",
+        "fitArmComfort": "fine",
+        "fitGrip": "G5",
+        "playFormat": "doubles",
+        "items": []
+      },
+      "ratings": [
+        {
+          "skillKey": "drives",
+          "value": 3,
+          "source": "self"
+        },
+        {
+          "skillKey": "net_play",
+          "value": 3,
+          "source": "self"
+        },
+        {
+          "skillKey": "consistency",
+          "value": 3,
+          "source": "self"
+        },
+        {
+          "skillKey": "footwork",
+          "value": 3,
+          "source": "self"
+        }
+      ],
+      "acceptable": [
+        "racket-li-ning-bladex-200",
+        "racket-li-ning-bladex-500",
+        "racket-li-ning-bladex-600",
+        "racket-li-ning-bladex-700",
+        "racket-li-ning-bladex-800",
+        "racket-li-ning-bladex-800-speed",
+        "racket-li-ning-bladex-880-shida",
+        "racket-li-ning-bladex-900-sun-max",
+        "racket-li-ning-bladex-assassin",
+        "racket-li-ning-bladex-sonar",
+        "racket-li-ning-bladex-spiral",
+        "racket-victor-auraspeed-100x-ultra",
+        "racket-victor-auraspeed-80x",
+        "racket-victor-auraspeed-90f",
+        "racket-victor-auraspeed-90k",
+        "racket-victor-auraspeed-90k-ii",
+        "racket-victor-auraspeed-90k-metallic",
+        "racket-victor-auraspeed-90s",
+        "racket-victor-auraspeed-99",
+        "racket-victor-auraspeed-fantome",
+        "racket-victor-auraspeed-fantome-f-ac",
+        "racket-victor-auraspeed-hs-plus",
+        "racket-victor-auraspeed-hyper-sonic-hs",
+        "racket-victor-jetspeed-12",
+        "racket-victor-jetspeed-s-011",
+        "racket-victor-jetspeed-s-12",
+        "racket-yonex-nanoflare-001-ability",
+        "racket-yonex-nanoflare-1000-game",
+        "racket-yonex-nanoflare-1000-play",
+        "racket-yonex-nanoflare-1000-tour",
+        "racket-yonex-nanoflare-1000z",
+        "racket-yonex-nanoflare-700-game",
+        "racket-yonex-nanoflare-700-play",
+        "racket-yonex-nanoflare-700-pro",
+        "racket-yonex-nanoflare-700-tour",
+        "racket-yonex-nanoflare-800-game",
+        "racket-yonex-nanoflare-800-play",
+        "racket-yonex-nanoflare-800-pro",
+        "racket-yonex-nanoflare-800-tour",
+        "racket-yonex-nanoflare-nextage",
+        "racket-yonex-nanoflare-speed-7",
+        "racket-yonex-nanoflare-x5",
+        "racket-yonex-nanoflare-x7"
+      ],
+      "unacceptable": [
+        "racket-yonex-astrox-99-pro",
+        "racket-victor-thruster-ryuga-ii",
+        "racket-li-ning-axforce-90-dragon",
+        "racket-yonex-astrox-100zz"
+      ]
+    },
+    {
+      "id": "m03",
+      "rater": "manufacturer",
+      "source": "Yonex Arcsaber, Victor DriveX and Brave Sword, Li-Ning Halbertec and Halberd — every row of the brands' CONTROL / all-round series — for an all-round player with a medium swing who wants placement over pace",
+      "note": "The brands' control line: an all-round player, medium swing, who wants more placement than pace. Even balance, medium-to-stiff. The acceptable set is the SERIES, generated from the catalog by id prefix (the brand's claim is about the line, not one model), and the unacceptable rows are the other lines' flagships.",
+      "ratedBy": "Manufacturer series guides (Yonex, Victor, Li-Ning), encoded 2026-11-04",
+      "ratedAt": "2026-11-04",
+      "gear": {
+        "fitGoal": "more_control",
+        "fitSwing": "medium",
+        "fitArmComfort": "fine",
+        "fitGrip": "G5",
+        "playFormat": "both",
+        "items": []
+      },
+      "ratings": [
+        {
+          "skillKey": "drops",
+          "value": 3,
+          "source": "self"
+        },
+        {
+          "skillKey": "clears",
+          "value": 3,
+          "source": "self"
+        },
+        {
+          "skillKey": "consistency",
+          "value": 3,
+          "source": "self"
+        },
+        {
+          "skillKey": "game_reading",
+          "value": 3,
+          "source": "self"
+        }
+      ],
+      "acceptable": [
+        "racket-li-ning-halbertec-1000",
+        "racket-li-ning-halbertec-5000",
+        "racket-li-ning-halbertec-6000",
+        "racket-li-ning-halbertec-7000",
+        "racket-li-ning-halbertec-8000",
+        "racket-li-ning-halbertec-9000",
+        "racket-li-ning-halbertec-motor",
+        "racket-li-ning-halbertec-motor-pro",
+        "racket-victor-brave-sword-12",
+        "racket-victor-brave-sword-1500",
+        "racket-victor-drivex-10-metallic",
+        "racket-victor-drivex-12",
+        "racket-victor-drivex-3h",
+        "racket-victor-drivex-9x",
+        "racket-yonex-arcsaber-11-play",
+        "racket-yonex-arcsaber-11-pro",
+        "racket-yonex-arcsaber-11-tour",
+        "racket-yonex-arcsaber-2-clear",
+        "racket-yonex-arcsaber-7-play",
+        "racket-yonex-arcsaber-7-pro",
+        "racket-yonex-arcsaber-7-tour",
+        "racket-yonex-arcsaber-71-light"
+      ],
+      "unacceptable": [
+        "racket-yonex-astrox-100zz",
+        "racket-yonex-nanoflare-1000z",
+        "racket-li-ning-axforce-90-dragon"
+      ]
+    },
+    {
+      "id": "m04",
+      "rater": "manufacturer",
+      "source": "Entry lines across all three brands: Yonex Play rows and Arcsaber 2 Clear, Victor Brave Sword 1500 and Jetspeed S-011, Li-Ning Halbertec 1000 and Halberd 900",
+      "note": "The brands' first-racket shelf: a beginner with a slow swing, happy, both formats, about $120. Flexible-to-medium, even or head-light, entry or mid tier.",
+      "ratedBy": "Manufacturer series guides (Yonex, Victor, Li-Ning), encoded 2026-11-04",
+      "ratedAt": "2026-11-04",
+      "gear": {
+        "fitGoal": "happy",
+        "fitSwing": "slow",
+        "fitArmComfort": "fine",
+        "fitGrip": "G5",
+        "playFormat": "both",
+        "budgetMaxCad": 120,
+        "items": []
+      },
+      "ratings": [
+        {
+          "skillKey": "clears",
+          "value": 2,
+          "source": "self"
+        },
+        {
+          "skillKey": "serves",
+          "value": 2,
+          "source": "self"
+        },
+        {
+          "skillKey": "consistency",
+          "value": 2,
+          "source": "self"
+        },
+        {
+          "skillKey": "footwork",
+          "value": 2,
+          "source": "self"
+        }
+      ],
+      "acceptable": [
+        "racket-yonex-arcsaber-11-play",
+        "racket-yonex-arcsaber-7-play",
+        "racket-yonex-arcsaber-2-clear",
+        "racket-yonex-nanoflare-1000-play",
+        "racket-yonex-nanoflare-700-play",
+        "racket-victor-brave-sword-1500",
+        "racket-victor-jetspeed-s-011",
+        "racket-li-ning-halbertec-1000",
+        "racket-li-ning-halberd-900",
+        "racket-li-ning-g-force-superlite",
+        "racket-li-ning-halbertec-motor"
+      ],
+      "unacceptable": [
+        "racket-yonex-astrox-100zz",
+        "racket-yonex-nanoflare-1000z",
+        "racket-yonex-astrox-88d-pro",
+        "racket-victor-thruster-ryuga-ii-pro"
       ]
     }
   ]
