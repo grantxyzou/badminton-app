@@ -1960,7 +1960,10 @@ html:root .cc-tile,
 html:root .cc-mini-card,
 html:root .cc-session-chip {
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  /* Fill-only, like every Tier-2 surface on the member tabs (Grant,
+     2026-11-04, "do the admin console ones too"); transparent, not none, so
+     the box keeps its size. */
+  border: 1px solid transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
@@ -1969,12 +1972,10 @@ html:root .cc-session-chip {
   html:root .cc-tile:hover,
   html:root .cc-session-chip:hover {
     background: var(--glass-soft-bg);
-    border-color: var(--glass-border);
   }
   /* -static is a read-only stat display and must not offer a hover affordance. */
   html:root .cc-tile-static:hover {
     background: var(--inner-card-bg);
-    border-color: var(--inner-card-border);
   }
 }
 html:root .cc-progress-track {
@@ -4304,7 +4305,7 @@ html:root[data-tab="admin"] .bottom-sheet {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* a pressable choice chip is fill-only, see .setup-feel-chip */
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--fs-sm);
@@ -4875,17 +4876,16 @@ html:root[data-theme="light"] {
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent; /* fill-only, see the html:root rule */
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background 120ms ease;
   text-align: left;
 }
 .cc-tile:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
 }
 .cc-tile .num {
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
@@ -4920,7 +4920,6 @@ html:root[data-theme="light"] {
 }
 .cc-tile-static:hover {
   background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Money tiles three-up on a phone (Ledger: In and out, Still owed). The 28px
@@ -4934,16 +4933,13 @@ html:root[data-theme="light"] {
 }
 [data-theme="light"] .cc-tile-static:hover {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .cc-tile {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 [data-theme="light"] .cc-tile:hover {
   background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.14);
 }
 
 /* Status pill family — pairs with cc-btn / cc-tile.
@@ -5007,18 +5003,14 @@ html:root[data-theme="light"] {
    against the light page-bg. */
 .cc-mini-card {
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Fill-only everywhere since 2026-11-04. The Stringing tab went first
+     (Grant, 2026-10-28: the bench's rows lost the rim there and kept it
+     everywhere else); the admin console followed with the rest of the app.
+     Transparent rather than none, so the row keeps its size. */
+  border: 1px solid transparent;
 }
 [data-theme="light"] .cc-mini-card {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
-}
-/* The Stringing tab draws its containers fill-only, as Stats does (Grant,
-   2026-10-28): the bench's Archived and set-up rows lose the rim here and
-   keep it everywhere else. Transparent rather than none, so the row keeps
-   its size. (0,2,1) outranks the light rule above. */
-html[data-tab="stringing"] .cc-mini-card {
-  border-color: transparent;
 }
 
 /* Session selector chip — horizontal session nav for PaymentsCard
@@ -5029,24 +5021,22 @@ html[data-tab="stringing"] .cc-mini-card {
   border-radius: 10px;
   padding: var(--space-3) var(--space-4);
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent; /* fill-only, see .cc-mini-card */
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
 }
 @media (hover: hover) {
   .cc-session-chip:hover { background: rgba(255, 255, 255, 0.07); }
 }
 .cc-session-chip[aria-selected="true"] {
   background: var(--inner-card-green-bg, rgba(74, 222, 128, 0.13));
-  border-color: var(--inner-card-green-border, rgba(74, 222, 128, 0.3));
   color: var(--text-primary);
 }
 [data-theme="light"] .cc-session-chip {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 [data-theme="light"] .cc-session-chip:hover {
   background: rgba(0, 0, 0, 0.05);
@@ -5067,20 +5057,18 @@ html[data-tab="stringing"] .cc-mini-card {
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .cc-mini-card */
   color: var(--text-primary);
   font: inherit;
   text-align: left;
   cursor: pointer;
   transition:
     transform var(--duration-press) var(--ease-out-quart),
-    background var(--duration-fast) ease,
-    border-color var(--duration-fast) ease;
+    background var(--duration-fast) ease;
 }
 .cc-choice:active { transform: scale(0.98); }
 .cc-choice[aria-checked="true"] {
   background: var(--inner-card-green-bg);
-  border-color: var(--inner-card-green-border);
 }
 .cc-choice:disabled { opacity: 0.5; pointer-events: none; }
 
@@ -5573,7 +5561,7 @@ html[data-tab="stringing"] .cc-mini-card {
   padding: var(--space-1) var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* a pressable choice chip is fill-only, see .setup-feel-chip */
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -7283,8 +7271,9 @@ a.setup-price-row:active { background: var(--press-bg); }
 .pick-buy-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); margin-top: var(--space-2); text-decoration: none; }
 
 /* ── Admin: Missing from the catalog ─────────────────────────────────────── */
-.catalog-gap { padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
-.catalog-gap + .catalog-gap { border-top: 1px solid var(--divider); }
+/* Tinted rows set apart by space, no hairline (fill-only, 2026-11-04). */
+.catalog-gaps { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.catalog-gap { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); border-radius: var(--radius-lg); background: var(--inner-card-bg); }
 .catalog-gap-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .catalog-gap-name { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .catalog-gap-count { font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 600; color: var(--accent); }
