@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### On a foldable, the week is the right-hand page (2026-11-04)
+
+On an unfolded phone, this week's session now sits on the right pane — the page that opens, as Grant reads it — with the nudges and your balance on the left. Sheets and notices open in the left half so they never cover the week they came from. Plan: `docs/plans/foldable-layout.md`.
+
 ### Motion for the fold, and the scoreboard brought in line (2026-11-04)
 
 Opening or closing a foldable now crossfades the app through the reflow instead of snapping it, and the courtside scoreboard's two halves slide with the hinge as the phone moves. The board fades in when it opens, each new point fades in, and the game ending gets the same small entrance a saved check-in does; in the store app every +1 taps lightly under the finger. Two design-system misses fixed on the way: the +1 targets lose their outer rim (fill-only, like every container), and the board wears the Stats field instead of a flat ground. Plan: `docs/plans/foldable-layout.md`.
