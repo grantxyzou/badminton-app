@@ -328,6 +328,16 @@
         "errorTooCommon": "换一个不那么常见的 PIN"
       }
     },
+    "waitlistPing": {
+      "title": "有空位时提醒你？",
+      "enableBody": "有空位时会自动为你补上。开启通知，就能及时知道。",
+      "appBody": "通知通过 %APP_SHORT% 应用发送。账号直接带过去：一个验证码，不用 PIN。",
+      "turnOn": "开启通知",
+      "turningOn": "正在开启…",
+      "getApp": "获取应用",
+      "notNow": "以后再说",
+      "willPing": "有空位时会通知你。"
+    },
     "states": {
       "finishedTitle": "感谢参与！",
       "finishedBody": "下周报名稍后公布。",

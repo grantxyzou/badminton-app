@@ -328,6 +328,16 @@
         "errorTooCommon": "Try a less common PIN"
       }
     },
+    "waitlistPing": {
+      "title": "Want a ping if a spot opens?",
+      "enableBody": "If a spot opens, you're moved in automatically. A ping makes sure you know in time to come.",
+      "appBody": "Pings come through the %APP_SHORT% app. Your account comes with you: one code, no PIN.",
+      "turnOn": "Turn on notifications",
+      "turningOn": "Turning on…",
+      "getApp": "Get the app",
+      "notNow": "Not now",
+      "willPing": "You'll get a ping if a spot opens."
+    },
     "states": {
       "finishedTitle": "Thanks for playing!",
       "finishedBody": "Sign up for next week will be announced soon.",

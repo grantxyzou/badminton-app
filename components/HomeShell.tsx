@@ -162,6 +162,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
      native token listener. */
   const push = usePush();
   const nativeShell = useClientValue(isNative, true); // unknown hides the app card
+  /** On the web, with the move-to-app link on: notifications are offered as
+   *  the store app, never as this browser's push (Grant, 2026-11-04). Shared
+   *  by the Notifications page and Home's waitlist ask. */
+  const webAppOffer = isFlagOn('NEXT_PUBLIC_FLAG_NATIVE_MIGRATE') && !nativeShell;
   // Bumped by pull-to-refresh — folded into each tab's React key so the active
   // tab remounts and re-runs its data fetches (no service worker; refresh ==
   // refetch the current view).
@@ -1053,7 +1057,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
               onNavigate={goFromNotice}
               push={push}
               isAdmin={showAdmin}
-              migrateOn={isFlagOn('NEXT_PUBLIC_FLAG_NATIVE_MIGRATE') && !nativeShell}
+              migrateOn={webAppOffer}
             />
           )}
           {/* Each kept tab is its own panel: hidden, not unmounted, while
@@ -1069,7 +1073,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
                 className="motion-fade"
               >
                 <TabActiveContext.Provider value={tab === activeTab && !noticesOpen}>
-                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} />}
+                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} push={push} webApp={webAppOffer} />}
                   {tab === 'stringing' && <StringingTab isAdmin={showAdmin} view={stringingView} onViewChange={setStringingView} />}
                   {tab === 'skills' && <SkillsTab onTabChange={setActiveTab} />}
                   {tab === 'profile' && (
