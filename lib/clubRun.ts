@@ -130,3 +130,46 @@ export function capacityForCourts(courts: number | null, run: ClubRun): number |
   if (run.playersPerCourt === null || courts === null || !Number.isFinite(courts) || courts < 1) return null;
   return Math.min(100, Math.max(1, Math.floor(courts) * run.playersPerCourt));
 }
+
+/**
+ * How many players a court holds this session (docs/plans/waitlist-court-line.md):
+ * the club's own `playersPerCourt` when it sets one, else the session's cap
+ * divided by its courts when that comes out even (BPM Core: 12 ÷ 2 = 6). A cap
+ * that does not divide — 13 on 2 courts — answers `null`: the line says nothing
+ * rather than guess what a court is.
+ */
+export function playersPerCourtFor(
+  session: { courts?: number | null; maxPlayers?: number | null } | null | undefined,
+  run: ClubRun,
+): number | null {
+  if (run.playersPerCourt !== null) return run.playersPerCourt;
+  const courts = session?.courts;
+  const cap = session?.maxPlayers;
+  if (!courts || !cap || !Number.isInteger(courts) || !Number.isInteger(cap) || courts < 1) return null;
+  return cap % courts === 0 && cap / courts > 0 ? cap / courts : null;
+}
+
+export interface CourtLine {
+  /** Players one court holds. */
+  perCourt: number;
+  /** People on the waitlist who would move up (held-for-unpaid rows excluded). */
+  waiting: number;
+  /** How many more would make a court's worth; 0 once there are enough. */
+  more: number;
+}
+
+/**
+ * How close the waitlist is to another court's worth, or `null` when a court
+ * cannot be worked out. Only rows that would actually move up count: a removed
+ * row has left, and a held-for-unpaid row is never promoted.
+ */
+export function courtLine(
+  session: { courts?: number | null; maxPlayers?: number | null } | null | undefined,
+  run: ClubRun,
+  rows: ReadonlyArray<{ waitlisted?: boolean; removed?: boolean; heldForUnpaid?: boolean }>,
+): CourtLine | null {
+  const perCourt = playersPerCourtFor(session, run);
+  if (perCourt === null) return null;
+  const waiting = rows.filter((r) => r.waitlisted === true && r.removed !== true && r.heldForUnpaid !== true).length;
+  return { perCourt, waiting, more: Math.max(0, perCourt - waiting) };
+}
