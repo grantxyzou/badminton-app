@@ -17,7 +17,7 @@ import { getContainer } from '@/lib/cosmos';
 import { claimHandoff } from '@/lib/authHandoff';
 import { completeSignIn } from '@/lib/authSession';
 import { setPendingSignup } from '@/lib/pendingSignup';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyLiveMemberAuth } from '@/lib/auth';
 import { reserveIdentity } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
        a genuine request to link. Without this the app got a name step on top
        of a signed-in account, and any name but their own created a second,
        empty account and switched them into it. */
-    const session = verifyMemberAuth(req);
+    const session = await verifyLiveMemberAuth(req);
     if (session) {
       const members = getContainer('members');
       const { resource: current } = await members.item(session.memberId, session.memberId).read<Member>();

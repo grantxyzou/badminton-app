@@ -338,11 +338,6 @@ export function clearMemberCookie(res: NextResponse): void {
 }
 
 /**
- * Verifies the `member_session` cookie (signature + expiry only — identity
- * proof, NO role/authorization). Returns the bound member identity or null.
- * Never grants admin. Cheap; no Cosmos round-trip.
- */
-/**
  * Who this device WAS signed in as, expiry ignored — signature and shape still
  * verified. For one job only: telling the owner of a doc on a lapsed 30-day
  * `member_session` apart from an anonymous reader, so a redaction marker can
@@ -370,6 +365,15 @@ export function peekMemberSession(req: NextRequest): MemberSession | null {
   return sessionOf(payload);
 }
 
+/**
+ * The `member_session` cookie's signature, audience and expiry — identity
+ * only, no Cosmos read, and so BLIND to "Sign out everywhere"
+ * (`sessionsNotBefore`): a cookie minted before the cutoff passes here for
+ * the rest of its 30 days. A route that WRITES as the member uses
+ * `verifyLiveMemberAuth` (or `requireGroupMember`) instead; this is for reads
+ * already behind a gate, and for hints. The cutoff canary
+ * (`__tests__/member-session-cutoff-coverage.test.ts`) names every caller.
+ */
 export function verifyMemberAuth(req: NextRequest): MemberSession | null {
   const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
   if (!cookie) return null;
@@ -554,14 +558,70 @@ export async function activeMemberFor(
  * same second as the stamp still works. No `iat` (a hand-built session) or an
  * unparseable cutoff revokes nothing.
  *
- * ONLY WHERE THE MEMBERSHIP IS RE-READ. That is the page gate, every
- * members-only read and sign-up; a route that trusts `verifyMemberAuth`'s
- * signature alone does not see the cutoff until the cookie expires.
+ * ONLY WHERE THE MEMBERSHIP IS RE-READ: `activeMemberFor` (the page gate,
+ * every members-only read, sign-up, the widget) and `readLiveMemberSession`
+ * (every write that acts as the member, the page's no-club fallback, the OAuth
+ * link). A caller of `verifyMemberAuth`'s signature alone does not see it until
+ * the cookie expires; `__tests__/member-session-cutoff-coverage.test.ts` lists
+ * each one with the reason it may.
  */
 export function sessionRevoked(iatSeconds: number | undefined, notBefore: string | undefined): boolean {
   if (iatSeconds === undefined || !notBefore) return false;
   const cutoffMs = Date.parse(notBefore);
   return Number.isFinite(cutoffMs) && iatSeconds < Math.floor(cutoffMs / 1000);
+}
+
+/** What `readLiveMemberSession` found. `unknown` is a failed re-read — never
+ *  reported as signed out by a caller that can say "unknown". */
+export type LiveMemberSession =
+  | { status: 'live'; session: MemberSession }
+  | { status: 'none' }
+  | { status: 'unknown' };
+
+/**
+ * `verifyMemberAuth` plus the "Sign out everywhere" cutoff, for a route that
+ * acts AS the member without needing an ACTIVE membership in the claimed club
+ * (docs/plans/claim-your-name.md, Decisions). Same identity as the cookie —
+ * its id, name and group claim — and one point read more: the membership the
+ * cookie names (groups on) or the Member (groups off).
+ *
+ * Deliberately NOT `requireGroupMember`: a person half-way through "Create a
+ * club", or removed from the club their cookie names, is signed in and in no
+ * club, and `POST /api/groups`, `join` and `switch` exist for exactly them. So
+ * a missing or removed membership is not a refusal here — only a session
+ * minted before that membership's `sessionsNotBefore` is, whatever its status,
+ * or the club picker would hand a signed-out phone a fresh cookie for the club
+ * that signed it out. Nothing else is decided here: whether the account is
+ * still active is each route's own read, as it was under `verifyMemberAuth`.
+ *
+ * `__tests__/member-session-cutoff-coverage.test.ts` classifies every caller
+ * of the signature-only check against this one.
+ */
+export async function readLiveMemberSession(req: NextRequest): Promise<LiveMemberSession> {
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return { status: 'none' };
+  const payload = verifyToken(cookie, 'member');
+  if (!payload) return { status: 'none' };
+  const session = sessionOf(payload);
+  try {
+    let notBefore: string | undefined;
+    if (groupsOn()) {
+      notBefore = (await readMembership(session.groupId, session.memberId))?.sessionsNotBefore;
+    } else {
+      const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
+      notBefore = resource?.sessionsNotBefore;
+    }
+    return sessionRevoked(payload.iat, notBefore) ? { status: 'none' } : { status: 'live', session };
+  } catch {
+    return { status: 'unknown' };
+  }
+}
+
+/** `readLiveMemberSession` for a caller with no "unknown" to report: a failed
+ *  re-read refuses, as `activeMemberFor` does. */
+export async function verifyLiveMemberAuth(req: NextRequest): Promise<MemberSession | null> {
+  const live = await readLiveMemberSession(req);
+  return live.status === 'live' ? live.session : null;
 }
 
 export type MemberGate =

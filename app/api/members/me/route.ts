@@ -10,6 +10,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import {
   verifyMemberAuth,
+  verifyLiveMemberAuth,
   isAdminAuthed,
   isAdminAuthedWithMember,
   setMemberCookie,
@@ -272,7 +273,7 @@ async function handleStatsPrivacyPatch(req: NextRequest, name: string, raw: unkn
   // own display name happens to equal a target's roster name in the claimed
   // group write that target's privacy setting. The id the route already
   // resolved is the thing that identifies a person.
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   const isSelf = !!caller && caller.memberId === memberId;
   if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -315,7 +316,7 @@ async function handleAvatarPatch(req: NextRequest, name: string, raw: unknown) {
   if (!memberId) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   const isSelf = !!caller && caller.memberId === memberId;
   if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -474,7 +475,7 @@ async function handlePatch(req: NextRequest) {
   // first PIN — which the response then hands back a session for. The id is
   // already in hand from the resolve above, so the correct check is free.
   if (!hadPin) {
-    const caller = verifyMemberAuth(req);
+    const caller = await verifyLiveMemberAuth(req);
     const isSelf = !!caller && caller.memberId === memberId;
     if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
       return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -557,7 +558,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
 
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   if (!caller) {
     return NextResponse.json({ error: 'Sign in on this device first' }, { status: 401 });
   }

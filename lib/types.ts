@@ -431,10 +431,12 @@ export interface Membership {
    * copied off it would otherwise live its sixty days. Additive; absent =
    * nothing revoked. The flag-off copy is `Member.widgetPassNotBefore`.
    */
-  widgetPassNotBefore?: string;  /**
+  widgetPassNotBefore?: string;
+  /**
    * A member SESSION minted before this instant is refused wherever the
-   * membership is re-read (`activeMemberFor` in lib/auth.ts — the page gate,
-   * every members-only read, sign-up). Stamped by the Roster sheet's "Sign out
+   * membership is re-read: `activeMemberFor` (the page gate, every
+   * members-only read, sign-up) and `readLiveMemberSession` (every write that
+   * acts as the member) in lib/auth.ts. Stamped by the Roster sheet's "Sign out
    * everywhere" and by issuing a recovery code (docs/plans/claim-your-name.md):
    * how an organiser takes a name back from whoever holds it. Additive; absent
    * = nothing revoked. The flag-off copy is `Member.sessionsNotBefore`.

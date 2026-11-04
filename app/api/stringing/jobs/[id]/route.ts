@@ -18,7 +18,7 @@ import { notifyPlayerOfStage, notifyPlayerOfPendingEdit } from '@/lib/stringingN
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { canStringIn, stringerIn } from '@/lib/roster';
-import { isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
+import { isAdminAuthedWithMember, verifyLiveMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW } from '@/lib/stringing';
@@ -102,7 +102,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
    * Null for an admin: this only resolves for a non-admin caller, so admin
    * permissions are untouched.
    */
-  const stringer = admin.authed ? null : verifyMemberAuth(req);
+  const stringer = admin.authed ? null : await verifyLiveMemberAuth(req);
   if (!admin.authed && !stringer) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }

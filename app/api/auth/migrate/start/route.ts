@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyLiveMemberAuth } from '@/lib/auth';
 import { getContainer } from '@/lib/cosmos';
 import { requireOutboundOrigin } from '@/lib/appOrigin';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  const session = verifyMemberAuth(req);
+  const session = await verifyLiveMemberAuth(req);
   if (!session) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 
   // The link is delivered out of band (tapped on the same phone, or read

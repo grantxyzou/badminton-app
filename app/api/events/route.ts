@@ -4,7 +4,7 @@ import { skipsUsageRecord } from '@/lib/operator';
 
 const isUsageClientKind = (kind: string): boolean => (USAGE_CLIENT_KINDS as readonly string[]).includes(kind);
 import { resolveGroupId } from '@/lib/groupContext';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyLiveMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { EngagementEvent } from '@/lib/types';
 
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
   // to `badminton_stats_preview_name` — see SkillsTab's `resolveActiveName`)
   // hold no cookie, so their taps are correctly uncounted; the client treats
   // the 401 as a no-op.
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!checkRateLimit(`events-member:${caller.memberId}`, RATE_MAX_MEMBER, RATE_WINDOW_MS)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });

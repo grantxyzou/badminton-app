@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { verifyMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
+import { verifyMemberAuth, verifyLiveMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, FIT_PLAY_STYLES, FIT_SORENESS, FIT_LEVEL_OPTIONS, FEEL_BALANCES, type PlayerGear, type GearItem, type EquipmentCategory, type RacketFeel } from '@/lib/types';
@@ -73,7 +73,7 @@ async function authorizeBagWrite(req: NextRequest, name: string, bucket: 'bag' |
   }
   const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
   if (!memberId) return { error: NextResponse.json({ error: 'member_not_found' }, { status: 404 }) };
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   if (caller?.memberId !== memberId && !(await isAdminAuthedWithMember(req)).authed) {
     return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) };
   }
@@ -643,7 +643,7 @@ export async function PUT(req: NextRequest) {
     // member_session cookie minted at sign-up — no PIN required) or an admin
     // may write it. Closes the name-keyed impersonation hole while keeping the
     // "same trust as anon sign-up" bar the feature was designed around.
-    const caller = verifyMemberAuth(req);
+    const caller = await verifyLiveMemberAuth(req);
     const isOwner = caller?.memberId === memberId;
     if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

@@ -90,7 +90,8 @@ export default function CreateGroupPage({
    * `hasIdentity` cannot answer whether one exists: localStorage identity is
    * also written by an anonymous session sign-up, and a live 30-day
    * `member_session` outlives a cleared localStorage. `/api/auth/me` is the only
-   * authority and is cheap — an in-process signature check, no database read.
+   * authority and is cheap — the signature plus one point read (the "Sign out
+   * everywhere" cutoff, so a signed-out phone is not read as signed in).
    *
    * It corrects in BOTH directions but acts on KNOWN answers only.
    * `signedIn: null` is throttled, a 404 is the providers flag being off, and a

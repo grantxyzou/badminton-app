@@ -21,7 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyLiveMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { toPlayerJob } from '../../route';
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   if (!caller) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
