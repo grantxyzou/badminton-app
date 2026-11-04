@@ -198,7 +198,11 @@ conditional.
   rendered IN PLACE by `GearRegister` (it owns the data), with the shell's
   chrome hidden through `components/stats/statsTakeover.ts` — hidden, not unmounted, or the
   register holding the page's state would go with it. Every door opens it; the
-  old `GearFitSheet` was deleted with the flag. **The page is where every fit
+  old `GearFitSheet` was deleted with the flag. **It reads top-down since
+  2026-11-04**: the questions ("Your answers", with the n-of-5 counter), then
+  the verdict, then the ranked frames — the verdict led the page until then,
+  the sheet's result-banner-over-a-form shape, and Grant called the result at
+  the top "weird". **The page is where every fit
   answer is cleared** ("Clear my fit answers", one confirm, ONE write of nulls,
   `fitArmComfort` included though the page never asks it): the privacy policy
   promises it, the deleted sheet kept that promise with a Clear per answer, and

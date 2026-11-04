@@ -50,7 +50,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### The Fit page draws fill-only, like Home (2026-11-04)
 
-Every tile, option row and callout on "Your fit" carried a one-pixel rim and a ring on the selected one, and a hairline ran between the questions; nothing on Home does either. They are fills now, a selected answer is a solid tint with accent text (the Level pill's own treatment), and the questions are set apart by space alone. The rule is written down in CLAUDE.md's Design System section.
+Every tile, option row and callout on "Your fit" carried a one-pixel rim and a ring on the selected one, and a hairline ran between the questions; nothing on Home does either. They are fills now, a selected answer is a solid tint with accent text (the Level pill's own treatment), and the questions are set apart by space alone. The rule is written down in CLAUDE.md's Design System section. **And the page reads top-down**: the questions come first and the verdict follows them, where it used to lead the page as the fit sheet's result banner had — the answer sat above the questions it was built on (Grant: "the result is at the top which is weird").
 
 ### The fit engine asks the unanchored member about balance, and stops guessing their price (2026-11-04)
 

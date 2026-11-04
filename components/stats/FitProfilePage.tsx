@@ -58,6 +58,12 @@ const CLEARED_ANSWERS: GearPrefs = {
  * "Your fit" (design "Equipment redesign", Turn 3, 3a) — five questions and
  * the verdict they add up to, as a page in the Gear register.
  *
+ * READS TOP-DOWN: the questions first, the verdict under them, then the
+ * ranked frames. The verdict led the page until 2026-11-04 — the shape it
+ * inherited from the fit SHEET, where a result banner sat over a form — and
+ * on a page that put the answer above the questions it is built on (Grant:
+ * "the result is at the top which is weird").
+ *
  * AUTOSAVING. Every control writes at once; the tapped answer shows
  * immediately and reverts, with a way to try again, if the write is refused.
  * Writes are QUEUED, one after another: the gear PATCH reads the doc and
@@ -155,10 +161,8 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
       {/* No right slot: the app's fixed language and theme toggles sit there. */}
       <TopBar title={t('title')} onBack={onBack} backLabel={t('back')} />
 
-      <VerdictCard data={verdict.data} error={verdict.error} forbidden={verdict.forbidden} onRetry={verdict.retry} known={known} hasRacket={gear.rackets.length > 0} onBack={onBack} />
-
       <div className="fit-section-head">
-        <p className="setup-eyebrow">{t('builtOn')}</p>
+        <p className="setup-eyebrow">{t('yourAnswers')}</p>
         {known && (
           <span className="fit-counter">
             {/* One dot per question, lit as it is answered: the count says how
@@ -304,6 +308,8 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
           {t('clearAll')}
         </button>
       ))}
+
+      <VerdictCard data={verdict.data} error={verdict.error} forbidden={verdict.forbidden} onRetry={verdict.retry} known={known} hasRacket={gear.rackets.length > 0} onBack={onBack} />
 
       <p className="setup-eyebrow fit-section-label">{t('replaceTitle')}</p>
       <RankedFrames picks={picks} ready={!!answers.swing && !!answers.grip} onOpenFrame={onOpenFrame} />

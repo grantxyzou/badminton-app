@@ -1280,7 +1280,7 @@
         "reason_tensionHigh": "你的磅数比适合你的偏高。",
         "reason_tensionLow": "你的磅数比适合你的偏低。",
         "reason_tensionInRange": "你的磅数在合适的范围里。",
-        "builtOn": "判断依据",
+        "yourAnswers": "你的回答",
         "level": "水平",
         "levelFromCheckIn": "来自你的自评",
         "levelYours": "你自己设定",

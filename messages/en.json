@@ -1292,7 +1292,7 @@
          "reason_tensionHigh": "Your strings are tighter than suits you.",
          "reason_tensionLow": "Your strings are looser than suits you.",
          "reason_tensionInRange": "Your strings are in the right range.",
-         "builtOn": "What it's built on",
+         "yourAnswers": "Your answers",
          "level": "Level",
          "levelFromCheckIn": "From your check-in",
          "levelYours": "Set by you",
