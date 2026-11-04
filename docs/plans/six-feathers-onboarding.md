@@ -76,7 +76,7 @@ Revised 2026-10-29: these rules ship as settings any club can choose, and Six Fe
 - **B** (shipped, #754): paste a roster or pick a `.csv`, marking members and drop-ins (`docs/plans/roster-import.md`).
 - **C** (shipped, #771): claim a pre-added name with the club link (`docs/plans/claim-your-name.md`).
 - ~~**D**: last week's list carries over.~~ Dropped (Grant, 2026-11-04: "Dont carry over"); see Decisions.
-- **E**: the members-first window. The waitlist moving up into a freed spot shipped on its own (`docs/plans/waitlist-auto-promote.md`), so E is only the window now.
+- **E**: the members-first window (`docs/plans/members-first-window.md`, planned 2026-11-04). The waitlist moving up into a freed spot shipped on its own (`docs/plans/waitlist-auto-promote.md`), so E is only the window now.
 - **F**: guests. Shipped as plus-one (`docs/plans/plus-one.md`, #751); what remains is checking that a guest written "Jenny (Josh)" maps onto it.
 
 The original order follows for the record.
