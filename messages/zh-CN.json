@@ -460,6 +460,14 @@
       "failed": "保存失败，再试一次。",
       "change": "更换头像"
     },
+    "identity": {
+      "memberSince": "{date} 加入",
+      "rankOwner": "组织者",
+      "rankAdmin": "管理员",
+      "stringer": "穿线师",
+      "gifter": "礼品卡发放",
+      "badgesLabel": "你在本群的角色"
+    },
     "auth": {
       "retry": "重试",
       "pendingExpiredTitle": "重新登录一次",

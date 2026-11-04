@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { sharedFetch } from '@/lib/sharedRead';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
@@ -141,6 +141,10 @@ export default function ProfileTab({
   const [authKnown, setAuthKnown] = useState(false);
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<MemberAvatarValue | null>(null);
+  // This club's rank and jobs (roles v2). `null` = not known yet, or the read
+  // failed: the card then falls back to the shell's admin verdict for the rank
+  // and shows no job chip, rather than asserting "none".
+  const [badges, setBadges] = useState<ProfileBadges | null>(null);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
@@ -290,11 +294,12 @@ export default function ProfileTab({
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();
       })
-      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown }) => {
+      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown; rank?: unknown; canString?: unknown; canGift?: unknown }) => {
         if (cancelled) return;
         setPinIsSet(data.hasPin === true);
         setAvatar(normalizeAvatar(data.avatar));
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
+        setBadges(readBadges(data));
         // `authed` gates first-PIN set in RecoveryPinSheet; unknown stays null.
         setPinAuthed(typeof data.authed === 'boolean' ? data.authed : null);
         setAuthKnown(true);
@@ -730,6 +735,7 @@ export default function ProfileTab({
         name={identity.name}
         memberCreatedAt={memberCreatedAt}
         isAdmin={isAdmin}
+        badges={badges}
         avatar={avatar}
         onChangeAvatar={() => setAvatarSheetOpen(true)}
         changeLabel={t('avatar.change')}
@@ -994,12 +1000,49 @@ export default function ProfileTab({
   );
 }
 
-/* ── Identity card (avatar + name + member-since + Admin pill) ── */
+/* ── Identity card (avatar + name + member-since + this club's roles) ── */
 
-function fmtMemberSince(iso: string | null): string | null {
+/** This club's rank and the jobs this person does here (docs/plans/roles-v2.md). */
+export interface ProfileBadges {
+  rank: 'owner' | 'admin' | 'member' | null;
+  canString: boolean | null;
+  canGift: boolean | null;
+}
+
+/** Read `GET /api/members/me`'s badge fields; anything malformed is unknown. */
+export function readBadges(data: { rank?: unknown; canString?: unknown; canGift?: unknown }): ProfileBadges {
+  const rank = data.rank === 'owner' || data.rank === 'admin' || data.rank === 'member' ? data.rank : null;
+  return {
+    rank,
+    canString: typeof data.canString === 'boolean' ? data.canString : null,
+    canGift: typeof data.canGift === 'boolean' ? data.canGift : null,
+  };
+}
+
+/**
+ * The chips the card shows, in order: the rank (organiser or admin; a player
+ * has none), then each job. The rank falls back to the shell's admin verdict
+ * while the probe is unknown, so an admin is never shown as nobody; an
+ * unknown job shows nothing, because a chip claims something.
+ */
+export function profileChips(badges: ProfileBadges | null, isAdmin: boolean): Array<'rankOwner' | 'rankAdmin' | 'stringer' | 'gifter'> {
+  const out: Array<'rankOwner' | 'rankAdmin' | 'stringer' | 'gifter'> = [];
+  const rank = badges?.rank ?? null;
+  if (rank === 'owner') out.push('rankOwner');
+  else if (rank === 'admin' || (rank === null && isAdmin)) out.push('rankAdmin');
+  if (badges?.canString === true) out.push('stringer');
+  if (badges?.canGift === true) out.push('gifter');
+  return out;
+}
+
+function fmtMemberSince(iso: string | null, locale: string): string | null {
   if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
   try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    // The app's own locale (the NEXT_LOCALE cookie), not the browser's, and
+    // Vancouver time like every other date in the app (CLAUDE.md).
+    return d.toLocaleDateString(locale, { month: 'short', year: 'numeric', timeZone: 'America/Vancouver' });
   } catch {
     return null;
   }
@@ -1009,13 +1052,17 @@ interface ProfileIdentityCardProps {
   name: string;
   memberCreatedAt: string | null;
   isAdmin: boolean;
+  badges: ProfileBadges | null;
   avatar: MemberAvatarValue | null;
   onChangeAvatar: () => void;
   changeLabel: string;
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
-  const memberSince = fmtMemberSince(memberCreatedAt);
+function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, badges, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
+  const tIdentity = useTranslations('profile.identity');
+  const locale = useLocale();
+  const memberSince = fmtMemberSince(memberCreatedAt, locale);
+  const chips = profileChips(badges, isAdmin);
 
   return (
     <div
@@ -1046,45 +1093,64 @@ function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, avatar, onChangeA
         <MemberAvatar name={name} avatar={avatar} size={46} tone="neutral" />
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is a
-            fact about you, not the page's headline — and it no longer has to
-            out-shout a dollar amount set at the same size beside it. */}
-        <p
-          style={{
-            fontFamily: 'var(--font-display, "Space Grotesk")',
-            fontSize: 'var(--fs-stat)',
-            fontWeight: 600,
-            letterSpacing: '-0.015em',
-            margin: '0',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {name}
-        </p>
-        {memberSince && (
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 'var(--space-05)' }}>
-            Member since {memberSince}
-          </p>
-        )}
-      </div>
-      {/* Side by side, not stacked: two badges in a column read as a status
-          column with a hierarchy between them. They are peers. */}
-      <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', flexShrink: 0 }}>
-        {isAdmin && (
-          <span
+        {/* The name and this club's chips share ONE line, the chips small and
+            centred on it (Grant, 2026-11-04: "smaller beside the name same
+            height"). The name gives way first: it ellipsizes, the chips keep
+            their size. Fill-only labels, not controls (CLAUDE.md, containers). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
+          {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is
+              a fact about you, not the page's headline. */}
+          <p
             style={{
+              fontFamily: 'var(--font-display, "Space Grotesk")',
+              fontSize: 'var(--fs-stat)',
+              fontWeight: 600,
+              letterSpacing: '-0.015em',
+              margin: '0',
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              background: 'rgba(var(--glass-tint), 0.09)',
-              color: 'var(--text-secondary)',
-              padding: 'var(--space-2) var(--space-4)',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: 'var(--fs-sm)',
             }}
           >
-            Admin
-          </span>
+            {name}
+          </p>
+          {chips.length > 0 && (
+            <ul
+              aria-label={tIdentity('badgesLabel')}
+              style={{
+                display: 'flex',
+                flex: '0 0 auto',
+                gap: 'var(--space-1)',
+                listStyle: 'none',
+                padding: '0',
+                margin: '0',
+              }}
+            >
+              {chips.map((chip) => (
+                // A --fs-2xs pill pads 4/8 (StatusBadge's spec).
+                <li
+                  key={chip}
+                  style={{
+                    whiteSpace: 'nowrap',
+                    background: 'rgba(var(--glass-tint), 0.09)',
+                    color: 'var(--text-secondary)',
+                    padding: 'var(--space-1) var(--space-3)',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: 'var(--fs-2xs)',
+                    lineHeight: 'var(--lh-tight)',
+                  }}
+                >
+                  {tIdentity(chip)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {memberSince && (
+          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 'var(--space-05)' }}>
+            {tIdentity('memberSince', { date: memberSince })}
+          </p>
         )}
       </div>
     </div>
