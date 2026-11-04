@@ -6716,7 +6716,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--highlight-green);
-  border: 1px solid var(--segment-active-bg);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .fit-callout-label { font-size: var(--fs-base); color: var(--text-secondary); }
 .fit-callout-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 600; color: var(--accent); }
@@ -6729,7 +6729,6 @@ a.setup-price-row:active { background: var(--press-bg); }
   justify-content: space-between;
   gap: var(--space-2);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--divider);
 }
 .fit-tag {
   padding: var(--space-1) var(--space-3);
@@ -6743,7 +6742,10 @@ a.setup-price-row:active { background: var(--press-bg); }
 
 .fit-questions { display: flex; flex-direction: column; gap: var(--space-5); }
 .fit-group { display: flex; flex-direction: column; gap: var(--space-3); }
-.fit-group + .fit-group { padding-top: var(--space-5); border-top: 1px solid var(--divider); }
+/* Questions are set apart by space alone — a section rung between them,
+   no hairline (the "no hard divider lines" rule; Home separates its groups
+   the same way). */
+.fit-group + .fit-group { padding-top: var(--space-5); }
 .fit-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .fit-q-label { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .fit-q-hint { font-size: var(--fs-xs); color: var(--text-muted); }
@@ -6971,18 +6973,21 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  /* Fill-only, as every container on Home and Stats is (Grant, 2026-11-04:
+     "no outer stroke border on most UIs"; the Stringing rule at
+     `.cc-mini-card` is the same call). Transparent rather than none, so
+     the tile keeps its size. The selected tile is a solid tint and accent
+     text — the Level pill's own treatment — never a rim or a ring. */
+  border: 1px solid transparent;
   color: var(--text-secondary);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-tile:active { transform: scale(0.97); }
 .fit-tile[aria-checked="true"] {
   background: var(--highlight-green);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--highlight-green);
   color: var(--accent);
 }
 .fit-tile:disabled { opacity: 0.5; pointer-events: none; }
@@ -7084,17 +7089,17 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--fs-md);
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-sore-option:active { transform: scale(0.97); }
 /* Amber, because a sore arm is a caution, not a success. */
-.fit-sore-option[aria-checked="true"] { background: var(--highlight-amber); border-color: var(--sev-warn); color: var(--text-primary); }
+.fit-sore-option[aria-checked="true"] { background: var(--highlight-amber); color: var(--text-primary); }
 .fit-sore-option:disabled { opacity: 0.5; pointer-events: none; }
 .fit-sore-check { font-size: var(--icon-md); color: var(--sev-warn); }
 .fit-consequence { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--sev-warn); }
@@ -7107,7 +7112,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .fit-rank-thumb {
   flex: 0 0 auto;
