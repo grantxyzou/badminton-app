@@ -273,10 +273,29 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
           slot leaves none. */}
       <div className="flex flex-col gap-5">
       <RevealGroup>
-      {/* NEEDS YOU FIRST (admin audit, 2026-10-12). Someone waiting on a human
-          (sign-in requests) and what Profile's "N need you" counted. Both
-          render nothing when nothing is waiting, so on a quiet week the screen
-          opens on "This week". Who is locked out is the People row's count. */}
+      {/* AT A GLANCE FIRST (Grant, 2026-11-04: "At a glance should be at the
+          very top"): the two numbers worth seeing without a tap, above
+          everything, including what needs a human. */}
+      <ProfileEyebrow>At a glance</ProfileEyebrow>
+      <RevealSlot
+        placeholder={
+          <div className="cc-dgrid">
+            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
+            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
+          </div>
+        }
+      >
+      <AdminDashTiles
+        onOpenBirds={() => setView('birds')}
+        onOpenRoster={() => setView('members')}
+      />
+      </RevealSlot>
+
+      {/* NEEDS YOU next (admin audit, 2026-10-12, when it led the screen).
+          Someone waiting on a human (sign-in requests) and what Profile's
+          "N need you" counted. Both render nothing when nothing is waiting,
+          so on a quiet week the tiles hand straight to "This week". Who is
+          locked out is the People row's count. */}
       <RevealSlot canBeEmpty placeholder={null}>
         <AccessRequestsCard refreshKey={composedRefresh} />
       </RevealSlot>
@@ -295,15 +314,19 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       >
         <NeedsYouCard
           refreshKey={composedRefresh}
-          onOpenPayments={() => document.getElementById('cc-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onOpenPayments={() => document.getElementById('cc-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'start' })}
           onOpenBirds={() => setView('birds')}
           onOpenDormant={() => (onOpenDormant ? onOpenDormant() : setView('members'))}
           onOpenBench={() => setView('stringing')}
         />
       </RevealSlot>
 
-      {/* THIS WEEK: the session and its money, the screen's main job. */}
+      {/* THIS WEEK: the session and its money, the screen's main job — side
+          by side in a rail that scrolls sideways (Grant, 2026-11-04: "to save
+          vertical space"), the session first, Payments a swipe away with its
+          edge showing. With money off the rail holds the one card. */}
       <ProfileEyebrow>This week</ProfileEyebrow>
+      <div className="cc-rail" aria-label="This week">
       <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />}>
       <NextSessionCard
         refreshKey={composedRefresh}
@@ -320,22 +343,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
           </div>
         </RevealSlot>
       )}
-
-      {/* AT A GLANCE: the two numbers worth seeing without a tap. */}
-      <ProfileEyebrow>At a glance</ProfileEyebrow>
-      <RevealSlot
-        placeholder={
-          <div className="cc-dgrid">
-            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
-            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
-          </div>
-        }
-      >
-      <AdminDashTiles
-        onOpenBirds={() => setView('birds')}
-        onOpenRoster={() => setView('members')}
-      />
-      </RevealSlot>
+      </div>
 
       {/* EVERYTHING ELSE, grouped by what it is FOR. It was one nine-row list
           mixing the bench, weekly settings, the books, analytics and catalog

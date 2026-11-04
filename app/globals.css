@@ -5312,6 +5312,38 @@ html:root[data-theme="light"] {
 .pay-row-status .material-icons { font-size: var(--icon-sm); }
 
 /* Dashboard 2-up grid for Birds + Roster cards on the admin home */
+/* ── "This week" rail (Command Center, 2026-11-04) ──
+   The session card and the Payments card side by side, scrolling sideways
+   with a snap, so the screen spends one card's height on both (Grant: "to
+   save vertical space"). Bleeds to the column's edge (the main column pads
+   --space-5) so the next card's edge shows at the screen edge; each card is
+   the column less a section rung, so that edge is always there. An
+   overscroll stays in the rail rather than handing the gesture to the page.
+   The reveal slots inside stretch to the rail's height, so the shorter card
+   sits level with the taller. `:not([hidden])` on both levels: a `hidden`
+   slot must stay display:none, and a flex rule would outrank the attribute. */
+.cc-rail {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0 calc(-1 * var(--space-5));
+  padding: 0 var(--space-5);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 var(--space-5);
+  scrollbar-width: none;
+}
+.cc-rail::-webkit-scrollbar { display: none; }
+.cc-rail > *:not([hidden]) {
+  flex: 0 0 calc(100% - var(--space-7));
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+}
+.cc-rail > *:only-child:not([hidden]) { flex-basis: 100%; }
+.cc-rail > [data-reveal-slot]:not([hidden]) > div:not([hidden]) { flex: 1; display: flex; flex-direction: column; }
+.cc-rail > [data-reveal-slot]:not([hidden]) > div:not([hidden]) > * { flex: 1; }
+
 .cc-dgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;

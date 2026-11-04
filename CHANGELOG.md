@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The admin console opens on the glance tiles, and this week scrolls sideways (2026-11-04)
+
+Birds and Roster — the two numbers worth seeing without a tap — now sit at the very top of the console, above what needs a human. The session card and the Payments card sit side by side in a rail that scrolls sideways with a snap, the session first and the Payments card's edge showing beside it, so the screen spends one card's height on both instead of two stacked (Grant: "to save vertical space"). The loading frame mirrors the new order.
+
 ### The Fit page draws fill-only, like Home (2026-11-04)
 
 Every tile, option row and callout on "Your fit" carried a one-pixel rim and a ring on the selected one, and a hairline ran between the questions; nothing on Home does either. They are fills now, a selected answer is a solid tint with accent text (the Level pill's own treatment), and the questions are set apart by space alone. The rule is written down in CLAUDE.md's Design System section. **And the page reads top-down**: the questions come first and the verdict follows them, where it used to lead the page as the fit sheet's result banner had — the answer sat above the questions it was built on (Grant: "the result is at the top which is weird"). The rest of the Equipment register follows the same rule: the Set-up card's lines lose the hairline between them, the line sheet's rows and feel chips, the tension stepper and ruler, the racket page's picture tile, spec grid, accordion rows and chart track, and Play's kudos notes are all fills now. Home's three label chips keep their rim on purpose. The admin console followed: its stat tiles, mini-cards, session chips, choice rows, filter and shelf chips and the catalog-gaps list are fills now; the hero's green edge, the outlined buttons and the status pills keep theirs.
