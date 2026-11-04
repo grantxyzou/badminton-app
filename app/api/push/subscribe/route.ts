@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyMemberAuth, verifyLiveMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ensurePushContainer, hashEndpoint } from '@/lib/push';
 import { isSafePushEndpoint, MAX_PUSH_ENDPOINT_LEN } from '@/lib/pushEndpoint';
@@ -111,8 +111,10 @@ export async function POST(req: NextRequest) {
   // Identity-bound (security rule 12): the owner is the cookie holder, never
   // the body. Member names are enumerable via GET /api/members, so a
   // body-supplied memberId would let anyone register a device against another
-  // member and receive their targeted notifications.
-  const member = verifyMemberAuth(req);
+  // member and receive their targeted notifications. And re-read against
+  // "Sign out everywhere": a phone signed out of the club must not register a
+  // fresh device for that person's pushes.
+  const member = await verifyLiveMemberAuth(req);
   if (!member) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 
   try {

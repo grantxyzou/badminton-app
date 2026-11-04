@@ -14,7 +14,7 @@
  * ---------------------
  *   { signedIn: true,  name }  — the cookie is valid
  *   { signedIn: false, name: null } — KNOWN to be signed out
- *   { signedIn: null,  name: null } — UNKNOWN (throttled)
+ *   { signedIn: null,  name: null } — UNKNOWN (throttled, or the re-read failed)
  *
  * The client must write identity only on `true`, and must NEVER clear on
  * `false` or `null`. `null` is the "unknown ≠ known-false" rule: answering a
@@ -39,7 +39,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { verifyMemberAuth } from '@/lib/auth';
+import { readLiveMemberSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,10 +50,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ signedIn: null, name: null });
   }
 
-  // No body to parse, no I/O to fail: the cookie is verified in-process against
-  // the HMAC secret, so there is nothing here to wrap in a try.
-  const member = verifyMemberAuth(req);
-  if (!member) return NextResponse.json({ signedIn: false, name: null });
+  // The signature, then ONE point read: a session "Sign out everywhere" cut
+  // off is signed out here too (docs/plans/claim-your-name.md). Without it the
+  // create-a-club page read a signed-out phone as signed in and skipped its
+  // account step, straight into a POST that refuses the same cookie. A failed
+  // read is UNKNOWN, like a throttle — never "signed out".
+  const live = await readLiveMemberSession(req);
+  if (live.status === 'unknown') return NextResponse.json({ signedIn: null, name: null });
+  if (live.status === 'none') return NextResponse.json({ signedIn: false, name: null });
 
-  return NextResponse.json({ signedIn: true, name: member.name });
+  return NextResponse.json({ signedIn: true, name: live.session.name });
 }

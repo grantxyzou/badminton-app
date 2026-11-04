@@ -15,7 +15,7 @@
  * quietly land somewhere else.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyMemberAuth, unauthorized } from '@/lib/auth';
+import { verifyLiveMemberAuth, unauthorized } from '@/lib/auth';
 import { completeSignIn } from '@/lib/authSession';
 import { getContainer } from '@/lib/cosmos';
 import { readGroup, readMembership } from '@/lib/groups';
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(`groups-switch:${ip}`, 30, 15 * 60 * 1000)) return rateLimited();
   if (!groupsOn()) return featureOff();
 
-  const session = verifyMemberAuth(req);
+  const session = await verifyLiveMemberAuth(req);
   if (!session) return unauthorized();
 
   let body: unknown;

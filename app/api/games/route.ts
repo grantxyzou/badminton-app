@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
-import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, ownsNameOrAdmin, requireMember } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyLiveMemberAuth, ownsNameOrAdmin, requireMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { GameResult } from '@/lib/types';
 import { invalidateGroupCalibration } from '@/lib/levelStore';
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
     // name-only, since member names are enumerable via GET /api/members. Mirror
     // the gear endpoint's owner-or-admin pattern. The cookie name is the
     // authoritative `loggedBy`; admins may log on behalf of another name.
-    const caller = verifyMemberAuth(req);
+    const caller = await verifyLiveMemberAuth(req);
     let loggedBy: string;
     if (caller) {
       loggedBy = caller.name;
