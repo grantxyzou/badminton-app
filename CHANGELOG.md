@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Motion for the fold, and the scoreboard brought in line (2026-11-04)
+
+Opening or closing a foldable now crossfades the app through the reflow instead of snapping it, and the courtside scoreboard's two halves slide with the hinge as the phone moves. The board fades in when it opens, each new point fades in, and the game ending gets the same small entrance a saved check-in does; in the store app every +1 taps lightly under the finger. Two design-system misses fixed on the way: the +1 targets lose their outer rim (fill-only, like every container), and the board wears the Stats field instead of a flat ground. Plan: `docs/plans/foldable-layout.md`.
+
 ### A courtside scoreboard that splits at the fold (2026-11-04)
 
 Stats → Play → **Keep score** opens a scoreboard for a phone propped half-open on the bench: the score, in digits sized to be read from across the court, on the half that stands up; the +1 buttons, Undo, New game and Save on the half lying flat. It keeps score by the umpire's rules — game point, "20 all", "29 all · next point wins", the interval at 11, the server's dot — and Save hands the game to Add a game already filled in. The split lands on the fold itself: the store app asks the phone (`BpmFold`, in the next store build; the iPhone side needs Xcode 27.1), a browser that can say so is asked (Chrome on the Galaxy Z Fold today), and when nothing can, the middle of the screen — so on a flat phone it is simply a scoreboard with the score above the buttons. The screen stays awake while it is up. Plan: `docs/plans/foldable-layout.md`, step 3.

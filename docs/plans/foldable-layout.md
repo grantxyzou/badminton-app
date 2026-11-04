@@ -177,6 +177,44 @@ Grant: "do step 3".
   and an 884×1000 Fold propped like a laptop (board above, 24px fold empty).
   The values the component set are in the plan's PR.
 
+### Design-system pass and motion (same day, after merge)
+
+Grant: "can you review with design system and also appli motion to it".
+
+- **Two misses against the system, both fixed.** The +1 targets carried a
+  `--glass-border` rim — the fill-only rule (Grant, the same morning: "no
+  outer stroke") — now `transparent`, size kept. And the board sat on bare
+  `--page-bg`: it lives on Stats, so it wears the Stats field the way a sheet
+  wears its tab's (design rule 1), opaque on `--field-base`. Everything else
+  already read from tokens: the duration ladder, `--radius-xl`, the spacing
+  rungs, `cc-btn` for the actions, `.material-icons`-free.
+- **Motion follows the system's recipes, not new ones.** Apple's rule for the
+  fold is "favor small adjustments over rearrangement"; where a rearrangement
+  is unavoidable, it is a crossfade — the same one a tab switch gets.
+  - **The fold/unfold reflow crossfades** (`lib/paneMode.ts`): one owner
+    watches the CSS pane query and alternates `data-pane-flip` `a`/`b` on
+    `<html>`; two identical keyframes under two names are what makes a CSS
+    animation replay. Opacity only, `--duration-normal`, kept under reduced
+    motion like `.motion-fade`. Nothing on mount — the launch screen owns the
+    first paint.
+  - **The scoreboard's split follows the hinge**: a transition on the grid
+    tracks (three px values either side, so the grid interpolates), so the
+    board and buttons slide with the fold as the phone opens instead of
+    jumping. Off under reduced motion.
+  - **Opening is the Appear recipe** (`.motion-fade` on the overlay); no exit,
+    like `Collapse`. **Each new digit and each new status line fades in**,
+    keyed on its value. **The game ending is the board's one consequential
+    moment** and takes `.status-celebrate` (the check-in-saved, session-
+    created entrance); the interval stays a colour change, because it comes
+    every game.
+  - **A light haptic on every +1** in the store app (`tapSuccess`,
+    `primeHaptics` on open): on a bench the eyes are on the court. Silent on
+    the web by that helper's own rule.
+- Checked in Chromium at 430→884→430: `data-pane-flip` null → `a` (with
+  `paneFlipA` running) → `b`; the board reports `motion-fade`, a transition
+  on `grid-template-rows, grid-template-columns`, the Stats field, a
+  transparent +1 rim, and `status-celebrate` → `signupBannerIn` at 21–0.
+
 ## Shape
 
 | Piece | Where |
@@ -192,6 +230,7 @@ Grant: "do step 3".
 | The Android plugin (WindowManager FoldingFeature) | `android/.../BpmFoldPlugin.java`, registered in `MainActivity.java`, deps in `app/build.gradle` + `variables.gradle` |
 | The courtside scoreboard | `components/stats/CourtsideScoreboard.tsx`, opened from `YourRecordCard`; styles `.courtside-*` and `--court-digit` in `globals.css`; strings `stats.courtside` |
 | Shell canary (both plugins pinned) | `__tests__/native-shell-projects.test.ts` |
+| The fold/unfold crossfade | `lib/paneMode.ts`, `components/PaneFlip.tsx` (mounted in `HomeShell`), `paneFlipA/B` in `globals.css`, `__tests__/pane-mode.test.tsx` |
 
 ## Next steps (not started)
 

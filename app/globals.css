@@ -7672,6 +7672,20 @@ html:root .state-link:active { opacity: 0.6; }
   color: var(--text-primary);
   overscroll-behavior: contain;
   touch-action: manipulation;
+  /* The split FOLLOWS the hinge: as the phone opens or closes, the fold's
+     rect moves and the board and buttons slide with it rather than jump —
+     Apple's "move only what's necessary". Three px tracks on both sides of
+     the change, so the grid interpolates. Opening is a fade (`.motion-fade`
+     on the element, the Appear recipe); there is no exit, like Collapse. */
+  transition:
+    grid-template-rows var(--duration-normal) var(--ease-out-quart),
+    grid-template-columns var(--duration-normal) var(--ease-out-quart);
+}
+/* It lives on Stats, so it wears the Stats field the way a sheet wears its
+   tab's (design rule 1: one field per TAB; sub-screens inherit it). Opaque,
+   on --field-base, for the same reason a sheet is. */
+html:root .courtside {
+  background: var(--field-stats), var(--field-base);
 }
 .courtside[data-axis='horizontal'] {
   grid-template-rows: var(--court-first, 1fr) var(--court-gap, 0px) var(--court-second, 1fr);
@@ -7756,7 +7770,9 @@ html:root .state-link:active { opacity: 0.6; }
   gap: var(--space-2);
   min-height: 120px;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--glass-border);
+  /* Fill-only, like every container (Grant, 2026-11-04: "no outer stroke");
+     transparent, not none, so the box keeps its size. */
+  border: 1px solid transparent;
   background: var(--glass-bg);
   color: var(--text-primary);
   font-family: var(--font-display);
@@ -7801,9 +7817,40 @@ html:root .state-link:active { opacity: 0.6; }
   color: var(--text-muted);
 }
 @media (prefers-reduced-motion: reduce) {
+  .courtside,
   .courtside-point,
   .courtside-digit {
     transition: none;
+  }
+}
+
+/* ── The fold/unfold crossfade ──
+   lib/paneMode.ts alternates `data-pane-flip` between `a` and `b` on <html>
+   each time the screen crosses the pane condition (unfolding, or turning an
+   open foldable sideways). Two identical keyframes under two names are what
+   makes the fade REPLAY: a CSS animation restarts only when its name changes.
+   Opacity only, so it is given back under reduced motion like `.motion-fade`
+   — a reflow you can see happen is comprehension, not movement. */
+@keyframes paneFlipA {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes paneFlipB {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+html[data-pane-flip='a'] [data-app-shell] {
+  animation: paneFlipA var(--duration-normal) var(--ease-glass) backwards;
+}
+html[data-pane-flip='b'] [data-app-shell] {
+  animation: paneFlipB var(--duration-normal) var(--ease-glass) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-pane-flip='a'] [data-app-shell] {
+    animation: paneFlipA var(--duration-normal) ease-out backwards !important;
+  }
+  html[data-pane-flip='b'] [data-app-shell] {
+    animation: paneFlipB var(--duration-normal) ease-out backwards !important;
   }
 }
 
