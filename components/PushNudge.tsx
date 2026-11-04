@@ -99,6 +99,14 @@ function NativeNudge({ onDone }: { onDone: () => void }) {
 
 function WebNudge({ onOpen, onDismiss }: { onOpen: () => void; onDismiss: () => void }) {
   const t = useTranslations('pushNudge');
+  // The web card's promise is "hear when sign-ups open", and a browser that
+  // already has push on hears it. Only a CONFIRMED on hides the card: holding
+  // it back while the probe runs would pop it in late and shove Home for the
+  // many who have push off (the loading rule, CLAUDE.md), so the few with it
+  // on see the card leave instead. `usePush` only probes (`getRegistration`),
+  // so this installs no worker.
+  const { state } = usePush();
+  if (state.status === 'on') return null;
   return (
     <NudgeCard
       icon="install_mobile"

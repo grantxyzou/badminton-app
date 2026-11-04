@@ -62,6 +62,18 @@ describe('PushNudge', () => {
     expect(screen.queryByRole('button', { name: 'Get the app →' })).toBeNull();
   });
 
+  it('on the web shows nothing once browser push is confirmed on', () => {
+    env.state = { status: 'on' };
+    renderNudge();
+    expect(screen.queryByRole('button', { name: 'Get the app →' })).toBeNull();
+  });
+
+  it.each(['loading', 'unsupported', 'denied'] as const)('on the web still points to the app when browser push is %s', (status) => {
+    env.state = (status === 'unsupported' ? { status, reason: 'ios-not-installed' } : { status }) as PushState;
+    renderNudge();
+    expect(screen.getByRole('button', { name: 'Get the app →' })).toBeTruthy();
+  });
+
   it('on the web shows nothing while the migration link is off', () => {
     env.migrate = false;
     renderNudge();

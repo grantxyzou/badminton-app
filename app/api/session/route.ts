@@ -60,9 +60,14 @@ export async function GET(req: NextRequest) {
     if (!sessionId) return noActiveSession();
     // The club record rides beside the session read (one point read) so Home
     // knows whether to offer a plus-one (docs/plans/plus-one.md).
+    // A failed group read hides the plus-one row only (`guestsAllowed` reads
+    // false); the session itself is the card, and must not 503 over it.
     const [stored, group] = await Promise.all([
       scope.read<SessionDoc>('sessions', sessionId, sessionId),
-      readGroup(scope.groupId),
+      readGroup(scope.groupId).catch((err) => {
+        console.error('GET session: group read failed, plus-one hidden:', err);
+        return undefined;
+      }),
     ]);
     const session = stored ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
     const out = { ...(isAdminAuthed(req) ? session : stripForPublic(session)), guestsAllowed: guestsAllowedOf(group?.settings) };

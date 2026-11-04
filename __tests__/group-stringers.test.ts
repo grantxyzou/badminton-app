@@ -150,6 +150,35 @@ describe('a stringer for one club is not one at another', () => {
     expect((getStore()['members'] as Array<{ id: string; canString?: boolean }>).find((m) => m.id === stranger.id)?.canString).toBeUndefined();
   });
 
+  it('another club\'s grant or revoke never reaches BPM through the shared Member copy', async () => {
+    // Lin plays in both clubs and strings for neither. BPM's unset row reads
+    // the Member (canStringOf), so a club-x write to `Member.canString` would
+    // put her on BPM's bench, granted by club-x's admin.
+    const lin = seedMember('Lin');
+    seedMembership('bpm', lin.id, { name: 'Lin', role: 'member' });
+    seedMembership('club-x', lin.id, { name: 'Lin', role: 'member' });
+    const memberRow = (id: string) => (getStore()['members'] as Array<{ id: string; canString?: boolean; canGift?: boolean }>).find((m) => m.id === id)!;
+
+    const grant = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, canString: true }, asAdminOf('club-x')));
+    expect(grant.status).toBe(200);
+    expect(rowOf('club-x', lin.id).canString).toBe(true);
+    expect(memberRow(lin.id).canString).toBeUndefined();
+    expect(await stringersIn('bpm')).toEqual(['Zach']);
+
+    // And club-x revoking Zach there leaves him on BPM's bench.
+    const revoke = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: zach.id, canString: false }, asAdminOf('club-x')));
+    expect(revoke.status).toBe(200);
+    expect(rowOf('club-x', zach.id).canString).toBe(false);
+    expect(memberRow(zach.id).canString).toBe(true);
+    expect(await stringersIn('bpm')).toEqual(['Zach']);
+
+    // The gift-card switch: a club-x organiser's grant stays on club-x's row.
+    (getStore()['memberships'] as Array<{ id: string; role?: string }>).find((m) => m.id === `club-x:${ADMIN_MEMBER_ID}`)!.role = 'owner';
+    const gift = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, canGift: true }, asAdminOf('club-x')));
+    expect(gift.status).toBe(200);
+    expect(memberRow(lin.id).canGift).toBeUndefined();
+  });
+
   it('revoking in BPM writes the membership AND the rollback copy', async () => {
     const res = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: zach.id, canString: false }, asAdminOf('bpm')));
     expect(res.status).toBe(200);
