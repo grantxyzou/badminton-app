@@ -233,10 +233,25 @@ covers that half). Today a web deploy *is* the iOS update.
     So phone-to-phone tapping is out. A physical NFC sticker (on the
     organiser's bag, at the court door) does work, even from the Lock
     Screen. A sticker is a permanent URL, though, which is the club-wide
-    door the one-time invites replaced. **Open for Grant:** build the
-    sticker only behind a human gate. It opens the clip at "BPM Core · ask
-    to join", and the organiser, standing right there, approves the request
-    on their phone. Or leave stickers out.
+    door the one-time invites replaced. **Decided 2026-11-04: the sticker
+    stays, behind the organiser's approval.** Grant already has NFC
+    stickers ("Oh I have them so keep it?"). A tap opens "BPM Core · ask to
+    join", and the organiser, standing right there, approves the request on
+    their phone. An ungated sticker was not chosen: it would undo the
+    one-time-invite decision with a door anyone can photograph or peel off.
+    - *The server half comes first and needs no Xcode.* A join request from
+      a new person is a new kind of request. Today's access requests
+      (`app/api/members/access-request/route.ts`) only let an existing name
+      back in. It should follow their pattern: unauthenticated by
+      necessity, rate-limited, a secret held only by the asking device so
+      a blind approval admits the person who asked, and nothing happens
+      until a human approves. Built that way, the sticker works on the web
+      for Android and iPhone before the clip exists. The clip later opens
+      the same request natively.
+    - *What the sticker holds.* One stable URL per club, decided with the
+      request route and never changed after the stickers are written.
+      Until then the stickers stay blank. NFC Tools' "lock" is permanent,
+      so they are never locked: a written URL can be rewritten.
   - *Not used:* Maps place cards and Siri location suggestions. Both tie a
     clip to a place the business operates, and a club renting a school gym
     is not that.
@@ -266,10 +281,10 @@ covers that half). Today a web deploy *is* the iOS update.
   WhatsApp is testing an option to open every link in its own browser
   (TestFlight references, 2026-10-19, not shipped), which could change that.
   Tested on a real phone first; it is the clip's kill switch (above).
-- **The sticker door.** Whether a permanent NFC sticker exists at all, and
-  if so behind an organiser's approval (a new kind of request for a new
-  person; today's access requests only let an existing name back in).
-  Grant's call, since it reopens a door he closed on 2026-10-06.
+- **The sticker's approval screen.** Where the organiser sees a tap's
+  request, and how fast: the Command Center inbox, a push to the club's
+  organisers, or both. A request nobody sees for an hour fails a person
+  standing at the court door. Decided with the request route.
 - **Which URL the experience claims.** The invite is a `?join=` query on the
   app's own address, and an App Clip experience matches a URL prefix. Claim
   the app's root, and the plain weekly sign-up link raises the card too,
