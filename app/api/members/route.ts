@@ -13,7 +13,9 @@ import {
   addMembership,
   setMembershipRole,
   setMembershipCanGift,
+  setMembershipCanString,
   setMembershipRegular,
+  signOutEverywhereIn,
   readMembership,
   RosterNameTakenError,
 } from '@/lib/groups';
@@ -244,8 +246,18 @@ export async function PATCH(req: NextRequest) {
       // The Member copy knows two roles: an organiser is an admin there.
       if (memberCopy) updates.role = role === 'member' ? 'member' : 'admin';
     }
-    // Orthogonal to `role` on purpose — see Member.canString.
-    if (typeof body.canString === 'boolean') updates.canString = body.canString;
+    // Orthogonal to `role` on purpose — see Member.canString. Per club like
+    // `canGift` since roles v2 PR 2 (the MEMBERSHIP is what the bench reads);
+    // an admin grants it, no organiser needed. The Member copy is the flag-off
+    // value and BPM's rollback copy — and BPM still READS it for a membership
+    // that never set its own (`canStringOf`), so only BPM's admin may write it:
+    // another club's grant would otherwise put this person on BPM's bench.
+    if (typeof body.canString === 'boolean') {
+      if (memberCopy) updates.canString = body.canString;
+      if (groupsOn() && !(await setMembershipCanString(auth.groupId, id, body.canString))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
     // The third switch: may give out gift cards (docs/plans/gift-card-ledger.md).
     // With groups on it is the MEMBERSHIP's — a card is this club's liability,
     // and the person may be on another roster where nobody granted it. The
@@ -257,7 +269,9 @@ export async function PATCH(req: NextRequest) {
       if (body.canGift !== (groupsOn() ? membership?.canGift === true : existing.canGift === true) && !auth.organiser) {
         return organiserOnly();
       }
-      updates.canGift = body.canGift;
+      // The Member copy is BPM's rollback value: another club's grant must not
+      // become a BPM permission the day the flag comes off.
+      if (memberCopy) updates.canGift = body.canGift;
       if (groupsOn() && !(await setMembershipCanGift(auth.groupId, id, body.canGift))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
@@ -269,6 +283,23 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.regular === 'boolean' && groupsOn()) {
       if (!(await setMembershipRegular(auth.groupId, id, body.regular))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
+
+    // "Sign out everywhere" (docs/plans/claim-your-name.md): every session and
+    // widget pass this person holds IN THIS CLUB stops working wherever the
+    // membership is re-read. How an organiser takes a name back — a claim
+    // approved for the wrong person, a phone that walked off. The Member copy
+    // is the flag-off value and rollback copy, written on the same rule as
+    // `role` (only BPM's admin, or with groups off).
+    if (body.signOutEverywhere === true) {
+      const at = new Date().toISOString();
+      if (groupsOn() && !(await signOutEverywhereIn(auth.groupId, id, at))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+      if (memberCopy) {
+        updates.sessionsNotBefore = at;
+        updates.widgetPassNotBefore = at;
       }
     }
 

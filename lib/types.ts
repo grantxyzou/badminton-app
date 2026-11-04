@@ -368,6 +368,14 @@ export interface Group {
    * etag condition. `lib/invites.ts` owns the list. Additive: absent means none.
    */
   invites?: PendingInvite[];
+  /**
+   * The club's live CLAIM LINK (docs/plans/claim-your-name.md): the id of its
+   * `claimlink:${sha256(token)}` sibling doc in this container. One per club,
+   * reusable, no expiry; minting a new one replaces this id, which is what
+   * retires the old link. Only the id lives here, never the token, for the
+   * same reason as `invites`. `lib/claimLinks.ts` owns it. Additive.
+   */
+  claimLinkId?: string;
 }
 
 /** One live one-time invite, as listed on its `Group`. */
@@ -400,6 +408,14 @@ export interface Membership {
    */
   canGift?: boolean;
   /**
+   * Strings rackets FOR THIS CLUB (docs/plans/roles-v2.md, PR 2). The bench,
+   * the stringer view and the assign picker read this with groups on; a
+   * person who strings for one club is not a stringer at another. Absent on
+   * BPM's rows reads as `Member.canString` (the flag-off value, which IS
+   * BPM's); absent anywhere else is no. Additive.
+   */
+  canString?: boolean;
+  /**
    * A MEMBER of this club rather than a drop-in (docs/plans/roster-import.md).
    * Set by the roster import or the Roster sheet; the Roster page labels and
    * filters by it, and "last week's list carries over" will read it. Not the
@@ -414,7 +430,15 @@ export interface Membership {
    * copied off it would otherwise live its sixty days. Additive; absent =
    * nothing revoked. The flag-off copy is `Member.widgetPassNotBefore`.
    */
-  widgetPassNotBefore?: string;
+  widgetPassNotBefore?: string;  /**
+   * A member SESSION minted before this instant is refused wherever the
+   * membership is re-read (`activeMemberFor` in lib/auth.ts — the page gate,
+   * every members-only read, sign-up). Stamped by the Roster sheet's "Sign out
+   * everywhere" and by issuing a recovery code (docs/plans/claim-your-name.md):
+   * how an organiser takes a name back from whoever holds it. Additive; absent
+   * = nothing revoked. The flag-off copy is `Member.sessionsNotBefore`.
+   */
+  sessionsNotBefore?: string;
 }
 
 /**
@@ -483,6 +507,10 @@ export interface Member {
   /**
    * This person strings rackets. Deliberately NOT tied to `role`.
    *
+   * With groups on the club's answer is `Membership.canString`
+   * (`canStringIn` in lib/roster.ts) and this is the flag-off value and
+   * BPM's rollback copy, like `canGift`; `PATCH /api/members` writes both.
+   *
    * Stringing and administering are different jobs: Zach can restring for the
    * club without being handed payments, the roster and everyone's data. The
    * bench used to conflate them — `stringerId` was simply whichever ADMIN
@@ -492,6 +520,8 @@ export interface Member {
   canString?: boolean;
   /** Flag-off twin of `Membership.widgetPassNotBefore`: widget passes minted before it are refused. */
   widgetPassNotBefore?: string;
+  /** Flag-off twin of `Membership.sessionsNotBefore`: member sessions minted before it are refused. */
+  sessionsNotBefore?: string;
   /**
    * This person may give out gift cards (docs/plans/gift-card-ledger.md).
    * The third independent switch beside `role` and `canString`: a helper who
@@ -846,6 +876,10 @@ export interface PlayerGear {
   fitGoal?: FitGoal;
   /** Swing speed / hitting feel. Sets the flex CEILING — the injury axis. */
   fitSwing?: FitSwing;
+  /** fit-5: the balance a member with NO racket to anchor on asked for, in
+   *  the same words a typed-in racket's feel uses. Read only unanchored; the
+   *  page asks it only while nothing in the bag can anchor. */
+  fitBalance?: FeelBalance;
   /** HEALTH-ADJACENT. Optional, deletable via `PATCH null`, disclosed in
    *  `legal.privacy`, STRIPPED from the public gear GET for anyone but the
    *  owner or an admin, and purged with the doc (`lib/memberPurge.ts`). */

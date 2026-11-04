@@ -31,6 +31,15 @@ import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { resolveGroupId } from '@/lib/groupContext';
 import { rosterMemberIds } from '@/lib/roster';
 import type { Member } from '@/lib/types';
+import { isUnclaimed } from '@/lib/claimLinks';
+import type { StoredAccessRequest } from '@/lib/accessRequest';
+
+/**
+ * Whether an ask is THIS club's. A request older than the field carries no
+ * club and stays with whichever club's roster holds the person — the narrowing
+ * that was the whole rule before (docs/plans/claim-your-name.md).
+ */
+const askedIn = (r: StoredAccessRequest, groupId: string): boolean => r.groupId === undefined || r.groupId === groupId;
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +63,8 @@ export async function GET(req: NextRequest) {
     // rule as the sign-in readiness list beside it). With one club this is
     // every member; with two, one club's admin would otherwise see — and
     // could approve — the other club's requests by name.
-    const roster = await rosterMemberIds(resolveGroupId(req));
+    const groupId = resolveGroupId(req);
+    const roster = await rosterMemberIds(groupId);
     const { resources } = await getContainer('members')
       .items.query<Member>({
         // Both fields: a doc written before one-per-device still carries the
@@ -71,7 +81,11 @@ export async function GET(req: NextRequest) {
        comparison, not a field the query can express. */
     const waiting = resources
       .filter((m) => roster.has(m.id))
-      .map((m) => ({ m, open: openRequests(m), pending: pendingRequests(m) }))
+      // Only the asks made FOR this club (docs/plans/claim-your-name.md). A
+      // person on two rosters may ask in either; one club's organiser never
+      // sees, or approves, the other's. A request from before the field has
+      // no club and is seen by the roster's (the rule before).
+      .map((m) => ({ m, open: openRequests(m), pending: pendingRequests(m).filter((r) => askedIn(r, groupId)) }))
       .filter(({ pending }) => pending.length > 0)
       .map(({ m, open, pending }) => ({
         memberId: m.id,
@@ -81,6 +95,10 @@ export async function GET(req: NextRequest) {
         // Only a lone request is approvable, so only a lone request has an id
         // to approve by.
         requestId: open.length === 1 ? pending[0].id : null,
+        // What the card says beside the name: asked with the club's claim
+        // link, and nobody has ever signed in under it.
+        viaLink: pending.some((r) => r.via === 'link'),
+        neverSignedIn: isUnclaimed(m),
       }))
       .sort((a, b) => a.at - b.at);
 
@@ -126,14 +144,18 @@ export async function POST(req: NextRequest) {
 
     const result = await updateAccessRequests(memberId, (open) => {
       if (decision === 'decline') {
-        // Declining clears every open request for the person. The asking
-        // devices then poll into `none` and are told to try again or find
-        // Grant in person — there is no "you were refused" state, because
-        // there is nothing useful to do with one.
-        if (open.length === 0) { refusal = 'not_found'; return null; }
-        return [];
+        // Declining clears every open request for the person IN THIS CLUB
+        // (another club's asks stand). The asking devices then poll into
+        // `none` and are told to try again or find the organiser in person —
+        // there is no "you were refused" state, because there is nothing
+        // useful to do with one.
+        const mine = open.filter((r) => askedIn(r, admin.groupId));
+        if (mine.length === 0) { refusal = 'not_found'; return null; }
+        return open.filter((r) => !askedIn(r, admin.groupId));
       }
-      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined);
+      // An ask for ANOTHER club is not this organiser's to approve, even for a
+      // person on both rosters: it signs the device in to the club it names.
+      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId));
       if (!target) { refusal = 'not_found'; return null; }
       // Re-checked at write time, not trusted from the list the admin saw: a
       // second ask may have landed since.

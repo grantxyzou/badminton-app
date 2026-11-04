@@ -198,7 +198,11 @@ conditional.
   rendered IN PLACE by `GearRegister` (it owns the data), with the shell's
   chrome hidden through `components/stats/statsTakeover.ts` — hidden, not unmounted, or the
   register holding the page's state would go with it. Every door opens it; the
-  old `GearFitSheet` was deleted with the flag. **The page is where every fit
+  old `GearFitSheet` was deleted with the flag. **It reads top-down since
+  2026-11-04**: the questions ("Your answers", with the n-of-5 counter), then
+  the verdict, then the ranked frames — the verdict led the page until then,
+  the sheet's result-banner-over-a-form shape, and Grant called the result at
+  the top "weird". **The page is where every fit
   answer is cleared** ("Clear my fit answers", one confirm, ONE write of nulls,
   `fitArmComfort` included though the page never asks it): the privacy policy
   promises it, the deleted sheet kept that promise with a Clear per answer, and
@@ -217,7 +221,14 @@ conditional.
   non-owners like `fitArmComfort`; `effectiveArmComfort` in `lib/fitProfile.ts`
   is how the engines read it), and `G3`. `fitOvergrips` stays on the type and
   is still blanked by "Clear my fit answers", but the page stopped asking it on
-  2026-10-20: it was stored and nothing read it.
+  2026-10-20: it was stored and nothing read it. **`fitBalance` since `fit-5`
+  (2026-11-04)**: a Balance question (`BalancePicker`, the feel chips' three
+  words, nothing drawn) shown ONLY while nothing in the bag can anchor the
+  racket engine — no catalog racket and no typed-in racket with its balance
+  AND shaft stated (`feelAnchors` in `lib/racketFeel.ts`, the engine's own
+  rule) — because with an anchor the engine reads the racket, not the answer.
+  Outside the "n of 5", cleared with the rest; the rule is in
+  `docs/plans/racket-fit-engine.md`.
   - **The verdict's judgement is `lib/fitVerdict.ts`, and only there**: state,
     reasons, range, all deterministic. It borrows the engines' opinions rather
     than holding its own — `GOAL_DELTA`'s balance axis, `pairTension` when frame,

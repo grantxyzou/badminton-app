@@ -54,7 +54,7 @@ export default function CardSkeleton({
  */
 export function TabSkeleton({ announcement }: { announcement?: React.ReactNode } = {}) {
   return (
-    <div className="space-y-5" role="status" aria-label="Loading">
+    <div className="space-y-5 bpm-home-skeleton" role="status" aria-label="Loading">
       {/* tile row: Location | When. 133, re-measured 2026-10-03 at 400px: the
           club's address and a long date ("Monday, October 5") both wrap to two
           lines on a phone, so the old 108 (one line) jumped every week. */}
@@ -108,14 +108,16 @@ export const CONSOLE_HEIGHTS = {
  * jumped as it replaced this. The bar above is the caller's.
  */
 export function AdminTabSkeleton() {
+  // The console's order since 2026-11-04: the glance tiles first, then "This
+  // week" — the Session · Payments toggle and the session card, which the
+  // toggle opens on.
   return (
     <div className="flex flex-col gap-5" role="status" aria-label="Loading">
-      <CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />
       <div className="cc-dgrid">
         <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
         <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
       </div>
-      <CardSkeleton height={CONSOLE_HEIGHTS.payments} />
+      <CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />
     </div>
   );
 }

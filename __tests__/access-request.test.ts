@@ -324,7 +324,7 @@ describe('the claim route does not say whether a name exists', () => {
   });
 });
 
-describe('the push goes to admins only', () => {
+describe('the push goes to the club’s admins only', () => {
   it('pushes the admins and never the rest of the club, with groups off', async () => {
     // With groups off the roster is a members scan the mock store answers
     // with every active row, so the admin filter is all that keeps one

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { FIT_GRIPS, FIT_PLAY_STYLE_CHOICES, FIT_SORENESS, FIT_SWINGS, type FitGrip, type FitPlayStyle, type FitSoreness, type FitSwing } from '@/lib/types';
+import { FEEL_BALANCES, FIT_GRIPS, FIT_PLAY_STYLE_CHOICES, FIT_SORENESS, FIT_SWINGS, type FeelBalance, type FitGrip, type FitPlayStyle, type FitSoreness, type FitSwing } from '@/lib/types';
 
 /**
  * The fit page's three drawn questions (design "Equipment redesign", Turn 3,
@@ -148,6 +148,30 @@ export function GripSizePicker({ value, onChange, disabled, label }: PickerProps
 /** Single select; "Nothing sore" is simply the fourth answer, so choosing it
  *  replaces a joint rather than sitting beside one. Amber, because a sore arm
  *  is a caution, not a success. */
+/** The i18n suffix of each balance word (`balance_headHeavy`). */
+const BALANCE_KEY: Record<FeelBalance, string> = { 'Head-heavy': 'headHeavy', Even: 'even', 'Head-light': 'headLight' };
+
+/**
+ * fit-5: the balance a member with no racket to anchor on asks for — the
+ * same three words the typed-racket feel chips use, and nothing drawn: a
+ * picture of a racket would say what a racket should be (the goal tiles'
+ * rule). The description under each is where the weight SITS, not what it
+ * is for.
+ */
+export function BalancePicker({ value, onChange, disabled, label }: PickerProps<FeelBalance>) {
+  const t = useTranslations('stats.gear.fitPage');
+  return (
+    <div className="fit-tiles fit-tiles--3" role="radiogroup" aria-label={label}>
+      {FEEL_BALANCES.map((b) => (
+        <button key={b} type="button" role="radio" aria-checked={value === b} className="fit-tile" disabled={disabled} onClick={() => onChange(b)}>
+          <span className="fit-tile-label">{t(`balance_${BALANCE_KEY[b]}`)}</span>
+          <span className="fit-tile-desc">{t(`balanceDesc_${BALANCE_KEY[b]}`)}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function SorenessPicker({ value, onChange, disabled, label }: PickerProps<FitSoreness>) {
   const t = useTranslations('stats.gear.fitPage');
   return (

@@ -20,6 +20,9 @@ import UnpaidSessionsCard, { CREDIT_PATH, unpaidPath } from '@/components/Unpaid
 import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
 import { levelPath } from '@/lib/levelRead';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import WaitlistPingSheet, { waitlistPingKind, type WaitlistPingKind } from '@/components/home/WaitlistPingSheet';
+import MigrateSheet from '@/components/MigrateSheet';
+import type { UsePushResult } from '@/lib/usePush';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import StatusBanner from '@/components/primitives/StatusBanner';
@@ -27,6 +30,9 @@ import PageHeader from '@/components/primitives/PageHeader';
 import { OFFER_PIN_KEY } from '@/lib/offerPin';
 import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
+import CourtLine from './home/CourtLine';
+import { courtLine } from '@/lib/clubRun';
+import { useClubRun } from '@/lib/useClubRun';
 import PlusOneRow from './home/PlusOneRow';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
 import { primeHaptics, tapSuccess } from '@/lib/haptics';
@@ -88,9 +94,17 @@ interface HomeTabProps {
    * tab does not fire Home's five requests for a screen nobody will see.
    */
   deferFetch?: boolean;
+  /**
+   * HomeShell's one `usePush()`, for the ask a waitlist join earns
+   * (`docs/plans/waitlist-push-ask.md`). Absent (a test mounting Home bare):
+   * no ask, no "You'll get a ping" line.
+   */
+  push?: UsePushResult;
+  /** On the web with the move-to-app link on: the ask points to the app. */
+  webApp?: boolean;
 }
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, deferFetch = false }: HomeTabProps) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, deferFetch = false, push, webApp = false }: HomeTabProps) {
   const t = useTranslations('home');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   /**
@@ -106,8 +120,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
    * naming the app is true. Flag off that reads exactly as it always has.
    */
   const { group: currentGroup } = useCurrentGroup();
+  const { run: clubRun, known: clubRunKnown } = useClubRun();
   const clubName = currentGroup?.name || APP_NAME;
   const tStates = useTranslations('home.states');
+  const tPing = useTranslations('home.waitlistPing');
+  /** The ask a waitlist join earned; `null` = no sheet. */
+  const [pingAsk, setPingAsk] = useState<WaitlistPingKind | null>(null);
+  const [migrateOpen, setMigrateOpen] = useState(false);
+  const closePingAsk = useCallback(() => setPingAsk(null), []);
   const format = useFormatter();
   const online = useOnline();
   const [session, setSession] = useState<Session | null>(null);
@@ -346,6 +366,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const isDeadlinePast = session ? new Date() > new Date(session.deadline) : false;
   const isSessionFinished = session?.endDatetime ? new Date() > new Date(session.endDatetime) : false;
   const isSignupClosed = session ? session.signupOpen === false : false;
+  // How close the waitlist is to another court (docs/plans/waitlist-court-line.md).
+  // Only before play starts, and only on a KNOWN club run: an unknown one could
+  // count a court wrong.
+  const hasStarted = session?.datetime ? new Date() >= new Date(session.datetime) : false;
+  const courtInfo = clubRunKnown && !hasStarted ? courtLine(session, clubRun, players) : null;
   // The server holds every rule; this only decides whether to OFFER it.
   const canAddGuest = session?.guestsAllowed === true && !isDeadlinePast && !isSignupClosed && !session.settled;
 
@@ -387,6 +412,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // put a "give me a spot" on the list (a capacity race, or the unpaid soft
     // hold), and nothing should fly for a spot that was not given.
     const onList = waitlist || joined?.waitlisted === true;
+    // A confirmed waitlist row earns the "ping if a spot opens?" ask — never
+    // a row held for unpaid sessions, which is not promoted automatically.
+    if (onList && push && joined?.heldForUnpaid !== true) {
+      setPingAsk(waitlistPingKind(push.state, webApp));
+    }
     const morph = !onList && joined !== null && canViewTransition();
     const commit = () => {
       setCurrentUser(trimmed);
@@ -571,7 +601,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           size is off from the other page"). The 2026-08-27 hierarchy pass had
           made it a 16px `compact` variant; that variant also GREW on scroll,
           to the shared 18px condensed size, so it is gone, not just unused. */}
-      <PageHeader>
+      <PageHeader fitText={clubName}>
         <span
           role="button"
           tabIndex={0}
@@ -631,7 +661,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {weekLoadError ? (
         /* Page-level fallback: standalone, 48/24, no card (CLAUDE.md spacing
            ladder) — the card it replaces would have held nothing true. */
-        <section className="bpm-home-group" aria-label={t('groups.session')} style={{ padding: 'var(--space-9) var(--space-7)' }}>
+        <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')} style={{ padding: 'var(--space-9) var(--space-7)' }}>
           <ErrorState
             message={t('weekLoadError')}
             action={
@@ -642,7 +672,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           />
         </section>
       ) : groupsOn && sessionMissing ? (
-        <section className="bpm-home-group" aria-label={t('groups.session')}>
+        <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')}>
           <div className="glass-card p-5 space-y-3">
             <CardHeader
               compact
@@ -663,7 +693,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         </section>
       ) : (
-      <section className="bpm-home-group" aria-label={t('groups.session')}>
+      <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')}>
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}
@@ -761,6 +791,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 celebrate={signupEntrance === 'pop'}
               />
             </div>
+            {isFull && courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
             <PlusOneRow guest={myGuest} canAdd={canAddGuest} online={online} onChanged={() => void loadData()} />
             <button
@@ -801,6 +832,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   )
               }
             />
+            {push?.state.status === 'on' && !heldForUnpaid && (
+              <p className="fs-sm m-0" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
+                <span className="material-icons icon-sm" aria-hidden>notifications</span>
+                {tPing('willPing')}
+              </p>
+            )}
+            {courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             <PlusOneRow guest={myGuest} canAdd={canAddGuest && !heldForUnpaid} online={online} onChanged={() => void loadData()} />
             <button
@@ -821,6 +859,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
+            {courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             {signupName && (
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
@@ -960,6 +999,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           it took the nav slot Sign-Ups held. */}
       </section>
 
+
+      {push && (
+        <WaitlistPingSheet
+          kind={pingAsk}
+          onClose={closePingAsk}
+          onGetApp={() => { setPingAsk(null); setMigrateOpen(true); }}
+          push={push}
+        />
+      )}
+      {webApp && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
 
       <BottomSheet
         open={confirmingCancel}

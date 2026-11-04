@@ -18,9 +18,82 @@ import { randomBytes } from 'crypto';
 import { getContainer } from './cosmos';
 import { isFlagOn } from './flags';
 import { listMemberships, addMembership, rosterNameHolder, releaseRosterName, readMembership, RosterNameTakenError } from './groups';
+import { BPM_GROUP_ID } from './groupScope';
 import type { Member, Membership } from './types';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+
+/**
+ * Does this person string for THIS club? (docs/plans/roles-v2.md, PR 2.)
+ *
+ * The membership's switch, with one tolerance: a BPM row that has never been
+ * set reads the Member's value, because `Member.canString` IS BPM's flag-off
+ * value and the stringers it names were granted before the field moved —
+ * without it every one of them would have dropped off the bench on deploy.
+ * Another club's unset row is no: a stringer for BPM is not one there until
+ * its admin says so. Pure, so the roster overlay and the per-person reads
+ * cannot disagree.
+ */
+export function canStringOf(groupId: string, member: Pick<Member, 'canString'>, membership: Pick<Membership, 'canString'> | undefined): boolean {
+  if (!groupsOn() || !membership) return member.canString === true;
+  if (typeof membership.canString === 'boolean') return membership.canString;
+  return groupId === BPM_GROUP_ID && member.canString === true;
+}
+
+async function readMemberById(id: string): Promise<Member | undefined> {
+  try {
+    const { resource } = await getContainer('members').item(id, id).read<Member>();
+    return resource ?? undefined;
+  } catch (err) {
+    if ((err as { code?: number })?.code === 404) return undefined;
+    throw err;
+  }
+}
+
+/** Whether `memberId` strings for `groupId` — the gate the bench reads. */
+export async function canStringIn(groupId: string, memberId: string): Promise<boolean> {
+  const member = await readMemberById(memberId);
+  if (!member || member.active === false) return false;
+  if (!groupsOn()) return member.canString === true;
+  const membership = await readMembership(groupId, memberId);
+  if (!membership || membership.status !== 'active') return false;
+  return canStringOf(groupId, member, membership);
+}
+
+/**
+ * The person as a stringer of `groupId` — id and the name THIS club knows
+ * them by — or null when they are not one. The assign gate re-checks here
+ * rather than trusting the picker.
+ */
+export async function stringerIn(groupId: string, memberId: string): Promise<{ id: string; name: string } | null> {
+  const member = await readMemberById(memberId);
+  if (!member || member.active === false) return null;
+  if (!groupsOn()) return member.canString === true ? { id: member.id, name: member.name } : null;
+  const membership = await readMembership(groupId, memberId);
+  if (!membership || membership.status !== 'active') return null;
+  return canStringOf(groupId, member, membership) ? { id: member.id, name: membership.name } : null;
+}
+
+/** Everyone who strings for `groupId`, for the assign picker. Names and ids only. */
+export async function listStringers(groupId: string): Promise<Array<{ id: string; name: string }>> {
+  if (!groupsOn()) {
+    const { resources } = await getContainer('members')
+      .items.query<Member>({ query: 'SELECT * FROM c WHERE c.canString = true', parameters: [] })
+      .fetchAll();
+    /* Re-filtered in JS. The mock store matches on parameter NAMES and this
+       query binds none, so `c.canString = true` is invisible to it and every
+       member comes back — which would put the whole club in the assign
+       picker. Production Cosmos honours the WHERE; the test environment needs
+       this line. Same hazard, same shape, as the admin push query. */
+    return (resources ?? [])
+      .filter((m) => m.canString === true && m.active !== false)
+      .map((m) => ({ id: m.id, name: m.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return (await rosterMembers(groupId))
+    .filter((e) => e.member.canString === true)
+    .map((e) => ({ id: e.member.id, name: e.member.name }));
+}
 
 /** One roster line: the person, with the group's name and role for them overlaid. */
 export interface RosterEntry {
@@ -81,6 +154,7 @@ export async function rosterMembers(
         name: membership.name,
         role: membership.role === 'member' ? 'member' : 'admin',
         canGift: membership.canGift === true,
+        canString: canStringOf(groupId, member, membership),
       },
       membership,
     });

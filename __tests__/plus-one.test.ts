@@ -207,6 +207,29 @@ describe('plus-one: cancelling', () => {
     expect(guestRows()[0].lateCancel).toBe(true);
   });
 
+  it("cancelling the guest never overwrites an admin's edit that landed mid-cancel", async () => {
+    seed();
+    await addGuest();
+    const guestId = guestRows()[0].id;
+    // An admin marks the guest paid between the cancel's read and its write:
+    // the first write to that row sees the row change under it.
+    const store = getStore()['players'] as Row[] & { findIndex: Row[]['findIndex'] };
+    const realFindIndex = store.findIndex.bind(store);
+    let raced = false;
+    store.findIndex = ((pred: (r: Row, i: number, a: Row[]) => boolean) => {
+      const idx = realFindIndex(pred);
+      if (!raced && idx >= 0 && store[idx].id === guestId) {
+        raced = true;
+        store[idx] = { ...store[idx], paid: true, _etag: 'admin-edit' };
+      }
+      return idx;
+    }) as Row[]['findIndex'];
+    const res = await DELETE(asMember('Lin', HOST, 'DELETE', { guest: true }));
+    expect(res.status).toBe(200);
+    expect(raced).toBe(true);
+    expect(rowOf(guestId)).toMatchObject({ removed: true, paid: true });
+  });
+
   it('an admin removing the host removes the guest too', async () => {
     const { linRow } = seed();
     await addGuest();
@@ -289,5 +312,23 @@ describe('plus-one: the club switch', () => {
     expect((await addGuest()).status).toBe(201);
 
     expect((await settingsPATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/admin/settings', { guestsAllowed: 'yes' }))).status).toBe(400);
+  });
+
+  it('a failed club read hides the plus-one row, never the session', async () => {
+    const { GET: sessionGET } = await import('@/app/api/session/route');
+    seed();
+    // A throttled `groups` point read (the mock's item read is `store.find`).
+    const groups = getStore()['groups'] as Row[] & { find: unknown };
+    groups.find = () => { throw Object.assign(new Error('throttled'), { code: 429 }); };
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const res = await sessionGET(makeAdminRequest('GET', 'http://localhost:3000/api/session'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.id).toBe(SESSION_ID);
+      expect(body.guestsAllowed).toBe(false);
+    } finally {
+      errors.mockRestore();
+    }
   });
 });

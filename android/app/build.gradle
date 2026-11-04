@@ -36,6 +36,10 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    // The fold (BpmFoldPlugin): Jetpack WindowManager's FoldingFeature, with
+    // the Java callback adapter over its Kotlin flow.
+    implementation "androidx.window:window:$androidxWindowVersion"
+    implementation "androidx.window:window-java:$androidxWindowVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

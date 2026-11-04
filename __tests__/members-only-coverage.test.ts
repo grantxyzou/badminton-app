@@ -14,6 +14,7 @@ import {
 
 import { GET as playersGET } from '@/app/api/players/route';
 import { GET as sessionGET } from '@/app/api/session/route';
+import { GET as notificationsGET } from '@/app/api/notifications/route';
 import { GET as sessionCalendarGET } from '@/app/api/session/calendar/route';
 import { GET as membersGET } from '@/app/api/members/route';
 import { GET as membersMeGET } from '@/app/api/members/me/route';
@@ -90,7 +91,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/fit-preview': admin(),
   'admin/catalog-gaps': admin(),
   'admin/ledger': admin(),
-  'admin/migrate-groups': admin('isAdminAuthedWithMember'),
+  'admin/migrate-groups': admin('isOperator'),
   'admin/ledger-backfill': admin('isAdminAuthedWithMember'),
   'admin/ledger/reconcile': admin('isAdminAuthedWithMember'),
   'admin/expenses': admin(),
@@ -104,6 +105,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/reports/key': admin(),
   'reports/metrics': { kind: 'authed', helper: 'groupForReportsKey' },
   'reports/feedback': { kind: 'authed', helper: 'groupForReportsKey' },
+  'reports/fit-backtest': { kind: 'authed', helper: 'groupForReportsKey' },
   'admin/sign-in-readiness': admin('isAdminAuthedWithMember'),
   aliases: admin(),
   birds: admin(),
@@ -116,6 +118,7 @@ const ROUTES: Record<string, Entry> = {
   skills: admin(),
   'stringing/stringers': admin(),
   'groups/invite': admin('isAdminAuthedWithMember'),
+  'groups/claim-link': admin('isAdminAuthedWithMember'),
   assessments: owner,
   kudos: owner,
   'players/unpaid': owner,
@@ -126,6 +129,7 @@ const ROUTES: Record<string, Entry> = {
   'stats/level': owner,
   'stats/partners': owner,
   'kudos/eligible': { kind: 'authed', helper: 'requireGroupMember' },
+  notifications: { kind: 'gated' },
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
   // The home-screen widget's bearer pass (docs/plans/native-widgets.md), re-read against the membership.
@@ -144,7 +148,7 @@ const ROUTES: Record<string, Entry> = {
   'auth/google/callback': { kind: 'public', reason: 'the OAuth return; it is how a visitor BECOMES signed in' },
   'auth/verify-email': { kind: 'public', reason: 'consumes an emailed token' },
   'auth/complete-signup': { kind: 'public', reason: 'reads only the signed pending-signup cookie' },
-  'groups/preview': { kind: 'public', reason: 'an invite preview: the club NAME for a valid invite, one 404 otherwise' },
+  'groups/preview': { kind: 'public', reason: 'an invite or claim-link preview: the club NAME for a valid one, one 404 otherwise' },
   releases: { kind: 'public', reason: 'app release notes, not club data (global container)' },
   health: { kind: 'public', reason: "App Service's liveness probe: reads nothing, answers ok and the build id" },
   'equipment/catalog': { kind: 'public', reason: 'the global racket/string catalog, not club data' },
@@ -279,6 +283,7 @@ describe('behaviour of the gated routes', () => {
   const CASES: Array<[string, Handler, string]> = [
     ['players', playersGET as Handler, 'http://localhost/api/players'],
     ['session', sessionGET as Handler, 'http://localhost/api/session'],
+    ['notifications', notificationsGET as Handler, 'http://localhost/api/notifications'],
     ['session/calendar', sessionCalendarGET as Handler, 'http://localhost/api/session/calendar'],
     ['members', membersGET as Handler, 'http://localhost/api/members'],
     ['members/me', membersMeGET as Handler, 'http://localhost/api/members/me?name=Lin'],

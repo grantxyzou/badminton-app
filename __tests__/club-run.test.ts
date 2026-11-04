@@ -3,6 +3,8 @@ import {
   applyStyle,
   capacityForCourts,
   clubRunOf,
+  courtLine,
+  playersPerCourtFor,
   parseClubRun,
   styleOf,
   withSetting,
@@ -95,5 +97,44 @@ describe('capacityForCourts', () => {
     expect(capacityForCourts(4, applyStyle('first_come'))).toBeNull();
     expect(capacityForCourts(null, sf)).toBeNull();
     expect(capacityForCourts(0, sf)).toBeNull();
+  });
+});
+
+/** docs/plans/waitlist-court-line.md: how close the waitlist is to another court. */
+describe('playersPerCourtFor', () => {
+  const bpm = clubRunOf(undefined);
+  it("uses the club's own players per court when it sets one", () => {
+    expect(playersPerCourtFor({ courts: 4, maxPlayers: 30 }, applyStyle('members_first'))).toBe(8);
+  });
+  it('divides the cap by the courts for BPM (6 per court)', () => {
+    expect(playersPerCourtFor({ courts: 2, maxPlayers: 12 }, bpm)).toBe(6);
+  });
+  it('says nothing when the cap does not divide evenly', () => {
+    expect(playersPerCourtFor({ courts: 2, maxPlayers: 13 }, bpm)).toBeNull();
+  });
+  it('says nothing without courts or a cap', () => {
+    for (const s of [null, undefined, {}, { courts: 0, maxPlayers: 12 }, { courts: 2 }, { maxPlayers: 12 }]) {
+      expect(playersPerCourtFor(s, bpm)).toBeNull();
+    }
+  });
+});
+
+describe('courtLine', () => {
+  const bpm = clubRunOf(undefined);
+  const session = { courts: 2, maxPlayers: 12 };
+  const wait = (n: number) => Array.from({ length: n }, () => ({ waitlisted: true }));
+
+  it('counts how many more would fill a court', () => {
+    expect(courtLine(session, bpm, [...wait(3), { waitlisted: false }])).toEqual({ perCourt: 6, waiting: 3, more: 3 });
+  });
+  it("reads a court's worth once the waitlist reaches it", () => {
+    expect(courtLine(session, bpm, wait(8))).toEqual({ perCourt: 6, waiting: 8, more: 0 });
+  });
+  it('leaves out removed and held-for-unpaid rows, which would not move up', () => {
+    const rows = [...wait(2), { waitlisted: true, removed: true }, { waitlisted: true, heldForUnpaid: true }];
+    expect(courtLine(session, bpm, rows)).toEqual({ perCourt: 6, waiting: 2, more: 4 });
+  });
+  it('is null when a court cannot be worked out', () => {
+    expect(courtLine({ courts: 2, maxPlayers: 13 }, bpm, wait(3))).toBeNull();
   });
 });

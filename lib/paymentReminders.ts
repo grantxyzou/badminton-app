@@ -24,6 +24,7 @@
 import { groupScope, type GroupScope } from './groupScope';
 import { computeOwedForRoster, type RosterOwed, type UnpaidSession } from './owedBalance';
 import { sendPushToMembers, type PushPayload } from './push';
+import { recordNotices } from './notices';
 import type { Player } from './types';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -120,6 +121,8 @@ export async function runReminders(groupId: string, now: number = Date.now()): P
       if (await scope.replace('players', { ...row, remindedAt: [...remindedAt, at] }, line.sessionId)) stamped += 1;
     }
     if (stamped === 0) continue;
+    // A count, never an amount: the page follows the push's lock-screen rule.
+    await recordNotices(groupId, [d.memberId], { type: 'settle_up', count: stamped });
     const result = await sendPushToMembers([d.memberId], reminderPayload(stamped));
     sent += result.sent;
   }

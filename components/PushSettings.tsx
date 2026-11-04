@@ -1,21 +1,18 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import type { UsePushResult } from '@/lib/usePush';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
   /** Opens the "Add to Home Screen" instructions — the only actionable path
    *  for an iOS user in a browser tab, where push is unavailable by design. */
   onOpenInstall: () => void;
-  /** Owned by ProfileTab and shared with the settings row, so toggling here
-   *  updates the row's On/Off label immediately. A second usePush() here would
-   *  be a separate state and the row would go stale. */
+  /** Owned by HomeShell and shared with Profile's row, so toggling here
+   *  updates the row's On/Off label immediately. A second usePush() would be a
+   *  separate state (and, in the store app, a second token listener). */
   push: UsePushResult;
   /** Admins get a "send a test notification" button: POST /api/push/test
    *  targets only the caller's own devices, so it is the way to prove the
@@ -30,14 +27,17 @@ type TestOutcome =
   | { kind: 'failed' };
 
 /**
- * Notification opt-in.
+ * Notification opt-in — the top of the Notifications page in the STORE APP
+ * (docs/plans/notification-center.md). On the web the page leads with the
+ * get-the-app card instead, and shows this only to someone whose browser
+ * already has push on, so they can still turn it off.
  *
  * Every terminal state is rendered honestly rather than collapsed into a
  * generic "not available": a user who CAN fix their situation is told how, and
  * a user who cannot is told plainly instead of being offered a button that
  * silently does nothing.
  */
-export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin = false }: Props) {
+export default function PushSettings({ onOpenInstall, push, isAdmin = false }: Props) {
   const t = useTranslations('profile.push');
   const online = useOnline();
   const { state, enable, disable, busy, error } = push;
@@ -73,8 +73,8 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
             <p className="fs-base" style={{ color: 'var(--text-primary)' }}>{t('iosNeedsInstall')}</p>
             <button
               type="button"
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ marginTop: 'var(--space-4)', width: '100%' }}
+              className="btn-primary w-full"
+              style={{ marginTop: 'var(--space-4)' }}
               onClick={onOpenInstall}
             >
               {t('iosInstallCta')}
@@ -98,9 +98,14 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
     const isOn = state.status === 'on';
     return (
       <>
-        <p className="fs-base" style={{ color: 'var(--text-primary)' }}>
-          {isOn ? t('onBody') : t('offBody')}
-        </p>
+        {isOn ? (
+          <p className="fs-base" style={{ color: 'var(--text-primary)' }}>{t('onBody')}</p>
+        ) : (
+          <>
+            <p className="fs-md" style={{ color: 'var(--text-primary)', fontWeight: 600, margin: 0 }}>{t('offTitle')}</p>
+            <p className="fs-base" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>{t('offBody')}</p>
+          </>
+        )}
         {!online && (
           <p className="fs-sm" style={{ color: 'var(--text-muted)', marginTop: 'var(--space-3)' }}>
             {t('offlineHint')}
@@ -121,8 +126,10 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
         )}
         <button
           type="button"
-          className={`cc-btn ${isOn ? 'cc-btn-secondary' : 'cc-btn-primary'} cc-btn-lg`}
-          style={{ marginTop: 'var(--space-4)', width: '100%' }}
+          // Member-facing: the filled CTA to turn on, the ghost to turn off
+          // (`cc-btn` is the admin family; the test send below stays in it).
+          className={`${isOn ? 'btn-ghost' : 'btn-primary'} w-full`}
+          style={{ marginTop: 'var(--space-4)' }}
           // Network-mutating action — must be unavailable offline rather than
           // failing after the tap (CLAUDE.md offline posture).
           disabled={busy || !online}
@@ -163,24 +170,10 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
-      <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('title')}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
-      </BottomSheetHeader>
-      <BottomSheetBody className="p-5 pb-8">
-        {/* Keyed on the state, so "Checking…" → on/off/blocked crossfades
-            instead of swapping copy under the reader. */}
-        <div key={state.status} className="motion-fade">{body()}</div>
-      </BottomSheetBody>
-    </BottomSheet>
+    <section aria-label={t('title')}>
+      {/* Keyed on the state, so "Checking…" → on/off/blocked crossfades
+          instead of swapping copy under the reader. */}
+      <div key={state.status} className="motion-fade">{body()}</div>
+    </section>
   );
 }

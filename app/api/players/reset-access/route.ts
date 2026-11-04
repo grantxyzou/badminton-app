@@ -6,6 +6,9 @@ import { issueRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
+import { signOutEverywhereIn } from '@/lib/groups';
+import { isFlagOn } from '@/lib/flags';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +27,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const admin = await isAdminAuthedWithMember(req);
+  if (!admin.authed) return unauthorized();
 
   let body: { name?: unknown };
   try {
@@ -59,10 +63,22 @@ export async function POST(req: NextRequest) {
     at: new Date().toISOString(),
     admin: 'admin',
   });
+  /*
+   * Issuing a code is handing the name back to its owner, so it also signs
+   * every device out of it IN THIS CLUB (docs/plans/claim-your-name.md, Q4):
+   * a claim approved for the wrong person ends here, instead of living out
+   * its 30-day cookie. The Member copy follows `role`'s rule — BPM's admin,
+   * or groups off.
+   */
+  const at = new Date().toISOString();
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  if (groupsOn) await signOutEverywhereIn(admin.groupId, member.id, at);
+  const memberCopy = !groupsOn || admin.groupId === BPM_GROUP_ID;
   await membersContainer.items.upsert({
     ...member,
     recoveryCode: stored,
     recoveryEvents: updatedEvents,
+    ...(memberCopy ? { sessionsNotBefore: at, widgetPassNotBefore: at } : {}),
   });
 
   return NextResponse.json({ code, expiresAt: stored.expiresAt });

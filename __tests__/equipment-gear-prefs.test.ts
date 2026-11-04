@@ -102,6 +102,22 @@ describe('fit questionnaire fields', () => {
     expect((await read(cookie)) ?? null).toBeNull();
   });
 
+  it('fit-5: the balance answer is stored in the feel vocabulary, cleared by null, refused outside it, and survives a bag write', async () => {
+    const res = await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitBalance: 'Head-light' }, cookie));
+    expect(res.status).toBe(200);
+    expect((await read(cookie)).fitBalance).toBe('Head-light');
+    expect((await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitBalance: 'head-light' }, cookie))).status).toBe(400);
+    expect((await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitBalance: 'Sideways' }, cookie))).status).toBe(400);
+    expect((await read(cookie)).fitBalance).toBe('Head-light');
+    const post = await POST(makeRequest('POST', BASE, {
+      name: 'Lin', item: { catalogId: null, category: 'racket', label: 'An old racket' },
+    }, cookie));
+    expect(post.status).toBe(200);
+    expect((await read(cookie)).fitBalance).toBe('Head-light');
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitBalance: null }, cookie));
+    expect((await read(cookie)).fitBalance).toBeUndefined();
+  });
+
   it('fit answers survive a bag write (writeGearDoc rebuilds the doc from a field list)', async () => {
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitGoal: 'more_control', fitSwing: 'medium', fitGrip: 'G4' }, cookie));
     const post = await POST(makeRequest('POST', BASE, {

@@ -5,8 +5,10 @@ equipment purchases"; Value-Hub Track 2 (Equipment). ROADMAP §4 still says trac
 1–4 stay blocked until the Slice-0 readout; the `VALUE_HUB_SLICE` note in
 `lib/flags.ts` records that the fan-out was made by shipping, not by reading the
 gate. This file says so rather than pretending the readout happened.
-**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`, retired ON 2026-10-24) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; `fit-3` 2026-10-09 (a slow swing's "more power" leaves the head alone, from the first stringer-rated case); Phase 4 waits on ≥5 golden ratings (3 rated 2026-10-09: g01–g03; the owner owes two of his own)
-**Review on:** 2026-11-02 — ≥5 golden cases rated, and `picks.engagedMembers` ≥ 2 in `GET /api/admin/slice0` (members who ADDED, TRIED or RATED a pick — `pick_served` is the denominator, not engagement)? If not, drop the fit questionnaire.
+**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`, retired ON 2026-10-24) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; `fit-3` 2026-10-09 (a slow swing's "more power" leaves the head alone, from the first stringer-rated case); Phase 4 waits on ≥5 golden ratings (3 rated 2026-10-09: g01–g03; the owner owes two of his own); `fit-4` 2026-10-20 (the side of a mixed court); **validation rethought 2026-11-04** — three legs that need no expert's evening (below, "How to validate alternatively"); `fit-5` 2026-11-04 (a Balance question for the member nothing anchors, and no tier steer without an anchor — Grant's two calls from the first backtest read, same day)
+**Review on:** 2026-11-18 — has anyone with no racket logged answered Balance (the one input the second read could not move)? Re-run the backtest then, and look at the one as-answered flex miss fit-5 introduced: which goal delta carried it two steps off? And does the kill criterion move from "5 golden + 2 engaged" to "property suite green + backtest + bench agreement"?
+**Read 2026-11-04, second (same day, `fit-5`, after #768 deployed):** the same 12 gear docs and 9 cases, nobody having answered Balance yet. As answered: flex within a step **8/9** (was 9), weight **9/9**, balance **3/9** (unchanged), tier **5/9** (was 4), all three **2/9 (22 %)** (unchanged), exact model in the top three 0/9. As if happy (the floor; the fit-4 figures for this row were not kept): balance 5/9, flex 9/9, weight 9/9, tier 5/9, exact model in the top three 1/9. Tier moved the one step the change predicted, and balance could not move — the unanchored start is still even for all nine until one of them answers the new question, which is the thing to look for at the review. One as-answered flex match was lost: with the tier term gone, one case's top pick now sits two or more shaft steps from the racket they hold, and the "as if happy" row keeps 9/9, so a goal delta is doing it; the report is totals only, so which case waits on the review. Net: a wash on the headline, the expected move on tier, and a true read on balance only once someone answers.
+**Read 2026-11-04 (first production backtest, `fit-4`):** 12 gear docs, 9 cases (2 rackets not in the catalog, 1 nothing to go on; 6 unanchored, 3 level-only). The club holds 5 even / 2 head-light / 2 head-heavy, 7 stiff / 2 flexible, 7 premium / 2 mid. As answered: flex within a step **9/9**, weight within 3 g **9/9**, balance **3/9**, tier **4/9**, all three **2/9 (22 %)**, exact model in the top three 0/9. The two misses are the two axes the from-scratch path has no input for: with no anchor, balance comes only from the goal or a mixed court side and defaults to even, so the four head-light and head-heavy owners are invisible to it; and the level-derived tier default aims entry/mid at a club that buys premium whatever its level. This is a statement about NEW members with no racket logged — the nine themselves get the anchored path, which follows their racket's balance by construction — and that is exactly who the questionnaire exists for. n = 9 and only 3 `happy` rows, so a direction, not a verdict. The summary should split the match counts by goal next (it reports `byGoal` but not matches per goal).
 **Read 2026-10-19:** `engagedMembers` 2 (two adds, on `fit-2`; 184 served to 9 members across `fit-1`–`fit-3`), the fit page opened by 8 members and a verdict seen by 7 — but 3 of 5 golden cases. Half met; the half that is not is the owner's and stringer's to rate, not the members' verdict, so the date moved two weeks rather than the questionnaire going (Grant chose to keep it). `GEAR_PAGES` and `FIT_VERDICT` retired ON the same day.
 
 ## Problem
@@ -153,6 +155,33 @@ because they are correct regardless of uptake.
   whether Flexible should be preferred is the next question for the golden
   set, not a claim to make ahead of it. g01 is the first RATED case; g02 and
   g03 stay drafts.
+- **`fit-5`: what the first backtest asked for** (2026-11-04, Grant: "Yes
+  to both"). Two changes, both for the member with NO racket to anchor on —
+  the one the questionnaire exists for. (1) **A Balance question on the Fit
+  page**, asked only while nothing in the bag can anchor (no catalog racket,
+  no typed-in racket with both its balance and shaft stated — `feelAnchors`,
+  the engine's own rule, so the page cannot drift from it), in the three words the feel
+  chips already use — Head-heavy / Even / Head-light, with where the weight
+  sits under each and nothing drawn (the goal tiles' rule: no picture of what
+  a racket should be). Stored as `PlayerGear.fitBalance`, in the feel
+  vocabulary so the engine reads it as it reads a catalog row; it sets the
+  unanchored start ahead of the court side, the goal still moves it, and an
+  often-sore arm caps it at even as it caps the side. With an anchor it is
+  not read, and it is outside the "n of 5" — a question only some members
+  see cannot be one of everyone's five. Grant's wording call: the plain chip
+  words, never "feel". (2) **No tier steer without an anchor.** The level
+  row's tier was a guess at what a member would buy, and the club buys
+  premium at every level; the budget question is the one input that speaks
+  to price and it already ramps, so the tier term costs nothing unanchored.
+  With an anchor it is unchanged (a Beginner reaching up from their own
+  racket's tier still pays double). Not changed: a typed-in racket's tier is
+  still taken from the level (`levelTierLabel`) — that is the ANCHORED path
+  and the backtest said nothing about it. The nine production cases carry no
+  `fitBalance`, so the next backtest read can only move on tier until someone
+  answers; the golden and manufacturer cases are unchanged on `fit-5`, and
+  the property suite gained four checks (the answer sets the start, the
+  anchor ignores it, the tier never moves an unanchored score, and the
+  premium-only order is what `fit-4` gave).
 - **`fit-4`: the side of a mixed court** (2026-10-20). The Fit page split
   Mixed into Mixed · front and Mixed · back on 2026-10-20, and both were read
   as `both` — the same racket as All-around. Grant: "mixed selection why is it
@@ -183,6 +212,109 @@ because they are correct regardless of uptake.
   Control, as its own note already said. A fourth rung stays the honest fix
   if a second family hits the same wall.
 
+- **How to validate alternatively** (2026-11-04; Grant: "we are rethink about
+  racket fit how to validate alternatively"). The two legs of the gate above
+  wait on scarce people — the owner and the stringer rating profiles at a
+  desk (stuck at 3 of 5 since 2026-10-09), and two engaged members in a club
+  of thirty (passed at exactly two, which proves little). Three legs that
+  need nobody's evening were added, and the fourth is proposed:
+  1. **The owned-racket backtest** (`lib/fitBacktest.ts`,
+     `GET /api/reports/fit-backtest` behind the read-only reports key). Every
+     member who plays a catalog racket is a case nobody had to write: hide
+     the racket, run the engine from scratch, compare the CLASS of the pick
+     (balance, flex within a step, weight within 3 g, tier) with the class of
+     what they hold. A racket someone bought and kept is weak truth — people
+     play what they were sold — so it scores the class, never the model, and
+     says nothing about whether the racket is RIGHT for them. **Its first
+     lesson came from its own test**: with the anchor hidden and the goal
+     forced to `happy`, the engine has nothing that steers balance and aims at
+     the level default (even) for everyone, so a head-light or head-heavy
+     owner can only match it by luck. "As answered" (the member's own goal) is
+     therefore the headline and "as if happy" the floor; `byGoal` is reported
+     so the `happy` rows — the clean ones — can be read on their own. Totals
+     only. **Not yet read on production**: it needs a deploy and then one call
+     with `BPM_REPORTS_KEY`; the Review-on line is that read.
+  2. **Property tests** (`__tests__/fit-properties.test.ts`): the claims in
+     `lib/racketFit.ts`'s own header, each turned into a check over every
+     scorable anchor in the catalog — determinism and catalog-order
+     independence, the owned racket never handed back, the goal deltas
+     monotone on the axes they name, no goal but control touching flex,
+     fit-3's slow-swing rule, comfort constraining swing-weight and tension
+     and never flex, ceilings penalising and never hiding, budget as a
+     preference, an unanswered swing widening the tolerance, fit-4's court
+     side. Metamorphic: change one answer, the target moves the known way or
+     not at all. They cannot say the rules are the RIGHT rules; that stays
+     with the golden set and the bench. 24 checks, all green on `fit-4`.
+  3. **The manufacturers' second opinion** (`rater: 'manufacturer'` cases
+     m01–m04 in the golden fixture): each brand's series positioning — Astrox
+     / Thruster / Axforce for power, Nanoflare / Auraspeed / Bladex for speed,
+     Arcsaber / DriveX / Halbertec for control, the entry shelf for a first
+     racket — as the acceptable set for the player type the brand describes,
+     generated from the catalog by series so the claim is about the line and
+     not a hand-typed list (the first cut typed eleven ids for the speed
+     player and failed on three head-light Nanoflare and Bladex rows the
+     engine rightly chose). Marketing, so counted apart from the expert cases
+     and never toward the five; asserted, because disagreeing with every
+     brand at once is worth a red test. All four agree with `fit-4`.
+  4. **Proposed, not built: the bench.** The stringer handles real rackets
+     from real players every week; a one-line "the engine would have picked
+     X for this player — agree?" on `StringingJobDetail` is an expert rating
+     in the one moment the expert already holds the evidence. Waits on the
+     backtest's first read.
+
+  Not done, on purpose: an A/B of engine versions. With ~30 members and two
+  engagement taps a month it would take a year to say anything.
+
+- **What the backtest gate still does not close** (2026-11-04; the loophole
+  review written for #761, which was closed unmerged because the gate it
+  proposed had already shipped as the three legs above — the review outlived
+  it). Twelve loopholes were listed against the gate; checked against the code
+  as shipped, seven are closed and five are not. The five, worst first:
+  1. **Leakage: the answers may describe the racket in the hand.** A member who
+     owns a stiff, head-heavy frame answers "fast swing" *because* of it, so the
+     backtest can be scoring the engine on an input the racket itself produced.
+     Nothing guards this: `lib/fitBacktest.ts` reads no `fitUpdatedAt` and no
+     `acquiredAt`. Closing it means counting a member as pre-purchase only when
+     `fitUpdatedAt` precedes the earliest of `acquiredAt` and their first log
+     entry, reporting post-purchase members apart and never in the headline.
+     **`fitUpdatedAt` is a lower bound, not a clean guard**: it moves only when a
+     fit ENUM changes, so a later grip edit pushes it forward, `fitOvergrips` and
+     the string budget never stamp it, and docs written before the stamp have
+     none (`app/api/equipment/gear/route.ts`). A doc with no stamp is an
+     exclusion, not an assumption.
+  2. **No baseline, so the match rates have nothing to beat.** The reads report
+     flex 9/9 and weight 9/9 as if those were scores; in a catalog of near
+     duplicates a random pick scores well on a within-a-step rule. There is no
+     baseline anywhere in `lib/fitBacktest.ts` — not random, not club-popularity,
+     not the level-only ablation the Review-on line asks for. Until the margin is
+     over a baseline computed under the SAME rule, the headline numbers cannot
+     say whether the engine did any work.
+  3. **Influence, not fit.** Members buy what the owner owns, so "what they
+     stayed with" partly measures the club. The club-popularity baseline in (2)
+     absorbs it; the owner's own bag should be reported apart, and a run without
+     the most common racket is a sensitivity run that is reported and never
+     decides.
+  4. **No freeze, so the goalposts can move.** The exclusion list, the ablation
+     input and the thresholds are not fixed anywhere before a run. A change to
+     any of them after a read is a dated entry here, made before the run it
+     affects; a post-hoc filter voids the read.
+  5. **Health-adjacent data.** `fitArmComfort` and `fitSoreness` feed ranking and
+     are stripped from other readers. The route returns totals today, which is
+     most of the protection, but nothing states the rule: no output keyed on a
+     health field, and any cell under 5 suppressed — in a club of ~36 a small
+     cell names a person.
+
+  Closed by what shipped, recorded so they are not re-litigated: *kept is not
+  right* and *tests that agree by construction* are both stated in the legs
+  above; *tuning on the test set* is covered by `engineVersion` on every read;
+  *two-club members* by `rosterMemberIds(groupId)`; *silent cohort shrinkage* by
+  the per-case exclusion reasons (`no_active_racket`, `nothing_to_go_on`,
+  `racket_not_in_catalog`, `racket_unscorable`), though the "lost more than half
+  → undecided" rule is not written; *selection* by the reads saying in words that
+  this is a statement about new members and a direction, not a verdict; and *the
+  route's auth* by the per-club read-only reports key, a different choice from
+  the operator-only one proposed, and a deliberate one.
+
 ## Shape
 
 | Piece | Where |
@@ -198,4 +330,7 @@ because they are correct regardless of uptake.
 | Golden set + harness | `__tests__/fixtures/fit-golden.json`, `__tests__/fit-golden.test.ts` |
 | Feedback read | `app/api/admin/slice0/route.ts` (`picks`), `app/api/admin/fit-preview/route.ts`, `scripts/dump-fit-cases.mjs` |
 | Privacy disclosure | `messages/{en,zh-CN}.json` → `legal.privacy` |
+| Owned-racket backtest | `lib/fitBacktest.ts`, `app/api/reports/fit-backtest/route.ts`, `__tests__/fit-backtest.test.ts` |
+| Property suite | `__tests__/fit-properties.test.ts` |
+| Manufacturers' second opinion | `__tests__/fixtures/fit-golden.json` (`rater: 'manufacturer'`, m01–m04), `__tests__/fit-golden.test.ts` |
 | Flag | `NEXT_PUBLIC_FLAG_RACKET_FIT` in `lib/flags.ts` |

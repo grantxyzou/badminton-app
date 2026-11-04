@@ -543,6 +543,24 @@ export async function setMembershipCanGift(
 }
 
 /**
+ * Grant or revoke stringing in ONE group (docs/plans/roles-v2.md, PR 2).
+ * Per club like `canGift`: Zach strings for BPM, and joining a second club
+ * must not put him on its bench. Resolves `undefined` when there is no
+ * active membership here.
+ */
+export async function setMembershipCanString(
+  groupId: string,
+  memberId: string,
+  canString: boolean,
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m || m.status !== 'active') return undefined;
+  if (m.canString === canString) return m;
+  return groupScope(groupId).replace('memberships', { ...m, canString }, groupId);
+}
+
+/**
  * Mark someone a member or a drop-in IN ONE GROUP (docs/plans/roster-import.md).
  * Per club for the same reason as `canGift`: a person can be a regular in one
  * club and a drop-in at another. Resolves `undefined` when there is no active
@@ -575,6 +593,34 @@ export async function revokeWidgetPasses(
   const m = await readMembership(groupId, memberId);
   if (!m) return undefined;
   return groupScope(groupId).replace('memberships', { ...m, widgetPassNotBefore: at }, groupId);
+}
+
+/**
+ * "Sign out everywhere" for one person IN ONE GROUP
+ * (docs/plans/claim-your-name.md): every member session and widget pass
+ * minted before now stops working wherever the membership is re-read. How an
+ * organiser takes a name back from whoever holds it — a claim approved for the
+ * wrong person, or a phone that walked off. Resolves `undefined` when there is
+ * no membership here.
+ */
+export async function signOutEverywhereIn(
+  groupId: string,
+  memberId: string,
+  at: string = new Date().toISOString(),
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m) return undefined;
+  return groupScope(groupId).replace('memberships', { ...m, sessionsNotBefore: at, widgetPassNotBefore: at }, groupId);
+}
+
+/**
+ * Point the club at its live claim link (lib/claimLinks.ts), retiring
+ * whichever one it named before. Under the group's etag, like every other
+ * group write. Resolves `undefined` when the group record is missing.
+ */
+export async function setClaimLinkId(groupId: string, claimLinkId: string): Promise<Group | undefined> {
+  return mutateGroup(groupId, (group) => ({ ...group, claimLinkId }));
 }
 
 // ---------------------------------------------------------------------------

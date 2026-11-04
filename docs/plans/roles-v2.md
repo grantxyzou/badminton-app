@@ -1,7 +1,7 @@
 # Roles v2: organisers, badges, and the operator
 
 **Track:** multi-group critical path, "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). A second club needs more than one person in charge, and needs a rule for who can hand out admin.
-**Status:** in-flight — PR 1 (organisers) built 2026-11-03 on #756
+**Status:** shipped 2026-11-03 — PR 1 in #756; PRs 2–4 in the follow-up PR the same day. The Review-on question stays: has any club other than BPM Core used it?
 **Review on:** 2026-12-02 — has PR 1 (organisers) shipped, and does any club other than BPM Core have a second organiser or a promoted admin?
 
 ## Problem
@@ -85,3 +85,5 @@ Four PRs, in order. Sizes are estimates. PR 1 landed with two decisions made in 
 5. **No screen.** It is called the way the backfill is.
 
 Dependencies: PR 3 needs PR 1, since an organiser that nobody can remove is what makes an override necessary. PR 4 needs only the `OPERATOR_MEMBER_IDS` setting and can go first.
+
+**As built (PRs 2–4, 2026-11-03).** PR 2: `canStringIn` / `stringerIn` / `listStringers` in `lib/roster.ts` are the one rule for the bench, the stringer view and the picker, and a BPM membership never set reads `Member.canString` (so the existing stringers stayed on; another club's unset row is no). PR 3: `lib/operator.ts`; while `OPERATOR_MEMBER_IDS` is unset the operator is still an admin of BPM, so the deploy locks nothing and the setting is the operator's to add; the override reuses `stepDown` for an organiser, so it refuses the only person in a club rather than closing it; records are read back on `GET /api/admin/migrate-groups` as `operatorActions`. PR 4: `skipsUsageRecord` reads the same list; the client's beacon is answered `{ skipped: 'staff' }` rather than refused. **Operator action for Grant:** add `OPERATOR_MEMBER_IDS=<his member id>` to App Settings; until then nothing is skipped and "operator" means any BPM admin.

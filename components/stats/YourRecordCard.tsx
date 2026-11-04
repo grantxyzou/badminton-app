@@ -9,6 +9,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { summarizeRecord, type GameRecord } from '@/lib/gameRecord';
 import type { GameResult } from '@/lib/types';
 import SteppedGameLoggerSheet from './SteppedGameLoggerSheet';
+import CourtsideScoreboard from './CourtsideScoreboard';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 import { sharedRead } from '@/lib/sharedRead';
 import { takeGameIntent, hasGameIntent } from '@/lib/gameIntent';
@@ -33,11 +34,15 @@ export interface YourRecordCardProps {
 
 export default function YourRecordCard({ activeName }: YourRecordCardProps) {
   const t = useTranslations('stats.record');
+  const tCourt = useTranslations('stats.courtside');
   const signInLink = useSignInLink();
   const tStats = useTranslations('stats');
   const [record, setRecord] = useState<GameRecord | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
   const [loggerOpen, setLoggerOpen] = useState(false);
+  // The courtside scoreboard (docs/plans/foldable-layout.md, step 3): a game
+  // kept on the phone, handed to the logger prefilled on Save.
+  const [boardOpen, setBoardOpen] = useState(false);
   // The logger writes into a session bucket, so it needs the active session id.
   // Resolved here rather than threaded through SkillsTab, matching how
   // GameLoggerCard has always done it. A missing id disables logging but must
@@ -115,6 +120,29 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
       >
         {t('add')}
       </button>
+      {/* Keeping score needs no session; saving the game does, and the board
+          says so itself rather than hiding the button. */}
+      <button
+        type="button"
+        className="cc-btn cc-btn-ghost"
+        style={{ width: '100%' }}
+        onClick={() => setBoardOpen(true)}
+      >
+        {tCourt('open')}
+      </button>
+      <CourtsideScoreboard
+        open={boardOpen}
+        onClose={() => setBoardOpen(false)}
+        onSave={
+          sessionId
+            ? (score) => {
+                setBoardOpen(false);
+                setPrefill(score);
+                setLoggerOpen(true);
+              }
+            : null
+        }
+      />
       {sessionId && (
         <SteppedGameLoggerSheet
           you={activeName}

@@ -14,13 +14,16 @@
  * lib/accessRequest.ts.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { getContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { issueAccessRequest, MAX_OPEN_REQUESTS } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { sendPushToMembers } from '@/lib/push';
-import { rosterMembers } from '@/lib/roster';
+import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
+import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
+import { rosterMembers } from '@/lib/roster';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,16 +42,33 @@ export async function POST(req: NextRequest) {
   if (!name || name.length > 80) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
+  // The club's claim link (docs/plans/claim-your-name.md), when the ask came
+  // through one. Present-but-unusable is NOT absent: an ask that brought a
+  // link it could not use is answered like any other miss below, and never
+  // falls back to the request's own club.
+  const viaLink = body?.claimToken !== undefined && body?.claimToken !== null;
 
   try {
-    // One group for the whole request: the name is resolved in it, so its
-    // admins are the ones who can see and decide the request
-    // (`app/api/admin/access-requests` narrows to the admin's own roster).
-    const groupId = resolveGroupId(req);
-    const memberId = await resolveActiveMemberId(groupId, name);
-    const { secret, stored } = issueAccessRequest();
+    const groupId = viaLink ? await resolveClaimLink(body.claimToken) : resolveGroupId(req);
+    const memberId = groupId ? await resolveActiveMemberId(groupId, name) : null;
+    const { secret, stored } = issueAccessRequest({ groupId: groupId ?? undefined, via: viaLink ? 'link' : undefined });
 
-    if (memberId) {
+    /*
+     * Through the link, only a name nobody has signed into yet can be asked
+     * for (Q2). Anyone holding the club chat holds the link, so letting it
+     * reach an established account would put every member's account one
+     * mistaken tap from a stranger. Someone with a PIN or a password who lost
+     * it recovers through the organiser's recovery code instead. The answer is
+     * the same 200 either way, so the link cannot be used to learn who has a
+     * credential.
+     */
+    let askable = memberId !== null;
+    if (memberId && viaLink) {
+      const { resource } = await getContainer('members').item(memberId, memberId).read<Member>();
+      askable = !!resource && isUnclaimed(resource);
+    }
+
+    if (memberId && askable && groupId) {
       /**
        * EVERY ASK IS ITS OWN ENTRY. Nobody displaces anybody.
        *
@@ -71,34 +91,27 @@ export async function POST(req: NextRequest) {
       if (result) {
         const { member } = result;
         /**
-         * Tell the admins. Best-effort and never able to fail the request —
-         * same posture as the stringing notifier. If push is unconfigured or
-         * nobody has opted in, the request still stands and shows up on the
-         * Command Center next time an admin opens it.
+         * Tell THIS club's organisers and admins. Best-effort and never able
+         * to fail the request — same posture as the stringing notifier. If
+         * push is unconfigured or nobody has opted in, the request still
+         * stands and shows up on the Command Center next time an admin opens
+         * it.
+         *
+         * The roster, not a `members` scan for `role = 'admin'`: that scan
+         * reached every admin in the DEPLOYMENT, so with a second club live
+         * BPM's admins would have read "Akane is asking to be let in" for
+         * another club's member, on a lock screen. A person's role is per
+         * club, and only the club's roster can say who its admins are.
          *
          * No money and no secret in the body, obviously; a lock screen is a
          * public surface. The name is the whole point of the notification.
          * The tag is per member, so a second ask replaces the banner rather
          * than stacking another.
-         *
-         * RECIPIENTS ARE THIS CLUB'S ROSTER, never a person-level role. This
-         * used to pick every active `Member` with `role: 'admin'` across the
-         * deployment. With groups on, rank lives on the MEMBERSHIP and
-         * `Member.role` is only BPM's rollback copy, so that query told another
-         * club's admins this person's name and missed an organiser whose rank
-         * is on their membership alone. `rosterMembers` is flag-aware
-         * (memberships with groups on, `Member.role` with them off) and maps
-         * an organiser to `admin`, the same reading the join notice and the
-         * stringing request notice use. `active` is re-checked in JS because
-         * with groups off the roster is a members scan and the mock store
-         * applies no WHERE. The asker is left out: they cannot sign in, so a
-         * banner on their own phone would lead nowhere.
          */
         try {
-          const roster = await rosterMembers(groupId);
-          const adminIds = roster
-            .filter((r) => r.member.role === 'admin' && r.member.active === true && r.member.id !== member.id)
-            .map((r) => r.member.id);
+          const adminIds = (await rosterMembers(groupId))
+            .filter(({ member: m }) => m.role === 'admin')
+            .map(({ member: m }) => m.id);
           if (adminIds.length > 0) {
             await sendPushToMembers(adminIds, {
               title: 'Someone can’t sign in',

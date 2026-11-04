@@ -1,5 +1,5 @@
 /**
- * `GET /api/groups/preview?token=…` or `?code=…` — "which club is this?"
+ * `GET /api/groups/preview?token=…`, `?code=…` or `?claim=…` — "which club is this?"
  *
  * THE ONE UNAUTHENTICATED ROUTE IN THE GROUP API, and necessarily so: someone
  * holding an invite link has not joined anything yet, and a join sheet that
@@ -24,6 +24,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readGroup } from '@/lib/groups';
 import { resolveInvite } from '@/lib/invites';
+import { resolveClaimLink } from '@/lib/claimLinks';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { rateLimited } from '@/lib/groupRoutes';
 
@@ -40,10 +41,17 @@ export async function GET(req: NextRequest) {
 
   const token = req.nextUrl.searchParams.get('token');
   const code = req.nextUrl.searchParams.get('code');
-  if ((!token && !code) || (token && code)) return noSuchInvite();
+  // A club's claim link (docs/plans/claim-your-name.md) — the same name and
+  // nothing else, the same one 404 for every miss.
+  const claim = req.nextUrl.searchParams.get('claim');
+  if ([token, code, claim].filter(Boolean).length !== 1) return noSuchInvite();
 
   try {
-    const groupId = token ? await resolveInvite(token, 'invite') : await resolveInvite(code!, 'code');
+    const groupId = claim
+      ? await resolveClaimLink(claim)
+      : token
+        ? await resolveInvite(token, 'invite')
+        : await resolveInvite(code!, 'code');
     if (!groupId) return noSuchInvite();
     const group = await readGroup(groupId);
     if (!group || group.closedAt) return noSuchInvite();

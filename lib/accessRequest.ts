@@ -60,6 +60,16 @@ export interface StoredAccessRequest {
   expiresAt: number;
   /** When the admin approved. Absent = still waiting. */
   approvedAt?: number;
+  /**
+   * The club this ask is for (docs/plans/claim-your-name.md): the claim link's
+   * club, else the club the asking request resolved to. The admin list shows
+   * it only to that club, and the claim signs the device in to it. Absent on
+   * every request written before this field, which reads as BPM — the club a
+   * signed-out ask has always resolved to.
+   */
+  groupId?: string;
+  /** Asked through the club's claim link — the admin card says so. */
+  via?: 'link';
 }
 
 function hash(secret: string): string {
@@ -70,11 +80,19 @@ function hash(secret: string): string {
  * Create a request. Returns the plaintext `secret` for the ASKING DEVICE ONLY,
  * plus the record to persist on the member doc.
  */
-export function issueAccessRequest(): { secret: string; stored: StoredAccessRequest } {
+export function issueAccessRequest(
+  context: { groupId?: string; via?: 'link' } = {},
+): { secret: string; stored: StoredAccessRequest } {
   const secret = randomBytes(32).toString('hex');
   return {
     secret,
-    stored: { id: randomBytes(8).toString('hex'), hash: hash(secret), expiresAt: Date.now() + TTL_MS },
+    stored: {
+      id: randomBytes(8).toString('hex'),
+      hash: hash(secret),
+      expiresAt: Date.now() + TTL_MS,
+      ...(context.groupId ? { groupId: context.groupId } : {}),
+      ...(context.via ? { via: context.via } : {}),
+    },
   };
 }
 

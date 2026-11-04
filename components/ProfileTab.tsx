@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { sharedFetch } from '@/lib/sharedRead';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
@@ -23,8 +23,7 @@ import { useSignInMethods, methodsSummary } from './auth/useSignInMethods';
 import EmailSignInForm from './auth/EmailSignInForm';
 import EmailSignUpSheet from './auth/EmailSignUpSheet';
 import ForgotPasswordSheet from './auth/ForgotPasswordSheet';
-import PushSheet from './PushSheet';
-import { usePush } from '@/lib/usePush';
+import type { UsePushResult } from '@/lib/usePush';
 import { isStandalone } from '@/lib/standalone';
 import { isNative } from '@/lib/native';
 import PageHeader from './primitives/PageHeader';
@@ -80,6 +79,14 @@ interface Props {
    * the note on `EmailSignUpSheet`'s prop.
    */
   inviteToken?: string | null;
+  /**
+   * Push state, owned by HomeShell and shared with the Notifications page, so
+   * the row's On/Off and the page's switch cannot disagree. Absent (a test, or
+   * a render outside the shell) shows the row with no status — unknown, not Off.
+   */
+  push?: UsePushResult;
+  /** The row opens the Notifications page, which HomeShell owns. */
+  onOpenNotifications?: () => void;
 }
 
 export default function ProfileTab({
@@ -93,6 +100,8 @@ export default function ProfileTab({
   onJoinGroup,
   onCreateGroup,
   inviteToken,
+  push,
+  onOpenNotifications,
 }: Props) {
   const t = useTranslations('profile');
   const tGroups = useTranslations('groups');
@@ -132,6 +141,9 @@ export default function ProfileTab({
   const [authKnown, setAuthKnown] = useState(false);
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<MemberAvatarValue | null>(null);
+  // This club's rank (roles v2). `null` = not known yet, or the read failed:
+  // the card then falls back to the shell's admin verdict.
+  const [rank, setRank] = useState<ProfileRank | null>(null);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
@@ -174,7 +186,6 @@ export default function ProfileTab({
   const adminSignals = useAdminNeedsYou(showAdminRow);
   const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
-  const [pushOpen, setPushOpen] = useState(false);
   // Only offer "Add to Home Screen" when NOT already installed. Resolved
   // post-mount (display-mode/navigator.standalone are client-only); defaults
   // to false so the row shows in the browser, which is exactly when it helps.
@@ -185,9 +196,6 @@ export default function ProfileTab({
   const tNav = useTranslations('nav');
   const tPush = useTranslations('profile.push');
   const tDelete = useTranslations('profile.deleteAccount');
-  // Owned here (not in PushSheet) so the row's On/Off label and the sheet's
-  // button share one state and can't disagree after a toggle.
-  const push = usePush();
 
   // A layout effect, not an effect: the check is synchronous, and running it
   // after paint showed the "Add to Home Screen" row for a frame and then
@@ -285,11 +293,12 @@ export default function ProfileTab({
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();
       })
-      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown }) => {
+      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown; rank?: unknown }) => {
         if (cancelled) return;
         setPinIsSet(data.hasPin === true);
         setAvatar(normalizeAvatar(data.avatar));
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
+        setRank(readRank(data.rank));
         // `authed` gates first-PIN set in RecoveryPinSheet; unknown stays null.
         setPinAuthed(typeof data.authed === 'boolean' ? data.authed : null);
         setAuthKnown(true);
@@ -693,7 +702,7 @@ export default function ProfileTab({
           icon: 'notifications',
           label: tSettings('notifications'),
           meta:
-            push.state.status === 'loading'
+            !push || push.state.status === 'loading'
               ? undefined
               : push.state.status === 'on'
               ? tPush('metaOn')
@@ -702,7 +711,7 @@ export default function ProfileTab({
                 : push.state.status === 'unsupported'
                   ? undefined
                   : tPush('metaOff'),
-          onClick: () => setPushOpen(true),
+          onClick: () => onOpenNotifications?.(),
         }]),
     ...(!installed
       ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
@@ -725,6 +734,7 @@ export default function ProfileTab({
         name={identity.name}
         memberCreatedAt={memberCreatedAt}
         isAdmin={isAdmin}
+        rank={rank}
         avatar={avatar}
         onChangeAvatar={() => setAvatarSheetOpen(true)}
         changeLabel={t('avatar.change')}
@@ -985,26 +995,40 @@ export default function ProfileTab({
         state={methodsState}
       />
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
-      <PushSheet
-        open={pushOpen}
-        onClose={() => setPushOpen(false)}
-        onOpenInstall={() => {
-          setPushOpen(false);
-          setInstallOpen(true);
-        }}
-        push={push}
-        isAdmin={isAdmin}
-      />
     </div>
   );
 }
 
-/* ── Identity card (avatar + name + member-since + Admin pill) ── */
+/* ── Identity card (avatar + name + member-since + this club's rank) ── */
 
-function fmtMemberSince(iso: string | null): string | null {
+/** This club's rank (docs/plans/roles-v2.md): organiser, admin or player. */
+export type ProfileRank = 'owner' | 'admin' | 'member';
+
+/** Read `GET /api/members/me`'s `rank`; anything else is unknown. */
+export function readRank(value: unknown): ProfileRank | null {
+  return value === 'owner' || value === 'admin' || value === 'member' ? value : null;
+}
+
+/**
+ * The one chip the card shows: Organiser or Admin; a Player has none. The
+ * shell's admin verdict holds the place while the rank is unknown, so an
+ * admin is never shown as nobody. Job badges (Stringer, Gifter) are not
+ * shown here, by decision (Grant, 2026-11-04).
+ */
+export function profileChip(rank: ProfileRank | null, isAdmin: boolean): 'rankOwner' | 'rankAdmin' | null {
+  if (rank === 'owner') return 'rankOwner';
+  if (rank === 'admin' || (rank === null && isAdmin)) return 'rankAdmin';
+  return null;
+}
+
+function fmtMemberSince(iso: string | null, locale: string): string | null {
   if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
   try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    // The app's own locale (the NEXT_LOCALE cookie), not the browser's, and
+    // Vancouver time like every other date in the app (CLAUDE.md).
+    return d.toLocaleDateString(locale, { month: 'short', year: 'numeric', timeZone: 'America/Vancouver' });
   } catch {
     return null;
   }
@@ -1014,13 +1038,17 @@ interface ProfileIdentityCardProps {
   name: string;
   memberCreatedAt: string | null;
   isAdmin: boolean;
+  rank: ProfileRank | null;
   avatar: MemberAvatarValue | null;
   onChangeAvatar: () => void;
   changeLabel: string;
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
-  const memberSince = fmtMemberSince(memberCreatedAt);
+function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, rank, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
+  const tIdentity = useTranslations('profile.identity');
+  const locale = useLocale();
+  const memberSince = fmtMemberSince(memberCreatedAt, locale);
+  const chip = profileChip(rank, isAdmin);
 
   return (
     <div
@@ -1051,45 +1079,50 @@ function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, avatar, onChangeA
         <MemberAvatar name={name} avatar={avatar} size={46} tone="neutral" />
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is a
-            fact about you, not the page's headline — and it no longer has to
-            out-shout a dollar amount set at the same size beside it. */}
-        <p
-          style={{
-            fontFamily: 'var(--font-display, "Space Grotesk")',
-            fontSize: 'var(--fs-stat)',
-            fontWeight: 600,
-            letterSpacing: '-0.015em',
-            margin: '0',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {name}
-        </p>
-        {memberSince && (
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 'var(--space-05)' }}>
-            Member since {memberSince}
-          </p>
-        )}
-      </div>
-      {/* Side by side, not stacked: two badges in a column read as a status
-          column with a hierarchy between them. They are peers. */}
-      <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', flexShrink: 0 }}>
-        {isAdmin && (
-          <span
+        {/* The name and this club's rank share ONE line, the chip small and
+            centred on it (Grant, 2026-11-04: "smaller beside the name same
+            height"). The name gives way first: it ellipsizes, the chip keeps
+            its size. A fill-only label, not a control (CLAUDE.md, containers). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
+          {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is
+              a fact about you, not the page's headline. */}
+          <p
             style={{
+              fontFamily: 'var(--font-display, "Space Grotesk")',
+              fontSize: 'var(--fs-stat)',
+              fontWeight: 600,
+              letterSpacing: '-0.015em',
+              margin: '0',
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              background: 'rgba(var(--glass-tint), 0.09)',
-              color: 'var(--text-secondary)',
-              padding: 'var(--space-2) var(--space-4)',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: 'var(--fs-sm)',
             }}
           >
-            Admin
-          </span>
+            {name}
+          </p>
+          {chip && (
+            // A --fs-2xs pill pads 4/8 (StatusBadge's spec).
+            <span
+              style={{
+                flex: '0 0 auto',
+                whiteSpace: 'nowrap',
+                background: 'rgba(var(--glass-tint), 0.09)',
+                color: 'var(--text-secondary)',
+                padding: 'var(--space-1) var(--space-3)',
+                borderRadius: 'var(--radius-pill)',
+                fontSize: 'var(--fs-2xs)',
+                lineHeight: 'var(--lh-tight)',
+              }}
+            >
+              {tIdentity(chip)}
+            </span>
+          )}
+        </div>
+        {memberSince && (
+          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 'var(--space-05)' }}>
+            {tIdentity('memberSince', { date: memberSince })}
+          </p>
         )}
       </div>
     </div>

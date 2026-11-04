@@ -18,10 +18,9 @@ import { join, relative } from 'path';
 const ROOT = join(__dirname, '..');
 
 /** Sheets that deliberately offer no ✕, each with the reason. */
-const NO_CLOSE_ON_PURPOSE: Record<string, string> = {
-  'components/stats/ClubConsentSheet.tsx':
-    'a consent question that must be answered; "asked once" is the design, and its own buttons are the exit',
-};
+// Empty since 2026-11-04: ClubConsentSheet was the one entry, and closing it
+// now saves "Keep it private" (asked once, then only in Profile).
+const NO_CLOSE_ON_PURPOSE: Record<string, string> = {};
 
 function tsxFiles(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
