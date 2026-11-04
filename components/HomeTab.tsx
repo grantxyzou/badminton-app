@@ -580,7 +580,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           size is off from the other page"). The 2026-08-27 hierarchy pass had
           made it a 16px `compact` variant; that variant also GREW on scroll,
           to the shared 18px condensed size, so it is gone, not just unused. */}
-      <PageHeader>
+      <PageHeader fitText={clubName}>
         <span
           role="button"
           tabIndex={0}

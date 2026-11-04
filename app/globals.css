@@ -1264,6 +1264,23 @@ p[role='alert'] {
   /* Under one line box (1.25 leading), so the second line starts clear of it. */
   height: 1em;
 }
+/* A long club name steps DOWN rather than being cut off (`titleFit` in
+   PageHeader; Grant, 2026-11-04). (0,2,0) to beat `.bpm-h1`; the condensed
+   rule above is (0,3,0), so scrolling still takes every size to 18px. */
+.bpm-page-header__title { min-width: 0; overflow-wrap: break-word; }
+.bpm-page-header__title.is-long   { font-size: 1.5rem; }  /* 24px */
+.bpm-page-header__title.is-longer { font-size: 1.25rem; } /* 20px, the bpm-h2 size */
+/* Condensed, the bar is ONE line: the full name is on screen at rest, and a
+   two-line frosted bar would cover the card it is meant to sit above. The
+   float cannot share a line with an ellipsis, so the same reservation is
+   padding here — the ellipsis stops before the round buttons. */
+.bpm-page-header.scrolled .bpm-page-header__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-inline-end: max(0px, calc(132px - (100vw - min(100vw, 32rem)) / 2));
+}
+.bpm-page-header.scrolled .bpm-page-header__title::before { display: none; }
 .bpm-page-header__action { display: flex; align-items: center; gap: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
