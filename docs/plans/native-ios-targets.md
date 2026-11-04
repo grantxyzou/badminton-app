@@ -279,6 +279,15 @@ covers that half). Today a web deploy *is* the iOS update.
 
 ## Shape (intended; nothing below is in the tree yet except where marked)
 
+The App Clip's step-by-step build plan is
+`docs/superpowers/plans/2026-11-04-app-clip.md`. Grant set its priorities on
+2026-11-04 ("simplify, reliable, and UX priority"), and they cut v1 to this:
+one link (`/bpm/j/<token>`) that opens the app, the clip or the website; the
+invite as a QR on the organiser's phone; a three-screen clip; and arriving
+signed in. The sticker, "log in and join" and the same-night push come after
+v1 is used. The web pieces ship first and help every phone before the clip
+exists. The Swift waits on the Mac build loop.
+
 | Piece | Where |
 | --- | --- |
 | Shared Swift package (models, client, tokens, strings) | new, `ios/BPMKit/`, consumed by every target |

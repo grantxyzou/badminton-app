@@ -33,10 +33,13 @@
                 <data android:scheme="@string/custom_url_scheme" />
             </intent-filter>
 
-            <!-- Android App Link for the migration link. Verified against
-                 /.well-known/assetlinks.json at the domain root, whose
-                 fingerprint is the PLAY APP SIGNING key (env ANDROID_ASSET_LINKS).
-                 Narrow on purpose: only /bpm/migrate opens the app. -->
+            <!-- Android App Links. Verified against /.well-known/assetlinks.json
+                 at the domain root, whose fingerprint is the PLAY APP SIGNING
+                 key (env ANDROID_ASSET_LINKS). Narrow on purpose: only the
+                 migration link and the one invite link (/bpm/j/<token>,
+                 lib/inviteLink.ts) open the app. The sign-in finishing pages
+                 must stay out, because they finish in the browser that
+                 started them. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -45,6 +48,7 @@
                     android:scheme="https"
                     android:host="bpm.grantzou.com"
                     android:pathPrefix="/bpm/migrate" />
+                <data android:pathPrefix="/bpm/j/" />
             </intent-filter>
 
         </activity>
