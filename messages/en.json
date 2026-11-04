@@ -460,6 +460,11 @@
       "failed": "Couldn't save that. Give it another go.",
       "change": "Change your picture"
     },
+    "identity": {
+      "memberSince": "Member since {date}",
+      "rankOwner": "Organiser",
+      "rankAdmin": "Admin"
+    },
     "auth": {
       "retry": "Try again",
       "pendingExpiredTitle": "Let's start that again",
