@@ -217,7 +217,13 @@ conditional.
   non-owners like `fitArmComfort`; `effectiveArmComfort` in `lib/fitProfile.ts`
   is how the engines read it), and `G3`. `fitOvergrips` stays on the type and
   is still blanked by "Clear my fit answers", but the page stopped asking it on
-  2026-10-20: it was stored and nothing read it.
+  2026-10-20: it was stored and nothing read it. **`fitBalance` since `fit-5`
+  (2026-11-04)**: a Balance question (`BalancePicker`, the feel chips' three
+  words, nothing drawn) shown ONLY while nothing in the bag can anchor the
+  racket engine — no catalog racket and no typed-in racket with its balance
+  stated — because with an anchor the engine reads the racket, not the answer.
+  Outside the "n of 5", cleared with the rest; the rule is in
+  `docs/plans/racket-fit-engine.md`.
   - **The verdict's judgement is `lib/fitVerdict.ts`, and only there**: state,
     reasons, range, all deterministic. It borrows the engines' opinions rather
     than holding its own — `GOAL_DELTA`'s balance axis, `pairTension` when frame,
