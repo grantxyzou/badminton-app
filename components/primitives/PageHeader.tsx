@@ -32,6 +32,28 @@ export interface PageHeaderProps {
    * heading at the same baseline.
    */
   action?: ReactNode;
+  /**
+   * The title's text, when it is DATA rather than a fixed word — a club name,
+   * up to `GROUP_NAME_MAX` (40) characters. A long one steps the size down
+   * instead of being cut off (`titleFit`). Omit for the tabs' own titles.
+   */
+  fitText?: string;
+}
+
+/** Character counts where the title steps down: 30px → 24px → 20px. */
+export const TITLE_FIT_STEPS = { long: 17, longer: 27 } as const;
+
+/**
+ * Which size a title of this length takes. A character count, not a measured
+ * width: "WWW" is wider than "iii", but a measurement would only settle after
+ * fonts load and could shift the header under the reader. Every step stays
+ * ABOVE the condensed 18px, so the title still shrinks on scroll, never grows.
+ */
+export function titleFit(text: string | undefined): '' | 'is-long' | 'is-longer' {
+  const n = text?.trim().length ?? 0;
+  if (n >= TITLE_FIT_STEPS.longer) return 'is-longer';
+  if (n >= TITLE_FIT_STEPS.long) return 'is-long';
+  return '';
 }
 
 /*
@@ -41,10 +63,12 @@ export interface PageHeaderProps {
  * a defect besides: the condensed rule below (`.scrolled` → 18px) is more
  * specific than the compact class, so Home's title GREW when the page scrolled.
  * Every tab now shares one title. Add a variant only with a reason that survives
- * that comparison, and check it against the condensed size.
+ * that comparison, and check it against the condensed size. `fitText` is one:
+ * a club name is data up to 40 characters, and both of its steps (24px, 20px)
+ * sit above the condensed 18px.
  */
 
-export default function PageHeader({ children, action }: PageHeaderProps) {
+export default function PageHeader({ children, action, fitText }: PageHeaderProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Condense once the real scroll ancestor passes 8px. This app scrolls
@@ -54,9 +78,7 @@ export default function PageHeader({ children, action }: PageHeaderProps) {
 
   return (
     <div ref={ref} className="bpm-page-header">
-      <h1
-        className="bpm-h1 bpm-page-header__title leading-tight"
-      >
+      <h1 className={`bpm-h1 bpm-page-header__title leading-tight ${titleFit(fitText)}`.trim()}>
         {children}
       </h1>
       {action && <div className="bpm-page-header__action shrink-0">{action}</div>}

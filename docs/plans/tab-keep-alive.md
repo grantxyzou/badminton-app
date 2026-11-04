@@ -2,7 +2,7 @@
 
 **Track:** Mobile fluidity (`docs/plans/mobile-fluidity.md`) — the app people install is this app in a WebView, and a tab bar that reloads on every tap is the loudest "this is a website" tell after transitions.
 **Status:** shipped 2026-10-21 (#668), Admin added 2026-10-25 (#721)
-**Review on:** 2026-11-04 — has anyone seen something out of date on a tab they came back to (a roster missing a sign-up, a balance already paid)? Has anyone said opening the app feels slower since 2026-10-21?
+**Reviewed:** 2026-11-04 — the kill criterion did not fire; see "Review outcome" at the end. No further review scheduled.
 
 ## Problem
 
@@ -100,3 +100,21 @@ membership before reading.
 showed no skeleton (under 20 ms) and read nothing — the only request was the
 usage beacon. The cold launch: page at 0.5 s, Home complete at 2.05 s, the
 other tabs open at 2.1 s, splash gone at 2.3 s.
+
+## Review outcome (2026-11-04)
+
+Both halves of the kill criterion were read two weeks after the ship.
+
+- **Stale data on a kept tab:** nobody reported one. Grant, asked directly: no
+  player has said a tab showed a sign-up missing or a paid balance still owed.
+  Production's "Report a problem" inbox (`GET /api/reports/feedback`, last 20
+  days) is empty, and `clientErrors` reads 0 for the last 7 days.
+- **Opening the app slower:** nobody said so. The usage the change was meant to
+  help held up: 25 members active since tracking began, 7.6 opens per active
+  member a week, and tab views spread across all four tabs (Home 855, Stringing
+  436, Stats 382, Profile 378), so the kept tabs are being used, not just
+  preloaded.
+
+What is NOT proven: a silent miss. A member who saw a stale balance and simply
+pulled to refresh would leave no trace in either read. If one is ever
+reported, the first kill-criterion bullet still applies.

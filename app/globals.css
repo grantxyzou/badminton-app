@@ -712,6 +712,10 @@ body {
      where the value is what the member is actively changing. Deliberately a
      big jump from --fs-stat-lg: anything closer would read as a stat tile. */
   --fs-stat-xl: 38px;
+  /* The courtside scoreboard's digits: read from the far side of a court off
+     a phone propped on the bench, so sized by the screen, not the type scale.
+     The one display size in the app that is not a fixed pixel. */
+  --court-digit: clamp(64px, 24vmin, 220px);
   /* Icon glyph-size ladder — token mirror of the .icon-xs..xl utility classes
      (below), so inline `.material-icons` styles use a token instead of a raw px.
      Same values as the classes; these exist for the inline-style call sites the
@@ -1250,6 +1254,37 @@ p[role='alert'] {
   padding-bottom: var(--space-3);
 }
 .bpm-page-header.scrolled .bpm-page-header__title { font-size: 1.125rem; }
+/* Keep a long club name out from under the fixed round buttons (bell,
+   language, theme: their left edge is 140px from the screen's right, plus an
+   8px gap). A FLOAT one line tall, not padding, so only the first line steps
+   aside and the lines below the buttons use the full width. Its width is
+   measured against the 32rem column: 132px on a phone, nothing once the
+   column sits clear of the buttons. Overlap while SCROLLED is intentional
+   and unaffected — this only decides where the title wraps. */
+.bpm-page-header__title::before {
+  content: '';
+  float: right;
+  width: max(0px, calc(132px - (100vw - min(100vw, 32rem)) / 2));
+  /* Under one line box (1.25 leading), so the second line starts clear of it. */
+  height: 1em;
+}
+/* A long club name steps DOWN rather than being cut off (`titleFit` in
+   PageHeader; Grant, 2026-11-04). (0,2,0) to beat `.bpm-h1`; the condensed
+   rule above is (0,3,0), so scrolling still takes every size to 18px. */
+.bpm-page-header__title { min-width: 0; overflow-wrap: break-word; }
+.bpm-page-header__title.is-long   { font-size: 1.5rem; }  /* 24px */
+.bpm-page-header__title.is-longer { font-size: 1.25rem; } /* 20px, the bpm-h2 size */
+/* Condensed, the bar is ONE line: the full name is on screen at rest, and a
+   two-line frosted bar would cover the card it is meant to sit above. The
+   float cannot share a line with an ellipsis, so the same reservation is
+   padding here — the ellipsis stops before the round buttons. */
+.bpm-page-header.scrolled .bpm-page-header__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-inline-end: max(0px, calc(132px - (100vw - min(100vw, 32rem)) / 2));
+}
+.bpm-page-header.scrolled .bpm-page-header__title::before { display: none; }
 .bpm-page-header__action { display: flex; align-items: center; gap: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1960,7 +1995,10 @@ html:root .cc-tile,
 html:root .cc-mini-card,
 html:root .cc-session-chip {
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  /* Fill-only, like every Tier-2 surface on the member tabs (Grant,
+     2026-11-04, "do the admin console ones too"); transparent, not none, so
+     the box keeps its size. */
+  border: 1px solid transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
@@ -1969,12 +2007,10 @@ html:root .cc-session-chip {
   html:root .cc-tile:hover,
   html:root .cc-session-chip:hover {
     background: var(--glass-soft-bg);
-    border-color: var(--glass-border);
   }
   /* -static is a read-only stat display and must not offer a hover affordance. */
   html:root .cc-tile-static:hover {
     background: var(--inner-card-bg);
-    border-color: var(--inner-card-border);
   }
 }
 html:root .cc-progress-track {
@@ -2656,6 +2692,10 @@ html:root .ink-button {
      elements — extends on notched devices via env(). README's
      production guidance: padding-bottom on the container. */
   padding-bottom: max(var(--home-group-gap), env(safe-area-inset-bottom, 0px));
+  /* The larger side inset on BOTH sides, so the four tabs stay centred and
+     the middle of the bar (between tabs 2 and 3) stays on a fold.
+     Portrait phones report 0. */
+  padding-inline: max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
 }
 
 .rail-tab {
@@ -3704,7 +3744,8 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 
 /* ── Theme toggle button ── */
 .theme-toggle,
-.lang-toggle {
+.lang-toggle,
+.notif-toggle {
   position: fixed;
   top: calc(16px + var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
   z-index: 60;
@@ -3724,32 +3765,122 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   box-shadow: var(--glass-shadow);
 }
 
-.theme-toggle { right: 16px; }
-.lang-toggle  { right: 60px; }
+/* Plus the side inset: a phone held sideways, and iPhone Duo, whose camera
+   and system controls sit on the right edge. Portrait phones report 0, so
+   nothing moves there (docs/plans/foldable-layout.md). */
+.theme-toggle { right: calc(16px + env(safe-area-inset-right, 0px)); }
+.lang-toggle  { right: calc(60px + env(safe-area-inset-right, 0px)); }
+/* The Notifications bell, third in the row (docs/plans/notification-center.md).
+   Rendered by HomeShell only — the signed-out shell has nothing to notify. */
+.notif-toggle { right: calc(104px + env(safe-area-inset-right, 0px)); }
 
 @media (hover: hover) {
   .theme-toggle:hover,
-  .lang-toggle:hover {
+  .lang-toggle:hover,
+  .notif-toggle:hover {
     transform: scale(1.1);
   }
 }
 
 .theme-toggle:focus-visible,
-.lang-toggle:focus-visible {
+.lang-toggle:focus-visible,
+.notif-toggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .theme-toggle:active,
-.lang-toggle:active {
+.lang-toggle:active,
+.notif-toggle:active {
   transform: scale(0.95);
 }
 
 .theme-toggle .material-icons,
-.lang-toggle .material-icons {
+.lang-toggle .material-icons,
+.notif-toggle .material-icons {
   font-size: 18px;
   opacity: 1;
 }
+
+/* The red dot: something arrived since the page was last opened. Red is the
+   platform's own word for "new" on an icon, and the one place on this row it
+   means that rather than failure. Absolutely placed, so it moves nothing; the
+   ring in the button's own ground keeps it legible over the glass. It POPS in
+   (scale, ease-out-quart, no overshoot — `baddicon-pop` stays the one spring). */
+.notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-red);
+  box-shadow: 0 0 0 2px var(--page-bg);
+  pointer-events: none;
+  animation: notif-dot-in var(--duration-normal) var(--ease-out-quart) backwards;
+}
+@keyframes notif-dot-in {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+/* The bell rings once when the dot arrives — a rare, consequential moment
+   (Motion system: frequency decides), never on a tap or a re-render. Swung
+   from its top, like a bell. The reduced-motion wildcard zeroes it. */
+.notif-toggle .notif-ring {
+  transform-origin: 50% 15%;
+  animation: notif-ring 700ms var(--ease-out-quart);
+}
+@keyframes notif-ring {
+  0%   { transform: rotate(0); }
+  15%  { transform: rotate(-16deg); }
+  35%  { transform: rotate(13deg); }
+  55%  { transform: rotate(-8deg); }
+  75%  { transform: rotate(4deg); }
+  100% { transform: rotate(0); }
+}
+/* "You are here" while the page is open: the bottom nav's own active tint,
+   so the bell reads like a tab that is selected. */
+.notif-toggle[aria-pressed='true'] {
+  background: var(--rail-indicator-bg), var(--glass-bg);
+}
+
+/* ── Notifications page list ── one card, rows inside it, no dividers
+   (Coding Conventions: no hard lines between list items). */
+.notice-list {
+  list-style: none;
+  margin: 0;
+}
+/* `html:root .glass-card` (0,2,1) gives every field card its own padding and
+   outranks a bare class, so this has to match it. 6px here + the row's 12px
+   puts each row's icon on the 20px line the cards above it use. */
+html:root .glass-card.notice-list { padding: var(--space-2); }
+.notice-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  width: 100%;
+  padding: var(--space-4);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.notice-row:active { background: var(--press-bg); }
+.notice-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.notice-row-icon { color: var(--text-secondary); margin-top: var(--space-05); }
+.notice-row-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.notice-row-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.notice-row-body { color: var(--text-secondary); overflow-wrap: anywhere; }
+.notice-row-time { color: var(--text-muted); }
 
 /* ── Launch screen ──
    The cold-start splash and the signed-out Welcome, one composition (design
@@ -4304,7 +4435,7 @@ html:root[data-tab="admin"] .bottom-sheet {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* a pressable choice chip is fill-only, see .setup-feel-chip */
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--fs-sm);
@@ -4875,17 +5006,16 @@ html:root[data-theme="light"] {
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent; /* fill-only, see the html:root rule */
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background 120ms ease;
   text-align: left;
 }
 .cc-tile:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
 }
 .cc-tile .num {
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
@@ -4920,7 +5050,6 @@ html:root[data-theme="light"] {
 }
 .cc-tile-static:hover {
   background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Money tiles three-up on a phone (Ledger: In and out, Still owed). The 28px
@@ -4934,16 +5063,13 @@ html:root[data-theme="light"] {
 }
 [data-theme="light"] .cc-tile-static:hover {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .cc-tile {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 [data-theme="light"] .cc-tile:hover {
   background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.14);
 }
 
 /* Status pill family — pairs with cc-btn / cc-tile.
@@ -5007,18 +5133,14 @@ html:root[data-theme="light"] {
    against the light page-bg. */
 .cc-mini-card {
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Fill-only everywhere since 2026-11-04. The Stringing tab went first
+     (Grant, 2026-10-28: the bench's rows lost the rim there and kept it
+     everywhere else); the admin console followed with the rest of the app.
+     Transparent rather than none, so the row keeps its size. */
+  border: 1px solid transparent;
 }
 [data-theme="light"] .cc-mini-card {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
-}
-/* The Stringing tab draws its containers fill-only, as Stats does (Grant,
-   2026-10-28): the bench's Archived and set-up rows lose the rim here and
-   keep it everywhere else. Transparent rather than none, so the row keeps
-   its size. (0,2,1) outranks the light rule above. */
-html[data-tab="stringing"] .cc-mini-card {
-  border-color: transparent;
 }
 
 /* Session selector chip — horizontal session nav for PaymentsCard
@@ -5029,24 +5151,22 @@ html[data-tab="stringing"] .cc-mini-card {
   border-radius: 10px;
   padding: var(--space-3) var(--space-4);
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent; /* fill-only, see .cc-mini-card */
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
 }
 @media (hover: hover) {
   .cc-session-chip:hover { background: rgba(255, 255, 255, 0.07); }
 }
 .cc-session-chip[aria-selected="true"] {
   background: var(--inner-card-green-bg, rgba(74, 222, 128, 0.13));
-  border-color: var(--inner-card-green-border, rgba(74, 222, 128, 0.3));
   color: var(--text-primary);
 }
 [data-theme="light"] .cc-session-chip {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 [data-theme="light"] .cc-session-chip:hover {
   background: rgba(0, 0, 0, 0.05);
@@ -5067,20 +5187,18 @@ html[data-tab="stringing"] .cc-mini-card {
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .cc-mini-card */
   color: var(--text-primary);
   font: inherit;
   text-align: left;
   cursor: pointer;
   transition:
     transform var(--duration-press) var(--ease-out-quart),
-    background var(--duration-fast) ease,
-    border-color var(--duration-fast) ease;
+    background var(--duration-fast) ease;
 }
 .cc-choice:active { transform: scale(0.98); }
 .cc-choice[aria-checked="true"] {
   background: var(--inner-card-green-bg);
-  border-color: var(--inner-card-green-border);
 }
 .cc-choice:disabled { opacity: 0.5; pointer-events: none; }
 
@@ -5324,6 +5442,14 @@ html[data-tab="stringing"] .cc-mini-card {
 .pay-row-status .material-icons { font-size: var(--icon-sm); }
 
 /* Dashboard 2-up grid for Birds + Roster cards on the admin home */
+/* ── "This week" head (Command Center, 2026-11-04) ──
+   The eyebrow with the Session · Payments toggle beside it: one card shows
+   at a time, at its own height (Grant: "to save vertical space"). The
+   toggle is the app's segment control at its own 32px, narrowed to its two
+   words so the eyebrow keeps the line. */
+.cc-week-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.cc-week-toggle { flex: 0 0 auto; width: 176px; }
+
 .cc-dgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -5573,7 +5699,7 @@ html[data-tab="stringing"] .cc-mini-card {
   padding: var(--space-1) var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* a pressable choice chip is fill-only, see .setup-feel-chip */
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -5611,6 +5737,38 @@ html[data-tab="stringing"] .cc-mini-card {
   flex-direction: column;
   gap: var(--home-stack-gap);
 }
+
+/* ── Foldables: two panes on a big touch screen ──
+   docs/plans/foldable-layout.md, after Apple's "Designing for iPhone Duo"
+   (2026-09-09). On ONE phone-sized screen nothing here applies: the page is
+   the same 512px column it always was.
+
+   On an unfolded foldable (iPhone Duo held open, Galaxy Z Fold's inner
+   screen, a tablet) Home's two groups sit side by side — this week on the
+   left, your account on the right — and a sheet opens in the right half.
+   The gap between the panes is in the EXACT centre of the screen, which is
+   where every fold is. So the crease always lands in the gap, even on a
+   browser that cannot tell us where the fold is (Safari, without its flag).
+   Two panes is also Apple's "even number of columns" rule for grids.
+
+   Who gets two panes: a TOUCH screen at least 720 wide and 480 tall — wide
+   enough for two ~330px phone columns. Phones held sideways are too short;
+   desktops have a mouse; iPhone Duo's outer screen (382 or 594 wide) and the
+   inner one held upright (669, its fold runs across, not down) stay one
+   column. Or any browser that reports two side-by-side screen segments.
+
+   Side padding uses the larger side inset on BOTH sides, so the column's
+   centre stays the screen's centre when one edge carries system controls. */
+:root {
+  --fold-gap: var(--space-9);
+  --shell-pad-x: max(var(--space-5), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  --panes-max-w: calc(64rem + var(--fold-gap) + 2 * var(--shell-pad-x));
+}
+main[data-page-shell] {
+  padding-inline: var(--shell-pad-x);
+}
+/* The two media blocks that apply all this are at the END of this file, so
+   they come after every rule they move (the toasts are defined further down). */
 
 /* A row that acts as a link — label left, arrow right, full width.
    The secondary weight between a filled button and a quiet underlined link:
@@ -6184,8 +6342,10 @@ html:root .swipe-row {
   gap: var(--space-4);
   width: 100%;
   padding: 0 0 var(--space-4);
+  /* Lines are set apart by space, not a hairline (fill-only / no hard
+     dividers, 2026-11-04). The dashed underline of an EMPTY slot below
+     stays: it marks an absence, not a row boundary. */
   border: none;
-  border-bottom: 1px solid var(--divider);
   background: transparent;
   text-align: left;
   font: inherit;
@@ -6193,7 +6353,7 @@ html:root .swipe-row {
 }
 button.setup-line { cursor: pointer; }
 button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
-.setup-line:last-child { border-bottom: none; padding-bottom: 0; }
+.setup-line:last-child { padding-bottom: 0; }
 .setup-line--blank { border-bottom: 1px dashed var(--divider-dashed); }
 .setup-line--blank:last-child { border-bottom: 1px dashed var(--divider-dashed); padding-bottom: var(--space-4); }
 /* The tappable part of a line that ALSO holds its own control (the empty
@@ -6373,12 +6533,12 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   min-height: 44px;
   border-radius: var(--radius-sm);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   color: var(--text-secondary);
   cursor: pointer;
   transition: transform 100ms var(--ease-glass);
 }
-.tension-field-step--up { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--accent); }
+.tension-field-step--up { background: var(--highlight-green); color: var(--accent); }
 .tension-field-step:active { transform: scale(0.97); }
 .tension-field-step:disabled { opacity: 0.5; pointer-events: none; }
 .tension-field-box {
@@ -6430,7 +6590,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   height: 20px;
   border-radius: var(--radius-sm);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   overflow: hidden;
 }
 .tension-ruler-rated { position: absolute; top: 0; bottom: 0; background: var(--inner-card-border); transition: left var(--duration-sheet) var(--ease-sheet), width var(--duration-sheet) var(--ease-sheet); }
@@ -6509,7 +6669,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   text-align: left;
   font: inherit;
   font-size: var(--fs-md);
@@ -6517,7 +6677,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
 }
 button.setup-action { cursor: pointer; }
 button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
-.setup-action--current { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--text-primary); }
+.setup-action--current { background: var(--highlight-green); color: var(--text-primary); }
 .setup-action-label { flex: 1; min-width: 0; }
 
 /* "Share more about this racket": the typed racket's feel questions, folded
@@ -6527,7 +6687,7 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .setup-feel-share-toggle {
   display: flex;
@@ -6555,7 +6715,9 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  /* A pressable CHOICE chip is fill-only like a tile; a label chip that is
+     not a control (Home's "Focus drill" row) keeps its rim. */
+  border: 1px solid transparent;
   color: var(--text-primary);
   font: inherit;
   font-size: var(--fs-base);
@@ -6564,7 +6726,7 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 .setup-feel-chip[aria-pressed="true"],
 .setup-feel-chip[aria-checked="true"] {
   background: var(--highlight-green);
-  border-color: var(--accent);
+  color: var(--accent);
   font-weight: 600;
 }
 .setup-feel-chip:disabled { opacity: 0.5; pointer-events: none; }
@@ -6716,7 +6878,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--highlight-green);
-  border: 1px solid var(--segment-active-bg);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .fit-callout-label { font-size: var(--fs-base); color: var(--text-secondary); }
 .fit-callout-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 600; color: var(--accent); }
@@ -6729,7 +6891,6 @@ a.setup-price-row:active { background: var(--press-bg); }
   justify-content: space-between;
   gap: var(--space-2);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--divider);
 }
 .fit-tag {
   padding: var(--space-1) var(--space-3);
@@ -6743,7 +6904,10 @@ a.setup-price-row:active { background: var(--press-bg); }
 
 .fit-questions { display: flex; flex-direction: column; gap: var(--space-5); }
 .fit-group { display: flex; flex-direction: column; gap: var(--space-3); }
-.fit-group + .fit-group { padding-top: var(--space-5); border-top: 1px solid var(--divider); }
+/* Questions are set apart by space alone — a section rung between them,
+   no hairline (the "no hard divider lines" rule; Home separates its groups
+   the same way). */
+.fit-group + .fit-group { padding-top: var(--space-5); }
 .fit-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .fit-q-label { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .fit-q-hint { font-size: var(--fs-xs); color: var(--text-muted); }
@@ -6971,18 +7135,21 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  /* Fill-only, as every container on Home and Stats is (Grant, 2026-11-04:
+     "no outer stroke border on most UIs"; the Stringing rule at
+     `.cc-mini-card` is the same call). Transparent rather than none, so
+     the tile keeps its size. The selected tile is a solid tint and accent
+     text — the Level pill's own treatment — never a rim or a ring. */
+  border: 1px solid transparent;
   color: var(--text-secondary);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-tile:active { transform: scale(0.97); }
 .fit-tile[aria-checked="true"] {
   background: var(--highlight-green);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--highlight-green);
   color: var(--accent);
 }
 .fit-tile:disabled { opacity: 0.5; pointer-events: none; }
@@ -7018,7 +7185,7 @@ a.setup-price-row:active { background: var(--press-bg); }
 .kudos-tally-n { min-width: 18px; text-align: right; font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
 .kudos-month { display: flex; flex-direction: column; gap: var(--space-3); }
 .kudos-month-label { margin: var(--space-1) 0 0; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.kudos-note { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--inner-card-bg); border: 1px solid var(--inner-card-border); }
+.kudos-note { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--inner-card-bg); border: 1px solid transparent; /* fill-only, see .fit-tile */ }
 .kudos-note-meta { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); font-size: var(--fs-sm); color: var(--text-muted); }
 .kudos-bare { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); background: var(--inner-card-bg); }
 .kudos-bare-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -7084,17 +7251,17 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--fs-md);
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-sore-option:active { transform: scale(0.97); }
 /* Amber, because a sore arm is a caution, not a success. */
-.fit-sore-option[aria-checked="true"] { background: var(--highlight-amber); border-color: var(--sev-warn); color: var(--text-primary); }
+.fit-sore-option[aria-checked="true"] { background: var(--highlight-amber); color: var(--text-primary); }
 .fit-sore-option:disabled { opacity: 0.5; pointer-events: none; }
 .fit-sore-check { font-size: var(--icon-md); color: var(--sev-warn); }
 .fit-consequence { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--sev-warn); }
@@ -7107,7 +7274,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .fit-rank-thumb {
   flex: 0 0 auto;
@@ -7138,7 +7305,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   width: 64px;
   height: 88px;
   padding: 0;
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   border-radius: var(--radius-md);
   background: var(--inner-card-bg);
   cursor: pointer;
@@ -7170,24 +7337,22 @@ a.setup-price-row:active { background: var(--press-bg); }
 }
 [data-theme="light"] .frame-pill { color: var(--accent-dark); }
 
-/* The 1px gap IS the hairline: the grid's background shows through it. */
+/* Each spec is a tinted tile, set apart by space — the grid used to draw
+   hairlines between page-coloured cells (fill-only, 2026-11-04). */
 .frame-specs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
+  gap: var(--space-2);
   margin: 0;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--divider);
-  border: 1px solid var(--divider);
 }
-.frame-spec { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); background: var(--page-bg); }
+.frame-spec { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); border-radius: var(--radius-md); background: var(--inner-card-bg); }
 .frame-spec--wide { grid-column: 1 / -1; }
 .frame-spec dt { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
 .frame-spec dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-md); color: var(--text-primary); }
 
-.frame-rows { padding: var(--space-3); display: flex; flex-direction: column; }
-.frame-row + .frame-row { border-top: 1px solid var(--divider); }
+/* Each section is a tinted row; space between them, no hairline. */
+.frame-rows { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-row { border-radius: var(--radius-lg); background: var(--inner-card-bg); }
 .frame-row-head {
   display: flex;
   align-items: center;
@@ -7227,7 +7392,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   height: 48px;
   border-radius: var(--radius-md);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .frame-chart-band {
   position: absolute;
@@ -7258,7 +7423,6 @@ a.setup-price-row:active { background: var(--press-bg); }
   justify-content: space-between;
   gap: var(--space-3);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--divider);
   font-size: var(--fs-base);
   color: var(--text-secondary);
 }
@@ -7277,8 +7441,9 @@ a.setup-price-row:active { background: var(--press-bg); }
 .pick-buy-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); margin-top: var(--space-2); text-decoration: none; }
 
 /* ── Admin: Missing from the catalog ─────────────────────────────────────── */
-.catalog-gap { padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
-.catalog-gap + .catalog-gap { border-top: 1px solid var(--divider); }
+/* Tinted rows set apart by space, no hairline (fill-only, 2026-11-04). */
+.catalog-gaps { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.catalog-gap { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); border-radius: var(--radius-lg); background: var(--inner-card-bg); }
 .catalog-gap-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .catalog-gap-name { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .catalog-gap-count { font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 600; color: var(--accent); }
@@ -7490,4 +7655,368 @@ html:root .state-link:active { opacity: 0.6; }
   .ptr[data-settle="true"],
   .ptr-disc { transition: none; }
   .ptr[data-armed="true"] .ptr-disc { transform: none; }
+}
+
+/* ── Courtside scoreboard ──
+   docs/plans/foldable-layout.md, step 3 (components/stats/CourtsideScoreboard.tsx).
+   A fixed overlay split into two halves at the FOLD: the board on the half
+   that faces the court, the buttons on the half in the hand. The three sizes
+   (`--court-first`, `--court-gap`, `--court-second`) are measured by the
+   component from lib/fold.ts and set on the element; the axis says which way
+   the fold runs. Nothing is drawn on the fold. */
+.courtside {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  overscroll-behavior: contain;
+  touch-action: manipulation;
+  /* The split FOLLOWS the hinge: as the phone opens or closes, the fold's
+     rect moves and the board and buttons slide with it rather than jump —
+     Apple's "move only what's necessary". Three px tracks on both sides of
+     the change, so the grid interpolates. Opening is a fade (`.motion-fade`
+     on the element, the Appear recipe); there is no exit, like Collapse. */
+  transition:
+    grid-template-rows var(--duration-normal) var(--ease-out-quart),
+    grid-template-columns var(--duration-normal) var(--ease-out-quart);
+}
+/* It lives on Stats, so it wears the Stats field the way a sheet wears its
+   tab's (design rule 1: one field per TAB; sub-screens inherit it). Opaque,
+   on --field-base, for the same reason a sheet is. */
+html:root .courtside {
+  background: var(--field-stats), var(--field-base);
+}
+.courtside[data-axis='horizontal'] {
+  grid-template-rows: var(--court-first, 1fr) var(--court-gap, 0px) var(--court-second, 1fr);
+}
+.courtside[data-axis='vertical'] {
+  grid-template-columns: var(--court-first, 1fr) var(--court-gap, 0px) var(--court-second, 1fr);
+}
+.courtside-board,
+.courtside-controls {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: calc(var(--space-6) + env(safe-area-inset-top, 0px)) calc(var(--space-6) + env(safe-area-inset-right, 0px)) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)) calc(var(--space-6) + env(safe-area-inset-left, 0px));
+}
+.courtside-fold {
+  pointer-events: none;
+}
+.courtside-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: end;
+}
+.courtside-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.courtside-side-label {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+/* The server: a dot after the label, the umpire's way, not a colour alone. */
+.courtside-side[data-serving='true'] .courtside-side-label::after {
+  content: ' ●';
+  color: var(--accent);
+}
+.courtside-digit {
+  font-family: var(--font-mono);
+  font-size: var(--court-digit);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--duration-fast) var(--ease-glass);
+}
+.courtside-side[data-winner='true'] .courtside-digit {
+  color: var(--accent);
+}
+.courtside-status {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-stat-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-height: calc(var(--fs-stat-lg) * var(--lh-normal));
+}
+.courtside-status[data-interval='true'] {
+  color: var(--accent);
+}
+.courtside-points {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  flex: 1;
+  min-height: 0;
+}
+/* The two big targets: a whole half each, pressable like a card. */
+.courtside-point {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 120px;
+  border-radius: var(--radius-xl);
+  /* Fill-only, like every container (Grant, 2026-11-04: "no outer stroke");
+     transparent, not none, so the box keeps its size. */
+  border: 1px solid transparent;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease-glass), background var(--duration-fast) var(--ease-glass);
+}
+.courtside-point:active {
+  transform: scale(0.98);
+  background: var(--press-bg);
+}
+.courtside-point:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.courtside-point-label {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.courtside-point-score {
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+/* Four actions: two by two on a phone, where four across wrapped "New game"
+   and "Save game" onto two lines; one row where the pane is wide enough. */
+.courtside-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+@media (min-width: 600px) {
+  .courtside-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.courtside-note {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .courtside,
+  .courtside-point,
+  .courtside-digit {
+    transition: none;
+  }
+}
+
+/* ── The fold/unfold crossfade ──
+   lib/paneMode.ts alternates `data-pane-flip` between `a` and `b` on <html>
+   each time the screen crosses the pane condition (unfolding, or turning an
+   open foldable sideways). Two identical keyframes under two names are what
+   makes the fade REPLAY: a CSS animation restarts only when its name changes.
+   Opacity only, so it is given back under reduced motion like `.motion-fade`
+   — a reflow you can see happen is comprehension, not movement. */
+@keyframes paneFlipA {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes paneFlipB {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+html[data-pane-flip='a'] [data-app-shell] {
+  animation: paneFlipA var(--duration-normal) var(--ease-glass) backwards;
+}
+html[data-pane-flip='b'] [data-app-shell] {
+  animation: paneFlipB var(--duration-normal) var(--ease-glass) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-pane-flip='a'] [data-app-shell] {
+    animation: paneFlipA var(--duration-normal) ease-out backwards !important;
+  }
+  html[data-pane-flip='b'] [data-app-shell] {
+    animation: paneFlipB var(--duration-normal) ease-out backwards !important;
+  }
+}
+
+/* ── Foldables: the two panes ──
+   docs/plans/foldable-layout.md; the tokens and the reasoning sit with
+   .bpm-home-stack above. This block is LAST in the file on purpose: it moves
+   rules defined earlier (sheets, toasts, the tab bar), and at equal
+   specificity the later rule wins.
+
+   NOTHING CROSSES THE FOLD. Grant, 2026-11-04: "NEVER have a banner that
+   spans across two screen". Every card, banner, sheet and toast sits in ONE
+   pane; only the page background and the bottom tab bar (whose middle is the
+   gap between tabs 2 and 3) run across. */
+@media (min-width: 720px) and (min-height: 480px) and (pointer: coarse),
+       (horizontal-viewport-segments: 2) {
+  :root {
+    /* One half of the screen, short of the gap and the side padding. */
+    --half-w: calc(50vw - var(--fold-gap) / 2 - var(--shell-pad-x));
+    /* The sheet fills the right half — still the one sheet token. */
+    --sheet-max-w: min(32rem, var(--half-w));
+  }
+  /* Home only: the other tabs keep their single column. */
+  main[data-page-shell]:has(> [data-tab-panel='home']:not([hidden])) {
+    max-width: var(--panes-max-w);
+  }
+  /* Left pane: the week, alone. Right pane, top to bottom: the install and
+     push nudges, then your account — banners are never a header across both.
+     Three rows because the right side holds at most three things; the last
+     row is 1fr, so whatever height the week needs beyond them lands there
+     and never opens a gap between the nudges and the account. */
+  .bpm-home-stack {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--fold-gap);
+    row-gap: 0;
+    align-items: start;
+  }
+  .bpm-home-stack > .bpm-home-week {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+  .bpm-home-stack > :not(.bpm-home-week) {
+    grid-column: 2;
+  }
+  /* A nudge renders nothing at all when it is hidden, so this margin only
+     ever separates two real cards. */
+  .bpm-home-stack > :not(.bpm-home-group) {
+    margin-bottom: var(--home-group-gap);
+  }
+  /* The tab bar spans both panes, on every tab, so it does not change width
+     as you switch. Four tabs: the middle of the bar, between Stringing and
+     Stats, is still the fold. */
+  .rail-bar {
+    max-width: var(--panes-max-w);
+  }
+  /* Home's loading frame is the left pane's cards: draw it that wide. */
+  .bpm-home-skeleton {
+    max-width: calc((100% - var(--fold-gap)) / 2);
+  }
+  /* A sheet and a toast open in the right half, beside the pane they came
+     from (Apple's Mail: list and message side by side), never across the
+     fold. */
+  .bottom-sheet,
+  .toast-stack,
+  .top-toast {
+    margin-left: calc(50vw + var(--fold-gap) / 2);
+    margin-right: auto;
+  }
+  .toast-stack,
+  .top-toast {
+    max-width: min(32rem, var(--half-w));
+  }
+}
+
+/* ── Foldables, sideways: the tab bar moves to the right edge ──
+   Apple, "Designing for iPhone Duo" → Vertical controls: on a screen that is
+   wider than it is tall, the tab bar runs down the side, preserving vertical
+   space for content; held upright (portrait) it stays at the bottom. Only
+   inside the two-pane condition, so a phone held sideways — and iPhone Duo's
+   outer screen, which a web page cannot tell from an iPhone SE in Safari —
+   keep the bottom bar they have.
+
+   Same four tabs, same order top to bottom, same pill, which glides down
+   instead of across. They sit at the BOTTOM of the strip, where the bottom
+   bar's tabs were and where a thumb holding the right half rests. The theme
+   and language buttons move into the top of the strip. The page's side
+   padding grows by the strip's width on BOTH sides, so the panes' gap stays
+   in the exact centre — on the fold. */
+@media (min-width: 720px) and (min-height: 480px) and (pointer: coarse) and (orientation: landscape),
+       (horizontal-viewport-segments: 2) and (orientation: landscape) {
+  :root {
+    --rail-side-w: calc(var(--space-9) + var(--space-8));
+    --rail-side-tab-h: calc(var(--space-9) + var(--space-6));
+    --rail-side-pad-b: max(var(--home-group-gap), env(safe-area-inset-bottom, 0px));
+    --shell-pad-x: max(
+      env(safe-area-inset-left, 0px),
+      calc(var(--rail-side-w) + env(safe-area-inset-right, 0px) + var(--space-5))
+    );
+  }
+  /* Every other tab keeps its 480px column inside the wider padding. */
+  main[data-page-shell] {
+    max-width: calc(32rem - 2 * var(--space-5) + 2 * var(--shell-pad-x));
+  }
+  [data-app-shell] {
+    padding-bottom: var(--space-9);
+  }
+  .rail-bar {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    width: calc(var(--rail-side-w) + env(safe-area-inset-right, 0px));
+    max-width: none;
+    margin: 0;
+    flex-direction: column;
+    justify-content: flex-end;
+    border-top: none;
+    border-left: 1px solid var(--rail-border);
+    padding: 0 env(safe-area-inset-right, 0px) var(--rail-side-pad-b) 0;
+  }
+  /* The shadow falls toward the content, not up. */
+  html:root .rail-bar {
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45);
+  }
+  html:root[data-theme="light"] .rail-bar {
+    box-shadow: -8px 0 22px rgba(0, 0, 0, 0.14);
+  }
+  .rail-tab {
+    flex: none;
+    height: var(--rail-side-tab-h);
+  }
+  /* Parked over the first tab's icon (the tab's top padding, --space-3,
+     above a 30px icon row), then moved down one tab per index. */
+  .rail-indicator {
+    top: auto;
+    left: 0;
+    right: env(safe-area-inset-right, 0px);
+    width: auto;
+    bottom: calc(var(--rail-side-pad-b) + 4 * var(--rail-side-tab-h) - var(--space-3) - 30px);
+    transform: translateY(calc(var(--ri, 0) * var(--rail-side-tab-h)));
+  }
+  /* The three round buttons stack down the top of the strip in the order
+     they sit across the top of a phone, right to left: theme, language, then
+     the Notifications bell. */
+  .theme-toggle,
+  .lang-toggle,
+  .notif-toggle {
+    right: calc((var(--rail-side-w) - 36px) / 2 + env(safe-area-inset-right, 0px));
+  }
+  .lang-toggle {
+    top: calc(16px + 36px + var(--space-3) + var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
+  }
+  .notif-toggle {
+    top: calc(16px + 2 * (36px + var(--space-3)) + var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Where the browser knows the fold's real width, the gap is at least that
+   plus a margin either side. (Viewport Segments API: Chrome; Safari 27.1
+   behind a flag.) */
+@media (horizontal-viewport-segments: 2) {
+  :root {
+    --fold-gap: max(
+      var(--space-9),
+      calc(env(viewport-segment-left 1 0, 0px) - env(viewport-segment-right 0 0, 0px) + var(--space-7))
+    );
+  }
 }

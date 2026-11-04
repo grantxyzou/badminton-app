@@ -14,6 +14,7 @@ import {
 
 import { GET as playersGET } from '@/app/api/players/route';
 import { GET as sessionGET } from '@/app/api/session/route';
+import { GET as notificationsGET } from '@/app/api/notifications/route';
 import { GET as sessionCalendarGET } from '@/app/api/session/calendar/route';
 import { GET as membersGET } from '@/app/api/members/route';
 import { GET as membersMeGET } from '@/app/api/members/me/route';
@@ -127,6 +128,7 @@ const ROUTES: Record<string, Entry> = {
   'stats/level': owner,
   'stats/partners': owner,
   'kudos/eligible': { kind: 'authed', helper: 'requireGroupMember' },
+  notifications: { kind: 'gated' },
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
   // The home-screen widget's bearer pass (docs/plans/native-widgets.md), re-read against the membership.
@@ -280,6 +282,7 @@ describe('behaviour of the gated routes', () => {
   const CASES: Array<[string, Handler, string]> = [
     ['players', playersGET as Handler, 'http://localhost/api/players'],
     ['session', sessionGET as Handler, 'http://localhost/api/session'],
+    ['notifications', notificationsGET as Handler, 'http://localhost/api/notifications'],
     ['session/calendar', sessionCalendarGET as Handler, 'http://localhost/api/session/calendar'],
     ['members', membersGET as Handler, 'http://localhost/api/members'],
     ['members/me', membersMeGET as Handler, 'http://localhost/api/members/me?name=Lin'],

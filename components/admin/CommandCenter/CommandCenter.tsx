@@ -48,6 +48,8 @@ interface CommandCenterProps {
 export default function CommandCenter({ refreshKey, setView, onExit, onOpenDormant }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   const [localRefresh, setLocalRefresh] = useState(0);
+  // "This week" shows ONE card at a time: the session, or Payments.
+  const [weekView, setWeekView] = useState<'session' | 'payments'>('session');
   const composedRefresh = refreshKey + localRefresh;
 
   /* The bench row's count: requests nobody has taken, jobs past their date.
@@ -273,10 +275,29 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
           slot leaves none. */}
       <div className="flex flex-col gap-5">
       <RevealGroup>
-      {/* NEEDS YOU FIRST (admin audit, 2026-10-12). Someone waiting on a human
-          (sign-in requests) and what Profile's "N need you" counted. Both
-          render nothing when nothing is waiting, so on a quiet week the screen
-          opens on "This week". Who is locked out is the People row's count. */}
+      {/* AT A GLANCE FIRST (Grant, 2026-11-04: "At a glance should be at the
+          very top"): the two numbers worth seeing without a tap, above
+          everything, including what needs a human. */}
+      <ProfileEyebrow>At a glance</ProfileEyebrow>
+      <RevealSlot
+        placeholder={
+          <div className="cc-dgrid">
+            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
+            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
+          </div>
+        }
+      >
+      <AdminDashTiles
+        onOpenBirds={() => setView('birds')}
+        onOpenRoster={() => setView('members')}
+      />
+      </RevealSlot>
+
+      {/* NEEDS YOU next (admin audit, 2026-10-12, when it led the screen).
+          Someone waiting on a human (sign-in requests) and what Profile's
+          "N need you" counted. Both render nothing when nothing is waiting,
+          so on a quiet week the tiles hand straight to "This week". Who is
+          locked out is the People row's count. */}
       <RevealSlot canBeEmpty placeholder={null}>
         <AccessRequestsCard refreshKey={composedRefresh} />
       </RevealSlot>
@@ -295,15 +316,42 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       >
         <NeedsYouCard
           refreshKey={composedRefresh}
-          onOpenPayments={() => document.getElementById('cc-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onOpenPayments={() => {
+            setWeekView('payments');
+            requestAnimationFrame(() => document.getElementById('cc-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          }}
           onOpenBirds={() => setView('birds')}
           onOpenDormant={() => (onOpenDormant ? onOpenDormant() : setView('members'))}
           onOpenBench={() => setView('stringing')}
         />
       </RevealSlot>
 
-      {/* THIS WEEK: the session and its money, the screen's main job. */}
-      <ProfileEyebrow>This week</ProfileEyebrow>
+      {/* THIS WEEK: the session and its money, the screen's main job — ONE
+          card at a time behind a Session · Payments toggle (Grant,
+          2026-11-04: "to save vertical space"; a side-scrolling rail was
+          tried first and stood as tall as the taller card). Both stay
+          mounted, so switching reads nothing; the one not showing is
+          `hidden`. With money off there is no toggle, only the session. */}
+      <div className="cc-week-head">
+        <ProfileEyebrow>This week</ProfileEyebrow>
+        {!moneyOff && (
+          <div className="segment-control flex cc-week-toggle" role="tablist" aria-label="This week">
+            {(['session', 'payments'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={weekView === v}
+                onClick={() => setWeekView(v)}
+                className={`flex-1 fs-sm rounded-full ${weekView === v ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+              >
+                {v === 'session' ? 'Session' : 'Payments'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div hidden={weekView !== 'session'}>
       <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />}>
       <NextSessionCard
         refreshKey={composedRefresh}
@@ -313,35 +361,27 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
         onChanged={() => setLocalRefresh((n) => n + 1)}
       />
       </RevealSlot>
+      </div>
       {!moneyOff && (
+        <div hidden={weekView !== 'payments'}>
         <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>
           <div id="cc-payments" style={{ scrollMarginTop: 'var(--space-9)' }}>
             <PaymentsCard refreshKey={composedRefresh} onOpenPlayer={openPlayer} />
           </div>
         </RevealSlot>
+        </div>
       )}
 
-      {/* AT A GLANCE: the two numbers worth seeing without a tap. */}
-      <ProfileEyebrow>At a glance</ProfileEyebrow>
-      <RevealSlot
-        placeholder={
-          <div className="cc-dgrid">
-            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
-            <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
-          </div>
-        }
-      >
-      <AdminDashTiles
-        onOpenBirds={() => setView('birds')}
-        onOpenRoster={() => setView('members')}
-      />
-      </RevealSlot>
-
-      {/* EVERYTHING ELSE, grouped by what it is FOR. It was one nine-row list
-          mixing the bench, weekly settings, the books, analytics and catalog
-          upkeep, with the invite and gift cards as full cards between. Static,
-          so ready at once — but slotted, so it shows only after the cards
-          above it, which would otherwise push it down as they arrive. */}
+      {/* EVERYTHING ELSE, grouped by what it is FOR, as list rows. It was one
+          nine-row list mixing the bench, weekly settings, the books, analytics
+          and catalog upkeep, with the invite and gift cards as full cards
+          between. A grid of tiles three to a row was tried on 2026-11-04 to
+          shorten the page and reverted the same day: it drew sixteen doors
+          as cards, so nothing told a thing to read from a thing to open
+          (Grant: "Why are all of them cards?"), and the inner-tile material
+          sat on the page ground, where DESIGN.md §9 does not allow it.
+          Static, so ready at once — but slotted, so it shows only after the
+          cards above it, which would otherwise push it down as they arrive. */}
       <RevealSlot ready placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.settings} />}>
         <div className="flex flex-col gap-2">
           {groups.filter((g) => g.rows.length > 0).map((g) => (

@@ -163,8 +163,9 @@ export async function GET(req: NextRequest) {
      * Read-only route, so the cheap sync admin check (rule 3).
      */
     const privileged = authed || isAdminAuthed(req);
-    const groupRole =
-      privileged && groupMemberId ? (await readMembership(groupId, groupMemberId))?.role : undefined;
+    const membership =
+      privileged && groupMemberId ? await readMembership(groupId, groupMemberId) : undefined;
+    const groupRole = membership?.role;
     const role = !privileged
       ? 'member'
       : groupRole
@@ -175,7 +176,18 @@ export async function GET(req: NextRequest) {
     const statsPrivacy = privileged ? normalizeStatsPrivacy(me?.statsPrivacy) : null;
     // Not privileged: the roster already shows it beside the same name.
     const avatar = normalizeAvatar(me?.avatar);
-    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar });
+    /**
+     * THE PROFILE CARD'S RANK (docs/plans/roles-v2.md). `role` above collapses
+     * an organiser to `admin` for the flag-off readers; `rank` keeps it, from
+     * THIS club's membership (the Member's role with groups off).
+     * Privileged-only, like `role`; `null` reads as unknown, never as Player.
+     */
+    const rank = !privileged || !me
+      ? null
+      : membership
+        ? membership.role
+        : me.role === 'admin' ? 'admin' : 'member';
+    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar, rank });
   } catch (error) {
     // A thrown read is a 503, never a 200 of defaults (the server half of the
     // lying-empty-state rule, `__tests__/read-failed-503.test.ts`). The

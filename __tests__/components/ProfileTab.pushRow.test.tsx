@@ -11,12 +11,14 @@ import enMessages from '../../messages/en.json';
  * probe answers, because "Off" before we know would be a confirmed negative
  * from an unknown state.
  */
-const push = vi.hoisted(() => ({ status: 'loading' as string }));
-vi.mock('@/lib/usePush', () => ({
-  usePush: () => ({ state: { status: push.status }, enable: vi.fn(), disable: vi.fn(), busy: false, error: null }),
-}));
+const push = { status: 'loading' as string };
+/** HomeShell owns the push state now and hands it down (shared with the
+ *  Notifications page), so the test hands it down too. */
+const pushResult = () =>
+  ({ state: { status: push.status }, enable: vi.fn(), disable: vi.fn(), busy: false, error: null }) as unknown as UsePushResult;
 
 import ProfileTab from '../../components/ProfileTab';
+import type { UsePushResult } from '../../lib/usePush';
 
 afterEach(() => {
   cleanup();
@@ -24,7 +26,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function signedInProfile() {
+function signedInProfile(onOpenNotifications = vi.fn()) {
   localStorage.setItem('badminton_identity', JSON.stringify({ name: 'Michael', token: 'tok', sessionId: 's' }));
   vi.stubGlobal(
     'fetch',
@@ -38,7 +40,14 @@ function signedInProfile() {
   );
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <ProfileTab sessionId="s" sessionLabel="Apr 27" isAdmin={false} onAdminTools={() => {}} />
+      <ProfileTab
+        sessionId="s"
+        sessionLabel="Apr 27"
+        isAdmin={false}
+        onAdminTools={() => {}}
+        push={pushResult()}
+        onOpenNotifications={onOpenNotifications}
+      />
     </NextIntlClientProvider>,
   );
 }
@@ -57,5 +66,14 @@ describe('Profile notifications row', () => {
     signedInProfile();
     const row = (await screen.findByText(enMessages.profile.settings.notifications)).closest('button')!;
     expect(row.textContent).toContain(enMessages.profile.push.metaOff);
+  });
+
+  it('opens the Notifications page, which the shell owns', async () => {
+    push.status = 'off';
+    const open = vi.fn();
+    signedInProfile(open);
+    const row = (await screen.findByText(enMessages.profile.settings.notifications)).closest('button')!;
+    row.click();
+    expect(open).toHaveBeenCalledTimes(1);
   });
 });

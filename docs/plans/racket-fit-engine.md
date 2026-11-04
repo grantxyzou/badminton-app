@@ -6,7 +6,8 @@ equipment purchases"; Value-Hub Track 2 (Equipment). ROADMAP §4 still says trac
 `lib/flags.ts` records that the fan-out was made by shipping, not by reading the
 gate. This file says so rather than pretending the readout happened.
 **Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`, retired ON 2026-10-24) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; `fit-3` 2026-10-09 (a slow swing's "more power" leaves the head alone, from the first stringer-rated case); Phase 4 waits on ≥5 golden ratings (3 rated 2026-10-09: g01–g03; the owner owes two of his own); `fit-4` 2026-10-20 (the side of a mixed court); **validation rethought 2026-11-04** — three legs that need no expert's evening (below, "How to validate alternatively"); `fit-5` 2026-11-04 (a Balance question for the member nothing anchors, and no tier steer without an anchor — Grant's two calls from the first backtest read, same day)
-**Review on:** 2026-11-18 — re-run the backtest on `fit-5` (`GET /api/reports/fit-backtest`, the `BPM_REPORTS_KEY` variable): the nine cases carry no `fitBalance` yet, so balance can only move once someone answers the new question, but the tier count should move at once — did it? Has anyone with no racket logged answered Balance? And does the kill criterion move from "5 golden + 2 engaged" to "property suite green + backtest + bench agreement"?
+**Review on:** 2026-11-18 — has anyone with no racket logged answered Balance (the one input the second read could not move)? Re-run the backtest then, and look at the one as-answered flex miss fit-5 introduced: which goal delta carried it two steps off? And does the kill criterion move from "5 golden + 2 engaged" to "property suite green + backtest + bench agreement"?
+**Read 2026-11-04, second (same day, `fit-5`, after #768 deployed):** the same 12 gear docs and 9 cases, nobody having answered Balance yet. As answered: flex within a step **8/9** (was 9), weight **9/9**, balance **3/9** (unchanged), tier **5/9** (was 4), all three **2/9 (22 %)** (unchanged), exact model in the top three 0/9. As if happy (the floor; the fit-4 figures for this row were not kept): balance 5/9, flex 9/9, weight 9/9, tier 5/9, exact model in the top three 1/9. Tier moved the one step the change predicted, and balance could not move — the unanchored start is still even for all nine until one of them answers the new question, which is the thing to look for at the review. One as-answered flex match was lost: with the tier term gone, one case's top pick now sits two or more shaft steps from the racket they hold, and the "as if happy" row keeps 9/9, so a goal delta is doing it; the report is totals only, so which case waits on the review. Net: a wash on the headline, the expected move on tier, and a true read on balance only once someone answers.
 **Read 2026-11-04 (first production backtest, `fit-4`):** 12 gear docs, 9 cases (2 rackets not in the catalog, 1 nothing to go on; 6 unanchored, 3 level-only). The club holds 5 even / 2 head-light / 2 head-heavy, 7 stiff / 2 flexible, 7 premium / 2 mid. As answered: flex within a step **9/9**, weight within 3 g **9/9**, balance **3/9**, tier **4/9**, all three **2/9 (22 %)**, exact model in the top three 0/9. The two misses are the two axes the from-scratch path has no input for: with no anchor, balance comes only from the goal or a mixed court side and defaults to even, so the four head-light and head-heavy owners are invisible to it; and the level-derived tier default aims entry/mid at a club that buys premium whatever its level. This is a statement about NEW members with no racket logged — the nine themselves get the anchored path, which follows their racket's balance by construction — and that is exactly who the questionnaire exists for. n = 9 and only 3 `happy` rows, so a direction, not a verdict. The summary should split the match counts by goal next (it reports `byGoal` but not matches per goal).
 **Read 2026-10-19:** `engagedMembers` 2 (two adds, on `fit-2`; 184 served to 9 members across `fit-1`–`fit-3`), the fit page opened by 8 members and a verdict seen by 7 — but 3 of 5 golden cases. Half met; the half that is not is the owner's and stringer's to rate, not the members' verdict, so the date moved two weeks rather than the questionnaire going (Grant chose to keep it). `GEAR_PAGES` and `FIT_VERDICT` retired ON the same day.
 
@@ -263,6 +264,56 @@ because they are correct regardless of uptake.
 
   Not done, on purpose: an A/B of engine versions. With ~30 members and two
   engagement taps a month it would take a year to say anything.
+
+- **What the backtest gate still does not close** (2026-11-04; the loophole
+  review written for #761, which was closed unmerged because the gate it
+  proposed had already shipped as the three legs above — the review outlived
+  it). Twelve loopholes were listed against the gate; checked against the code
+  as shipped, seven are closed and five are not. The five, worst first:
+  1. **Leakage: the answers may describe the racket in the hand.** A member who
+     owns a stiff, head-heavy frame answers "fast swing" *because* of it, so the
+     backtest can be scoring the engine on an input the racket itself produced.
+     Nothing guards this: `lib/fitBacktest.ts` reads no `fitUpdatedAt` and no
+     `acquiredAt`. Closing it means counting a member as pre-purchase only when
+     `fitUpdatedAt` precedes the earliest of `acquiredAt` and their first log
+     entry, reporting post-purchase members apart and never in the headline.
+     **`fitUpdatedAt` is a lower bound, not a clean guard**: it moves only when a
+     fit ENUM changes, so a later grip edit pushes it forward, `fitOvergrips` and
+     the string budget never stamp it, and docs written before the stamp have
+     none (`app/api/equipment/gear/route.ts`). A doc with no stamp is an
+     exclusion, not an assumption.
+  2. **No baseline, so the match rates have nothing to beat.** The reads report
+     flex 9/9 and weight 9/9 as if those were scores; in a catalog of near
+     duplicates a random pick scores well on a within-a-step rule. There is no
+     baseline anywhere in `lib/fitBacktest.ts` — not random, not club-popularity,
+     not the level-only ablation the Review-on line asks for. Until the margin is
+     over a baseline computed under the SAME rule, the headline numbers cannot
+     say whether the engine did any work.
+  3. **Influence, not fit.** Members buy what the owner owns, so "what they
+     stayed with" partly measures the club. The club-popularity baseline in (2)
+     absorbs it; the owner's own bag should be reported apart, and a run without
+     the most common racket is a sensitivity run that is reported and never
+     decides.
+  4. **No freeze, so the goalposts can move.** The exclusion list, the ablation
+     input and the thresholds are not fixed anywhere before a run. A change to
+     any of them after a read is a dated entry here, made before the run it
+     affects; a post-hoc filter voids the read.
+  5. **Health-adjacent data.** `fitArmComfort` and `fitSoreness` feed ranking and
+     are stripped from other readers. The route returns totals today, which is
+     most of the protection, but nothing states the rule: no output keyed on a
+     health field, and any cell under 5 suppressed — in a club of ~36 a small
+     cell names a person.
+
+  Closed by what shipped, recorded so they are not re-litigated: *kept is not
+  right* and *tests that agree by construction* are both stated in the legs
+  above; *tuning on the test set* is covered by `engineVersion` on every read;
+  *two-club members* by `rosterMemberIds(groupId)`; *silent cohort shrinkage* by
+  the per-case exclusion reasons (`no_active_racket`, `nothing_to_go_on`,
+  `racket_not_in_catalog`, `racket_unscorable`), though the "lost more than half
+  → undecided" rule is not written; *selection* by the reads saying in words that
+  this is a statement about new members and a direction, not a verdict; and *the
+  route's auth* by the per-club read-only reports key, a different choice from
+  the operator-only one proposed, and a deliberate one.
 
 ## Shape
 

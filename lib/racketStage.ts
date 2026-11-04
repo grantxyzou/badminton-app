@@ -38,7 +38,9 @@ export function createRacketStage(canvas: HTMLCanvasElement, opts: RacketStageOp
   renderer.setPixelRatio(Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2));
   renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // three r187 removed PCFSoftShadowMap and falls back to this with a console
+  // warning; asking for it directly draws the same shadow, silently.
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   // Filmic rolloff: highlights bloom off instead of clipping to a hard white
   // dot, which is most of what makes a render look plastic.
   renderer.toneMapping = THREE.ACESFilmicToneMapping;

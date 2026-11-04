@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { recordNotices } from '@/lib/notices';
 import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
@@ -60,9 +61,14 @@ export async function GET(req: NextRequest) {
     if (!sessionId) return noActiveSession();
     // The club record rides beside the session read (one point read) so Home
     // knows whether to offer a plus-one (docs/plans/plus-one.md).
+    // A failed group read hides the plus-one row only (`guestsAllowed` reads
+    // false); the session itself is the card, and must not 503 over it.
     const [stored, group] = await Promise.all([
       scope.read<SessionDoc>('sessions', sessionId, sessionId),
-      readGroup(scope.groupId),
+      readGroup(scope.groupId).catch((err) => {
+        console.error('GET session: group read failed, plus-one hidden:', err);
+        return undefined;
+      }),
     ]);
     const session = stored ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
     const out = { ...(isAdminAuthed(req) ? session : stripForPublic(session)), guestsAllowed: guestsAllowedOf(group?.settings) };
@@ -241,6 +247,12 @@ export async function PUT(req: NextRequest) {
         // tightening, and it is written down here because no test can show it —
         // the mock store ignores the `active = true` clause entirely.
         const recipients = await rosterMemberIds(scope.groupId);
+        // The Notifications page hears it too, push or not
+        // (docs/plans/notification-center.md). Never throws.
+        await recordNotices(scope.groupId, [...recipients], {
+          type: 'signups_open',
+          sessionAt: typeof sessionData.datetime === 'string' ? sessionData.datetime : undefined,
+        });
         await sendPushToMembers(
           [...recipients],
           buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0]),
