@@ -14,9 +14,10 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { notifyPlayerOfStage, notifyPlayerOfPendingEdit } from '@/lib/stringingNotifyDispatch';
-import { getContainer } from '@/lib/cosmos';
+
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
+import { canStringIn, stringerIn } from '@/lib/roster';
 import { isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -123,7 +124,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   try {
-    const scope = groupScope(resolveGroupId(req));
+    const groupId = resolveGroupId(req);
+    const scope = groupScope(groupId);
     const job = await scope.read<StringingJob>('stringingJobs', id, memberId);
     if (!job) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
@@ -140,11 +142,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
      * worse than one that fails.
      */
     if (stringer) {
-      const canStringMember = await getContainer('members')
-        .item(stringer.memberId, stringer.memberId)
-        .read<{ canString?: boolean }>()
-        .then((r) => r.resource?.canString === true)
-        .catch(() => false);
+      // Per club (lib/roster.ts): the switch is THIS club's grant.
+      const canStringMember = await canStringIn(groupId, stringer.memberId).catch(() => false);
       if (!canStringMember || job.stringerId !== stringer.memberId) {
         return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
       }
@@ -288,14 +287,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         next.stringerId = null;
         next.stringerName = null;
       } else if (typeof body.stringerId === 'string') {
-        const assignee = await getContainer('members')
-          .item(body.stringerId, body.stringerId)
-          .read<{ id: string; name: string; canString?: boolean }>()
-          .then((r) => r.resource ?? null)
-          .catch(() => null);
         // Re-checked here rather than trusted from the picker: the list
-        // endpoint is a convenience, this is the gate.
-        if (!assignee || assignee.canString !== true) {
+        // endpoint is a convenience, this is the gate. A stringer of THIS
+        // club, under the name this club knows them by.
+        const assignee = await stringerIn(groupId, body.stringerId).catch(() => null);
+        if (!assignee) {
           return NextResponse.json({ error: 'not_a_stringer' }, { status: 400 });
         }
         next.stringerId = assignee.id;

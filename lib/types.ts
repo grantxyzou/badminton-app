@@ -400,6 +400,14 @@ export interface Membership {
    */
   canGift?: boolean;
   /**
+   * Strings rackets FOR THIS CLUB (docs/plans/roles-v2.md, PR 2). The bench,
+   * the stringer view and the assign picker read this with groups on; a
+   * person who strings for one club is not a stringer at another. Absent on
+   * BPM's rows reads as `Member.canString` (the flag-off value, which IS
+   * BPM's); absent anywhere else is no. Additive.
+   */
+  canString?: boolean;
+  /**
    * A MEMBER of this club rather than a drop-in (docs/plans/roster-import.md).
    * Set by the roster import or the Roster sheet; the Roster page labels and
    * filters by it, and "last week's list carries over" will read it. Not the
@@ -482,6 +490,10 @@ export interface Member {
   accessRequests?: StoredAccessRequest[];
   /**
    * This person strings rackets. Deliberately NOT tied to `role`.
+   *
+   * With groups on the club's answer is `Membership.canString`
+   * (`canStringIn` in lib/roster.ts) and this is the flag-off value and
+   * BPM's rollback copy, like `canGift`; `PATCH /api/members` writes both.
    *
    * Stringing and administering are different jobs: Zach can restring for the
    * club without being handed payments, the roster and everyone's data. The

@@ -543,6 +543,24 @@ export async function setMembershipCanGift(
 }
 
 /**
+ * Grant or revoke stringing in ONE group (docs/plans/roles-v2.md, PR 2).
+ * Per club like `canGift`: Zach strings for BPM, and joining a second club
+ * must not put him on its bench. Resolves `undefined` when there is no
+ * active membership here.
+ */
+export async function setMembershipCanString(
+  groupId: string,
+  memberId: string,
+  canString: boolean,
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m || m.status !== 'active') return undefined;
+  if (m.canString === canString) return m;
+  return groupScope(groupId).replace('memberships', { ...m, canString }, groupId);
+}
+
+/**
  * Mark someone a member or a drop-in IN ONE GROUP (docs/plans/roster-import.md).
  * Per club for the same reason as `canGift`: a person can be a regular in one
  * club and a drop-in at another. Resolves `undefined` when there is no active

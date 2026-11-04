@@ -13,6 +13,7 @@ import {
   addMembership,
   setMembershipRole,
   setMembershipCanGift,
+  setMembershipCanString,
   setMembershipRegular,
   readMembership,
   RosterNameTakenError,
@@ -244,8 +245,16 @@ export async function PATCH(req: NextRequest) {
       // The Member copy knows two roles: an organiser is an admin there.
       if (memberCopy) updates.role = role === 'member' ? 'member' : 'admin';
     }
-    // Orthogonal to `role` on purpose — see Member.canString.
-    if (typeof body.canString === 'boolean') updates.canString = body.canString;
+    // Orthogonal to `role` on purpose — see Member.canString. Per club like
+    // `canGift` since roles v2 PR 2 (the MEMBERSHIP is what the bench reads);
+    // an admin grants it, no organiser needed. The Member copy is the flag-off
+    // value and BPM's rollback copy.
+    if (typeof body.canString === 'boolean') {
+      updates.canString = body.canString;
+      if (groupsOn() && !(await setMembershipCanString(auth.groupId, id, body.canString))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
     // The third switch: may give out gift cards (docs/plans/gift-card-ledger.md).
     // With groups on it is the MEMBERSHIP's — a card is this club's liability,
     // and the person may be on another roster where nobody granted it. The
