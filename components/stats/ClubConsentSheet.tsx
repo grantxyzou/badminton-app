@@ -1,25 +1,28 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetBody, SheetCloseButton } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 
 /**
  * First-run consent for the club comparison.
  *
- * THE ONE SHEET IN THE APP THAT MUST BE ANSWERED. There is no close button, the
- * backdrop is not tappable (BottomSheet's already isn't), and Escape is
- * disabled via `closeOnEscape={false}`. The alternative to answering is being
- * asked again next week, which is worse than a single unavoidable question —
- * "asked once" is the entire design.
+ * ASKED ONCE, AND CLOSING IT IS AN ANSWER. Grant, 2026-11-02 (monthly UX
+ * report: the sheet opened over the Stats tab and blocked the tab bar): "show
+ * it once, then leave it only in settings." So the ✕, Escape, a swipe down and
+ * the Android back button all save "Keep it private" — the same write as the
+ * button, stamping `promptedAt` — and the choice lives in Profile → Stats &
+ * privacy from then on. It never comes back on its own.
  *
- * Both buttons write. `Keep it private` is a real answer, not a dismissal, and
- * it stamps `promptedAt` exactly like `Show me where I sit` does.
+ * The sheet used to have no way out but its two buttons, on the reasoning that
+ * a dismissal would mean asking again next week. Saving the private answer on
+ * close keeps "asked once" without trapping anyone: private is the default a
+ * person who did not want to think about it would choose anyway, and it shows
+ * nobody anything.
  *
- * Accessibility note: because dismissal is disabled, the two buttons are the
- * ONLY exit from the focus trap. They must always render and must never both
- * be disabled — which is why the offline state disables them but shows a line
- * explaining why, rather than leaving a trapped user staring at dead controls.
+ * Closing does nothing while offline or saving — the write cannot happen, and
+ * a sheet that vanished without saving would ask again. The offline line says
+ * why the buttons are dead, so nobody stares at a sheet that will not shut.
  */
 export interface ClubConsentSheetProps {
   open: boolean;
@@ -32,17 +35,14 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
   const t = useTranslations('stats.consent');
   const online = useOnline();
   const busy = saving || !online;
+  // Every way out of the sheet is the private answer. Busy (offline, or the
+  // answer already on its way) does nothing, so nothing is answered twice.
+  const closePrivately = () => {
+    if (!busy) onAnswer(false);
+  };
 
   return (
-    <BottomSheet
-      open={open}
-      // Required by the props contract, but unreachable: no close affordance
-      // renders, the backdrop is inert, and Escape is off. Answering is the
-      // only way out, and answering goes through onAnswer.
-      onClose={() => {}}
-      closeOnEscape={false}
-      ariaLabel={t('title')}
-    >
+    <BottomSheet open={open} onClose={closePrivately} closeOnEscape={!busy} ariaLabel={t('title')}>
       <BottomSheetBody bare>
         <div
           style={{
@@ -52,15 +52,18 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
             gap: 'var(--space-5)',
           }}
         >
-          {/* --icon-lg (24), the nearest rung on the icon ladder. The
-              prototype's 28 is off-scale; snapping is the house rule. */}
-          <span
-            className="material-icons"
-            aria-hidden="true"
-            style={{ fontSize: 'var(--icon-lg)', color: 'var(--accent)' }}
-          >
-            groups
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* --icon-lg (24), the nearest rung on the icon ladder. The
+                prototype's 28 is off-scale; snapping is the house rule. */}
+            <span
+              className="material-icons"
+              aria-hidden="true"
+              style={{ fontSize: 'var(--icon-lg)', color: 'var(--accent)' }}
+            >
+              groups
+            </span>
+            <SheetCloseButton onClose={closePrivately} label={t('close')} />
+          </div>
 
           <h2 className="bpm-h2" style={{ margin: '0' }}>
             {t('title')}

@@ -28,23 +28,49 @@ describe('ClubConsentSheet', () => {
     expect(screen.getByText(/Change it any time in Profile/)).toBeTruthy();
   });
 
-  // ── It must be ANSWERED, not dismissed ──────────────────────────────────
-  it('renders no close button', () => {
-    renderSheet();
-    // Every other sheet in the app hand-rolls a close affordance. This one
-    // must not: dismissal would mean asking again next week.
-    expect(screen.queryByRole('button', { name: /close/i })).toBeNull();
+  // ── Asked once: every way out is the private answer ─────────────────────
+  it('closing with the ✕ saves "Keep it private"', () => {
+    const { onAnswer } = renderSheet();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onAnswer).toHaveBeenCalledWith(false);
   });
 
-  it('does not close on Escape', () => {
+  it('Escape saves "Keep it private"', () => {
     const { onAnswer } = renderSheet();
     fireEvent.keyDown(document, { key: 'Escape' });
-    // Still open, and nothing was answered on the member's behalf.
-    expect(screen.getByText('See how you compare?')).toBeTruthy();
+    expect(onAnswer).toHaveBeenCalledWith(false);
+  });
+
+  it('closing while saving answers nothing twice', () => {
+    const onAnswer = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <OnlineProvider>
+          <ClubConsentSheet open saving onAnswer={onAnswer} />
+        </OnlineProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(onAnswer).not.toHaveBeenCalled();
   });
 
-  it('offers exactly two exits, and both are answers', () => {
+  it('closing while offline answers nothing, and the sheet cannot be swiped away', () => {
+    const was = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine');
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+    try {
+      const { onAnswer } = renderSheet();
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onAnswer).not.toHaveBeenCalled();
+      expect(document.querySelector('[data-sheet-grab]')).toBeNull();
+    } finally {
+      delete (navigator as unknown as Record<string, unknown>).onLine;
+      if (was) Object.defineProperty(Navigator.prototype, 'onLine', was);
+    }
+  });
+
+  it('offers both answers as buttons', () => {
     renderSheet();
     expect(screen.getByRole('button', { name: 'Show me where I sit' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Keep it private' })).toBeTruthy();

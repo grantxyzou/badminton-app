@@ -794,6 +794,15 @@
     "offline": "你已离线，联网后再提交。",
     "close": "关闭"
   },
+  "pushNudge": {
+    "nativeTitle": "报名一开放就提醒你",
+    "nativeBody": "球拍穿好时也会通知你，不用打开应用查看。",
+    "nativeCta": "开启通知 →",
+    "webTitle": "在手机上用 %APP_SHORT% 应用",
+    "webBody": "iPhone 和 Android 测试版应用会在报名开放时通知你。账号直接带过去：一个验证码，不用 PIN。",
+    "webCta": "获取应用 →",
+    "dismiss": "关闭"
+  },
   "install": {
     "title": "把 %APP_SHORT% 添加到主屏幕",
     "intro": "把 %APP_SHORT% 添加到主屏幕，就能像普通 App 一样全屏打开。",
@@ -1438,7 +1447,8 @@
       "yes": "显示我的位置",
       "no": "保持私密",
       "changeLater": "随时可以在「我的 → 数据与隐私」里改。",
-      "offline": "当前离线，联网后再问你一次。"
+      "offline": "当前离线，联网后再问你一次。",
+      "close": "关闭"
     },
     "privacy": {
       "crumb": "我的",
