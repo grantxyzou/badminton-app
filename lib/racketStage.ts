@@ -5,11 +5,11 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 /**
  * The studio the racket model was balanced against — lifted from the design's
  * `three-d-stage.js` `_boot()`. The handoff is explicit that the materials look
- * like plastic without it: ACES filmic tone mapping at 1.15 exposure, a soft
+ * like plastic without it: filmic tone mapping at 1.15 exposure, a soft
  * sky-to-floor gradient as the environment (a broad sheen rather than one
  * specular pinpoint), a hemisphere wash, a shadow-casting key and a dim warm
  * fill. Since the fidelity pass (2026-11-04) the environment is a softbox
- * room rather than the gradient, at exposure 1.0. One module so the live viewer and the pre-rendered list images light
+ * room rather than the gradient, at exposure 1.0, under neutral tone mapping. One module so the live viewer and the pre-rendered list images light
  * the racket identically.
  *
  * Client-only: loaded through a dynamic `import()`.
@@ -43,9 +43,11 @@ export function createRacketStage(canvas: HTMLCanvasElement, opts: RacketStageOp
   // three r187 removed PCFSoftShadowMap and falls back to this with a console
   // warning; asking for it directly draws the same shadow, silently.
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  // Filmic rolloff: highlights bloom off instead of clipping to a hard white
-  // dot, which is most of what makes a render look plastic.
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // Khronos PBR Neutral: highlights still roll off instead of clipping to a
+  // hard white dot, but a paint colour comes out as the colour it is. ACES
+  // filmic (until 2026-11-04) turned a Nanoflare 1000's lightning yellow to
+  // mustard and greyed a white frame, which a photo-matched livery cannot afford.
+  renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 1.0;
 
   const scene = new THREE.Scene();
