@@ -435,7 +435,8 @@ export interface Membership {
    * A member SESSION minted before this instant is refused wherever the
    * membership is re-read: `activeMemberFor` (the page gate, every
    * members-only read, sign-up) and `readLiveMemberSession` (every write that
-   * acts as the member) in lib/auth.ts. Stamped by the Roster sheet's "Sign out
+   * acts as the member) in lib/auth.ts — and so is an `admin_session`, in
+   * `isAdminAuthedWithMember`. Stamped by the Roster sheet's "Sign out
    * everywhere" and by issuing a recovery code (docs/plans/claim-your-name.md):
    * how an organiser takes a name back from whoever holds it. Additive; absent
    * = nothing revoked. The flag-off copy is `Member.sessionsNotBefore`.
@@ -522,7 +523,7 @@ export interface Member {
   canString?: boolean;
   /** Flag-off twin of `Membership.widgetPassNotBefore`: widget passes minted before it are refused. */
   widgetPassNotBefore?: string;
-  /** Flag-off twin of `Membership.sessionsNotBefore`: member sessions minted before it are refused. */
+  /** Flag-off twin of `Membership.sessionsNotBefore`: member and admin sessions minted before it are refused. */
   sessionsNotBefore?: string;
   /**
    * This person may give out gift cards (docs/plans/gift-card-ledger.md).

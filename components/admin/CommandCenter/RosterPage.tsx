@@ -103,6 +103,9 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const rankKnown = !groupsOn || !groupLoading;
   const callerOrganiser = !groupsOn || currentGroup?.role === 'owner';
+  // "Sign out everywhere" on a rank-holder is an organiser's (the server
+  // answers organiser_only). Unknown is not "not allowed": the server decides.
+  const canSignOutRank = !rankKnown || callerOrganiser || formRole === 'member';
   const [formCanString, setFormCanString] = useState(false);
   const [formCanGift, setFormCanGift] = useState(false);
   const [formActive, setFormActive] = useState(true);
@@ -416,7 +419,12 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
         body: JSON.stringify({ id: editingId, signOutEverywhere: true }),
       });
       if (!res.ok) {
-        setFormError('Couldn’t sign them out. Try again.');
+        const data = await res.json().catch(() => ({}));
+        setFormError(
+          data.error === 'organiser_only'
+            ? 'Only an organiser can sign out an admin or organiser.'
+            : 'Couldn’t sign them out. Try again.',
+        );
         return;
       }
       setSignedOut(true);
@@ -929,12 +937,14 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
 
                 {/* Taking a name back (docs/plans/claim-your-name.md): a claim
                     let in for the wrong person, or a phone that walked off.
-                    Every sign-in under this name in this club stops working. */}
+                    Every sign-in under this name in this club stops working —
+                    the admin console's too, so a rank-holder is an
+                    organiser's to sign out (the server says organiser_only). */}
                 <Field label="Signed-in devices">
                   <button
                     type="button"
                     onClick={handleSignOutEverywhere}
-                    disabled={savingForm || deletingForm || signingOut || signedOut}
+                    disabled={savingForm || deletingForm || signingOut || signedOut || !canSignOutRank}
                     className="cc-btn cc-btn-secondary"
                     style={{ alignSelf: 'flex-start' }}
                   >
@@ -944,7 +954,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                   </button>
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
                     Ends every sign-in under this name here, on every phone. They sign in again with their PIN, or a
-                    recovery code.
+                    recovery code.{canSignOutRank ? '' : ' An organiser signs out an admin or organiser.'}
                   </p>
                 </Field>
               </>

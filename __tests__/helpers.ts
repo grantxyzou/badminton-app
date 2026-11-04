@@ -325,7 +325,11 @@ export function adminCookieValue(
     // admin check accepts — which is the point: the cookie NAME is chosen by
     // the client, so only `typ` says which credential a value is.
     typ: 'admin',
-    iat: now,
+    // A minute in the past, like `memberCookieValue`: "Sign out everywhere"
+    // compares in whole seconds, so a cookie minted in the same second as the
+    // stamp survives it — a test could not tell "honours the cutoff" from
+    // "minted after it".
+    iat: now - 60,
     exp: now + 60 * 60 * 8,
   };
   const headerB64 = base64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'));
