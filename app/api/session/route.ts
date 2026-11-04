@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { recordNotices } from '@/lib/notices';
 import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
@@ -241,6 +242,12 @@ export async function PUT(req: NextRequest) {
         // tightening, and it is written down here because no test can show it —
         // the mock store ignores the `active = true` clause entirely.
         const recipients = await rosterMemberIds(scope.groupId);
+        // The Notifications page hears it too, push or not
+        // (docs/plans/notification-center.md). Never throws.
+        await recordNotices(scope.groupId, [...recipients], {
+          type: 'signups_open',
+          sessionAt: typeof sessionData.datetime === 'string' ? sessionData.datetime : undefined,
+        });
         await sendPushToMembers(
           [...recipients],
           buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0]),

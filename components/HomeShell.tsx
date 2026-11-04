@@ -12,6 +12,10 @@ import NativeBridge from '@/components/NativeBridge';
 import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
+import NotificationsButton from '@/components/NotificationsButton';
+import NotificationsPage, { type NoticeTab } from '@/components/NotificationsPage';
+import { usePush } from '@/lib/usePush';
+import { isNative } from '@/lib/native';
 import TopToast from '@/components/primitives/TopToast';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import PullToRefresh from '@/components/PullToRefresh';
@@ -148,6 +152,16 @@ interface Props {
 
 export default function HomeShell({ initialAnnouncement, authProviders = [], memberName = null }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
+  /* The Notifications page (docs/plans/notification-center.md): a full page
+     over whichever tab is on screen, opened from the bell or Profile's row.
+     The tabs stay mounted under it, hidden, like a tab behind another. */
+  const [noticesOpen, setNoticesOpen] = useState(false);
+  const noticesOpenRef = useRef(false);
+  /* Owned here, not in ProfileTab: the page's switch and Profile's On/Off row
+     must share one state, and a second usePush() would also register a second
+     native token listener. */
+  const push = usePush();
+  const nativeShell = useClientValue(isNative, true); // unknown hides the app card
   // Bumped by pull-to-refresh — folded into each tab's React key so the active
   // tab remounts and re-runs its data fetches (no service worker; refresh ==
   // refetch the current view).
@@ -508,6 +522,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   useEffect(() => {
     const save = () => {
       if (document.body.style.position === 'fixed') return;
+      if (noticesOpenRef.current) return; // the page's scroll is not the tab's
       scrollByTab.current[activeTabRef.current] = window.scrollY;
     };
     window.addEventListener('scroll', save, { passive: true });
@@ -518,6 +533,22 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     activeTabRef.current = activeTab;
     window.scrollTo(0, scrollByTab.current[activeTab] ?? 0);
   }, [activeTab]);
+  // The page opens at its top and closes back to where the tab was.
+  useLayoutEffect(() => {
+    if (noticesOpenRef.current === noticesOpen) return;
+    noticesOpenRef.current = noticesOpen;
+    window.scrollTo(0, noticesOpen ? 0 : (scrollByTab.current[activeTabRef.current] ?? 0));
+  }, [noticesOpen]);
+  const openNotices = useCallback(() => setNoticesOpen(true), []);
+  const closeNotices = useCallback(() => setNoticesOpen(false), []);
+  const goFromNotice = useCallback((tab: NoticeTab) => {
+    setNoticesOpen(false);
+    setActiveTab(tab);
+  }, []);
+  const changeTab = useCallback((tab: Tab) => {
+    setNoticesOpen(false);
+    setActiveTab(tab);
+  }, []);
 
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
   // ProfileTab is allowed to render with empty values (anonymous state).
@@ -910,6 +941,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       <div className="min-h-screen pb-32" {...{ [APP_SHELL_ATTR]: '' }}>
         <ThemeToggle />
         <LanguageToggle />
+        {!inOnboarding && !nativeReturn && <NotificationsButton onOpen={openNotices} />}
         <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
           {/* Moments float at the top (TopToast): offline for as long as it is
               true, with no ✕ because reconnecting is what clears it, the
@@ -1015,6 +1047,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             />
           ) : (
           <>
+          {noticesOpen && (
+            <NotificationsPage
+              onBack={closeNotices}
+              onNavigate={goFromNotice}
+              push={push}
+              isAdmin={showAdmin}
+              migrateOn={isFlagOn('NEXT_PUBLIC_FLAG_NATIVE_MIGRATE') && !nativeShell}
+            />
+          )}
           {/* Each kept tab is its own panel: hidden, not unmounted, while
               another is on screen (`kept` above). The panel's key is what a
               refresh changes — `refreshNonce` for everything, `tabNonce` for
@@ -1024,10 +1065,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
               <div
                 key={`${tab}-${refreshNonce}-${tabNonce[tab] ?? 0}`}
                 {...{ [TAB_PANEL_ATTR]: tab }}
-                hidden={tab !== activeTab}
+                hidden={tab !== activeTab || noticesOpen}
                 className="motion-fade"
               >
-                <TabActiveContext.Provider value={tab === activeTab}>
+                <TabActiveContext.Provider value={tab === activeTab && !noticesOpen}>
                   {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} />}
                   {tab === 'stringing' && <StringingTab isAdmin={showAdmin} view={stringingView} onViewChange={setStringingView} />}
                   {tab === 'skills' && <SkillsTab onTabChange={setActiveTab} />}
@@ -1051,6 +1092,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
                         setOnboarding('create');
                       }}
                       inviteToken={joinToken}
+                      push={push}
+                      onOpenNotifications={openNotices}
                     />
                   )}
                 </TabActiveContext.Provider>
@@ -1059,13 +1102,13 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           )}
           {/* Admin's verdict is still pending (a reload or deep link onto the
               tab): show the console's loading frame, not an empty page. */}
-          {activeTab === 'admin' && !adminKnown && <div key="admin-pending" {...{ [TAB_PANEL_ATTR]: 'admin' }} className="motion-fade"><AdminFallback /></div>}
+          {activeTab === 'admin' && !adminKnown && !noticesOpen && <div key="admin-pending" {...{ [TAB_PANEL_ATTR]: 'admin' }} className="motion-fade"><AdminFallback /></div>}
           {/* Kept once visited, like the four above (Grant, 2026-10-25: "Admin
               is still choppy and slow"), and only while this person is an
               admin — a demotion unmounts it. */}
           {showAdmin && (activeTab === 'admin' || kept.includes('admin')) && (
-            <div key={`admin-${refreshNonce}-${tabNonce.admin ?? 0}`} {...{ [TAB_PANEL_ATTR]: 'admin' }} hidden={activeTab !== 'admin'} className="motion-fade">
-              <TabActiveContext.Provider value={activeTab === 'admin'}>
+            <div key={`admin-${refreshNonce}-${tabNonce.admin ?? 0}`} {...{ [TAB_PANEL_ATTR]: 'admin' }} hidden={activeTab !== 'admin' || noticesOpen} className="motion-fade">
+              <TabActiveContext.Provider value={activeTab === 'admin' && !noticesOpen}>
                 <AdminErrorBoundary><AdminTabView onExit={() => setActiveTab('profile')} knownAuthed={adminCookieLive} /></AdminErrorBoundary>
               </TabActiveContext.Provider>
             </div>
@@ -1080,7 +1123,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             person has no relationship with yet — a roster they are not on, a
             session they cannot join — which is the screen the doors exist to
             replace. "I already have an account" is the route to Profile. */}
-        {!inOnboarding && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
+        {!inOnboarding && <BottomNav activeTab={activeTab} onTabChange={changeTab} />}
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
       {/* Mounted at shell level, not inside a tab: the provider callback lands

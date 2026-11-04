@@ -49,6 +49,7 @@ const REGISTRY: ReadonlyArray<{ file: string; name: string; scaleOut: ScaleOut; 
   { file: 'lib/stringShelfRead.ts', name: 'shelfCache', scaleOut: 'stale', note: '60 s per-group player stock band + club count; a purchase or list save invalidates only its own process' },
   { file: 'lib/groupLeaks.ts', name: 'recorded', scaleOut: 'safe', note: 'leaks this process has written; a second instance writes its own first sighting, which the store refuses as a duplicate id' },
   { file: 'lib/sharedRead.ts', name: 'inflight', scaleOut: 'browser', note: 'client-side fetch dedupe for cards that mount together' },
+  { file: 'lib/useNotices.ts', name: 'listeners', scaleOut: 'browser', note: "the bell and the Notifications page share one read, so the page's 'seen' clears the dot" },
   { file: 'lib/sharedRead.ts', name: 'inflightFetches', scaleOut: 'browser', note: 'client-side fetch dedupe for cards that mount together' },
   { file: 'lib/sharedRead.ts', name: 'primed', scaleOut: 'browser', note: 'one-shot early read handed to a card that mounts later' },
   { file: 'lib/useInsight.ts', name: 'cache', scaleOut: 'browser', note: 'client hook' },

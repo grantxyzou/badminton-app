@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { recordNotices } from '@/lib/notices';
 import { getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
       // is every ACTIVE member, which also stops notifying a soft-deleted
       // member whose phone is still subscribed.
       const recipients = await rosterMemberIds(scope.groupId);
+      await recordNotices(scope.groupId, [...recipients], { type: 'announcement', text: announcement.text });
       await sendPushToMembers([...recipients], buildAnnouncementPayload(announcement));
     } catch (err) {
       console.error('[announcements] push failed (announcement still saved):', err);

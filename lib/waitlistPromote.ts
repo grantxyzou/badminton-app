@@ -4,6 +4,7 @@ import { compareBySignup } from './capacity';
 import { defaultMaxPlayers } from './defaults';
 import { sendPushToMembers } from './push';
 import { buildWaitlistPromotedPayload } from './pushMessages';
+import { recordNotices } from './notices';
 
 /**
  * WHEN A SPOT OPENS, THE FIRST PERSON WAITING TAKES IT
@@ -82,7 +83,10 @@ export async function promoteFromWaitlist(scope: GroupScope, sessionId: string):
     try {
       const session = await scope.read<Session & { id: string }>('sessions', sessionId, sessionId);
       const memberIds = promoted.map((r) => r.memberId).filter((m): m is string => typeof m === 'string' && m.length > 0);
-      if (memberIds.length > 0) await sendPushToMembers(memberIds, buildWaitlistPromotedPayload(session ?? { id: sessionId }));
+      if (memberIds.length > 0) {
+        await recordNotices(scope.groupId, memberIds, { type: 'promoted', sessionAt: session?.datetime });
+        await sendPushToMembers(memberIds, buildWaitlistPromotedPayload(session ?? { id: sessionId }));
+      }
     } catch (err) {
       console.error('[waitlist] promotion push failed (the promotion stands):', err);
     }

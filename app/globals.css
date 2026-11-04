@@ -3704,7 +3704,8 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 
 /* ── Theme toggle button ── */
 .theme-toggle,
-.lang-toggle {
+.lang-toggle,
+.notif-toggle {
   position: fixed;
   top: calc(16px + var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
   z-index: 60;
@@ -3726,29 +3727,94 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 
 .theme-toggle { right: 16px; }
 .lang-toggle  { right: 60px; }
+/* The Notifications bell, third in the row (docs/plans/notification-center.md).
+   Rendered by HomeShell only — the signed-out shell has nothing to notify. */
+.notif-toggle { right: 104px; }
 
 @media (hover: hover) {
   .theme-toggle:hover,
-  .lang-toggle:hover {
+  .lang-toggle:hover,
+  .notif-toggle:hover {
     transform: scale(1.1);
   }
 }
 
 .theme-toggle:focus-visible,
-.lang-toggle:focus-visible {
+.lang-toggle:focus-visible,
+.notif-toggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .theme-toggle:active,
-.lang-toggle:active {
+.lang-toggle:active,
+.notif-toggle:active {
   transform: scale(0.95);
 }
 
 .theme-toggle .material-icons,
-.lang-toggle .material-icons {
+.lang-toggle .material-icons,
+.notif-toggle .material-icons {
   font-size: 18px;
   opacity: 1;
+}
+
+/* The red dot: something arrived since the page was last opened. Red is the
+   platform's own word for "new" on an icon, and the one place on this row it
+   means that rather than failure. Absolutely placed, so it moves nothing; the
+   ring in the button's own ground keeps it legible over the glass. */
+.notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-red);
+  box-shadow: 0 0 0 2px var(--page-bg);
+  pointer-events: none;
+}
+
+/* ── Notifications page list ── one card, rows inside it, no dividers
+   (Coding Conventions: no hard lines between list items). */
+.notice-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+}
+.notice-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  width: 100%;
+  padding: var(--space-4);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.notice-row:active { background: var(--press-bg); }
+.notice-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.notice-row-icon { color: var(--text-secondary); margin-top: var(--space-05); }
+.notice-row-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.notice-row-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.notice-row-body { color: var(--text-secondary); overflow-wrap: anywhere; }
+.notice-row-time { color: var(--text-muted); }
+.notice-new-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-red);
 }
 
 /* ── Launch screen ──

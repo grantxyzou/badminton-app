@@ -11,11 +11,11 @@ import { brandMessages } from '../../i18n/request';
    here would assert against copy no user ever sees -- the literal
    `%APP_SHORT%` sentinel rather than the product's name. */
 const enMessages = brandMessages(rawMessages);
-import PushSheet from '../../components/PushSheet';
+import PushSettings from '../../components/PushSettings';
 import type { UsePushResult, PushState } from '../../lib/usePush';
 
 /**
- * The sheet's job is to be HONEST about each terminal state — a user who can
+ * The settings' job is to be HONEST about each terminal state — a user who can
  * act is told how, and a user who cannot is told plainly rather than being
  * shown a button that silently does nothing.
  */
@@ -38,15 +38,15 @@ function makePush(state: PushState, overrides: Partial<UsePushResult> = {}): Use
   };
 }
 
-function renderSheet(push: UsePushResult, onOpenInstall = vi.fn()) {
+function renderSheet(push: UsePushResult, onOpenInstall = vi.fn(), onOpenMigrate?: () => void) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <PushSheet open onClose={vi.fn()} onOpenInstall={onOpenInstall} push={push} />
+      <PushSettings onOpenInstall={onOpenInstall} push={push} onOpenMigrate={onOpenMigrate} />
     </NextIntlClientProvider>,
   );
 }
 
-describe('PushSheet', () => {
+describe('PushSettings', () => {
   beforeEach(() => {
     online.mockReturnValue(true);
   });
@@ -114,5 +114,28 @@ describe('PushSheet', () => {
     renderSheet(makePush({ status: 'loading' }));
     expect(screen.getByText(/checking/i)).toBeDefined();
     expect(screen.queryByRole('button', { name: /turn on/i })).toBeNull();
+  });
+
+  // The Home nudge was folded into this sheet (Grant, 2026-11-03: "take out
+  // the banner, move the messaging to Notification").
+  it('leads with what a notification is for when off', () => {
+    renderSheet(makePush({ status: 'off' }));
+    expect(screen.getByText('Get a ping when sign-ups open')).toBeDefined();
+    expect(screen.getByText(/racket's ready/)).toBeDefined();
+  });
+
+  it('points a web reader to the app, and opens the move sheet', () => {
+    const onOpenMigrate = vi.fn();
+    renderSheet(makePush({ status: 'unsupported', reason: 'ios-not-installed' }), vi.fn(), onOpenMigrate);
+    screen.getByRole('button', { name: /get the app/i }).click();
+    expect(onOpenMigrate).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no app card without a migrate handler (the store app) or while checking', () => {
+    renderSheet(makePush({ status: 'off' }));
+    expect(screen.queryByRole('button', { name: /get the app/i })).toBeNull();
+    cleanup();
+    renderSheet(makePush({ status: 'loading' }), vi.fn(), vi.fn());
+    expect(screen.queryByRole('button', { name: /get the app/i })).toBeNull();
   });
 });
