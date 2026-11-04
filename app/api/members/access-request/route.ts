@@ -14,13 +14,12 @@
  * lib/accessRequest.ts.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { issueAccessRequest, MAX_OPEN_REQUESTS } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { sendPushToMembers } from '@/lib/push';
-import type { Member } from '@/lib/types';
+import { rosterMembers } from '@/lib/roster';
 import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +41,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+    // One group for the whole request: the name is resolved in it, so its
+    // admins are the ones who can see and decide the request
+    // (`app/api/admin/access-requests` narrows to the admin's own roster).
+    const groupId = resolveGroupId(req);
+    const memberId = await resolveActiveMemberId(groupId, name);
     const { secret, stored } = issueAccessRequest();
 
     if (memberId) {
@@ -67,7 +70,6 @@ export async function POST(req: NextRequest) {
 
       if (result) {
         const { member } = result;
-        const container = getContainer('members');
         /**
          * Tell the admins. Best-effort and never able to fail the request —
          * same posture as the stringing notifier. If push is unconfigured or
@@ -78,24 +80,25 @@ export async function POST(req: NextRequest) {
          * public surface. The name is the whole point of the notification.
          * The tag is per member, so a second ask replaces the banner rather
          * than stacking another.
+         *
+         * RECIPIENTS ARE THIS CLUB'S ROSTER, never a person-level role. This
+         * used to pick every active `Member` with `role: 'admin'` across the
+         * deployment. With groups on, rank lives on the MEMBERSHIP and
+         * `Member.role` is only BPM's rollback copy, so that query told another
+         * club's admins this person's name and missed an organiser whose rank
+         * is on their membership alone. `rosterMembers` is flag-aware
+         * (memberships with groups on, `Member.role` with them off) and maps
+         * an organiser to `admin`, the same reading the join notice and the
+         * stringing request notice use. `active` is re-checked in JS because
+         * with groups off the roster is a members scan and the mock store
+         * applies no WHERE. The asker is left out: they cannot sign in, so a
+         * banner on their own phone would lead nowhere.
          */
         try {
-          const { resources: admins } = await container.items
-            .query<Member>({
-              query: "SELECT * FROM c WHERE c.role = 'admin' AND c.active = true",
-              parameters: [],
-            })
-            .fetchAll();
-          /* Re-filtered in JS. The mock store matches on parameter NAMES
-             and this query binds none, so `c.role = 'admin'` is invisible to
-             it — under the mock every active member comes back, and
-             "tell the admins" would broadcast one person's lockout to the
-             whole club. Production Cosmos honours the WHERE; the test
-             environment is the one that needs this line. */
-          const adminIds = admins
-            .filter((a) => a.role === 'admin' && a.active === true)
-            .map((a) => a.id)
-            .filter(Boolean);
+          const roster = await rosterMembers(groupId);
+          const adminIds = roster
+            .filter((r) => r.member.role === 'admin' && r.member.active === true && r.member.id !== member.id)
+            .map((r) => r.member.id);
           if (adminIds.length > 0) {
             await sendPushToMembers(adminIds, {
               title: 'Someone can’t sign in',

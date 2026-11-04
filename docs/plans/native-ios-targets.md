@@ -262,8 +262,11 @@ covers that half). Today a web deploy *is* the iOS update.
       Today's access-request push picks every active `Member` with
       `role: 'admin'` across the deployment, which with groups on reaches
       the wrong club's admins and misses the right club's organisers. The
-      sticker request must not copy that query; that bug is tracked on its
-      own.
+      sticker request must not copy that query. That push was fixed on
+      2026-11-04 to read the asking club's roster through `rosterMembers`,
+      which is the pattern the sticker request follows. The sticker's URL
+      names its club, so it also avoids the access request's other gap: a
+      signed-out phone carries no club, and its request is resolved in BPM.
     - *What the sticker holds.* One stable URL per club, decided with the
       request route and never changed after the stickers are written.
       Until then the stickers stay blank. NFC Tools' "lock" is permanent,
