@@ -45,6 +45,7 @@ Nobody in the club has asked for an app. Ian has not been asked yet. This is Gra
   - Late cancels: settle reads rows stamped `lateCancel`.
 - **The chat format is the spec for the copied list.** The text keeps open spots as empty numbers, because that is how the chat reads "how many are left", and a numbered waiting list. The order is `compareBySignup`, the one the capacity check uses, so the text and the app never disagree. It is English only, like every admin surface.
 - **Six Feathers is a real club with its own settings, not a demo** (Grant, 2026-10-29: "Treat the real demo club as a real group just with different setting configuration on how the group run this will help BPM long term too scale for different management style"). Every rule the club runs by is a per-club setting (`GroupSettings.run`, `lib/clubRun.ts`), and a **style** fills them in: `first_come` is BPM, `members_first` is Six Feathers, and any hand edit makes a club `custom`. Grant creates the production club and owns it; Ian becomes an admin when he agrees (handing over ownership is not built). The roster goes in with the real names from the chat — names only, no phone numbers or e-transfer address. A setting joins the model in the PR that makes it do something, and the styles carry only those.
+- **Last week's list does not carry over** (Grant, 2026-11-04: "Dont carry over"). Step D and its `GroupSettings.carryForward` are dropped: every week's list starts empty and each person signs up themselves, as in BPM Core. What Six Feathers' chat did by reposting — regulars first — is step E's members-first window, which needs no copied list. `Membership.regular` (shipped with B) stays; the Roster page reads it, and E would.
 - **The demo seed uses famous players' names, never the club's.** The fixture-name rule in CLAUDE.md applies twice over here: Grant knows these people.
 
 ## Fit, as found in the code (2026-10-28)
@@ -72,9 +73,9 @@ Nobody in the club has asked for an app. Ian has not been asked yet. This is Gra
 
 Revised 2026-10-29: these rules ship as settings any club can choose, and Six Feathers is created in production with the "Members first" style. The order:
 - **A** (shipped): the model, "How your club runs", players per court, and money off.
-- **B** (built): paste a roster or pick a `.csv`, marking members and drop-ins (`docs/plans/roster-import.md`).
-- **C**: claim a pre-added name — planned in `docs/plans/claim-your-name.md`.
-- **D**: last week's list carries over.
+- **B** (shipped, #754): paste a roster or pick a `.csv`, marking members and drop-ins (`docs/plans/roster-import.md`).
+- **C** (shipped, #771): claim a pre-added name with the club link (`docs/plans/claim-your-name.md`).
+- ~~**D**: last week's list carries over.~~ Dropped (Grant, 2026-11-04: "Dont carry over"); see Decisions.
 - **E**: the members-first window. The waitlist moving up into a freed spot shipped on its own (`docs/plans/waitlist-auto-promote.md`), so E is only the window now.
 - **F**: guests. Shipped as plus-one (`docs/plans/plus-one.md`, #751); what remains is checking that a guest written "Jenny (Josh)" maps onto it.
 

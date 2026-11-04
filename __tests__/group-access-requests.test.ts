@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GET as LIST, POST as DECIDE } from '@/app/api/admin/access-requests/route';
+import { POST as ASK } from '@/app/api/members/access-request/route';
 import { issueAccessRequest } from '@/lib/accessRequest';
 import {
   resetMockStore,
@@ -11,6 +12,7 @@ import {
   setupAdminPin,
   seedTestAdminMember,
   adminCookieValue,
+  memberCookieValue,
   ADMIN_MEMBER_ID,
 } from './helpers';
 import type { Member } from '@/lib/types';
@@ -22,6 +24,11 @@ import type { Member } from '@/lib/types';
  * own roster, or one club's admin would see — and could let in — another
  * club's people by name.
  */
+
+const sendPushToMembers = vi.fn();
+vi.mock('@/lib/push', () => ({
+  sendPushToMembers: (...args: unknown[]) => sendPushToMembers(...args),
+}));
 
 const FLAG = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 const A = 'club-a';
@@ -57,6 +64,7 @@ beforeEach(async () => {
 });
 afterEach(() => {
   delete process.env[FLAG];
+  sendPushToMembers.mockReset();
 });
 
 describe('access requests are the roster’s, not the deployment’s', () => {
@@ -89,5 +97,71 @@ describe('access requests are the roster’s, not the deployment’s', () => {
       memberId: beta.id, requestId: beta.requestId, decision: 'approve',
     }, { Cookie: asB }));
     expect(ok.status).toBe(200);
+  });
+});
+
+/**
+ * Who hears "Someone can't sign in". The request is resolved in ONE club, and
+ * only that club's admins can see or decide it, so only they are pushed. The
+ * push used to read every active `Member` with `role: 'admin'` across the
+ * deployment: with groups on that told another club's admin this person's
+ * name, and missed an organiser whose rank lives on the membership alone.
+ */
+describe('the "can’t sign in" push goes to the asking club’s admins', () => {
+  /** A person on `groupId`'s roster with the given rank. */
+  function staff(name: string, groupId: string, role: 'owner' | 'admin', memberRole: 'admin' | 'member') {
+    const id = `staff-${name.toLowerCase()}-${groupId}`;
+    seedMember(name, { id, role: memberRole });
+    seedMembership(groupId, id, { name, role });
+    return id;
+  }
+
+  function askFrom(name: string, cookie?: string) {
+    return ASK(makeRequest('POST', 'http://x/api/members/access-request', { name }, cookie ? { Cookie: cookie } : {}));
+  }
+
+  function pushedIds(): string[] {
+    expect(sendPushToMembers).toHaveBeenCalledTimes(1);
+    return [...(sendPushToMembers.mock.calls[0][0] as string[])].sort();
+  }
+
+  it('pushes the club’s organiser and admin, never a person-level admin on no roster', async () => {
+    // The seeded test admin carries `Member.role: 'admin'` and sits on NO
+    // roster: the leftover the old deployment-wide query picked up.
+    const organiser = staff('Olive', A, 'owner', 'member');
+    const admin = staff('Ada', A, 'admin', 'member');
+    const otherClub = staff('Bea', B, 'owner', 'admin');
+    asking('Lin', A);
+    // A cookie claiming club A is how this request comes to be resolved
+    // there; a phone with no cookie at all resolves BPM.
+    const lin = askFrom('Lin', `member_session=${memberCookieValue('Olive', organiser, undefined, A)}`);
+    expect((await lin).status).toBe(200);
+    const ids = pushedIds();
+    expect(ids).toEqual([admin, organiser].sort());
+    expect(ids).not.toContain(ADMIN_MEMBER_ID);
+    expect(ids).not.toContain(otherClub);
+  });
+
+  it('a request resolved in the other club pushes that club’s staff and nobody here', async () => {
+    const here = staff('Olive', A, 'owner', 'admin');
+    const there = staff('Bea', B, 'owner', 'member');
+    const asker = asking('Zed', B);
+    const res = await askFrom('Zed', `member_session=${memberCookieValue('Bea', there, undefined, B)}`);
+    expect(res.status).toBe(200);
+    const ids = pushedIds();
+    expect(ids).toEqual([there]);
+    expect(ids).not.toContain(here);
+    expect(ids).not.toContain(asker.id);
+    const payload = sendPushToMembers.mock.calls[0][1] as { body: string; tag: string };
+    expect(payload.body).toBe('Zed is asking to be let in.');
+    expect(payload.tag).toBe(`access-${asker.id}`);
+  });
+
+  it('pushes nobody when the club has no admin, rather than reaching for another club’s', async () => {
+    staff('Bea', B, 'owner', 'admin');
+    const member = asking('Lin', A);
+    const res = await askFrom('Lin', `member_session=${memberCookieValue('Lin', member.id, undefined, A)}`);
+    expect(res.status).toBe(200);
+    expect(sendPushToMembers).not.toHaveBeenCalled();
   });
 });
