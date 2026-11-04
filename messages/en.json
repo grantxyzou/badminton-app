@@ -328,6 +328,16 @@
         "errorTooCommon": "Try a less common PIN"
       }
     },
+    "waitlistPing": {
+      "title": "Want a ping if a spot opens?",
+      "enableBody": "If a spot opens, you're moved in automatically. A ping makes sure you know in time to come.",
+      "appBody": "Pings come through the %APP_SHORT% app. Your account comes with you: one code, no PIN.",
+      "turnOn": "Turn on notifications",
+      "turningOn": "Turning on…",
+      "getApp": "Get the app",
+      "notNow": "Not now",
+      "willPing": "You'll get a ping if a spot opens."
+    },
     "states": {
       "finishedTitle": "Thanks for playing!",
       "finishedBody": "Sign up for next week will be announced soon.",
@@ -761,8 +771,12 @@
       "title": "Notifications",
       "close": "Close",
       "checking": "Checking…",
-      "offBody": "Get a notification when sign-ups open for the week. About one a week — you can turn it off any time.",
-      "onBody": "You'll get a notification when sign-ups open for the week.",
+      "offTitle": "Get a ping when sign-ups open",
+      "offBody": "You'll hear when your racket's ready too, without opening the app. You can turn it off any time.",
+      "onBody": "You'll get a ping when sign-ups open, and when your racket's ready.",
+      "appTitle": "Get the %APP_SHORT% app on your phone",
+      "appBody": "Notifications come through the app: you'll hear when sign-ups open and when your racket's ready. Your account comes with you: one code, no PIN.",
+      "appCta": "Get the app",
       "turnOn": "Turn on notifications",
       "turnOff": "Turn off notifications",
       "working": "Just a moment…",
@@ -785,6 +799,35 @@
       "testFailed": "Couldn't send — try again in a moment."
     }
   },
+  "notifications": {
+    "title": "Notifications",
+    "back": "Back",
+    "open": "Notifications",
+    "openUnread": "Notifications, {count} new",
+    "recent": "Recent",
+    "new": "New",
+    "earlier": "Earlier",
+    "empty": "Nothing yet. Sign-ups opening, your racket and club news land here.",
+    "loadError": "Couldn't load your notifications.",
+    "retry": "Try again",
+    "racketFallback": "your racket",
+    "signupsOpenTitle": "Sign-ups are open",
+    "signupsOpenBody": "{when}. Grab a spot.",
+    "signupsOpenBodyNoDate": "Grab a spot before it fills up.",
+    "promotedTitle": "You're in",
+    "promotedBody": "A spot opened for {when}. If you can't make it, cancel from Home.",
+    "promotedBodyNoDate": "A spot opened and you're off the waitlist.",
+    "stringingReadyTitle": "Your racket is ready",
+    "stringingReadyBody": "{racket}, ready to pick up.",
+    "stringingOnTitle": "On the machine",
+    "stringingOnBody": "{racket} is being strung.",
+    "stringingChangeTitle": "A change to confirm",
+    "stringingChangeBody": "Something changed on {racket}. Have a look.",
+    "announcementTitle": "New announcement",
+    "announcementBodyEmpty": "Read it on Home.",
+    "settleUpTitle": "Time to settle up",
+    "settleUpBody": "{count, plural, one {You've got a session to settle up.} other {You've got # sessions to settle up.}}"
+  },
   "report": {
     "title": "Report a problem",
     "help": "Something not working? Tell me what happened and I'll take a look.",
@@ -796,15 +839,6 @@
     "errorServer": "Couldn't send — please try again.",
     "offline": "You're offline — reconnect to send.",
     "close": "Close"
-  },
-  "pushNudge": {
-    "nativeTitle": "Turn on notifications",
-    "nativeBody": "Hear when sign-ups open and when your racket is ready, without opening the app.",
-    "nativeCta": "Turn on notifications →",
-    "webTitle": "Get the %APP_SHORT% app on your phone",
-    "webBody": "The iPhone and Android test app tells you when sign-ups open. Your account comes with you: one code, no PIN.",
-    "webCta": "Get the app →",
-    "dismiss": "Dismiss"
   },
   "install": {
     "title": "Add %APP_SHORT% to your home screen",

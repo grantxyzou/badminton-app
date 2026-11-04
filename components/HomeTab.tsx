@@ -20,8 +20,10 @@ import UnpaidSessionsCard, { CREDIT_PATH, unpaidPath } from '@/components/Unpaid
 import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
 import { levelPath } from '@/lib/levelRead';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import WaitlistPingSheet, { waitlistPingKind, type WaitlistPingKind } from '@/components/home/WaitlistPingSheet';
+import MigrateSheet from '@/components/MigrateSheet';
+import type { UsePushResult } from '@/lib/usePush';
 import InstallBanner from '@/components/InstallBanner';
-import PushNudge from '@/components/PushNudge';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
@@ -92,9 +94,17 @@ interface HomeTabProps {
    * tab does not fire Home's five requests for a screen nobody will see.
    */
   deferFetch?: boolean;
+  /**
+   * HomeShell's one `usePush()`, for the ask a waitlist join earns
+   * (`docs/plans/waitlist-push-ask.md`). Absent (a test mounting Home bare):
+   * no ask, no "You'll get a ping" line.
+   */
+  push?: UsePushResult;
+  /** On the web with the move-to-app link on: the ask points to the app. */
+  webApp?: boolean;
 }
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, deferFetch = false }: HomeTabProps) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, deferFetch = false, push, webApp = false }: HomeTabProps) {
   const t = useTranslations('home');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   /**
@@ -113,6 +123,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const { run: clubRun, known: clubRunKnown } = useClubRun();
   const clubName = currentGroup?.name || APP_NAME;
   const tStates = useTranslations('home.states');
+  const tPing = useTranslations('home.waitlistPing');
+  /** The ask a waitlist join earned; `null` = no sheet. */
+  const [pingAsk, setPingAsk] = useState<WaitlistPingKind | null>(null);
+  const [migrateOpen, setMigrateOpen] = useState(false);
+  const closePingAsk = useCallback(() => setPingAsk(null), []);
   const format = useFormatter();
   const online = useOnline();
   const [session, setSession] = useState<Session | null>(null);
@@ -397,6 +412,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // put a "give me a spot" on the list (a capacity race, or the unpaid soft
     // hold), and nothing should fly for a spot that was not given.
     const onList = waitlist || joined?.waitlisted === true;
+    // A confirmed waitlist row earns the "ping if a spot opens?" ask — never
+    // a row held for unpaid sessions, which is not promoted automatically.
+    if (onList && push && joined?.heldForUnpaid !== true) {
+      setPingAsk(waitlistPingKind(push.state, webApp));
+    }
     const morph = !onList && joined !== null && canViewTransition();
     const commit = () => {
       setCurrentUser(trimmed);
@@ -581,7 +601,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           size is off from the other page"). The 2026-08-27 hierarchy pass had
           made it a 16px `compact` variant; that variant also GREW on scroll,
           to the shared 18px condensed size, so it is gone, not just unused. */}
-      <PageHeader>
+      <PageHeader fitText={clubName}>
         <span
           role="button"
           tabIndex={0}
@@ -629,9 +649,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <div className="bpm-home-stack">
       {/* One-time nudge to install to the home screen (mobile browser only). */}
       <InstallBanner />
-      {/* One-time nudge towards notifications: on in the store app, the app
-          itself from the web. Remembered on the device once seen through. */}
-      <PushNudge />
 
       {/* A CLUB WITH NO SESSION YET.
           `GET /api/session` answers 404 for a group with no pointer, which is
@@ -815,6 +832,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   )
               }
             />
+            {push?.state.status === 'on' && !heldForUnpaid && (
+              <p className="fs-sm m-0" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
+                <span className="material-icons icon-sm" aria-hidden>notifications</span>
+                {tPing('willPing')}
+              </p>
+            )}
             {courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             <PlusOneRow guest={myGuest} canAdd={canAddGuest && !heldForUnpaid} online={online} onChanged={() => void loadData()} />
@@ -976,6 +999,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           it took the nav slot Sign-Ups held. */}
       </section>
 
+
+      {push && (
+        <WaitlistPingSheet
+          kind={pingAsk}
+          onClose={closePingAsk}
+          onGetApp={() => { setPingAsk(null); setMigrateOpen(true); }}
+          push={push}
+        />
+      )}
+      {webApp && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
 
       <BottomSheet
         open={confirmingCancel}

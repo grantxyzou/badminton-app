@@ -90,7 +90,8 @@ that spans across two screen".
   which now glides down instead of across. The tabs sit at the BOTTOM of the
   strip — where the bottom bar's were (Apple: keep controls' relative positions
   across poses) and where a thumb holding the right half rests. The theme and
-  language buttons move into the top of the strip.
+  language buttons move into the top of the strip — and the Notifications
+  bell, which #769 added beside them while this was in review, stacks third.
 - **The strip widens the page padding on BOTH sides**, not just the right, so
   the panes' gap stays in the exact centre: the fold-without-detection rule
   from step 1 survives the asymmetry Apple warns about. The left side's extra
