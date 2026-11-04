@@ -23,8 +23,7 @@ import { useSignInMethods, methodsSummary } from './auth/useSignInMethods';
 import EmailSignInForm from './auth/EmailSignInForm';
 import EmailSignUpSheet from './auth/EmailSignUpSheet';
 import ForgotPasswordSheet from './auth/ForgotPasswordSheet';
-import PushSheet from './PushSheet';
-import { usePush } from '@/lib/usePush';
+import type { UsePushResult } from '@/lib/usePush';
 import { isStandalone } from '@/lib/standalone';
 import { isNative } from '@/lib/native';
 import PageHeader from './primitives/PageHeader';
@@ -80,6 +79,14 @@ interface Props {
    * the note on `EmailSignUpSheet`'s prop.
    */
   inviteToken?: string | null;
+  /**
+   * Push state, owned by HomeShell and shared with the Notifications page, so
+   * the row's On/Off and the page's switch cannot disagree. Absent (a test, or
+   * a render outside the shell) shows the row with no status — unknown, not Off.
+   */
+  push?: UsePushResult;
+  /** The row opens the Notifications page, which HomeShell owns. */
+  onOpenNotifications?: () => void;
 }
 
 export default function ProfileTab({
@@ -93,6 +100,8 @@ export default function ProfileTab({
   onJoinGroup,
   onCreateGroup,
   inviteToken,
+  push,
+  onOpenNotifications,
 }: Props) {
   const t = useTranslations('profile');
   const tGroups = useTranslations('groups');
@@ -174,7 +183,6 @@ export default function ProfileTab({
   const adminSignals = useAdminNeedsYou(showAdminRow);
   const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
-  const [pushOpen, setPushOpen] = useState(false);
   // Only offer "Add to Home Screen" when NOT already installed. Resolved
   // post-mount (display-mode/navigator.standalone are client-only); defaults
   // to false so the row shows in the browser, which is exactly when it helps.
@@ -185,9 +193,6 @@ export default function ProfileTab({
   const tNav = useTranslations('nav');
   const tPush = useTranslations('profile.push');
   const tDelete = useTranslations('profile.deleteAccount');
-  // Owned here (not in PushSheet) so the row's On/Off label and the sheet's
-  // button share one state and can't disagree after a toggle.
-  const push = usePush();
 
   // A layout effect, not an effect: the check is synchronous, and running it
   // after paint showed the "Add to Home Screen" row for a frame and then
@@ -693,7 +698,7 @@ export default function ProfileTab({
           icon: 'notifications',
           label: tSettings('notifications'),
           meta:
-            push.state.status === 'loading'
+            !push || push.state.status === 'loading'
               ? undefined
               : push.state.status === 'on'
               ? tPush('metaOn')
@@ -702,7 +707,7 @@ export default function ProfileTab({
                 : push.state.status === 'unsupported'
                   ? undefined
                   : tPush('metaOff'),
-          onClick: () => setPushOpen(true),
+          onClick: () => onOpenNotifications?.(),
         }]),
     ...(!installed
       ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
@@ -985,16 +990,6 @@ export default function ProfileTab({
         state={methodsState}
       />
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
-      <PushSheet
-        open={pushOpen}
-        onClose={() => setPushOpen(false)}
-        onOpenInstall={() => {
-          setPushOpen(false);
-          setInstallOpen(true);
-        }}
-        push={push}
-        isAdmin={isAdmin}
-      />
     </div>
   );
 }
