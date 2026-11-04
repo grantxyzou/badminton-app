@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A courtside scoreboard that splits at the fold (2026-11-04)
+
+Stats → Play → **Keep score** opens a scoreboard for a phone propped half-open on the bench: the score, in digits sized to be read from across the court, on the half that stands up; the +1 buttons, Undo, New game and Save on the half lying flat. It keeps score by the umpire's rules — game point, "20 all", "29 all · next point wins", the interval at 11, the server's dot — and Save hands the game to Add a game already filled in. The split lands on the fold itself: the store app asks the phone (`BpmFold`, in the next store build; the iPhone side needs Xcode 27.1), a browser that can say so is asked (Chrome on the Galaxy Z Fold today), and when nothing can, the middle of the screen — so on a flat phone it is simply a scoreboard with the score above the buttons. The screen stays awake while it is up. Plan: `docs/plans/foldable-layout.md`, step 3.
+
 ### Two panes on an unfolded foldable, nothing changed on a phone (2026-11-04)
 
 On iPhone Duo held open, a Galaxy Z Fold's inner screen or a tablet, Home now shows this week on the left and your account on the right, with the gap between them in the exact centre of the screen — where the fold is, so the crease never runs through a card, a banner or a button. The install and app nudges sit in the right pane above your balance; sheets and notices open in the right half. Held sideways, the tab bar moves to the right edge, as Apple's iPhone Duo guidance has it, with the theme and language buttons at the top of the strip; held upright, it stays at the bottom and spans both panes. The corner buttons and the tab bar keep clear of a side camera or side controls. On a single phone-sized screen, and on a desktop, the app is pixel-for-pixel what it was. The reasoning, after Apple's iPhone Duo design guidance, and the three steps still to come are `docs/plans/foldable-layout.md`.

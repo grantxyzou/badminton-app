@@ -33,6 +33,11 @@ no cleartext), `MainActivity.java` (notification channel), `strings.xml`.
 - Xcode.app is installed but the CLI points at Command Line Tools:
   `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
 - iOS uses **SPM**, not CocoaPods — nothing to install.
+- **Xcode 27.1 or later** since the fold plugin (`BpmFoldPlugin.swift`,
+  `docs/plans/foldable-layout.md`): it reads iPhone Duo's division reserved
+  region, which only the iOS 27 SDK declares. An older Xcode fails to build
+  the app target on that file; it is also the toolchain the Duo needs for the
+  app to use the whole display at all. The next store build gets both.
 - Android: install **Android Studio** (bundles JDK 21 and the SDK; Capacitor 8
   needs JDK 21). No Java or SDK is on this machine yet.
 

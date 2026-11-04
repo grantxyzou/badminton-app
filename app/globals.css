@@ -712,6 +712,10 @@ body {
      where the value is what the member is actively changing. Deliberately a
      big jump from --fs-stat-lg: anything closer would read as a stat tile. */
   --fs-stat-xl: 38px;
+  /* The courtside scoreboard's digits: read from the far side of a court off
+     a phone propped on the bench, so sized by the screen, not the type scale.
+     The one display size in the app that is not a fixed pixel. */
+  --court-digit: clamp(64px, 24vmin, 220px);
   /* Icon glyph-size ladder — token mirror of the .icon-xs..xl utility classes
      (below), so inline `.material-icons` styles use a token instead of a raw px.
      Same values as the classes; these exist for the inline-style call sites the
@@ -7535,6 +7539,156 @@ html:root .state-link:active { opacity: 0.6; }
   .ptr[data-settle="true"],
   .ptr-disc { transition: none; }
   .ptr[data-armed="true"] .ptr-disc { transform: none; }
+}
+
+/* ── Courtside scoreboard ──
+   docs/plans/foldable-layout.md, step 3 (components/stats/CourtsideScoreboard.tsx).
+   A fixed overlay split into two halves at the FOLD: the board on the half
+   that faces the court, the buttons on the half in the hand. The three sizes
+   (`--court-first`, `--court-gap`, `--court-second`) are measured by the
+   component from lib/fold.ts and set on the element; the axis says which way
+   the fold runs. Nothing is drawn on the fold. */
+.courtside {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  overscroll-behavior: contain;
+  touch-action: manipulation;
+}
+.courtside[data-axis='horizontal'] {
+  grid-template-rows: var(--court-first, 1fr) var(--court-gap, 0px) var(--court-second, 1fr);
+}
+.courtside[data-axis='vertical'] {
+  grid-template-columns: var(--court-first, 1fr) var(--court-gap, 0px) var(--court-second, 1fr);
+}
+.courtside-board,
+.courtside-controls {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: calc(var(--space-6) + env(safe-area-inset-top, 0px)) calc(var(--space-6) + env(safe-area-inset-right, 0px)) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)) calc(var(--space-6) + env(safe-area-inset-left, 0px));
+}
+.courtside-fold {
+  pointer-events: none;
+}
+.courtside-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: end;
+}
+.courtside-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.courtside-side-label {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+/* The server: a dot after the label, the umpire's way, not a colour alone. */
+.courtside-side[data-serving='true'] .courtside-side-label::after {
+  content: ' ●';
+  color: var(--accent);
+}
+.courtside-digit {
+  font-family: var(--font-mono);
+  font-size: var(--court-digit);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--duration-fast) var(--ease-glass);
+}
+.courtside-side[data-winner='true'] .courtside-digit {
+  color: var(--accent);
+}
+.courtside-status {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-stat-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-height: calc(var(--fs-stat-lg) * var(--lh-normal));
+}
+.courtside-status[data-interval='true'] {
+  color: var(--accent);
+}
+.courtside-points {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  flex: 1;
+  min-height: 0;
+}
+/* The two big targets: a whole half each, pressable like a card. */
+.courtside-point {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 120px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease-glass), background var(--duration-fast) var(--ease-glass);
+}
+.courtside-point:active {
+  transform: scale(0.98);
+  background: var(--press-bg);
+}
+.courtside-point:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.courtside-point-label {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.courtside-point-score {
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+/* Four actions: two by two on a phone, where four across wrapped "New game"
+   and "Save game" onto two lines; one row where the pane is wide enough. */
+.courtside-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+@media (min-width: 600px) {
+  .courtside-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.courtside-note {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .courtside-point,
+  .courtside-digit {
+    transition: none;
+  }
 }
 
 /* ── Foldables: the two panes ──
