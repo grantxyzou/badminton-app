@@ -1,7 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/j/[token]/route';
-import { invitePath, isInviteToken, tokenFromInvitePath, INVITE_LINK_SEGMENT } from '@/lib/inviteLink';
+import { GET as SIGNUP_GET } from '@/app/s/route';
+import {
+  invitePath,
+  isInviteToken,
+  isSignupPath,
+  signupLanding,
+  signupPath,
+  tokenFromInvitePath,
+  INVITE_LINK_SEGMENT,
+} from '@/lib/inviteLink';
+import { buildSignupShare } from '@/lib/signupShare';
 import { inviteUrl } from '@/lib/useInvites';
 
 /**
@@ -71,5 +81,34 @@ describe('GET /bpm/j/<token> on the website', () => {
       expect(location).toBe(`/bpm?join=${'0'.repeat(32)}`);
       expect(location).not.toContain(bad);
     }
+  });
+});
+
+describe('the sign-up link, /bpm/s', () => {
+  it('is its own exact path, never a prefix of anything else', () => {
+    expect(signupPath('/bpm')).toBe('/bpm/s');
+    expect(isSignupPath('/bpm/s', '/bpm')).toBe(true);
+    expect(isSignupPath('/bpm/s/', '/bpm')).toBe(true);
+    expect(isSignupPath('/bpm/sw.js', '/bpm')).toBe(false);
+    expect(isSignupPath('/bpm/settings', '/bpm')).toBe(false);
+    expect(isSignupPath('/bpm', '/bpm')).toBe(false);
+  });
+
+  it('lands on Home, where this week is', () => {
+    expect(signupLanding('/bpm')).toBe('/bpm?tab=home');
+  });
+
+  it('on the website it sends the browser to Home, carrying nothing', async () => {
+    const res = await SIGNUP_GET();
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('/bpm?tab=home');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('is what the weekly sign-up message carries', () => {
+    const { url, text } = buildSignupShare({ groupName: 'BPM Core' });
+    expect(url).toMatch(/\/bpm\/s$|\/s$/);
+    expect(text).toContain(url);
+    expect(text.split(url).length - 1).toBe(1);
   });
 });

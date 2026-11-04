@@ -6,7 +6,7 @@ import { rememberReturnCode } from '@/lib/handoffClient';
 import { routeInApp } from '@/lib/inAppNavigate';
 import { openShortcut } from '@/lib/appShortcuts';
 import { widgetOpenTarget, syncWidgetPass } from '@/lib/widgetBridge';
-import { invitePath, tokenFromInvitePath } from '@/lib/inviteLink';
+import { invitePath, isSignupPath, signupLanding, tokenFromInvitePath } from '@/lib/inviteLink';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const HOST = 'bpm.grantzou.com';
@@ -155,10 +155,10 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
               }
               return;
             }
-            // Universal / App Link. Only our host, and only the two paths the
-            // app claims (the AASA and the Android filter name the same two):
-            // the migration link and the one invite link. A link to anything
-            // else is not an instruction.
+            // Universal / App Link. Only our host, and only the paths the app
+            // claims (the AASA and the Android filter name the same three):
+            // the migration link, the one invite link and the sign-up link. A
+            // link to anything else is not an instruction.
             if (u.host !== HOST) return;
             if (u.pathname === `${BASE}/migrate`) {
               window.location.assign(`${BASE}/migrate${u.search}`);
@@ -171,6 +171,14 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
             const invite = tokenFromInvitePath(u.pathname, BASE);
             if (invite) {
               window.location.assign(invitePath(invite, BASE));
+              resume();
+              return;
+            }
+            // `/bpm/s`, the weekly sign-up link: Home, in place when the app is
+            // already on its root, by a load otherwise.
+            if (isSignupPath(u.pathname, BASE)) {
+              const target = signupLanding(BASE);
+              if (!routeInApp(target)) window.location.assign(target);
               resume();
             }
           }),

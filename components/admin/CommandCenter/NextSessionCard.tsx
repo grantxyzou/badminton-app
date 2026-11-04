@@ -5,6 +5,7 @@ import { fmtSessionLabel as fmtDate, fmtDeadline, fmtTime } from '@/lib/fmt';
 import { shareSignup } from '@/lib/signupShare';
 import { shareTextOrCopy } from '@/lib/shareText';
 import { formatRosterText } from '@/lib/rosterText';
+import { signupPath } from '@/lib/inviteLink';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { useClubRun } from '@/lib/useClubRun';
 import { courtLine } from '@/lib/clubRun';
@@ -135,7 +136,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // stays the broadcast and the app stays the one list.
   const shareList = useCallback(async () => {
     if (typeof window === 'undefined' || !session) return;
-    const link = `${window.location.origin}${BASE}`;
+    // The sign-up link (lib/inviteLink.ts), so a member tapping it in the chat
+    // lands in the app on this week's session.
+    const link = `${window.location.origin}${signupPath(BASE)}`;
     const outcome = await shareTextOrCopy({
       title: group?.name ?? 'Sign-up list',
       text: formatRosterText({

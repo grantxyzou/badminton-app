@@ -225,7 +225,7 @@ describe('ios/', () => {
 describe('android/', () => {
   const manifest = read('android', 'app', 'src', 'main', 'AndroidManifest.xml');
 
-  it('registers the bpm:// scheme and the App Links for /bpm/migrate and /bpm/j/ only', () => {
+  it('registers the bpm:// scheme and the App Links for /bpm/migrate, /bpm/j/ and /bpm/s only', () => {
     expect(read('android', 'app', 'src', 'main', 'res', 'values', 'strings.xml')).toContain(
       '<string name="custom_url_scheme">bpm</string>',
     );
@@ -234,6 +234,9 @@ describe('android/', () => {
     expect(appLink).toContain('android:host="bpm.grantzou.com"');
     expect(appLink).toContain('android:pathPrefix="/bpm/migrate"');
     expect(appLink).toContain('android:pathPrefix="/bpm/j/"');
+    // EXACT, not a prefix: `/bpm/s` as a prefix would also claim `/bpm/sw.js`.
+    expect(appLink).toContain('android:path="/bpm/s"');
+    expect(appLink).not.toContain('android:pathPrefix="/bpm/s"');
     expect(appLink).toContain('android:scheme="https"');
     // Narrow on purpose: nothing else, and never a bare /bpm, which would pull
     // the sign-in finishing pages into the app.
@@ -334,8 +337,8 @@ describe('the links the app claims', () => {
     expect(aasa.webcredentials.apps).toEqual(['TEAMID.com.motioncraft.bpm']);
   });
 
-  it('claims the migration link and the one invite link, and nothing else', () => {
-    expect(claimed.sort()).toEqual(['/bpm/j/*', '/bpm/migrate', '/bpm/migrate?*']);
+  it('claims the migration link, the one invite link and the sign-up link, and nothing else', () => {
+    expect(claimed.sort()).toEqual(['/bpm/j/*', '/bpm/migrate', '/bpm/migrate?*', '/bpm/s']);
   });
 
   it('never claims the sign-in finishing pages, the API or the legal pages', () => {
@@ -351,6 +354,7 @@ describe('the links the app claims', () => {
     const bridge = read('components', 'NativeBridge.tsx');
     expect(bridge).toContain('u.pathname === `${BASE}/migrate`');
     expect(bridge).toContain('tokenFromInvitePath(u.pathname, BASE)');
+    expect(bridge).toContain('isSignupPath(u.pathname, BASE)');
     expect(bridge).toContain("from '@/lib/inviteLink'");
     expect(read('lib', 'inviteLink.ts')).toContain("export const INVITE_LINK_SEGMENT = '/j/';");
   });

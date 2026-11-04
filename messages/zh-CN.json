@@ -2140,7 +2140,7 @@
     "noClub": {
       "yourClubs": "这台设备上你还没有进入任何群组。选一个你的群组，或者再建一个。",
       "create": "创建群组",
-      "join": "用链接或邀请码加入",
+      "join": "我有邀请",
       "signOut": "退出登录"
     },
     "tagline": "但愿无事能打球",
@@ -2160,12 +2160,12 @@
     },
     "signup": {
       "title": "注册",
-      "body": "%APP_SHORT% 是一款羽毛球群组管理应用，目前在测试阶段，仅限受邀加入。粘贴你收到的链接，或输入邀请码。",
-      "codeLabel": "邀请链接或邀请码",
-      "codePlaceholder": "链接或 8 位邀请码",
+      "body": "%APP_SHORT% 是一款羽毛球群组管理应用，目前在测试阶段，仅限受邀加入。点开你收到的邀请链接，就能直接进入。收到的是邀请码？在下面输入。",
+      "codeLabel": "邀请码",
+      "codePlaceholder": "8 位邀请码",
       "continue": "继续",
       "checking": "检查中…",
-      "notFound": "这个链接或邀请码无效。找邀请你的人要一个新的。",
+      "notFound": "这个邀请码无效。找邀请你的人要一个新的。",
       "failed": "检查失败，再试一次。",
       "noInvite": "没有邀请？让群组里的人把链接发给你。",
       "createInstead": "没有邀请？创建自己的群组",
@@ -2180,8 +2180,8 @@
     "lead": "把每周的球局安排好。创建自己的群组，或用邀请加入一个。",
     "createDoor": "创建群组",
     "createDoorHint": "由你来组织：场地、费用、名单都你定。",
-    "joinDoor": "用链接或邀请码加入",
-    "joinDoorHint": "有人给你发了邀请。",
+    "joinDoor": "我有邀请",
+    "joinDoorHint": "点开收到的链接，或输入邀请码。",
     "existingDoor": "我已经有账号",
     "existingDoorHint": "用名字、邮箱或 Google 登录。",
     "create": {
@@ -2218,9 +2218,9 @@
       "crumb": "开始使用",
       "backLabel": "返回起始页",
       "title": "加入群组",
-      "subtitle": "粘贴收到的链接，或输入邀请码。",
-      "codeLabel": "邀请链接或邀请码",
-      "codePlaceholder": "链接或 8 位邀请码",
+      "subtitle": "点开你收到的邀请链接，就能直接进入。收到的是邀请码？在下面输入。",
+      "codeLabel": "邀请码",
+      "codePlaceholder": "8 位邀请码",
       "check": "继续",
       "checking": "检查中…",
       "foundTitle": "加入 {name}？",
@@ -2230,7 +2230,7 @@
       "confirm": "加入 {name}",
       "joining": "加入中…",
       "joined": "已加入",
-      "notFound": "这个链接或邀请码无效。找邀请你的人要一个新的。",
+      "notFound": "这个邀请码无效。找邀请你的人要一个新的。",
       "nameTaken": "这个群组里已经有人用这个名字，换一个。",
       "failed": "加入失败，再试一次。"
     }
