@@ -2656,6 +2656,10 @@ html:root .ink-button {
      elements — extends on notched devices via env(). README's
      production guidance: padding-bottom on the container. */
   padding-bottom: max(var(--home-group-gap), env(safe-area-inset-bottom, 0px));
+  /* The larger side inset on BOTH sides, so the four tabs stay centred and
+     the middle of the bar (between tabs 2 and 3) stays on a fold.
+     Portrait phones report 0. */
+  padding-inline: max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
 }
 
 .rail-tab {
@@ -3724,8 +3728,11 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   box-shadow: var(--glass-shadow);
 }
 
-.theme-toggle { right: 16px; }
-.lang-toggle  { right: 60px; }
+/* Plus the side inset: a phone held sideways, and iPhone Duo, whose camera
+   and system controls sit on the right edge. Portrait phones report 0, so
+   nothing moves there (docs/plans/foldable-layout.md). */
+.theme-toggle { right: calc(16px + env(safe-area-inset-right, 0px)); }
+.lang-toggle  { right: calc(60px + env(safe-area-inset-right, 0px)); }
 
 @media (hover: hover) {
   .theme-toggle:hover,
@@ -5610,6 +5617,85 @@ html[data-tab="stringing"] .cc-mini-card {
   display: flex;
   flex-direction: column;
   gap: var(--home-stack-gap);
+}
+
+/* ── Foldables: two panes on a big touch screen ──
+   docs/plans/foldable-layout.md, after Apple's "Designing for iPhone Duo"
+   (2026-09-09). On ONE phone-sized screen nothing here applies: the page is
+   the same 512px column it always was.
+
+   On an unfolded foldable (iPhone Duo held open, Galaxy Z Fold's inner
+   screen, a tablet) Home's two groups sit side by side — this week on the
+   left, your account on the right — and a sheet opens in the right half.
+   The gap between the panes is in the EXACT centre of the screen, which is
+   where every fold is. So the crease always lands in the gap, even on a
+   browser that cannot tell us where the fold is (Safari, without its flag).
+   Two panes is also Apple's "even number of columns" rule for grids.
+
+   Who gets two panes: a TOUCH screen at least 720 wide and 480 tall — wide
+   enough for two ~330px phone columns. Phones held sideways are too short;
+   desktops have a mouse; iPhone Duo's outer screen (382 or 594 wide) and the
+   inner one held upright (669, its fold runs across, not down) stay one
+   column. Or any browser that reports two side-by-side screen segments.
+
+   Side padding uses the larger side inset on BOTH sides, so the column's
+   centre stays the screen's centre when one edge carries system controls. */
+:root {
+  --fold-gap: var(--space-9);
+  --shell-pad-x: max(var(--space-5), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  --panes-max-w: calc(64rem + var(--fold-gap) + 2 * var(--shell-pad-x));
+}
+main[data-page-shell] {
+  padding-inline: var(--shell-pad-x);
+}
+@media (min-width: 720px) and (min-height: 480px) and (pointer: coarse),
+       (horizontal-viewport-segments: 2) {
+  :root {
+    /* The sheet fills the right half, short of the gap — still one token. */
+    --sheet-max-w: min(32rem, calc(50vw - var(--fold-gap) / 2 - var(--shell-pad-x)));
+  }
+  /* Home only: the other tabs keep their single column. */
+  main[data-page-shell]:has(> [data-tab-panel='home']:not([hidden])) {
+    max-width: var(--panes-max-w);
+  }
+  .bpm-home-stack {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--fold-gap);
+    row-gap: var(--home-group-gap);
+    align-items: start;
+  }
+  /* The install and push nudges are a header, not a pane. */
+  .bpm-home-stack > :not(.bpm-home-group) {
+    grid-column: 1 / -1;
+  }
+  /* The tab bar spans both panes, on every tab, so it does not change width
+     as you switch. Four tabs: the middle of the bar, between Stringing and
+     Stats, is still the fold. */
+  .rail-bar {
+    max-width: var(--panes-max-w);
+  }
+  /* Home's loading frame is the left pane's cards: draw it that wide. */
+  .bpm-home-skeleton {
+    max-width: calc((100% - var(--fold-gap)) / 2);
+  }
+  /* A sheet opens in the right half, beside the pane it came from (Apple's
+     Mail: list and message side by side), never across the fold. */
+  .bottom-sheet {
+    margin-left: calc(50vw + var(--fold-gap) / 2);
+    margin-right: auto;
+  }
+}
+/* Where the browser knows the fold's real width, the gap is at least that
+   plus a margin either side. (Viewport Segments API: Chrome; Safari 27.1
+   behind a flag.) */
+@media (horizontal-viewport-segments: 2) {
+  :root {
+    --fold-gap: max(
+      var(--space-9),
+      calc(env(viewport-segment-left 1 0, 0px) - env(viewport-segment-right 0 0, 0px) + var(--space-7))
+    );
+  }
 }
 
 /* A row that acts as a link — label left, arrow right, full width.

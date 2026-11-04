@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Two panes on an unfolded foldable, nothing changed on a phone (2026-11-04)
+
+On iPhone Duo held open, a Galaxy Z Fold's inner screen or a tablet, Home now shows this week on the left and your account on the right, with the gap between them in the exact centre of the screen — where the fold is, so the crease never runs through a card or a button. Sheets open in the right half instead of across the fold, and the tab bar spans both panes. The corner buttons and the tab bar keep clear of a side camera or side controls. On a single phone-sized screen, and on a desktop, the app is pixel-for-pixel what it was. The reasoning, after Apple's iPhone Duo design guidance, and the three steps still to come are `docs/plans/foldable-layout.md`.
+
 ### Three new ways to check the racket fit engine, none of them an expert's evening (2026-11-04)
 
 The fit engine's gate waited on the owner and the club stringer rating profiles (stuck at three of five) and on two engaged members in a club of thirty. `docs/plans/racket-fit-engine.md` gains three legs that need nobody's time: an **owned-racket backtest** (`GET /api/reports/fit-backtest`, behind the read-only reports key) that hides each member's racket, re-runs the engine and scores the class of the pick against the class of what they hold, totals only; a **property suite** that turns every rule in the engine's own header into a check over every racket in the catalog; and the **manufacturers' second opinion**, four golden cases built from the brands' own series positioning, counted apart from the expert ones. The engine (`fit-4`) passes all of it. The backtest's first read on production is the plan's next review.
