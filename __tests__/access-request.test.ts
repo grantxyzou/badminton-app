@@ -1,4 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const sendPushToMembers = vi.fn();
+vi.mock('@/lib/push', () => ({
+  sendPushToMembers: (...args: unknown[]) => sendPushToMembers(...args),
+}));
 import { POST as REQUEST } from '../app/api/members/access-request/route';
 import { POST as CLAIM } from '../app/api/members/access-request/claim/route';
 import { GET as LIST, POST as DECIDE } from '../app/api/admin/access-requests/route';
@@ -320,19 +325,21 @@ describe('the claim route does not say whether a name exists', () => {
 });
 
 describe('the push goes to the club’s admins only', () => {
-  it('reads the asking club’s roster, never a deployment-wide admin scan', async () => {
-    // The old `SELECT … WHERE c.role = 'admin'` reached every admin of every
-    // club (and, under the mock, every member). The recipients now come from
-    // the club's roster; who exactly receives it is held behaviourally in
-    // __tests__/group-claim-link.test.ts.
+  it('pushes the admins and never the rest of the club, with groups off', async () => {
+    // With groups off the roster is a members scan the mock store answers
+    // with every active row, so the admin filter is all that keeps one
+    // person's lockout from reaching the whole club.
     seedMember('Lin');
     seedMember('Viktor');
+    sendPushToMembers.mockReset();
     const res = await REQUEST(req({ name: 'Lin' }));
     expect(res.status).toBe(200);
-    const src = await import('node:fs').then((fs) =>
-      fs.readFileSync('app/api/members/access-request/route.ts', 'utf8'),
-    );
-    expect(src).toMatch(/rosterMembers\(groupId\)/);
-    expect(src).not.toMatch(/c\.role = 'admin'/);
+    expect(sendPushToMembers).toHaveBeenCalledTimes(1);
+    const ids = sendPushToMembers.mock.calls[0][0] as string[];
+    const admins = (getStore()['members'] as Member[]).filter((m) => m.role === 'admin').map((m) => m.id);
+    expect(ids.length).toBeGreaterThan(0);
+    expect([...ids].sort()).toEqual([...admins].sort());
+    expect(ids).not.toContain(stored('Lin').id);
+    expect(ids).not.toContain(stored('Viktor').id);
   });
 });
