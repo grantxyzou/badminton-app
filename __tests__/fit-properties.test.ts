@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  recommendFit, buildTarget, axesOf, scoreFit, compareFit, sideBalance, goalDelta, comfortTensionDeltaLb,
+  recommendFit, buildTarget, axesOf, scoreFit, compareFit, sideBalance, prefBalance, goalDelta, comfortTensionDeltaLb,
   isScorable, canon, GOAL_DELTA, SLOW_SWING_POWER_DELTA, type FitInput,
 } from '../lib/racketFit';
 import { isOffered } from '../lib/catalogOffer';
@@ -233,6 +233,74 @@ describe('fit-4: the side of a mixed court', () => {
       const t = buildTarget(anchored(anchor, { goal: 'happy', swing: 'medium', courtSide: 'front' }), ax);
       expect(t.balance, `${anchor.id}: the side overrode the anchor`).toBe(ax.balance);
     }
+  });
+});
+
+describe('fit-5: what the first production backtest asked for', () => {
+  const BAL = { 'Head-light': 1, Even: 2, 'Head-heavy': 3 } as const;
+
+  it('a balance answer sets the unanchored start, ahead of the court side; the goal still moves it', () => {
+    for (const [word, axis] of Object.entries(BAL)) {
+      const t = buildTarget(input({ goal: 'happy', swing: 'medium', level: 'Intermediate', balancePref: word as keyof typeof BAL }), null);
+      expect(t.balance, word).toBe(axis);
+      // Said head-light AND plays the back of a mixed court: the answer wins over the inference.
+      const back = buildTarget(input({ goal: 'happy', swing: 'fast', courtSide: 'back', balancePref: word as keyof typeof BAL }), null);
+      expect(back.balance, `${word} on the back court`).toBe(axis);
+    }
+    // "Even, and I want more power" steps toward the head, as it does from an even anchor.
+    const power = buildTarget(input({ goal: 'more_power', swing: 'fast', balancePref: 'Even' }), null);
+    expect(power.balance).toBe(3);
+    // An arm that is often sore caps a head-heavy answer at even — the start never aims past the ceiling.
+    expect(prefBalance({ balancePref: 'Head-heavy', armComfort: 'often_sore' })).toBe(2);
+    expect(prefBalance({ balancePref: 'Head-light', armComfort: 'often_sore' })).toBe(1);
+    expect(prefBalance({ balancePref: null })).toBeNull();
+    expect(prefBalance({ balancePref: 'Sideways' as never })).toBeNull();
+  });
+
+  it('with an anchor the balance answer is not read: the racket they play is the evidence', () => {
+    for (const anchor of scorable.slice(0, 25)) {
+      const ax = axesOf(anchor)!;
+      for (const word of Object.keys(BAL) as Array<keyof typeof BAL>) {
+        const t = buildTarget(anchored(anchor, { goal: 'happy', swing: 'medium', balancePref: word }), ax);
+        expect(t.balance, `${anchor.id} / ${word}`).toBe(ax.balance);
+      }
+    }
+  });
+
+  it('unanchored, the price tier never moves a score; anchored, it still does', () => {
+    for (const level of [null, 'Beginner', 'Intermediate', 'Advanced'] as const) {
+      const inp = input({ goal: 'happy', swing: 'medium', level });
+      const t = buildTarget(inp, null);
+      for (const item of scorable.slice(0, 30)) {
+        const ax = axesOf(item)!;
+        const a = scoreFit(item, ax, t, inp, null);
+        const other = scoreFit(item, { ...ax, tier: ax.tier === 3 ? 1 : 3 }, t, inp, null);
+        expect(other.penalty, `${item.id} at ${level ?? 'no level'}: the tier moved the penalty unanchored`).toBe(a.penalty);
+      }
+    }
+    const anchor = scorable[0];
+    const ax = axesOf(anchor)!;
+    const inp = anchored(anchor, { goal: 'happy', swing: 'medium', level: 'Intermediate' });
+    const t = buildTarget(inp, ax);
+    const same = scoreFit(anchor, ax, t, inp, ax);
+    const moved = scoreFit(anchor, { ...ax, tier: ax.tier === 3 ? 1 : 3 }, t, inp, ax);
+    expect(moved.penalty).toBeGreaterThan(same.penalty);
+  });
+
+  it('with no balance answer and no side, the ranking is what fit-4 gave (only the tier term left)', () => {
+    // Same input, fixed catalog: removing a term that was constant across
+    // frames of one tier cannot reorder frames of that tier among themselves.
+    const inp = input({ goal: 'happy', swing: 'medium', level: 'Advanced' });
+    const t = buildTarget(inp, null);
+    const premium = scorable.filter((r) => axesOf(r)!.tier === 3);
+    const scored = premium.map((r) => scoreFit(r, axesOf(r)!, t, inp, null));
+    const byPenalty = [...scored].sort((a, b) => a.penalty - b.penalty).map((s) => s.item.id);
+    // Penalty order equals the order of the three remaining axes' distances.
+    const byAxes = [...premium].sort((a, b) => {
+      const d = (r: CatalogItem) => { const x = axesOf(r)!; return 22 * Math.abs(x.balance - t.balance) + 12 * Math.abs(x.flex - t.flex) + 1.2 * Math.min(Math.abs((x.weight ?? t.weight) - t.weight), 10); };
+      return d(a) - d(b);
+    }).map((r) => r.id);
+    expect(byPenalty).toEqual(byAxes);
   });
 });
 

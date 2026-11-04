@@ -4,7 +4,7 @@ import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { verifyMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, FIT_PLAY_STYLES, FIT_SORENESS, FIT_LEVEL_OPTIONS, type PlayerGear, type GearItem, type EquipmentCategory, type RacketFeel } from '@/lib/types';
+import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, FIT_PLAY_STYLES, FIT_SORENESS, FIT_LEVEL_OPTIONS, FEEL_BALANCES, type PlayerGear, type GearItem, type EquipmentCategory, type RacketFeel } from '@/lib/types';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
 import { parseFeel, hasFeel } from '@/lib/racketFeel';
@@ -46,6 +46,7 @@ const PREF_WRITES_PER_HOUR = 60;
 const FIT_ENUMS = {
   fitGoal: FIT_GOALS, fitSwing: FIT_SWINGS, fitArmComfort: FIT_ARM_COMFORTS, fitGrip: FIT_GRIPS,
   fitPlayStyle: FIT_PLAY_STYLES, fitSoreness: FIT_SORENESS, fitLevelOverride: FIT_LEVEL_OPTIONS,
+  fitBalance: FEEL_BALANCES,
 } as const;
 const HOUR_MS = 60 * 60 * 1000;
 const VALID_CATEGORIES = new Set<EquipmentCategory>(['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip']);
@@ -107,6 +108,7 @@ async function writeGearDoc(memberId: string, prior: StoredGear | undefined, nex
     fitPlayStyle: 'fitPlayStyle' in next ? next.fitPlayStyle : prior?.fitPlayStyle,
     fitSoreness: 'fitSoreness' in next ? next.fitSoreness : prior?.fitSoreness,
     fitLevelOverride: 'fitLevelOverride' in next ? next.fitLevelOverride : prior?.fitLevelOverride,
+    fitBalance: 'fitBalance' in next ? next.fitBalance : prior?.fitBalance,
     fitOvergrips: 'fitOvergrips' in next ? next.fitOvergrips : prior?.fitOvergrips,
     stringBudgetMaxCad: 'stringBudgetMaxCad' in next ? next.stringBudgetMaxCad : prior?.stringBudgetMaxCad,
     fitUpdatedAt: 'fitUpdatedAt' in next ? next.fitUpdatedAt : prior?.fitUpdatedAt,

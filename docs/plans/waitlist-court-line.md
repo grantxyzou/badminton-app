@@ -1,7 +1,7 @@
 # Show how close the waitlist is to filling another court
 
 **Track:** admin cost-automation (North Star pillar 3). Deciding whether to book another court is the one waitlist step still done by hand and by asking around.
-**Status:** intent (decided 2026-11-04, ready to build)
+**Status:** in-flight (built 2026-11-04)
 **Review on:** 2026-12-09 — since ship, how many sessions had their court count raised after the line showed "a court's worth"? None, while waitlists stayed long = the line isn't helping the decision; remove it.
 
 ## Problem
@@ -32,12 +32,14 @@ Courts and the player cap are separate fields on a session (`Session.courts`, `S
 - **Everyone sees it, framed as a possibility** (Grant, 2026-11-04: "everyone should see the idea of court can be added if sign up fills up early"). It goes on the members' sign-up card in the FULL and WAITLIST states, and on the admin's Next session card. For members it describes what could happen, never a promise: "Filled up early? Another court can be added. 3 more on the waitlist would fill one." This beat admin-only, which would have kept the asking going: members can't see the rule, so they ask Grant.
 - **6 per court for BPM Core** (Grant, 2026-11-04: "6 per court yes"). It comes from `maxPlayers ÷ courts` (12 ÷ 2), so no club setting changes and BPM's cap is still typed by hand. Setting `playersPerCourt` instead would have made the cap follow the courts in both session forms, a change to how Grant enters a session that he didn't ask for. A club with `playersPerCourt` set (Six Feathers: 8) uses that.
 - **No admin push** when the waitlist reaches a court's worth, for now. Revisit only if the line goes unseen.
+- **Confirmed players see it too, once the session is full** (2026-11-04, while building it). "Everyone" includes the people already in, who are the ones who might bring a friend. The line shows in the signed-up state only when the session is full, and in the full and waitlist states always, until play starts.
+- **Hidden until the club's settings are known** (the `useClubRun()` rule): an unknown setting could count a court wrong.
 
 ## Shape
 
 | Piece | File |
 |---|---|
-| Players per court, and the line's numbers (pure, tested) | `lib/clubRun.ts` (beside `capacityForCourts`) |
+| Players per court, and the line's numbers (pure, tested in `__tests__/club-run.test.ts`) | `playersPerCourtFor` and `courtLine` in `lib/clubRun.ts` |
 | Admin line | `components/admin/CommandCenter/NextSessionCard.tsx` |
-| Member line | `components/HomeTab.tsx` (full and waitlist states) |
+| Member line | `components/home/CourtLine.tsx`, placed in `components/HomeTab.tsx` (signed-up when full, full, and waitlist states) |
 | Copy | `messages/en.json`, `messages/zh-CN.json` (member line; admin screens are English-only by decision) |

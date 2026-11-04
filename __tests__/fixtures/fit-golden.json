@@ -5,7 +5,7 @@
     "pending": "A case with `pending: true` is a DRAFT nobody has rated: the harness prints the engine's current top three beside its `acceptable` list for the owner and the stringer to confirm or correct, and asserts nothing about agreement. It does not count toward the kill criterion's five. Flip `pending` off and set `ratedBy` / `ratedAt` once a person has confirmed it.",
     "manufacturer": "A case with `rater: 'manufacturer'` is a SECOND OPINION, not expert truth: the brand's own series positioning (Yonex: Astrox = power / head-heavy, Nanoflare = speed / head-light, Arcsaber = control / even; Victor: Thruster = power, Auraspeed = speed, DriveX = all-round; Li-Ning: Axforce = power, Bladex = speed, Halbertec = control) turned into the acceptable set for a player type the brand describes. Marketing, so it is counted apart from the owner's and the stringer's cases and never toward the kill criterion's five; it is asserted like them because a disagreement with every brand at once is worth a red test."
   },
-  "engineVersion": "fit-4",
+  "engineVersion": "fit-5",
   "catalog": "scripts/data/equipment-catalog.json",
   "cases": [
     {

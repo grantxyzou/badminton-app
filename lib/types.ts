@@ -858,6 +858,10 @@ export interface PlayerGear {
   fitGoal?: FitGoal;
   /** Swing speed / hitting feel. Sets the flex CEILING — the injury axis. */
   fitSwing?: FitSwing;
+  /** fit-5: the balance a member with NO racket to anchor on asked for, in
+   *  the same words a typed-in racket's feel uses. Read only unanchored; the
+   *  page asks it only while nothing in the bag can anchor. */
+  fitBalance?: FeelBalance;
   /** HEALTH-ADJACENT. Optional, deletable via `PATCH null`, disclosed in
    *  `legal.privacy`, STRIPPED from the public gear GET for anyone but the
    *  owner or an admin, and purged with the doc (`lib/memberPurge.ts`). */

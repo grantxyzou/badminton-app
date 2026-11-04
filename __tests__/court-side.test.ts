@@ -51,7 +51,7 @@ describe('which side, and when it counts', () => {
 });
 
 describe('the racket pick', () => {
-  it('is versioned', () => expect(FIT_ENGINE_VERSION).toBe('fit-4'));
+  it('is versioned', () => expect(FIT_ENGINE_VERSION).toBe('fit-5'));
 
   it('starts a front-court player head-light and a back-court player head-heavy', () => {
     expect(buildTarget(input({ courtSide: 'front' }), null).balance).toBe(1);
