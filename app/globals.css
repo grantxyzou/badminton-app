@@ -6184,8 +6184,10 @@ html:root .swipe-row {
   gap: var(--space-4);
   width: 100%;
   padding: 0 0 var(--space-4);
+  /* Lines are set apart by space, not a hairline (fill-only / no hard
+     dividers, 2026-11-04). The dashed underline of an EMPTY slot below
+     stays: it marks an absence, not a row boundary. */
   border: none;
-  border-bottom: 1px solid var(--divider);
   background: transparent;
   text-align: left;
   font: inherit;
@@ -6193,7 +6195,7 @@ html:root .swipe-row {
 }
 button.setup-line { cursor: pointer; }
 button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
-.setup-line:last-child { border-bottom: none; padding-bottom: 0; }
+.setup-line:last-child { padding-bottom: 0; }
 .setup-line--blank { border-bottom: 1px dashed var(--divider-dashed); }
 .setup-line--blank:last-child { border-bottom: 1px dashed var(--divider-dashed); padding-bottom: var(--space-4); }
 /* The tappable part of a line that ALSO holds its own control (the empty
@@ -6373,12 +6375,12 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   min-height: 44px;
   border-radius: var(--radius-sm);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   color: var(--text-secondary);
   cursor: pointer;
   transition: transform 100ms var(--ease-glass);
 }
-.tension-field-step--up { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--accent); }
+.tension-field-step--up { background: var(--highlight-green); color: var(--accent); }
 .tension-field-step:active { transform: scale(0.97); }
 .tension-field-step:disabled { opacity: 0.5; pointer-events: none; }
 .tension-field-box {
@@ -6430,7 +6432,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   height: 20px;
   border-radius: var(--radius-sm);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   overflow: hidden;
 }
 .tension-ruler-rated { position: absolute; top: 0; bottom: 0; background: var(--inner-card-border); transition: left var(--duration-sheet) var(--ease-sheet), width var(--duration-sheet) var(--ease-sheet); }
@@ -6509,7 +6511,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   text-align: left;
   font: inherit;
   font-size: var(--fs-md);
@@ -6517,7 +6519,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
 }
 button.setup-action { cursor: pointer; }
 button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
-.setup-action--current { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--text-primary); }
+.setup-action--current { background: var(--highlight-green); color: var(--text-primary); }
 .setup-action-label { flex: 1; min-width: 0; }
 
 /* "Share more about this racket": the typed racket's feel questions, folded
@@ -6527,7 +6529,7 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .setup-feel-share-toggle {
   display: flex;
@@ -6555,7 +6557,9 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  /* A pressable CHOICE chip is fill-only like a tile; a label chip that is
+     not a control (Home's "Focus drill" row) keeps its rim. */
+  border: 1px solid transparent;
   color: var(--text-primary);
   font: inherit;
   font-size: var(--fs-base);
@@ -6564,7 +6568,7 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 .setup-feel-chip[aria-pressed="true"],
 .setup-feel-chip[aria-checked="true"] {
   background: var(--highlight-green);
-  border-color: var(--accent);
+  color: var(--accent);
   font-weight: 600;
 }
 .setup-feel-chip:disabled { opacity: 0.5; pointer-events: none; }
@@ -6716,7 +6720,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--highlight-green);
-  border: 1px solid var(--segment-active-bg);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .fit-callout-label { font-size: var(--fs-base); color: var(--text-secondary); }
 .fit-callout-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 600; color: var(--accent); }
@@ -6729,7 +6733,6 @@ a.setup-price-row:active { background: var(--press-bg); }
   justify-content: space-between;
   gap: var(--space-2);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--divider);
 }
 .fit-tag {
   padding: var(--space-1) var(--space-3);
@@ -6743,7 +6746,10 @@ a.setup-price-row:active { background: var(--press-bg); }
 
 .fit-questions { display: flex; flex-direction: column; gap: var(--space-5); }
 .fit-group { display: flex; flex-direction: column; gap: var(--space-3); }
-.fit-group + .fit-group { padding-top: var(--space-5); border-top: 1px solid var(--divider); }
+/* Questions are set apart by space alone — a section rung between them,
+   no hairline (the "no hard divider lines" rule; Home separates its groups
+   the same way). */
+.fit-group + .fit-group { padding-top: var(--space-5); }
 .fit-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .fit-q-label { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .fit-q-hint { font-size: var(--fs-xs); color: var(--text-muted); }
@@ -6971,18 +6977,21 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  /* Fill-only, as every container on Home and Stats is (Grant, 2026-11-04:
+     "no outer stroke border on most UIs"; the Stringing rule at
+     `.cc-mini-card` is the same call). Transparent rather than none, so
+     the tile keeps its size. The selected tile is a solid tint and accent
+     text — the Level pill's own treatment — never a rim or a ring. */
+  border: 1px solid transparent;
   color: var(--text-secondary);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-tile:active { transform: scale(0.97); }
 .fit-tile[aria-checked="true"] {
   background: var(--highlight-green);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--highlight-green);
   color: var(--accent);
 }
 .fit-tile:disabled { opacity: 0.5; pointer-events: none; }
@@ -7018,7 +7027,7 @@ a.setup-price-row:active { background: var(--press-bg); }
 .kudos-tally-n { min-width: 18px; text-align: right; font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
 .kudos-month { display: flex; flex-direction: column; gap: var(--space-3); }
 .kudos-month-label { margin: var(--space-1) 0 0; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.kudos-note { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--inner-card-bg); border: 1px solid var(--inner-card-border); }
+.kudos-note { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--inner-card-bg); border: 1px solid transparent; /* fill-only, see .fit-tile */ }
 .kudos-note-meta { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); font-size: var(--fs-sm); color: var(--text-muted); }
 .kudos-bare { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); background: var(--inner-card-bg); }
 .kudos-bare-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -7084,17 +7093,17 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--fs-md);
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-sore-option:active { transform: scale(0.97); }
 /* Amber, because a sore arm is a caution, not a success. */
-.fit-sore-option[aria-checked="true"] { background: var(--highlight-amber); border-color: var(--sev-warn); color: var(--text-primary); }
+.fit-sore-option[aria-checked="true"] { background: var(--highlight-amber); color: var(--text-primary); }
 .fit-sore-option:disabled { opacity: 0.5; pointer-events: none; }
 .fit-sore-check { font-size: var(--icon-md); color: var(--sev-warn); }
 .fit-consequence { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--sev-warn); }
@@ -7107,7 +7116,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .fit-rank-thumb {
   flex: 0 0 auto;
@@ -7138,7 +7147,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   width: 64px;
   height: 88px;
   padding: 0;
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
   border-radius: var(--radius-md);
   background: var(--inner-card-bg);
   cursor: pointer;
@@ -7170,24 +7179,22 @@ a.setup-price-row:active { background: var(--press-bg); }
 }
 [data-theme="light"] .frame-pill { color: var(--accent-dark); }
 
-/* The 1px gap IS the hairline: the grid's background shows through it. */
+/* Each spec is a tinted tile, set apart by space — the grid used to draw
+   hairlines between page-coloured cells (fill-only, 2026-11-04). */
 .frame-specs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
+  gap: var(--space-2);
   margin: 0;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--divider);
-  border: 1px solid var(--divider);
 }
-.frame-spec { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); background: var(--page-bg); }
+.frame-spec { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); border-radius: var(--radius-md); background: var(--inner-card-bg); }
 .frame-spec--wide { grid-column: 1 / -1; }
 .frame-spec dt { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
 .frame-spec dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-md); color: var(--text-primary); }
 
-.frame-rows { padding: var(--space-3); display: flex; flex-direction: column; }
-.frame-row + .frame-row { border-top: 1px solid var(--divider); }
+/* Each section is a tinted row; space between them, no hairline. */
+.frame-rows { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-row { border-radius: var(--radius-lg); background: var(--inner-card-bg); }
 .frame-row-head {
   display: flex;
   align-items: center;
@@ -7227,7 +7234,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   height: 48px;
   border-radius: var(--radius-md);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .fit-tile */
 }
 .frame-chart-band {
   position: absolute;
@@ -7258,7 +7265,6 @@ a.setup-price-row:active { background: var(--press-bg); }
   justify-content: space-between;
   gap: var(--space-3);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--divider);
   font-size: var(--fs-base);
   color: var(--text-secondary);
 }
