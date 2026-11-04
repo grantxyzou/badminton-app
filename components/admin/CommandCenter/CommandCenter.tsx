@@ -11,8 +11,7 @@ import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import NeedsYouCard from './NeedsYouCard';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
-import type { SettingsRow } from '@/components/profile/SettingsList';
-import LaunchGrid from './LaunchGrid';
+import SettingsList, { type SettingsRow } from '@/components/profile/SettingsList';
 import AdminDashTiles from './AdminDashTiles';
 import PlayerProfileSheet from './PlayerProfileSheet';
 import ReceiptSheet from './ReceiptSheet';
@@ -373,19 +372,22 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
         </div>
       )}
 
-      {/* EVERYTHING ELSE, grouped by what it is FOR, as tiles three to a row
-          (LaunchGrid, 2026-11-04) — sixteen list rows had made up half the
-          page. It was once one nine-row list mixing the bench, weekly
-          settings, the books, analytics and catalog upkeep, with the invite
-          and gift cards as full cards between. Static, so ready at once — but
-          slotted, so it shows only after the cards above it, which would
-          otherwise push it down as they arrive. */}
+      {/* EVERYTHING ELSE, grouped by what it is FOR, as list rows. It was one
+          nine-row list mixing the bench, weekly settings, the books, analytics
+          and catalog upkeep, with the invite and gift cards as full cards
+          between. A grid of tiles three to a row was tried on 2026-11-04 to
+          shorten the page and reverted the same day: it drew sixteen doors
+          as cards, so nothing told a thing to read from a thing to open
+          (Grant: "Why are all of them cards?"), and the inner-tile material
+          sat on the page ground, where DESIGN.md §9 does not allow it.
+          Static, so ready at once — but slotted, so it shows only after the
+          cards above it, which would otherwise push it down as they arrive. */}
       <RevealSlot ready placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.settings} />}>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           {groups.filter((g) => g.rows.length > 0).map((g) => (
             <section key={g.title} aria-label={g.title} className="flex flex-col gap-2">
               <ProfileEyebrow>{g.title}</ProfileEyebrow>
-              <LaunchGrid rows={g.rows} label={g.title} />
+              <SettingsList rows={g.rows} />
             </section>
           ))}
         </div>
