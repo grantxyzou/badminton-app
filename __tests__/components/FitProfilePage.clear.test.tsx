@@ -174,17 +174,21 @@ describe('FitProfilePage — "Balance" for a member nothing can anchor (fit-5, 2
     expect(screen.getByText('0 of 5 answered')).toBeTruthy();
   });
 
-  it('is not asked when a catalog racket or a typed racket with a stated balance anchors the engine', async () => {
+  it('is not asked when a catalog racket, or a typed racket with balance AND shaft stated, anchors the engine', async () => {
     renderWith(withActive({ catalogId: 'racket-yonex-astrox-88d-pro' }));
     await screen.findByText(enMessages.stats.gear.fitPage.goal);
     expect(screen.queryByRole('radiogroup', { name: 'Balance' })).toBeNull();
     cleanup();
-    renderWith(withActive({ catalogId: null, feel: { balance: 'Even' } }));
+    renderWith(withActive({ catalogId: null, feel: { balance: 'Even', flex: 'Stiff' } }));
     await screen.findByText(enMessages.stats.gear.fitPage.goal);
     expect(screen.queryByRole('radiogroup', { name: 'Balance' })).toBeNull();
     cleanup();
-    // A typed racket with the balance NOT said is no anchor: asked.
+    // `feelAnchor` needs balance AND shaft (review of #768): a typed racket
+    // with only one of them is no anchor to the engine, so it is asked.
     renderWith(withActive({ catalogId: null, feel: { flex: 'Stiff' } }));
+    expect(await screen.findByRole('radiogroup', { name: 'Balance' })).toBeTruthy();
+    cleanup();
+    renderWith(withActive({ catalogId: null, feel: { balance: 'Even' } }));
     expect(await screen.findByRole('radiogroup', { name: 'Balance' })).toBeTruthy();
   });
 });

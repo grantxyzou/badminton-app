@@ -158,7 +158,8 @@ because they are correct regardless of uptake.
   to both"). Two changes, both for the member with NO racket to anchor on —
   the one the questionnaire exists for. (1) **A Balance question on the Fit
   page**, asked only while nothing in the bag can anchor (no catalog racket,
-  no typed-in racket with its balance stated), in the three words the feel
+  no typed-in racket with both its balance and shaft stated — `feelAnchors`,
+  the engine's own rule, so the page cannot drift from it), in the three words the feel
   chips already use — Head-heavy / Even / Head-light, with where the weight
   sits under each and nothing drawn (the goal tiles' rule: no picture of what
   a racket should be). Stored as `PlayerGear.fitBalance`, in the feel

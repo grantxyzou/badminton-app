@@ -221,7 +221,8 @@ conditional.
   (2026-11-04)**: a Balance question (`BalancePicker`, the feel chips' three
   words, nothing drawn) shown ONLY while nothing in the bag can anchor the
   racket engine — no catalog racket and no typed-in racket with its balance
-  stated — because with an anchor the engine reads the racket, not the answer.
+  AND shaft stated (`feelAnchors` in `lib/racketFeel.ts`, the engine's own
+  rule) — because with an anchor the engine reads the racket, not the answer.
   Outside the "n of 5", cleared with the rest; the rule is in
   `docs/plans/racket-fit-engine.md`.
   - **The verdict's judgement is `lib/fitVerdict.ts`, and only there**: state,

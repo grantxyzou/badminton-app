@@ -9,6 +9,7 @@ import AIBadge from '@/components/primitives/AIBadge';
 import { recordEngagement } from '@/lib/engagement';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { fitAnswers, nearestLevelOption } from '@/lib/fitProfile';
+import { feelAnchors } from '@/lib/racketFeel';
 import { racketSrc } from '@/lib/racketLook';
 import { FIT_GOALS, FIT_LEVEL_OPTIONS, type FeelBalance, type FitPlayStyle, type PlayerGear } from '@/lib/types';
 import type { FitFacts } from '@/lib/fitVerdict';
@@ -140,12 +141,13 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
   // where they live, so it is where they are cleared. Shown only while one is
   // stored (or stripped from this device's view, which still means stored).
   // fit-5: the balance question is asked only while nothing in the bag can
-  // anchor the engine — no catalog racket, and no typed-in racket whose
-  // balance the member has said. With an anchor the engine reads the racket,
-  // not this answer, so asking would be a question that changes nothing. It
-  // is outside the "n of 5": a question only some members see cannot be one
-  // of everyone's five.
-  const askBalance = known && !gear.active?.catalogId && !gear.active?.feel?.balance;
+  // anchor the engine — no catalog racket (every catalog row is scorable),
+  // and no typed-in racket with BOTH its balance and shaft said, which is
+  // `feelAnchor`'s own rule (`feelAnchors`, so the two cannot drift). With an
+  // anchor the engine reads the racket, not this answer, so asking would be a
+  // question that changes nothing. It is outside the "n of 5": a question
+  // only some members see cannot be one of everyone's five.
+  const askBalance = known && !gear.active?.catalogId && !feelAnchors(gear.active);
   const hasAnswers = known && (doc?.fitArmComfortRedacted === true || (doc?.fitArmComfort != null && !('fitArmComfort' in pending)) || FIT_ANSWER_KEYS.some((k) => value(k) != null));
 
   return (
