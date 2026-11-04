@@ -41,6 +41,13 @@ A member's racket picture does not read as their racket at a glance. Check that 
   - images drawn at 2× and scaled down.
 
   A livery racket also gets the slim 7.8 mm frame and 6.6 mm shaft measured on the Halbertec 9000. The three-colour look keeps Grant's 11 mm section.
+- **Neutral tone mapping, not ACES filmic** (`lib/racketStage.ts`). Under ACES a Nanoflare 1000's lightning yellow came out mustard and a white frame grey, and the research agents were over-saturating specs to fight it. Khronos PBR Neutral keeps the highlight rolloff and renders a paint as its colour.
+- **The research was eight parallel agents, one per batch of about 20 rackets** (2026-11-04). Each found photos, wrote a spec, rendered it beside the photo and adjusted it. Result:
+  - 152 liveries;
+  - 22 marked approximate, mostly because only angled photos existed, so no measured shape;
+  - 5 rackets with no photo: Victor Arrow Speed 88, Brave Sword 1500 and NitroLite 80X, and Li-Ning Halberd 900 and G-Force Superlite.
+
+  The research also raised two catalog questions. The only NitroLite products found are Victor shoes, and "Halberd 900" may be the Halbertec 9000 under another name. Where the photos showed a different colourway from the one listed, the photos won and `RACKET_LOOKS`' colourway names were corrected (14).
 - **Colours and outlines were taken from photos by eye and by pixel sampling, never traced.** Each entry records where its photos came from (`source`). A racket with no findable photo keeps its three-colour look; no livery was invented from a colour name.
 
 ## Shape
