@@ -104,6 +104,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/reports/key': admin(),
   'reports/metrics': { kind: 'authed', helper: 'groupForReportsKey' },
   'reports/feedback': { kind: 'authed', helper: 'groupForReportsKey' },
+  'reports/fit-backtest': { kind: 'authed', helper: 'groupForReportsKey' },
   'admin/sign-in-readiness': admin('isAdminAuthedWithMember'),
   aliases: admin(),
   birds: admin(),

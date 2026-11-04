@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Three new ways to check the racket fit engine, none of them an expert's evening (2026-11-04)
+
+The fit engine's gate waited on the owner and the club stringer rating profiles (stuck at three of five) and on two engaged members in a club of thirty. `docs/plans/racket-fit-engine.md` gains three legs that need nobody's time: an **owned-racket backtest** (`GET /api/reports/fit-backtest`, behind the read-only reports key) that hides each member's racket, re-runs the engine and scores the class of the pick against the class of what they hold, totals only; a **property suite** that turns every rule in the engine's own header into a check over every racket in the catalog; and the **manufacturers' second opinion**, four golden cases built from the brands' own series positioning, counted apart from the expert ones. The engine (`fit-4`) passes all of it. The backtest's first read on production is the plan's next review.
+
 ### Stringer per club, a named operator with a break-glass override, and staff usage left out (2026-11-03)
 
 The rest of roles v2 (`docs/plans/roles-v2.md`). **Stringer is held per club**: a person who strings for one club is not on another club's bench until that club's admin ticks the box, and any admin may (the organiser rule is for ranks and gift cards); the stringers from before the move stayed on BPM's bench. **The operator is a named list** (`OPERATOR_MEMBER_IDS`), not "any admin of BPM", and holds the one exception to "nobody removes an organiser": `POST /api/operator/membership` sets any rank in any club behind the admin cookie, the list and the migration key, passes a club on when it takes the last organiser, and writes every use down where the operator's status read shows it. **The operator is staff**: their own app opens, tab views and sign-ins no longer count on the Metrics page, so one person checking a payment ten times a day cannot carry a small club's daily-active; an error from their phone is still recorded.
