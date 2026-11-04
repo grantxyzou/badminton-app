@@ -63,7 +63,7 @@ describe('InviteCard', () => {
     vi.stubGlobal('fetch', fetchMock);
     mount();
     expect(await screen.findByText(/CCCC DDDD/)).toBeDefined();
-    expect(screen.getByText(/\?join=bbbb/)).toBeDefined();
+    expect(screen.getByText(/\/j\/bbbb/)).toBeDefined();
     expect(screen.getByText(/1 more waiting/)).toBeDefined();
     expect(screen.getByText(/AAAA BBBB/)).toBeDefined();
     expect(screen.getByText(/Works once, until/)).toBeDefined();

@@ -225,7 +225,7 @@ describe('ios/', () => {
 describe('android/', () => {
   const manifest = read('android', 'app', 'src', 'main', 'AndroidManifest.xml');
 
-  it('registers the bpm:// scheme and the App Link for /bpm/migrate only', () => {
+  it('registers the bpm:// scheme and the App Links for /bpm/migrate and /bpm/j/ only', () => {
     expect(read('android', 'app', 'src', 'main', 'res', 'values', 'strings.xml')).toContain(
       '<string name="custom_url_scheme">bpm</string>',
     );
@@ -233,7 +233,13 @@ describe('android/', () => {
     const appLink = manifest.match(/<intent-filter android:autoVerify="true">([\s\S]*?)<\/intent-filter>/)![1]!;
     expect(appLink).toContain('android:host="bpm.grantzou.com"');
     expect(appLink).toContain('android:pathPrefix="/bpm/migrate"');
+    expect(appLink).toContain('android:pathPrefix="/bpm/j/"');
     expect(appLink).toContain('android:scheme="https"');
+    // Narrow on purpose: nothing else, and never a bare /bpm, which would pull
+    // the sign-in finishing pages into the app.
+    const prefixes = [...appLink.matchAll(/android:pathPrefix="([^"]+)"/g)].map((m) => m[1]);
+    expect(prefixes.sort()).toEqual(['/bpm/j/', '/bpm/migrate']);
+    expect(appLink).not.toMatch(/android:path(Prefix|Pattern)?="\/bpm\/?"/);
   });
 
   it('asks for POST_NOTIFICATIONS and refuses cleartext', () => {
@@ -303,5 +309,49 @@ describe('android/', () => {
 
   it('does not commit google-services.json', () => {
     expect(isTracked('android', 'app', 'google-services.json')).toBe(false);
+  });
+});
+
+/**
+ * THE APP'S LINKS ARE ONE LIST, KEPT IN THREE PLACES (docs/superpowers/plans/
+ * 2026-11-04-app-clip.md, Task 1.2): the AASA body the iPhone reads (an Azure
+ * App Setting, whose intended body is `native/apple-app-site-association.example.json`
+ * because the Team ID stays out of git), the Android App Links filter, and the
+ * universal-link branch of `components/NativeBridge.tsx`. A path claimed by
+ * the OS but not handled by the bridge opens the app on a blank tap; one
+ * handled but not claimed never arrives. These pin the three together.
+ */
+describe('the links the app claims', () => {
+  const aasa = JSON.parse(read('native', 'apple-app-site-association.example.json')) as {
+    applinks: { details: Array<{ appIDs: string[]; components: Array<Record<string, string>> }> };
+    webcredentials: { apps: string[] };
+  };
+  const detail = aasa.applinks.details[0]!;
+  const claimed = detail.components.map((c) => c['/']!);
+
+  it('the AASA example is the app, with the Team ID left as a placeholder', () => {
+    expect(detail.appIDs).toEqual(['TEAMID.com.motioncraft.bpm']);
+    expect(aasa.webcredentials.apps).toEqual(['TEAMID.com.motioncraft.bpm']);
+  });
+
+  it('claims the migration link and the one invite link, and nothing else', () => {
+    expect(claimed.sort()).toEqual(['/bpm/j/*', '/bpm/migrate', '/bpm/migrate?*']);
+  });
+
+  it('never claims the sign-in finishing pages, the API or the legal pages', () => {
+    for (const path of claimed) {
+      expect(path).not.toMatch(/^\/bpm\/?(\*|\?\*)?$/);
+      expect(path.startsWith('/bpm/api')).toBe(false);
+      expect(path.startsWith('/bpm/auth')).toBe(false);
+      expect(path.startsWith('/bpm/legal')).toBe(false);
+    }
+  });
+
+  it('the bridge handles every path the OS hands it, through the shared link module', () => {
+    const bridge = read('components', 'NativeBridge.tsx');
+    expect(bridge).toContain('u.pathname === `${BASE}/migrate`');
+    expect(bridge).toContain('tokenFromInvitePath(u.pathname, BASE)');
+    expect(bridge).toContain("from '@/lib/inviteLink'");
+    expect(read('lib', 'inviteLink.ts')).toContain("export const INVITE_LINK_SEGMENT = '/j/';");
   });
 });

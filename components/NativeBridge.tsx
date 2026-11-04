@@ -6,6 +6,7 @@ import { rememberReturnCode } from '@/lib/handoffClient';
 import { routeInApp } from '@/lib/inAppNavigate';
 import { openShortcut } from '@/lib/appShortcuts';
 import { widgetOpenTarget, syncWidgetPass } from '@/lib/widgetBridge';
+import { invitePath, tokenFromInvitePath } from '@/lib/inviteLink';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const HOST = 'bpm.grantzou.com';
@@ -154,10 +155,22 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
               }
               return;
             }
-            // Universal / App Link. Only our host and only the migrate path —
-            // a link to anything else is not an instruction.
-            if (u.host === HOST && u.pathname === `${BASE}/migrate`) {
+            // Universal / App Link. Only our host, and only the two paths the
+            // app claims (the AASA and the Android filter name the same two):
+            // the migration link and the one invite link. A link to anything
+            // else is not an instruction.
+            if (u.host !== HOST) return;
+            if (u.pathname === `${BASE}/migrate`) {
               window.location.assign(`${BASE}/migrate${u.search}`);
+              resume();
+              return;
+            }
+            // `/bpm/j/<token>` (lib/inviteLink.ts). Opened in place; the
+            // server's redirect takes it to the `?join=` page, exactly as on
+            // the website, so the app meets every invite rule the web does.
+            const invite = tokenFromInvitePath(u.pathname, BASE);
+            if (invite) {
+              window.location.assign(invitePath(invite, BASE));
               resume();
             }
           }),

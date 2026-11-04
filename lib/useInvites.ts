@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { invitePath } from './inviteLink';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -12,9 +13,14 @@ export interface Invite {
   expiresAt: string;
 }
 
-/** The link a token travels as, built from the window's own origin. */
+/**
+ * The link a token travels as, built from the window's own origin: the one
+ * link `/bpm/j/<token>` (`lib/inviteLink.ts`), which opens the app, the App
+ * Clip or the website. Links already sent as `?join=` keep working.
+ */
 export function inviteUrl(token: string): string {
-  return typeof window === 'undefined' ? `${BASE}/?join=${token}` : `${window.location.origin}${BASE}/?join=${token}`;
+  const path = invitePath(token, BASE);
+  return typeof window === 'undefined' ? path : `${window.location.origin}${path}`;
 }
 
 /**
