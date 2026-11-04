@@ -11,7 +11,8 @@ import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import NeedsYouCard from './NeedsYouCard';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
-import SettingsList, { type SettingsRow } from '@/components/profile/SettingsList';
+import type { SettingsRow } from '@/components/profile/SettingsList';
+import LaunchGrid from './LaunchGrid';
 import AdminDashTiles from './AdminDashTiles';
 import PlayerProfileSheet from './PlayerProfileSheet';
 import ReceiptSheet from './ReceiptSheet';
@@ -48,6 +49,8 @@ interface CommandCenterProps {
 export default function CommandCenter({ refreshKey, setView, onExit, onOpenDormant }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   const [localRefresh, setLocalRefresh] = useState(0);
+  // "This week" shows ONE card at a time: the session, or Payments.
+  const [weekView, setWeekView] = useState<'session' | 'payments'>('session');
   const composedRefresh = refreshKey + localRefresh;
 
   /* The bench row's count: requests nobody has taken, jobs past their date.
@@ -314,19 +317,42 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       >
         <NeedsYouCard
           refreshKey={composedRefresh}
-          onOpenPayments={() => document.getElementById('cc-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'start' })}
+          onOpenPayments={() => {
+            setWeekView('payments');
+            requestAnimationFrame(() => document.getElementById('cc-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          }}
           onOpenBirds={() => setView('birds')}
           onOpenDormant={() => (onOpenDormant ? onOpenDormant() : setView('members'))}
           onOpenBench={() => setView('stringing')}
         />
       </RevealSlot>
 
-      {/* THIS WEEK: the session and its money, the screen's main job — side
-          by side in a rail that scrolls sideways (Grant, 2026-11-04: "to save
-          vertical space"), the session first, Payments a swipe away with its
-          edge showing. With money off the rail holds the one card. */}
-      <ProfileEyebrow>This week</ProfileEyebrow>
-      <div className="cc-rail" aria-label="This week">
+      {/* THIS WEEK: the session and its money, the screen's main job — ONE
+          card at a time behind a Session · Payments toggle (Grant,
+          2026-11-04: "to save vertical space"; a side-scrolling rail was
+          tried first and stood as tall as the taller card). Both stay
+          mounted, so switching reads nothing; the one not showing is
+          `hidden`. With money off there is no toggle, only the session. */}
+      <div className="cc-week-head">
+        <ProfileEyebrow>This week</ProfileEyebrow>
+        {!moneyOff && (
+          <div className="segment-control flex cc-week-toggle" role="tablist" aria-label="This week">
+            {(['session', 'payments'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={weekView === v}
+                onClick={() => setWeekView(v)}
+                className={`flex-1 fs-sm rounded-full ${weekView === v ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+              >
+                {v === 'session' ? 'Session' : 'Payments'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div hidden={weekView !== 'session'}>
       <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.nextSession} />}>
       <NextSessionCard
         refreshKey={composedRefresh}
@@ -336,26 +362,30 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
         onChanged={() => setLocalRefresh((n) => n + 1)}
       />
       </RevealSlot>
+      </div>
       {!moneyOff && (
+        <div hidden={weekView !== 'payments'}>
         <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>
           <div id="cc-payments" style={{ scrollMarginTop: 'var(--space-9)' }}>
             <PaymentsCard refreshKey={composedRefresh} onOpenPlayer={openPlayer} />
           </div>
         </RevealSlot>
+        </div>
       )}
-      </div>
 
-      {/* EVERYTHING ELSE, grouped by what it is FOR. It was one nine-row list
-          mixing the bench, weekly settings, the books, analytics and catalog
-          upkeep, with the invite and gift cards as full cards between. Static,
-          so ready at once — but slotted, so it shows only after the cards
-          above it, which would otherwise push it down as they arrive. */}
+      {/* EVERYTHING ELSE, grouped by what it is FOR, as tiles three to a row
+          (LaunchGrid, 2026-11-04) — sixteen list rows had made up half the
+          page. It was once one nine-row list mixing the bench, weekly
+          settings, the books, analytics and catalog upkeep, with the invite
+          and gift cards as full cards between. Static, so ready at once — but
+          slotted, so it shows only after the cards above it, which would
+          otherwise push it down as they arrive. */}
       <RevealSlot ready placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.settings} />}>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
           {groups.filter((g) => g.rows.length > 0).map((g) => (
             <section key={g.title} aria-label={g.title} className="flex flex-col gap-2">
               <ProfileEyebrow>{g.title}</ProfileEyebrow>
-              <SettingsList rows={g.rows} />
+              <LaunchGrid rows={g.rows} label={g.title} />
             </section>
           ))}
         </div>

@@ -48,9 +48,9 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
-### The admin console opens on the glance tiles, and this week scrolls sideways (2026-11-04)
+### The admin console opens on the glance tiles, and is half as long (2026-11-04)
 
-Birds and Roster — the two numbers worth seeing without a tap — now sit at the very top of the console, above what needs a human. The session card and the Payments card sit side by side in a rail that scrolls sideways with a snap, the session first and the Payments card's edge showing beside it, so the screen spends one card's height on both instead of two stacked (Grant: "to save vertical space"). The loading frame mirrors the new order.
+Birds and Roster — the two numbers worth seeing without a tap — now sit at the very top of the console, above what needs a human. "This week" shows one card at a time behind a Session · Payments toggle, at that card's own height, instead of both stacked (Grant: "to save vertical space"; a side-scrolling rail was tried first and stood as tall as the taller card). The sixteen settings rows under it — People, Money, Club, More — are tiles three to a row now, with a row's count or status on its tile, so the page is about half its former length. The loading frame mirrors the new order.
 
 ### The Fit page draws fill-only, like Home (2026-11-04)
 

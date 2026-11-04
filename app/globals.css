@@ -5312,37 +5312,49 @@ html:root[data-theme="light"] {
 .pay-row-status .material-icons { font-size: var(--icon-sm); }
 
 /* Dashboard 2-up grid for Birds + Roster cards on the admin home */
-/* ── "This week" rail (Command Center, 2026-11-04) ──
-   The session card and the Payments card side by side, scrolling sideways
-   with a snap, so the screen spends one card's height on both (Grant: "to
-   save vertical space"). Bleeds to the column's edge (the main column pads
-   --space-5) so the next card's edge shows at the screen edge; each card is
-   the column less a section rung, so that edge is always there. An
-   overscroll stays in the rail rather than handing the gesture to the page.
-   The reveal slots inside stretch to the rail's height, so the shorter card
-   sits level with the taller. `:not([hidden])` on both levels: a `hidden`
-   slot must stay display:none, and a flex rule would outrank the attribute. */
-.cc-rail {
-  display: flex;
-  gap: var(--space-3);
-  margin: 0 calc(-1 * var(--space-5));
-  padding: 0 var(--space-5);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
-  scroll-padding: 0 var(--space-5);
-  scrollbar-width: none;
+/* ── "This week" head (Command Center, 2026-11-04) ──
+   The eyebrow with the Session · Payments toggle beside it: one card shows
+   at a time, at its own height (Grant: "to save vertical space"). The
+   toggle is the app's segment control at its own 32px, narrowed to its two
+   words so the eyebrow keeps the line. */
+.cc-week-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.cc-week-toggle { flex: 0 0 auto; width: 176px; }
+
+/* ── Launch grid (Command Center, 2026-11-04) ──
+   The console's settings as fill-only tiles three to a row: icon, label, and
+   a row's meta where it has one. An accented tile is a live count asking for
+   a tap (the bench's "2 waiting"), the same currency rule as the list rows
+   it replaced. Tiles share a height per row by the grid, so a two-line label
+   does not leave its neighbours short. */
+.cc-launch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
 }
-.cc-rail::-webkit-scrollbar { display: none; }
-.cc-rail > *:not([hidden]) {
-  flex: 0 0 calc(100% - var(--space-7));
-  scroll-snap-align: start;
+.cc-launch-tile {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-height: 88px;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent; /* fill-only, see .cc-mini-card */
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease-out-quart), background var(--duration-fast) ease;
 }
-.cc-rail > *:only-child:not([hidden]) { flex-basis: 100%; }
-.cc-rail > [data-reveal-slot]:not([hidden]) > div:not([hidden]) { flex: 1; display: flex; flex-direction: column; }
-.cc-rail > [data-reveal-slot]:not([hidden]) > div:not([hidden]) > * { flex: 1; }
+.cc-launch-tile:active { transform: scale(0.97); }
+.cc-launch-icon { color: var(--text-secondary); }
+.cc-launch-label { font-size: var(--fs-sm); font-weight: 600; line-height: var(--lh-snug); color: var(--text-primary); text-wrap: balance; }
+.cc-launch-meta { margin-top: auto; font-size: var(--fs-2xs); line-height: var(--lh-tight); color: var(--text-muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cc-launch-tile--accent .cc-launch-icon,
+.cc-launch-tile--accent .cc-launch-meta { color: var(--accent); }
+[data-theme="light"] .cc-launch-tile--accent .cc-launch-icon,
+[data-theme="light"] .cc-launch-tile--accent .cc-launch-meta { color: var(--accent-dark); }
 
 .cc-dgrid {
   display: grid;
