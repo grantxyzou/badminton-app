@@ -59,7 +59,7 @@ export default function CatalogGapsPage({ onBack }: { onBack: () => void }) {
         ) : gaps.length === 0 ? (
           <EmptyState>Every racket in the group is in the catalog.</EmptyState>
         ) : (
-          <ul className="glass-card is-flush catalog-gaps" style={{ listStyle: 'none', margin: 0, padding: 0, overflow: 'hidden' }}>
+          <ul className="glass-card is-flush catalog-gaps" style={{ listStyle: 'none', margin: 0, overflow: 'hidden' }}>
             {gaps.map((g) => {
               const feel = [tally(g.feel.balance), tally(g.feel.flex), tally(g.feel.weight)].filter(Boolean).join(' · ');
               return (
