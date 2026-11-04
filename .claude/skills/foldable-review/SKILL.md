@@ -1,6 +1,6 @@
 ---
 name: foldable-review
-description: Review or build a screen for foldable phones — iPhone Duo, Galaxy Z Fold — against Apple's "Designing for iPhone Duo" guidance and this repo's own foldable rules, then LOOK at it at the real foldable sizes with the fold injected. Use this whenever a change touches Home, the tab bar, a sheet, a toast, the courtside scoreboard, anything positioned with `fixed`, or any new card or banner — even when nobody says "foldable": a card that spans the fold is the bug this skill exists to catch, and jsdom cannot see it. Also use it when asked whether something "works on the Duo / Fold / a tablet", to fact-check a layout claim with measurements, or to add two-pane behaviour to a new tab.
+description: Review or build a screen for foldable phones — iPhone Duo, Galaxy Z Fold — against Apple's "Designing for iPhone Duo" guidance and this repo's own foldable rules, then LOOK at it at the real foldable sizes with the fold injected. Use this whenever a change touches Home, the tab bar, a sheet, a toast, the courtside scoreboard, anything positioned with `fixed`, or any new card or banner — even when nobody says "foldable": a card that spans the fold is the bug this skill exists to catch, and jsdom cannot see it. Also use it when asked whether something "works on the Duo / Fold / a tablet", to fact-check a layout claim with measurements, to add two-pane behaviour to a new tab, or to PROPOSE foldable design patterns for a screen (its "Propose" mode: candidates grounded in Apple's rules and the repo's decisions, each shown as a screenshot at the real sizes, never as prose alone).
 disable-model-invocation: false
 ---
 
@@ -118,6 +118,8 @@ scoreboard's split. `--tab stats --open keep-score` lands on the scoreboard;
 | `fold-cover` | 412 × 915 | no | Galaxy Z Fold closed |
 | `fold-inner` | 884 × 1000 | vertical | Z Fold open: two panes, bottom tab bar |
 | `fold-laptop` | 884 × 1000 | horizontal, 24 px | Z Fold propped like a laptop (scoreboard: board above) |
+| `fold-laptop-offcentre` | 823 × 651 | horizontal, 0 px at y 297 | Z Fold 6 laptop pose under Chrome's toolbar: the crease is OFF the viewport's centre (325), so this is the one preset that tells hinge-tracking from the centre fallback |
+| `fold-posture-only` | 823 × 707 | posture only, no segments | Older Chrome / Samsung Internet: "folded" with no segments, so `lib/fold.ts` picks the axis from orientation — and laptop pose is landscape, so the board splits SIDE BY SIDE with the crease through both halves (known gap, 2026-11-04) |
 | `tablet` | 1180 × 820 | no | a touch tablet sideways |
 | `desktop` | 1280 × 800 | no | mouse, not touch: one column, must be untouched |
 
@@ -148,6 +150,57 @@ print(sum(1 for p in d.get_flattened_data() if max(p) > 16))   # expect 0
 
 Compare against the branch's TRUE base, not the local `main`: a stale `main`
 once showed 60k changed pixels that were somebody else's merged nudge.
+
+## Propose patterns for a screen
+
+Reviewing checks a screen against the rules; proposing starts from the rules
+and asks what the screen could DO with two pages. The failure mode is prose:
+a list of plausible layouts nobody has seen at the real sizes, one of which
+quietly undoes a recorded decision. So a proposal is a picture with numbers,
+or it is not a proposal yet.
+
+1. **Start from what exists.** Shoot the screen as it is today at `phone`,
+   `duo-landscape`, `fold-inner` and `fold-laptop` (`--tab <tab>`; for Stats
+   add `--register`). Measure what sits where. On every tab but Home that is
+   one 512 px column inside wider padding — a decision, not a gap (next
+   section) — so the question is what the second page would EARN.
+2. **Generate candidates from the three sources, in this order.**
+   Apple's patterns first (`references/apple-iphone-duo-hig.md`): two even
+   columns, primary content on the page that opens, vertical controls in
+   landscape, a sheet in one pane, "small adjustments over rearrangement".
+   Then the repo's own shapes: Home's week-right stack, the scoreboard's split
+   on the fold, sheets and toasts in the LEFT half. Then the screen's own
+   data: which card is the thing the person came for (that goes RIGHT),
+   which cards are context (LEFT), which pair is a before/after or a
+   list/detail that a hinge naturally separates. Three to five candidates is
+   plenty; name each in a few words.
+3. **Rule every candidate out or in before drawing it.** Each must keep every
+   rule above: nothing crosses the fold, one screen untouched, sheets left,
+   no gap off centre. A candidate that breaks one is listed under "ruled out"
+   with the rule's number, not quietly dropped — the owner should see what
+   was considered.
+4. **Draw the survivors, don't describe them.** Mock each one in the browser
+   with injected CSS (a `<style>` added through `page.addStyleTag`, scoped to
+   the tab's own classes and the pane media query) — no source edit, no
+   commit — and shoot it at `duo-landscape`, `fold-inner` and `fold-laptop`
+   with the same script. Measure the panes and anything that moved. Then
+   shoot `phone` with the same injected CSS to show it changed nothing.
+5. **Report pictures side by side**, one row per candidate: the three
+   screenshots, the numbers, what it buys, what it costs, and which rule or
+   decision it leans on. End with ONE recommendation and the question the
+   owner has to answer to pick it (usually "which card is the page that
+   opens?"). Don't build it; building is a separate change with its own
+   review and the canary extended.
+
+```
+## Foldable proposals — <screen>
+Today: <what it does now at the four sizes, with widths>
+Ruled out: <candidate — rule N>
+Candidates:
+  1. <name> — <shots> — <numbers> — buys / costs — leans on <rule or decision>
+  2. …
+Recommend: <one>, because <one line>. Ask Grant: <the question>.
+```
 
 ## Add two-pane behaviour to another tab
 

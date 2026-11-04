@@ -49,6 +49,13 @@ const PRESETS = {
   'fold-cover': { w: 412, h: 915, touch: true, note: 'Galaxy Z Fold closed' },
   'fold-inner': { w: 884, h: 1000, touch: true, fold: 'vertical', note: 'Z Fold open' },
   'fold-laptop': { w: 884, h: 1000, touch: true, fold: 'horizontal', gap: 24, note: 'Z Fold propped like a laptop' },
+  // Two probes the unaided scoreboard eval added (2026-11-04). A real Z Fold
+  // reports a 0 px crease, and Chrome's toolbar pushes it OFF the viewport's
+  // centre — the one case that tells hinge-tracking from the centre fallback.
+  'fold-laptop-offcentre': { w: 823, h: 651, touch: true, fold: 'horizontal', gap: 0, at: 297, note: 'Z Fold 6 laptop pose under Chrome\'s toolbar: 0 px crease at y 297, centre would be 325' },
+  // Posture without segments (older Chrome, Samsung Internet): lib/fold.ts
+  // must pick an axis from orientation, and laptop pose is LANDSCAPE.
+  'fold-posture-only': { w: 823, h: 707, touch: true, fold: 'horizontal', postureOnly: true, note: 'Z Fold 6 laptop pose, posture "folded" reported, no viewport segments' },
   tablet: { w: 1180, h: 820, touch: true, note: 'a touch tablet sideways' },
   desktop: { w: 1280, h: 800, touch: false, note: 'mouse, not touch; must be untouched' },
 };
@@ -82,14 +89,19 @@ const register = open === 'keep-score' ? 'play' : args.register;
 const [pa, pb] = (args.points ?? '11,7').split(',').map(Number);
 mkdirSync(out, { recursive: true });
 
-/** Two segments either side of a fold of `gap` px, in the given direction. */
+/**
+ * Two segments either side of a fold of `gap` px, in the given direction.
+ * `at` places the fold's leading edge; absent, the fold is centred. A preset
+ * marked `postureOnly` reports no segments at all (null here).
+ */
 function segments(p) {
+  if (p.postureOnly) return null;
   const gap = p.gap ?? 30;
   if (p.fold === 'vertical') {
-    const half = Math.floor((p.w - gap) / 2);
+    const half = p.at ?? Math.floor((p.w - gap) / 2);
     return [{ left: 0, top: 0, right: half, bottom: p.h }, { left: half + gap, top: 0, right: p.w, bottom: p.h }];
   }
-  const half = Math.floor((p.h - gap) / 2);
+  const half = p.at ?? Math.floor((p.h - gap) / 2);
   return [{ left: 0, top: 0, right: p.w, bottom: half }, { left: 0, top: half + gap, right: p.w, bottom: p.h }];
 }
 
@@ -114,7 +126,7 @@ for (const name of sizes) {
         value: { type: 'folded', addEventListener() {}, removeEventListener() {} },
         configurable: true,
       });
-      window.viewport = { segments: segs };
+      if (segs) window.viewport = { segments: segs };
     }, segments(p));
   }
   const page = await ctx.newPage();
