@@ -10,12 +10,17 @@ Grant, 2026-11-03: "Estimate what will it be like if we have to rewrite the
 entire app in native iOS. Can you just run it non stop? We will be keeping
 react for android." Asked what native would buy, 2026-11-04: "dynamic island,
 apple watch integration, and liquid glass. I also think a quick app clip to
-sign up? Since whatsapp for communication is inevitable."
+sign up? Since whatsapp for communication is inevitable." And the clip's
+brief, the same day: "Who: People who wants a light weight sign up. Sign up:
+Click on link open app clip to sign up then get reminded to download. They
+can also use the app clip to join a group by being close to the phone or
+scanning a qr code or clicking on the link."
 
 Nobody in the group has asked for any of the four. The one with a reported
 problem behind it is the App Clip: invites travel through WhatsApp, and today
-a tapped invite link lands on the web sign-up inside WhatsApp's browser, with
-the store app a separate install afterwards. The other three are Grant's own
+a tapped invite link opens the web sign-up (WhatsApp on iPhone hands most
+links to the default browser), with the store app a separate install
+afterwards. The other three are Grant's own
 sense of what a store app should feel like, which (as with the shell itself)
 is a weaker reason to build than a reported problem, and the kill criteria
 below are written to match.
@@ -31,12 +36,13 @@ Only Liquid Glass needs native UI, and it is deferred.
 
 Per piece, because they ship separately:
 
-- **App Clip.** First test, before any further work: open an invite link from
-  a WhatsApp chat on a real iPhone. If the App Clip card never appears from
-  WhatsApp's in-app browser and the person has to find "Open in Safari", the
-  clip is only worth building if a Smart App Banner on the join page shows
-  there instead; if neither shows, stop — the web sign-up already works and
-  the clip would reach nobody. After shipping: if a month in fewer than half
+- **App Clip.** First test, before any further work, on a real iPhone
+  without the app: tap an invite link in a WhatsApp chat, scan its QR from
+  another phone's screen, and tap an NFC sticker carrying it. The link is
+  the one that matters. If tapping it in WhatsApp shows neither the App Clip
+  card nor, once Safari opens, the clip's Smart App Banner, stop — the web
+  sign-up already works and the clip would reach nobody from the channel it
+  was built for. A QR or sticker working alone is not enough reason to build. After shipping: if a month in fewer than half
   of iPhone sign-ups arriving by invite link come through the clip, it is
   cut and the web sign-up stays.
 - **Live Activity.** Start with the score (the rules are already in Swift in
@@ -146,8 +152,11 @@ covers that half). Today a web deploy *is* the iOS update.
     claims the one-time invite, `app/api/groups/preview/route.ts` names the
     club, `app/api/players/route.ts` takes the sign-up), holding
     `member_session` in its own cookie jar; hands the session to the full app
-    through a shared keychain access group (Apple's sanctioned clip → app
-    bridge). Sign in with Apple natively; Google deferred to the full app.
+    by writing it to the clip's own keychain, which the full app can read
+    from iOS 15.4 through the associated App Clip entitlements (Xcode adds
+    them when the app is archived with the clip). Not a shared keychain
+    access group: Apple does not support those for clips. Sign in with
+    Apple natively; Google deferred to the full app.
     A person who already has an account but not the app takes "Log in"
     instead: name and PIN through `app/api/players/recover/route.ts` (the
     same route, rate limits and per-account lock the web uses), then the
@@ -186,20 +195,59 @@ covers that half). Today a web deploy *is* the iOS update.
   - *Install* — the clip shows Apple's install overlay for the full app
     (StoreKit `SKOverlay`) once, right after the sign-up confirms, which is
     the moment a person is most likely to say yes. With the session already
-    in the shared keychain the full app opens signed in. A regular member
+    in the clip's keychain the full app opens signed in. A regular member
     should take this card: the clip is removed after about a month of
     non-use.
   - *Limits that bind the build:* native only (a WebView wrapper would not
-    pass review), 50 MB for a link launch on iOS 17+ and 15 MB from a QR code
-    or tag, so the shared package must stay lean. Nothing the clip stores is
-    kept; everything it needs is re-readable from the server.
+    pass review), and **15 MB**, because the clip is reached by QR and NFC as
+    well as by link. Apple allows a larger clip (50 MB at WWDC23, 100 MB in
+    the current docs) only when it supports no physical invocation at all
+    and requires iOS 17. The shared package must stay lean. Nothing the clip
+    stores is kept; everything it needs is re-readable from the server.
+
+- **2026-11-04 — three ways in, and each one still admits one person, once.**
+  Grant's brief: link, QR code, or "being close to the phone". Researched
+  against Apple's docs the same day. The one-time invite (`lib/invites.ts`,
+  `docs/plans/one-time-invites.md`, "replace, not add") is not reopened by
+  any of them:
+  - *The link.* The per-person invite link the admin already sends, on our
+    own domain, registered as an advanced App Clip experience (the
+    `appclips` key in the AASA the proxy already serves). Messages and
+    Safari show the card directly. WhatsApp hands most links to Safari
+    today, where the join page's Smart App Banner offers the clip one tap
+    later. Apple's default App Clip links (`appclip.apple.com/id?p=…`) open
+    from any app on iOS 16.4+, but an Android member in the same chat would
+    land on an Apple page, so they are not what the admin shares. One link,
+    every phone: Android and the web keep the sign-up they have.
+  - *A QR on the organiser's phone.* This is what "close to the phone" can
+    be. The Command Center's Invite card gains "Show as QR": a fresh
+    one-time invite drawn as a QR, scanned with the other person's camera,
+    used once, and the card offers the next. Apple's sample code shows App
+    Clip codes on a second device, and a plain QR of an advanced-experience
+    URL raises the same card. Apple's own App Clip Code is generated per URL
+    in App Store Connect or with a Mac command-line tool, so per-person
+    codes are a plain QR drawn in the browser.
+  - *NFC.* An iPhone cannot act as a tag for another iPhone: the NFC and
+    Secure Element access Apple opened in iOS 18.1 is for payments, keys and
+    tickets under a commercial agreement, not a tag that launches a clip.
+    So phone-to-phone tapping is out. A physical NFC sticker (on the
+    organiser's bag, at the court door) does work, even from the Lock
+    Screen. A sticker is a permanent URL, though, which is the club-wide
+    door the one-time invites replaced. **Open for Grant:** build the
+    sticker only behind a human gate. It opens the clip at "BPM Core · ask
+    to join", and the organiser, standing right there, approves the request
+    on their phone. Or leave stickers out.
+  - *Not used:* Maps place cards and Siri location suggestions. Both tie a
+    clip to a place the business operates, and a club renting a school gym
+    is not that.
 
 ## Shape (intended; nothing below is in the tree yet except where marked)
 
 | Piece | Where |
 | --- | --- |
 | Shared Swift package (models, client, tokens, strings) | new, `ios/BPMKit/`, consumed by every target |
-| App Clip target | new, `ios/App/BPMClip/`; Info.plist clip marker and the 8-hour notification request; `appclips` entry in the AASA (`proxy.ts` `WELL_KNOWN`, env body `APPLE_APP_SITE_ASSOCIATION`); App Clip experience registered in App Store Connect; the install overlay and the shared keychain access group shared with the main app |
+| App Clip target | new, `ios/App/BPMClip/`; Info.plist clip marker and the 8-hour notification request; `appclips` entry in the AASA (`proxy.ts` `WELL_KNOWN`, env body `APPLE_APP_SITE_ASSOCIATION`); advanced App Clip experience registered in App Store Connect on the invite link's prefix; the install overlay; the associated App Clip entitlements that let the full app read the clip's keychain |
+| "Show as QR" on the Invite card | `lib/useInvites.ts` and the Command Center's Invite card (exist); a QR drawn in the browser, which is a new dependency to choose |
 | Clip sign-in and join | existing routes only: `app/api/groups/preview/route.ts`, `lib/inviteSignup.ts`, `app/api/players/recover/route.ts`, `app/api/groups/join/route.ts`, `app/api/players/route.ts`; no new server route |
 | Smart App Banner on the join page | `app/layout.tsx` (an `apple-itunes-app` meta carrying the clip bundle id, only when `?join=` is present) |
 | Live Activity (score, then session night) | `ios/App/BPMWidget/` (exists; gains an `ActivityAttributes` file compiled into app and extension, `NSSupportsLiveActivities` in the app plist); in-house start/update plugin beside `ios/App/App/BpmWidgetPlugin.swift` |
@@ -211,9 +259,23 @@ covers that half). Today a web deploy *is* the iOS update.
 
 ## Open questions
 
-- **Does the App Clip card show from WhatsApp's in-app browser?** Apple
-  guarantees it in Safari, Messages and Mail. This is the first thing tested
-  on a real phone, and it is the clip's kill switch (above).
+- **Does the clip show from WhatsApp?** Apple names Messages, Maps, Safari
+  and Safari View Controller, and Spotlight as the surfaces for a link on
+  your own domain. WhatsApp on iPhone hands most links to the default
+  browser today, so the expected path is Safari plus the Smart App Banner.
+  WhatsApp is testing an option to open every link in its own browser
+  (TestFlight references, 2026-10-19, not shipped), which could change that.
+  Tested on a real phone first; it is the clip's kill switch (above).
+- **The sticker door.** Whether a permanent NFC sticker exists at all, and
+  if so behind an organiser's approval (a new kind of request for a new
+  person; today's access requests only let an existing name back in).
+  Grant's call, since it reopens a door he closed on 2026-10-06.
+- **Which URL the experience claims.** The invite is a `?join=` query on the
+  app's own address, and an App Clip experience matches a URL prefix. Claim
+  the app's root, and the plain weekly sign-up link raises the card too,
+  which suits an account-holder without the app. Or move the invite to a
+  path of its own. Developers report prefix matching on sub-paths
+  misbehaving, so settle it on a device.
 - **How the server reaches a clip.** The same-night notification needs a
   token registered by the clip, and `lib/push.ts` and `lib/fcm.ts` know
   only web subscriptions and FCM tokens for the full app. Whether FCM can
@@ -231,3 +293,14 @@ covers that half). Today a web deploy *is* the iOS update.
   for the activity; the clip runs on 14+; a standalone Watch app is its own
   floor. Raise nothing until a target needs it.
 - **Watch head-count.** Asked before any Watch code is written.
+
+## Sources (2026-11-04)
+
+- Apple, What's new in App Clips (WWDC23): https://developer.apple.com/videos/play/wwdc2023/10178/ — default App Clip links, launching a clip from any app, the size limits per invocation.
+- Apple, App Clips overview: https://developer.apple.com/app-clips
+- Apple, `NSAppClipRequestEphemeralUserNotification`: https://developer.apple.com/documentation/bundleresources/information-property-list/nsappclip/nsappcliprequestephemeralusernotification
+- Apple, Associating your App Clip with your website: https://developer.apple.com/documentation/appclip/associating-your-app-clip-with-your-website
+- Apple, Interacting with App Clip Codes in AR (sample code; App Clip Codes shown on another device): https://developer.apple.com/documentation/appclip/interacting-with-app-clip-codes-in-ar
+- Apple Developer Forums, App Clips and Keychain: https://developer.apple.com/forums/thread/650450 — iOS 15.4 clip-to-app keychain access through the associated entitlements.
+- 9to5Mac, WhatsApp may soon let iPhone users open any link in an in-app browser (2026-10-19): https://9to5mac.com/2026/10/19/whatsapp-may-soon-let-iphone-users-open-any-link-in-an-in-app-browser/
+- iPhone in Canada, Apple opens iPhone NFC payments to third-party apps in iOS 18.1: https://www.iphoneincanada.ca/2024/08/14/apple-opens-iphone-nfc-payments-to-third-party-apps-in-ios-18-1/
