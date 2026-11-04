@@ -979,6 +979,24 @@ export const RACKET_LIVERIES: Record<string, Livery> = {
     grommets: '#121214',
     finish: 'gloss',
   },
+  'racket-victor-brave-sword-1500': {
+    source: 'gamepointinc.com',
+    head: '#b4c22c',
+    bands: [
+      { from: -100, to: 15, colour: '#1a1a1a', soft: 10 },
+      { from: 15, to: 55, colour: '#eeeeea', soft: 10 },
+      { from: -150, to: -112, colour: '#eeeeea', soft: 8 },
+    ],
+    throat: '#1a1a1a',
+    shaft: [[0, '#b4c22c'], [0.42, '#b4c22c'], [0.5, '#1a1a1a'], [1, '#1a1a1a']],
+    cone: '#b4c22c',
+    butt: '#1a1a1a',
+    buttTrim: '#c8323c',
+    collar: '#1a1a1a',
+    grip: '#1c1c1c',
+    grommets: '#1a1a1a',
+    finish: 'gloss',
+  },
   'racket-li-ning-n90-iv': {
     source: 'in.lining.studio',
     head: [[0, '#575b68'], [0.22, '#575b68'], [0.4, '#d8222c'], [1, '#d8222c']],
@@ -3766,6 +3784,7 @@ export const RACKET_LIVERIES: Record<string, Livery> = {
     strings: '#f2f0ea',
     finish: 'gloss',
     shape: { ratio: 0.796, widest: 0.58, nTop: 2.2, nBot: 2 },
-  },};
+  },
+};
 
 /* eslint-enable no-restricted-syntax */

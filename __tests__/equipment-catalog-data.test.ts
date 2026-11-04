@@ -6,11 +6,11 @@ import type { CatalogItem } from '../lib/types';
 const items = catalog.items as unknown as CatalogItem[];
 
 describe('equipment catalog data', () => {
-  it('holds the 157-racket catalog (v2 import + the 2026-09-14 catalog check)', () => {
+  it('holds the 153-racket catalog (v2 import + the 2026-09-14 catalog check − four fakes)', () => {
     // Counted by category rather than by total length: strings now share this
     // file, and a bare length check would silently stop guarding the rackets
     // the moment another category arrived.
-    expect(items.filter((i) => i.category === 'racket')).toHaveLength(157);
+    expect(items.filter((i) => i.category === 'racket')).toHaveLength(153);
   });
 
   it('holds the 46-string catalog after the string import', () => {

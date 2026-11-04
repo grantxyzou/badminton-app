@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
  */
 
 const upserts: unknown[] = [];
+const deletes: Array<[string, string]> = [];
 let existingIds: string[] = [];
 /** Rows the fake Cosmos returns. Defaults to id-only rows built from
  *  `existingIds`; a test can set this directly to simulate rows whose SHAPE
@@ -32,13 +33,14 @@ vi.mock('@/lib/cosmos', () => ({
       }),
       upsert: async (doc: unknown) => { upserts.push(doc); return { resource: doc }; },
     },
+    item: (id: string, pk: string) => ({ delete: async () => { deletes.push([id, pk]); return {}; } }),
   })),
 }));
 
-// scripts/data/equipment-catalog.json — 157 rackets (50 + 21 from the v2
-// import + 86 from the 2026-09-14 catalog check) + 46 strings from
-// import-string-db.mjs.
-const SEED_COUNT = 203;
+// scripts/data/equipment-catalog.json — 153 rackets (50 + 21 from the v2
+// import + 86 from the 2026-09-14 catalog check, less four that do not exist,
+// deleted 2026-11-04) + 46 strings from import-string-db.mjs.
+const SEED_COUNT = 199;
 
 async function freshModule() {
   vi.resetModules();
@@ -47,6 +49,7 @@ async function freshModule() {
 
 beforeEach(() => {
   upserts.length = 0;
+  deletes.length = 0;
   existingIds = [];
   existingRows = null;
   queryCalls = 0;
@@ -169,5 +172,32 @@ describe('ensureCatalogSeeded', () => {
     // Latching the failure would leave the catalog permanently empty.
     await expect(ensureCatalogSeeded()).resolves.toBeUndefined();
     expect(upserts).toHaveLength(SEED_COUNT);
+  });
+
+  // Grant, 2026-11-04: four catalog rackets do not exist. Dropping them from
+  // the JSON stops them being seeded, but seeding never deletes, so without
+  // this they would stay in production forever.
+  it('deletes the rackets that do not exist, by id and partition key, and only rows it owns', async () => {
+    const { ensureCatalogSeeded, REMOVED_CATALOG_IDS } = await freshModule();
+    const seedItems = (await import('../scripts/data/equipment-catalog.json')).default.items as Array<Record<string, unknown>>;
+    expect(seedItems.filter((i) => REMOVED_CATALOG_IDS.some((r) => r.id === i.id))).toEqual([]);
+    const [owned, ...rest] = REMOVED_CATALOG_IDS;
+    existingRows = [
+      ...seedItems.map((i) => ({ ...i })),
+      { id: owned.id, category: owned.category, seeded: true },
+      // Not this seeder's row (no `seeded: true`): never deleted.
+      { id: rest[0].id, category: rest[0].category },
+    ];
+    await ensureCatalogSeeded();
+    expect(deletes).toEqual([[owned.id, 'racket']]);
+    expect(upserts).toHaveLength(0);
+  });
+
+  it('deletes nothing once they are gone', async () => {
+    const seedItems = (await import('../scripts/data/equipment-catalog.json')).default.items as Array<Record<string, unknown>>;
+    existingRows = seedItems.map((i) => ({ ...i }));
+    const { ensureCatalogSeeded } = await freshModule();
+    await ensureCatalogSeeded();
+    expect(deletes).toEqual([]);
   });
 });

@@ -46,8 +46,11 @@ A member's racket picture does not read as their racket at a glance. Check that 
   - 152 liveries;
   - 22 marked approximate, mostly because only angled photos existed, so no measured shape;
   - 5 rackets with no photo: Victor Arrow Speed 88, Brave Sword 1500 and NitroLite 80X, and Li-Ning Halberd 900 and G-Force Superlite.
-
-  The research also raised two catalog questions. The only NitroLite products found are Victor shoes, and "Halberd 900" may be the Halbertec 9000 under another name. Where the photos showed a different colourway from the one listed, the photos won and `RACKET_LOOKS`' colourway names were corrected (14).
+- **The four fake rackets were deleted; the fifth was real** (Grant, 2026-11-04: "The 5 with no photo are fake ones. Delete them from the data base").
+  - The Brave Sword 1500 is sold as the 1500P Green with Black (gamepointinc.com). It got its livery by hand from two angled photos, so it is approximate.
+  - The other four were already withdrawn with `unlisted` as not models (2026-09-14) or not found (2026-10-20). They are gone from the seed JSON, both source files, `RACKET_LOOKS` and the images.
+  - `REMOVED_CATALOG_IDS` in `lib/catalogSeed.ts` deletes them from Cosmos on the next seed, because seeding never deletes on its own. A bag already pointing at one keeps its label.
+  - Totals now: 153 catalog rackets, all 153 with a livery, 23 of them approximate. Where the photos showed a different colourway from the one listed, the photos won and `RACKET_LOOKS`' colourway names were corrected (14).
 - **Colours and outlines were taken from photos by eye and by pixel sampling, never traced.** Each entry records where its photos came from (`source`). A racket with no findable photo keeps its three-colour look; no livery was invented from a colour name.
 
 ## Shape
