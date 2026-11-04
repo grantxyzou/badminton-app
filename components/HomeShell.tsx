@@ -42,6 +42,7 @@ import { useEverOpened } from '@/lib/useEverOpened';
 import { prewarmInsight } from '@/lib/useInsight';
 import { TabActiveContext } from '@/lib/tabActivity';
 import { appSettled, APP_SHELL_ATTR, TAB_PANEL_ATTR } from '@/lib/appSettled';
+import { rememberClub } from '@/lib/lastClub';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
 const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
@@ -240,6 +241,14 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   const [doorsDismissed, setDoorsDismissed] = useState(false);
   const groupsEnabled = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const { group, refresh: refreshGroups } = useCurrentGroup();
+  // The club this phone is signed in to, kept for the day it is signed OUT:
+  // "Ask to be let in" sends it, so the name is looked up on this club's
+  // roster and not BPM's (lib/lastClub.ts). Every switch, join and create
+  // ends in a fresh `group`, so this follows them.
+  const groupIdNow = group?.id;
+  useEffect(() => {
+    if (groupIdNow) rememberClub(groupIdNow);
+  }, [groupIdNow]);
   /**
    * What to say after an auth redirect. One notice at a time: our own redirects
    * only ever carry one result, so last-write-wins is fine and simpler than a
