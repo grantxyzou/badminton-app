@@ -21,7 +21,7 @@
  * still being in the old one is not what anybody means by tapping an invite.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyMemberAuth, unauthorized } from '@/lib/auth';
+import { verifyLiveMemberAuth, unauthorized } from '@/lib/auth';
 import { completeSignIn } from '@/lib/authSession';
 import { getContainer } from '@/lib/cosmos';
 import { addMembership, readGroup, readMembership, RosterNameTakenError } from '@/lib/groups';
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(`groups-join:${ip}`, 10, 60 * 60 * 1000)) return rateLimited();
   if (!groupsOn()) return featureOff();
 
-  const session = verifyMemberAuth(req);
+  const session = await verifyLiveMemberAuth(req);
   if (!session) return unauthorized();
 
   let body: unknown;

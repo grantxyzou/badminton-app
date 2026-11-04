@@ -17,7 +17,7 @@ import { mirrorPaid, mirrorUnpaid, mirrorCover, mirrorUncover, mirrorRowDeleted 
 import type { Player } from '@/lib/types';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, verifyLiveMemberAuth, setMemberCookie, requireMember, requireGroupMember, unauthorized } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
@@ -364,7 +364,7 @@ export async function POST(req: NextRequest) {
        * Reached only when `existingMember` has no `pinHash` — the 409 above
        * owns the other case.
        */
-      const claimAuth = existingMember ? verifyMemberAuth(req) : null;
+      const claimAuth = existingMember ? await verifyLiveMemberAuth(req) : null;
       const ownsExistingMember =
         !!existingMember &&
         !!claimAuth &&
@@ -786,7 +786,7 @@ export async function PATCH(req: NextRequest) {
        * member — plus a verified `currentPin` when a PIN already exists, so a
        * live cookie can't silently lock its owner out of their own account.
        */
-      const caller = isAdmin ? null : verifyMemberAuth(req);
+      const caller = isAdmin ? null : await verifyLiveMemberAuth(req);
       if (!isAdmin && !caller) {
         return NextResponse.json({ error: 'auth_required' }, { status: 401 });
       }

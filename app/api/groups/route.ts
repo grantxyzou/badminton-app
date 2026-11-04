@@ -19,7 +19,7 @@
  *      must already exist at this point.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyMemberAuth, unauthorized } from '@/lib/auth';
+import { verifyLiveMemberAuth, unauthorized } from '@/lib/auth';
 import { completeSignIn } from '@/lib/authSession';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(`groups-create:${ip}`, 5, 60 * 60 * 1000)) return rateLimited();
   if (!groupsOn()) return featureOff();
 
-  const session = verifyMemberAuth(req);
+  const session = await verifyLiveMemberAuth(req);
   if (!session) return unauthorized();
 
   let body: unknown;

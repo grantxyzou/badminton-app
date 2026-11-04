@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { completeSignIn } from '@/lib/authSession';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyLiveMemberAuth } from '@/lib/auth';
 import { resolveOAuthIdentity } from '@/lib/authResolve';
 import {
   normalizeEmail,
@@ -204,7 +204,7 @@ export async function finishOAuthCallback(
     existingIdentityMemberId: existing?.memberId ?? null,
     // Never when the app finishes: this browser's session is not a request to
     // link anything to it (F3), and a pop-up's may be some other person's.
-    sessionMemberId: inApp ? null : (verifyMemberAuth(req)?.memberId ?? null),
+    sessionMemberId: inApp ? null : ((await verifyLiveMemberAuth(req))?.memberId ?? null),
     providerEmail: email,
     providerEmailVerified: claims.emailVerified,
     memberIdByVerifiedEmail,
