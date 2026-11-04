@@ -1,7 +1,7 @@
 # Show how close the waitlist is to filling another court
 
 **Track:** admin cost-automation (North Star pillar 3). Deciding whether to book another court is the one waitlist step still done by hand and by asking around.
-**Status:** intent
+**Status:** intent (decided 2026-11-04, ready to build)
 **Review on:** 2026-12-09 — since ship, how many sessions had their court count raised after the line showed "a court's worth"? None, while waitlists stayed long = the line isn't helping the decision; remove it.
 
 ## Problem
@@ -27,15 +27,11 @@ Courts and the player cap are separate fields on a session (`Session.courts`, `S
   - W < P: "3 waiting · 3 more fills a court"
   - W ≥ P: "6 waiting · that's a court's worth"
 
-## Open questions (for Grant)
-
-1. **Who sees it?** Recommended: the admin's Next session card first (`components/admin/CommandCenter/NextSessionCard.tsx`, beside "+N waitlist"), because the decision is the admin's. On the members' sign-up card the same line could read as a promise of a court the venue may not have. If members should see it too, it needs softer wording.
-2. **Is 6 a court for BPM?** `maxPlayers ÷ courts` assumes the cap was set per court. If BPM's cap isn't a clean multiple, or 6 isn't how Grant thinks about a court, set `playersPerCourt` for BPM on the Club run page instead (`components/admin/CommandCenter/ClubRunPage.tsx`). That also makes the cap follow the courts in both session forms, which changes how BPM's cap is entered.
-3. **A push to the admin** when the waitlist first reaches a court's worth? Not in this plan; only if the line alone doesn't get seen.
-
 ## Decisions
 
-<appended as the work proceeds>
+- **Everyone sees it, framed as a possibility** (Grant, 2026-11-04: "everyone should see the idea of court can be added if sign up fills up early"). It goes on the members' sign-up card in the FULL and WAITLIST states, and on the admin's Next session card. For members it describes what could happen, never a promise: "Filled up early? Another court can be added. 3 more on the waitlist would fill one." This beat admin-only, which would have kept the asking going: members can't see the rule, so they ask Grant.
+- **6 per court for BPM Core** (Grant, 2026-11-04: "6 per court yes"). It comes from `maxPlayers ÷ courts` (12 ÷ 2), so no club setting changes and BPM's cap is still typed by hand. Setting `playersPerCourt` instead would have made the cap follow the courts in both session forms, a change to how Grant enters a session that he didn't ask for. A club with `playersPerCourt` set (Six Feathers: 8) uses that.
+- **No admin push** when the waitlist reaches a court's worth, for now. Revisit only if the line goes unseen.
 
 ## Shape
 
@@ -43,5 +39,5 @@ Courts and the player cap are separate fields on a session (`Session.courts`, `S
 |---|---|
 | Players per court, and the line's numbers (pure, tested) | `lib/clubRun.ts` (beside `capacityForCourts`) |
 | Admin line | `components/admin/CommandCenter/NextSessionCard.tsx` |
-| Member line, if Grant wants it | `components/HomeTab.tsx` (waitlist and full states) |
-| Copy | `messages/en.json`, `messages/zh-CN.json` (member line only; admin screens are English-only by decision) |
+| Member line | `components/HomeTab.tsx` (full and waitlist states) |
+| Copy | `messages/en.json`, `messages/zh-CN.json` (member line; admin screens are English-only by decision) |
