@@ -16,7 +16,7 @@ import { findBySecret } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { setMemberCookie } from '@/lib/auth';
 import type { Member } from '@/lib/types';
-import { resolveGroupId } from '@/lib/groupContext';
+import { groupIdWithHint } from '@/lib/groupContext';
 import { resolveClaimLink } from '@/lib/claimLinks';
 
 export const dynamic = 'force-dynamic';
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     // resolves — the organiser made a new one — is the same `none` as
     // everything else: "New link" cancels the asks made with the old one.
     const viaLink = body?.claimToken !== undefined && body?.claimToken !== null;
-    const groupId = viaLink ? await resolveClaimLink(body.claimToken) : resolveGroupId(req);
+    const groupId = viaLink ? await resolveClaimLink(body.claimToken) : groupIdWithHint(req, body?.club);
     if (!groupId) return NextResponse.json({ status: 'none' });
     const memberId = await resolveActiveMemberId(groupId, name);
     if (!memberId) return NextResponse.json({ status: 'none' });

@@ -21,7 +21,7 @@ import { issueAccessRequest, MAX_OPEN_REQUESTS } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { sendPushToMembers } from '@/lib/push';
 import type { Member } from '@/lib/types';
-import { resolveGroupId } from '@/lib/groupContext';
+import { groupIdWithHint } from '@/lib/groupContext';
 import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
 import { rosterMembers } from '@/lib/roster';
 
@@ -47,9 +47,14 @@ export async function POST(req: NextRequest) {
   // link it could not use is answered like any other miss below, and never
   // falls back to the request's own club.
   const viaLink = body?.claimToken !== undefined && body?.claimToken !== null;
+  // Without a link, the club comes from the cookie's claim, else the phone's
+  // remembered club (`club`, lib/lastClub.ts), else BPM. The asker is signed
+  // out, so the claim is usually absent; before the hint, every other club's
+  // member was looked up on BPM's roster, where a same-named BPM member took
+  // their request. With a hint the name is read in that club ONLY.
 
   try {
-    const groupId = viaLink ? await resolveClaimLink(body.claimToken) : resolveGroupId(req);
+    const groupId = viaLink ? await resolveClaimLink(body.claimToken) : groupIdWithHint(req, body?.club);
     const memberId = groupId ? await resolveActiveMemberId(groupId, name) : null;
     const { secret, stored } = issueAccessRequest({ groupId: groupId ?? undefined, via: viaLink ? 'link' : undefined });
 

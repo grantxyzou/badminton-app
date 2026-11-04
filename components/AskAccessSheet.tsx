@@ -5,10 +5,25 @@ import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import { setIdentity } from '@/lib/identity';
+import { lastClub } from '@/lib/lastClub';
+import { useClientValue } from '@/lib/useClientValue';
+import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** Often enough to feel immediate when Grant is standing right there. */
 const POLL_MS = 3_000;
+
+/**
+ * Which club the ask is for: the claim link when the person came through one,
+ * else the club this phone was last signed in to (lib/lastClub.ts), else
+ * nothing, and the server takes BPM. The ask and its poll must send the SAME
+ * one, or the poll looks for the request on another club's roster.
+ */
+function askedClub(claim: { token: string } | null | undefined): { claimToken: string } | { club: string } | Record<string, never> {
+  if (claim) return { claimToken: claim.token };
+  const club = lastClub();
+  return club ? { club } : {};
+}
 
 /**
  * "I can't sign in — let Grant let me in."
@@ -105,7 +120,7 @@ export default function AskAccessSheet({
       const res = await fetch(`${BASE}/api/members/access-request/claim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), secret: secret.current, ...(claim ? { claimToken: claim.token } : {}) }),
+        body: JSON.stringify({ name: name.trim(), secret: secret.current, ...askedClub(claim) }),
       });
       if (!res.ok) return; // transient; keep polling
       const body = await res.json();
@@ -134,7 +149,7 @@ export default function AskAccessSheet({
       const res = await fetch(`${BASE}/api/members/access-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed, ...(claim ? { claimToken: claim.token } : {}) }),
+        body: JSON.stringify({ name: trimmed, ...askedClub(claim) }),
       });
       if (res.status === 429) { setPhase('rate_limited'); return; }
       if (!res.ok) { setPhase('error'); return; }
@@ -150,6 +165,11 @@ export default function AskAccessSheet({
   }
 
   const club = claim?.clubName ?? null;
+  // A phone that never signed in sends no club and the ask goes to BPM's
+  // roster. Say so, rather than leave another club's member waiting on an
+  // ask nobody in their club will see. Unknown (server render) shows nothing.
+  const noClubHint = useClientValue(() => lastClub() === null, false);
+  const sayOtherClub = !club && noClubHint && isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const title = club ? t('claimTitle', { club }) : t('askTitle');
 
   return (
@@ -169,6 +189,9 @@ export default function AskAccessSheet({
               <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>
                 {club ? t('claimIntro', { club }) : t('askIntro')}
               </p>
+              {sayOtherClub && (
+                <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>{t('askOtherClub')}</p>
+              )}
 
               {phase === 'error' && <p className="field-error" role="alert">{t('askError')}</p>}
               {phase === 'rate_limited' && (

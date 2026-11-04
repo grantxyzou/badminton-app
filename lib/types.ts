@@ -418,7 +418,8 @@ export interface Membership {
   /**
    * A MEMBER of this club rather than a drop-in (docs/plans/roster-import.md).
    * Set by the roster import or the Roster sheet; the Roster page labels and
-   * filters by it, and "last week's list carries over" will read it. Not the
+   * filters by it (a members-first window would too; carrying last week's
+   * list over was dropped, docs/plans/six-feathers-onboarding.md). Not the
    * Roster page's "Regulars" chip, which counts recent sessions. Additive;
    * absent = not marked either way.
    */
