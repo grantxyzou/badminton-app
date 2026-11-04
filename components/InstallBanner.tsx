@@ -13,12 +13,8 @@ const DISMISS_KEY = 'bpm_install_hint_dismissed';
  * environment, so it is read rather than stored — and `false` is the right
  * server answer, since `isStandalone()`/`isNative()` both treat `false` as
  * "unknown" and an unknown must not make the banner appear during hydration.
- *
- * Exported for `PushNudge`, which waits while this banner is up: two nudges
- * stacked above the week's session (one "add to home screen", one "get the
- * app") read as two errands, and they pull in different directions.
  */
-export function shouldNudge(): boolean {
+function shouldNudge(): boolean {
   if (isStandalone() || isNative()) return false; // already installed, or IS the app
   if (readStored(DISMISS_KEY) === '1') return false; // dismissed before
   // Only nudge on touch devices (skip desktop, where home-screen install

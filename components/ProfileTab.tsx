@@ -994,6 +994,14 @@ export default function ProfileTab({
         }}
         push={push}
         isAdmin={isAdmin}
+        onOpenMigrate={
+          migrateOn && !isNative()
+            ? () => {
+                setPushOpen(false);
+                setMigrateOpen(true);
+              }
+            : undefined
+        }
       />
     </div>
   );

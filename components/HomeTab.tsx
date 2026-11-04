@@ -21,7 +21,6 @@ import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
 import { levelPath } from '@/lib/levelRead';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import InstallBanner from '@/components/InstallBanner';
-import PushNudge from '@/components/PushNudge';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
@@ -620,9 +619,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <div className="bpm-home-stack">
       {/* One-time nudge to install to the home screen (mobile browser only). */}
       <InstallBanner />
-      {/* One-time nudge towards notifications: on in the store app, the app
-          itself from the web. Remembered on the device once seen through. */}
-      <PushNudge />
 
       {/* A CLUB WITH NO SESSION YET.
           `GET /api/session` answers 404 for a group with no pointer, which is

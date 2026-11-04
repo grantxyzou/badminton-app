@@ -758,8 +758,12 @@
       "title": "通知",
       "close": "关闭",
       "checking": "检查中…",
-      "offBody": "每周报名开放时提醒你。大约每周一条 — 随时可以关闭。",
-      "onBody": "每周报名开放时会收到通知。",
+      "offTitle": "报名一开放就提醒你",
+      "offBody": "球拍穿好时也会通知你，不用打开应用查看。随时可以关闭。",
+      "onBody": "报名开放和球拍穿好时都会通知你。",
+      "appTitle": "在手机上用 %APP_SHORT% 应用",
+      "appBody": "iPhone 和 Android 测试版应用会在报名开放时通知你。账号直接带过去：一个验证码，不用 PIN。",
+      "appCta": "获取应用 →",
       "turnOn": "开启通知",
       "turnOff": "关闭通知",
       "working": "稍等…",
@@ -793,15 +797,6 @@
     "errorServer": "提交失败，请重试。",
     "offline": "你已离线，联网后再提交。",
     "close": "关闭"
-  },
-  "pushNudge": {
-    "nativeTitle": "报名一开放就提醒你",
-    "nativeBody": "球拍穿好时也会通知你，不用打开应用查看。",
-    "nativeCta": "开启通知 →",
-    "webTitle": "在手机上用 %APP_SHORT% 应用",
-    "webBody": "iPhone 和 Android 测试版应用会在报名开放时通知你。账号直接带过去：一个验证码，不用 PIN。",
-    "webCta": "获取应用 →",
-    "dismiss": "关闭"
   },
   "install": {
     "title": "把 %APP_SHORT% 添加到主屏幕",

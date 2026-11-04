@@ -21,6 +21,11 @@ interface Props {
    *  targets only the caller's own devices, so it is the way to prove the
    *  transport (VAPID, or FCM/APNs on the native shell) on a real phone. */
   isAdmin?: boolean;
+  /** Web only, while the native-migrate flag is on: opens `MigrateSheet`.
+   *  The store app is where notifications are dependable (an iPhone tab has
+   *  none at all), so the sheet points there under every web answer.
+   *  Absent in the store app, where there is nowhere further to go. */
+  onOpenMigrate?: () => void;
 }
 
 type TestOutcome =
@@ -37,7 +42,7 @@ type TestOutcome =
  * a user who cannot is told plainly instead of being offered a button that
  * silently does nothing.
  */
-export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin = false }: Props) {
+export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin = false, onOpenMigrate }: Props) {
   const t = useTranslations('profile.push');
   const online = useOnline();
   const { state, enable, disable, busy, error } = push;
@@ -98,9 +103,14 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
     const isOn = state.status === 'on';
     return (
       <>
-        <p className="fs-base" style={{ color: 'var(--text-primary)' }}>
-          {isOn ? t('onBody') : t('offBody')}
-        </p>
+        {isOn ? (
+          <p className="fs-base" style={{ color: 'var(--text-primary)' }}>{t('onBody')}</p>
+        ) : (
+          <>
+            <p className="fs-md" style={{ color: 'var(--text-primary)', fontWeight: 600, margin: 0 }}>{t('offTitle')}</p>
+            <p className="fs-base" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>{t('offBody')}</p>
+          </>
+        )}
         {!online && (
           <p className="fs-sm" style={{ color: 'var(--text-muted)', marginTop: 'var(--space-3)' }}>
             {t('offlineHint')}
@@ -180,6 +190,18 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
         {/* Keyed on the state, so "Checking…" → on/off/blocked crossfades
             instead of swapping copy under the reader. */}
         <div key={state.status} className="motion-fade">{body()}</div>
+        {onOpenMigrate && state.status !== 'loading' && (
+          <div className="cc-mini-card p-3" style={{ marginTop: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-start' }}>
+            <span className="material-icons icon-lg" aria-hidden style={{ color: 'var(--accent)' }}>install_mobile</span>
+            <div style={{ minWidth: 0 }}>
+              <p className="fs-md" style={{ color: 'var(--text-primary)', fontWeight: 600, margin: 0 }}>{t('appTitle')}</p>
+              <p className="fs-sm" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)', marginBottom: 0 }}>{t('appBody')}</p>
+              <button type="button" className="bpm-row-link" style={{ marginTop: 'var(--space-3)' }} onClick={onOpenMigrate}>
+                {t('appCta')}
+              </button>
+            </div>
+          </div>
+        )}
       </BottomSheetBody>
     </BottomSheet>
   );

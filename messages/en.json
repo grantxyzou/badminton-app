@@ -758,8 +758,12 @@
       "title": "Notifications",
       "close": "Close",
       "checking": "Checking…",
-      "offBody": "Get a notification when sign-ups open for the week. About one a week — you can turn it off any time.",
-      "onBody": "You'll get a notification when sign-ups open for the week.",
+      "offTitle": "Get a ping when sign-ups open",
+      "offBody": "You'll hear when your racket's ready too, without opening the app. You can turn it off any time.",
+      "onBody": "You'll get a ping when sign-ups open, and when your racket's ready.",
+      "appTitle": "Get the %APP_SHORT% app on your phone",
+      "appBody": "The iPhone and Android test app tells you when sign-ups open. Your account comes with you: one code, no PIN.",
+      "appCta": "Get the app →",
       "turnOn": "Turn on notifications",
       "turnOff": "Turn off notifications",
       "working": "Just a moment…",
@@ -793,15 +797,6 @@
     "errorServer": "Couldn't send — please try again.",
     "offline": "You're offline — reconnect to send.",
     "close": "Close"
-  },
-  "pushNudge": {
-    "nativeTitle": "Get a ping when sign-ups open",
-    "nativeBody": "You'll hear when your racket's ready too, without opening the app.",
-    "nativeCta": "Turn on notifications →",
-    "webTitle": "Get the %APP_SHORT% app on your phone",
-    "webBody": "The iPhone and Android test app tells you when sign-ups open. Your account comes with you: one code, no PIN.",
-    "webCta": "Get the app →",
-    "dismiss": "Dismiss"
   },
   "install": {
     "title": "Add %APP_SHORT% to your home screen",
