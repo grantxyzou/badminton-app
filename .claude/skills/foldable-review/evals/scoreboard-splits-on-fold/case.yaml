@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: scoreboard-splits-on-fold
+expected_outcome: |
+  The response boots the mock app and runs the bundled fold-shots script with
+  --open keep-score on the fold-laptop preset (884 x 1000, horizontal fold
+  injected) and the phone preset (430 x 932, no fold), or an equivalent
+  Playwright run that injects navigator.devicePosture and
+  window.viewport.segments. It reports the scoreboard's split as three
+  pixel values that land on the injected hinge for the Fold (488px / 24px /
+  488px) and a centre split with a 0px gap on the phone, says the board is
+  above and the buttons below in both, and names the screenshot files. It
+  does not claim anything about the native plugin working, since that needs
+  Xcode 27.1 on a Mac.
