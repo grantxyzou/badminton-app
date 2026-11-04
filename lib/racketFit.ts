@@ -1,4 +1,4 @@
-import type { CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip } from './types';
+import type { CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, FeelBalance } from './types';
 import type { CourtSide } from './courtSide';
 import { isOffered } from './catalogOffer';
 import type { PlayerProfile } from './racketProfile';
@@ -65,6 +65,26 @@ import type { PlayerProfile } from './racketProfile';
  * fit-3 reason, and so does an arm that is often sore. With an anchor, the racket they play is the better evidence
  * and the side only earns a matching balance the format bonus.
  *
+ * fit-5 (2026-11-04) — WHAT THE FIRST PRODUCTION BACKTEST SAID. Hiding each
+ * member's own racket and re-running the engine from their answers alone
+ * (`lib/fitBacktest.ts`) matched flex and weight nine times in nine and
+ * balance and price tier under half the time, because the from-scratch path
+ * had no input for either: balance came only from a goal or a mixed court
+ * side and defaulted to even, and the tier followed the LEVEL row, aiming
+ * entry and mid-range at a club that buys premium whatever its level. Two
+ * changes, both for the member with NO racket to anchor on:
+ *  - A BALANCE ANSWER (`balancePref`, the Fit page's "Balance" question,
+ *    asked only when nothing in the bag can anchor). It sets the starting
+ *    balance ahead of the court side, and the goal still moves it from there,
+ *    exactly as the goal moves an anchor's. With an anchor it is not read:
+ *    the racket they play is the better evidence, the same rule as the side.
+ *    An arm that is often sore caps it at even, as the side is capped.
+ *  - THE TIER IS NOT STEERED WHEN UNANCHORED. The level row's tier stays in
+ *    the target as a label, but costs nothing in the distance; the BUDGET
+ *    question is the one input that speaks to price, and it already ramps.
+ *    With an anchor the tier penalty is unchanged — a member who plays
+ *    mid-range is still steered to stay near it.
+ *
  * Pure: no fetch, no DB, no clock, no randomness. Every reason is an i18n KEY
  * with params, never a sentence — English-only reasons were one of the
  * defects. `FIT_REASON_KEYS` is exported so a test can assert every key the
@@ -72,7 +92,7 @@ import type { PlayerProfile } from './racketProfile';
  * dynamic `t(reason.key)`.
  */
 
-export const FIT_ENGINE_VERSION = 'fit-4';
+export const FIT_ENGINE_VERSION = 'fit-5';
 
 export type FitState = 'anchored' | 'anchored_default' | 'unanchored' | 'level_only' | 'needsFit';
 export type FitLevel = 'Beginner' | 'Intermediate' | 'Advanced';
@@ -93,6 +113,9 @@ export interface FitInput {
   /** Mixed doubles: which half of the court (`lib/courtSide.ts`). Absent for
    *  everyone else, and for anyone who chose Doubles or Singles outright. */
   courtSide?: CourtSide | null;
+  /** fit-5: the balance the member asked for, in the catalog's words
+   *  (`PlayerGear.fitBalance`). Read only when there is no anchor. */
+  balancePref?: FeelBalance | null;
   budgetMaxCad?: number;
   /** From RATED skills only; null below three rated. */
   level: FitLevel | null;
@@ -326,7 +349,7 @@ export function buildTarget(input: FitInput, anchorAxes: Axes | null): TargetSpe
   const anchored = anchorAxes !== null;
   const base = anchored
     ? { balance: anchorAxes.balance, flex: anchorAxes.flex, weight: anchorAxes.weight ?? LEVEL_BASE[input.level ?? 'null'].weight, tier: anchorAxes.tier }
-    : { ...LEVEL_BASE[input.level ?? 'null'], balance: sideBalance(input) ?? LEVEL_BASE[input.level ?? 'null'].balance };
+    : { ...LEVEL_BASE[input.level ?? 'null'], balance: prefBalance(input) ?? sideBalance(input) ?? LEVEL_BASE[input.level ?? 'null'].balance };
 
   const goal: FitGoal = input.goal ?? 'happy';
   const delta = goalDelta(goal, input.swing);
@@ -367,6 +390,17 @@ export function buildTarget(input: FitInput, anchorAxes: Axes | null): TargetSpe
   };
 }
 
+/** fit-5: the starting balance the member asked for outright, or null when
+ *  they did not answer (or answered outside the vocabulary). An arm that is
+ *  often sore caps a head-heavy answer at even — the start must not aim past
+ *  the ceiling the comfort answer sets, the same rule `sideBalance` keeps. */
+export function prefBalance(input: Pick<FitInput, 'balancePref' | 'armComfort'>): number | null {
+  if (!input.balancePref) return null;
+  const axis = BALANCE_AXIS[canon(input.balancePref)];
+  if (axis === undefined) return null;
+  return input.armComfort === 'often_sore' ? Math.min(axis, 2) : axis;
+}
+
 /** fit-4: the starting balance a mixed court side asks for, or null when it
  *  says nothing — no side; a slow swing on the back court, which a heavy head
  *  would slow down rather than power; or an arm that is often sore, whose
@@ -399,10 +433,12 @@ interface Scored {
 /** Grams at 1.2 × up to 10 g = 12, about half a balance step: the gram axis
  *  is a tie-break next to balance, per Cross 2006. */
 export const WEIGHTS = { balance: 22, flex: 12, weight: 1.2, tier: 6 } as const;
-/** A Beginner reaching UP past the TARGET's tier pays double — the level row's
- *  tier (Entry) when unanchored, the anchor's own tier when anchored, so a
- *  Beginner who already plays Premium is not steered down from it. Reordered
- *  toward the rows that fit as well, never excluded from a Premium frame. */
+/** A Beginner reaching UP past their ANCHOR's tier pays double, so a
+ *  Beginner who already plays Premium is not steered down from it and one who
+ *  plays Entry is reordered toward the rows that fit as well, never excluded
+ *  from a Premium frame. fit-5: with no anchor the tier costs NOTHING — the
+ *  level row's tier was a guess at what the member would buy, and the first
+ *  backtest showed it guessing low; the budget question is the price input. */
 const TIER_UP_BEGINNER = 12;
 const WEIGHT_DELTA_CAP = 10;
 const CAP_FLEX = 10;
@@ -423,7 +459,7 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   const dFlex = Math.abs(axes.flex - target.flex);
   const dWeight = axes.weight === null ? 0 : Math.min(Math.abs(axes.weight - target.weight), WEIGHT_DELTA_CAP);
   const dTier = Math.abs(axes.tier - target.tier);
-  const tierWeight = input.level === 'Beginner' && axes.tier > target.tier ? TIER_UP_BEGINNER : WEIGHTS.tier;
+  const tierWeight = !target.anchored ? 0 : input.level === 'Beginner' && axes.tier > target.tier ? TIER_UP_BEGINNER : WEIGHTS.tier;
   const penalty = (WEIGHTS.balance * dBalance + WEIGHTS.flex * dFlex + WEIGHTS.weight * dWeight + tierWeight * dTier) / target.sigma;
 
   let caps = 0;

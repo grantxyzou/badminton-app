@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The fit engine asks the unanchored member about balance, and stops guessing their price (2026-11-04)
+
+The first production run of the owned-racket backtest matched shaft flex and weight nine times in nine and balance and price tier under half the time, and both misses were axes the from-scratch path had no input for. `fit-5`: a member with no racket we know in their bag is asked **Balance** on the Your fit page — Head-heavy, Even or Head-light, the same words a typed-in racket's feel uses — and the picks start there (the goal still moves it; a sore arm still caps it at even); the question disappears once a racket anchors the engine, and sits outside the "n of 5". And with no racket to anchor on the engine **no longer steers toward a price tier from the level** — a club that buys premium at every level was being aimed at entry and mid-range — leaving the budget question as the one thing that speaks to price. The rated golden cases and the manufacturers' cases are unchanged; `docs/plans/racket-fit-engine.md`.
+
 ### Three new ways to check the racket fit engine, none of them an expert's evening (2026-11-04)
 
 The fit engine's gate waited on the owner and the club stringer rating profiles (stuck at three of five) and on two engaged members in a club of thirty. `docs/plans/racket-fit-engine.md` gains three legs that need nobody's time: an **owned-racket backtest** (`GET /api/reports/fit-backtest`, behind the read-only reports key) that hides each member's racket, re-runs the engine and scores the class of the pick against the class of what they hold, totals only; a **property suite** that turns every rule in the engine's own header into a check over every racket in the catalog; and the **manufacturers' second opinion**, four golden cases built from the brands' own series positioning, counted apart from the expert ones. The engine (`fit-4`) passes all of it. The backtest's first read on production is the plan's next review.

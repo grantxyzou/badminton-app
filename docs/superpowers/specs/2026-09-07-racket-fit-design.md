@@ -76,7 +76,7 @@ gone after purge.
 ## Engine — `lib/racketFit.ts` (pure)
 
 ```ts
-export const FIT_ENGINE_VERSION = 'fit-3';   // fit-1 = 2026-09-09 launch; fit-2 = the research re-weighting, 2026-09-10; fit-3 = a slow swing's "more power" leaves the head alone, 2026-10-09
+export const FIT_ENGINE_VERSION = 'fit-3';   // fit-1 = 2026-09-09 launch; fit-2 = the research re-weighting, 2026-09-10; fit-3 = a slow swing's "more power" leaves the head alone, 2026-10-09; fit-4 = the side of a mixed court, 2026-10-20; fit-5 = a Balance answer for the unanchored, and no tier steer without an anchor, 2026-11-04 (docs/plans/racket-fit-engine.md)
 export interface FitInput {
   anchor: CatalogItem | null;      // active racket, only if its catalogId is a scorable row
   ownedIds: ReadonlySet<string>;   // every non-retired racket catalogId — excluded

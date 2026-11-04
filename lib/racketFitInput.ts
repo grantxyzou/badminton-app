@@ -48,6 +48,8 @@ export function buildFitInput(
     grip: gear?.fitGrip === 'G3' ? 'G4' : gear?.fitGrip,
     format: gear?.playFormat ?? 'both',
     courtSide: courtSideOf(gear),
+    // fit-5: read by the engine only when nothing above anchored.
+    balancePref: gear?.fitBalance,
     budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,
     level,
     hasRatings: ratings.length > 0,

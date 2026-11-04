@@ -137,6 +137,62 @@ describe('FitProfilePage — "What would you change?" in court words (2026-10-20
   });
 });
 
+describe('FitProfilePage — "Balance" for a member nothing can anchor (fit-5, 2026-11-04)', () => {
+  beforeEach(() => {
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+      ok: true, status: 200,
+      json: async () => ({ facts: { state: 'insufficient', answered: 0, frame: null, currentTensionLbs: null, tensionRange: null, sorenessMovedRange: false, goal: null, prospective: false, reasons: [] }, copy: null, checkInLevel: null }),
+    } as Response)) as unknown as typeof fetch);
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  function withActive(item: Partial<PlayerGear['items'][number]>): UseGear {
+    const racket = { id: 'r1', category: 'racket' as const, label: 'Racket', catalogId: null, ...item };
+    const doc = { ...base, items: [racket], activeRacketId: 'r1' } as PlayerGear;
+    return { ...gearOf(doc, vi.fn(async () => ({ ok: true as const }))), active: racket } as unknown as UseGear;
+  }
+  function renderWith(gear: UseGear) {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <FitProfilePage activeName="Lin" gear={gear} picks={PICKS} onBack={() => {}} />
+      </NextIntlClientProvider>,
+    );
+  }
+
+  it('asks in the three feel words, with no racket pictured, and stores the word the engine reads', async () => {
+    const setPrefs = renderPage(base);
+    const group = await screen.findByRole('radiogroup', { name: 'Balance' });
+    const tiles = within(group).getAllByRole('radio');
+    expect(tiles.map((r) => r.querySelector('.fit-tile-label')?.textContent)).toEqual(['Head-heavy', 'Even', 'Head-light']);
+    expect(tiles.map((r) => r.querySelector('.fit-tile-desc')?.textContent)).toEqual(['Weight toward the head', 'Weight through the middle', 'Weight toward the handle']);
+    expect(group.querySelector('svg')).toBeNull();
+    expect(screen.getByText(/No racket we know is in your bag yet/)).toBeTruthy();
+    fireEvent.click(within(group).getByRole('radio', { name: /Head-light/ }));
+    await waitFor(() => expect(setPrefs).toHaveBeenCalledWith({ fitBalance: 'Head-light' }));
+    // Outside the "n of 5": only some members see it.
+    expect(screen.getByText('0 of 5 answered')).toBeTruthy();
+  });
+
+  it('is not asked when a catalog racket, or a typed racket with balance AND shaft stated, anchors the engine', async () => {
+    renderWith(withActive({ catalogId: 'racket-yonex-astrox-88d-pro' }));
+    await screen.findByText(enMessages.stats.gear.fitPage.goal);
+    expect(screen.queryByRole('radiogroup', { name: 'Balance' })).toBeNull();
+    cleanup();
+    renderWith(withActive({ catalogId: null, feel: { balance: 'Even', flex: 'Stiff' } }));
+    await screen.findByText(enMessages.stats.gear.fitPage.goal);
+    expect(screen.queryByRole('radiogroup', { name: 'Balance' })).toBeNull();
+    cleanup();
+    // `feelAnchor` needs balance AND shaft (review of #768): a typed racket
+    // with only one of them is no anchor to the engine, so it is asked.
+    renderWith(withActive({ catalogId: null, feel: { flex: 'Stiff' } }));
+    expect(await screen.findByRole('radiogroup', { name: 'Balance' })).toBeTruthy();
+    cleanup();
+    renderWith(withActive({ catalogId: null, feel: { balance: 'Even' } }));
+    expect(await screen.findByRole('radiogroup', { name: 'Balance' })).toBeTruthy();
+  });
+});
+
 describe('FitProfilePage — clearing every fit answer', () => {
   beforeEach(() => {
     window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
@@ -161,7 +217,7 @@ describe('FitProfilePage — clearing every fit answer', () => {
     await waitFor(() => expect(setPrefs).toHaveBeenCalledTimes(1));
     expect(setPrefs).toHaveBeenCalledWith({
       fitGoal: null, fitSwing: null, fitGrip: null, fitPlayStyle: null, fitSoreness: null,
-      fitLevelOverride: null, fitOvergrips: null, fitArmComfort: null,
+      fitLevelOverride: null, fitOvergrips: null, fitBalance: null, fitArmComfort: null,
     });
   });
 
