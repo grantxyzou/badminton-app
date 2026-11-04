@@ -22,6 +22,8 @@ import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { sendPushToMembers } from '@/lib/push';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
+import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
+import { rosterMembers } from '@/lib/roster';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,12 +42,33 @@ export async function POST(req: NextRequest) {
   if (!name || name.length > 80) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
+  // The club's claim link (docs/plans/claim-your-name.md), when the ask came
+  // through one. Present-but-unusable is NOT absent: an ask that brought a
+  // link it could not use is answered like any other miss below, and never
+  // falls back to the request's own club.
+  const viaLink = body?.claimToken !== undefined && body?.claimToken !== null;
 
   try {
-    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
-    const { secret, stored } = issueAccessRequest();
+    const groupId = viaLink ? await resolveClaimLink(body.claimToken) : resolveGroupId(req);
+    const memberId = groupId ? await resolveActiveMemberId(groupId, name) : null;
+    const { secret, stored } = issueAccessRequest({ groupId: groupId ?? undefined, via: viaLink ? 'link' : undefined });
 
-    if (memberId) {
+    /*
+     * Through the link, only a name nobody has signed into yet can be asked
+     * for (Q2). Anyone holding the club chat holds the link, so letting it
+     * reach an established account would put every member's account one
+     * mistaken tap from a stranger. Someone with a PIN or a password who lost
+     * it recovers through the organiser's recovery code instead. The answer is
+     * the same 200 either way, so the link cannot be used to learn who has a
+     * credential.
+     */
+    let askable = memberId !== null;
+    if (memberId && viaLink) {
+      const { resource } = await getContainer('members').item(memberId, memberId).read<Member>();
+      askable = !!resource && isUnclaimed(resource);
+    }
+
+    if (memberId && askable && groupId) {
       /**
        * EVERY ASK IS ITS OWN ENTRY. Nobody displaces anybody.
        *
@@ -67,12 +90,18 @@ export async function POST(req: NextRequest) {
 
       if (result) {
         const { member } = result;
-        const container = getContainer('members');
         /**
-         * Tell the admins. Best-effort and never able to fail the request —
-         * same posture as the stringing notifier. If push is unconfigured or
-         * nobody has opted in, the request still stands and shows up on the
-         * Command Center next time an admin opens it.
+         * Tell THIS club's organisers and admins. Best-effort and never able
+         * to fail the request — same posture as the stringing notifier. If
+         * push is unconfigured or nobody has opted in, the request still
+         * stands and shows up on the Command Center next time an admin opens
+         * it.
+         *
+         * The roster, not a `members` scan for `role = 'admin'`: that scan
+         * reached every admin in the DEPLOYMENT, so with a second club live
+         * BPM's admins would have read "Akane is asking to be let in" for
+         * another club's member, on a lock screen. A person's role is per
+         * club, and only the club's roster can say who its admins are.
          *
          * No money and no secret in the body, obviously; a lock screen is a
          * public surface. The name is the whole point of the notification.
@@ -80,22 +109,9 @@ export async function POST(req: NextRequest) {
          * than stacking another.
          */
         try {
-          const { resources: admins } = await container.items
-            .query<Member>({
-              query: "SELECT * FROM c WHERE c.role = 'admin' AND c.active = true",
-              parameters: [],
-            })
-            .fetchAll();
-          /* Re-filtered in JS. The mock store matches on parameter NAMES
-             and this query binds none, so `c.role = 'admin'` is invisible to
-             it — under the mock every active member comes back, and
-             "tell the admins" would broadcast one person's lockout to the
-             whole club. Production Cosmos honours the WHERE; the test
-             environment is the one that needs this line. */
-          const adminIds = admins
-            .filter((a) => a.role === 'admin' && a.active === true)
-            .map((a) => a.id)
-            .filter(Boolean);
+          const adminIds = (await rosterMembers(groupId))
+            .filter(({ member: m }) => m.role === 'admin')
+            .map(({ member: m }) => m.id);
           if (adminIds.length > 0) {
             await sendPushToMembers(adminIds, {
               title: 'Someone can’t sign in',

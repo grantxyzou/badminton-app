@@ -82,8 +82,6 @@ const UNSWEPT: readonly string[] = [
   'app/api/equipment/share-card/route.ts',
   'app/api/events/route.ts',
   'app/api/groups/switch/route.ts',
-  'app/api/members/access-request/claim/route.ts',
-  'app/api/members/access-request/route.ts',
   'app/api/payments/self-report/route.ts',
   'app/api/recommend/route.ts',
   'app/api/session/advance/route.ts',

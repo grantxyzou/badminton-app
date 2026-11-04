@@ -130,6 +130,8 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
     noGroup: false,
   });
   const [initialInvite, setInitialInvite] = useState<Invite | null>(null);
+  /** A club's claim link from `?claim=` (docs/plans/claim-your-name.md). */
+  const [claimToken, setClaimToken] = useState<string | null>(null);
   const consumed = useRef(false);
   /** The view as the identity listener sees it — it must not re-subscribe per view. */
   const viewRef = useRef<View>('welcome');
@@ -226,6 +228,18 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
     if (reset) {
       setResetRequest({ token: reset, email: params.get('email') ?? '' });
       strip('reset', 'email');
+    }
+    // A club's claim link: someone the organiser put on the roster, asking to
+    // be let in under their own name. A live credential, so stripped like
+    // `join`; it opens Log in with the club's ask already up. A signed-in
+    // member in no club has an account already — there is nothing to claim.
+    const claim = params.get('claim');
+    if (claim) {
+      if (!noClubMode) {
+        setClaimToken(claim);
+        setView('login');
+      }
+      strip('claim');
     }
     const join = params.get('join');
     if (join) {
@@ -363,7 +377,15 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             onJoined={hardReload}
           />
         ) : view === 'login' ? (
-          <LogInView authProviders={authProviders} onBack={() => setView('welcome')} onSignUp={() => setView('signup')} />
+          <LogInView
+            authProviders={authProviders}
+            claimToken={claimToken}
+            onBack={() => {
+              setClaimToken(null);
+              setView('welcome');
+            }}
+            onSignUp={() => setView('signup')}
+          />
         ) : view === 'signup' ? (
           <SignUpView
             authProviders={authProviders}
@@ -560,16 +582,44 @@ function NoClubView({
 
 function LogInView({
   authProviders,
+  claimToken = null,
   onBack,
   onSignUp,
 }: {
   authProviders: Provider[];
+  /** A club's claim link (`?claim=`): the ask opens for that club by itself. */
+  claimToken?: string | null;
   onBack: () => void;
   onSignUp: () => void;
 }) {
   const t = useTranslations('signedOut');
   const [mode, setMode] = useState<'pin' | 'email'>('pin');
   const [askOpen, setAskOpen] = useState(false);
+  const [claim, setClaim] = useState<{ token: string; clubName: string } | null>(null);
+  const [claimDead, setClaimDead] = useState(false);
+  const claimResolved = useRef(false);
+
+  // The link names a club; the preview says which, and nothing else
+  // (`GET /api/groups/preview?claim=`). Then the ask opens by itself, so the
+  // person lands on one field: their name.
+  useEffect(() => {
+    if (!claimToken || claimResolved.current) return;
+    claimResolved.current = true;
+    void (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/groups/preview?claim=${encodeURIComponent(claimToken)}`, { cache: 'no-store' });
+        if (!res.ok) {
+          setClaimDead(true);
+          return;
+        }
+        const data = (await res.json()) as { name: string };
+        setClaim({ token: claimToken, clubName: data.name });
+        setAskOpen(true);
+      } catch {
+        setClaimDead(true);
+      }
+    })();
+  }, [claimToken]);
   const [forgotOpen, setForgotOpen] = useState(false);
   // A stale local identity is the one thing worth remembering here: it saves a
   // returning player typing their own name. Read once, at mount.
@@ -583,6 +633,9 @@ function LogInView({
       <TopBar title={t('login.title')} onBack={onBack} backLabel={t('back')} />
       <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
         <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('login.body')}</p>
+        {/* A claim link the organiser has since replaced (or never was one):
+            say so, rather than leaving them on a page that ignores the link. */}
+        {claimDead && <p className="field-error" role="alert">{t('login.claimLinkDead')}</p>}
 
         <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
           {authProviders.length > 0 && (
@@ -630,6 +683,7 @@ function LogInView({
         onClose={() => setAskOpen(false)}
         sessionId=""
         initialName={staleName}
+        claim={claim}
         onSignedIn={({ hasPin }) => {
           setAskOpen(false);
           // An approval signs them in with no credential. The reload the sign-in

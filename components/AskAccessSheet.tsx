@@ -36,6 +36,7 @@ export default function AskAccessSheet({
   sessionId,
   initialName = '',
   onSignedIn,
+  claim,
 }: {
   open: boolean;
   onClose: () => void;
@@ -44,6 +45,13 @@ export default function AskAccessSheet({
   /** Fired once they are actually signed in. `hasPin` decides whether it is
    *  worth offering them one. */
   onSignedIn: (result: { name: string; hasPin: boolean }) => void;
+  /**
+   * The club's claim link, when the person arrived through one
+   * (docs/plans/claim-your-name.md): the ask and the claim name that club
+   * instead of the one this device would otherwise resolve to, and the sheet
+   * says whose club it is.
+   */
+  claim?: { token: string; clubName: string } | null;
 }) {
   const t = useTranslations('recovery');
   const online = useOnline();
@@ -97,7 +105,7 @@ export default function AskAccessSheet({
       const res = await fetch(`${BASE}/api/members/access-request/claim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), secret: secret.current }),
+        body: JSON.stringify({ name: name.trim(), secret: secret.current, ...(claim ? { claimToken: claim.token } : {}) }),
       });
       if (!res.ok) return; // transient; keep polling
       const body = await res.json();
@@ -116,7 +124,7 @@ export default function AskAccessSheet({
     } catch {
       /* keep polling — a dropped request is not an answer */
     }
-  }, [name, sessionId, stop, onSignedIn]);
+  }, [name, sessionId, stop, onSignedIn, claim]);
 
   async function ask() {
     const trimmed = name.trim();
@@ -126,7 +134,7 @@ export default function AskAccessSheet({
       const res = await fetch(`${BASE}/api/members/access-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed }),
+        body: JSON.stringify({ name: trimmed, ...(claim ? { claimToken: claim.token } : {}) }),
       });
       if (res.status === 429) { setPhase('rate_limited'); return; }
       if (!res.ok) { setPhase('error'); return; }
@@ -141,10 +149,13 @@ export default function AskAccessSheet({
     }
   }
 
+  const club = claim?.clubName ?? null;
+  const title = club ? t('claimTitle', { club }) : t('askTitle');
+
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('askTitle')}>
+    <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
       <BottomSheetHeader>
-        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('askTitle')}</span>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{title}</span>
         <button type="button" onClick={onClose} aria-label={t('close')} className="sheet-close-btn">
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
@@ -156,14 +167,16 @@ export default function AskAccessSheet({
           ) : (
             <>
               <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>
-                {t('askIntro')}
+                {club ? t('claimIntro', { club }) : t('askIntro')}
               </p>
 
               {phase === 'error' && <p className="field-error" role="alert">{t('askError')}</p>}
               {phase === 'rate_limited' && (
                 <p className="field-error" role="alert">{t('askRateLimited')}</p>
               )}
-              {phase === 'expired' && <p className="field-error" role="alert">{t('askExpired')}</p>}
+              {phase === 'expired' && (
+                <p className="field-error" role="alert">{club ? t('claimExpired') : t('askExpired')}</p>
+              )}
 
               {phase === 'waiting' ? (
                 /* Deliberately not a spinner alone. "Keep this open" is the
@@ -173,19 +186,19 @@ export default function AskAccessSheet({
                   {/* The wait can last minutes; a turning ring is what says
                       the sheet is still listening rather than stuck. */}
                   <span className="ring-spinner" aria-hidden="true" style={{ flex: 'none' }} />
-                  <span>{t('askWaiting')}</span>
+                  <span>{club ? t('claimWaiting') : t('askWaiting')}</span>
                 </p>
               ) : (
                 <>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
                     <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {t('askNameLabel')}
+                      {club ? t('claimNameLabel', { club }) : t('askNameLabel')}
                     </span>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      aria-label={t('askNameLabel')}
+                      aria-label={club ? t('claimNameLabel', { club }) : t('askNameLabel')}
                       maxLength={80}
                       autoComplete="name"
                     />

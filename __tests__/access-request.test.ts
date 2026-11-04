@@ -319,20 +319,20 @@ describe('the claim route does not say whether a name exists', () => {
   });
 });
 
-describe('the push goes to admins only', () => {
-  it('does not treat every active member as an admin under the mock store', async () => {
-    // The query binds no parameters, so the mock ignores `c.role = 'admin'`
-    // entirely and hands back every active row. Without a JS re-filter, one
-    // person's lockout would be announced to the whole club.
+describe('the push goes to the club’s admins only', () => {
+  it('reads the asking club’s roster, never a deployment-wide admin scan', async () => {
+    // The old `SELECT … WHERE c.role = 'admin'` reached every admin of every
+    // club (and, under the mock, every member). The recipients now come from
+    // the club's roster; who exactly receives it is held behaviourally in
+    // __tests__/group-claim-link.test.ts.
     seedMember('Lin');
     seedMember('Viktor');
     const res = await REQUEST(req({ name: 'Lin' }));
     expect(res.status).toBe(200);
-    // The route must not throw or fan out; the assertion that matters is that
-    // the filter exists at all, pinned in source next to the hazard it guards.
     const src = await import('node:fs').then((fs) =>
       fs.readFileSync('app/api/members/access-request/route.ts', 'utf8'),
     );
-    expect(src).toMatch(/filter\(\(a\) => a\.role === 'admin'/);
+    expect(src).toMatch(/rosterMembers\(groupId\)/);
+    expect(src).not.toMatch(/c\.role = 'admin'/);
   });
 });

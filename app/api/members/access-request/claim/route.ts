@@ -17,6 +17,7 @@ import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { setMemberCookie } from '@/lib/auth';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
+import { resolveClaimLink } from '@/lib/claimLinks';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,7 +82,15 @@ export async function POST(req: NextRequest) {
      * The legitimate device is unaffected: it always holds a genuinely pending
      * request, so it still sees `pending` until approval.
      */
-    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+    // Through the club's claim link the name means something in THAT club
+    // (docs/plans/claim-your-name.md); a signed-out device has no cookie to
+    // say so, and `resolveGroupId` would answer BPM. A link that no longer
+    // resolves — the organiser made a new one — is the same `none` as
+    // everything else: "New link" cancels the asks made with the old one.
+    const viaLink = body?.claimToken !== undefined && body?.claimToken !== null;
+    const groupId = viaLink ? await resolveClaimLink(body.claimToken) : resolveGroupId(req);
+    if (!groupId) return NextResponse.json({ status: 'none' });
+    const memberId = await resolveActiveMemberId(groupId, name);
     if (!memberId) return NextResponse.json({ status: 'none' });
 
     const container = getContainer('members');
@@ -116,7 +125,10 @@ export async function POST(req: NextRequest) {
            who forgot theirs already knows what a PIN is. */
         hasPin: typeof member.pinHash === 'string' && member.pinHash.length > 0,
       });
-      setMemberCookie(res, member.id, member.name, resolveGroupId(req));
+      // Signed in to the club the ASK was for. A request from before the field
+      // existed carries none and gets the club this claim resolved, which is
+      // what every claim did until then.
+      setMemberCookie(res, member.id, member.name, mine.groupId ?? groupId);
       return res;
     }
 

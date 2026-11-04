@@ -487,9 +487,13 @@ export const SESSION_COOKIE_NAMES = { member: MEMBER_COOKIE_NAME, admin: COOKIE_
  * this person, and the role comes from it.
  */
 export async function requireGroupMember(req: NextRequest): Promise<ActiveMember | null> {
-  const session = verifyMemberAuth(req);
-  if (!session) return null;
-  return activeMemberFor(session);
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return null;
+  const payload = verifyToken(cookie, 'member');
+  if (!payload) return null;
+  // `iat` rides alongside, not on the session: it is only for the
+  // "Sign out everywhere" cutoff below.
+  return activeMemberFor(sessionOf(payload), payload.iat);
 }
 
 /** A session re-read against its membership: the roster name and role, and
@@ -501,13 +505,19 @@ export type ActiveMember = MemberSession & { role: MembershipRole; widgetPassNot
  * other way (the widget's bearer pass): is this person still an ACTIVE member
  * of the group the credential names, and under which name and role?
  */
-export async function activeMemberFor(session: MemberSession): Promise<ActiveMember | null> {
+export async function activeMemberFor(
+  session: MemberSession,
+  /** When the credential was minted (seconds), for the sign-out cutoff. The
+   *  widget's pass carries its own on the session it hands in. */
+  iat: number | undefined = (session as MemberSession & { iat?: number }).iat,
+): Promise<ActiveMember | null> {
   try {
     if (!groupsOn()) {
       // Flag off: everyone is in BPM and `Member.role` is the role — the same
       // read `isAdminAuthedWithMember` makes, so a BPM admin is an admin here too.
       const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
       if (!resource || resource.active !== true) return null;
+      if (sessionRevoked(iat, resource.sessionsNotBefore)) return null;
       // The CURRENT name, not the one baked into a cookie that can be 30 days
       // old. A caller that keys anything on this name — the members-only
       // sign-up in `POST /api/players` — would otherwise refuse a renamed
@@ -524,6 +534,7 @@ export async function activeMemberFor(session: MemberSession): Promise<ActiveMem
     }
     const m = await readMembership(session.groupId, session.memberId);
     if (!m || m.status !== 'active') return null;
+    if (sessionRevoked(iat, m.sessionsNotBefore)) return null;
     return {
       memberId: m.memberId,
       name: m.name,
@@ -534,6 +545,23 @@ export async function activeMemberFor(session: MemberSession): Promise<ActiveMem
   } catch {
     return null;
   }
+}
+
+/**
+ * "Sign out everywhere" (docs/plans/claim-your-name.md): a session minted
+ * before the cutoff is refused. Compared in whole seconds, the token's own
+ * unit, exactly as `passRevoked` does for widget passes, so a sign-in in the
+ * same second as the stamp still works. No `iat` (a hand-built session) or an
+ * unparseable cutoff revokes nothing.
+ *
+ * ONLY WHERE THE MEMBERSHIP IS RE-READ. That is the page gate, every
+ * members-only read and sign-up; a route that trusts `verifyMemberAuth`'s
+ * signature alone does not see the cutoff until the cookie expires.
+ */
+export function sessionRevoked(iatSeconds: number | undefined, notBefore: string | undefined): boolean {
+  if (iatSeconds === undefined || !notBefore) return false;
+  const cutoffMs = Date.parse(notBefore);
+  return Number.isFinite(cutoffMs) && iatSeconds < Math.floor(cutoffMs / 1000);
 }
 
 export type MemberGate =
