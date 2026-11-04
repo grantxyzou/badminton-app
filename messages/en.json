@@ -794,6 +794,15 @@
     "offline": "You're offline — reconnect to send.",
     "close": "Close"
   },
+  "pushNudge": {
+    "nativeTitle": "Turn on notifications",
+    "nativeBody": "Hear when sign-ups open and when your racket is ready, without opening the app.",
+    "nativeCta": "Turn on notifications →",
+    "webTitle": "Get the %APP_SHORT% app on your phone",
+    "webBody": "The iPhone and Android test app tells you when sign-ups open. Your account comes with you: one code, no PIN.",
+    "webCta": "Get the app →",
+    "dismiss": "Dismiss"
+  },
   "install": {
     "title": "Add %APP_SHORT% to your home screen",
     "intro": "Save %APP_SHORT% to your home screen and it opens full-screen, like a normal app.",
@@ -1450,7 +1459,8 @@
       "yes": "Show me where I sit",
       "no": "Keep it private",
       "changeLater": "Change it any time in Profile → Stats & privacy.",
-      "offline": "You're offline — we'll ask again when you're back."
+      "offline": "You're offline — we'll ask again when you're back.",
+      "close": "Close"
     },
     "privacy": {
       "crumb": "Profile",
