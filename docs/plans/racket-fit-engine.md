@@ -265,6 +265,56 @@ because they are correct regardless of uptake.
   Not done, on purpose: an A/B of engine versions. With ~30 members and two
   engagement taps a month it would take a year to say anything.
 
+- **What the backtest gate still does not close** (2026-11-04; the loophole
+  review written for #761, which was closed unmerged because the gate it
+  proposed had already shipped as the three legs above — the review outlived
+  it). Twelve loopholes were listed against the gate; checked against the code
+  as shipped, seven are closed and five are not. The five, worst first:
+  1. **Leakage: the answers may describe the racket in the hand.** A member who
+     owns a stiff, head-heavy frame answers "fast swing" *because* of it, so the
+     backtest can be scoring the engine on an input the racket itself produced.
+     Nothing guards this: `lib/fitBacktest.ts` reads no `fitUpdatedAt` and no
+     `acquiredAt`. Closing it means counting a member as pre-purchase only when
+     `fitUpdatedAt` precedes the earliest of `acquiredAt` and their first log
+     entry, reporting post-purchase members apart and never in the headline.
+     **`fitUpdatedAt` is a lower bound, not a clean guard**: it moves only when a
+     fit ENUM changes, so a later grip edit pushes it forward, `fitOvergrips` and
+     the string budget never stamp it, and docs written before the stamp have
+     none (`app/api/equipment/gear/route.ts`). A doc with no stamp is an
+     exclusion, not an assumption.
+  2. **No baseline, so the match rates have nothing to beat.** The reads report
+     flex 9/9 and weight 9/9 as if those were scores; in a catalog of near
+     duplicates a random pick scores well on a within-a-step rule. There is no
+     baseline anywhere in `lib/fitBacktest.ts` — not random, not club-popularity,
+     not the level-only ablation the Review-on line asks for. Until the margin is
+     over a baseline computed under the SAME rule, the headline numbers cannot
+     say whether the engine did any work.
+  3. **Influence, not fit.** Members buy what the owner owns, so "what they
+     stayed with" partly measures the club. The club-popularity baseline in (2)
+     absorbs it; the owner's own bag should be reported apart, and a run without
+     the most common racket is a sensitivity run that is reported and never
+     decides.
+  4. **No freeze, so the goalposts can move.** The exclusion list, the ablation
+     input and the thresholds are not fixed anywhere before a run. A change to
+     any of them after a read is a dated entry here, made before the run it
+     affects; a post-hoc filter voids the read.
+  5. **Health-adjacent data.** `fitArmComfort` and `fitSoreness` feed ranking and
+     are stripped from other readers. The route returns totals today, which is
+     most of the protection, but nothing states the rule: no output keyed on a
+     health field, and any cell under 5 suppressed — in a club of ~36 a small
+     cell names a person.
+
+  Closed by what shipped, recorded so they are not re-litigated: *kept is not
+  right* and *tests that agree by construction* are both stated in the legs
+  above; *tuning on the test set* is covered by `engineVersion` on every read;
+  *two-club members* by `rosterMemberIds(groupId)`; *silent cohort shrinkage* by
+  the per-case exclusion reasons (`no_active_racket`, `nothing_to_go_on`,
+  `racket_not_in_catalog`, `racket_unscorable`), though the "lost more than half
+  → undecided" rule is not written; *selection* by the reads saying in words that
+  this is a statement about new members and a direction, not a verdict; and *the
+  route's auth* by the per-club read-only reports key, a different choice from
+  the operator-only one proposed, and a deliberate one.
+
 ## Shape
 
 | Piece | Where |
