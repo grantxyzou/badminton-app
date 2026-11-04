@@ -642,6 +642,9 @@ function seedDevSixFeathers(now: Date) {
       status: 'active',
       joinedAt: createdAt,
       joinedVia: owner ? 'create' : 'admin',
+      // Members and drop-ins, as the roster import marks them: the three
+      // waiting are drop-ins, everyone else a member (members-first window).
+      regular: !waiting.includes(name),
     });
     mockStore.memberships.push({ id: `${groupId}:name:${nameLower}`, groupId, kind: 'name', memberId: id, nameLower });
   }
@@ -681,6 +684,10 @@ function seedDevSixFeathers(now: Date) {
     signupOpenedAt: opened.toISOString(),
     locationName: 'Courts 1–4',
     createdAt: opened.toISOString(),
+    // What advance would copy from the club's "Members first" style
+    // (docs/plans/members-first-window.md). Two days out, the window has
+    // usually ended; advance a later Saturday to see it open.
+    membersFirst: { daysBefore: 5, time: '23:59' },
   });
   const pointerId = groupDocId(groupId, POINTER_ID);
   mockStore.sessions.push({
@@ -701,6 +708,7 @@ function seedDevSixFeathers(now: Date) {
       memberId: memberIdOf(name),
       timestamp: new Date(opened.getTime() + (i + 1) * 7 * 60 * 1000).toISOString(),
       waitlisted: i >= confirmed.length,
+      ...(i >= confirmed.length ? { waitingForMembers: true } : {}),
       removed: false,
     });
   });

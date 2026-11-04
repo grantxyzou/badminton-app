@@ -79,6 +79,19 @@ export interface Session {
    *  notified for this session" — toggling sign-ups closed and open again does
    *  NOT re-notify. Session-scoped, so the next session starts clean. */
   signupOpenNotifiedAt?: string;
+  /**
+   * The club's members-first rule, copied on by advance
+   * (docs/plans/members-first-window.md). The end is worked out from this and
+   * `datetime` (`membersFirstUntil` in lib/membersFirst.ts), so changing the
+   * club's setting mid-week leaves this week alone. Additive; absent = no window.
+   */
+  membersFirst?: { daysBefore: number; time: string };
+  /**
+   * When the waitlist was let in: by the first visit after the window ended,
+   * or early by an organiser. Present = the window is over and the promotion
+   * has run. Additive.
+   */
+  membersFirstReleasedAt?: string;
 }
 
 export interface SettledSnapshot {
@@ -152,6 +165,13 @@ export interface Player {
    * the row promoted if there is room — when a payment brings them under it.
    */
   heldForUnpaid?: boolean;
+  /**
+   * Waiting for the members-first window to end (docs/plans/members-first-window.md):
+   * a drop-in, an unmarked name or a guest who signed up while only members
+   * could take a spot. Promotion skips the row while the window is open, and
+   * clears the flag when it moves the row up. Additive.
+   */
+  waitingForMembers?: boolean;
   /**
    * When this row last left the waitlist — automatically when a spot opened
    * (`lib/waitlistPromote.ts`), by an admin's tap, or by the paid-hold release

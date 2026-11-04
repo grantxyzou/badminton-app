@@ -18,7 +18,7 @@ import {
 describe('clubRunOf', () => {
   it('reads a club with no settings as BPM runs today', () => {
     for (const settings of [undefined, null, {}, { run: null }, { run: 'members_first' }]) {
-      expect(clubRunOf(settings)).toEqual({ style: 'first_come', playersPerCourt: null, money: 'split' });
+      expect(clubRunOf(settings)).toEqual({ style: 'first_come', playersPerCourt: null, money: 'split', membersFirst: null });
     }
   });
 
@@ -27,6 +27,7 @@ describe('clubRunOf', () => {
       style: 'custom',
       playersPerCourt: 6,
       money: 'off',
+      membersFirst: null,
     });
     expect(clubRunOf({ run: { style: 'members_first', playersPerCourt: null, money: 'off' } }).playersPerCourt).toBeNull();
   });
@@ -34,7 +35,7 @@ describe('clubRunOf', () => {
   it("fills a gap from the club's own style, so a setting added later follows the style it chose", () => {
     expect(clubRunOf({ run: { style: 'members_first' } })).toEqual(applyStyle('members_first'));
     // A custom club, or a corrupt value, falls back to how BPM runs.
-    expect(clubRunOf({ run: { style: 'custom' } })).toEqual({ style: 'custom', playersPerCourt: null, money: 'split' });
+    expect(clubRunOf({ run: { style: 'custom' } })).toEqual({ style: 'custom', playersPerCourt: null, money: 'split', membersFirst: null });
     expect(clubRunOf({ run: { style: 'members_first', playersPerCourt: 99, money: 'maybe' } })).toEqual(
       applyStyle('members_first'),
     );
@@ -52,6 +53,10 @@ describe('styles', () => {
     expect(custom.style).toBe('custom');
     expect(withSetting(custom, 'playersPerCourt', 8).style).toBe('members_first');
     expect(withSetting(applyStyle('first_come'), 'money', 'off').style).toBe('custom');
+    // The window is one of the style's rules too.
+    const later = withSetting(applyStyle('members_first'), 'membersFirst', { daysBefore: 2, time: '20:00' });
+    expect(later.style).toBe('custom');
+    expect(withSetting(later, 'membersFirst', { daysBefore: 5, time: '23:59' }).style).toBe('members_first');
   });
 
   it('no two styles share their values, so a style can always be read back from them', () => {
@@ -63,8 +68,21 @@ describe('styles', () => {
 
 describe('parseClubRun', () => {
   it('derives the style from the values, never from the request', () => {
-    expect(parseClubRun({ style: 'first_come', playersPerCourt: 8, money: 'off' })).toEqual(applyStyle('members_first'));
-    expect(parseClubRun({ playersPerCourt: 4, money: 'split' })).toEqual({ style: 'custom', playersPerCourt: 4, money: 'split' });
+    expect(parseClubRun({ style: 'first_come', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' } })).toEqual(
+      applyStyle('members_first'),
+    );
+    expect(parseClubRun({ playersPerCourt: 4, money: 'split' })).toEqual({
+      style: 'custom',
+      playersPerCourt: 4,
+      money: 'split',
+      membersFirst: null,
+    });
+  });
+
+  it('keeps the stored window when a request does not name one, and clears it on an explicit null', () => {
+    const window = { daysBefore: 5, time: '23:59' };
+    expect(parseClubRun({ playersPerCourt: 8, money: 'off' }, window)).toEqual(applyStyle('members_first'));
+    expect(parseClubRun({ playersPerCourt: 8, money: 'off', membersFirst: null }, window)?.membersFirst).toBeNull();
   });
 
   it('refuses a partial, unknown or out-of-range value', () => {
@@ -79,6 +97,11 @@ describe('parseClubRun', () => {
       { playersPerCourt: 7.5, money: 'off' },
       { playersPerCourt: 8, money: 'flat' },
       { playersPerCourt: 8, money: 'off', guests: 2 },
+      { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 0, time: '23:59' } },
+      { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 7, time: '23:59' } },
+      { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '24:00' } },
+      { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '9:00' } },
+      { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59', extra: 1 } },
     ]) {
       expect(parseClubRun(bad)).toBeNull();
     }

@@ -8,6 +8,9 @@ import { resolveBirdUsages } from '@/lib/birdWrite';
 import { costSplit } from '@/lib/sessionCost';
 import { detectSettingsDrift, deadlineOffsetHours } from '@/lib/anomalies';
 import type { BirdUsage, Player, Session } from '@/lib/types';
+import { readGroup } from '@/lib/groups';
+import { clubRunOf } from '@/lib/clubRun';
+import { membersFirstEnd } from '@/lib/membersFirst';
 
 export const dynamic = 'force-dynamic';
 
@@ -160,6 +163,16 @@ export async function POST(req: NextRequest) {
     }
     const birdUsages: BirdUsage[] = resolvedBirds.usages;
 
+    // Members first (docs/plans/members-first-window.md): the club's rule is
+    // copied onto the session, so a change to the setting starts with the next
+    // session rather than moving this one's window. A failed club read leaves
+    // the session without a window — the way it was before the setting.
+    const club = await readGroup(groupId).catch((err) => {
+      console.error('advance: club read failed, no members-first window:', err);
+      return undefined;
+    });
+    const membersFirst = clubRunOf(club?.settings).membersFirst;
+
     const newSession = {
       id: newId,
       sessionId: newId,
@@ -177,6 +190,7 @@ export async function POST(req: NextRequest) {
       ...(prevSessionDate ? { prevSessionDate } : {}),
       ...(prevCostPerPerson ? { prevCostPerPerson } : {}),
       ...(prevSnapshot ? { prevSnapshot, anomaliesAtAdvance } : {}),
+      ...(membersFirst && membersFirstEnd(datetime, membersFirst) ? { membersFirst } : {}),
     };
 
     await scope.upsert('sessions', newSession);

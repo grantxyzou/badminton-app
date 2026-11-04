@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { membersFirstDue } from '@/lib/membersFirst';
+import { releaseMembersFirst } from '@/lib/waitlistPromote';
 import { recordNotices } from '@/lib/notices';
 import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
@@ -12,7 +14,7 @@ import { defaultMaxPlayers } from '@/lib/defaults';
 import { promoteFromWaitlist } from '@/lib/waitlistPromote';
 import { readGroup } from '@/lib/groups';
 import { guestsAllowedOf } from '@/lib/plusOne';
-import type { BirdUsage, ETransferRecipient } from '@/lib/types';
+import type { BirdUsage, ETransferRecipient, Session } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
   if (!value || typeof value !== 'object') return false;
@@ -70,7 +72,14 @@ export async function GET(req: NextRequest) {
         return undefined;
       }),
     ]);
-    const session = stored ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
+    // Members first (docs/plans/members-first-window.md): the first visit
+    // after the window ends lets the waitlist in — nothing runs on a timer.
+    let current = stored;
+    const windowed = stored as (SessionDoc & Session) | undefined;
+    if (membersFirstDue(windowed, Date.now()) && (await releaseMembersFirst(scope, sessionId, { session: windowed ?? null }))) {
+      current = (await scope.read<SessionDoc>('sessions', sessionId, sessionId)) ?? stored;
+    }
+    const session = current ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
     const out = { ...(isAdminAuthed(req) ? session : stripForPublic(session)), guestsAllowed: guestsAllowedOf(group?.settings) };
     return NextResponse.json(out);
   } catch (error) {

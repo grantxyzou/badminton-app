@@ -10,8 +10,17 @@ import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import SettingsList from '@/components/profile/SettingsList';
 import { isRefused } from '@/lib/apiFetch';
 import { useOnline } from '@/lib/useOnline';
+import { fmtSessionLabel, fmtTime } from '@/lib/fmt';
 import { announceClubRun } from '@/lib/useClubRun';
 import { applyStyle, clubRunOf, CLUB_STYLES, withSetting, type ClubRun } from '@/lib/clubRun';
+import {
+  DEFAULT_MEMBERS_FIRST,
+  MEMBERS_FIRST_DAYS_MAX,
+  MEMBERS_FIRST_DAYS_MIN,
+  membersFirstEnd,
+  sameMembersFirst,
+  type MembersFirst,
+} from '@/lib/membersFirst';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -25,7 +34,33 @@ const DEFAULT_PER_COURT = 8;
  * "First come, first served", where spots do not follow the courts and the
  * per-court choice is closed.
  */
-export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64 } as const;
+export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64, window: 64 } as const;
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+
+/** The session's weekday on the club's clock (Vancouver, as every session time is shown). */
+function weekdayOf(iso: string): number | null {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return null;
+  const name = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'America/Vancouver' }).format(new Date(ms));
+  const i = WEEKDAYS.indexOf(name as (typeof WEEKDAYS)[number]);
+  return i < 0 ? null : i;
+}
+
+/** "11:59 PM" for "23:59". */
+function clockLabel(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+/** "Monday 11:59 PM" when the session's day is known, else "5 days before, 11:59 PM". */
+export function windowLabel(rule: MembersFirst, sessionDay: number | null): string {
+  if (sessionDay === null) {
+    return `${rule.daysBefore} day${rule.daysBefore === 1 ? '' : 's'} before, ${clockLabel(rule.time)}`;
+  }
+  return `${WEEKDAYS[(sessionDay - rule.daysBefore + 7) % 7]} ${clockLabel(rule.time)}`;
+}
 
 const STYLE_ORDER = ['first_come', 'members_first'] as const;
 
@@ -50,6 +85,32 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
   /* 'failed' and 'refused' are not BPM's defaults: rendering the settings off
      a dead fetch would let the next tap overwrite what the club has set. */
   const [loadState, setLoadState] = useState<'ok' | 'failed' | 'refused'>('ok');
+  /* What the members-first row says around its setting. Both are extras: a
+     failed read hides the line, never the setting. */
+  const [session, setSession] = useState<{ datetime?: string; membersFirst?: unknown } | null>(null);
+  const [unmarked, setUnmarked] = useState<number | null>(null);
+  const [timeDraft, setTimeDraft] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const [sRes, mRes] = await Promise.all([
+          fetch(`${BASE}/api/session`, { cache: 'no-store' }),
+          fetch(`${BASE}/api/members`, { cache: 'no-store' }),
+        ]);
+        if (!live) return;
+        if (sRes.ok) setSession((await sRes.json()) as { datetime?: string; membersFirst?: unknown });
+        if (mRes.ok) {
+          const rows = (await mRes.json()) as Array<{ active?: boolean; regular?: boolean }>;
+          if (Array.isArray(rows)) setUnmarked(rows.filter((r) => r.active !== false && typeof r.regular !== 'boolean').length);
+        }
+      } catch {
+        /* the extras stay hidden */
+      }
+    })();
+    return () => { live = false; };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,7 +137,7 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
       const res = await fetch(`${BASE}/api/admin/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ run: { playersPerCourt: next.playersPerCourt, money: next.money } }),
+        body: JSON.stringify({ run: { playersPerCourt: next.playersPerCourt, money: next.money, membersFirst: next.membersFirst } }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -105,6 +166,7 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
         </section>
         <section className="flex flex-col gap-2">
           <ProfileEyebrow>Rules</ProfileEyebrow>
+          <CardSkeleton height={CLUB_RUN_HEIGHTS.window} />
           <CardSkeleton height={CLUB_RUN_HEIGHTS.spots} />
           <CardSkeleton height={CLUB_RUN_HEIGHTS.money} />
         </section>
@@ -149,6 +211,14 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
   const busy = saving || !online;
   const perCourtOn = run.playersPerCourt !== null;
   const moneyOn = run.money === 'split';
+  const rule = run.membersFirst;
+  const sessionDay = session?.datetime ? weekdayOf(session.datetime) : null;
+  const sessionEnd = rule && session?.datetime ? membersFirstEnd(session.datetime, rule) : null;
+  /* The rule is copied onto a session when it is created, so a change reaches
+     the next one; say so whenever this week's differs from the setting. */
+  const thisWeek = session && typeof session.membersFirst === 'object' ? (session.membersFirst as MembersFirst) : null;
+  const startsNext = session?.datetime !== undefined && !sameMembersFirst(thisWeek, rule);
+  const saveRule = (next: MembersFirst | null) => void persist(withSetting(run, 'membersFirst', next));
 
   return (
     <div className="flex flex-col gap-5 motion-fade">
@@ -201,6 +271,85 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
 
       <section className="flex flex-col gap-2" aria-label="Rules">
         <ProfileEyebrow>Rules</ProfileEyebrow>
+        <section className="glass-card" aria-label="Members first">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>
+                Members first
+              </p>
+              <p id="club-run-members-first" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                {rule
+                  ? `On · members get first pick until ${windowLabel(rule, sessionDay)}`
+                  : 'Off · whoever signs up first gets the spot'}
+              </p>
+            </div>
+            <Switch
+              checked={rule !== null}
+              onChange={(next) => saveRule(next ? { ...DEFAULT_MEMBERS_FIRST } : null)}
+              ariaLabel="Members first"
+              ariaDescribedBy="club-run-members-first"
+              disabled={busy}
+            />
+          </div>
+          <Collapse open={rule !== null} spaceAbove="var(--space-3)">
+            {rule && (
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <label className="flex flex-col gap-2" style={{ flex: 1, minWidth: 0 }}>
+                    <span className="section-label-muted">Until</span>
+                    <select
+                      className="fs-md"
+                      value={rule.daysBefore}
+                      disabled={busy}
+                      onChange={(e) => saveRule({ ...rule, daysBefore: Number(e.target.value) })}
+                    >
+                      {Array.from({ length: MEMBERS_FIRST_DAYS_MAX - MEMBERS_FIRST_DAYS_MIN + 1 }, (_, i) => i + MEMBERS_FIRST_DAYS_MIN).map((d) => (
+                        <option key={d} value={d}>
+                          {sessionDay === null ? `${d} day${d === 1 ? '' : 's'} before` : WEEKDAYS[(sessionDay - d + 7) % 7]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-2" style={{ flex: 1, minWidth: 0 }}>
+                    <span className="section-label-muted">At</span>
+                    <input
+                      type="time"
+                      value={timeDraft ?? rule.time}
+                      disabled={busy}
+                      onChange={(e) => setTimeDraft(e.target.value)}
+                      onBlur={() => {
+                        const next = timeDraft;
+                        setTimeDraft(null);
+                        if (next && /^\d{2}:\d{2}$/.test(next) && next !== rule.time) saveRule({ ...rule, time: next });
+                      }}
+                      style={{ height: '42px' }}
+                    />
+                  </label>
+                </div>
+                <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                  Until then, only people marked member get a spot; everyone else waits. After it, the waitlist moves
+                  up in sign-up order and each person gets a push.
+                  {sessionEnd && session?.datetime
+                    ? ` For ${fmtSessionLabel(session.datetime)}, that’s ${fmtSessionLabel(sessionEnd)} at ${fmtTime(sessionEnd)}.`
+                    : ''}
+                </p>
+                {startsNext && (
+                  <p key="starts-next" className="fs-sm motion-fade" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                    Starts with the next session you create.
+                  </p>
+                )}
+                {unmarked !== null && unmarked > 0 && (
+                  <p className="fs-sm" style={{ margin: 0, color: 'var(--sev-warn)' }}>
+                    {unmarked === 1
+                      ? '1 person on the roster isn’t marked member or drop-in, so they wait with the drop-ins.'
+                      : `${unmarked} people on the roster aren’t marked member or drop-in, so they wait with the drop-ins.`}
+                  </p>
+                )}
+              </div>
+            )}
+          </Collapse>
+        </section>
+
         <section className="glass-card space-y-3" aria-label="Spots">
           <div className="flex items-center justify-between gap-4">
             <div>
