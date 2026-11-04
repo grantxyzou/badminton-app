@@ -2073,6 +2073,7 @@
     "askTitle": "Can't sign in?",
     "askIntro": "An admin can let you in from their phone. They'll get a notification \u2014 usually a minute if they're at the session.",
     "askNameLabel": "Your name",
+    "askOtherClub": "Play with a different club? Ask its organiser for a recovery code instead.",
     "askCta": "Ask to be let in",
     "askSending": "Asking\u2026",
     "askWaiting": "Request sent. Keep this open \u2014 you'll be signed in as soon as an admin approves.",

@@ -23,6 +23,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { BPM_GROUP_ID } from './groupScope';
 import { isFlagOn } from './flags';
 import { readGroupClaim, SESSION_COOKIE_NAMES } from './auth';
+import { isClubHint } from './lastClub';
 
 /**
  * The answer when a group has no active session (`getActiveSessionId` returned
@@ -59,6 +60,17 @@ export function explicitGroupId(req: NextRequest): string | null {
     readGroupClaim(req.cookies.get(SESSION_COOKIE_NAMES.admin)?.value) ??
     null
   );
+}
+
+/**
+ * A SIGNED-OUT request that names its club (`lib/lastClub.ts`): "Ask to be let
+ * in" and its claim. A verified cookie claim still wins, then the phone's
+ * hint, then BPM. The hint is read only with the flag on, so a deployment
+ * without groups cannot be moved by one, the same rule as a forged claim.
+ */
+export function groupIdWithHint(req: NextRequest, hint: unknown): string {
+  if (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) return BPM_GROUP_ID;
+  return explicitGroupId(req) ?? (isClubHint(hint) ? hint : BPM_GROUP_ID);
 }
 
 /** Route handlers. */
