@@ -12,8 +12,8 @@ import { join } from 'path';
  * that the two-pane rules live ONLY inside the pane query, and that the rules
  * outside it resolve to today's values on a portrait phone. The pixel check
  * that it really is unchanged was done by hand (before/after screenshots at
- * 430, 412, 382, 669 and a 1280 desktop: zero differing pixels) and is in the
- * plan.
+ * 430, 412, 382, 669, a 932×430 phone held sideways and a 1280 desktop: zero
+ * differing pixels) and is in the plan.
  */
 const css = readFileSync(join(__dirname, '..', 'app', 'globals.css'), 'utf8');
 
@@ -40,7 +40,8 @@ function topLevelRules(selector: string): string[] {
   for (let i = 0; i < css.length; i++) {
     if (css[i] === '{') depth++;
     else if (css[i] === '}') depth--;
-    else if (depth === 0 && css.startsWith(selector, i)) {
+    // At the start of a line, so `.rail-bar` does not match `html:root .rail-bar`.
+    else if (depth === 0 && (i === 0 || css[i - 1] === '\n') && css.startsWith(selector, i)) {
       const after = css.slice(i + selector.length).trimStart();
       if (after.startsWith('{')) out.push(blockAt(css, css.indexOf('{', i)));
     }
@@ -54,6 +55,49 @@ describe('foldable layout', () => {
   });
 
   const pane = blockAt(css, css.indexOf(PANE_QUERY) + PANE_QUERY.length - 1);
+
+  it('never lets a banner span both panes (Grant, 2026-11-04: "NEVER")', () => {
+    // Nothing in the pane block may stretch across the grid's two columns.
+    expect(pane).not.toMatch(/grid-column:\s*1\s*\/\s*-1/);
+    expect(pane).not.toMatch(/grid-column:\s*span\s*2/);
+    // The week alone on the left; everything else — the nudges included — on the right.
+    expect(pane).toMatch(/\.bpm-home-stack > \.bpm-home-week\s*\{\s*grid-column:\s*1;\s*grid-row:\s*1 \/ -1;/);
+    expect(pane).toMatch(/\.bpm-home-stack > :not\(\.bpm-home-week\)\s*\{\s*grid-column:\s*2;/);
+    // Every version of the week's group carries the class, or one would fall into the right pane.
+    const home = readFileSync(join(__dirname, '..', 'components', 'HomeTab.tsx'), 'utf8');
+    const weekGroups = home.match(/className="bpm-home-group[^"]*" aria-label=\{t\('groups\.session'\)\}/g) ?? [];
+    expect(weekGroups.length).toBeGreaterThan(0);
+    for (const g of weekGroups) expect(g).toContain('bpm-home-week');
+    // The floating notices take the right half like a sheet.
+    expect(pane).toMatch(/\.bottom-sheet,\s*\.toast-stack,\s*\.top-toast\s*\{\s*margin-left:\s*calc\(50vw \+ var\(--fold-gap\) \/ 2\)/);
+  });
+
+  it('is the last rule block in the file, so it outranks the rules it moves', () => {
+    // .toast-stack and .top-toast are defined late; at equal specificity the later rule wins.
+    // The base rules, at the start of a line (the pane block's own copies are indented).
+    expect(css.indexOf('\n.top-toast {')).toBeGreaterThan(0);
+    expect(css.indexOf(PANE_QUERY)).toBeGreaterThan(css.lastIndexOf('\n.top-toast {'));
+    expect(css.indexOf(PANE_QUERY)).toBeGreaterThan(css.lastIndexOf('\n.toast-stack {'));
+    expect(css.indexOf(PANE_QUERY)).toBeGreaterThan(css.lastIndexOf('\n.bottom-sheet {'));
+  });
+
+  it('moves the tab bar to the right edge only on a wide, landscape, two-pane screen', () => {
+    const SIDE_QUERY =
+      '@media (min-width: 720px) and (min-height: 480px) and (pointer: coarse) and (orientation: landscape),\n       (horizontal-viewport-segments: 2) and (orientation: landscape) {';
+    expect(css.split(SIDE_QUERY).length - 1).toBe(1);
+    const side = blockAt(css, css.indexOf(SIDE_QUERY) + SIDE_QUERY.length - 1);
+    expect(side).toMatch(/\.rail-bar\s*\{[^}]*flex-direction:\s*column/);
+    expect(side).toMatch(/\.rail-bar\s*\{[^}]*right:\s*0/);
+    // The pill glides down, not across.
+    expect(side).toMatch(/transform:\s*translateY\(calc\(var\(--ri, 0\) \* var\(--rail-side-tab-h\)\)\)/);
+    // Padding grows on BOTH sides by the strip, so the panes' gap stays centred on the fold.
+    expect(side).toMatch(/--shell-pad-x:\s*max\(/);
+    // Outside it, the tab bar is the bottom row it always was.
+    const base = topLevelRules('.rail-bar');
+    expect(base.length).toBe(1);
+    expect(base[0]).toMatch(/bottom:\s*0/);
+    expect(base[0]).not.toMatch(/flex-direction:\s*column/);
+  });
 
   it('puts Home in two even columns with the gap in the middle, only inside the pane query', () => {
     expect(pane).toMatch(/\.bpm-home-stack\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
@@ -70,8 +114,8 @@ describe('foldable layout', () => {
   });
 
   it('opens a sheet in the right half, and only there', () => {
-    expect(pane).toMatch(/\.bottom-sheet\s*\{[^}]*margin-left:\s*calc\(50vw \+ var\(--fold-gap\) \/ 2\)/);
-    expect(pane).toMatch(/--sheet-max-w:\s*min\(32rem,/);
+    expect(pane).toMatch(/\.bottom-sheet,[^{]*\{\s*margin-left:\s*calc\(50vw \+ var\(--fold-gap\) \/ 2\)/);
+    expect(pane).toMatch(/--sheet-max-w:\s*min\(32rem, var\(--half-w\)\)/);
   });
 
   it('keeps 16px page sides on a portrait phone, and the column centred under a side inset', () => {
