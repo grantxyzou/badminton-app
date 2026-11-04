@@ -1,4 +1,5 @@
 import { writeEvent, type SignInVia } from './events';
+import { skipsUsageRecord } from './operator';
 
 /**
  * The server side of the usage records (docs/plans/usage-metrics.md).
@@ -13,6 +14,8 @@ export async function recordSignIn(
   groupId: string,
   via: SignInVia,
 ): Promise<void> {
+  // Staff (lib/operator.ts): the operator's sign-ins are not usage.
+  if (skipsUsageRecord(member.id)) return;
   try {
     await writeEvent({ memberId: member.id, name: member.name, kind: 'sign_in', via }, groupId);
   } catch (err) {

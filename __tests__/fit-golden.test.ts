@@ -24,6 +24,9 @@ interface GoldenCase {
   /** A draft nobody has rated (see `_meta.pending`): reported, never asserted,
    *  never counted. */
   pending?: boolean;
+  /** `'manufacturer'`: a brand's series positioning as a second opinion (see
+   *  `_meta.manufacturer`). Asserted, but never counted toward the five. */
+  rater?: 'manufacturer';
   gear: Partial<PlayerGear> & { activeCatalogId?: string };
   ratings: Rating[];
   acceptable: string[];
@@ -56,7 +59,8 @@ function toInput(c: GoldenCase): FitInput {
   };
 }
 
-const rated = golden.cases.filter((c) => !c.pending);
+const rated = golden.cases.filter((c) => !c.pending && c.rater !== 'manufacturer');
+const manufacturer = golden.cases.filter((c) => !c.pending && c.rater === 'manufacturer');
 const pending = golden.cases.filter((c) => c.pending);
 
 describe('golden set — the engine version matches the fixture', () => {
@@ -85,6 +89,26 @@ describe.skipIf(pending.length === 0)('golden set — pending drafts (reported f
     const agrees = top3.some((id) => c.acceptable.includes(id)) && !top3.some((id) => (c.unacceptable ?? []).includes(id));
     console.info(`[fit-golden] ${c.id} (pending): engine says ${top3.join(', ')} — ${agrees ? 'agrees with' : 'DISAGREES with'} the draft acceptable set`);
   });
+});
+
+function assertAgrees(c: GoldenCase): void {
+  for (const id of [...c.acceptable, ...(c.unacceptable ?? [])]) {
+    expect(ids.has(id), `${c.id} names an id the catalog does not have: ${id}`).toBe(true);
+  }
+  for (const i of c.gear.items ?? []) {
+    if (i.catalogId) expect(ids.has(i.catalogId), `${c.id} owns an id the catalog does not have: ${i.catalogId}`).toBe(true);
+  }
+  const r = recommendFit(toInput(c), catalog);
+  expect(r.top, `${c.id} produced no pick (${r.fitState})`).not.toBeNull();
+  const top3 = [r.top!.item.id, ...r.alternatives.map((a) => a.item.id)];
+  expect(top3.some((id) => c.acceptable.includes(id)), `${c.id}: top three ${top3.join(', ')} misses every acceptable pick`).toBe(true);
+  for (const bad of c.unacceptable ?? []) {
+    expect(top3, `${c.id}: ${bad} is unacceptable and made the top three`).not.toContain(bad);
+  }
+}
+
+describe.skipIf(manufacturer.length === 0)('golden set — the manufacturers\' second opinion (asserted, never counted toward the five)', () => {
+  it.each(manufacturer.map((c) => [c.id, c] as const))('%s: top three intersects the brands\' set, avoids the wrong line', (_id, c) => assertAgrees(c));
 });
 
 describe.skipIf(rated.length === 0)('golden set — every expert-rated case', () => {

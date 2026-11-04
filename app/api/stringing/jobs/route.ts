@@ -19,9 +19,10 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { ensureContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
+import { canStringIn } from '@/lib/roster';
 import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { lastStrungFromJobs } from '@/lib/restring';
 import { isArchived, benchOrder } from '@/lib/stringingOrder';
@@ -228,7 +229,8 @@ export async function GET(req: NextRequest) {
     await ensureJobs();
     // Every read below is the GROUP's bench: a stringer in two clubs sees two
     // benches, one per cookie claim, never a merge.
-    const scope = groupScope(resolveGroupId(req));
+    const groupId = resolveGroupId(req);
+    const scope = groupScope(groupId);
 
     /**
      * `?view=player` forces the PLAYER projection for anybody, including an
@@ -258,11 +260,10 @@ export async function GET(req: NextRequest) {
       const me = caller?.memberId ?? (admin.authed ? admin.memberId : null);
       if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-      const canString = await getContainer('members')
-        .item(me, me)
-        .read<{ canString?: boolean }>()
-        .then((r) => r.resource?.canString === true)
-        .catch(() => false);
+      // THIS club's answer (lib/roster.ts): a stringer for one club is not
+      // one at another, so the same person asking under a different cookie
+      // claim gets the empty list.
+      const canString = await canStringIn(groupId, me).catch(() => false);
       if (!canString) return NextResponse.json({ jobs: [], view: 'stringer', canString: false });
 
       const resources = await scope.query<StringingJob>('stringingJobs', {

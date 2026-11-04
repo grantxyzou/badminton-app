@@ -502,15 +502,19 @@ export async function readGroupAdmin(groupId: string, memberId: string): Promise
 }
 
 /**
- * Change one person's role in one group. `owner` is not assignable here —
- * ownership moves only through `reassignOwnership`, so a group can never have
- * two owners or none. Resolves `undefined` when there is no active
- * membership to change.
+ * Change one person's role in one group. `owner` (an organiser) IS a target
+ * here since roles v2 (docs/plans/roles-v2.md): a club may have several
+ * organisers. It is never a SOURCE: nobody takes an organiser's role away —
+ * not another organiser, not an admin — so a falling-out cannot end with
+ * whoever acted first holding the club. An organiser gives the role up
+ * themselves through `stepDown`, and the operator override is the one
+ * exception (PR 3). Resolves `undefined` when there is no active membership
+ * to change, or the membership is an organiser's.
  */
 export async function setMembershipRole(
   groupId: string,
   memberId: string,
-  role: Exclude<MembershipRole, 'owner'>,
+  role: MembershipRole,
 ): Promise<Membership | undefined> {
   await ensureReady();
   const m = await readMembership(groupId, memberId);
@@ -536,6 +540,24 @@ export async function setMembershipCanGift(
   if (!m || m.status !== 'active') return undefined;
   if ((m.canGift === true) === canGift) return m;
   return groupScope(groupId).replace('memberships', { ...m, canGift }, groupId);
+}
+
+/**
+ * Grant or revoke stringing in ONE group (docs/plans/roles-v2.md, PR 2).
+ * Per club like `canGift`: Zach strings for BPM, and joining a second club
+ * must not put him on its bench. Resolves `undefined` when there is no
+ * active membership here.
+ */
+export async function setMembershipCanString(
+  groupId: string,
+  memberId: string,
+  canString: boolean,
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m || m.status !== 'active') return undefined;
+  if (m.canString === canString) return m;
+  return groupScope(groupId).replace('memberships', { ...m, canString }, groupId);
 }
 
 /**
@@ -579,14 +601,41 @@ export async function revokeWidgetPasses(
 
 export type ReassignResult =
   | { outcome: 'reassigned'; to: string }
+  | { outcome: 'others_remain' }
   | { outcome: 'closed' }
   | { outcome: 'not_owner' };
 
+const byTenure = (a: Membership, b: Membership) =>
+  (a.joinedAt ?? '').localeCompare(b.joinedAt ?? '') || a.memberId.localeCompare(b.memberId);
+
+/** The ACTIVE organisers of a group, longest-serving first. */
+export async function listOrganisers(groupId: string): Promise<Membership[]> {
+  return (await listMemberships(groupId)).filter((m) => m.role === 'owner').sort(byTenure);
+}
+
 /**
- * Hand a group to someone else when its owner leaves or deletes their account
- * (App Store 5.1.1(v) deletion must never block on "but you own a group").
- * Longest-standing active admin, else longest-standing active member, else —
- * nobody left — the group is CLOSED: `closedAt` stamped, the doc kept.
+ * Who takes a club over when its LAST organiser goes: the longest-standing
+ * active admin, else the longest-standing active member, else nobody. Pure
+ * over the roster passed in; the leaver is excluded by the caller.
+ */
+function heirOf(roster: Membership[]): Membership | undefined {
+  return roster.filter((m) => m.role === 'admin').sort(byTenure)[0] ?? roster.filter((m) => m.role === 'member').sort(byTenure)[0];
+}
+
+/**
+ * An organiser is leaving: they are deleting their account
+ * (`purgeMember`, App Store 5.1.1(v) deletion must never block on "but you
+ * own a group") or stepping down (`stepDown`). Since roles v2 a club may have
+ * several organisers, so the rule is about the LAST one:
+ *
+ * - Others remain → `others_remain`, and nothing changes but `ownerMemberId`,
+ *   which is repointed to the longest-serving remaining organiser when the
+ *   leaver held it. `ownerMemberId` always names an ACTIVE organiser — the
+ *   code before v2 read it as THE owner, and a rollback must still find a
+ *   real person there.
+ * - They were the last → longest-standing active admin, else longest-standing
+ *   active member, becomes the organiser (`reassigned`); nobody left → the
+ *   group is CLOSED: `closedAt` stamped, the doc kept.
  *
  * Kept, not deleted, because the group doc is what resolves a `groupId`. Its
  * sessions, players, settings and the rest sit in a dozen GROUP_SCOPED
@@ -597,36 +646,38 @@ export type ReassignResult =
  *
  * WRITE ORDER: the group doc first. It is the source of truth `readGroup`
  * answers from, so a failure after it leaves a state a retry converges on
- * (the old owner is no longer named, and the heir's role is repaired below on
- * the next call). The membership `role: 'owner'` is a mirror of
- * `ownerMemberId`, never the other way round. The old owner's row, if it
- * still exists, becomes `admin`; the purge deletes it afterwards anyway.
+ * (the leaver is no longer named, and the heir's role is repaired below on
+ * the next call). The leaver's row, if it still exists, becomes `admin`; the
+ * purge deletes it afterwards anyway, and `stepDown` sets the role they asked
+ * for.
  */
 export async function reassignOwnership(groupId: string, fromMemberId: string): Promise<ReassignResult> {
   await ensureReady();
   const group = await readGroup(groupId);
-  if (!group || group.ownerMemberId !== fromMemberId) return { outcome: 'not_owner' };
+  if (!group) return { outcome: 'not_owner' };
+  const leaver = await readMembership(groupId, fromMemberId);
+  if (!leaver || leaver.status !== 'active' || leaver.role !== 'owner') return { outcome: 'not_owner' };
 
   const scope = groupScope(groupId);
   const roster = (await listMemberships(groupId)).filter((m) => m.memberId !== fromMemberId);
-  const byTenure = (a: Membership, b: Membership) =>
-    (a.joinedAt ?? '').localeCompare(b.joinedAt ?? '') || a.memberId.localeCompare(b.memberId);
-  const heir =
-    roster.filter((m) => m.role === 'admin').sort(byTenure)[0] ??
-    roster.filter((m) => m.role === 'member').sort(byTenure)[0];
+  const others = roster.filter((m) => m.role === 'owner').sort(byTenure);
 
   // Both writes go through `mutateGroup`, which re-reads: the roster listing
   // above sits between this function's own `readGroup` and here, which is the
-  // widest window any writer of this doc holds open.
-  //
-  // The `ownerMemberId !== fromMemberId` guard above still ran against the
-  // EARLIER read, so an ownership change inside that window is not caught — the
-  // mutator would write the heir over an owner who is no longer `fromMemberId`.
-  // Unchanged from before the etag went in (the stale-read write had the same
-  // hole) and left alone deliberately: the only caller is `purgeMember`, acting
-  // on one person's own deletion, and tightening it means deciding what a
-  // mid-flight handover should do to a purge — a Phase 3 lifecycle question,
-  // not a side effect of conditioning the write.
+  // widest window any writer of this doc holds open. The role checks above
+  // ran against the EARLIER read, so a role change inside that window is not
+  // caught — left alone deliberately: the callers act on one person's own
+  // leaving, and tightening it means deciding what a mid-flight handover
+  // should do to a purge, a lifecycle question rather than a side effect of
+  // conditioning the write.
+  if (others.length > 0) {
+    if (group.ownerMemberId === fromMemberId) {
+      await mutateGroup(groupId, (g) => ({ ...g, ownerMemberId: others[0].memberId }));
+    }
+    return { outcome: 'others_remain' };
+  }
+
+  const heir = heirOf(roster);
   if (!heir) {
     await mutateGroup(groupId, (g) => ({ ...g, closedAt: new Date().toISOString() }));
     return { outcome: 'closed' };
@@ -640,4 +691,37 @@ export async function reassignOwnership(groupId: string, fromMemberId: string): 
   const old = await readMembership(groupId, fromMemberId);
   if (old && old.role === 'owner' && !(await scope.replace('memberships', { ...old, role: 'admin' }, groupId))) throw new Error('membership_contended');
   return { outcome: 'reassigned', to: heir.memberId };
+}
+
+export type StepDownResult =
+  | { outcome: 'stepped_down'; role: Exclude<MembershipRole, 'owner'>; handedTo?: string }
+  | { outcome: 'last_member' }
+  | { outcome: 'not_owner' };
+
+/**
+ * An organiser gives the role up themselves — the ONE way an organiser stops
+ * being one short of leaving the app (docs/plans/roles-v2.md: nobody removes
+ * an organiser). If they were the last, the club passes on first
+ * (`reassignOwnership`), so a club is never left with nobody in charge; the
+ * only organiser of a club with nobody else on it is refused
+ * (`last_member`) — stepping down must not close a club.
+ */
+export async function stepDown(
+  groupId: string,
+  memberId: string,
+  to: Exclude<MembershipRole, 'owner'>,
+): Promise<StepDownResult> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m || m.status !== 'active' || m.role !== 'owner') return { outcome: 'not_owner' };
+  const others = (await listMemberships(groupId)).filter((r) => r.memberId !== memberId);
+  if (others.length === 0) return { outcome: 'last_member' };
+  const passed = await reassignOwnership(groupId, memberId);
+  if (passed.outcome === 'not_owner' || passed.outcome === 'closed') return { outcome: 'not_owner' };
+  const current = await readMembership(groupId, memberId);
+  if (!current) return { outcome: 'not_owner' };
+  if (current.role !== to && !(await groupScope(groupId).replace('memberships', { ...current, role: to }, groupId))) {
+    throw new Error('membership_contended');
+  }
+  return passed.outcome === 'reassigned' ? { outcome: 'stepped_down', role: to, handedTo: passed.to } : { outcome: 'stepped_down', role: to };
 }

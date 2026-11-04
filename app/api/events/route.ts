@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS, ERROR_WHERES } from '@/lib/events';
+import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS, ERROR_WHERES, USAGE_CLIENT_KINDS } from '@/lib/events';
+import { skipsUsageRecord } from '@/lib/operator';
+
+const isUsageClientKind = (kind: string): boolean => (USAGE_CLIENT_KINDS as readonly string[]).includes(kind);
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -89,6 +92,14 @@ export async function POST(req: NextRequest) {
 
   if (!isClientKind(body.kind)) {
     return NextResponse.json({ error: 'unknown_kind' }, { status: 400 });
+  }
+
+  // Staff (lib/operator.ts): the operator's app opens and tab views are not
+  // a member's usage, and would carry a small club's daily-active on one
+  // person. Only the usage kinds — an error from their phone is still an
+  // error. Answered, not refused: the beacon is fire-and-forget either way.
+  if (isUsageClientKind(body.kind) && skipsUsageRecord(caller.memberId)) {
+    return NextResponse.json({ skipped: 'staff' }, { status: 200 });
   }
 
   // The flag gate is PER-KIND, and deliberately below the kind parse rather

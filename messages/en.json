@@ -307,6 +307,9 @@
       "leaveWaitlist": "Leave the waitlist",
       "spotsRemaining": "{remaining, plural, one {# spot left} other {# spots left}} out of {total}",
       "spotsFull": "Signed-up: {count} · Full",
+      "courtNone": "Filled up early? Another court can be added once {perCourt} are on the waitlist.",
+      "courtSome": "Filled up early? Another court can be added: {waiting} on the waitlist, {more} more would fill one.",
+      "courtFull": "Filled up early? {waiting} on the waitlist is a court's worth, so another court can be added.",
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",
       "closedPreviously": "Sign-ups closed on {date}",
@@ -793,6 +796,15 @@
     "errorServer": "Couldn't send — please try again.",
     "offline": "You're offline — reconnect to send.",
     "close": "Close"
+  },
+  "pushNudge": {
+    "nativeTitle": "Turn on notifications",
+    "nativeBody": "Hear when sign-ups open and when your racket is ready, without opening the app.",
+    "nativeCta": "Turn on notifications →",
+    "webTitle": "Get the %APP_SHORT% app on your phone",
+    "webBody": "The iPhone and Android test app tells you when sign-ups open. Your account comes with you: one code, no PIN.",
+    "webCta": "Get the app →",
+    "dismiss": "Dismiss"
   },
   "install": {
     "title": "Add %APP_SHORT% to your home screen",
@@ -1450,7 +1462,8 @@
       "yes": "Show me where I sit",
       "no": "Keep it private",
       "changeLater": "Change it any time in Profile → Stats & privacy.",
-      "offline": "You're offline — we'll ask again when you're back."
+      "offline": "You're offline — we'll ask again when you're back.",
+      "close": "Close"
     },
     "privacy": {
       "crumb": "Profile",
@@ -2174,6 +2187,15 @@
     "memberCount": "{count, plural, =1 {1 player} other {# players}}",
     "joinAnother": "Join another group",
     "createAnother": "Create another group",
+    "stepDown": {
+      "row": "Step down as organiser",
+      "title": "Step down as organiser",
+      "body": "Nobody can remove an organiser, so this is the only way to stop being one. If you're the last organiser, the group passes to its longest-serving admin, or player.",
+      "toAdmin": "Stay on as an admin",
+      "toMember": "Become a player",
+      "lastMember": "You're the only person in this group. Add someone before stepping down.",
+      "failed": "Couldn't step down. Try again."
+    },
     "invite": {
       "title": "Invite someone",
       "subtitle": "Each link works once and for 7 days. Make one per person and send it to them.",
@@ -2272,7 +2294,7 @@
         {
           "h": "Deleting your account",
           "p": [
-            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, notifications, and the record of how you used the app. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you. Deleting your account removes you from every group you're in; if you're the only organiser of a group, that group closes with it."
+            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, notifications, and the record of how you used the app. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you. Deleting your account removes you from every group you're in. If you were a group's only organiser, it passes to the longest-serving admin, or player; a group with nobody left closes."
           ]
         },
         {
@@ -2398,7 +2420,7 @@
       "keeps": [
         "Past sessions keep one unnamed line so everyone else's cost split still adds up. It no longer identifies you.",
         "Deleting your account doesn't cancel anything you still owe for sessions you played.",
-        "You leave every group you're in. If you were a group's only organiser, the group closes."
+        "You leave every group you're in. If you were a group's only organiser, it passes to the longest-serving admin, or player; a group with nobody left closes."
       ],
       "noAppTitle": "Can't get into the app?",
       "noApp": "Email the operator with the name you signed up under and the group you're in, from an address we can reply to, and the account will be deleted for you.",

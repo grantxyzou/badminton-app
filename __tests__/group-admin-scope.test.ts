@@ -161,8 +161,10 @@ describe('/api/members edits reach the membership; the Member copy is BPM\'s alo
   });
 
   it('BPM\'s admin writes both: the membership AND the rollback copy', async () => {
+    // An ORGANISER of BPM: a rank is theirs alone to hand out (roles v2), and
+    // this case is about which copies the write reaches, not who may make it.
     const mine = (getStore()['memberships'] as { id: string; role: string }[]).find((m) => m.id === `bpm:${ADMIN_MEMBER_ID}`)!;
-    mine.role = 'admin';
+    mine.role = 'owner';
     const res = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, role: 'admin', name: 'Lin W' }, cookies('bpm')));
     expect(res.status).toBe(200);
     expect(membershipRow('bpm')?.role).toBe('admin');

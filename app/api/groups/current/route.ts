@@ -45,7 +45,8 @@ export async function GET(req: NextRequest) {
       name: group.name,
       role: session.role,
       rosterName: session.name,
-      isOwner: group.ownerMemberId === session.memberId,
+      // By rank, not by `ownerMemberId`: a club may have several organisers.
+      isOwner: session.role === 'owner',
       memberCount: roster.length,
       settings: memberVisibleSettings(group.settings),
     });

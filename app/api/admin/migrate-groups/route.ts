@@ -6,11 +6,13 @@
  *          `leaks` — every row `groupScope()` caught crossing between clubs
  *          (`lib/groupLeaks.ts`). Read-only.
  *
- * BOTH ARE OPERATOR-ONLY (2026-10-24): an admin of the operator's club, BPM.
- * With groups on, `isAdminAuthedWithMember` admits the admin of ANY club, and
- * this status is deployment-wide — every club's member counts and every
- * leak, which names two clubs at once. Another club's admin gets a 403, the
- * same rule as `GET /api/reports/feedback`.
+ * BOTH ARE OPERATOR-ONLY (2026-10-24; `isOperator` in `lib/operator.ts`
+ * since roles v2 PR 3): the ids in `OPERATOR_MEMBER_IDS`, or — while that
+ * setting is unset — an admin of the operator's club, BPM. With groups on,
+ * `isAdminAuthedWithMember` admits the admin of ANY club, and this status is
+ * deployment-wide — every club's member counts, every leak (which names two
+ * clubs at once) and every use of the operator override. Another club's
+ * admin gets a 403, the same rule as `GET /api/reports/feedback`.
  *   POST — `{ dryRun: true }` counts what a run would do and writes nothing;
  *          `{ dryRun: false }` does it. Admin cookie AND `x-migration-key`
  *          equal to `MIGRATION_KEY` (App Settings), compared in constant time.
@@ -31,22 +33,20 @@
  * `remaining` is non-empty, then read GET until every count is zero.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { MIGRATION_KEY_HEADER, migrationKeyConfigured, migrationKeyMatches } from '@/lib/migrationKey';
 import { backfillStatus, runBackfill, DEFAULT_SCAN_CAP, DEFAULT_ROW_BUDGET } from '@/lib/groupBackfill';
 import { readGroupLeaks } from '@/lib/groupLeaks';
-import { BPM_GROUP_ID } from '@/lib/groupScope';
+import { isOperator, readOperatorActions } from '@/lib/operator';
 
 export const dynamic = 'force-dynamic';
 
-/** The operator's club is the one whose admin may read and run this. */
 const operatorOnly = () => NextResponse.json({ error: 'operator_only' }, { status: 403 });
 
 export async function GET(req: NextRequest) {
-  const auth = await isAdminAuthedWithMember(req);
-  if (!auth.authed) return unauthorized();
-  if (auth.groupId !== BPM_GROUP_ID) return operatorOnly();
+  const op = await isOperator(req);
+  if (!op.ok) return op.reason === 'unauthorized' ? unauthorized() : operatorOnly();
   let status: Awaited<ReturnType<typeof backfillStatus>>;
   try {
     status = await backfillStatus();
@@ -63,7 +63,16 @@ export async function GET(req: NextRequest) {
     console.error('GET /api/admin/migrate-groups leaks:', error);
     leaks = { error: 'read_failed' };
   }
-  return NextResponse.json({ ...status, leaks });
+  // The override's record, the same way: a failed read is said, never an
+  // empty list that reads as "never used".
+  let operatorActions: Awaited<ReturnType<typeof readOperatorActions>> | { error: 'read_failed' };
+  try {
+    operatorActions = await readOperatorActions();
+  } catch (error) {
+    console.error('GET /api/admin/migrate-groups operator actions:', error);
+    operatorActions = { error: 'read_failed' };
+  }
+  return NextResponse.json({ ...status, leaks, operatorActions });
 }
 
 export async function POST(req: NextRequest) {
@@ -72,9 +81,8 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(`migrate-groups:${ip}`, 5, 15 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  const auth = await isAdminAuthedWithMember(req);
-  if (!auth.authed) return unauthorized();
-  if (auth.groupId !== BPM_GROUP_ID) return operatorOnly();
+  const op = await isOperator(req);
+  if (!op.ok) return op.reason === 'unauthorized' ? unauthorized() : operatorOnly();
   if (!migrationKeyConfigured()) {
     return NextResponse.json({ error: 'migration_key_not_configured' }, { status: 503 });
   }

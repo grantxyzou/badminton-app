@@ -21,12 +21,16 @@ import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
 import { levelPath } from '@/lib/levelRead';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import InstallBanner from '@/components/InstallBanner';
+import PushNudge from '@/components/PushNudge';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
 import { OFFER_PIN_KEY } from '@/lib/offerPin';
 import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
+import CourtLine from './home/CourtLine';
+import { courtLine } from '@/lib/clubRun';
+import { useClubRun } from '@/lib/useClubRun';
 import PlusOneRow from './home/PlusOneRow';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
 import { primeHaptics, tapSuccess } from '@/lib/haptics';
@@ -106,6 +110,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
    * naming the app is true. Flag off that reads exactly as it always has.
    */
   const { group: currentGroup } = useCurrentGroup();
+  const { run: clubRun, known: clubRunKnown } = useClubRun();
   const clubName = currentGroup?.name || APP_NAME;
   const tStates = useTranslations('home.states');
   const format = useFormatter();
@@ -346,6 +351,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const isDeadlinePast = session ? new Date() > new Date(session.deadline) : false;
   const isSessionFinished = session?.endDatetime ? new Date() > new Date(session.endDatetime) : false;
   const isSignupClosed = session ? session.signupOpen === false : false;
+  // How close the waitlist is to another court (docs/plans/waitlist-court-line.md).
+  // Only before play starts, and only on a KNOWN club run: an unknown one could
+  // count a court wrong.
+  const hasStarted = session?.datetime ? new Date() >= new Date(session.datetime) : false;
+  const courtInfo = clubRunKnown && !hasStarted ? courtLine(session, clubRun, players) : null;
   // The server holds every rule; this only decides whether to OFFER it.
   const canAddGuest = session?.guestsAllowed === true && !isDeadlinePast && !isSignupClosed && !session.settled;
 
@@ -619,6 +629,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <div className="bpm-home-stack">
       {/* One-time nudge to install to the home screen (mobile browser only). */}
       <InstallBanner />
+      {/* One-time nudge towards notifications: on in the store app, the app
+          itself from the web. Remembered on the device once seen through. */}
+      <PushNudge />
 
       {/* A CLUB WITH NO SESSION YET.
           `GET /api/session` answers 404 for a group with no pointer, which is
@@ -761,6 +774,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 celebrate={signupEntrance === 'pop'}
               />
             </div>
+            {isFull && courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
             <PlusOneRow guest={myGuest} canAdd={canAddGuest} online={online} onChanged={() => void loadData()} />
             <button
@@ -801,6 +815,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   )
               }
             />
+            {courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             <PlusOneRow guest={myGuest} canAdd={canAddGuest && !heldForUnpaid} online={online} onChanged={() => void loadData()} />
             <button
@@ -821,6 +836,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
+            {courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             {signupName && (
             <form onSubmit={handleJoinWaitlist} className="space-y-3">

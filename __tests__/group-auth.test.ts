@@ -178,7 +178,7 @@ describe('isAdminAuthedWithMember', () => {
     makeRequest('POST', 'http://x/api/x', undefined, { Cookie: `admin_session=${adminCookieValue(groupId ? { groupId } : {})}` });
 
   it('flag OFF: the Member doc decides, and the result names BPM', async () => {
-    expect(await isAdminAuthedWithMember(adminReq())).toEqual({ authed: true, memberId: ADMIN_MEMBER_ID, name: getTestAdminName(), groupId: BPM_GROUP_ID });
+    expect(await isAdminAuthedWithMember(adminReq())).toEqual({ authed: true, memberId: ADMIN_MEMBER_ID, name: getTestAdminName(), groupId: BPM_GROUP_ID, organiser: true });
     // A claim on the cookie is ignored, like everywhere else with the flag off.
     expect(await isAdminAuthedWithMember(adminReq('club-x'))).toMatchObject({ authed: true, groupId: BPM_GROUP_ID });
   });
