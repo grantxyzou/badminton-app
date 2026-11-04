@@ -712,6 +712,10 @@ body {
      where the value is what the member is actively changing. Deliberately a
      big jump from --fs-stat-lg: anything closer would read as a stat tile. */
   --fs-stat-xl: 38px;
+  /* The courtside scoreboard's digits: read from the far side of a court off
+     a phone propped on the bench, so sized by the screen, not the type scale.
+     The one display size in the app that is not a fixed pixel. */
+  --court-digit: clamp(64px, 24vmin, 220px);
   /* Icon glyph-size ladder — token mirror of the .icon-xs..xl utility classes
      (below), so inline `.material-icons` styles use a token instead of a raw px.
      Same values as the classes; these exist for the inline-style call sites the
@@ -2688,6 +2692,10 @@ html:root .ink-button {
      elements — extends on notched devices via env(). README's
      production guidance: padding-bottom on the container. */
   padding-bottom: max(var(--home-group-gap), env(safe-area-inset-bottom, 0px));
+  /* The larger side inset on BOTH sides, so the four tabs stay centred and
+     the middle of the bar (between tabs 2 and 3) stays on a fold.
+     Portrait phones report 0. */
+  padding-inline: max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
 }
 
 .rail-tab {
@@ -3757,11 +3765,14 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   box-shadow: var(--glass-shadow);
 }
 
-.theme-toggle { right: 16px; }
-.lang-toggle  { right: 60px; }
+/* Plus the side inset: a phone held sideways, and iPhone Duo, whose camera
+   and system controls sit on the right edge. Portrait phones report 0, so
+   nothing moves there (docs/plans/foldable-layout.md). */
+.theme-toggle { right: calc(16px + env(safe-area-inset-right, 0px)); }
+.lang-toggle  { right: calc(60px + env(safe-area-inset-right, 0px)); }
 /* The Notifications bell, third in the row (docs/plans/notification-center.md).
    Rendered by HomeShell only — the signed-out shell has nothing to notify. */
-.notif-toggle { right: 104px; }
+.notif-toggle { right: calc(104px + env(safe-area-inset-right, 0px)); }
 
 @media (hover: hover) {
   .theme-toggle:hover,
@@ -5727,6 +5738,38 @@ html:root[data-theme="light"] {
   gap: var(--home-stack-gap);
 }
 
+/* ── Foldables: two panes on a big touch screen ──
+   docs/plans/foldable-layout.md, after Apple's "Designing for iPhone Duo"
+   (2026-09-09). On ONE phone-sized screen nothing here applies: the page is
+   the same 512px column it always was.
+
+   On an unfolded foldable (iPhone Duo held open, Galaxy Z Fold's inner
+   screen, a tablet) Home's two groups sit side by side — this week on the
+   left, your account on the right — and a sheet opens in the right half.
+   The gap between the panes is in the EXACT centre of the screen, which is
+   where every fold is. So the crease always lands in the gap, even on a
+   browser that cannot tell us where the fold is (Safari, without its flag).
+   Two panes is also Apple's "even number of columns" rule for grids.
+
+   Who gets two panes: a TOUCH screen at least 720 wide and 480 tall — wide
+   enough for two ~330px phone columns. Phones held sideways are too short;
+   desktops have a mouse; iPhone Duo's outer screen (382 or 594 wide) and the
+   inner one held upright (669, its fold runs across, not down) stay one
+   column. Or any browser that reports two side-by-side screen segments.
+
+   Side padding uses the larger side inset on BOTH sides, so the column's
+   centre stays the screen's centre when one edge carries system controls. */
+:root {
+  --fold-gap: var(--space-9);
+  --shell-pad-x: max(var(--space-5), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  --panes-max-w: calc(64rem + var(--fold-gap) + 2 * var(--shell-pad-x));
+}
+main[data-page-shell] {
+  padding-inline: var(--shell-pad-x);
+}
+/* The two media blocks that apply all this are at the END of this file, so
+   they come after every rule they move (the toasts are defined further down). */
+
 /* A row that acts as a link — label left, arrow right, full width.
    The secondary weight between a filled button and a quiet underlined link:
    unmistakably tappable, but it does not compete for the one primary slot on
@@ -7612,4 +7655,321 @@ html:root .state-link:active { opacity: 0.6; }
   .ptr[data-settle="true"],
   .ptr-disc { transition: none; }
   .ptr[data-armed="true"] .ptr-disc { transform: none; }
+}
+
+/* ── Courtside scoreboard ──
+   docs/plans/foldable-layout.md, step 3 (components/stats/CourtsideScoreboard.tsx).
+   A fixed overlay split into two halves at the FOLD: the board on the half
+   that faces the court, the buttons on the half in the hand. The three sizes
+   (`--court-first`, `--court-gap`, `--court-second`) are measured by the
+   component from lib/fold.ts and set on the element; the axis says which way
+   the fold runs. Nothing is drawn on the fold. */
+.courtside {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  overscroll-behavior: contain;
+  touch-action: manipulation;
+}
+.courtside[data-axis='horizontal'] {
+  grid-template-rows: var(--court-first, 1fr) var(--court-gap, 0px) var(--court-second, 1fr);
+}
+.courtside[data-axis='vertical'] {
+  grid-template-columns: var(--court-first, 1fr) var(--court-gap, 0px) var(--court-second, 1fr);
+}
+.courtside-board,
+.courtside-controls {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: calc(var(--space-6) + env(safe-area-inset-top, 0px)) calc(var(--space-6) + env(safe-area-inset-right, 0px)) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)) calc(var(--space-6) + env(safe-area-inset-left, 0px));
+}
+.courtside-fold {
+  pointer-events: none;
+}
+.courtside-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: end;
+}
+.courtside-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.courtside-side-label {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+/* The server: a dot after the label, the umpire's way, not a colour alone. */
+.courtside-side[data-serving='true'] .courtside-side-label::after {
+  content: ' ●';
+  color: var(--accent);
+}
+.courtside-digit {
+  font-family: var(--font-mono);
+  font-size: var(--court-digit);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--duration-fast) var(--ease-glass);
+}
+.courtside-side[data-winner='true'] .courtside-digit {
+  color: var(--accent);
+}
+.courtside-status {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-stat-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-height: calc(var(--fs-stat-lg) * var(--lh-normal));
+}
+.courtside-status[data-interval='true'] {
+  color: var(--accent);
+}
+.courtside-points {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  flex: 1;
+  min-height: 0;
+}
+/* The two big targets: a whole half each, pressable like a card. */
+.courtside-point {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 120px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease-glass), background var(--duration-fast) var(--ease-glass);
+}
+.courtside-point:active {
+  transform: scale(0.98);
+  background: var(--press-bg);
+}
+.courtside-point:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.courtside-point-label {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.courtside-point-score {
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+/* Four actions: two by two on a phone, where four across wrapped "New game"
+   and "Save game" onto two lines; one row where the pane is wide enough. */
+.courtside-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+@media (min-width: 600px) {
+  .courtside-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.courtside-note {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .courtside-point,
+  .courtside-digit {
+    transition: none;
+  }
+}
+
+/* ── Foldables: the two panes ──
+   docs/plans/foldable-layout.md; the tokens and the reasoning sit with
+   .bpm-home-stack above. This block is LAST in the file on purpose: it moves
+   rules defined earlier (sheets, toasts, the tab bar), and at equal
+   specificity the later rule wins.
+
+   NOTHING CROSSES THE FOLD. Grant, 2026-11-04: "NEVER have a banner that
+   spans across two screen". Every card, banner, sheet and toast sits in ONE
+   pane; only the page background and the bottom tab bar (whose middle is the
+   gap between tabs 2 and 3) run across. */
+@media (min-width: 720px) and (min-height: 480px) and (pointer: coarse),
+       (horizontal-viewport-segments: 2) {
+  :root {
+    /* One half of the screen, short of the gap and the side padding. */
+    --half-w: calc(50vw - var(--fold-gap) / 2 - var(--shell-pad-x));
+    /* The sheet fills the right half — still the one sheet token. */
+    --sheet-max-w: min(32rem, var(--half-w));
+  }
+  /* Home only: the other tabs keep their single column. */
+  main[data-page-shell]:has(> [data-tab-panel='home']:not([hidden])) {
+    max-width: var(--panes-max-w);
+  }
+  /* Left pane: the week, alone. Right pane, top to bottom: the install and
+     push nudges, then your account — banners are never a header across both.
+     Three rows because the right side holds at most three things; the last
+     row is 1fr, so whatever height the week needs beyond them lands there
+     and never opens a gap between the nudges and the account. */
+  .bpm-home-stack {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--fold-gap);
+    row-gap: 0;
+    align-items: start;
+  }
+  .bpm-home-stack > .bpm-home-week {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+  .bpm-home-stack > :not(.bpm-home-week) {
+    grid-column: 2;
+  }
+  /* A nudge renders nothing at all when it is hidden, so this margin only
+     ever separates two real cards. */
+  .bpm-home-stack > :not(.bpm-home-group) {
+    margin-bottom: var(--home-group-gap);
+  }
+  /* The tab bar spans both panes, on every tab, so it does not change width
+     as you switch. Four tabs: the middle of the bar, between Stringing and
+     Stats, is still the fold. */
+  .rail-bar {
+    max-width: var(--panes-max-w);
+  }
+  /* Home's loading frame is the left pane's cards: draw it that wide. */
+  .bpm-home-skeleton {
+    max-width: calc((100% - var(--fold-gap)) / 2);
+  }
+  /* A sheet and a toast open in the right half, beside the pane they came
+     from (Apple's Mail: list and message side by side), never across the
+     fold. */
+  .bottom-sheet,
+  .toast-stack,
+  .top-toast {
+    margin-left: calc(50vw + var(--fold-gap) / 2);
+    margin-right: auto;
+  }
+  .toast-stack,
+  .top-toast {
+    max-width: min(32rem, var(--half-w));
+  }
+}
+
+/* ── Foldables, sideways: the tab bar moves to the right edge ──
+   Apple, "Designing for iPhone Duo" → Vertical controls: on a screen that is
+   wider than it is tall, the tab bar runs down the side, preserving vertical
+   space for content; held upright (portrait) it stays at the bottom. Only
+   inside the two-pane condition, so a phone held sideways — and iPhone Duo's
+   outer screen, which a web page cannot tell from an iPhone SE in Safari —
+   keep the bottom bar they have.
+
+   Same four tabs, same order top to bottom, same pill, which glides down
+   instead of across. They sit at the BOTTOM of the strip, where the bottom
+   bar's tabs were and where a thumb holding the right half rests. The theme
+   and language buttons move into the top of the strip. The page's side
+   padding grows by the strip's width on BOTH sides, so the panes' gap stays
+   in the exact centre — on the fold. */
+@media (min-width: 720px) and (min-height: 480px) and (pointer: coarse) and (orientation: landscape),
+       (horizontal-viewport-segments: 2) and (orientation: landscape) {
+  :root {
+    --rail-side-w: calc(var(--space-9) + var(--space-8));
+    --rail-side-tab-h: calc(var(--space-9) + var(--space-6));
+    --rail-side-pad-b: max(var(--home-group-gap), env(safe-area-inset-bottom, 0px));
+    --shell-pad-x: max(
+      env(safe-area-inset-left, 0px),
+      calc(var(--rail-side-w) + env(safe-area-inset-right, 0px) + var(--space-5))
+    );
+  }
+  /* Every other tab keeps its 480px column inside the wider padding. */
+  main[data-page-shell] {
+    max-width: calc(32rem - 2 * var(--space-5) + 2 * var(--shell-pad-x));
+  }
+  [data-app-shell] {
+    padding-bottom: var(--space-9);
+  }
+  .rail-bar {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    width: calc(var(--rail-side-w) + env(safe-area-inset-right, 0px));
+    max-width: none;
+    margin: 0;
+    flex-direction: column;
+    justify-content: flex-end;
+    border-top: none;
+    border-left: 1px solid var(--rail-border);
+    padding: 0 env(safe-area-inset-right, 0px) var(--rail-side-pad-b) 0;
+  }
+  /* The shadow falls toward the content, not up. */
+  html:root .rail-bar {
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45);
+  }
+  html:root[data-theme="light"] .rail-bar {
+    box-shadow: -8px 0 22px rgba(0, 0, 0, 0.14);
+  }
+  .rail-tab {
+    flex: none;
+    height: var(--rail-side-tab-h);
+  }
+  /* Parked over the first tab's icon (the tab's top padding, --space-3,
+     above a 30px icon row), then moved down one tab per index. */
+  .rail-indicator {
+    top: auto;
+    left: 0;
+    right: env(safe-area-inset-right, 0px);
+    width: auto;
+    bottom: calc(var(--rail-side-pad-b) + 4 * var(--rail-side-tab-h) - var(--space-3) - 30px);
+    transform: translateY(calc(var(--ri, 0) * var(--rail-side-tab-h)));
+  }
+  /* The three round buttons stack down the top of the strip in the order
+     they sit across the top of a phone, right to left: theme, language, then
+     the Notifications bell. */
+  .theme-toggle,
+  .lang-toggle,
+  .notif-toggle {
+    right: calc((var(--rail-side-w) - 36px) / 2 + env(safe-area-inset-right, 0px));
+  }
+  .lang-toggle {
+    top: calc(16px + 36px + var(--space-3) + var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
+  }
+  .notif-toggle {
+    top: calc(16px + 2 * (36px + var(--space-3)) + var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Where the browser knows the fold's real width, the gap is at least that
+   plus a margin either side. (Viewport Segments API: Chrome; Safari 27.1
+   behind a flag.) */
+@media (horizontal-viewport-segments: 2) {
+  :root {
+    --fold-gap: max(
+      var(--space-9),
+      calc(env(viewport-segment-left 1 0, 0px) - env(viewport-segment-right 0 0, 0px) + var(--space-7))
+    );
+  }
 }

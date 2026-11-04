@@ -19,6 +19,8 @@ public class MainActivity extends BridgeActivity {
         // (docs/plans/native-widgets.md).
         // "Add to calendar" (docs/plans/add-to-calendar.md).
         registerPlugin(BpmCalendarPlugin.class);
+        // Where the fold is (docs/plans/foldable-layout.md, step 3).
+        registerPlugin(BpmFoldPlugin.class);
         registerPlugin(BpmWidgetPlugin.class);
         super.onCreate(savedInstanceState);
         // A notification posted to a channel that does not exist is dropped

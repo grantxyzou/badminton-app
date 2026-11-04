@@ -11,5 +11,7 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(BpmWidgetPlugin())
         // "Add to calendar": the system's New Event screen (docs/plans/add-to-calendar.md).
         bridge?.registerPluginInstance(BpmCalendarPlugin())
+        // Where the fold is, for the courtside scoreboard (docs/plans/foldable-layout.md).
+        bridge?.registerPluginInstance(BpmFoldPlugin())
     }
 }

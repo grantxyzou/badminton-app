@@ -183,6 +183,19 @@ describe('ios/', () => {
     expect(plist).toContain('<key>NSCalendarsUsageDescription</key>');
   });
 
+  it('registers the fold plugin, in the target, reading the division region on iOS 27', () => {
+    expect(read('ios', 'App', 'App', 'MainViewController.swift')).toContain('registerPluginInstance(BpmFoldPlugin())');
+    const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');
+    expect(pbx).toMatch(/\/\* BpmFoldPlugin\.swift in Sources \*\/,/);
+    expect(pbx).toMatch(/path = BpmFoldPlugin\.swift;/);
+    const plugin = read('ios', 'App', 'App', 'BpmFoldPlugin.swift');
+    expect(plugin).toContain('jsName = "BpmFold"');
+    expect(plugin).toContain('#available(iOS 27.0, *)');
+    expect(plugin).toContain('reservedRegions(kind: .division');
+    // The three answers lib/fold.ts reads, in the web posture API's words.
+    for (const posture of ['"folded"', '"flat"', '"unknown"']) expect(plugin).toContain(`"posture": ${posture}`);
+  });
+
   it('names one App Group for the app, the widget and the stores that share it', () => {
     const group = 'group.com.motioncraft.bpm';
     expect(read('ios', 'App', 'App', 'App.entitlements')).toContain(`<string>${group}</string>`);
@@ -272,6 +285,20 @@ describe('android/', () => {
     const plugin = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmCalendarPlugin.java');
     expect(plugin).toContain('@CapacitorPlugin(name = "BpmCalendar")');
     expect(plugin).toContain('Intent.ACTION_INSERT');
+  });
+
+  it('registers the fold plugin, with WindowManager in the build', () => {
+    const activity = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'MainActivity.java');
+    expect(activity).toContain('registerPlugin(BpmFoldPlugin.class);');
+    const plugin = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmFoldPlugin.java');
+    expect(plugin).toContain('@CapacitorPlugin(name = "BpmFold")');
+    expect(plugin).toContain('FoldingFeature.State.FLAT');
+    expect(plugin).toContain('notifyListeners("foldChanged"');
+    // The dependency the import needs, pinned like the other androidx versions.
+    const gradle = read('android', 'app', 'build.gradle');
+    expect(gradle).toContain('androidx.window:window:$androidxWindowVersion');
+    expect(gradle).toContain('androidx.window:window-java:$androidxWindowVersion');
+    expect(read('android', 'variables.gradle')).toMatch(/androidxWindowVersion = '\d+\.\d+\.\d+'/);
   });
 
   it('does not commit google-services.json', () => {

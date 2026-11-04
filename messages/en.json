@@ -1489,6 +1489,25 @@
       "empty": "No games logged yet. Log one and it shows up here.",
       "error": "Couldn't load your games."
     },
+    "courtside": {
+      "open": "Keep score",
+      "title": "Courtside score",
+      "hint": "Prop the phone half-open on the bench: the score faces the court, the buttons face you.",
+      "sideA": "A side",
+      "sideB": "B side",
+      "point": "+1 {side}",
+      "serving": "{side} serving",
+      "gamePoint": "Game point · {side}",
+      "all": "{n} all",
+      "nextPointWins": "29 all · next point wins",
+      "interval": "Interval",
+      "gameOver": "Game · {side}",
+      "undo": "Undo",
+      "newGame": "New game",
+      "save": "Save game",
+      "saveNeedsSession": "Saving needs this week's session to log into.",
+      "close": "Close"
+    },
     "partners": {
       "locked": "<link>Sign in</link> to see who you play with most.",
       "title": "Who you play with",

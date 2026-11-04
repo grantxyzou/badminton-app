@@ -661,7 +661,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {weekLoadError ? (
         /* Page-level fallback: standalone, 48/24, no card (CLAUDE.md spacing
            ladder) — the card it replaces would have held nothing true. */
-        <section className="bpm-home-group" aria-label={t('groups.session')} style={{ padding: 'var(--space-9) var(--space-7)' }}>
+        <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')} style={{ padding: 'var(--space-9) var(--space-7)' }}>
           <ErrorState
             message={t('weekLoadError')}
             action={
@@ -672,7 +672,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           />
         </section>
       ) : groupsOn && sessionMissing ? (
-        <section className="bpm-home-group" aria-label={t('groups.session')}>
+        <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')}>
           <div className="glass-card p-5 space-y-3">
             <CardHeader
               compact
@@ -693,7 +693,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         </section>
       ) : (
-      <section className="bpm-home-group" aria-label={t('groups.session')}>
+      <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')}>
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}

@@ -1477,6 +1477,25 @@
       "empty": "还没有记录。记录一场后就会显示在这里。",
       "error": "比赛记录加载失败。"
     },
+    "courtside": {
+      "open": "计分",
+      "title": "场边计分",
+      "hint": "把手机半开立在场边：比分朝向球场，按钮朝向你。",
+      "sideA": "A 方",
+      "sideB": "B 方",
+      "point": "{side} +1",
+      "serving": "{side}发球",
+      "gamePoint": "局点 · {side}",
+      "all": "{n} 平",
+      "nextPointWins": "29 平 · 下一分定胜负",
+      "interval": "间歇",
+      "gameOver": "本局结束 · {side}",
+      "undo": "撤销",
+      "newGame": "新一局",
+      "save": "保存比赛",
+      "saveNeedsSession": "保存需要本周的活动才能记录。",
+      "close": "关闭"
+    },
     "partners": {
       "locked": "<link>登录</link>后查看你最常和谁一起打。",
       "title": "常见搭档",
