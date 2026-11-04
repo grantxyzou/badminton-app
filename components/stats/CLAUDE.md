@@ -193,6 +193,18 @@ conditional.
   - `RACKET_LOOKS` in `lib/racketLook.ts` stays the one paint table (frame,
     accent, grip, optional `pattern` / `shape`). It is presentation, so it stays
     off `CatalogItem`; an unknown id uses `DEFAULT_LOOK`.
+  - **A catalog racket's REAL paint is its livery** (`lib/racketLivery.ts`,
+    `docs/plans/racket-fidelity.md`, 2026-11-04): colour stops up the head, a
+    different left half, bands and slashes at angles, the shaft's fade, cone,
+    cap and grip, a finish and a head outline measured from a face-on photo,
+    painted as vertex colours. Where one exists it wins over the three colours
+    (a member's own frame colour, typed-in rackets only, still wins over it).
+    The table rides with three.js: only `lib/racketModel.ts` imports it, and
+    the model is handed the catalog id (`ModelLook.liveryId`, via
+    `modelInputs(base, look, catalogId)`), never the paint — the test pins that
+    `racketLook`, `racketCustom` and `memberAvatar` do not import it. Every
+    entry names its photo `source`; a racket with no findable photo has no
+    livery, never one invented from a colour name. Logos are left off.
 
 - **Your fit is a PAGE** (Turn 3 `3a`; its flag `NEXT_PUBLIC_FLAG_GEAR_PAGES` retired 2026-10-19): `FitProfilePage`,
   rendered IN PLACE by `GearRegister` (it owns the data), with the shell's

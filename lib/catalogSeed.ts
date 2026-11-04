@@ -42,6 +42,24 @@ const SEED_ITEMS = catalogSeed.items as unknown as CatalogItem[];
  */
 let ready: Promise<void> | null = null;
 
+/**
+ * Catalog rows DELETED from Cosmos on the next seed, because the racket does
+ * not exist (Grant, 2026-11-04: "The 5 with no photo are fake ones. Delete them
+ * from the data base" — four of the five; the fifth, the Brave Sword 1500, is
+ * real and stayed). They had been withdrawn with `attributes.unlisted` since
+ * 2026-09-14, so nobody could add one since; a bag that already pointed at one
+ * keeps its label and reads as a typed-in racket. Seeding otherwise never
+ * deletes, so dropping a row from the JSON alone would leave it in production.
+ * Only a row this seeder owns (`seeded: true`) is deleted. Keep an id here
+ * after it is gone: the delete is a no-op once the row is absent.
+ */
+export const REMOVED_CATALOG_IDS: ReadonlyArray<{ id: string; category: string }> = [
+  { id: 'racket-victor-arrow-speed-88-as-88', category: 'racket' },
+  { id: 'racket-victor-nitrolite-80x', category: 'racket' },
+  { id: 'racket-li-ning-halberd-900', category: 'racket' },
+  { id: 'racket-li-ning-g-force-superlite', category: 'racket' },
+];
+
 export function ensureCatalogSeeded(): Promise<void> {
   if (!ready) {
     ready = seed().catch((err) => {
@@ -88,6 +106,14 @@ async function seed(): Promise<void> {
   // Only rows this seeder owns (`seeded: true`) are refreshed. The catalog
   // route is GET-only today so nothing else writes here, but an admin-authored
   // row must never be reverted by a deploy if that ever changes.
+  // Delete the rows that should not exist, before anything is written, so a
+  // failure here retries on the next request like any other seed failure.
+  const doomed = REMOVED_CATALOG_IDS.filter(({ id }) => existing.get(id)?.seeded === true);
+  if (doomed.length > 0) {
+    await Promise.all(doomed.map(({ id, category }) => container.item(id, category).delete()));
+    console.info(`[catalog-seed] deleted ${doomed.length} catalog item(s) that do not exist`);
+  }
+
   const stale = SEED_ITEMS.filter((item) => {
     const current = existing.get(item.id);
     if (!current) return true;

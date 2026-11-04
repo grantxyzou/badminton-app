@@ -15,7 +15,7 @@ import type { CatalogItem } from '@/lib/types';
 export default function FrameViewSheet({ open, onClose, row }: { open: boolean; onClose: () => void; row: CatalogItem }) {
   const t = useTranslations('stats.gear.setup');
   const tRecovery = useTranslations('recovery');
-  const inputs = useMemo(() => modelInputs(racketLook(row.id), {}), [row.id]);
+  const inputs = useMemo(() => modelInputs(racketLook(row.id), {}, row.id), [row.id]);
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={row.model}>
       <BottomSheetHeader>

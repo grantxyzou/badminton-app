@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Every racket in its real paint (2026-11-04)
+
+The racket pictures on Stats → Equipment, in the 3D viewer and on the share card now show each catalog racket in its real paint, matched to maker and retailer photos. That includes its fades, split halves, crown and throat colours and slashes, the shaft's colour change, the handle and grip, and its head outline. Every one of the 153 catalog rackets has it; 23 are approximate, because only angled photos existed. Four catalog rackets that do not exist (Victor Arrow Speed 88 and NitroLite 80X, Li-Ning Halberd 900 and G-Force Superlite) were deleted from the catalog, in production too, on the next deploy. Every racket, including the default, also got new materials: lacquer over a carbon weave, a ridged octagonal grip, a woven string bed, flush grommets and sharper edges. The list images are the same 240 × 624 pictures they were (2.8 MB for all 154), and nothing extra loads on screens that show no 3D. Logos are left off. Plan: `docs/plans/racket-fidelity.md`.
+
 ### Motion for the fold, and the scoreboard brought in line (2026-11-04)
 
 Opening or closing a foldable now crossfades the app through the reflow instead of snapping it, and the courtside scoreboard's two halves slide with the hinge as the phone moves. The board fades in when it opens, each new point fades in, and the game ending gets the same small entrance a saved check-in does; in the store app every +1 taps lightly under the finger. Two design-system misses fixed on the way: the +1 targets lose their outer rim (fill-only, like every container), and the board wears the Stats field instead of a flat ground. Plan: `docs/plans/foldable-layout.md`.

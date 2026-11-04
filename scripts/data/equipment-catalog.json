@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "purpose": "Seed data for the equipment catalog: 157 rackets (150 offered; seven withdrawn with `unlisted`), 46 strings. Shoes / shuttles / bags / grips are not sourced yet — the Gear register parks a category until the catalog can answer for it, so adding rows here is the only step needed to un-park one.",
+    "purpose": "Seed data for the equipment catalog: 153 rackets (150 offered; three withdrawn with `unlisted`), 46 strings. Shoes / shuttles / bags / grips are not sourced yet — the Gear register parks a category until the catalog can answer for it, so adding rows here is the only step needed to un-park one.",
     "schema": "Each entry matches CatalogItem in lib/types.ts. `id` is stable and deterministic so re-runs are idempotent. `skillRange` follows the ACE stage scale [1-6] from lib/skills-data.ts.",
     "sources": "Each item carries non-affiliate retailer links (Yumo, RacquetGuys, BadmintonHQ) for now. Per Decision D in the plan, affiliateTag fields ship null in Slice-0; the field exists so flipping monetization on later is schema-free.",
     "curation": "~17 popular models each from Yonex, Victor and Li-Ning. Hand-picked from public best-sellers + recreational-player community recommendations — not authoritative, will be revised once admin can edit the catalog (Track 2).",
@@ -1152,39 +1152,6 @@
       "msrp": 138
     },
     {
-      "id": "racket-victor-arrow-speed-88-as-88",
-      "category": "racket",
-      "brand": "Victor",
-      "model": "Arrow Speed 88 (AS-88)",
-      "skillRange": [
-        1,
-        3
-      ],
-      "attributes": {
-        "series": "Arrow Speed",
-        "playStyle": "Speed",
-        "balance": "Head-light",
-        "flex": "Flexible",
-        "weight": "4U",
-        "weightGrams": "75-84",
-        "frameMaterial": "Basic composite frame",
-        "stringTensionLbs": "18-24",
-        "gripSize": "G5",
-        "notes": "Very budget-friendly entry racket",
-        "subType": "beginner",
-        "weightMinG": 80,
-        "weightMaxG": 84,
-        "tier": "Entry-level",
-        "tensionMaxLbs": 24,
-        "priceMinUSD": 75,
-        "priceMaxUSD": 100,
-        "lastVerified": "2026-09-14",
-        "unlisted": "not_found"
-      },
-      "seeded": true,
-      "msrp": 103
-    },
-    {
       "id": "racket-victor-brave-sword-1500",
       "category": "racket",
       "brand": "Victor",
@@ -1216,40 +1183,6 @@
       },
       "seeded": true,
       "msrp": 103
-    },
-    {
-      "id": "racket-victor-nitrolite-80x",
-      "category": "racket",
-      "brand": "Victor",
-      "model": "NitroLite 80X",
-      "skillRange": [
-        2,
-        5
-      ],
-      "attributes": {
-        "series": "NitroLite",
-        "playStyle": "Speed",
-        "balance": "Head-light",
-        "flex": "Medium",
-        "weight": "4U/5U",
-        "weightGrams": "75-84",
-        "frameMaterial": "Lightweight carbon composite",
-        "stringTensionLbs": "19-27",
-        "gripSize": "G5",
-        "notes": "Doubles/maneuverability-focused",
-        "subType": "lightweight",
-        "weightMinG": 75,
-        "weightMaxG": 84,
-        "tier": "Mid-range",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 27,
-        "priceMinUSD": 130,
-        "priceMaxUSD": 160,
-        "lastVerified": "2026-08-19",
-        "unlisted": "not_a_model"
-      },
-      "seeded": true,
-      "msrp": 179
     },
     {
       "id": "racket-li-ning-n90-iv",
@@ -1574,74 +1507,6 @@
       },
       "seeded": true,
       "msrp": 65
-    },
-    {
-      "id": "racket-li-ning-halberd-900",
-      "category": "racket",
-      "brand": "Li-Ning",
-      "model": "Halberd 900",
-      "skillRange": [
-        2,
-        5
-      ],
-      "attributes": {
-        "series": "Halberd",
-        "playStyle": "Control",
-        "balance": "Even",
-        "flex": "Medium",
-        "weight": "4U",
-        "weightGrams": "80-84",
-        "frameMaterial": "Standard Li-Ning composite frame",
-        "stringTensionLbs": "19-26",
-        "gripSize": "G4/G5",
-        "notes": "Balanced feel, forgiving sweet spot",
-        "subType": "beginner",
-        "weightMinG": 80,
-        "weightMaxG": 84,
-        "tier": "Mid-range",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
-        "priceMinUSD": 140,
-        "priceMaxUSD": 170,
-        "lastVerified": "2026-08-19",
-        "unlisted": "not_a_model"
-      },
-      "seeded": true,
-      "msrp": 193
-    },
-    {
-      "id": "racket-li-ning-g-force-superlite",
-      "category": "racket",
-      "brand": "Li-Ning",
-      "model": "G-Force Superlite",
-      "skillRange": [
-        1,
-        3
-      ],
-      "attributes": {
-        "series": "G-Force",
-        "playStyle": "Control",
-        "balance": "Even",
-        "flex": "Flexible",
-        "weight": "5U",
-        "weightGrams": "75-79",
-        "frameMaterial": "Basic composite frame",
-        "stringTensionLbs": "18-24",
-        "gripSize": "G5/G6",
-        "notes": "Entry-level, comfort/ease-of-use focused",
-        "subType": "beginner",
-        "weightMinG": 75,
-        "weightMaxG": 79,
-        "tier": "Entry-level",
-        "tensionMinLbs": 18,
-        "tensionMaxLbs": 24,
-        "priceMinUSD": 60,
-        "priceMaxUSD": 90,
-        "lastVerified": "2026-08-19",
-        "unlisted": "not_a_model"
-      },
-      "seeded": true,
-      "msrp": 83
     },
     {
       "id": "racket-li-ning-ignite-8",

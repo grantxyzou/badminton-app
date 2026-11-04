@@ -15,6 +15,9 @@ import { RACKET_LOOKS, DEFAULT_LOOK } from '@/lib/racketLook';
 
 const RENDER_W = 240;
 const RENDER_H = 624;
+/** Drawn at twice the size and scaled down, so the frame edge and the strings
+ *  stay crisp at list size instead of stair-stepping. */
+const SUPERSAMPLE = 2;
 
 declare global {
   interface Window {
@@ -38,18 +41,25 @@ export default function RacketRenderPage() {
       const canvas = canvasRef.current;
       if (!canvas || disposed) return;
       const stage = createRacketStage(canvas, { ground: false });
-      stage.resize(RENDER_W, RENDER_H);
+      stage.resize(RENDER_W * SUPERSAMPLE, RENDER_H * SUPERSAMPLE);
       cleanup = () => stage.dispose();
       window.__racketIds = Object.keys(RACKET_LOOKS);
       window.__renderRacket = async (id: string) => {
         const look = id === '_default' ? DEFAULT_LOOK : RACKET_LOOKS[id];
         if (!look) throw new Error(`no look for ${id}`);
-        const racket = buildRacket(look, { shape: look.shape, pattern: look.pattern });
+        const racket = buildRacket({ ...look, liveryId: id === '_default' ? null : id }, { shape: look.shape, pattern: look.pattern });
         // Nearly face-on with a slight turn, so the frame's depth and the
         // grommet channel read, and the whole racket fills a tall tile.
         stage.setObject(racket, { direction: [0.3, 0.06, 1], framing: 1.02 });
         stage.renderOnce();
-        const url = canvas.toDataURL('image/webp', 0.86);
+        const out = document.createElement('canvas');
+        out.width = RENDER_W;
+        out.height = RENDER_H;
+        const ctx = out.getContext('2d');
+        if (!ctx) throw new Error('no 2d context');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(canvas, 0, 0, RENDER_W, RENDER_H);
+        const url = out.toDataURL('image/webp', 0.86);
         disposeRacket(racket);
         return url;
       };

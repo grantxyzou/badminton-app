@@ -62,10 +62,11 @@ export function hasItemLook(look: ItemLook | null | undefined): look is ItemLook
   return !!look && Object.values(look).some((v) => v !== undefined);
 }
 
-/** What the 3D model paints: the model's look, the member's choices over it. */
-export function modelInputs(base: RacketLook, look: ItemLook | undefined) {
+/** What the 3D model paints: the model's look, the member's choices over it.
+ *  `catalogId` lets the model find the racket's real paint (`lib/racketLivery.ts`). */
+export function modelInputs(base: RacketLook, look: ItemLook | undefined, catalogId?: string | null) {
   return {
-    look: { frame: base.frame, accent: base.accent, grip: base.grip },
+    look: { frame: base.frame, accent: base.accent, grip: base.grip, liveryId: catalogId ?? null },
     tweaks: {
       frame: look?.frame ?? null,
       string: look?.string ?? null,

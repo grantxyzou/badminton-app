@@ -66,15 +66,12 @@ describe('unlisted catalog rows', () => {
     const items = (catalogSeed as unknown as { items: CatalogItem[] }).items;
     const unlisted = Object.fromEntries(items.filter((i) => !isOffered(i)).map((i) => [i.id, i.attributes!.unlisted]));
     expect(unlisted).toEqual({
-      'racket-victor-nitrolite-80x': 'not_a_model',
-      'racket-li-ning-halberd-900': 'not_a_model',
-      'racket-li-ning-g-force-superlite': 'not_a_model',
       'racket-li-ning-axforce-90-dragon': 'duplicate',
       'racket-yonex-nanoflare-700': 'discontinued',
       'racket-li-ning-air-force-79': 'discontinued',
-      // 2026-10-20 re-check: no maker or retailer page anywhere. `not_found`,
-      // not `not_a_model` — we could not find it, which is not proof it never was.
-      'racket-victor-arrow-speed-88-as-88': 'not_found',
+      // NitroLite 80X, Halberd 900, G-Force Superlite (not_a_model) and Arrow
+      // Speed 88 (not_found) were deleted outright on 2026-11-04 — Grant: "fake
+      // ones". REMOVED_CATALOG_IDS in lib/catalogSeed.ts takes them out of Cosmos.
     });
   });
 });
