@@ -47,7 +47,7 @@ describe('ClaimLinkSheet', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     render(<ClaimLinkSheet open onClose={() => {}} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'New link' }));
+    fireEvent.click(await screen.findByRole('button', { name: /New link/ }));
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Make a new link' }));
     await vi.waitFor(() =>

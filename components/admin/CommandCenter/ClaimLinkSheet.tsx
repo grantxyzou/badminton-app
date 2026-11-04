@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import ErrorState from '@/components/primitives/ErrorState';
+import ActionRow from '@/components/primitives/ActionRow';
 import { useOnline } from '@/lib/useOnline';
 import { isRefused } from '@/lib/apiFetch';
 import { shareTextOrCopy } from '@/lib/shareText';
@@ -107,12 +109,20 @@ export default function ClaimLinkSheet({
       </BottomSheetHeader>
       <BottomSheetBody>
         {loadError ? (
-          <div className="flex flex-col gap-4 motion-fade">
-            <p className="field-error" role="alert">{loadError}</p>
-            <button type="button" className="cc-btn cc-btn-secondary" onClick={() => void load()}>Try again</button>
+          <div className="motion-fade">
+            <ErrorState
+              message={loadError}
+              action={
+                <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+                  Try again
+                </button>
+              }
+            />
           </div>
         ) : !state ? (
-          <CardSkeleton height={168} />
+          /* The loaded sheet with a link, measured at 430px (2026-11-04): every
+             visit after the first has one. Before the first link it is 163. */
+          <CardSkeleton height={335} />
         ) : (
           <div className="flex flex-col gap-4 motion-fade">
             <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>
@@ -147,15 +157,16 @@ export default function ClaimLinkSheet({
                     {copied ? 'Copied ✓' : 'Share the link'}
                   </span>
                 </button>
+                {/* Retiring a live link is a second, deliberate tap — an action
+                    row then a confirm, as the bench's "Remove" is. */}
                 {!confirmingNew ? (
-                  <button
-                    type="button"
-                    className="cc-btn cc-btn-ghost"
+                  <ActionRow
+                    icon="link"
+                    label="New link"
+                    hint="Retires this one at once"
                     onClick={() => setConfirmingNew(true)}
                     disabled={busy || !online}
-                  >
-                    New link
-                  </button>
+                  />
                 ) : (
                   /* Two choices side by side, as in the bench's confirmations. */
                   <div className="motion-fade flex flex-col gap-3">
