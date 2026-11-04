@@ -1250,6 +1250,37 @@ p[role='alert'] {
   padding-bottom: var(--space-3);
 }
 .bpm-page-header.scrolled .bpm-page-header__title { font-size: 1.125rem; }
+/* Keep a long club name out from under the fixed round buttons (bell,
+   language, theme: their left edge is 140px from the screen's right, plus an
+   8px gap). A FLOAT one line tall, not padding, so only the first line steps
+   aside and the lines below the buttons use the full width. Its width is
+   measured against the 32rem column: 132px on a phone, nothing once the
+   column sits clear of the buttons. Overlap while SCROLLED is intentional
+   and unaffected — this only decides where the title wraps. */
+.bpm-page-header__title::before {
+  content: '';
+  float: right;
+  width: max(0px, calc(132px - (100vw - min(100vw, 32rem)) / 2));
+  /* Under one line box (1.25 leading), so the second line starts clear of it. */
+  height: 1em;
+}
+/* A long club name steps DOWN rather than being cut off (`titleFit` in
+   PageHeader; Grant, 2026-11-04). (0,2,0) to beat `.bpm-h1`; the condensed
+   rule above is (0,3,0), so scrolling still takes every size to 18px. */
+.bpm-page-header__title { min-width: 0; overflow-wrap: break-word; }
+.bpm-page-header__title.is-long   { font-size: 1.5rem; }  /* 24px */
+.bpm-page-header__title.is-longer { font-size: 1.25rem; } /* 20px, the bpm-h2 size */
+/* Condensed, the bar is ONE line: the full name is on screen at rest, and a
+   two-line frosted bar would cover the card it is meant to sit above. The
+   float cannot share a line with an ellipsis, so the same reservation is
+   padding here — the ellipsis stops before the round buttons. */
+.bpm-page-header.scrolled .bpm-page-header__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-inline-end: max(0px, calc(132px - (100vw - min(100vw, 32rem)) / 2));
+}
+.bpm-page-header.scrolled .bpm-page-header__title::before { display: none; }
 .bpm-page-header__action { display: flex; align-items: center; gap: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1960,7 +1991,10 @@ html:root .cc-tile,
 html:root .cc-mini-card,
 html:root .cc-session-chip {
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  /* Fill-only, like every Tier-2 surface on the member tabs (Grant,
+     2026-11-04, "do the admin console ones too"); transparent, not none, so
+     the box keeps its size. */
+  border: 1px solid transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
@@ -1969,12 +2003,10 @@ html:root .cc-session-chip {
   html:root .cc-tile:hover,
   html:root .cc-session-chip:hover {
     background: var(--glass-soft-bg);
-    border-color: var(--glass-border);
   }
   /* -static is a read-only stat display and must not offer a hover affordance. */
   html:root .cc-tile-static:hover {
     background: var(--inner-card-bg);
-    border-color: var(--inner-card-border);
   }
 }
 html:root .cc-progress-track {
@@ -3704,7 +3736,8 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 
 /* ── Theme toggle button ── */
 .theme-toggle,
-.lang-toggle {
+.lang-toggle,
+.notif-toggle {
   position: fixed;
   top: calc(16px + var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
   z-index: 60;
@@ -3726,30 +3759,117 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 
 .theme-toggle { right: 16px; }
 .lang-toggle  { right: 60px; }
+/* The Notifications bell, third in the row (docs/plans/notification-center.md).
+   Rendered by HomeShell only — the signed-out shell has nothing to notify. */
+.notif-toggle { right: 104px; }
 
 @media (hover: hover) {
   .theme-toggle:hover,
-  .lang-toggle:hover {
+  .lang-toggle:hover,
+  .notif-toggle:hover {
     transform: scale(1.1);
   }
 }
 
 .theme-toggle:focus-visible,
-.lang-toggle:focus-visible {
+.lang-toggle:focus-visible,
+.notif-toggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .theme-toggle:active,
-.lang-toggle:active {
+.lang-toggle:active,
+.notif-toggle:active {
   transform: scale(0.95);
 }
 
 .theme-toggle .material-icons,
-.lang-toggle .material-icons {
+.lang-toggle .material-icons,
+.notif-toggle .material-icons {
   font-size: 18px;
   opacity: 1;
 }
+
+/* The red dot: something arrived since the page was last opened. Red is the
+   platform's own word for "new" on an icon, and the one place on this row it
+   means that rather than failure. Absolutely placed, so it moves nothing; the
+   ring in the button's own ground keeps it legible over the glass. It POPS in
+   (scale, ease-out-quart, no overshoot — `baddicon-pop` stays the one spring). */
+.notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-red);
+  box-shadow: 0 0 0 2px var(--page-bg);
+  pointer-events: none;
+  animation: notif-dot-in var(--duration-normal) var(--ease-out-quart) backwards;
+}
+@keyframes notif-dot-in {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+/* The bell rings once when the dot arrives — a rare, consequential moment
+   (Motion system: frequency decides), never on a tap or a re-render. Swung
+   from its top, like a bell. The reduced-motion wildcard zeroes it. */
+.notif-toggle .notif-ring {
+  transform-origin: 50% 15%;
+  animation: notif-ring 700ms var(--ease-out-quart);
+}
+@keyframes notif-ring {
+  0%   { transform: rotate(0); }
+  15%  { transform: rotate(-16deg); }
+  35%  { transform: rotate(13deg); }
+  55%  { transform: rotate(-8deg); }
+  75%  { transform: rotate(4deg); }
+  100% { transform: rotate(0); }
+}
+/* "You are here" while the page is open: the bottom nav's own active tint,
+   so the bell reads like a tab that is selected. */
+.notif-toggle[aria-pressed='true'] {
+  background: var(--rail-indicator-bg), var(--glass-bg);
+}
+
+/* ── Notifications page list ── one card, rows inside it, no dividers
+   (Coding Conventions: no hard lines between list items). */
+.notice-list {
+  list-style: none;
+  margin: 0;
+}
+/* `html:root .glass-card` (0,2,1) gives every field card its own padding and
+   outranks a bare class, so this has to match it. 6px here + the row's 12px
+   puts each row's icon on the 20px line the cards above it use. */
+html:root .glass-card.notice-list { padding: var(--space-2); }
+.notice-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  width: 100%;
+  padding: var(--space-4);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.notice-row:active { background: var(--press-bg); }
+.notice-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.notice-row-icon { color: var(--text-secondary); margin-top: var(--space-05); }
+.notice-row-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.notice-row-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.notice-row-body { color: var(--text-secondary); overflow-wrap: anywhere; }
+.notice-row-time { color: var(--text-muted); }
 
 /* ── Launch screen ──
    The cold-start splash and the signed-out Welcome, one composition (design
@@ -4304,7 +4424,7 @@ html:root[data-tab="admin"] .bottom-sheet {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* a pressable choice chip is fill-only, see .setup-feel-chip */
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--fs-sm);
@@ -4875,17 +4995,16 @@ html:root[data-theme="light"] {
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent; /* fill-only, see the html:root rule */
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background 120ms ease;
   text-align: left;
 }
 .cc-tile:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
 }
 .cc-tile .num {
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
@@ -4920,7 +5039,6 @@ html:root[data-theme="light"] {
 }
 .cc-tile-static:hover {
   background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Money tiles three-up on a phone (Ledger: In and out, Still owed). The 28px
@@ -4934,16 +5052,13 @@ html:root[data-theme="light"] {
 }
 [data-theme="light"] .cc-tile-static:hover {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .cc-tile {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 [data-theme="light"] .cc-tile:hover {
   background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.14);
 }
 
 /* Status pill family — pairs with cc-btn / cc-tile.
@@ -5007,18 +5122,14 @@ html:root[data-theme="light"] {
    against the light page-bg. */
 .cc-mini-card {
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Fill-only everywhere since 2026-11-04. The Stringing tab went first
+     (Grant, 2026-10-28: the bench's rows lost the rim there and kept it
+     everywhere else); the admin console followed with the rest of the app.
+     Transparent rather than none, so the row keeps its size. */
+  border: 1px solid transparent;
 }
 [data-theme="light"] .cc-mini-card {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
-}
-/* The Stringing tab draws its containers fill-only, as Stats does (Grant,
-   2026-10-28): the bench's Archived and set-up rows lose the rim here and
-   keep it everywhere else. Transparent rather than none, so the row keeps
-   its size. (0,2,1) outranks the light rule above. */
-html[data-tab="stringing"] .cc-mini-card {
-  border-color: transparent;
 }
 
 /* Session selector chip — horizontal session nav for PaymentsCard
@@ -5029,24 +5140,22 @@ html[data-tab="stringing"] .cc-mini-card {
   border-radius: 10px;
   padding: var(--space-3) var(--space-4);
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent; /* fill-only, see .cc-mini-card */
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
 }
 @media (hover: hover) {
   .cc-session-chip:hover { background: rgba(255, 255, 255, 0.07); }
 }
 .cc-session-chip[aria-selected="true"] {
   background: var(--inner-card-green-bg, rgba(74, 222, 128, 0.13));
-  border-color: var(--inner-card-green-border, rgba(74, 222, 128, 0.3));
   color: var(--text-primary);
 }
 [data-theme="light"] .cc-session-chip {
   background: rgba(0, 0, 0, 0.025);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 [data-theme="light"] .cc-session-chip:hover {
   background: rgba(0, 0, 0, 0.05);
@@ -5067,20 +5176,18 @@ html[data-tab="stringing"] .cc-mini-card {
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* fill-only, see .cc-mini-card */
   color: var(--text-primary);
   font: inherit;
   text-align: left;
   cursor: pointer;
   transition:
     transform var(--duration-press) var(--ease-out-quart),
-    background var(--duration-fast) ease,
-    border-color var(--duration-fast) ease;
+    background var(--duration-fast) ease;
 }
 .cc-choice:active { transform: scale(0.98); }
 .cc-choice[aria-checked="true"] {
   background: var(--inner-card-green-bg);
-  border-color: var(--inner-card-green-border);
 }
 .cc-choice:disabled { opacity: 0.5; pointer-events: none; }
 
@@ -5324,6 +5431,14 @@ html[data-tab="stringing"] .cc-mini-card {
 .pay-row-status .material-icons { font-size: var(--icon-sm); }
 
 /* Dashboard 2-up grid for Birds + Roster cards on the admin home */
+/* ── "This week" head (Command Center, 2026-11-04) ──
+   The eyebrow with the Session · Payments toggle beside it: one card shows
+   at a time, at its own height (Grant: "to save vertical space"). The
+   toggle is the app's segment control at its own 32px, narrowed to its two
+   words so the eyebrow keeps the line. */
+.cc-week-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.cc-week-toggle { flex: 0 0 auto; width: 176px; }
+
 .cc-dgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -5573,7 +5688,7 @@ html[data-tab="stringing"] .cc-mini-card {
   padding: var(--space-1) var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  border: 1px solid transparent; /* a pressable choice chip is fill-only, see .setup-feel-chip */
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -7283,8 +7398,9 @@ a.setup-price-row:active { background: var(--press-bg); }
 .pick-buy-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); margin-top: var(--space-2); text-decoration: none; }
 
 /* ── Admin: Missing from the catalog ─────────────────────────────────────── */
-.catalog-gap { padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
-.catalog-gap + .catalog-gap { border-top: 1px solid var(--divider); }
+/* Tinted rows set apart by space, no hairline (fill-only, 2026-11-04). */
+.catalog-gaps { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.catalog-gap { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); border-radius: var(--radius-lg); background: var(--inner-card-bg); }
 .catalog-gap-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .catalog-gap-name { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .catalog-gap-count { font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 600; color: var(--accent); }

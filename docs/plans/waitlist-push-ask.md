@@ -1,7 +1,7 @@
 # Ask for notifications when someone joins the waitlist
 
 **Track:** between-session engagement (North Star pillar 1). A waitlister who hears that a spot opened comes to play; one who doesn't hear stays home.
-**Status:** intent
+**Status:** in-flight (PR #769, with the notification center)
 **Review on:** 2026-12-09 — of members who joined a waitlist since ship, how many turned push on from the waitlist row, and how many promoted rows (`promotedAt`) belonged to someone with push on? Fewer than 1 in 4 tapping = the moment is wrong; drop the row.
 
 ## Problem
@@ -31,13 +31,22 @@ By the review date, if fewer than 1 in 4 people shown the row tap it, the ask is
 
 ## Decisions
 
-<appended as the work proceeds>
+Grant answered the open questions on 2026-11-04.
+
+- **A sheet right after the join, not a row in the card** (Grant chose this over the recommended row). It opens only once the server has CONFIRMED the row is on the waitlist — including a "sign me up" that landed there through a capacity race — and never for someone held for unpaid sessions, who is not promoted automatically. "Not now" closes it; nothing is remembered, because a join is already a once-a-week moment.
+- **On the web, point to the app.** The same rule the Notifications page took the same day (Grant: "turn on notification only when user is in the app"): the web sheet offers "Get the app" (`MigrateSheet`); the store app's sheet turns notifications on in one tap through the shared `usePush()` that HomeShell owns.
+- **Already on: say so in the card.** With push on, there is no sheet, and the waitlist card carries "You'll get a ping if a spot opens."
+- **Question 3 is moot.** The Home push card (`PushNudge`) left in #769, so there is no second ask on the screen to arbitrate with.
+- **Nothing is shown on an unknown answer.** Push still being checked, denied, or unsupported in a store app means no sheet: unknown is not "off", and a button that cannot work is worse than no button.
+- **The review question has no counter yet.** "How many shown tapped" needs a beacon nobody has added; until then the read is promoted rows against push subscriptions created since ship.
 
 ## Shape
 
 | Piece | File |
 |---|---|
-| The row: reuse the stringing sheet's enable-push row by lifting it into a shared component | `components/stringing/RequestStringingSheet.tsx` → a new shared row component |
-| Shown in the waitlist state of the sign-up card | `components/HomeTab.tsx` |
+| The rule for which ask a join earns (`waitlistPingKind`) | `lib/waitlistPing.ts` |
+| The sheet | `components/home/WaitlistPingSheet.tsx` |
+| Opened from the join; "You'll get a ping" in the waitlist card | `components/HomeTab.tsx` |
+| The shared push state and the web/app answer, handed down | `components/HomeShell.tsx` |
 | Copy (English and Chinese) | `messages/en.json`, `messages/zh-CN.json` |
 | Measuring the review question: promoted rows against push subscriptions | `lib/waitlistPromote.ts`, `pushSubscriptions` |

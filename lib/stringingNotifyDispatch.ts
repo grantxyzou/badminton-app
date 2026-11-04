@@ -29,6 +29,8 @@ import { sendStringingNotice } from '@/lib/stringingNotifyEmail';
 import { readGroup } from '@/lib/groups';
 import { sendPushToMembers } from '@/lib/push';
 import { buildStringingPayload, buildPendingEditPayload } from '@/lib/pushMessages';
+import { recordNotices } from '@/lib/notices';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
 import type { StringingJob, Member } from '@/lib/types';
 
 export interface NotifyOutcome {
@@ -86,6 +88,13 @@ export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutc
        channel that reached almost nobody while every test stayed green. Push
        is the channel that works for a member with no address, which is most
        of them, so it must not sit behind one. */
+    // The Notifications page, push or not (docs/plans/notification-center.md),
+    // and above the email gate for the same reason push is. Never throws.
+    await recordNotices(job.groupId ?? BPM_GROUP_ID, [job.memberId], {
+      type: 'stringing',
+      stage: notice.key,
+      racketLabel: notice.racketLabel,
+    });
     const pushSent = await pushToPlayer(notice, job.memberId);
 
     /* No address is expected, not an error: in-app reaches everyone, push
@@ -134,6 +143,10 @@ export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutc
 export async function notifyPlayerOfPendingEdit(job: StringingJob): Promise<NotifyOutcome> {
   try {
     const payload = buildPendingEditPayload(job);
+    await recordNotices(job.groupId ?? BPM_GROUP_ID, [job.memberId], {
+      type: 'stringing_change',
+      racketLabel: job.racketLabel ?? undefined,
+    });
     // To this member's devices ONLY. A broadcast here would tell the whole club
     // about one person's racket.
     const { sent } = await sendPushToMembers([job.memberId], payload);
