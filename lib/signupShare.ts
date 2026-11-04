@@ -2,6 +2,7 @@
 
 import { shareTextOrCopy, type ShareTextOutcome } from '@/lib/shareText';
 import { APP_NAME } from '@/lib/brand';
+import { signupPath } from '@/lib/inviteLink';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -46,7 +47,9 @@ const DEFAULT_CLUB = APP_NAME;
 
 export function buildSignupShare(input: SignupShareInput): { title: string; text: string; url: string } {
   const club = input.groupName?.trim() || DEFAULT_CLUB;
-  const url = typeof window === 'undefined' ? BASE : `${window.location.origin}${BASE}`;
+  // The sign-up link, `/bpm/s` (lib/inviteLink.ts): it opens the app for a
+  // member who has it, already signed in, and the website for everyone else.
+  const url = typeof window === 'undefined' ? signupPath(BASE) : `${window.location.origin}${signupPath(BASE)}`;
 
   let dateLabel = '';
   if (input.datetime) {

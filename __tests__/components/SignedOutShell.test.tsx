@@ -165,17 +165,17 @@ describe('Log in', () => {
 });
 
 describe('Sign up needs an invite', () => {
-  it('asks for a link or code before anything else', () => {
+  it('asks for a code when they did not come by the link', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    expect(screen.getByLabelText('Invite link or code')).toBeDefined();
+    expect(screen.getByLabelText('Invite code')).toBeDefined();
     expect(screen.queryByText('stub: email sign-up')).toBeNull();
   });
 
   it('a typed CODE resolves the club, then the account step carries the code', async () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.change(screen.getByLabelText('Invite link or code'), { target: { value: 'ABCD2345' } });
+    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'ABCD2345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByText('Join BPM Badminton')).toBeDefined();
@@ -188,7 +188,7 @@ describe('Sign up needs an invite', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
     const token = 'a1'.repeat(16);
-    fireEvent.change(screen.getByLabelText('Invite link or code'), {
+    fireEvent.change(screen.getByLabelText('Invite code'), {
       target: { value: `https://bpm.grantzou.com/bpm?join=${token}` },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
@@ -199,7 +199,7 @@ describe('Sign up needs an invite', () => {
   it('an invite that does not resolve says so and goes no further', async () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.change(screen.getByLabelText('Invite link or code'), { target: { value: 'BADCODE1' } });
+    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'BADCODE1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByRole('alert')).toBeDefined();
     expect(screen.queryByText('stub: email sign-up')).toBeNull();
@@ -208,7 +208,7 @@ describe('Sign up needs an invite', () => {
   it('the invite survives the trip to Google', async () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.change(screen.getByLabelText('Invite link or code'), { target: { value: 'ABCD2345' } });
+    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'ABCD2345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Join BPM Badminton');
     fireEvent.click(screen.getByText('Continue with Google'));
@@ -394,7 +394,7 @@ describe('multi-group ON — signed in, in no club', () => {
   it('a brand-new organiser gets three doors and no Sign up / Log in, on the welcome stage', async () => {
     renderShell(ORGANISER);
     expect(screen.getByRole('button', { name: 'Create a group' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Join with a link or code' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'I have an invite' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Sign up' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Log in' })).toBeNull();
