@@ -796,6 +796,7 @@
     "openUnread": "通知，{count} 条新消息",
     "recent": "最近",
     "new": "新",
+    "earlier": "更早",
     "empty": "暂时没有。报名开放、球拍进度和俱乐部消息都会出现在这里。",
     "loadError": "通知加载失败。",
     "retry": "重试",

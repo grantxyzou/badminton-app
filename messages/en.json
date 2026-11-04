@@ -796,6 +796,7 @@
     "openUnread": "Notifications, {count} new",
     "recent": "Recent",
     "new": "New",
+    "earlier": "Earlier",
     "empty": "Nothing yet. Sign-ups opening, your racket and club news land here.",
     "loadError": "Couldn't load your notifications.",
     "retry": "Try again",

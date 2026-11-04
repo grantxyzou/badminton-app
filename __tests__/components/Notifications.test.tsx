@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import rawMessages from '../../messages/en.json';
 import { brandMessages } from '../../i18n/request';
@@ -66,6 +66,8 @@ describe('NotificationsButton', () => {
     listBody = { notices: NOTICES, unread: 2, seenAt: '2026-11-02T00:00:00.000Z' };
     const { container } = wrap(<NotificationsButton onOpen={vi.fn()} />);
     await waitFor(() => expect(container.querySelector('.notif-dot')).not.toBeNull());
+    // …and the bell rings once as it arrives.
+    expect(container.querySelector('.notif-ring')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Notifications, 2 new' })).toBeDefined();
   });
 
@@ -92,8 +94,11 @@ describe('NotificationsPage', () => {
     expect(screen.getByText('Astrox 88D Pro, ready to pick up.')).toBeDefined();
     expect(screen.getByText("You've got 2 sessions to settle up.")).toBeDefined();
     expect(screen.getByText('Sign-ups are open')).toBeDefined();
-    // The two newer than the old stamp keep their "new" mark for this visit.
-    await waitFor(() => expect(screen.getAllByRole('img', { name: 'New' })).toHaveLength(2));
+    // The two newer than the old stamp sit under "New" for this visit, the
+    // rest under "Earlier" — a label, never a red dot per row.
+    await waitFor(() => expect(within(screen.getByRole('list', { name: 'New' })).getAllByRole('listitem')).toHaveLength(2));
+    expect(within(screen.getByRole('list', { name: 'Earlier' })).getAllByRole('listitem')).toHaveLength(1);
+    expect(container.querySelector('.notice-new-dot')).toBeNull();
     await waitFor(() => expect(seenPosts).toHaveLength(1));
     await waitFor(() => expect(container.querySelector('.notif-dot')).toBeNull());
   });
@@ -105,8 +110,29 @@ describe('NotificationsPage', () => {
     fireEvent.click((await screen.findByText('Your racket is ready')).closest('button')!);
     fireEvent.click(screen.getByText('Time to settle up').closest('button')!);
     expect(onNavigate.mock.calls).toEqual([['stringing'], ['home']]);
-    // Nothing unread: nothing to mark.
+    // Nothing unread: nothing to mark, and one "Recent" group, no "New".
     expect(seenPosts).toHaveLength(0);
+    expect(screen.getByRole('list', { name: 'Recent' })).toBeDefined();
+    expect(screen.queryByRole('list', { name: 'New' })).toBeNull();
+  });
+
+  it('shows the bell pressed while its page is open, and a tap closes it', async () => {
+    listBody = { notices: [], unread: 0, seenAt: null };
+    const onOpen = vi.fn();
+    const onClose = vi.fn();
+    wrap(<NotificationsButton onOpen={onOpen} onClose={onClose} active />);
+    const bell = await screen.findByRole('button', { name: 'Notifications' });
+    expect(bell.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(bell);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('moves focus onto the page when it opens', async () => {
+    listBody = { notices: [], unread: 0, seenAt: null };
+    wrap(<NotificationsPage onBack={vi.fn()} onNavigate={vi.fn()} push={push} isAdmin={false} migrateOn={false} />);
+    await screen.findByText(/Nothing yet/);
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Back');
   });
 
   it('says so plainly when there is nothing, and when the read failed', async () => {

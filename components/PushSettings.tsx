@@ -73,8 +73,8 @@ export default function PushSettings({ onOpenInstall, push, isAdmin = false }: P
             <p className="fs-base" style={{ color: 'var(--text-primary)' }}>{t('iosNeedsInstall')}</p>
             <button
               type="button"
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ marginTop: 'var(--space-4)', width: '100%' }}
+              className="btn-primary w-full"
+              style={{ marginTop: 'var(--space-4)' }}
               onClick={onOpenInstall}
             >
               {t('iosInstallCta')}
@@ -126,8 +126,10 @@ export default function PushSettings({ onOpenInstall, push, isAdmin = false }: P
         )}
         <button
           type="button"
-          className={`cc-btn ${isOn ? 'cc-btn-secondary' : 'cc-btn-primary'} cc-btn-lg`}
-          style={{ marginTop: 'var(--space-4)', width: '100%' }}
+          // Member-facing: the filled CTA to turn on, the ghost to turn off
+          // (`cc-btn` is the admin family; the test send below stays in it).
+          className={`${isOn ? 'btn-ghost' : 'btn-primary'} w-full`}
+          style={{ marginTop: 'var(--space-4)' }}
           // Network-mutating action — must be unavailable offline rather than
           // failing after the tap (CLAUDE.md offline posture).
           disabled={busy || !online}

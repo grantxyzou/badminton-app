@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
 import TopBar from '@/components/primitives/TopBar';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -39,6 +39,13 @@ const ICONS: Record<Notice['type'], string> = {
   settle_up: 'payments',
 };
 
+/** The first loading frame, MEASURED: one card holding two rows at 375px
+ *  (2026-11-04: 222px). The bell has usually read the list already, so it is rare. */
+const LIST_SKELETON_H = 222;
+
+/** Later groups trail the first by one stagger step (loading cascade). */
+const GROUP_STAGGER_MS = 40;
+
 function tabOf(n: Notice): NoticeTab {
   return n.type === 'stringing' || n.type === 'stringing_change' ? 'stringing' : 'home';
 }
@@ -50,9 +57,10 @@ function tabOf(n: Notice): NoticeTab {
  * the store app — turning notifications on happens there (Grant, 2026-11-04).
  * Below, what the club told this person, newest first, in their own language.
  *
- * Opening it marks everything seen — but the rows that were new when it opened
- * keep their dot for this visit, so the reader can still tell which ones those
- * were.
+ * Opening it marks everything seen — but what was new when it opened stays
+ * under "New" for this visit, above "Earlier", so the reader can still tell.
+ * A label, not a red dot per row: red means failure in this app (CLAUDE.md,
+ * "Accent is currency"); the bell's dot is the one sanctioned exception.
  */
 export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, migrateOn }: Props) {
   const t = useTranslations('notifications');
@@ -63,8 +71,23 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
   const { status, notices } = useNotices();
   const [installOpen, setInstallOpen] = useState(false);
   const [migrateOpen, setMigrateOpen] = useState(false);
-  /** The stamp as it stood when the page opened; `undefined` until read. */
-  const [newSince, setNewSince] = useState<string | null | undefined>(undefined);
+  /** The stamp as it stood when the page opened; `undefined` until read.
+   *  Seeded from the bell's read so the groups do not reshuffle on arrival. */
+  const [newSince, setNewSince] = useState<string | null | undefined>(() => {
+    const snap = getNotices();
+    return snap.status === 'ready' ? snap.seenAt : undefined;
+  });
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // A full page took the screen: move focus onto it (its Back button), and
+  // hand it back to whatever opened it — the bell — on the way out.
+  useEffect(() => {
+    const opener = document.activeElement;
+    rootRef.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, []);
 
   // Read, remember what was new, then mark it seen. Once per opening.
   useEffect(() => {
@@ -125,12 +148,42 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
     }
   }
 
+  function row(n: Notice) {
+    return (
+      <li key={n.id}>
+        <button type="button" className="notice-row" onClick={() => onNavigate(tabOf(n))}>
+          <span className="material-icons icon-md notice-row-icon" aria-hidden>{ICONS[n.type]}</span>
+          <span className="notice-row-text">
+            <span className="notice-row-title fs-md">{title(n)}</span>
+            <span className="notice-row-body fs-sm">{body(n)}</span>
+            <span className="notice-row-time fs-xs">{format.relativeTime(new Date(n.at), now)}</span>
+          </span>
+        </button>
+      </li>
+    );
+  }
+
+  /** A labelled section; the label stays above whatever state is below it. */
+  function group(label: string, content: ReactNode, index = 0) {
+    return (
+      <section
+        key={label}
+        className="space-y-3 motion-fade"
+        style={index > 0 ? { animationDelay: `${index * GROUP_STAGGER_MS}ms` } : undefined}
+      >
+        <p className="section-label-muted">{label}</p>
+        {content}
+      </section>
+    );
+  }
+
   function list() {
     if (status === 'loading' && notices.length === 0) {
-      return <CardSkeleton height={220} />;
+      return group(t('recent'), <CardSkeleton height={LIST_SKELETON_H} />);
     }
     if (status === 'error' && notices.length === 0) {
-      return (
+      return group(
+        t('recent'),
         <ErrorState
           message={t('loadError')}
           action={
@@ -138,56 +191,47 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
               {t('retry')}
             </button>
           }
-        />
+        />,
       );
     }
     if (notices.length === 0) {
-      return (
+      return group(
+        t('recent'),
         <div className="glass-card p-5">
           <EmptyState icon="notifications">{t('empty')}</EmptyState>
-        </div>
+        </div>,
       );
     }
-    return (
-      <ul className="glass-card notice-list" aria-label={t('recent')}>
-        {notices.map((n) => {
-          const isNew = newSince !== undefined && (newSince === null || n.at > newSince);
-          return (
-            <li key={n.id}>
-              <button type="button" className="notice-row" onClick={() => onNavigate(tabOf(n))}>
-                <span className="material-icons icon-md notice-row-icon" aria-hidden>{ICONS[n.type]}</span>
-                <span className="notice-row-text">
-                  <span className="notice-row-title fs-md">
-                    {title(n)}
-                    {isNew && <span className="notice-new-dot" role="img" aria-label={t('new')} />}
-                  </span>
-                  <span className="notice-row-body fs-sm">{body(n)}</span>
-                  <span className="notice-row-time fs-xs">{format.relativeTime(new Date(n.at), now)}</span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+    const isNew = (n: Notice) => newSince !== undefined && (newSince === null || n.at > newSince);
+    const fresh = notices.filter(isNew);
+    const older = notices.filter((n) => !isNew(n));
+    const groups = [
+      { label: t('new'), items: fresh },
+      // "Earlier" only means something under "New"; on its own it is "Recent".
+      { label: fresh.length > 0 ? t('earlier') : t('recent'), items: older },
+    ].filter((g) => g.items.length > 0);
+    return groups.map((g, i) =>
+      group(
+        g.label,
+        <ul className="glass-card notice-list" aria-label={g.label}>{g.items.map(row)}</ul>,
+        i,
+      ),
     );
   }
 
   return (
     // Not wrapped in a header-only element: TopBar is sticky (StatsPrivacyScreen).
-    <div className="animate-slideInRight space-y-5">
+    <div ref={rootRef} className="animate-slideInRight space-y-5">
       <TopBar title={t('title')} onBack={onBack} backLabel={t('back')} />
 
       {migrateOn && (
         // A flex gap, not space-y: the body's inline margin would cancel it.
         <div className="glass-card p-5 flex flex-col gap-3">
           <CardHeader icon="install_mobile" title={tp('appTitle')} />
-          <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>{tp('appBody')}</p>
-          <button
-            type="button"
-            className="cc-btn cc-btn-primary cc-btn-lg"
-            style={{ width: '100%' }}
-            onClick={() => setMigrateOpen(true)}
-          >
+          <p className="fs-md" style={{ color: 'var(--text-primary)', margin: 0 }}>{tp('appBody')}</p>
+          {/* The member-facing filled CTA (CLAUDE.md: `.btn-primary`, not the
+              tinted admin `.cc-btn-primary`). It is this page's one action. */}
+          <button type="button" className="btn-primary w-full" onClick={() => setMigrateOpen(true)}>
             {tp('appCta')}
           </button>
         </div>
@@ -201,10 +245,7 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
         </div>
       )}
 
-      <section className="space-y-3">
-        <p className="section-label-muted">{t('recent')}</p>
-        {list()}
-      </section>
+      {list()}
 
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
       {migrateOn && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
