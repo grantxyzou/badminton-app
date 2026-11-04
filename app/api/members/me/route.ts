@@ -6,7 +6,6 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { readMembership } from '@/lib/groups';
-import { canStringOf } from '@/lib/roster';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import {
@@ -98,19 +97,19 @@ export async function GET(req: NextRequest) {
         : null;
     const probe = selfId
       ? {
-          query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.canString, c.canGift FROM c WHERE c.id = @id AND c.active = true',
+          query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',
           parameters: [{ name: '@id', value: selfId }],
         }
       : groupsOn
       ? groupMemberId
         ? {
-            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.canString, c.canGift FROM c WHERE c.id = @id AND c.active = true',
+            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',
             parameters: [{ name: '@id', value: groupMemberId }],
           }
         : null // not on this group's roster: nobody, without a read
       : {
           query:
-            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.canString, c.canGift FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
           parameters: [{ name: '@name', value: name }],
         };
     const resources = probe ? (await container.items.query(probe).fetchAll()).resources : [];
@@ -178,28 +177,17 @@ export async function GET(req: NextRequest) {
     // Not privileged: the roster already shows it beside the same name.
     const avatar = normalizeAvatar(me?.avatar);
     /**
-     * THE PROFILE CARD'S BADGES (docs/plans/roles-v2.md: a rank, and the jobs
-     * a person does). `role` above collapses an organiser to `admin` for the
-     * flag-off readers; `rank` keeps it. Both jobs are THIS club's grant —
-     * the membership's, read through the same `canStringOf` the bench uses —
-     * and the Member's copy only with groups off. Privileged-only, like
-     * `role`: an unproven caller learns nothing about who holds what, and
-     * `null` reads as unknown, never as "none".
+     * THE PROFILE CARD'S RANK (docs/plans/roles-v2.md). `role` above collapses
+     * an organiser to `admin` for the flag-off readers; `rank` keeps it, from
+     * THIS club's membership (the Member's role with groups off).
+     * Privileged-only, like `role`; `null` reads as unknown, never as Player.
      */
-    const badges = !privileged || !me
-      ? { rank: null, canString: null, canGift: null }
+    const rank = !privileged || !me
+      ? null
       : membership
-        ? {
-            rank: membership.role,
-            canString: canStringOf(groupId, me, membership),
-            canGift: membership.canGift === true,
-          }
-        : {
-            rank: me.role === 'admin' ? 'admin' : 'member',
-            canString: me.canString === true,
-            canGift: me.canGift === true,
-          };
-    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar, ...badges });
+        ? membership.role
+        : me.role === 'admin' ? 'admin' : 'member';
+    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar, rank });
   } catch (error) {
     // A thrown read is a 503, never a 200 of defaults (the server half of the
     // lying-empty-state rule, `__tests__/read-failed-503.test.ts`). The

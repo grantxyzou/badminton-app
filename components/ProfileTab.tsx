@@ -141,10 +141,9 @@ export default function ProfileTab({
   const [authKnown, setAuthKnown] = useState(false);
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<MemberAvatarValue | null>(null);
-  // This club's rank and jobs (roles v2). `null` = not known yet, or the read
-  // failed: the card then falls back to the shell's admin verdict for the rank
-  // and shows no job chip, rather than asserting "none".
-  const [badges, setBadges] = useState<ProfileBadges | null>(null);
+  // This club's rank (roles v2). `null` = not known yet, or the read failed:
+  // the card then falls back to the shell's admin verdict.
+  const [rank, setRank] = useState<ProfileRank | null>(null);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
@@ -294,12 +293,12 @@ export default function ProfileTab({
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();
       })
-      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown; rank?: unknown; canString?: unknown; canGift?: unknown }) => {
+      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown; rank?: unknown }) => {
         if (cancelled) return;
         setPinIsSet(data.hasPin === true);
         setAvatar(normalizeAvatar(data.avatar));
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
-        setBadges(readBadges(data));
+        setRank(readRank(data.rank));
         // `authed` gates first-PIN set in RecoveryPinSheet; unknown stays null.
         setPinAuthed(typeof data.authed === 'boolean' ? data.authed : null);
         setAuthKnown(true);
@@ -735,7 +734,7 @@ export default function ProfileTab({
         name={identity.name}
         memberCreatedAt={memberCreatedAt}
         isAdmin={isAdmin}
-        badges={badges}
+        rank={rank}
         avatar={avatar}
         onChangeAvatar={() => setAvatarSheetOpen(true)}
         changeLabel={t('avatar.change')}
@@ -1000,39 +999,26 @@ export default function ProfileTab({
   );
 }
 
-/* ── Identity card (avatar + name + member-since + this club's roles) ── */
+/* ── Identity card (avatar + name + member-since + this club's rank) ── */
 
-/** This club's rank and the jobs this person does here (docs/plans/roles-v2.md). */
-export interface ProfileBadges {
-  rank: 'owner' | 'admin' | 'member' | null;
-  canString: boolean | null;
-  canGift: boolean | null;
-}
+/** This club's rank (docs/plans/roles-v2.md): organiser, admin or player. */
+export type ProfileRank = 'owner' | 'admin' | 'member';
 
-/** Read `GET /api/members/me`'s badge fields; anything malformed is unknown. */
-export function readBadges(data: { rank?: unknown; canString?: unknown; canGift?: unknown }): ProfileBadges {
-  const rank = data.rank === 'owner' || data.rank === 'admin' || data.rank === 'member' ? data.rank : null;
-  return {
-    rank,
-    canString: typeof data.canString === 'boolean' ? data.canString : null,
-    canGift: typeof data.canGift === 'boolean' ? data.canGift : null,
-  };
+/** Read `GET /api/members/me`'s `rank`; anything else is unknown. */
+export function readRank(value: unknown): ProfileRank | null {
+  return value === 'owner' || value === 'admin' || value === 'member' ? value : null;
 }
 
 /**
- * The chips the card shows, in order: the rank (organiser or admin; a player
- * has none), then each job. The rank falls back to the shell's admin verdict
- * while the probe is unknown, so an admin is never shown as nobody; an
- * unknown job shows nothing, because a chip claims something.
+ * The one chip the card shows: Organiser or Admin; a Player has none. The
+ * shell's admin verdict holds the place while the rank is unknown, so an
+ * admin is never shown as nobody. Job badges (Stringer, Gifter) are not
+ * shown here, by decision (Grant, 2026-11-04).
  */
-export function profileChips(badges: ProfileBadges | null, isAdmin: boolean): Array<'rankOwner' | 'rankAdmin' | 'stringer' | 'gifter'> {
-  const out: Array<'rankOwner' | 'rankAdmin' | 'stringer' | 'gifter'> = [];
-  const rank = badges?.rank ?? null;
-  if (rank === 'owner') out.push('rankOwner');
-  else if (rank === 'admin' || (rank === null && isAdmin)) out.push('rankAdmin');
-  if (badges?.canString === true) out.push('stringer');
-  if (badges?.canGift === true) out.push('gifter');
-  return out;
+export function profileChip(rank: ProfileRank | null, isAdmin: boolean): 'rankOwner' | 'rankAdmin' | null {
+  if (rank === 'owner') return 'rankOwner';
+  if (rank === 'admin' || (rank === null && isAdmin)) return 'rankAdmin';
+  return null;
 }
 
 function fmtMemberSince(iso: string | null, locale: string): string | null {
@@ -1052,17 +1038,17 @@ interface ProfileIdentityCardProps {
   name: string;
   memberCreatedAt: string | null;
   isAdmin: boolean;
-  badges: ProfileBadges | null;
+  rank: ProfileRank | null;
   avatar: MemberAvatarValue | null;
   onChangeAvatar: () => void;
   changeLabel: string;
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, badges, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
+function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, rank, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
   const tIdentity = useTranslations('profile.identity');
   const locale = useLocale();
   const memberSince = fmtMemberSince(memberCreatedAt, locale);
-  const chips = profileChips(badges, isAdmin);
+  const chip = profileChip(rank, isAdmin);
 
   return (
     <div
@@ -1093,10 +1079,10 @@ function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, badges, avatar, o
         <MemberAvatar name={name} avatar={avatar} size={46} tone="neutral" />
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* The name and this club's chips share ONE line, the chips small and
+        {/* The name and this club's rank share ONE line, the chip small and
             centred on it (Grant, 2026-11-04: "smaller beside the name same
-            height"). The name gives way first: it ellipsizes, the chips keep
-            their size. Fill-only labels, not controls (CLAUDE.md, containers). */}
+            height"). The name gives way first: it ellipsizes, the chip keeps
+            its size. A fill-only label, not a control (CLAUDE.md, containers). */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
           {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is
               a fact about you, not the page's headline. */}
@@ -1115,36 +1101,22 @@ function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, badges, avatar, o
           >
             {name}
           </p>
-          {chips.length > 0 && (
-            <ul
-              aria-label={tIdentity('badgesLabel')}
+          {chip && (
+            // A --fs-2xs pill pads 4/8 (StatusBadge's spec).
+            <span
               style={{
-                display: 'flex',
                 flex: '0 0 auto',
-                gap: 'var(--space-1)',
-                listStyle: 'none',
-                padding: '0',
-                margin: '0',
+                whiteSpace: 'nowrap',
+                background: 'rgba(var(--glass-tint), 0.09)',
+                color: 'var(--text-secondary)',
+                padding: 'var(--space-1) var(--space-3)',
+                borderRadius: 'var(--radius-pill)',
+                fontSize: 'var(--fs-2xs)',
+                lineHeight: 'var(--lh-tight)',
               }}
             >
-              {chips.map((chip) => (
-                // A --fs-2xs pill pads 4/8 (StatusBadge's spec).
-                <li
-                  key={chip}
-                  style={{
-                    whiteSpace: 'nowrap',
-                    background: 'rgba(var(--glass-tint), 0.09)',
-                    color: 'var(--text-secondary)',
-                    padding: 'var(--space-1) var(--space-3)',
-                    borderRadius: 'var(--radius-pill)',
-                    fontSize: 'var(--fs-2xs)',
-                    lineHeight: 'var(--lh-tight)',
-                  }}
-                >
-                  {tIdentity(chip)}
-                </li>
-              ))}
-            </ul>
+              {tIdentity(chip)}
+            </span>
           )}
         </div>
         {memberSince && (

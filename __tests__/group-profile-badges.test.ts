@@ -13,17 +13,13 @@ import {
   ADMIN_MEMBER_ID,
 } from './helpers';
 import { GET as getMe } from '@/app/api/members/me/route';
-import { profileChips, readBadges } from '@/components/ProfileTab';
+import { profileChip, readRank } from '@/components/ProfileTab';
 
 /**
- * The Profile card's chips (roles v2, docs/plans/roles-v2.md): this club's
- * RANK — Organiser or Admin, a Player shows none — and the JOBS done here,
- * Stringer and Gifter. All three are the club's grant, read from the
- * membership, so the same person can wear different chips in two clubs.
- *
- * Zach is seeded the way BPM's stringers exist today: `Member.canString` and
- * no membership field, which BPM reads as yes (`canStringOf`) and another
- * club reads as no.
+ * The Profile card's chip (roles v2, docs/plans/roles-v2.md): this club's
+ * RANK — Organiser or Admin, a Player shows none. Read from the membership,
+ * so the same person can hold a different rank in two clubs. Job badges
+ * (Stringer, Gifter) are not on the card, by decision (Grant, 2026-11-04).
  */
 const MULTI = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 const before = process.env[MULTI];
@@ -50,7 +46,7 @@ afterEach(() => {
 const membershipOf = (groupId: string, memberId: string) =>
   (getStore()['memberships'] as Array<Record<string, unknown> & { id: string }>).find((m) => m.id === `${groupId}:${memberId}`)!;
 
-async function badgesAs(name: string, groupId: string) {
+async function rankAs(name: string, groupId: string) {
   const res = await getMe(
     makeRequest('GET', `http://x/api/members/me?name=${encodeURIComponent(name)}`, undefined, {
       Cookie: `member_session=${memberCookieValue(name, zach.id, undefined, groupId)}`,
@@ -58,24 +54,23 @@ async function badgesAs(name: string, groupId: string) {
   );
   expect(res.status).toBe(200);
   const body = await res.json();
-  return { rank: body.rank, canString: body.canString, canGift: body.canGift, role: body.role };
+  return { rank: body.rank, role: body.role, canString: body.canString, canGift: body.canGift };
 }
 
-describe('GET /api/members/me: the Profile card\'s rank and jobs, per club', () => {
-  it('BPM: a player who strings, read through the Member copy BPM still honours', async () => {
-    // canGift is the MEMBERSHIP's with groups on; this row never set it.
-    expect(await badgesAs('Zach', 'bpm')).toEqual({ rank: 'member', canString: true, canGift: false, role: 'member' });
+describe("GET /api/members/me: the Profile card's rank, per club", () => {
+  it('a player reads as a player, and no job fields are sent', async () => {
+    expect(await rankAs('Zach', 'bpm')).toEqual({ rank: 'member', role: 'member', canString: undefined, canGift: undefined });
   });
 
-  it('another club: the same person holds nothing until that club grants it', async () => {
-    expect(await badgesAs('Zachary', 'club-x')).toEqual({ rank: 'member', canString: false, canGift: false, role: 'member' });
-    Object.assign(membershipOf('club-x', zach.id), { canString: true, canGift: true });
-    expect(await badgesAs('Zachary', 'club-x')).toMatchObject({ canString: true, canGift: true });
-  });
-
-  it('an organiser reads as an organiser, while `role` stays collapsed to admin for older readers', async () => {
+  it('the same person can be an organiser in one club and a player in another', async () => {
     membershipOf('bpm', zach.id).role = 'owner';
-    expect(await badgesAs('Zach', 'bpm')).toMatchObject({ rank: 'owner', role: 'admin' });
+    expect(await rankAs('Zach', 'bpm')).toMatchObject({ rank: 'owner', role: 'admin' });
+    expect(await rankAs('Zachary', 'club-x')).toMatchObject({ rank: 'member', role: 'member' });
+  });
+
+  it('an admin reads as an admin', async () => {
+    membershipOf('club-x', zach.id).role = 'admin';
+    expect(await rankAs('Zachary', 'club-x')).toMatchObject({ rank: 'admin', role: 'admin' });
   });
 
   it('with groups off, the Member copy is the answer', async () => {
@@ -85,30 +80,29 @@ describe('GET /api/members/me: the Profile card\'s rank and jobs, per club', () 
         Cookie: `member_session=${memberCookieValue('Zach', zach.id)}`,
       }),
     );
-    expect(await res.json()).toMatchObject({ rank: 'member', canString: true, canGift: true });
+    expect(await res.json()).toMatchObject({ rank: 'member' });
   });
 });
 
-describe('profileChips: what the card shows', () => {
-  it('rank first, then each job; a player with no job shows nothing', () => {
-    expect(profileChips({ rank: 'owner', canString: true, canGift: true }, true)).toEqual(['rankOwner', 'stringer', 'gifter']);
-    expect(profileChips({ rank: 'admin', canString: false, canGift: false }, true)).toEqual(['rankAdmin']);
-    expect(profileChips({ rank: 'member', canString: true, canGift: false }, false)).toEqual(['stringer']);
-    expect(profileChips({ rank: 'member', canString: false, canGift: false }, false)).toEqual([]);
+describe('profileChip: what the card shows', () => {
+  it('Organiser or Admin; a player shows nothing', () => {
+    expect(profileChip('owner', true)).toBe('rankOwner');
+    expect(profileChip('admin', true)).toBe('rankAdmin');
+    expect(profileChip('member', false)).toBeNull();
   });
 
-  it('unknown is not "none": the shell\'s admin verdict holds the rank, and no job is claimed', () => {
-    expect(profileChips(null, true)).toEqual(['rankAdmin']);
-    expect(profileChips(null, false)).toEqual([]);
-    expect(profileChips(readBadges({}), true)).toEqual(['rankAdmin']);
+  it('unknown is not "player": the shell\'s admin verdict holds the chip', () => {
+    expect(profileChip(null, true)).toBe('rankAdmin');
+    expect(profileChip(null, false)).toBeNull();
   });
 
   it('a known rank wins over the shell verdict', () => {
-    // An organiser is an admin to the shell; the card names the rank.
-    expect(profileChips({ rank: 'owner', canString: null, canGift: null }, true)).toEqual(['rankOwner']);
+    expect(profileChip('owner', true)).toBe('rankOwner');
   });
 
-  it('readBadges drops anything malformed to unknown', () => {
-    expect(readBadges({ rank: 'superuser', canString: 'yes', canGift: 1 })).toEqual({ rank: null, canString: null, canGift: null });
+  it('readRank drops anything malformed to unknown', () => {
+    expect(readRank('superuser')).toBeNull();
+    expect(readRank(undefined)).toBeNull();
+    expect(readRank('owner')).toBe('owner');
   });
 });
