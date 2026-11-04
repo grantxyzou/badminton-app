@@ -15,6 +15,7 @@ import {
   setMembershipCanGift,
   setMembershipCanString,
   setMembershipRegular,
+  signOutEverywhereIn,
   readMembership,
   RosterNameTakenError,
 } from '@/lib/groups';
@@ -282,6 +283,23 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.regular === 'boolean' && groupsOn()) {
       if (!(await setMembershipRegular(auth.groupId, id, body.regular))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
+
+    // "Sign out everywhere" (docs/plans/claim-your-name.md): every session and
+    // widget pass this person holds IN THIS CLUB stops working wherever the
+    // membership is re-read. How an organiser takes a name back — a claim
+    // approved for the wrong person, a phone that walked off. The Member copy
+    // is the flag-off value and rollback copy, written on the same rule as
+    // `role` (only BPM's admin, or with groups off).
+    if (body.signOutEverywhere === true) {
+      const at = new Date().toISOString();
+      if (groupsOn() && !(await signOutEverywhereIn(auth.groupId, id, at))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+      if (memberCopy) {
+        updates.sessionsNotBefore = at;
+        updates.widgetPassNotBefore = at;
       }
     }
 

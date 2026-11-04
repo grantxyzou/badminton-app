@@ -16,6 +16,10 @@ interface Waiting {
   count: number;
   /** Set only when `count` is 1 — the one request that can be approved. */
   requestId: string | null;
+  /** Asked through the club's claim link (docs/plans/claim-your-name.md). */
+  viaLink?: boolean;
+  /** Nobody has ever signed in under this name: no PIN, password or Google. */
+  neverSignedIn?: boolean;
 }
 
 /**
@@ -118,9 +122,19 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                 <span className="fs-md" style={{ display: 'block', fontWeight: 600 }}>
                   {r.name}
                 </span>
-                {several && (
+                {several ? (
                   <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
                     {r.count} devices asked. Clear them, then have {r.name} ask again with you there.
+                  </span>
+                ) : (r.viaLink || r.neverSignedIn) && (
+                  /* What the organiser is approving: a name from the club link
+                     that nobody has signed in under. Let in someone you know
+                     asked — the link is in the whole chat. */
+                  <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
+                    {[r.viaLink ? 'With the club link' : null, r.neverSignedIn ? 'never signed in' : null]
+                      .filter(Boolean)
+                      .join(' · ')
+                      .replace(/^./, (c) => c.toUpperCase())}
                   </span>
                 )}
               </div>

@@ -30,7 +30,9 @@ type Step =
   | { at: 'input' }
   /** `marksStored` false (groups off): member/drop-in cannot be kept for anyone already here. */
   | { at: 'preview'; parsed: ParsedRoster; rows: PreviewRow[]; marksStored: boolean }
-  | { at: 'results'; results: ImportResultRow[] };
+  | { at: 'results'; results: ImportResultRow[] }
+  /** Landed cleanly with someone new on the roster: the moment to hand them the club link. */
+  | { at: 'done'; added: number; remarked: number };
 
 function noteFor(row: PreviewRow): string {
   switch (row.kind) {
@@ -88,11 +90,18 @@ export default function RosterImportSheet({
   open,
   onClose,
   onImported,
+  onShareClaimLink,
 }: {
   open: boolean;
   onClose: () => void;
   /** After any write: the roster re-reads. */
   onImported: () => void;
+  /**
+   * Open the club link sheet (docs/plans/claim-your-name.md, Q5). The people
+   * just imported cannot sign in until they claim their names, so the import
+   * ends by offering the link that lets them.
+   */
+  onShareClaimLink?: () => void;
 }) {
   const online = useOnline();
   const [text, setText] = useState('');
@@ -202,6 +211,10 @@ export default function RosterImportSheet({
       const trouble = data.results.some((r) => r.outcome === 'failed' || r.outcome === 'taken');
       if (trouble) {
         setStep({ at: 'results', results: data.results });
+        return;
+      }
+      if (added > 0 && onShareClaimLink) {
+        setStep({ at: 'done', added, remarked });
         return;
       }
       showTopToast({
@@ -374,6 +387,30 @@ export default function RosterImportSheet({
                 {busy ? 'Importing…' : `Import ${picked} ${picked === 1 ? 'person' : 'people'}`}
               </button>
             </div>
+          </div>
+        )}
+
+        {step.at === 'done' && (
+          <div key="done" className="motion-fade flex flex-col gap-4">
+            <p className="fs-md status-celebrate" style={{ margin: 0, color: 'var(--text-primary)' }}>
+              {`${step.added} ${step.added === 1 ? 'person' : 'people'} added`}
+              {step.remarked ? ` · ${step.remarked} re-marked` : ''}
+            </p>
+            <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              They can’t sign in yet. Share the club link in your chat: each of them asks to be let in under their own
+              name, and you approve them one at a time.
+            </p>
+            <button
+              type="button"
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              onClick={() => {
+                reset();
+                onShareClaimLink?.();
+              }}
+            >
+              Share the club link
+            </button>
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={close}>Done</button>
           </div>
         )}
 

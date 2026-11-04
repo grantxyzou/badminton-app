@@ -226,6 +226,27 @@ describe('landings', () => {
     expect(window.location.search).not.toContain('join');
   });
 
+  it('?claim= opens Log in with the club’s ask already up, and strips the link from the URL', async () => {
+    // docs/plans/claim-your-name.md: an imported name asks to be let in.
+    const token = 'c3'.repeat(16);
+    at(`?claim=${token}`);
+    renderShell();
+    await waitFor(() => expect(captured.AskAccessSheet?.open).toBe(true));
+    expect(captured.AskAccessSheet?.claim).toEqual({ token, clubName: 'BPM Badminton' });
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes(`/api/groups/preview?claim=${token}`))).toBe(true);
+    expect(window.location.search).not.toContain('claim');
+  });
+
+  it('a claim link that no longer resolves says so, and opens nothing', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes('/api/groups/preview') ? json({ error: 'invite_not_found' }, 404) : json({}),
+    );
+    at(`?claim=${'d4'.repeat(16)}`);
+    renderShell();
+    expect((await screen.findByRole('alert')).textContent).toMatch(/link has been replaced/);
+    expect(captured.AskAccessSheet?.open).toBe(false);
+  });
+
   it('a new Google identity gets the name sheet, carrying the invite that rode the excursion', () => {
     localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', code: 'ABCD2345', at: Date.now() }));
     at('?authFlow=name');

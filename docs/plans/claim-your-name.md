@@ -1,7 +1,7 @@
 # Claim your name — let an imported person in
 
 **Track:** multi-group critical path — "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). Step C of `docs/plans/six-feathers-onboarding.md`. It also closes the open Phase 6 item in `docs/superpowers/plans/2026-09-07-multi-group.md`: "A signed-out 'Ask to be let in' cannot name its club."
-**Status:** intent
+**Status:** in-flight
 **Review on:** 2026-12-02 — of the names imported into the first outside club, how many have been claimed, and was any claim approved for the wrong person? Fewer than half claimed means the approval step is the friction. One wrong person means stop and switch to per-person codes (see Kill criterion).
 
 ## Problem
@@ -35,15 +35,20 @@ Two smaller faults surfaced while mapping this:
 - **Changing BPM's own "I play here already".** Without a club link it keeps resolving in BPM, as it does today.
 - **Approve-all.** Blind approval is safe one request at a time (`app/api/admin/access-requests/route.ts`); a batch button is a later decision, and only if the kill criterion's second half fires.
 
-## Proposed — for Grant to confirm
+## Decisions
 
-- **Q1. One reusable link per club, no expiry, rotate any time.** The link grants nothing on its own — every claim still waits on an organiser's tap — so it can sit in the club chat. "New link" retires the old one at once. The alternative is a 30-day expiry, which costs a re-post every month for little gain. Recommended: no expiry.
-- **Q2. Only UNCLAIMED names can be claimed with the link.** Unclaimed = active in this club, and no PIN, no password, no linked Google or Apple. Someone who set a PIN and forgot it goes the way they do today (a recovery code from the organiser). Without this rule, anyone holding the link could ask for an established member's account. Recommended: yes.
-- **Q3. Approve one at a time, from the card that already exists.** The Command Center's access-requests card (`AccessRequestsCard`) gains a "With the club link" label and shows only this club's asks. Recommended: yes; no approve-all for now (Non-goals).
-- **Q4. A wrong approval can be undone.** Today a member's sign-in cookie cannot be revoked; only widget passes can (`Membership.widgetPassNotBefore`). The Roster sheet gains **Sign out everywhere**, which stamps an additive `Membership.sessionsNotBefore`; `requireGroupMember` already re-reads the membership on every request and refuses a cookie minted before it. Issuing a recovery code stamps it too, since that is the moment an organiser is handing a name back to its owner. Recommended: yes — the accepted risk below depends on it.
-- **Q5. When the organiser imports a list, offer the link right there.** The import's success toast gains "Share the claim link". Recommended: yes — it is the moment the organiser is thinking about these people.
+Grant, 2026-11-04: "Yes to all five".
 
-## Shape (proposed)
+- **One link per club, no expiry, rotated by hand** (Q1). `lib/claimLinks.ts`, stored like an invite. A new link retires the old one in one write, and **also cancels the asks waiting on it**: a device polling with the old link resolves no club, so its claim answers `none`. That was not spelled out in the plan; it falls out of "the club record is the authority" and is the right thing for a link that leaked.
+- **Only unclaimed names** (Q2): no PIN, no password, no Google or Apple (`isUnclaimed`). Every other ask through the link gets the same 200 and is not stored.
+- **Approve one at a time** (Q3), on the existing Sign-in requests card, which now says "With the club link · never signed in". An ask remembers its club (`StoredAccessRequest.groupId`), so a person on two rosters is approved, declined and signed in per club. **An ask from before the field** has no club and stays with whichever club's roster holds the person — the rule before — rather than being read as BPM's, which would have hidden it from a second club's organiser.
+- **Sign out everywhere** (Q4): `Membership.sessionsNotBefore` (the Member copy on `role`'s rule), stamped by the Roster sheet's button and by issuing a recovery code, compared in whole seconds like widget passes. Two limits, chosen:
+  - **It reaches what re-reads the membership**: the page gate, every members-only read, sign-up and the widget. 23 routes trust the member cookie's signature alone (stringing jobs, stats writes, push subscribe, group switch and join among them) and see the cutoff only when the cookie expires. Locking someone out of the app is what an organiser needs; closing those routes too is a follow-up, not this change.
+  - **It does not delete push devices.** They belong to the person across every club, so one club's organiser clearing them would reach into another club's notifications.
+- **After an import, the sheet ends on "Share the club link"** (Q5) rather than a toast: a toast cannot carry a button. Only when the import added someone; a re-mark-only import still closes with a toast.
+- **One PR, not two.** The server half and the screens went up together on #771, with the plan.
+
+## Shape
 
 ### How it works for the person
 
@@ -81,16 +86,17 @@ Two smaller faults surfaced while mapping this:
 
 | piece | file |
 |---|---|
-| Link mint, rotate, resolve | new `lib/claimLinks.ts` |
+| Link mint, rotate, resolve; `isUnclaimed` | `lib/claimLinks.ts` |
 | `Group.claimLinkId`, `StoredAccessRequest.groupId` (additive) | `lib/types.ts`, `lib/accessRequest.ts` |
 | The ask, the claim, the admin list, the push | `app/api/members/access-request/route.ts`, `app/api/members/access-request/claim/route.ts`, `app/api/admin/access-requests/route.ts` |
-| Mint / rotate / read the link (organiser) | new `app/api/groups/claim-link/route.ts` |
+| Mint / rotate / read the link (organiser) | `app/api/groups/claim-link/route.ts` |
 | Preview by claim token | `app/api/groups/preview/route.ts` |
 | The `?claim=` page | `components/onboarding/SignedOutShell.tsx`, `components/AskAccessSheet.tsx` (takes the token) |
-| Sign out everywhere; the cookie check | `app/api/members/route.ts` (PATCH), `app/api/players/reset-access/route.ts`, `lib/auth.ts` (`requireGroupMember`), `lib/groups.ts` |
-| Claim link sheet, card label, import toast | `components/admin/CommandCenter/RosterPage.tsx`, `components/admin/CommandCenter/AccessRequestsCard.tsx`, `components/admin/CommandCenter/RosterImportSheet.tsx` |
+| Sign out everywhere; the cutoff check | `app/api/members/route.ts` (PATCH), `app/api/players/reset-access/route.ts`, `lib/auth.ts` (`activeMemberFor`, `sessionRevoked`), `lib/groups.ts` (`signOutEverywhereIn`) |
+| The `?claim=` landing | `lib/landingParams.ts` |
+| Club link sheet, card label, the import's last step | `components/admin/CommandCenter/ClaimLinkSheet.tsx`, `components/admin/CommandCenter/RosterPage.tsx`, `components/admin/CommandCenter/AccessRequestsCard.tsx`, `components/admin/CommandCenter/RosterImportSheet.tsx` |
 
-Two PRs: the server (link, ask, claim, push, list, preview, sign-out-everywhere, with their tests), then the screens.
+Tests: `__tests__/group-claim-link.test.ts` (two clubs, one name), `__tests__/components/ClaimLinkSheet.test.tsx`, and the `?claim=` landings in `__tests__/components/SignedOutShell.test.tsx`.
 
 ## Accepted risk
 

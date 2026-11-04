@@ -595,6 +595,34 @@ export async function revokeWidgetPasses(
   return groupScope(groupId).replace('memberships', { ...m, widgetPassNotBefore: at }, groupId);
 }
 
+/**
+ * "Sign out everywhere" for one person IN ONE GROUP
+ * (docs/plans/claim-your-name.md): every member session and widget pass
+ * minted before now stops working wherever the membership is re-read. How an
+ * organiser takes a name back from whoever holds it — a claim approved for the
+ * wrong person, or a phone that walked off. Resolves `undefined` when there is
+ * no membership here.
+ */
+export async function signOutEverywhereIn(
+  groupId: string,
+  memberId: string,
+  at: string = new Date().toISOString(),
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m) return undefined;
+  return groupScope(groupId).replace('memberships', { ...m, sessionsNotBefore: at, widgetPassNotBefore: at }, groupId);
+}
+
+/**
+ * Point the club at its live claim link (lib/claimLinks.ts), retiring
+ * whichever one it named before. Under the group's etag, like every other
+ * group write. Resolves `undefined` when the group record is missing.
+ */
+export async function setClaimLinkId(groupId: string, claimLinkId: string): Promise<Group | undefined> {
+  return mutateGroup(groupId, (group) => ({ ...group, claimLinkId }));
+}
+
 // ---------------------------------------------------------------------------
 // Ownership
 // ---------------------------------------------------------------------------

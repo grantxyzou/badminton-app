@@ -9,6 +9,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import RosterImportSheet from './RosterImportSheet';
+import ClaimLinkSheet from './ClaimLinkSheet';
 import SettingsList from '@/components/profile/SettingsList';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { fmtShortDate } from '@/lib/fmt';
@@ -108,6 +109,10 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
   const [formAlias, setFormAlias] = useState('');
   const [formRegular, setFormRegular] = useState<boolean | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [claimLinkOpen, setClaimLinkOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  /** `true` once "Sign out everywhere" landed for the person in the sheet. */
+  const [signedOut, setSignedOut] = useState(false);
   const [savingForm, setSavingForm] = useState(false);
   const [deletingForm, setDeletingForm] = useState(false);
   const [formError, setFormError] = useState('');
@@ -278,6 +283,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
 
   function openEditSheet(r: RowData) {
     setEditingId(r.member.id);
+    setSignedOut(false);
     setFormName(r.member.name);
     setFormRole(r.member.groupRole ?? (r.member.role === 'admin' ? 'admin' : 'member'));
     setFormActive(r.member.active !== false);
@@ -399,6 +405,28 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
     }
   }
 
+  async function handleSignOutEverywhere() {
+    if (!editingId) return;
+    setSigningOut(true);
+    setFormError('');
+    try {
+      const res = await fetch(`${BASE}/api/members`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, signOutEverywhere: true }),
+      });
+      if (!res.ok) {
+        setFormError('Couldn’t sign them out. Try again.');
+        return;
+      }
+      setSignedOut(true);
+    } catch {
+      setFormError('Network error.');
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   async function handleResetPin() {
     const name = formName.trim();
     if (!name) { setFormError('Name required.'); return; }
@@ -498,7 +526,13 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
       {/* Bring a whole list in at once (docs/plans/roster-import.md). A way to
           another sheet is a settings row, as everywhere in admin. */}
       <div style={{ marginBottom: 'var(--space-4)' }}>
-        <SettingsList rows={[{ icon: 'group_add', label: 'Import a list', meta: 'Paste or CSV', onClick: () => setImportOpen(true) }]} />
+        <SettingsList
+          rows={[
+            { icon: 'group_add', label: 'Import a list', meta: 'Paste or CSV', onClick: () => setImportOpen(true) },
+            // How the people on that list get in (docs/plans/claim-your-name.md).
+            { icon: 'link', label: 'Club link', meta: 'For claiming a name', onClick: () => setClaimLinkOpen(true) },
+          ]}
+        />
       </div>
 
       {/* Search */}
@@ -889,6 +923,28 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
                     For a player who forgot their PIN. Give them the code — they enter it under
                     Profile → &ldquo;Have a recovery code?&rdquo; to set a new PIN. No signup needed.
+                    Issuing one also signs them out of every device.
+                  </p>
+                </Field>
+
+                {/* Taking a name back (docs/plans/claim-your-name.md): a claim
+                    let in for the wrong person, or a phone that walked off.
+                    Every sign-in under this name in this club stops working. */}
+                <Field label="Signed-in devices">
+                  <button
+                    type="button"
+                    onClick={handleSignOutEverywhere}
+                    disabled={savingForm || deletingForm || signingOut || signedOut}
+                    className="cc-btn cc-btn-secondary"
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    <span key={String(signedOut)} className={signedOut ? 'motion-fade' : undefined}>
+                      {signingOut ? 'Signing out…' : signedOut ? 'Signed out ✓' : 'Sign out everywhere'}
+                    </span>
+                  </button>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
+                    Ends every sign-in under this name here, on every phone. They sign in again with their PIN, or a
+                    recovery code.
                   </p>
                 </Field>
               </>
@@ -935,7 +991,16 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
         </BottomSheetBody>
       </BottomSheet>
 
-      <RosterImportSheet open={importOpen} onClose={() => setImportOpen(false)} onImported={() => void load()} />
+      <RosterImportSheet
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => void load()}
+        onShareClaimLink={() => {
+          setImportOpen(false);
+          setClaimLinkOpen(true);
+        }}
+      />
+      <ClaimLinkSheet open={claimLinkOpen} onClose={() => setClaimLinkOpen(false)} clubName={currentGroup?.name} />
 
       <ResetAccessSheet
         open={resetSheet.open}

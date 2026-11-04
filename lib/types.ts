@@ -368,6 +368,14 @@ export interface Group {
    * etag condition. `lib/invites.ts` owns the list. Additive: absent means none.
    */
   invites?: PendingInvite[];
+  /**
+   * The club's live CLAIM LINK (docs/plans/claim-your-name.md): the id of its
+   * `claimlink:${sha256(token)}` sibling doc in this container. One per club,
+   * reusable, no expiry; minting a new one replaces this id, which is what
+   * retires the old link. Only the id lives here, never the token, for the
+   * same reason as `invites`. `lib/claimLinks.ts` owns it. Additive.
+   */
+  claimLinkId?: string;
 }
 
 /** One live one-time invite, as listed on its `Group`. */
@@ -422,7 +430,15 @@ export interface Membership {
    * copied off it would otherwise live its sixty days. Additive; absent =
    * nothing revoked. The flag-off copy is `Member.widgetPassNotBefore`.
    */
-  widgetPassNotBefore?: string;
+  widgetPassNotBefore?: string;  /**
+   * A member SESSION minted before this instant is refused wherever the
+   * membership is re-read (`activeMemberFor` in lib/auth.ts — the page gate,
+   * every members-only read, sign-up). Stamped by the Roster sheet's "Sign out
+   * everywhere" and by issuing a recovery code (docs/plans/claim-your-name.md):
+   * how an organiser takes a name back from whoever holds it. Additive; absent
+   * = nothing revoked. The flag-off copy is `Member.sessionsNotBefore`.
+   */
+  sessionsNotBefore?: string;
 }
 
 /**
@@ -504,6 +520,8 @@ export interface Member {
   canString?: boolean;
   /** Flag-off twin of `Membership.widgetPassNotBefore`: widget passes minted before it are refused. */
   widgetPassNotBefore?: string;
+  /** Flag-off twin of `Membership.sessionsNotBefore`: member sessions minted before it are refused. */
+  sessionsNotBefore?: string;
   /**
    * This person may give out gift cards (docs/plans/gift-card-ledger.md).
    * The third independent switch beside `role` and `canString`: a helper who
