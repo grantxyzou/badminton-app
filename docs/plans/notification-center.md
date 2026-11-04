@@ -66,6 +66,26 @@ By the review date, if fewer than a quarter of active members open the bell in a
 - **"Seen" is one `noticesSeen` doc per member per club in `insights`, not a field on the membership.** It keeps Grant's "per account" (a second phone does not start fully unread). The membership doc is re-read on every authenticated request and written under an etag by role changes, so stamping it on every page open would put a hot write on the hottest doc.
 - **Bounded:** the page shows the newest 30; past 60 the oldest are deleted on read.
 - **Not built yet, still on Home:** Add to home screen, What's new, and Set a PIN. Set a PIN was decided "in notification only", but moving it puts a lockout risk on whether the bell's dot is noticed, so it waits for Grant to see the page first.
+- **Design pass** (review of the page, 2026-11-04; Grant: "Fix all and add motion too"):
+  - "New / Earlier" section labels replace a red dot on each row. Red means failure in this app; the bell's dot is the one exception, because Grant asked for it.
+  - Member actions use `.btn-primary` / `.btn-ghost`, not the admin `cc-btn` family.
+  - Focus moves onto the page when it opens and back to the bell when it closes.
+  - The bell shows pressed while its page is open, and tapping it closes the page.
+  - Motion: the dot pops in; the bell rings once when the dot arrives (never on a tap); the groups fade in with a 40ms stagger.
+- **A long club name steps down instead of being cut off** (Grant, 2026-11-04: "smaller font", then "make sure scrolling work too"):
+  - `PageHeader fitText` sizes the title at 30px, 24px from 17 characters, and 20px from 27. Names cap at 40.
+  - Condensed, the bar is one line with an ellipsis that stops before the round buttons.
+  - The scroll check found an older bug: `useScrollCondensed` let a shrinking bar pull the page up, and Chrome's scroll anchoring scrolled back to 0, so every short scroll on Home was eaten (eight 10px steps never left 0). Safari jumped by the shrink instead.
+  - The bar now hands the height it gives up back as margin below it. Measured after, in Chromium and WebKit: every step scrolls, and the first card does not move.
+
+## Open (Grant's call, none blocks the merge)
+
+1. **Move Add to home screen, What's new and Set a PIN into the page?** They are the rest of phase 1. Set a PIN carries the lockout risk above.
+2. **The round buttons are 36px**, under the 44px touch-target minimum. The bell matches the language and theme buttons, so fixing it means all three, and the toggle row's offsets (`right: 16/60/104px`, and the title's 132px reservation) move with them.
+3. **The stringing sheet still offers browser push on the web.** `NotifyButton` in `components/stringing/RequestStringingSheet.tsx` predates "turn on notification only when user is in the app". It turns push on in any browser, makes its own `usePush()` (in the store app, a second token listener beside HomeShell's), and wears `cc-btn`. It wants the same rule as the waitlist sheet (`lib/waitlistPing.ts`): the app on the web, the shared push in the store app.
+4. **Profile's Notifications row reads "Off" on the web**, which is true but points nowhere now that the web cannot turn it on. "Get the app" there, or no value, would match the page.
+5. **Nothing counts the waitlist sheet's taps** (`docs/plans/waitlist-push-ask.md`, its review on 2026-12-09). A beacon (`recordEngagement`) is a small add when wanted.
+6. **Check on a real iPhone, in the store app:** the turn-on switch at the top of the page, the bell's ring, and the waitlist sheet's "Turn on notifications". A browser cannot show them.
 
 ## Shape
 
@@ -81,3 +101,6 @@ By the review date, if fewer than a quarter of active members open the bell in a
 | The get-the-app card at the top on the web | `components/NotificationsPage.tsx` |
 | Shared client state (dot + list) | `lib/useNotices.ts` |
 | Two-club isolation | `__tests__/group-notifications.test.ts` |
+| Long club name sizes | `titleFit` in `components/primitives/PageHeader.tsx` |
+| A condensing bar that moves nothing below it | `components/primitives/useScrollCondensed.ts` |
+| The waitlist ask | `docs/plans/waitlist-push-ask.md` |
