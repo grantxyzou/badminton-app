@@ -6,6 +6,7 @@ import TopBar from '@/components/primitives/TopBar';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
+import CardHeader from '@/components/primitives/CardHeader';
 import PushSettings from './PushSettings';
 import InstallSheet from './InstallSheet';
 import MigrateSheet from './MigrateSheet';
@@ -23,7 +24,9 @@ interface Props {
   /** Owned by HomeShell, shared with Profile's Notifications row. */
   push: UsePushResult;
   isAdmin: boolean;
-  /** Web, with the native-migrate flag on: offer the store app. */
+  /** Web, with the native-migrate flag on: the page leads with the store app
+   *  instead of a push switch (Grant: notifications are turned on IN the app).
+   *  False in the store app, so there the push switch leads. */
   migrateOn: boolean;
 }
 
@@ -43,8 +46,9 @@ function tabOf(n: Notice): NoticeTab {
 /**
  * The Notifications page (`docs/plans/notification-center.md`), opened from the
  * bell beside the language and theme toggles, or from Profile's Notifications
- * row. Push settings at the top; below, what the club told this person, newest
- * first, in their own language.
+ * row. At the top: in the store app, the push switch; on the web, a card for
+ * the store app — turning notifications on happens there (Grant, 2026-11-04).
+ * Below, what the club told this person, newest first, in their own language.
  *
  * Opening it marks everything seen — but the rows that were new when it opened
  * keep their dot for this visit, so the reader can still tell which ones those
@@ -52,6 +56,7 @@ function tabOf(n: Notice): NoticeTab {
  */
 export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, migrateOn }: Props) {
   const t = useTranslations('notifications');
+  const tp = useTranslations('profile.push');
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   const online = useOnline();
@@ -172,14 +177,29 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
     <div className="animate-slideInRight space-y-5">
       <TopBar title={t('title')} onBack={onBack} backLabel={t('back')} />
 
-      <div className="glass-card p-5">
-        <PushSettings
-          push={push}
-          isAdmin={isAdmin}
-          onOpenInstall={() => setInstallOpen(true)}
-          onOpenMigrate={migrateOn ? () => setMigrateOpen(true) : undefined}
-        />
-      </div>
+      {migrateOn && (
+        // A flex gap, not space-y: the body's inline margin would cancel it.
+        <div className="glass-card p-5 flex flex-col gap-3">
+          <CardHeader icon="install_mobile" title={tp('appTitle')} />
+          <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>{tp('appBody')}</p>
+          <button
+            type="button"
+            className="cc-btn cc-btn-primary cc-btn-lg"
+            style={{ width: '100%' }}
+            onClick={() => setMigrateOpen(true)}
+          >
+            {tp('appCta')}
+          </button>
+        </div>
+      )}
+
+      {/* The push switch: always in the store app; on the web only for a
+          browser that already has push on, so it can still be turned off. */}
+      {(!migrateOn || push.state.status === 'on') && (
+        <div className="glass-card p-5">
+          <PushSettings push={push} isAdmin={isAdmin} onOpenInstall={() => setInstallOpen(true)} />
+        </div>
+      )}
 
       <section className="space-y-3">
         <p className="section-label-muted">{t('recent')}</p>

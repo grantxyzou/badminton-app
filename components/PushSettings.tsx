@@ -18,11 +18,6 @@ interface Props {
    *  targets only the caller's own devices, so it is the way to prove the
    *  transport (VAPID, or FCM/APNs on the native shell) on a real phone. */
   isAdmin?: boolean;
-  /** Web only, while the native-migrate flag is on: opens `MigrateSheet`.
-   *  The store app is where notifications are dependable (an iPhone tab has
-   *  none at all), so the page points there under every web answer.
-   *  Absent in the store app, where there is nowhere further to go. */
-  onOpenMigrate?: () => void;
 }
 
 type TestOutcome =
@@ -32,16 +27,17 @@ type TestOutcome =
   | { kind: 'failed' };
 
 /**
- * Notification opt-in — the top of the Notifications page
- * (docs/plans/notification-center.md). It was the body of a sheet until the
- * page existed; the copy is the Home nudge's, which the page replaced.
+ * Notification opt-in — the top of the Notifications page in the STORE APP
+ * (docs/plans/notification-center.md). On the web the page leads with the
+ * get-the-app card instead, and shows this only to someone whose browser
+ * already has push on, so they can still turn it off.
  *
  * Every terminal state is rendered honestly rather than collapsed into a
  * generic "not available": a user who CAN fix their situation is told how, and
  * a user who cannot is told plainly instead of being offered a button that
  * silently does nothing.
  */
-export default function PushSettings({ onOpenInstall, push, isAdmin = false, onOpenMigrate }: Props) {
+export default function PushSettings({ onOpenInstall, push, isAdmin = false }: Props) {
   const t = useTranslations('profile.push');
   const online = useOnline();
   const { state, enable, disable, busy, error } = push;
@@ -176,18 +172,6 @@ export default function PushSettings({ onOpenInstall, push, isAdmin = false, onO
       {/* Keyed on the state, so "Checking…" → on/off/blocked crossfades
           instead of swapping copy under the reader. */}
       <div key={state.status} className="motion-fade">{body()}</div>
-      {onOpenMigrate && state.status !== 'loading' && (
-        <div className="cc-mini-card p-3" style={{ marginTop: 'var(--space-5)', display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-start' }}>
-          <span className="material-icons icon-lg" aria-hidden style={{ color: 'var(--accent)' }}>install_mobile</span>
-          <div style={{ minWidth: 0 }}>
-            <p className="fs-md" style={{ color: 'var(--text-primary)', fontWeight: 600, margin: 0 }}>{t('appTitle')}</p>
-            <p className="fs-sm" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)', marginBottom: 0 }}>{t('appBody')}</p>
-            <button type="button" className="bpm-row-link" style={{ marginTop: 'var(--space-3)' }} onClick={onOpenMigrate}>
-              {t('appCta')}
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

@@ -58,6 +58,7 @@ By the review date, if fewer than a quarter of active members open the bell in a
 - **Announcements are listed in the bell** (Grant, 2026-11-04: "In notifications"). Read as "also": the Home announcement card stays, because it is the server-rendered first thing on Home. If "only" was meant, moving it off Home is its own decision.
 
 - **A full page, opened from a third round button beside translate and dark mode, with a red dot** (Grant, 2026-11-04). This replaced the bell in Home's header and its sheet: the button is on every tab, like the two toggles, because a notice can be about any tab.
+- **On the web the page leads with the app, not a push switch** (Grant, 2026-11-04: "It should be a card for get the app. Then turn on notification only when user is in the app."). The top card is "Get the BPM app on your phone", opening `MigrateSheet`; the push switch shows in the store app, and on the web only to a browser that already has push on, so those few can still turn it off. The iPhone "Add to Home Screen for notifications" path no longer appears on the page.
 - **The Home push card from #762 is gone**, and its copy moved to the top of the page (Grant: "Take out the banner move the messaging to Notification"). The page leads with "Get a ping when sign-ups open"; on the web, a "Get the BPM app on your phone" card opens `MigrateSheet`. Profile's Notifications row opens the page; the old Notifications sheet is gone.
 - **Everyone gets notices, push or not** (Grant, 2026-11-04). So a notice is written BESIDE `sendPushToMembers`, never inside it: that sender no-ops with no VAPID key and reaches only people with a device row, so an inbox written from inside it would reach the 3 of 41 who need it least.
 - **Listed** (Grant): sign-ups open, a spot from the waitlist, racket updates (the stages push announces, and a change to confirm), announcements, and settle-up reminders. **Not listed:** staff notices (access requests, join notices, new stringing requests) and the push test.
@@ -76,6 +77,7 @@ By the review date, if fewer than a quarter of active members open the bell in a
 | Writers, beside each push | `app/api/session/route.ts`, `lib/waitlistPromote.ts`, `lib/stringingNotifyDispatch.ts`, `app/api/announcements/route.ts`, `lib/paymentReminders.ts` |
 | The round button and its red dot | `components/NotificationsButton.tsx`, `.notif-toggle` / `.notif-dot` in `app/globals.css` |
 | The page | `components/NotificationsPage.tsx`, opened by `components/HomeShell.tsx` |
-| Push on/off and the app card at its top | `components/PushSettings.tsx` (was `PushSheet`) |
+| Push on/off (store app; web only when already on) | `components/PushSettings.tsx` (was `PushSheet`) |
+| The get-the-app card at the top on the web | `components/NotificationsPage.tsx` |
 | Shared client state (dot + list) | `lib/useNotices.ts` |
 | Two-club isolation | `__tests__/group-notifications.test.ts` |

@@ -120,10 +120,26 @@ describe('NotificationsPage', () => {
     expect(await screen.findByText("Couldn't load your notifications.")).toBeDefined();
   });
 
-  it('has the push switch at the top and the app card only when offered', async () => {
+  it('leads with the push switch in the store app, and no app card', async () => {
+    listBody = { notices: [], unread: 0, seenAt: null };
+    const off = { ...push, state: { status: 'off' } } as unknown as UsePushResult;
+    wrap(<NotificationsPage onBack={vi.fn()} onNavigate={vi.fn()} push={off} isAdmin={false} migrateOn={false} />);
+    expect(await screen.findByRole('button', { name: /turn on notifications/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /get the app/i })).toBeNull();
+  });
+
+  it('on the web leads with the app card and offers no way to turn push on', async () => {
+    listBody = { notices: [], unread: 0, seenAt: null };
+    const off = { ...push, state: { status: 'off' } } as unknown as UsePushResult;
+    wrap(<NotificationsPage onBack={vi.fn()} onNavigate={vi.fn()} push={off} isAdmin={false} migrateOn />);
+    expect(await screen.findByRole('button', { name: /get the app/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /turn on notifications/i })).toBeNull();
+  });
+
+  it('on the web still lets a browser that already has push turn it off', async () => {
     listBody = { notices: [], unread: 0, seenAt: null };
     wrap(<NotificationsPage onBack={vi.fn()} onNavigate={vi.fn()} push={push} isAdmin={false} migrateOn />);
-    expect(await screen.findByRole('button', { name: /turn off notifications/i })).toBeDefined();
-    expect(screen.getByRole('button', { name: /get the app/i })).toBeDefined();
+    expect(await screen.findByRole('button', { name: /get the app/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /turn off notifications/i })).toBeDefined();
   });
 });

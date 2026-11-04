@@ -38,10 +38,10 @@ function makePush(state: PushState, overrides: Partial<UsePushResult> = {}): Use
   };
 }
 
-function renderSheet(push: UsePushResult, onOpenInstall = vi.fn(), onOpenMigrate?: () => void) {
+function renderSheet(push: UsePushResult, onOpenInstall = vi.fn()) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <PushSettings onOpenInstall={onOpenInstall} push={push} onOpenMigrate={onOpenMigrate} />
+      <PushSettings onOpenInstall={onOpenInstall} push={push} />
     </NextIntlClientProvider>,
   );
 }
@@ -122,20 +122,5 @@ describe('PushSettings', () => {
     renderSheet(makePush({ status: 'off' }));
     expect(screen.getByText('Get a ping when sign-ups open')).toBeDefined();
     expect(screen.getByText(/racket's ready/)).toBeDefined();
-  });
-
-  it('points a web reader to the app, and opens the move sheet', () => {
-    const onOpenMigrate = vi.fn();
-    renderSheet(makePush({ status: 'unsupported', reason: 'ios-not-installed' }), vi.fn(), onOpenMigrate);
-    screen.getByRole('button', { name: /get the app/i }).click();
-    expect(onOpenMigrate).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows no app card without a migrate handler (the store app) or while checking', () => {
-    renderSheet(makePush({ status: 'off' }));
-    expect(screen.queryByRole('button', { name: /get the app/i })).toBeNull();
-    cleanup();
-    renderSheet(makePush({ status: 'loading' }), vi.fn(), vi.fn());
-    expect(screen.queryByRole('button', { name: /get the app/i })).toBeNull();
   });
 });
