@@ -1,7 +1,7 @@
 # Members first — a window before the list opens to everyone
 
 **Track:** multi-group critical path — "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). Step E of `docs/plans/six-feathers-onboarding.md`, the last rule Six Feathers runs that the app does not.
-**Status:** intent
+**Status:** in-flight — built in #790
 **Review on:** 2026-12-09 — after Six Feathers' first two Saturdays with the window on: did the organiser move anyone by hand on a Tuesday, and did a drop-in ever get a spot before the window ended?
 
 ## Problem
@@ -33,7 +33,22 @@ Last week's list does not carry over (Grant, 2026-11-04), so members sign up eac
 - **A scheduler.** App Service runs nothing on a timer (the payment reminders ride the club's own Gmail script). Q3 is how the window ends without one.
 - **Changing BPM Core.** The setting is absent for it, and absent means no window — BPM reads exactly as before.
 
-## Proposed — for Grant to confirm
+## Decisions
+
+Grant, 2026-11-04: "Yes to all five" (the recommended answer to each question below).
+
+- **Q1, set as a day and time before the session.** Stored as calendar days before the session's day plus a clock time on the club's clock (`{ daysBefore, time }`, `ClubRun.membersFirst`), not as a count of hours. Same answer to the organiser, but it needs no session to convert a weekday into hours, keeps the minute ("11:59 PM", which whole hours could not), and stays Monday 11:59 PM if the session's start time moves. The plan said hours; this was decided while building it.
+- **Q2, only someone marked member** (`Membership.regular === true`). The settings row counts the people nobody marked.
+- **Q3, the first visit lets the waitlist in.** The visits are the session read, the roster read, a sign-up and a guest. The organiser's card has "Let the waitlist in now" while the window runs.
+- **Q4, sign-up order, everyone together** — the order auto-promotion already used.
+- **Q5, a guest waits with the drop-ins.**
+- **The rule is copied onto the session at advance** (`Session.membersFirst`), and the end is worked out from it and the session's start. A change to the setting starts with the next session ("Starts with the next session you create" on the settings row). A session created before this shipped has no window.
+- **"Members first" presets Six Feathers' rule**, 5 days before at 11:59 PM (the Monday before a Saturday). Changing it makes the club Custom, as changing 8 to a court does. A club that chose "Members first" before this shipped gets the preset on its next advanced session, by the "a gap fills from the club's style" rule.
+- **A save that does not name the window keeps it**, so a phone still running the old settings screen cannot turn a club's window off by flipping its money switch.
+- **"Another court can be added" waits until the session is full** during the window, on Home and on the organiser's card. While people wait with spots free, a court's worth of them is not a reason to book a court.
+- **Paying off the unpaid hold does not skip the window.** A drop-in held for unpaid sessions who pays during the window stays on the waitlist until the window ends.
+
+## Questions Grant answered
 
 **Q1. How the organiser says when the window ends.**
 - **(Recommended) As a day and time before the session**, e.g. "until Monday 11:59 PM", the way the club says it. Stored as hours before the session starts (`ClubRun.membersFirstHours`, like `lateCancelHours`), shown in the form as the actual day and time for the next session. For a Saturday at 7 PM, Monday 11:59 PM is 115 hours before. Like the late-cancel row in the onboarding plan, a count of hours equals a weekday cutoff while the session time stays fixed.
@@ -55,11 +70,20 @@ Last week's list does not carry over (Grant, 2026-11-04), so members sign up eac
 - **(Recommended) The guest waits with the drop-ins**, so a member cannot bring a guest into a spot another member was promised. The host is told "Alex waits until Monday 11:59 PM".
 - Or the guest comes in with the host.
 
-## Shape (to confirm with the answers)
+## Shape
 
-- **The setting.** `ClubRun.membersFirstHours: number | null` in `lib/clubRun.ts`, read through `clubRunOf` like the others. `first_come` is `null` (no window). Whether `members_first` presets a value is part of Q1: a style can write "8 to a court" for any club, but not an hour that depends on the club's session time, so the style likely turns the row on and asks for the time.
-- **The session carries its own end.** Advance stamps `Session.membersFirstEndsAt` (additive) from the setting and the new session's start, so changing the setting mid-week does not move this week's window, and every reader compares one instant.
-- **Sign-up.** In `POST /api/players`, while `now < membersFirstEndsAt`, a non-member (Q2) starts waitlisted with `Player.waitingForMembers: true` (additive), beside `heldForUnpaid`. An admin adding someone bypasses it, as with the hold. A member signs up as today.
-- **Promotion.** `planPromotions` skips a `waitingForMembers` row while the window is open, so a member's cancel during the window hands the spot to a waiting member. At the end (Q3), the flag is cleared and the waitlist promotes in order (Q4), with the existing push. `courtLine` keeps counting them: they are real demand for another court.
-- **What people see.** A drop-in signing up during the window: "Members get first pick until Mon 11:59 PM. You're on the waitlist — if a spot is still free then, you're in." (English and Chinese.) The admin's session card shows the window and the "Let the waitlist in now" action.
-- **Tests.** Two clubs, one with the window: a drop-in during the window waits with spots free; a member does not; a cancel during the window promotes a member over an earlier drop-in; after the end one read promotes in order and a second read promotes nobody; BPM's sign-up is unchanged.
+| piece | file |
+|---|---|
+| The window's clock: end, open, due (pure, client-safe) | `lib/membersFirst.ts` |
+| The setting, its preset, validation | `lib/clubRun.ts` (`ClubRun.membersFirst`), `app/api/admin/settings/route.ts` |
+| `Session.membersFirst`, `Session.membersFirstReleasedAt`, `Player.waitingForMembers` (additive) | `lib/types.ts` |
+| Copying the rule onto a new session | `app/api/session/advance/route.ts` |
+| A non-member waits; a guest waits; a visit after the end lets the waitlist in first | `app/api/players/route.ts` (POST, guest, GET), `app/api/session/route.ts` (GET) |
+| Skipping the waiting rows while it runs; the release | `lib/waitlistPromote.ts` (`planPromotions`, `releaseMembersFirst`) |
+| The paid hold keeps the window | `lib/paymentsInbox.ts` |
+| "Let the waitlist in now" | `app/api/session/members-first/route.ts`, `components/admin/CommandCenter/NextSessionCard.tsx` |
+| The settings row | `components/admin/CommandCenter/ClubRunPage.tsx` |
+| What a drop-in and a host see | `components/HomeTab.tsx`, `components/home/PlusOneRow.tsx`, `messages/*.json` |
+| The demo club marks its members and stamps the window | `lib/cosmos.ts` (`SEED_DEV_SCENARIO=six-feathers`) |
+
+Tests: `__tests__/group-members-first.test.ts` (two clubs: sign-up, a cancel during the window, the release, a late sign-up, a guest, the organiser's button, advance), `__tests__/members-first.test.ts` (the clock, across daylight saving), `__tests__/club-run.test.ts`, `__tests__/admin-settings-club-run.test.ts`, `__tests__/components/ClubRunPage.test.tsx`.

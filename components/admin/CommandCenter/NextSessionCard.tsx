@@ -8,6 +8,8 @@ import { formatRosterText } from '@/lib/rosterText';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { useClubRun } from '@/lib/useClubRun';
 import { courtLine } from '@/lib/clubRun';
+import { membersFirstOpen, membersFirstUntil } from '@/lib/membersFirst';
+import { useOnline } from '@/lib/useOnline';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -33,6 +35,8 @@ interface Session {
   birdUsage?: BirdUsage;
   birdUsages?: BirdUsage[];
   settled?: SettledSnapshot;
+  membersFirst?: { daysBefore: number; time: string };
+  membersFirstReleasedAt?: string;
 }
 
 interface Player {
@@ -42,6 +46,7 @@ interface Player {
   removed?: boolean;
   waitlisted?: boolean;
   heldForUnpaid?: boolean;
+  waitingForMembers?: boolean;
 }
 
 interface NextSessionCardProps {
@@ -96,6 +101,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const { run, known: runKnown } = useClubRun();
   const moneyOff = runKnown && run.money === 'off';
   const [togglingSignup, setTogglingSignup] = useState(false);
+  // "Let the waitlist in now" (docs/plans/members-first-window.md): a tap,
+  // then a confirm, as retiring the club link is.
+  const [confirmingLetIn, setConfirmingLetIn] = useState(false);
+  const [lettingIn, setLettingIn] = useState(false);
+  const [letInError, setLetInError] = useState('');
+  const online = useOnline();
 
   // Build a ready-to-paste sign-up invite and share it (native share sheet on
   // mobile, clipboard fallback elsewhere). Lets the admin blast "sign-up is
@@ -329,7 +340,10 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const cap = session.maxPlayers ?? 0;
   // How close the waitlist is to another court (docs/plans/waitlist-court-line.md).
   // The admin is the one who books it; null when a court can't be worked out.
-  const courtInfo = runKnown ? courtLine(session, run, players) : null;
+  // During a members-first window people wait with spots free, and a court's
+  // worth of them is not a reason to book another until the session fills.
+  const windowRunning = membersFirstOpen(session, new Date().getTime());
+  const courtInfo = runKnown && !(windowRunning && activeCount < cap) ? courtLine(session, run, players) : null;
   const capacityPct = cap > 0 ? Math.min(100, Math.round((activeCount / cap) * 100)) : 0;
   const countdown = fmtCountdown(session.deadline);
   const open = session.signupOpen === true;
@@ -356,6 +370,26 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const costChanged =
     isSettled && typeof frozenTotal === 'number' && Math.abs(liveTotal - frozenTotal) > 0.01;
   const staleBill = rosterChanged || costChanged;
+  // Members first: only while it is still running. Once it ends the next
+  // visit lets the waitlist in on its own, and the card goes back to normal.
+  const windowEnd = windowRunning ? membersFirstUntil(session) : null;
+  const waitingForWindow = players.filter((p) => !p.removed && p.waitlisted && p.waitingForMembers).length;
+
+  async function letWaitlistIn() {
+    setLettingIn(true);
+    setLetInError('');
+    try {
+      const res = await fetch(`${BASE}/api/session/members-first`, { method: 'POST' });
+      if (!res.ok) { setLetInError('Couldn’t let the waitlist in. Try again.'); return; }
+      setConfirmingLetIn(false);
+      await load();
+      onChanged?.();
+    } catch {
+      setLetInError('Couldn’t let the waitlist in. Try again.');
+    } finally {
+      setLettingIn(false);
+    }
+  }
 
   return (
     <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Next session">
@@ -454,6 +488,55 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         </div>
         <Switch checked={open} onChange={() => void toggleSignup()} ariaLabel="Sign-ups open" disabled={togglingSignup} />
       </div>
+
+      {windowEnd && (
+        <div className="cc-mini-card flex flex-col gap-3 motion-fade" style={{ padding: 'var(--space-3) var(--space-4)' }}>
+          <div>
+            <p className="fs-md" style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Members first until {fmtDate(windowEnd)} · {fmtTime(windowEnd)}
+            </p>
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              {waitingForWindow === 0
+                ? 'Nobody is waiting for it yet. After it, the waitlist moves up in sign-up order.'
+                : waitingForWindow === 1
+                  ? '1 person is waiting for it. After it, the waitlist moves up in sign-up order.'
+                  : `${waitingForWindow} people are waiting for it. After it, the waitlist moves up in sign-up order.`}
+            </p>
+          </div>
+          {!confirmingLetIn ? (
+            <button
+              type="button"
+              className="cc-btn cc-btn-ghost"
+              onClick={() => { setLetInError(''); setConfirmingLetIn(true); }}
+              disabled={!online}
+            >
+              Let the waitlist in now
+            </button>
+          ) : (
+            /* Two choices side by side, as in the bench's confirmations. */
+            <div className="motion-fade flex flex-col gap-3">
+              <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                Members lose first pick for this session: the waitlist moves up now, and anyone who signs up after gets a spot while there’s room.
+              </p>
+              <div className="flex gap-3">
+                <button type="button" className="cc-btn cc-btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmingLetIn(false)}>
+                  Not yet
+                </button>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={() => void letWaitlistIn()}
+                  disabled={lettingIn || !online}
+                >
+                  {lettingIn ? 'Letting in…' : 'Let them in'}
+                </button>
+              </div>
+            </div>
+          )}
+          {letInError && <p className="field-error" role="alert">{letInError}</p>}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         {/* Post-settle: re-share the frozen bill. Settling itself lives in the

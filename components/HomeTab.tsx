@@ -10,6 +10,7 @@ import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { APP_NAME } from '@/lib/brand';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
+import { membersFirstOpen, membersFirstUntil } from '@/lib/membersFirst';
 import { defaultMaxPlayers } from '@/lib/defaults';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Tab } from '@/components/HomeShell';
@@ -59,6 +60,8 @@ const BALANCE_ROW_HEIGHT = 50;
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
+/** When a members-first window ends: "Mon 11:59 PM" — a day this week, so no date. */
+const WINDOW_END = { weekday: 'short', hour: 'numeric', minute: '2-digit' } as const;
 const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 interface HomeTabProps {
@@ -349,6 +352,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     ? players.find((p) => !p.guestOf && p.name.toLowerCase() === currentUser.toLowerCase())
     : undefined;
   const myGuest = myRow?.memberId ? players.find((p) => p.guestOf === myRow.memberId) ?? null : null;
+
+  // Members first (docs/plans/members-first-window.md): while it runs, only
+  // members take a spot; a drop-in, an unmarked name or a guest waits for it.
+  const windowEndIso = membersFirstOpen(session, new Date().getTime()) ? membersFirstUntil(session) : null;
+  const windowEnd = windowEndIso ? format.dateTime(new Date(windowEndIso), WINDOW_END) : null;
+  const waitingForMembers = !!windowEnd && myRow?.waitlisted === true && myRow.waitingForMembers === true;
   // The roster shows a guest by their own name and their host's, in the reader's language.
   const hostNameOf = (memberId: string) => players.find((p) => !p.guestOf && p.memberId === memberId)?.name;
   const rosterLabel = (p: Player) => {
@@ -370,7 +379,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // Only before play starts, and only on a KNOWN club run: an unknown one could
   // count a court wrong.
   const hasStarted = session?.datetime ? new Date() >= new Date(session.datetime) : false;
-  const courtInfo = clubRunKnown && !hasStarted ? courtLine(session, clubRun, players) : null;
+  // "Filled up early?" is only true of a full session: during a members-first
+  // window people wait with spots still free, so the line waits until it fills.
+  const courtInfo =
+    clubRunKnown && !hasStarted && !(windowEndIso && activePlayers.length < spotsTotal)
+      ? courtLine(session, clubRun, players)
+      : null;
   // The server holds every rule; this only decides whether to OFFER it.
   const canAddGuest = session?.guestsAllowed === true && !isDeadlinePast && !isSignupClosed && !session.settled;
 
@@ -793,7 +807,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             </div>
             {isFull && courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
-            <PlusOneRow guest={myGuest} canAdd={canAddGuest} online={online} onChanged={() => void loadData()} />
+            <PlusOneRow guest={myGuest} canAdd={canAddGuest} online={online} onChanged={() => void loadData()} windowEnd={windowEnd} />
             <button
               type="button"
               className="link-quiet"
@@ -819,11 +833,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             <StatusBanner
               tone="warn"
               icon="schedule"
-              title={heldForUnpaid ? tStates('heldTitle') : tStates('waitlistTitle')}
+              title={
+                heldForUnpaid
+                  ? tStates('heldTitle')
+                  : waitingForMembers
+                    ? tStates('membersFirstTitle', { when: windowEnd ?? '' })
+                    : tStates('waitlistTitle')
+              }
               body={
                 heldForUnpaid
                   ? tStates('heldBody')
-                  : (
+                  : waitingForMembers
+                    ? tStates('membersFirstBody')
+                    : (
                     <>
                       {`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
                       <br />
@@ -840,7 +862,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             )}
             {courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
-            <PlusOneRow guest={myGuest} canAdd={canAddGuest && !heldForUnpaid} online={online} onChanged={() => void loadData()} />
+            <PlusOneRow
+              guest={myGuest}
+              canAdd={canAddGuest && !heldForUnpaid}
+              online={online}
+              onChanged={() => void loadData()}
+              windowEnd={windowEnd}
+            />
             <button
               type="button"
               className="link-quiet"
@@ -931,6 +959,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   style={{ color: isDeadlineApproaching ? 'var(--sev-warn)' : 'var(--text-muted)' }}
                 >
                   {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}
+                </p>
+              )}
+              {windowEnd && (
+                <p className="text-center fs-sm motion-fade" style={{ color: 'var(--text-muted)' }}>
+                  {tStates('membersFirstNote', { when: windowEnd })}
                 </p>
               )}
             </form>

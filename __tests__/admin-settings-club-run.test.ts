@@ -29,15 +29,28 @@ describe('/api/admin/settings — run', () => {
       style: 'first_come',
       playersPerCourt: null,
       money: 'split',
+      membersFirst: null,
     });
   });
 
   it('saves to the group record with the style worked out, and reads it back', async () => {
     seedGroup('bpm');
-    const res = await PATCH(makeAdminRequest('PATCH', URL, { run: { style: 'first_come', playersPerCourt: 8, money: 'off' } }));
+    const membersFirst = { daysBefore: 5, time: '23:59' };
+    const res = await PATCH(
+      makeAdminRequest('PATCH', URL, { run: { style: 'first_come', playersPerCourt: 8, money: 'off', membersFirst } }),
+    );
     expect(res.status).toBe(200);
-    expect(groupSettings().run).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off' });
+    expect(groupSettings().run).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst });
     expect((await (await GET(makeAdminRequest('GET', URL))).json()).run.style).toBe('members_first');
+  });
+
+  it('keeps the club’s members-first window when a save does not name one (a screen from before it)', async () => {
+    const membersFirst = { daysBefore: 4, time: '21:00' };
+    seedGroup('bpm', { settings: { skipDates: [], maxPlayers: 12, run: { style: 'custom', playersPerCourt: 8, money: 'off', membersFirst } } });
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { run: { playersPerCourt: 8, money: 'split' } }))).status).toBe(200);
+    expect(groupSettings().run).toMatchObject({ money: 'split', membersFirst });
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { run: { playersPerCourt: 8, money: 'split', membersFirst: null } }))).status).toBe(200);
+    expect((groupSettings().run as { membersFirst?: unknown }).membersFirst).toBeNull();
   });
 
   it('refuses a partial or invalid value and saves nothing', async () => {

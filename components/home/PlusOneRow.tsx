@@ -27,6 +27,7 @@ export default function PlusOneRow({
   canAdd,
   online,
   onChanged,
+  windowEnd = null,
 }: {
   /** The host's guest row in this session, or null. */
   guest: Player | null;
@@ -35,6 +36,8 @@ export default function PlusOneRow({
   online: boolean;
   /** Called after the server accepted a change; the card refetches. */
   onChanged: () => void;
+  /** When the club's members-first window ends ("Mon 11:59 PM"), while it runs. */
+  windowEnd?: string | null;
 }) {
   const t = useTranslations('home.guest');
   const tPlayers = useTranslations('players');
@@ -108,7 +111,11 @@ export default function PlusOneRow({
           <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>person_add</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>
-              {guest.waitlisted ? t('waiting', { name: guestName }) : t('coming', { name: guestName })}
+              {guest.waitlisted && guest.waitingForMembers && windowEnd
+                ? t('waitingForMembers', { name: guestName, when: windowEnd })
+                : guest.waitlisted
+                  ? t('waiting', { name: guestName })
+                  : t('coming', { name: guestName })}
             </p>
             <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('note')}</p>
           </div>

@@ -351,7 +351,10 @@
       "heldTitle": "付清欠款即可入场",
       "heldBody": "你还有几次活动的费用未付。转账到账后，如仍有名额，会自动为你保留位置。",
       "waitlistPositionLabel": "候补第 {position} 位，共 {total} 位",
-      "waitlistAutoMove": "有空位时会自动为你补上。"
+      "waitlistAutoMove": "有空位时会自动为你补上。",
+      "membersFirstTitle": "{when}前会员优先",
+      "membersFirstBody": "你已在候补名单上。届时如仍有空位，就会为你补上。",
+      "membersFirstNote": "{when}前会员优先报名，其他人在此之前先进入候补名单。"
     },
     "cost": {
       "label": "预估费用",
@@ -392,6 +395,7 @@
       "cancel": "取消",
       "coming": "{name}会和你一起来",
       "waiting": "{name}在候补名单上",
+      "waitingForMembers": "{name}需等到{when}会员优先结束后",
       "note": "朋友的费用会算在你的账上。",
       "remove": "移除",
       "removeAnyway": "仍然移除",

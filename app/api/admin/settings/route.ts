@@ -131,7 +131,9 @@ export async function PATCH(req: NextRequest) {
     // record ONLY, so a save with no record would be a 200 that stored
     // nothing. Refuse it up front, before anything else in the body is written.
     const groupId = resolveGroupId(req);
-    if ((body.lateCancelHours !== undefined || body.guestsAllowed !== undefined || groupName !== undefined || run) && !(await readGroup(groupId))) {
+    const touchesGroup = body.lateCancelHours !== undefined || body.guestsAllowed !== undefined || groupName !== undefined || run;
+    const group = touchesGroup ? await readGroup(groupId) : undefined;
+    if (touchesGroup && !group) {
       return NextResponse.json({ error: 'no_group' }, { status: 409 });
     }
     const container = getContainer('members');
@@ -161,7 +163,10 @@ export async function PATCH(req: NextRequest) {
       await setGuestsAllowed(groupId, body.guestsAllowed);
     }
     if (run) {
-      await updateGroupSettings(groupId, { run });
+      // Parsed again against the stored window, which a request without one
+      // keeps (lib/clubRun.ts `parseClubRun`).
+      const stored = parseClubRun(body.run, clubRunOf(group?.settings).membersFirst) ?? run;
+      await updateGroupSettings(groupId, { run: stored });
     }
     // The club's name lives on the group record ONLY — it has no Member-doc
     // copy, because a club is not a person's setting.

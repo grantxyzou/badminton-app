@@ -1,5 +1,5 @@
 import { lateCancelHoursOf, lateCancelVerdict } from '@/lib/cancelPolicy';
-import { readGroup } from '@/lib/groups';
+import { readGroup, readMembership } from '@/lib/groups';
 import { NextRequest, NextResponse } from 'next/server';
 import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
@@ -21,7 +21,8 @@ import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, verifyLiveMem
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
-import { promoteFromWaitlist } from '@/lib/waitlistPromote';
+import { promoteFromWaitlist, releaseMembersFirst } from '@/lib/waitlistPromote';
+import { membersFirstDue, membersFirstOpen } from '@/lib/membersFirst';
 import { cleanGuestName, guestDisplayName, guestsAllowedOf, isGuestRow } from '@/lib/plusOne';
 import type { ActiveMember } from '@/lib/auth';
 import type { RecoveryEvent, Session } from '@/lib/types';
@@ -60,6 +61,29 @@ async function reconcileCapacity(
   }
   await scope.remove('players', doc.id, sessionId);
   return 'full';
+}
+
+/**
+ * Whether this person takes a free spot while the members-first window is
+ * open (docs/plans/members-first-window.md): only someone the organiser marked
+ * a member. A drop-in, a name nobody marked, and a guest wait.
+ */
+async function isClubMember(groupId: string, memberId: string | undefined): Promise<boolean> {
+  if (!memberId) return false;
+  // Groups off is BPM, which has no window; nothing here is ever asked.
+  if (!groupsOn()) return true;
+  return (await readMembership(groupId, memberId))?.regular === true;
+}
+
+/**
+ * A members-first window that has ended lets its waitlist in BEFORE a write
+ * counts the spots: otherwise the first sign-up after Monday 11:59 PM would
+ * take a free spot ahead of everyone who waited for it. Resolves whether the
+ * waitlist moved, so the caller knows its active count is stale.
+ */
+async function letInIfDue(scope: GroupScope, sessionId: string, session: Session | undefined): Promise<boolean> {
+  if (!membersFirstDue(session, Date.now())) return false;
+  return releaseMembersFirst(scope, sessionId, { session: (session ?? null) as (Session & { id: string }) | null });
 }
 
 /** A host's guests still in this session (docs/plans/plus-one.md). */
@@ -155,14 +179,26 @@ async function addGuest(req: NextRequest, body: { guest?: unknown }, host: Activ
   // Settle froze the bill on the rows it found; a row added after owes nothing.
   if (sessionData?.settled) return NextResponse.json({ error: 'session_settled' }, { status: 409 });
 
-  const live = rows.filter((r) => r.sessionId === sessionId && r.removed !== true);
+  let current = rows;
+  if (await letInIfDue(scope, sessionId, sessionData)) {
+    current = await scope.query<Player>('players', {
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
+    });
+  }
+  const live = current.filter((r) => r.sessionId === sessionId && r.removed !== true);
   const hostRow = live.find((r) => r.memberId === host.memberId);
   if (!hostRow) return NextResponse.json({ error: 'host_not_signed_up' }, { status: 409 });
   if (hostRow.heldForUnpaid === true) return NextResponse.json({ error: 'host_held' }, { status: 409 });
   if (live.some((r) => r.guestOf === host.memberId)) return NextResponse.json({ error: 'guest_exists' }, { status: 409 });
 
   const maxPlayers = sessionData?.maxPlayers ?? defaultMaxPlayers();
-  const startWaitlisted = hostRow.waitlisted === true || live.filter((r) => r.waitlisted !== true).length >= maxPlayers;
+  // A guest is not a member: while only members take a spot, they wait with
+  // the drop-ins (docs/plans/members-first-window.md, Q5).
+  const waitsForMembers = membersFirstOpen(sessionData, Date.now());
+  const startWaitlisted =
+    waitsForMembers || hostRow.waitlisted === true || live.filter((r) => r.waitlisted !== true).length >= maxPlayers;
   const guest = {
     id: randomBytes(12).toString('hex'),
     name: guestDisplayName(guestName, host.name),
@@ -173,6 +209,7 @@ async function addGuest(req: NextRequest, body: { guest?: unknown }, host: Activ
     paid: false,
     removed: false,
     waitlisted: startWaitlisted,
+    ...(waitsForMembers ? { waitingForMembers: true } : {}),
   };
   await scope.create('players', guest);
   // The same race close as a sign-up (#79); a guest past the cap waits.
@@ -192,6 +229,14 @@ export async function GET(req: NextRequest) {
       : await getActiveSessionId(resolveGroupId(req));
     if (!sessionId) return noActiveSession();
     const includeRemoved = params.get('all') === 'true' && isAdminAuthed(req);
+    // The roster read is a visit too: a members-first window that has ended
+    // lets its waitlist in before the list is read, so the list shows it.
+    if (!overrideSessionId) {
+      const scope = groupScope(resolveGroupId(req));
+      // Best-effort: a failed session read must not fail the roster.
+      const session = await scope.read<Session>('sessions', sessionId, sessionId).catch(() => undefined);
+      await letInIfDue(scope, sessionId, session);
+    }
     const resources = await groupScope(resolveGroupId(req)).query<Record<string, unknown>>('players', {
       where: includeRemoved
         ? 'c.sessionId = @sessionId'
@@ -567,7 +612,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'session_settled' }, { status: 409 });
     }
 
-    const activePlayers = activeRes;
+    let activePlayers = activeRes;
+    if (await letInIfDue(scope, sessionId, sessionData)) {
+      activePlayers = await scope.query<Record<string, unknown>>('players', {
+        where: ACTIVE_PLAYERS_WHERE,
+        params: [{ name: '@sessionId', value: sessionId }],
+        partitionKey: sessionId,
+      });
+    }
     const isFull = activePlayers.length >= maxPlayers;
 
     if (isFull && !joinWaitlist) {
@@ -581,7 +633,13 @@ export async function POST(req: NextRequest) {
       isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && !admin && !!matchedMember
         ? await signupHeldForUnpaid(scope, matchedMember.id)
         : false;
-    const startWaitlisted = (isFull && joinWaitlist) || heldForUnpaid;
+    // Members first (docs/plans/members-first-window.md): while the window is
+    // open, only someone marked a member takes a free spot. Everyone else
+    // waits, flagged so a member's cancel never moves them up early. An admin
+    // adding someone bypasses it, as with the hold.
+    const waitsForMembers =
+      !admin && membersFirstOpen(sessionData, Date.now()) && !(await isClubMember(scope.groupId, matchedMember?.id));
+    const startWaitlisted = (isFull && joinWaitlist) || heldForUnpaid || waitsForMembers;
 
     const deleteToken = randomBytes(16).toString('hex');
 
@@ -606,6 +664,7 @@ export async function POST(req: NextRequest) {
         promotedAt: undefined,
         waitlisted: startWaitlisted,
         heldForUnpaid: heldForUnpaid ? true : undefined,
+        waitingForMembers: waitsForMembers ? true : undefined,
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
         ...(pinHash ? { pinHash } : {}),
       };
@@ -639,7 +698,8 @@ export async function POST(req: NextRequest) {
       paid: false,
       removed: false,
       waitlisted: startWaitlisted,
-        heldForUnpaid: heldForUnpaid ? true : undefined,
+      heldForUnpaid: heldForUnpaid ? true : undefined,
+      waitingForMembers: waitsForMembers ? true : undefined,
       ...(matchedMember ? { memberId: matchedMember.id } : {}),
       ...(pinHash ? { pinHash } : {}),
     };

@@ -351,7 +351,10 @@
       "heldTitle": "Settle up to grab your spot",
       "heldBody": "You owe for a couple of past sessions. You'll move into a spot as soon as your e-transfer lands, if there's still room.",
       "waitlistPositionLabel": "Position #{position} of {total}",
-      "waitlistAutoMove": "You'll be moved up automatically."
+      "waitlistAutoMove": "You'll be moved up automatically.",
+      "membersFirstTitle": "Members get first pick until {when}",
+      "membersFirstBody": "You\u2019re on the waitlist. If a spot is still free then, you\u2019re in.",
+      "membersFirstNote": "Members get first pick until {when}. Anyone else joins the waitlist until then."
     },
     "cost": {
       "label": "Estimated cost",
@@ -392,6 +395,7 @@
       "cancel": "Cancel",
       "coming": "{name} is coming with you",
       "waiting": "{name} is on the waitlist",
+      "waitingForMembers": "{name} waits until {when}, when members\u2019 first pick ends",
       "note": "Their share goes on your balance.",
       "remove": "Remove",
       "removeAnyway": "Remove anyway",

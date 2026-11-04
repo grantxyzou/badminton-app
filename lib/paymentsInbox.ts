@@ -15,6 +15,7 @@
  * alone and the allocation is dropped — two paths racing to mark the same row
  * must not let the second one quietly move money onto it.
  */
+import { membersFirstOpen, type WindowedSession } from './membersFirst';
 import { groupNamedByKey, keyMatchesHash, newClubKey, sha256Hex as sha256 } from './clubKey';
 import { ensureContainer, getActiveSessionId } from './cosmos';
 import { defaultMaxPlayers } from './defaults';
@@ -578,7 +579,7 @@ export async function releaseHoldIfSettled(scope: GroupScope, memberId: string |
     );
     if (!held) return;
     if (await signupHeldForUnpaid(scope, memberId)) return;
-    const session = await scope.read<{ id: string; maxPlayers?: number }>('sessions', sessionId, sessionId);
+    const session = await scope.read<{ id: string; maxPlayers?: number } & WindowedSession>('sessions', sessionId, sessionId);
     const active = await scope.query<Player>('players', {
       where: 'c.sessionId = @sessionId',
       params: [{ name: '@sessionId', value: sessionId }],
@@ -591,7 +592,11 @@ export async function releaseHoldIfSettled(scope: GroupScope, memberId: string |
     const aheadOnList = inSession.filter(
       (p) => p.waitlisted && p.id !== held.id && p.heldForUnpaid !== true && p.timestamp < held.timestamp,
     ).length;
-    const room = activeCount + aheadOnList < (session?.maxPlayers ?? defaultMaxPlayers());
+    // A drop-in also waiting for the members-first window keeps waiting:
+    // paying clears the hold, not the window (docs/plans/members-first-window.md).
+    const room =
+      !(held.waitingForMembers === true && membersFirstOpen(session, Date.now())) &&
+      activeCount + aheadOnList < (session?.maxPlayers ?? defaultMaxPlayers());
     await scope.replace('players', { ...held, heldForUnpaid: false, waitlisted: room ? false : true, ...(room ? { promotedAt: new Date().toISOString() } : {}) }, sessionId);
   } catch (err) {
     console.error('payments: releasing the hold failed', err);
