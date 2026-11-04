@@ -53,6 +53,7 @@ function toInput(c: GoldenCase): FitInput {
     ownedLabels: new Set(owned.map((i) => canon(i.label))),
     goal: gear.fitGoal, swing: gear.fitSwing, armComfort: gear.fitArmComfort, grip: gear.fitGrip,
     format: gear.playFormat ?? 'both',
+    balancePref: gear.fitBalance,
     budgetMaxCad: gear.budgetMaxCad,
     level: profile ? fitLevel(profile) : null,
     hasRatings: c.ratings.length > 0,

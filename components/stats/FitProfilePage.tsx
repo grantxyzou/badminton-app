@@ -9,14 +9,15 @@ import AIBadge from '@/components/primitives/AIBadge';
 import { recordEngagement } from '@/lib/engagement';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { fitAnswers, nearestLevelOption } from '@/lib/fitProfile';
+import { feelAnchors } from '@/lib/racketFeel';
 import { racketSrc } from '@/lib/racketLook';
-import { FIT_GOALS, FIT_LEVEL_OPTIONS, type FitPlayStyle, type PlayerGear } from '@/lib/types';
+import { FIT_GOALS, FIT_LEVEL_OPTIONS, type FeelBalance, type FitPlayStyle, type PlayerGear } from '@/lib/types';
 import type { FitFacts } from '@/lib/fitVerdict';
 import type { UseGear, GearPrefs } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
 import { useFitVerdict, type FitVerdictData } from './useFitVerdict';
 import { useStatsTakeover } from './statsTakeover';
-import { GripSizePicker, PlayStylePicker, SorenessPicker, SwingSpeedPicker } from './FitPickers';
+import { BalancePicker, GripSizePicker, PlayStylePicker, SorenessPicker, SwingSpeedPicker } from './FitPickers';
 
 export interface FitProfilePageProps {
   activeName: string | null;
@@ -29,7 +30,10 @@ export interface FitProfilePageProps {
   onOpenFrame?: (frameId: string) => void;
 }
 
-type Answerable = keyof Pick<GearPrefs, 'fitLevelOverride' | 'fitPlayStyle' | 'playFormat' | 'fitSwing' | 'fitGrip' | 'fitOvergrips' | 'fitSoreness' | 'fitGoal'>;
+type Answerable = keyof Pick<GearPrefs, 'fitLevelOverride' | 'fitPlayStyle' | 'playFormat' | 'fitSwing' | 'fitGrip' | 'fitOvergrips' | 'fitSoreness' | 'fitGoal' | 'fitBalance'>;
+
+/** The i18n suffix of each balance word, as `BalancePicker` keys them. */
+const BALANCE_KEY: Record<FeelBalance, string> = { 'Head-heavy': 'headHeavy', Even: 'even', 'Head-light': 'headLight' };
 
 /** How long the answers must be still before the ranking is re-asked. */
 const RANK_SETTLE_MS = 2500;
@@ -41,7 +45,7 @@ const FORMAT_OF: Record<FitPlayStyle, 'singles' | 'doubles' | 'both'> = { double
 // `fitOvergrips` is no longer asked (Grant, 2026-10-20: nothing read it), but
 // a member may still have one stored, so clearing still blanks it.
 const FIT_ANSWER_KEYS = [
-  'fitGoal', 'fitSwing', 'fitGrip', 'fitPlayStyle', 'fitSoreness', 'fitLevelOverride', 'fitOvergrips',
+  'fitGoal', 'fitSwing', 'fitGrip', 'fitPlayStyle', 'fitSoreness', 'fitLevelOverride', 'fitOvergrips', 'fitBalance',
 ] as const;
 /** The page's questions plus `fitArmComfort`, the older sheet's arm answer,
  *  which this page never asks but a member may still have stored. */
@@ -119,7 +123,7 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
   // moment. The register holds fit-driven refetches while this page is open
   // (every tap would otherwise spend the recommend limit), so without this the
   // ranking would describe the member from before they opened the page.
-  const answerKey = JSON.stringify([doc?.fitSwing, doc?.fitGrip, doc?.fitGoal, doc?.fitSoreness, doc?.fitPlayStyle, doc?.fitLevelOverride]);
+  const answerKey = JSON.stringify([doc?.fitSwing, doc?.fitGrip, doc?.fitGoal, doc?.fitSoreness, doc?.fitPlayStyle, doc?.fitLevelOverride, doc?.fitBalance]);
   const firstKey = useRef(answerKey);
   const { refresh } = picks;
   useEffect(() => {
@@ -136,6 +140,14 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
   // The privacy policy promises every fit answer can be cleared; this page is
   // where they live, so it is where they are cleared. Shown only while one is
   // stored (or stripped from this device's view, which still means stored).
+  // fit-5: the balance question is asked only while nothing in the bag can
+  // anchor the engine — no catalog racket (every catalog row is scorable),
+  // and no typed-in racket with BOTH its balance and shaft said, which is
+  // `feelAnchor`'s own rule (`feelAnchors`, so the two cannot drift). With an
+  // anchor the engine reads the racket, not this answer, so asking would be a
+  // question that changes nothing. It is outside the "n of 5": a question
+  // only some members see cannot be one of everyone's five.
+  const askBalance = known && !gear.active?.catalogId && !feelAnchors(gear.active);
   const hasAnswers = known && (doc?.fitArmComfortRedacted === true || (doc?.fitArmComfort != null && !('fitArmComfort' in pending)) || FIT_ANSWER_KEYS.some((k) => value(k) != null));
 
   return (
@@ -240,6 +252,17 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
               <p className="fit-consequence motion-fade">{t('soreConsequence')}</p>
             )}
           </section>
+
+          {askBalance && (
+            <section className="fit-group">
+              <div className="fit-group-head">
+                <span className="fit-q-label">{t('balance')}</span>
+                {value('fitBalance') && <span className="fit-q-value">{t(`balance_${BALANCE_KEY[value('fitBalance')!]}`)}</span>}
+              </div>
+              <p className="fit-caption">{t('balanceHint')}</p>
+              <BalancePicker value={value('fitBalance') ?? null} onChange={(v) => answer({ fitBalance: v })} disabled={disabled} label={t('balance')} />
+            </section>
+          )}
 
           <section className="fit-group">
             <span className="fit-q-label">{t('goal')}</span>

@@ -160,21 +160,43 @@ describe('scoring — one place per axis, ceilings warn and penalise, nothing is
     expect(scoreFit(heavy, axesOf(heavy)!, target, inp, null).penalty).toBe(12);
   });
 
-  it('a Beginner reaching up a tier pays double, and is reordered — never excluded', () => {
+  it('fit-5: with no anchor the tier costs nothing — the budget is the one price input', () => {
     const beginner = input({ level: 'Beginner', swing: 'medium' });
-    const t = buildTarget(beginner, null); // tier 1
+    const t = buildTarget(beginner, null); // the level row still labels the tier (1)…
+    expect(t.tier).toBe(1);
     const premium = racket('prem', { balance: 'Even', flex: 'Medium', tier: 'Premium', weightMinG: 80, weightMaxG: 84 });
     const entry = racket('entry', { balance: 'Even', flex: 'Medium', tier: 'Entry-level', weightMinG: 80, weightMaxG: 84 });
-    const sPrem = scoreFit(premium, axesOf(premium)!, t, beginner, null);
-    const sEntry = scoreFit(entry, axesOf(entry)!, t, beginner, null);
-    expect(sPrem.penalty).toBeCloseTo((2 * 12) / 1.3, 5);
-    expect(sEntry.penalty).toBe(0);
-    expect(sPrem.score).toBeGreaterThan(70); // still a real candidate
-    // An Intermediate reaching up pays the ordinary 6 per step (row matched to the Intermediate base on every other axis).
+    // …but a Premium twin of the Entry row pays nothing for it, whatever the level.
+    expect(scoreFit(premium, axesOf(premium)!, t, beginner, null).penalty).toBe(0);
+    expect(scoreFit(entry, axesOf(entry)!, t, beginner, null).penalty).toBe(0);
     const inter = input({ level: 'Intermediate', swing: 'medium' });
     const premiumMid = racket('prem2', { balance: 'Even', flex: 'Medium-Stiff', tier: 'Premium', weightMinG: 83, weightMaxG: 87 });
-    expect(scoreFit(premiumMid, axesOf(premiumMid)!, buildTarget(inter, null), inter, null).penalty).toBeCloseTo(6 / 1.3, 5);
-    // "Up" is past the TARGET's tier. A Beginner already playing a Premium
+    expect(scoreFit(premiumMid, axesOf(premiumMid)!, buildTarget(inter, null), inter, null).penalty).toBe(0);
+    // The budget still speaks: the same Premium frame over a $150 budget is ranked under the Entry one.
+    const budgeted = input({ level: 'Beginner', swing: 'medium', budgetMaxCad: 150 });
+    const tb = buildTarget(budgeted, null);
+    const dear = racket('dear', { balance: 'Even', flex: 'Medium', tier: 'Premium', weightMinG: 80, weightMaxG: 84 }, 300);
+    const cheap = racket('cheap', { balance: 'Even', flex: 'Medium', tier: 'Entry-level', weightMinG: 80, weightMaxG: 84 }, 120);
+    expect(scoreFit(dear, axesOf(dear)!, tb, budgeted, null).score).toBeLessThan(scoreFit(cheap, axesOf(cheap)!, tb, budgeted, null).score);
+  });
+
+  it('a Beginner reaching up a tier from their ANCHOR pays double, and is reordered — never excluded', () => {
+    // An Entry-level anchor: the Beginner who already plays it is steered to
+    // stay near it, and a Premium twin pays double for the two steps up.
+    const entryAnchor = racket('eanchor', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Entry-level', playStyle: 'Power', subType: 'doubles' }, 90);
+    const beginner = input({ level: 'Beginner', anchor: entryAnchor, goal: 'happy', swing: 'fast' });
+    const t = buildTarget(beginner, axesOf(entryAnchor)!);
+    const premium = racket('prem', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power' });
+    const entry = racket('entry', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Entry-level', playStyle: 'Power' });
+    const sPrem = scoreFit(premium, axesOf(premium)!, t, beginner, axesOf(entryAnchor));
+    const sEntry = scoreFit(entry, axesOf(entry)!, t, beginner, axesOf(entryAnchor));
+    expect(sPrem.penalty).toBe(2 * 12);
+    expect(sEntry.penalty).toBe(0);
+    expect(sPrem.score).toBeGreaterThan(70); // still a real candidate
+    // An Intermediate reaching up pays the ordinary 6 per step.
+    const inter = input({ level: 'Intermediate', anchor: entryAnchor, goal: 'happy', swing: 'fast' });
+    expect(scoreFit(premium, axesOf(premium)!, buildTarget(inter, axesOf(entryAnchor)!), inter, axesOf(entryAnchor)).penalty).toBe(12);
+    // "Up" is past the ANCHOR's tier. A Beginner already playing a Premium
     // anchor is not steered down from it: Premium costs 0, and Entry pays the
     // ordinary 6 per step DOWN.
     const anchoredBeginner = input({ level: 'Beginner', anchor: ANCHOR, goal: 'happy', swing: 'fast' });
