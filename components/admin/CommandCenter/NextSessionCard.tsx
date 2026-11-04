@@ -7,6 +7,7 @@ import { shareTextOrCopy } from '@/lib/shareText';
 import { formatRosterText } from '@/lib/rosterText';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { useClubRun } from '@/lib/useClubRun';
+import { courtLine } from '@/lib/clubRun';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -40,6 +41,7 @@ interface Player {
   timestamp?: string;
   removed?: boolean;
   waitlisted?: boolean;
+  heldForUnpaid?: boolean;
 }
 
 interface NextSessionCardProps {
@@ -325,6 +327,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   }
 
   const cap = session.maxPlayers ?? 0;
+  // How close the waitlist is to another court (docs/plans/waitlist-court-line.md).
+  // The admin is the one who books it; null when a court can't be worked out.
+  const courtInfo = runKnown ? courtLine(session, run, players) : null;
   const capacityPct = cap > 0 ? Math.min(100, Math.round((activeCount / cap) * 100)) : 0;
   const countdown = fmtCountdown(session.deadline);
   const open = session.signupOpen === true;
@@ -408,7 +413,10 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             />
           </div>
           {waitlistCount > 0 && (
-            <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>+{waitlistCount} waitlist</span>
+            <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>
+              +{waitlistCount} waitlist
+              {courtInfo && courtInfo.waiting > 0 && (courtInfo.more > 0 ? ` · ${courtInfo.more} more fills a court` : " · a court's worth")}
+            </span>
           )}
         </div>
         <div className="cc-tile cc-tile-static">
