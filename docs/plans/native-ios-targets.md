@@ -63,8 +63,12 @@ Per piece, because they ship separately:
   rewrite, a native Sign in with Apple token check.
 - Chinese copy in any target. Same rule as the widgets and push payloads —
   no per-member locale to choose from until `Member.locale` exists.
-- The App Clip doing anything but sign-up. No stats, no balance, no stringing;
-  it hands the session to the full app and stops.
+- The App Clip doing anything past the four moments in the decision below
+  (sign up, log in and join, a same-night notification, the install card). No
+  stats, no balance, no stringing, no second session of use; it hands the
+  session to the full app and stops. It is disposable (iOS removes an unused
+  clip and its data after about a month), so it holds nothing the server
+  cannot give back.
 - Running the rewrite "non-stop" from a Linux cloud session. There is no
   Xcode there, so every line would be written unverified; see the first
   decision.
@@ -144,6 +148,11 @@ covers that half). Today a web deploy *is* the iOS update.
     `member_session` in its own cookie jar; hands the session to the full app
     through a shared keychain access group (Apple's sanctioned clip → app
     bridge). Sign in with Apple natively; Google deferred to the full app.
+    A person who already has an account but not the app takes "Log in"
+    instead: name and PIN through `app/api/players/recover/route.ts` (the
+    same route, rate limits and per-account lock the web uses), then the
+    invite is claimed through `app/api/groups/join/route.ts`, which is how
+    an existing member joins a second club today.
   - *Watch* — the widget pass (`lib/auth.ts` `mintWidgetToken`, `lib/widget.ts`
     `requireWidgetMember`, the `app/api/widget/` routes). It is already a
     Bearer pass for code that runs outside the WebView, re-checked against
@@ -155,12 +164,43 @@ covers that half). Today a web deploy *is* the iOS update.
     plugin beside `ios/App/App/BpmWidgetPlugin.swift`; updated by push with
     the activity's own token. Open question below on how that push is sent.
 
+- **2026-11-04 — the App Clip does four things, in this order.** Asked by
+  Grant: can a person with no app use it, and could it cover sign up,
+  download the app, and join a group. Yes to all three, with the facts that
+  shape the build:
+  - *It is for people without the app.* The invite link makes iOS fetch the
+    clip on the spot; a phone that already has the full app opens the full
+    app from the same link, so the clip never competes with it. One link
+    serves both audiences, which is why nothing about the invite changes.
+  - *Sign up* — card, clip, club name from the preview route, account,
+    sign-up for this week.
+  - *Log in and join* — for an existing account on a phone without the app,
+    invited to another club (auth bullet above). A new person's claim of the
+    invite already is joining; there is no separate step for them. A member
+    who has the app installed never sees the clip, so a second club for them
+    stays the full app's job through the same link.
+  - *Same-night notification* — a clip may ask, in its Info.plist, to send
+    notifications for 8 hours after launch without a permission prompt. Used
+    for what the sign-up promises ("you're in", "a spot opened and you're
+    promoted", `lib/waitlistPromote.ts`) and nothing else; never marketing.
+  - *Install* — the clip shows Apple's install overlay for the full app
+    (StoreKit `SKOverlay`) once, right after the sign-up confirms, which is
+    the moment a person is most likely to say yes. With the session already
+    in the shared keychain the full app opens signed in. A regular member
+    should take this card: the clip is removed after about a month of
+    non-use.
+  - *Limits that bind the build:* native only (a WebView wrapper would not
+    pass review), 50 MB for a link launch on iOS 17+ and 15 MB from a QR code
+    or tag, so the shared package must stay lean. Nothing the clip stores is
+    kept; everything it needs is re-readable from the server.
+
 ## Shape (intended; nothing below is in the tree yet except where marked)
 
 | Piece | Where |
 | --- | --- |
 | Shared Swift package (models, client, tokens, strings) | new, `ios/BPMKit/`, consumed by every target |
-| App Clip target | new, `ios/App/BPMClip/`; Info.plist clip marker; `appclips` entry in the AASA (`proxy.ts` `WELL_KNOWN`, env body `APPLE_APP_SITE_ASSOCIATION`); App Clip experience registered in App Store Connect |
+| App Clip target | new, `ios/App/BPMClip/`; Info.plist clip marker and the 8-hour notification request; `appclips` entry in the AASA (`proxy.ts` `WELL_KNOWN`, env body `APPLE_APP_SITE_ASSOCIATION`); App Clip experience registered in App Store Connect; the install overlay and the shared keychain access group shared with the main app |
+| Clip sign-in and join | existing routes only: `app/api/groups/preview/route.ts`, `lib/inviteSignup.ts`, `app/api/players/recover/route.ts`, `app/api/groups/join/route.ts`, `app/api/players/route.ts`; no new server route |
 | Smart App Banner on the join page | `app/layout.tsx` (an `apple-itunes-app` meta carrying the clip bundle id, only when `?join=` is present) |
 | Live Activity (score, then session night) | `ios/App/BPMWidget/` (exists; gains an `ActivityAttributes` file compiled into app and extension, `NSSupportsLiveActivities` in the app plist); in-house start/update plugin beside `ios/App/App/BpmWidgetPlugin.swift` |
 | Live Activity push | `lib/push.ts` / `lib/fcm.ts` (exist) — see open question |
@@ -174,6 +214,13 @@ covers that half). Today a web deploy *is* the iOS update.
 - **Does the App Clip card show from WhatsApp's in-app browser?** Apple
   guarantees it in Safari, Messages and Mail. This is the first thing tested
   on a real phone, and it is the clip's kill switch (above).
+- **How the server reaches a clip.** The same-night notification needs a
+  token registered by the clip, and `lib/push.ts` and `lib/fcm.ts` know
+  only web subscriptions and FCM tokens for the full app. Whether FCM can
+  carry a clip's token or the clip needs APNs direct under its own bundle id
+  is not established; settle it before promising the "you're in" push, and
+  until then the clip shows the confirmation on screen and nothing relies on
+  the push.
 - **Live Activity push transport.** `lib/fcm.ts` sends FCM HTTP v1; an
   activity update needs the `liveactivity` APNs push type with the activity's
   token. Either FCM's Live Activity support (an `apns` override on the same
