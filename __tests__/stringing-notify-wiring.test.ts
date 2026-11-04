@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { resetMockStore } from './helpers';
 import { getContainer } from '@/lib/cosmos';
 import { buildPlayerNotice } from '@/lib/stringingNotify';
@@ -6,6 +6,21 @@ import { composeEmail, sendStringingNotice } from '@/lib/stringingNotifyEmail';
 import { notifyPlayerOfStage } from '@/lib/stringingNotifyDispatch';
 import type { StringingJob } from '@/lib/types';
 import type { StringingStatus } from '@/lib/stringing';
+
+/**
+ * The SMTP transport is faked, never reached. This file used to set real-looking
+ * credentials and let nodemailer dial smtp.gmail.com, trusting "no network in
+ * tests" to make it throw. On a CI runner there IS network, so every run made a
+ * live Gmail login with `x@y.com` / `nope`; where outbound SMTP is dropped
+ * (a sandbox, an offline laptop) the dial waited out `SMTP_TIMEOUTS`' 5 s
+ * connect, exactly vitest's 5 s test timeout, and the test failed instead.
+ */
+const sendMail = vi.fn(async () => {
+  throw new Error('smtp unavailable (faked)');
+});
+vi.mock('@/lib/mailTransport', () => ({
+  gmailTransport: async () => ({ sendMail }),
+}));
 
 /**
  * The seam had adapters on NEITHER side — nothing built a notice and nothing
@@ -42,6 +57,7 @@ function job(over: Partial<StringingJob> = {}): StringingJob {
 
 beforeEach(() => {
   resetMockStore();
+  sendMail.mockClear();
   delete process.env.GMAIL_USER;
   delete process.env.GMAIL_APP_PASSWORD;
 });
@@ -136,13 +152,14 @@ describe('notifyPlayerOfStage — the dispatcher', () => {
    * THE CONTRACT WITH THE BENCH. This runs inside the admin's PATCH; a mail
    * failure must never turn moving a racket along into a 503.
    */
-  it('NEVER throws, even when the member read blows up', async () => {
+  it('NEVER throws, even when the mail transport does', async () => {
     await seedMember({ email: 'lin@example.com' });
     process.env.GMAIL_USER = 'x@y.com';
     process.env.GMAIL_APP_PASSWORD = 'nope';
 
-    // No network in tests, so the transport throws — the point is what we do.
+    // The faked transport throws; the point is what the dispatcher does.
     const out = await notifyPlayerOfStage(job());
+    expect(sendMail).toHaveBeenCalledTimes(1);
     expect(out.emailSent).toBe(false);
     expect(out.attempted).toBe(true);
   });
