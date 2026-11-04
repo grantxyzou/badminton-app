@@ -279,6 +279,12 @@ covers that half). Today a web deploy *is* the iOS update.
 
 ## Shape (intended; nothing below is in the tree yet except where marked)
 
+The App Clip's step-by-step build plan is
+`docs/superpowers/plans/2026-11-04-app-clip.md` (2026-11-04). It orders the
+work so the web pieces ship first: the invite as a QR, the sticker's door
+link and the count of where sign-ups come from. Each helps every phone before
+the clip exists. The Swift waits on the Mac build loop.
+
 | Piece | Where |
 | --- | --- |
 | Shared Swift package (models, client, tokens, strings) | new, `ios/BPMKit/`, consumed by every target |
