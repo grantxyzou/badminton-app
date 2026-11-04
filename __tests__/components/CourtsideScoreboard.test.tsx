@@ -59,7 +59,13 @@ describe('CourtsideScoreboard', () => {
   it('ends the game at 21 won by two, stops scoring, and marks the winner', () => {
     renderBoard();
     for (let i = 0; i < 21; i++) pointA();
-    expect(screen.getByText('Game · A side')).toBeTruthy();
+    const over = screen.getByText('Game · A side');
+    expect(over).toBeTruthy();
+    // The one consequential moment takes the celebrate entrance; every other
+    // line, and every new digit, takes the plain appear fade.
+    expect(over.className).toContain('status-celebrate');
+    expect(over.getAttribute('data-over')).toBe('true');
+    expect(screen.getByTestId('score-a').className).toContain('motion-fade');
     expect(screen.getByRole('button', { name: '+1 A side' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByTestId('score-a').closest('.courtside-side')?.getAttribute('data-winner')).toBe('true');
   });
@@ -151,6 +157,8 @@ describe('CourtsideScoreboard', () => {
   it('with no fold known, splits at the centre with an empty gap', () => {
     renderBoard();
     const board = screen.getByRole('dialog');
+    // Opens with the Appear recipe (opacity only; reduced motion keeps it).
+    expect(board.className).toContain('motion-fade');
     expect(board.getAttribute('data-posture')).toBe('unknown');
     expect(['horizontal', 'vertical']).toContain(board.getAttribute('data-axis'));
     expect(board.style.getPropertyValue('--court-gap')).toBe('0px');

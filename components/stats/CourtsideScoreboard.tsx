@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useBodyScrollLock } from '@/components/BottomSheet/useBodyScrollLock';
 import { splitForFold, useFold } from '@/lib/fold';
+import { primeHaptics, tapSuccess } from '@/lib/haptics';
 import { addPoint, reachedInterval, scoreState, serving, type Score, type Side } from '@/lib/scoreRules';
 
 /**
@@ -107,6 +108,9 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
     if (state.over) return;
     const next = addPoint(score, side);
     setPoints((prev) => [...prev, side]);
+    // One light tap under the finger, in the store app only (lib/haptics.ts):
+    // on a bench the eyes are on the court, not the phone.
+    tapSuccess();
     clearInterval_();
     if (reachedInterval(score, next)) {
       setInterval_(true);
@@ -142,6 +146,9 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
 
   useEffect(() => {
     if (!open) return;
+    // Fetch the haptics chunk while the board opens, so the first +1 buzzes
+    // on time (the shell loads the live site; the first import is a download).
+    primeHaptics();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -172,7 +179,7 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label={t('title')}
-      className="courtside"
+      className="courtside motion-fade"
       data-axis={split.axis}
       data-posture={fold.posture ?? 'unknown'}
       style={{ zIndex: 60 }}
@@ -183,11 +190,24 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
           {(['a', 'b'] as const).map((s) => (
             <div key={s} className="courtside-side" data-serving={server === s} data-winner={state.winner === s}>
               <span className="courtside-side-label">{sideName(s)}</span>
-              <span className="courtside-digit" data-testid={`score-${s}`}>{score[s]}</span>
+              {/* Keyed on the value: a new number fades in (the Appear
+                  recipe) rather than flicking — content arriving into a
+                  surface already on screen. */}
+              <span key={score[s]} className="courtside-digit motion-fade" data-testid={`score-${s}`}>{score[s]}</span>
             </div>
           ))}
         </div>
-        <p className="courtside-status" data-interval={interval}>{status}</p>
+        {/* Keyed on its text, so each new line fades in. The game ending is
+            the board's one consequential moment, so that line alone takes
+            `.status-celebrate` (check-in saved, session created, a game won). */}
+        <p
+          key={status}
+          className={state.over ? 'courtside-status status-celebrate' : 'courtside-status motion-fade'}
+          data-interval={interval}
+          data-over={state.over}
+        >
+          {status}
+        </p>
       </section>
 
       {/* The fold. Empty on purpose: nothing may sit on it. */}

@@ -11,6 +11,7 @@ import HomeTab from '@/components/HomeTab';
 import NativeBridge from '@/components/NativeBridge';
 import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
 import ThemeToggle from '@/components/ThemeToggle';
+import PaneFlip from '@/components/PaneFlip';
 import LanguageToggle from '@/components/LanguageToggle';
 import NotificationsButton from '@/components/NotificationsButton';
 import NotificationsPage, { type NoticeTab } from '@/components/NotificationsPage';
@@ -943,6 +944,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     <>
       <PullToRefresh onRefresh={handlePullRefresh} />
       <div className="min-h-screen pb-32" {...{ [APP_SHELL_ATTR]: '' }}>
+        {/* The crossfade when a foldable goes from one pane to two (lib/paneMode.ts). */}
+        <PaneFlip />
         <ThemeToggle />
         <LanguageToggle />
         {!inOnboarding && !nativeReturn && <NotificationsButton onOpen={openNotices} onClose={closeNotices} active={noticesOpen} />}
