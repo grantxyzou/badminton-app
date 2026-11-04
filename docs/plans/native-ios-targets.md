@@ -248,6 +248,22 @@ covers that half). Today a web deploy *is* the iOS update.
       until a human approves. Built that way, the sticker works on the web
       for Android and iPhone before the clip exists. The clip later opens
       the same request natively.
+    - *Where the request lands: both* (Grant, 2026-11-04: "both, push to
+      organisers and admin inbox"). It goes into the Command Center inbox
+      beside today's access requests (`AccessRequestsCard`), and a push
+      goes to the club's organisers (`listOrganisers` in `lib/groups.ts`)
+      the moment it is made. A person is standing at the court door, so a
+      request nobody sees for an hour has failed. The push carries the
+      name the person typed and the club, never anything else (lock-screen
+      rule), opens `?tab=admin`, and is tagged per request so a second tap
+      replaces the banner instead of stacking. Best-effort after the
+      request is stored, like every other push; the inbox is the record.
+    - *Recipients come from the club's roster, never a person-level role.*
+      Today's access-request push picks every active `Member` with
+      `role: 'admin'` across the deployment, which with groups on reaches
+      the wrong club's admins and misses the right club's organisers. The
+      sticker request must not copy that query; that bug is tracked on its
+      own.
     - *What the sticker holds.* One stable URL per club, decided with the
       request route and never changed after the stickers are written.
       Until then the stickers stay blank. NFC Tools' "lock" is permanent,
@@ -281,10 +297,6 @@ covers that half). Today a web deploy *is* the iOS update.
   WhatsApp is testing an option to open every link in its own browser
   (TestFlight references, 2026-10-19, not shipped), which could change that.
   Tested on a real phone first; it is the clip's kill switch (above).
-- **The sticker's approval screen.** Where the organiser sees a tap's
-  request, and how fast: the Command Center inbox, a push to the club's
-  organisers, or both. A request nobody sees for an hour fails a person
-  standing at the court door. Decided with the request route.
 - **Which URL the experience claims.** The invite is a `?join=` query on the
   app's own address, and an App Clip experience matches a URL prefix. Claim
   the app's root, and the plain weekly sign-up link raises the card too,
