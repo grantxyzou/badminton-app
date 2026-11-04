@@ -6,7 +6,7 @@ equipment purchases"; Value-Hub Track 2 (Equipment). ROADMAP §4 still says trac
 `lib/flags.ts` records that the fan-out was made by shipping, not by reading the
 gate. This file says so rather than pretending the readout happened.
 **Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`, retired ON 2026-10-24) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; `fit-3` 2026-10-09 (a slow swing's "more power" leaves the head alone, from the first stringer-rated case); Phase 4 waits on ≥5 golden ratings (3 rated 2026-10-09: g01–g03; the owner owes two of his own)
-**Review on:** 2026-11-02 — ≥5 golden cases rated, and `picks.engagedMembers` ≥ 2 in `GET /api/admin/slice0` (members who ADDED, TRIED or RATED a pick — `pick_served` is the denominator, not engagement)? If not, drop the fit questionnaire.
+**Review on:** 2026-11-18 — moved from 2026-11-02 (Grant, 2026-11-04: "come up with a different way to validate the racket fit"). Read the **Validation v2** gate below: has the back-test run, and does the full engine beat both baselines AND the level-only ablation? Also `picks.engagedMembers` ≥ 2 in `GET /api/admin/slice0` (unchanged: `pick_served` is the denominator, not engagement).
 **Read 2026-10-19:** `engagedMembers` 2 (two adds, on `fit-2`; 184 served to 9 members across `fit-1`–`fit-3`), the fit page opened by 8 members and a verdict seen by 7 — but 3 of 5 golden cases. Half met; the half that is not is the owner's and stringer's to rate, not the members' verdict, so the date moved two weeks rather than the questionnaire going (Grant chose to keep it). `GEAR_PAGES` and `FIT_VERDICT` retired ON the same day.
 
 ## Problem
@@ -54,6 +54,119 @@ Read on the date above, via `GET /api/admin/slice0`'s `picks` block and
 harmless optional data) and revert the engine to anchor-only: current racket +
 level. Keep the defect fixes — tie-break, all-owned exclusion, i18n reason keys —
 because they are correct regardless of uptake.
+
+## Validation v2 (2026-11-04)
+
+*Status: proposed, awaiting Grant's yes. Written BEFORE any result exists, so the
+thresholds below cannot be bent to fit one.*
+
+**Why the old gate is replaced.** "≥5 expert-rated golden cases" can only be met by
+two people (the owner and the club stringer), has sat at 3 for a month, and its
+failure drops a feature for want of a rater, not for being wrong. The golden set
+stays as a regression test and as the record of the owner's taste; it stops being the
+gate. The member-engagement half (`engagedMembers` ≥ 2) is unchanged.
+
+**Two checks, neither needing a new rater.**
+
+1. **Back-test against racket choices members already made.** A racket a member
+   restrung 3+ times (`StringLogEntry.racketCatalogId`, same non-null id) or kept in
+   the bag for 60+ days (`GearItem.acquiredAt`) is a choice they stood behind.
+   For each such member, run the engine on their profile with that racket HIDDEN
+   (no anchor) and ask whether it is in the top 3.
+   - **Match** = the owned catalog id is in the top 3, or a top-3 row shares its
+     (balance, flex, weight-class) triple. Exact id alone is too strict: the
+     catalog holds near-identical rows (the 88S rows were the same triple until
+     2026-10-09). Baselines are scored with the same rule, so it is not a thumb on
+     the scale.
+   - **Three comparisons, all must hold:** the full engine's hit rate beats
+     (a) a random pick among scorable rows in the member's tier, (b) "the racket
+     most owned in the club", and (c) the SAME engine given only the member's level
+     (the ablation). (c) is the one that tests the fit questionnaire: if answering
+     swing, goal and side does not beat level alone, the questions earn nothing.
+   - **Minimum cohort 10 members.** Under 10 the result is `undecided`, not a pass
+     and not a fail; the review date moves a month and the questionnaire stays.
+   - **Margin:** beats each baseline by ≥ 15 percentage points. With n near 10-15
+     that is a few members, so the number is reported as k of n, never a bare
+     percentage.
+   - **Read through an operator-only route** (`GET /api/admin/fit-backtest`, the
+     `migrate-groups` operator rule): totals and k-of-n only, no name, id or gear
+     row, cohort narrowed with `rosterMemberIds(groupId)`. It reads
+     `fitArmComfort` and `fitSoreness`, which are health-adjacent, so nothing but
+     counts leaves it.
+
+2. **Direction tests (vitest, no data).** Properties the published evidence in
+   *Decisions* already commits the engine to, run over generated profiles including
+   every unset-field combination, with and without an anchor racket:
+   - a slow swing never ranks a head-heavier frame above a lighter one it ranked
+     equal on every other axis (fit-3's rule);
+   - `often_sore` never raises swing-weight or tension, and never changes flex
+     (comfort caps swing-weight and tension, never flex);
+   - a larger budget never makes a pick cheaper-than-before ineligible, and never
+     reorders two rows already within budget;
+   - changing only `fitGrip` or `fitOvergrips` never changes the ranking;
+   - the result is deterministic: same input, same order, tie-break included.
+   Each property names its source in a comment. These check that the engine
+   behaves as designed, NOT that the design is right; check 1 is the one that
+   touches the world.
+
+**Decision rule (fixed now).** `pass` = check 1's three comparisons hold at n ≥ 10
+AND every direction test passes. `fail` = n ≥ 10 and the engine does not beat
+(c): remove the questionnaire as the kill criterion above says. `undecided` =
+anything else. A direction-test failure is a bug to fix, never a reason to relax a
+property without a written reason in *Decisions*.
+
+### Loopholes found in this gate, and what closes each
+
+1. **Leakage: fit answers describe the racket in the hand.** A member who owns a
+   stiff, head-heavy frame says "fast swing" and "more control" *because* of it, so
+   the engine recovers the racket from answers it caused. Close: use only members
+   whose `fitUpdatedAt` is BEFORE the racket's first string-log or `acquiredAt`,
+   report the post-purchase members separately, and never fold them into the
+   pass/fail count. If that leaves under 10, the result is `undecided` and the
+   honest remedy is time, not a looser cohort.
+2. **Influence, not fit.** Members buy what Grant (owner, stringer, the person who
+   recommends rackets) owns or sells advice about. Close: baseline (b) absorbs
+   club-wide popularity; also report Grant's own bag apart, and exclude any racket
+   that is the mode in the cohort from the "hit" count as a sensitivity run.
+3. **Kept is not right.** Restringing three times shows a racket was not
+   abandoned, not that it suits the player (sunk cost, no alternative, owned by
+   habit). Close: state it in the readout; use the weaker claim "the engine
+   points to what members actually stayed with", never "the engine is accurate".
+4. **Selection.** Only members who use the stringing service and filled the
+   questionnaire are in the cohort — likely the keenest and most gear-minded. A
+   pass says nothing about a casual member. Close: report how many cohort members
+   there are against `pick_served` members, and do not claim more than the
+   cohort supports.
+5. **Metric inflation.** Top-3 plus the triple rule makes a random pick hit often
+   in a catalog of near-duplicates. Close: baseline (a) uses the identical rule
+   and tier, and the readout prints each baseline's rate beside the engine's;
+   the 15-point margin is over that, not over zero.
+6. **Tuning on the test set.** If the weights are changed after the first read and
+   the same members are re-read, the second read is fitted, not validated. Close:
+   the engine version (`fit-4`) is recorded with every read; any change to
+   `GOAL_DELTA` or a scorer after a read voids it, and a new read needs members
+   added since (compare by `joinedAt`/first-log date), not a re-run.
+7. **Moving the goalposts.** This section replaces a gate after the old one
+   missed. Close: it is committed with thresholds before any run; the 11-18 read
+   uses these numbers as written, and a change to them is a dated entry in
+   *Decisions*, made before the run it affects.
+8. **Silent cohort shrinkage.** A member with no catalog id on the log (an
+   off-catalog racket, `racketCatalogId: null`) drops out, and the cohort can
+   quietly become the members with mainstream rackets. Close: the route returns
+   how many were excluded and why (`no_catalog_id`, `fit_after_purchase`,
+   `under_threshold`); a cohort that lost more than half is `undecided`.
+9. **Two-club members.** `playerGear` and the string log belong to the PERSON;
+   a member in two clubs shows up in both cohorts' reads. Close: narrow to the
+   roster before counting, as every club aggregate over a person container does,
+   and count a person once.
+10. **Tests that agree with the code by construction.** Direction tests are
+    written from the same beliefs the engine was written from. A failing one is
+    informative; a passing one is weak. Close: they gate regressions only; the
+    only pass/fail evidence about the design is check 1.
+
+**What this does not settle:** whether the engine's picks are *good for the
+player* — only whether they match what members stayed with. Real-world fit still
+needs a loan racket on a court. That stays out of the gate and in the wish list.
 
 ## Non-goals
 
