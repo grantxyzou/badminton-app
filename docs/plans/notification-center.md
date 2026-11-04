@@ -1,7 +1,7 @@
 # Notification center
 
 **Track:** between-session engagement (North Star pillar 1). What the app has to tell a member should reach them whether or not they turned push on, without stacking cards on Home.
-**Status:** intent
+**Status:** intent (decided 2026-11-04, ready to build)
 **Review on:** 2026-12-16 — phase 1: did the share of members with push on rise above 3 of 41, and do members open the bell at all (`notices_open` beacon)? Phase 2, once shipped: of the notices written, how many were seen in the app by someone with push off? Few opens = the bell isn't being found; put the prompts back as one Home card.
 
 ## Problem
@@ -33,7 +33,7 @@ By the review date, if fewer than a quarter of active members open the bell in a
   - Set a PIN, when the account has no way to sign back in.
   - What's new (`ReleaseNotesTrigger`).
 - **A dot on the bell** while any prompt is undone and not dismissed. Each row keeps its own "done" and "dismissed" rules, which already exist per card.
-- **Home loses those cards.** The exception is Set a PIN: an account with no credential can be locked out, so it stays as a banner AND appears in the list (open question 1).
+- **Home loses those cards, Set a PIN included** (decided below). The one-shot PIN sheet that opens straight after an admin approval (`lib/offerPin.ts`) is not a card and stays.
 - **Members already in the waitlist** see the waitlist push ask on the sign-up card, not in the bell ([waitlist-push-ask.md](waitlist-push-ask.md)): it belongs to that moment.
 
 ## Phase 2: what pushes said, kept for everyone
@@ -43,18 +43,16 @@ By the review date, if fewer than a quarter of active members open the bell in a
   - `events` is already keyed by `/memberId` (a member's notices are one partition read), GROUP scoped (each notice belongs to one club), retained for 13 months by its container TTL, and deleted when an account is deleted.
   - The risk: metrics read `events` by kind. Every reader that counts must keep filtering on its own kinds; that needs checking reader by reader before the first write (`lib/metrics.ts`, `app/api/admin/slice0/route.ts`).
 - **A notice holds** the trigger, a short title, the tab it opens, and when it was sent. It never holds money, the same rule as the push body.
-- **Unread:** notices newer than the last time this person opened the sheet put a count on the bell.
-
-## Open questions (for Grant)
-
-1. **Set a PIN:** keep it on Home as well as in the list (recommended, because without it the account can be lost), or only in the list?
-2. **"Last opened"** for the unread count: per device (simple; a second phone shows them unread again) or per account (recommended for phase 2; stored on the membership)?
-3. **Announcements:** they already have their own card on Home. List them in the center too, or leave them out?
+- **Unread:** notices newer than the last time this person opened the sheet put a count on the bell. "Last opened" is per account, on the membership (decided below).
+- **Announcements are listed too**, as notices, beside the Home card that already shows them (decided below).
 
 ## Decisions
 
 - **Prompts first, then push history** (Grant, 2026-11-04), over prompts only (leaves 38 of 41 hearing nothing) and history only (leaves the stacked cards).
 - **#762 ships its push nudge as a Home card now** (Grant, 2026-11-04). Phase 1 moves it into the bell, so the push ask reaches people this week rather than after the center is built.
+- **Set a PIN lives in the bell only** (Grant, 2026-11-04: "In notification only"), over keeping a Home banner as well. The risk: someone with no way to sign back in who never opens the bell can be locked out when their session cookie expires (30 days). The bell's dot is the only signal, so the PIN row must always count toward it.
+- **"Seen" is per account** (Grant, 2026-11-04: "Account"), stored on the membership, so a second phone doesn't show everything as unread again. Per device would have needed no server write, but every new phone would start with a full unread count.
+- **Announcements are listed in the bell** (Grant, 2026-11-04: "In notifications"). Read as "also": the Home announcement card stays, because it is the server-rendered first thing on Home. If "only" was meant, moving it off Home is its own decision.
 
 ## Shape
 
