@@ -105,7 +105,9 @@ export async function readOperatorActions(): Promise<OperatorActionRecord[]> {
   await ensureContainer('groups', '/id');
   const { resources } = await getContainer('groups')
     .items.query<Record<string, unknown>>({
-      query: `SELECT * FROM c WHERE c.kind = @kind OFFSET 0 LIMIT ${READ_CAP}`,
+      // ORDER BY before the cap, or past 200 records Cosmos keeps an arbitrary
+      // 200 and the newest override can drop out of the audit read.
+      query: `SELECT * FROM c WHERE c.kind = @kind ORDER BY c.at DESC OFFSET 0 LIMIT ${READ_CAP}`,
       parameters: [{ name: '@kind', value: OPERATOR_ACTION_KIND }],
     })
     .fetchAll();

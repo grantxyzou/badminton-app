@@ -248,9 +248,11 @@ export async function PATCH(req: NextRequest) {
     // Orthogonal to `role` on purpose — see Member.canString. Per club like
     // `canGift` since roles v2 PR 2 (the MEMBERSHIP is what the bench reads);
     // an admin grants it, no organiser needed. The Member copy is the flag-off
-    // value and BPM's rollback copy.
+    // value and BPM's rollback copy — and BPM still READS it for a membership
+    // that never set its own (`canStringOf`), so only BPM's admin may write it:
+    // another club's grant would otherwise put this person on BPM's bench.
     if (typeof body.canString === 'boolean') {
-      updates.canString = body.canString;
+      if (memberCopy) updates.canString = body.canString;
       if (groupsOn() && !(await setMembershipCanString(auth.groupId, id, body.canString))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
@@ -266,7 +268,9 @@ export async function PATCH(req: NextRequest) {
       if (body.canGift !== (groupsOn() ? membership?.canGift === true : existing.canGift === true) && !auth.organiser) {
         return organiserOnly();
       }
-      updates.canGift = body.canGift;
+      // The Member copy is BPM's rollback value: another club's grant must not
+      // become a BPM permission the day the flag comes off.
+      if (memberCopy) updates.canGift = body.canGift;
       if (groupsOn() && !(await setMembershipCanGift(auth.groupId, id, body.canGift))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }

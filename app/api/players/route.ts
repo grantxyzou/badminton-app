@@ -85,12 +85,40 @@ async function removeGuests(
   stampOf: (row: Player) => { lateCancel?: true; lateCancelHoursBefore?: number } = () => ({}),
 ): Promise<number> {
   const guests = await guestsOf(scope, sessionId, hostMemberId);
-  const now = new Date().toISOString();
+  let confirmed = 0;
   for (const g of guests) {
-    const { lateCancel: _l, lateCancelHoursBefore: _h, ...unstamped } = g;
-    await scope.upsert('players', { ...unstamped, removed: true, removedAt: now, cancelledBySelf: bySelf, ...stampOf(g) });
+    const removed = await softRemoveGuest(scope, sessionId, g, bySelf, stampOf(g));
+    if (removed && removed.waitlisted !== true) confirmed++;
   }
-  return guests.filter((g) => g.waitlisted !== true).length;
+  return confirmed;
+}
+
+/**
+ * Soft-remove one guest row with an etag-conditional `replace`, never an
+ * `upsert` (CLAUDE.md, Groups): an upsert would recreate a row an admin purged
+ * between the read and the write, or overwrite a `paid` / cover they set.
+ * A lost race re-reads and tries again; a row that is gone or already removed
+ * is left alone. Resolves the row as it stood when this removed it, or `null`.
+ */
+async function softRemoveGuest(
+  scope: GroupScope,
+  sessionId: string,
+  row: Player & Record<string, unknown>,
+  bySelf: boolean,
+  stamp: { lateCancel?: true; lateCancelHoursBefore?: number },
+): Promise<(Player & Record<string, unknown>) | null> {
+  let current: (Player & Record<string, unknown>) | undefined = row;
+  for (let attempt = 0; attempt < 3 && current && current.removed !== true; attempt++) {
+    const { lateCancel: _l, lateCancelHoursBefore: _h, ...unstamped } = current;
+    const written = await scope.replace(
+      'players',
+      { ...unstamped, removed: true, removedAt: new Date().toISOString(), cancelledBySelf: bySelf, ...stamp },
+      sessionId,
+    );
+    if (written) return current;
+    current = await scope.read<Player & Record<string, unknown>>('players', current.id, sessionId);
+  }
+  return null;
 }
 
 /**
@@ -1123,9 +1151,9 @@ export async function DELETE(req: NextRequest) {
       if (late.late && body.acknowledgeLateFee !== true) {
         return NextResponse.json({ error: 'late_cancel', hours: (await readPolicy()).hours }, { status: 409 });
       }
-      const { lateCancel: _l, lateCancelHoursBefore: _h, ...unstamped } = guest;
-      await scope.upsert('players', { ...unstamped, removed: true, removedAt: new Date().toISOString(), cancelledBySelf: true, ...late.stamp });
-      if (guest.waitlisted !== true) await promoteFromWaitlist(scope, sessionId);
+      const removed = await softRemoveGuest(scope, sessionId, guest, true, late.stamp);
+      if (!removed) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+      if (removed.waitlisted !== true) await promoteFromWaitlist(scope, sessionId);
       return NextResponse.json({ success: true });
     }
 
