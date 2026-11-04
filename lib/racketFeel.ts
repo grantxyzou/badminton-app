@@ -45,6 +45,19 @@ export function hasFeel(feel: RacketFeel | undefined | null): feel is RacketFeel
 }
 
 /**
+ * Whether a typed-in racket's feel answers are enough to anchor the engine:
+ * balance AND shaft, the rule `feelAnchor` applies. ONE predicate, read by
+ * the engine's input and by the Fit page, which asks its own Balance
+ * question only while nothing can anchor (fit-5) — a page copy of this rule
+ * hid the question on balance alone, and a member who had given a balance
+ * but no shaft was unanchored with no way to say which balance they wanted.
+ */
+export function feelAnchors(item: Pick<GearItem, 'catalogId' | 'category' | 'feel'> | null | undefined): item is GearItem & { feel: RacketFeel & Required<Pick<RacketFeel, 'balance' | 'flex'>> } {
+  if (!item || item.catalogId || (item.category ?? 'racket') !== 'racket') return false;
+  return !!item.feel?.balance && !!item.feel.flex;
+}
+
+/**
  * The typed-in racket as an ANCHOR for the fit engine, or null.
  *
  * Balance and shaft are both required: those two are what `axesOf` cannot do
@@ -60,9 +73,8 @@ export function hasFeel(feel: RacketFeel | undefined | null): feel is RacketFeel
  * and never written anywhere.
  */
 export function feelAnchor(item: GearItem | null, level: FitLevel | null): CatalogItem | null {
-  if (!item || item.catalogId || (item.category ?? 'racket') !== 'racket') return null;
+  if (!feelAnchors(item)) return null;
   const feel = item.feel;
-  if (!feel?.balance || !feel.flex) return null;
   const attributes: Record<string, string | number> = {
     balance: feel.balance,
     flex: feel.flex,
