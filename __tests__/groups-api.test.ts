@@ -117,9 +117,10 @@ describe('GET /api/groups/preview — the unauthenticated door', () => {
     const res = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${invite.token}`));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ name: 'Tuesday Smash' });
-    // Explicit, because this route is reachable by anyone holding a link.
-    expect(Object.keys(body)).toEqual(['name']);
+    expect(body).toEqual({ name: 'Tuesday Smash', kind: 'invite' });
+    // Explicit, because this route is reachable by anyone holding a link. The
+    // name, and which kind of link the holder has (docs/plans/door-link.md).
+    expect(Object.keys(body).sort()).toEqual(['kind', 'name']);
   });
 
   it('accepts a code typed with the wrong case and spacing', async () => {

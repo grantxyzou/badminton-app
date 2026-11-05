@@ -271,6 +271,9 @@ covers that half). Today a web deploy *is* the iOS update.
       club the same way, from the URL the sticker holds.
     - *What the sticker holds.* One stable URL per club, decided with the
       request route and never changed after the stickers are written.
+      (2026-11-05: it is the club's door link, the claim link widened to
+      admit new names, and the reusable poster carries the same link:
+      `docs/plans/door-link.md`.)
       Until then the stickers stay blank. NFC Tools' "lock" is permanent,
       so they are never locked: a written URL can be rewritten.
   - *Not used:* Maps place cards and Siri location suggestions. Both tie a

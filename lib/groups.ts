@@ -31,7 +31,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer, getContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import { defaultMaxPlayers } from './defaults';
-import type { Group, GroupSettings, Membership, MembershipRole, NameReservation } from './types';
+import type { Group, GroupSettings, Membership, MembershipRole, NameReservation, StoredJoinRequest } from './types';
 
 // ---------------------------------------------------------------------------
 // Provisioning — both are new containers, so a route must ensure them before
@@ -620,7 +620,36 @@ export async function signOutEverywhereIn(
  * group write. Resolves `undefined` when the group record is missing.
  */
 export async function setClaimLinkId(groupId: string, claimLinkId: string): Promise<Group | undefined> {
-  return mutateGroup(groupId, (group) => ({ ...group, claimLinkId }));
+  // A new door link cancels the asks made with the old one, joins included
+  // (docs/plans/door-link.md): an old poster must not leave people waiting.
+  return mutateGroup(groupId, (group) => {
+    const { joinRequests: _dropped, ...rest } = group;
+    return { ...rest, claimLinkId };
+  });
+}
+
+/**
+ * Rewrite the club's join requests (lib/joinRequests.ts) under the group's
+ * etag. `update` returns the new list, or `null` to write nothing; the result
+ * is the group as written, or `undefined` when nothing was (no group, or the
+ * update declined).
+ */
+export async function updateJoinRequests(
+  groupId: string,
+  update: (open: StoredJoinRequest[], group: Group) => StoredJoinRequest[] | null,
+): Promise<Group | undefined> {
+  // Declining throws out of the mutate so nothing is written at all.
+  const DECLINED = Symbol('declined');
+  try {
+    return await mutateGroup(groupId, (group) => {
+      const next = update(group.joinRequests ?? [], group);
+      if (next === null) throw DECLINED;
+      return { ...group, joinRequests: next };
+    });
+  } catch (err) {
+    if (err === DECLINED) return undefined;
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

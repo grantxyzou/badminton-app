@@ -237,7 +237,9 @@ export default function AskAccessSheet({
                       ? t('askSending')
                       : phase === 'expired' || phase === 'error'
                         ? t('askAgain')
-                        : t('askCta')}
+                        : club
+                          ? t('claimCta')
+                          : t('askCta')}
                   </button>
                 </>
               )}

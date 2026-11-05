@@ -396,6 +396,14 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             }}
             onLogIn={() => setView('login')}
             onCreate={groupsOn ? () => setView('create') : undefined}
+            onDoor={(token) => {
+              // The club's door link on the one-link path: not an invite, so
+              // the ask opens instead of the sign-up form.
+              clearOnboardingResume();
+              setInitialInvite(null);
+              setClaimToken(token);
+              setView('login');
+            }}
           />
         ) : noClub ? (
           <NoClubView
@@ -689,7 +697,10 @@ function LogInView({
           // An approval signs them in with no credential. The reload the sign-in
           // triggers is async, so this lands before the page goes — Home then
           // opens the PIN sheet instead of letting them leave with nothing.
-          if (!hasPin) {
+          // Through the club's door link no PIN is offered (Grant, 2026-11-05:
+          // PIN is being phased out); Home asks them to keep the account with
+          // Google, Apple or an email instead.
+          if (!hasPin && !claim) {
             try {
               window.sessionStorage.setItem(OFFER_PIN_KEY, '1');
             } catch {
@@ -711,6 +722,7 @@ function SignUpView({
   onBack,
   onLogIn,
   onCreate,
+  onDoor,
 }: {
   authProviders: Provider[];
   initialInvite: Invite | null;
@@ -718,6 +730,8 @@ function SignUpView({
   onLogIn: () => void;
   /** Multi-group on: "No invite? Start your own club". Absent, the line only explains. */
   onCreate?: () => void;
+  /** The token turned out to be the club's door link (docs/plans/door-link.md). */
+  onDoor?: (token: string) => void;
 }) {
   const t = useTranslations('signedOut');
   const [entry, setEntry] = useState('');
@@ -750,7 +764,11 @@ function SignUpView({
         setError(res.status === 404 ? t('signup.notFound') : t('signup.failed'));
         return;
       }
-      const data = (await res.json()) as { name: string };
+      const data = (await res.json()) as { name: string; kind?: 'invite' | 'door' };
+      if (data.kind === 'door' && invite.token && onDoor) {
+        onDoor(invite.token);
+        return;
+      }
       setFound({ name: data.name, ...invite });
     } catch {
       setError(t('signup.failed'));

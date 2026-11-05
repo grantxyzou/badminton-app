@@ -8,12 +8,19 @@ import ActionRow from '@/components/primitives/ActionRow';
 import { useOnline } from '@/lib/useOnline';
 import { isRefused } from '@/lib/apiFetch';
 import { shareTextOrCopy } from '@/lib/shareText';
+import { invitePath } from '@/lib/inviteLink';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-/** The link a token travels as, from the window's own origin (as invites are, lib/useInvites.ts). */
+/**
+ * The link a token travels as, from the window's own origin (as invites are,
+ * lib/useInvites.ts). It is the club's DOOR link on the one-link path,
+ * `/bpm/j/<token>` (docs/plans/door-link.md), so it opens the app where it is
+ * installed. Links already sent as `?claim=` keep working.
+ */
 export function claimUrl(token: string): string {
-  return typeof window === 'undefined' ? `${BASE}/?claim=${token}` : `${window.location.origin}${BASE}/?claim=${token}`;
+  const path = invitePath(token, BASE);
+  return typeof window === 'undefined' ? path : `${window.location.origin}${path}`;
 }
 
 interface LinkState {

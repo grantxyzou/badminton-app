@@ -24,6 +24,8 @@ import type { Member } from '@/lib/types';
 import { groupIdWithHint } from '@/lib/groupContext';
 import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
 import { rosterMembers } from '@/lib/roster';
+import { addJoinRequest } from '@/lib/joinRequests';
+import { listOrganisers, readGroup, rosterNameHolder } from '@/lib/groups';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +75,28 @@ export async function POST(req: NextRequest) {
       askable = !!resource && isUnclaimed(resource);
     }
 
+    /*
+     * THE DOOR (docs/plans/door-link.md): through the link, a name that is not
+     * an unclaimed roster name is a person asking to JOIN. That is a name
+     * nobody on the roster holds, or one a signed-in member already holds (a
+     * new person who happens to share it). It becomes a request on the club,
+     * the organisers are told, and nothing happens until one approves; a
+     * taken name is shown to them as taken, and refused at approval, so the
+     * existing member's account is never touched. The answer is the same 200
+     * with a secret either way, so the link still says nothing about who is
+     * on the roster.
+     */
+    if (viaLink && groupId && !askable) {
+      const joined = await addJoinRequest(groupId, name);
+      if (joined) {
+        await notifyOrganisersOfJoin(groupId, joined.request.id, joined.request.name);
+        return NextResponse.json({ ok: true, secret: joined.secret });
+      }
+      // Full, or the club is gone: a secret that will never be approved, the
+      // same answer as every other miss.
+      return NextResponse.json({ ok: true, secret });
+    }
+
     if (memberId && askable && groupId) {
       /**
        * EVERY ASK IS ITS OWN ENTRY. Nobody displaces anybody.
@@ -114,9 +138,15 @@ export async function POST(req: NextRequest) {
          * than stacking another.
          */
         try {
-          const adminIds = (await rosterMembers(groupId))
-            .filter(({ member: m }) => m.role === 'admin')
-            .map(({ member: m }) => m.id);
+          // Through the door link only an ORGANISER can let anyone in
+          // (Grant, 2026-11-05), so only organisers are woken for it. An ask
+          // from Log in, by someone who forgot their PIN, still goes to every
+          // admin of the club.
+          const adminIds = viaLink
+            ? (await listOrganisers(groupId)).map((m) => m.memberId)
+            : (await rosterMembers(groupId))
+                .filter(({ member: m }) => m.role === 'admin')
+                .map(({ member: m }) => m.id);
           if (adminIds.length > 0) {
             await sendPushToMembers(adminIds, {
               title: 'Someone can’t sign in',
@@ -145,5 +175,31 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('POST /api/members/access-request failed:', err);
     return NextResponse.json({ error: 'request_failed' }, { status: 503 });
+  }
+}
+
+/**
+ * "Lin is asking to join BPM Core", to the club's organisers only (Grant,
+ * 2026-11-05: organisers approve). Best-effort after the request is stored,
+ * like every push: the inbox is the record. The name and the club, nothing
+ * else (lock-screen rule), and tagged per request so a second tap replaces
+ * the banner instead of stacking.
+ */
+async function notifyOrganisersOfJoin(groupId: string, requestId: string, name: string): Promise<void> {
+  try {
+    const [organisers, group] = await Promise.all([listOrganisers(groupId), readGroup(groupId)]);
+    const ids = organisers.map((m) => m.memberId);
+    if (ids.length === 0) return;
+    const club = group?.name?.trim() || 'your club';
+    // Taken already (a removed member's name): still asked, so say so up front.
+    const taken = (await rosterNameHolder(groupId, name)) !== null;
+    await sendPushToMembers(ids, {
+      title: 'Someone wants to join',
+      body: taken ? `${name} is asking to join ${club}. That name is taken.` : `${name} is asking to join ${club}.`,
+      url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/?tab=admin`,
+      tag: `join-${requestId}`,
+    });
+  } catch (err) {
+    console.error('join-request push failed:', err);
   }
 }

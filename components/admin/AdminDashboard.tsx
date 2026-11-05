@@ -16,6 +16,7 @@ import MetricsPage from './MetricsPage';
 import PaymentsCard from './CommandCenter/PaymentsCard';
 import AdminBackHeader from './AdminBackHeader';
 import InviteCard from './CommandCenter/InviteCard';
+import DoorPosterCard from './CommandCenter/DoorPosterCard';
 import GiftCardsCard from './CommandCenter/GiftCardsCard';
 import SignInReadinessCard from './CommandCenter/SignInReadinessCard';
 import PaymentsInboxCard from './CommandCenter/PaymentsInboxCard';
@@ -219,6 +220,8 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
         <div className="animate-slideInRight space-y-3">
           <AdminBackHeader onBack={goBack} title="Invite someone" />
           <InviteCard enabled groupName={group?.name} bare />
+          {/* The club's door link, for a chat or a wall (docs/plans/door-link.md). */}
+          <DoorPosterCard groupName={group?.name} />
         </div>
       );
     }
