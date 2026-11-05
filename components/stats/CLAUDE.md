@@ -158,12 +158,28 @@ conditional.
   the racket it was on (`pinLooseStrings`). Never read "the newest string in
   the bag" again; read `currentString` / `stringOn`. The same string may be on
   two rackets, so a tension write sends the item id. The add sheet's string
-  list is the active racket's (`stringsOn`). The card puts racket and string
-  together, a divider, then the spares (each opens its own sheet); the main
-  racket is drawn close up behind the card's right half, and the controls over
-  it are liquid glass (`.setup-glass`; the refraction filter only where
-  `navigator.userAgentData` says Chromium, because WebKit drops an SVG filter
-  in `backdrop-filter` and would lose the frost with it).
+  list is the active racket's (`stringsOn`).
+- **The Set-up card is design A** (Stats canvas, 2026-11-05, "Set-up card · A"):
+  - every item's name starts on the title's left edge and its ROLE leads the
+    sub-line ("Main racket · 4U · even", "Strings · 0.68mm · repulsion",
+    "Mains · …" / "Crosses · …"), never a label row above it ("vertical
+    cluttered"); the string's packet (`StringPackImage`, coil in the racket's
+    string colour) starts the strings line and the name is centred on it;
+  - no club counts on the card ("What the club plays" carries them), so the
+    card takes no `club` prop;
+  - "Racket and tension fitting" is a filled accent row in the main area
+    (`.setup-fit-row`), outside the error fork like the old "Your fit" link;
+  - the spares are ONE group below a rule: "Spare rackets", a row per spare
+    (its name only; tapping it opens its own sheet) and "+ Add a spare racket"
+    as the last row;
+  - the main racket's head is drawn close up across the right half from its
+    own 540 px render (`racketHeadSrc`, `public/rackets/head/`, written by
+    `render-racket-images.mjs --head`), faded in on its left by a mask —
+    never the 240 px list picture scaled up, which went soft ("i dont like the
+    fuzz");
+  - the controls over it are liquid glass (`.setup-glass`; the refraction
+    filter only where `navigator.userAgentData` says Chromium, because WebKit
+    drops an SVG filter in `backdrop-filter` and would lose the frost with it).
 - **`NextRacketCard`** renders only once a racket is in play; its tap carries the
   `rec_card_tap` beacon the rail card carries on the other branch.
 - **`SetupShareSheet`** answers "what are you playing?": preview is the exported
@@ -194,8 +210,10 @@ conditional.
   - **Lists and cards use images pre-rendered from that model**
     (`public/rackets/<catalogId>.webp`, `racketSrc`), written by
     `scripts/render-racket-images.mjs` against the dev-only
-    `/design/racket-render` page. Re-run it when a look changes: the coverage
-    test fails on a look with no image or an image with no look.
+    `/design/racket-render` page, and the Set-up card's close-up of the head
+    (`public/rackets/head/`, `racketHeadSrc`, the same script with `--head`).
+    Re-run both when a look changes: the coverage tests fail on a look with no
+    image or an image with no look.
   - **Live 3D only on big views**: `Racket3D` (falls back to the image without
     WebGL; no autorotate under reduced motion) inside `RacketLookSheet`
     ("3D rendering", marked Preview, on the racket's line sheet). The share card draws a still

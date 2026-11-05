@@ -179,7 +179,6 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
         activeName={activeName}
         gear={gear}
         picks={picks}
-        club={club}
         onOpenLine={openLine}
         onOpenSpare={(spareId) => setSheet((s) => ({ kind: 'line', category: 'racket', spareId, key: (s?.key ?? 0) + 1 }))}
         onShare={() => setShareOpen(true)}
