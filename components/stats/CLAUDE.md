@@ -108,7 +108,7 @@ conditional.
   disagree). `useCatalog` is a module-cached catalog read shared by the card and
   sheets.
 - **`lib/gearSetup.ts` owns the rules**, pure and tested: which item fills each
-  line (`setupLines` — active racket, newest live string, other rackets are
+  line (`setupLines` — active racket, THAT racket's string, other rackets are
   spares), the spec lines, `clubOthers` (reads ONLY `tallyClubGear`'s
   cohort-cut entries; the member is counted, so the fact is `count - 1`; keyed
   exactly as the tally keys), `blankStringPairing` (a pairing is quoted only
@@ -128,8 +128,9 @@ conditional.
 - **A hybrid's crosses string is NESTED on the mains string item**
   (`GearItem.crosses`, `lib/stringCrosses.ts`, 2026-09-15), written only by
   PATCH `itemCrosses` and carried through PUT like `feel`/`look`. Not a second
-  string item, on purpose: seven readers take "the member's string" as the LAST
-  string in the bag (`clubTension`, `fitVerdict`, `frameDetail`, `shareCard`,
+  string item, on purpose: seven readers take "the member's string" as the
+  ACTIVE racket's string (`currentString` / `stringOn` in `lib/activeRacket.ts`;
+  `clubTension`, `fitVerdict`, `frameDetail`, `shareCard`,
   `setupLines`, the fit-verdict and share-card routes), and a crosses item
   would silently become it — the club band, the verdict and the share card
   would all read a figure conventionally 2 lb high. Nested, they all keep
@@ -148,6 +149,21 @@ conditional.
   the same silence. Its classes are `tension-field-*` — `.setup-tension` is the
   CARD's figure, and reusing that name restyled it.
 - **`SetupLineSheet`**: one filled line's management. Remove asks once. No Retire.
+  With `spareId` it is a SPARE's sheet: its own string, "Make it your main
+  racket", 3D, delete.
+- **A string is ON a racket** (`GearItem.racketId`, 2026-11-05,
+  `docs/plans/string-follows-racket.md`): each racket keeps its own string and
+  tension, so a swap shows the new racket's. A string naming no racket is the
+  active racket's until the pointer next moves, when `writeGearDoc` pins it to
+  the racket it was on (`pinLooseStrings`). Never read "the newest string in
+  the bag" again; read `currentString` / `stringOn`. The same string may be on
+  two rackets, so a tension write sends the item id. The add sheet's string
+  list is the active racket's (`stringsOn`). The card puts racket and string
+  together, a divider, then the spares (each opens its own sheet); the main
+  racket is drawn close up behind the card's right half, and the controls over
+  it are liquid glass (`.setup-glass`; the refraction filter only where
+  `navigator.userAgentData` says Chromium, because WebKit drops an SVG filter
+  in `backdrop-filter` and would lose the frost with it).
 - **`NextRacketCard`** renders only once a racket is in play; its tap carries the
   `rec_card_tap` beacon the rail card carries on the other branch.
 - **`SetupShareSheet`** answers "what are you playing?": preview is the exported

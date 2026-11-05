@@ -798,9 +798,15 @@ export interface GearItem {
   /** String-specific, and only for a HYBRID: the crosses string, when it is a
    *  different string from this item (the mains). Nested rather than a second
    *  string item on purpose: seven readers take "the member's string" as the
-   *  last string in the bag, and a crosses item would become it. Absent means
+   *  active racket's string (`currentString`), and a crosses item would become it. Absent means
    *  one string throughout. See `lib/stringCrosses.ts`. */
   crosses?: StringCrosses;
+  /** String-specific: the bag item id of the racket this string is ON
+   *  (2026-11-05). Each racket keeps its own string and tension, so swapping
+   *  rackets shows the new racket's string, not the last one added. Absent on
+   *  a string written before then: it belongs to the active racket until the
+   *  first swap pins it (`stringOn` / `pinLooseStrings` in `lib/activeRacket.ts`). */
+  racketId?: string;
 }
 
 /** The crosses half of a hybrid stringing. */

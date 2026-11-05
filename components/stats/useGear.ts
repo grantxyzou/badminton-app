@@ -280,6 +280,10 @@ export function useGear(name: string | null): UseGear {
     item: CatalogItem,
     extra?: { tensionLbs?: number; makeActive?: boolean },
   ): Promise<GearResult> => {
+    // A string goes ON a racket: the one in play when it was picked. Named
+    // here rather than left to the route's default, so a swap racing the add
+    // cannot put it on the other frame.
+    const onRacket = (item.category ?? 'racket') === 'string' ? activeRacket(gearRef.current)?.id : undefined;
     const res = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -291,9 +295,15 @@ export function useGear(name: string | null): UseGear {
           catalogId: item.id,
           category: item.category ?? 'racket',
           label: `${item.brand} ${item.model}`,
+          ...(onRacket ? { racketId: onRacket } : null),
         },
       }),
     }));
+    const category = item.category ?? 'racket';
+    const added = res.ok
+      ? gearRef.current?.items.find((i) => i && i.catalogId === item.id && (i.category ?? 'racket') === category
+          && (category !== 'string' || !onRacket || i.racketId === onRacket))
+      : undefined;
     // `makeActive` exists because POST and the UI mean different things by
     // "pick this racket". POST's contract is "append to my bag", and appending
     // must never silently move `activeRacketId` — a spare is not a change of
@@ -319,6 +329,7 @@ export function useGear(name: string | null): UseGear {
         body: JSON.stringify({
           name,
           item: {
+            ...(added ? { id: added.id } : null),
             catalogId: item.id,
             category: item.category ?? 'racket',
             label: `${item.brand} ${item.model}`,
@@ -340,8 +351,6 @@ export function useGear(name: string | null): UseGear {
       if (!withTension.ok) return { ok: false, reason: 'tension_not_saved' };
     }
     if (!res.ok) return res;
-    const category = item.category ?? 'racket';
-    const added = gearRef.current?.items.find((i) => i && i.catalogId === item.id && (i.category ?? 'racket') === category);
     return { ok: true, itemId: added?.id };
   }, [mutate, name]);
 
@@ -404,6 +413,9 @@ export function useGear(name: string | null): UseGear {
       body: JSON.stringify({
         name,
         item: {
+          // The id says WHICH string: the same catalog string can be on two
+          // rackets now, each at its own tension.
+          id: item.id,
           catalogId: item.catalogId,
           category: item.category ?? 'string',
           label: item.label,

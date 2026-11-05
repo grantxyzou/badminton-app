@@ -1024,7 +1024,6 @@
         "swapIn": "换上",
         "arriveHint": "整张卡只有两行。填好后群组统计就能用上，穿线磅数也能按你的球拍来定，而不是按水平。",
         "othersPlay": "另有 {count} 人在用",
-        "othersString": "群组里另有 {count} 人用这款球线",
         "pairSuggestion": "这支球拍我们建议搭配 {string}，{lb} 磅",
         "pairSuggestionNoLb": "这支球拍我们建议搭配 {string}",
         "addLb": "+ 穿线磅数",
@@ -1033,7 +1032,12 @@
         "typeRepulsion": "弹性",
         "typeControl": "控制",
         "typeHybrid": "混合",
-        "typeAllRound": "全面"
+        "typeAllRound": "全面",
+        "spareStrung": "穿的是 {string}",
+        "spareStrungLb": "穿的是 {string}，{lb} 磅",
+        "spareUnstrung": "还没有记录穿线",
+        "useAsMain": "设为主力球拍",
+        "spareEyebrow": "备用球拍"
       },
       "picksLocked": "<link>登录</link>后查看为你挑的装备。",
       "clubLocked": "<link>登录</link>后看看大家都在用什么。",

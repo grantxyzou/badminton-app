@@ -8,7 +8,7 @@ import { groupScope, groupDocId } from '@/lib/groupScope';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { readGearOrNull } from '@/lib/racketFitInput';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
-import { activeRacket } from '@/lib/activeRacket';
+import { activeRacket, currentString } from '@/lib/activeRacket';
 import { buildProfile } from '@/lib/racketProfile';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import { computeFitFacts, type FitFacts } from '@/lib/fitVerdict';
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
     const frameRow = frameId ? await catalogRow(frameId, 'racket') : null;
     if (prospective && !frameRow) return NextResponse.json({ error: 'frame_not_found' }, { status: 404 });
 
-    const newest = prospective ? null : [...(gear?.items ?? [])].reverse().find((i) => i && !i.retiredAt && i.category === 'string');
+    const newest = prospective ? null : currentString(gear);
     const stringRow = newest?.catalogId ? await catalogRow(newest.catalogId, 'string') : null;
     const profile = buildProfile({ ratings: await latestRatings(memberId), gear });
 

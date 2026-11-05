@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
+import { racketSrc } from '../../lib/racketLook';
 import { NextIntlClientProvider } from 'next-intl';
 import GearSetupCard from '../../components/stats/GearSetupCard';
 import type { UseGear } from '../../components/stats/useGear';
@@ -63,7 +64,7 @@ function fakePicks(stringPick: UseGearPicks['view']['string'] = { status: 'parke
 
 const noClub: UseClubGear = { entries: [], status: 'ready', retry: vi.fn() };
 
-function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubGear; onOpenLine?: (c: string) => void; onAddTension?: (i: GearItem) => void; onShare?: () => void; onAddSpare?: () => void } = {}) {
+function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubGear; onOpenLine?: (c: string) => void; onAddTension?: (i: GearItem) => void; onShare?: () => void; onAddSpare?: () => void; onOpenSpare?: (id: string) => void } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <GearSetupCard
@@ -76,6 +77,7 @@ function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubG
         onShare={opts.onShare}
         onAddTension={opts.onAddTension}
         onAddSpare={opts.onAddSpare}
+        onOpenSpare={opts.onOpenSpare}
       />
     </NextIntlClientProvider>,
   );
@@ -171,18 +173,32 @@ describe('GearSetupCard — complete, with a spare', () => {
     expect(screen.getByText('26')).toBeTruthy();
   });
 
-  it('Swap in activates the spare', async () => {
-    const gear = fakeGear(doc([AF79, NF800], 'r1'));
-    renderCard(gear);
-    fireEvent.click(screen.getByRole('button', { name: /Swap in — Yonex Nanoflare 800/ }));
-    await waitFor(() => expect(gear.activate).toHaveBeenCalledWith('r2'));
+  // Grant, 2026-11-05: "Racket and String should be next to each other then a
+  // divider below show spare rackets. Clicking on the spare would bring up
+  // their sheet."
+  it('a spare sits below the racket and its string, and tapping it opens ITS sheet', () => {
+    const onOpenSpare = vi.fn();
+    const { container } = renderCard(fakeGear(doc([AF79, NF800, BG65], 'r1')), { onOpenSpare });
+    const lines = container.querySelector('.setup-lines')!;
+    expect(lines.textContent).toContain('Yonex BG65');
+    expect(lines.textContent).not.toContain('Yonex Nanoflare 800');
+    fireEvent.click(within(container.querySelector('.setup-spares') as HTMLElement).getByRole('button', { name: /Yonex Nanoflare 800/ }));
+    expect(onOpenSpare).toHaveBeenCalledWith('r2');
   });
 
-  it('a refused swap is rendered, not swallowed', async () => {
-    const gear = fakeGear(doc([AF79, NF800], 'r1'), { activate: vi.fn(async () => ({ ok: false as const, reason: 'rate_limited' as const })) });
-    renderCard(gear);
-    fireEvent.click(screen.getByRole('button', { name: /Swap in/ }));
-    expect(await screen.findByRole('alert')).toBeTruthy();
+  it('a spare row says which string is on IT, and the Strings line keeps the main racket\'s', () => {
+    const onSpare: GearItem = { id: 's2', catalogId: null, category: 'string', label: 'Yonex BG80', tensionLbs: 28, racketId: 'r2' };
+    renderCard(fakeGear(doc([AF79, NF800, { ...BG65, racketId: 'r1', tensionLbs: 24 }, onSpare], 'r1')));
+    expect(screen.getByText('Strung with Yonex BG80 at 28 lb')).toBeTruthy();
+    expect(screen.getByText('24')).toBeTruthy();
+    expect(screen.queryByText('28')).toBeNull();
+  });
+
+  it('only the main racket is drawn on the card', () => {
+    const { container } = renderCard(fakeGear(doc([AF79, NF800], 'r1')));
+    const pics = container.querySelectorAll('.setup-corner img');
+    expect(pics).toHaveLength(1);
+    expect(pics[0].getAttribute('src')).toBe(racketSrc('rk-af79'));
   });
 
   it('a string with no tension shows an empty slot that says what it wants — never a zero', () => {
@@ -214,10 +230,12 @@ describe('GearSetupCard — adding a spare is a line on the card', () => {
     expect(screen.queryByRole('button', { name: /Add a spare racket/ })).toBeNull();
   });
 
-  it('the string line counts the group in its own words', async () => {
+  // Grant, 2026-11-05: "Dont need · 3 others in this group use this string".
+  it('the string line carries no club count', async () => {
     const club: UseClubGear = { entries: [{ category: 'string', label: 'Yonex BG65', count: 4 }], status: 'ready', retry: vi.fn() };
     renderCard(fakeGear(doc([AF79, { ...BG65, tensionLbs: 26 }], 'r1')), { club });
-    expect(await screen.findByText(/3 others in this group use this string/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Yonex BG65')).toBeTruthy());
+    expect(screen.queryByText(/in this group use/)).toBeNull();
   });
 });
 

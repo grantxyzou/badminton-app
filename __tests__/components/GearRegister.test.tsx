@@ -138,8 +138,11 @@ describe('GearRegister — swapping rackets', () => {
     mount();
     await screen.findByText('Set-up');
     await waitFor(() => expect(calls((u) => u.includes('/api/recommend')).length).toBe(2));
+    // A spare's row opens its sheet; "Make it your main racket" swaps it in.
     for (let i = 0; i < 3; i++) {
-      const swap = await screen.findByRole('button', { name: /^Swap in/ });
+      const spare = await screen.findByRole('button', { name: /^Spare/ });
+      await act(async () => { spare.click(); });
+      const swap = await screen.findByRole('button', { name: /Make it your main racket/ });
       await act(async () => { swap.click(); await new Promise((r) => setTimeout(r, 20)); });
     }
     const patches = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH');
