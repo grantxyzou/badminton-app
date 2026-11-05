@@ -10,10 +10,8 @@ import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 import { useCatalog } from './useCatalog';
 import type { UseGear } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
-import type { UseClubGear } from './useClubGear';
 import {
   blankStringPairing,
-  clubOthers,
   indexCatalog,
   racketFeelLine,
   racketSpecLine,
@@ -24,9 +22,8 @@ import {
 import type { GearItem } from '@/lib/types';
 import StringPackImage from '@/components/stringing/StringPackImage';
 import { stringPackSrc } from '@/lib/stringPackSrc';
-import { racketSrc } from '@/lib/racketLook';
+import { racketHeadSrc } from '@/lib/racketLook';
 import { STOCK_STRING } from '@/lib/racketCustom';
-import { stringOn } from '@/lib/activeRacket';
 
 export interface GearSetupCardProps {
   activeName: string | null;
@@ -34,8 +31,6 @@ export interface GearSetupCardProps {
   gear: UseGear;
   /** The register's single recommend reader — the blank strings line's pairing. */
   picks: UseGearPicks;
-  /** The register's single tally read — the club fact on a filled line. */
-  club: UseClubGear;
   /** A line was tapped: name it (blank) or manage it (filled). */
   onOpenLine: (category: SetupCategory) => void;
   /** Opens the share sheet. Offered only once both lines are filled — the
@@ -61,7 +56,7 @@ export interface GearSetupCardProps {
  * "Set-up" — the Equipment register as ONE spec card (claude.ai/design
  * "Equipment redesign", Turn 2). Two lines, Racket and Strings, because those
  * are the two the catalog can fill; a line is either a dashed slot that asks
- * to be named or a filled row that earns a club fact.
+ * to be named or a filled row.
  *
  * It holds no gear state: the doc, the picks and the tally all arrive as the
  * register's single instances, so adding from a sheet updates this card with
@@ -71,7 +66,7 @@ export interface GearSetupCardProps {
  * must not read as an empty one — dashed slots over a bag that failed to load
  * invite logging a racket that is already logged.
  */
-export default function GearSetupCard({ activeName, gear, picks, club, onOpenLine, onOpenSpare, onShare, onOpenFit, onAddTension, onAddSpare }: GearSetupCardProps) {
+export default function GearSetupCard({ activeName, gear, picks, onOpenLine, onOpenSpare, onShare, onOpenFit, onAddTension, onAddSpare }: GearSetupCardProps) {
   const t = useTranslations('stats.gear');
   const ts = useTranslations('stats.gear.setup');
   const signInLink = useSignInLink();
@@ -105,22 +100,20 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
   if (!gear.loaded) return <CardSkeleton height={200} />;
 
   const { racket, spares, string, filled } = setupLines(gear.loadError ? null : gear.gear);
-  // Club facts only from a tally that actually loaded; an errored or refused
-  // tally has no numbers, and the line stands on its spec alone.
-  const tally = club.status === 'ready' ? club.entries : null;
 
-  function racketSub(item: GearItem): string | null {
+  // Each line names itself in its sub-line ("Main racket · 4U · even",
+  // "Strings · 0.68mm · repulsion"): the label rows above every line stacked
+  // the card three lines deep (Grant on the canvas, 2026-11-05: "vertical
+  // cluttered"). How many others play the racket or the string is not on the
+  // card; "What the club plays" carries it.
+  const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' · ');
+  function racketSub(item: GearItem): string {
     // A typed-in racket describes itself in the member's own answers.
     const spec = item.catalogId ? racketSpecLine(catalog.get(item.catalogId)) : racketFeelLine(item.feel, (k) => ts(k));
-    const others = clubOthers(tally, item);
-    return [spec, others ? ts('othersPlay', { count: others }) : null].filter(Boolean).join(' · ') || null;
+    return join(ts('mainRacket'), spec);
   }
-
-  // The string's spec alone: how many others use it was dropped from the
-  // card (Grant, 2026-11-05: "Dont need · 3 others in this group use this
-  // string"). "What the club plays" still carries the count.
-  function stringSub(item: GearItem): string | null {
-    return item.catalogId ? stringSpecLine(catalog.get(item.catalogId), (k) => ts(k)) : null;
+  function stringSpec(catalogId: string | null): string | null {
+    return catalogId ? stringSpecLine(catalog.get(catalogId), (k) => ts(k)) : null;
   }
 
   // The pairing for a BLANK strings line — one rule, shared with the
@@ -131,18 +124,21 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
         ? ts('pairSuggestion', { string: pairing.item.model, lb: pairing.tensionLbs })
         : ts('pairSuggestionNoLb', { string: pairing.item.model }))
     : null;
-
+  // The packet's string is drawn in the colour the RACKET is strung in: the
+  // member's pick, else the stock white every racket picture shows.
+  const coil = racket?.look?.string ?? STOCK_STRING;
 
   return (
     <div className={`glass-card p-5 setup-card${refract ? ' setup-card--refract' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-      {/* The main racket, close up, across the right half of the card (Grant,
-          2026-11-05: "Only for main racket", "bigger more close up and takes
-          1.5/3 of the card"). Its pre-rendered picture, clipped by the card
-          and faded into it on the left; decorative, so no name and no tap. */}
+      {/* The main racket's head, close up and sharp, across the right half of
+          the card (Grant, 2026-11-05: "Only for main racket", "bigger more
+          close up and takes 1.5/3 of the card"; design A on the canvas). Its
+          own large render (`racketHeadSrc`), never the list picture scaled up,
+          faded into the card on its left. Decorative: no name, no tap. */}
       {racket && !gear.loadError && (
         <span className="setup-corner" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element -- a same-origin pre-rendered WebP; next/image adds nothing here. */}
-          <img key={racket.id} src={racketSrc(racket.catalogId)} alt="" width={240} height={624} decoding="async" className="motion-fade" />
+          <img key={racket.id} src={racketHeadSrc(racket.catalogId)} alt="" width={540} height={646} decoding="async" className="motion-fade" />
         </span>
       )}
       {/* The lens the glass controls bend the racket through (see `refract`). */}
@@ -170,72 +166,61 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
         )}
       </div>
 
-      {gear.loadError ? (
-        <ErrorState
-          message={t('kitError')}
-          action={
-            <button type="button" className="cc-btn cc-btn-ghost" onClick={gear.reload}>
-              {t('retry')}
-            </button>
-          }
-        />
-      ) : (
-        <>
-          <div className="setup-lines">
-            {/* Main racket. No pill on a filled line: the label already says
-                which racket this is (Stats canvas, 2026-10-19). */}
+      <div className="setup-main">
+        {gear.loadError ? (
+          <ErrorState
+            message={t('kitError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={gear.reload}>
+                {t('retry')}
+              </button>
+            }
+          />
+        ) : (
+          <>
+            {/* Main racket: its name on the title's left edge. */}
             <button
               type="button"
-              className={`setup-line${racket ? '' : ' setup-line--blank'}`}
+              className={`setup-item${racket ? '' : ' setup-item--blank'}`}
               onClick={() => onOpenLine('racket')}
               disabled={!gear.online}
             >
-              <span className="setup-line-label">{ts('mainRacket')}</span>
-              <span className="setup-line-body">
+              <span className="setup-item-body">
                 <span className="setup-line-value">{racket ? racket.label : ts('tapToName')}</span>
-                {racket && racketSub(racket) && <span className="setup-line-sub">{racketSub(racket)}</span>}
+                <span className="setup-line-sub">{racket ? racketSub(racket) : ts('mainRacket')}</span>
               </span>
               {!racket && <EditGlyph />}
             </button>
 
-            {/* Strings. A hybrid is still ONE line: mains and crosses stacked,
-                each with its own figure, and the whole line opens the sheet
-                where both tensions are set. */}
+            {/* Strings: the packet, then the string centred on it, then its
+                tension. A hybrid is still ONE line: mains over crosses, each
+                with its own packet and figure, and the whole line opens the
+                sheet where both tensions are set. */}
             {string?.crosses ? (
-              <button type="button" className="setup-line" onClick={() => onOpenLine('string')} disabled={!gear.online}>
-                <StringsLabel text={t('catString')} item={string} racket={racket} />
-                <span className="setup-line-body setup-line-pair">
-                  {([
-                    ['mains', string.label, string.tensionLbs],
-                    ['crosses', string.crosses.label, string.crosses.tensionLbs],
-                  ] as const).map(([role, name, lbs]) => (
-                    <span key={role} className="setup-line-pair-row">
-                      <span className="setup-line-role">{ts(role)}</span>
+              <button type="button" className="setup-item setup-item--pair" onClick={() => onOpenLine('string')} disabled={!gear.online}>
+                {([
+                  ['mains', string.catalogId, string.label, string.tensionLbs],
+                  ['crosses', string.crosses.catalogId, string.crosses.label, string.crosses.tensionLbs],
+                ] as const).map(([role, catalogId, name, lbs]) => (
+                  <span key={role} className="setup-item-row">
+                    <Packet catalogId={catalogId} coil={coil} />
+                    <span className="setup-item-body">
                       <span className="setup-line-value">{name}</span>
-                      {typeof lbs === 'number' && (
-                        <span className="setup-tension setup-glass">
-                          <span key={lbs} className="setup-tension-value animate-count-tick">{lbs}</span>
-                          <span className="setup-tension-unit">{t('lb')}</span>
-                        </span>
-                      )}
+                      <span className="setup-line-sub">{join(ts(role), stringSpec(catalogId))}</span>
                     </span>
-                  ))}
-                </span>
+                    {typeof lbs === 'number' && <Tension lbs={lbs} unit={t('lb')} />}
+                  </span>
+                ))}
               </button>
             ) : string && !(typeof string.tensionLbs === 'number') && onAddTension ? (
               /* A div, not a button, when filled with a tension slot: the slot
                  is its own button and buttons do not nest. */
-              <div className="setup-line">
-                <button
-                  type="button"
-                  onClick={() => onOpenLine('string')}
-                  disabled={!gear.online}
-                  className="setup-line-hit"
-                >
-                  <StringsLabel text={t('catString')} item={string} racket={racket} />
-                  <span className="setup-line-body">
+              <div className="setup-item">
+                <button type="button" onClick={() => onOpenLine('string')} disabled={!gear.online} className="setup-item-hit">
+                  <Packet catalogId={string.catalogId} coil={coil} />
+                  <span className="setup-item-body">
                     <span className="setup-line-value">{string.label}</span>
-                    {stringSub(string) && <span className="setup-line-sub">{stringSub(string)}</span>}
+                    <span className="setup-line-sub">{join(t('catString'), stringSpec(string.catalogId))}</span>
                   </span>
                 </button>
                 <button type="button" className="setup-chip-dashed setup-glass" onClick={() => onAddTension(string)} disabled={gear.busy}>
@@ -245,107 +230,95 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
             ) : (
               <button
                 type="button"
-                className={`setup-line${string ? '' : ' setup-line--blank'}`}
+                className={`setup-item${string ? '' : ' setup-item--blank'}`}
                 onClick={() => onOpenLine('string')}
                 disabled={!gear.online}
               >
-                <StringsLabel text={t('catString')} item={string} racket={racket} />
-                <span className="setup-line-body">
+                {string && <Packet catalogId={string.catalogId} coil={coil} />}
+                <span className="setup-item-body">
                   <span className="setup-line-value">{string ? string.label : ts('tapToName')}</span>
-                  {string && stringSub(string) && <span className="setup-line-sub">{stringSub(string)}</span>}
+                  <span className="setup-line-sub">{string ? join(t('catString'), stringSpec(string.catalogId)) : t('catString')}</span>
                   {!string && pairingText && <span className="setup-line-sub setup-line-sub--accent">{pairingText}</span>}
                 </span>
                 {string && typeof string.tensionLbs === 'number' ? (
-                  <span className="setup-tension setup-glass">
-                    {/* Keyed: a just-saved tension ticks in, instead of the
-                        number silently being different when the sheet closes. */}
-                    <span key={string.tensionLbs} className="setup-tension-value animate-count-tick">{string.tensionLbs}</span>
-                    <span className="setup-tension-unit">{t('lb')}</span>
-                  </span>
+                  <Tension lbs={string.tensionLbs} unit={t('lb')} />
                 ) : !string ? (
                   <EditGlyph accent={!!pairingText} />
                 ) : null}
               </button>
             )}
+
+            {filled === 0 && (
+              <p style={{ margin: 0, fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
+                {ts('arriveHint')}
+              </p>
+            )}
+          </>
+        )}
+
+        {/* "Racket and tension fitting", in the main area under the racket and
+            its string (Grant, 2026-11-05). OUTSIDE the error fork and never
+            disabled: on the day the gear read fails it is the only door to the
+            fit page, and so the only way to clear a stored comfort answer. */}
+        {onOpenFit && (
+          <button type="button" className="setup-fit-row" onClick={onOpenFit}>
+            {ts('fitting')}
+            <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>chevron_right</span>
+          </button>
+        )}
+      </div>
+
+      {/* Spare rackets, below a divider (Grant, 2026-11-05: "Racket and String
+          should be next to each other then a divider below show spare
+          rackets"), as one group with "Add a spare racket" ("a little
+          disjointed" when the add link sat alone in a footer). A spare's row
+          is its name only ("Dont show the string for spare"); tapping it opens
+          that racket's own sheet, where its string is and it can be swapped
+          in. Only once there is a racket to be a spare TO, never over a bag
+          that failed to load. */}
+      {racket && !gear.loadError && (spares.length > 0 || onAddSpare) && (
+        <div className="setup-spares">
+          <p className="section-label-muted" style={{ margin: 0, fontSize: 'var(--fs-2xs)' }}>{ts('spareRackets')}</p>
+          <div className="setup-spare-rows">
+            {spares.map((spare) => (
+              <button
+                key={spare.id}
+                type="button"
+                className="setup-spare-row"
+                onClick={() => onOpenSpare?.(spare.id)}
+                disabled={!gear.online || !onOpenSpare}
+              >
+                <span className="setup-spare-name">{spare.label}</span>
+                <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>chevron_right</span>
+              </button>
+            ))}
+            {onAddSpare && (
+              <button type="button" className="setup-spare-row setup-spare-row--add" onClick={onAddSpare} disabled={!gear.online}>
+                <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>add</span>
+                {ts('addSpare')}
+              </button>
+            )}
           </div>
-
-          {/* Spares, below a divider (Grant, 2026-11-05: "Racket and String
-              should be next to each other then a divider below show spare
-              rackets"). The racket and its string are one set-up; a spare is
-              a different racket with its own string, so each row says which,
-              and opens that racket's own sheet, where it can be swapped in. */}
-          {spares.length > 0 && (
-            <div className="setup-spares">
-              {spares.map((spare) => {
-                const on = stringOn(gear.gear, spare);
-                const strung = on
-                  ? (typeof on.tensionLbs === 'number' ? ts('spareStrungLb', { string: on.label, lb: on.tensionLbs }) : ts('spareStrung', { string: on.label }))
-                  : null;
-                return (
-                  <button
-                    key={spare.id}
-                    type="button"
-                    className="setup-line"
-                    onClick={() => onOpenSpare?.(spare.id)}
-                    disabled={!gear.online || !onOpenSpare}
-                  >
-                    <span className="setup-line-label">{ts('spare')}</span>
-                    <span className="setup-line-body">
-                      <span className="setup-line-value setup-line-spare">{spare.label}</span>
-                      {strung && <span className="setup-line-sub">{strung}</span>}
-                    </span>
-                    <span className="material-icons setup-glass setup-glass-icon" aria-hidden="true">chevron_right</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {filled === 0 && (
-            <p style={{ margin: 0, fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
-              {ts('arriveHint')}
-            </p>
-          )}
-
-        </>
-      )}
-
-      {/* The footer: two optional extras at one quiet weight. "Add a spare"
-          only once there is a racket to be a spare TO, and never over a bag
-          that failed to load; "Your fit" ALWAYS, outside the error fork (the
-          always-there door rule). */}
-      {(onOpenFit || (racket && onAddSpare && !gear.loadError)) && (
-        <div className="setup-footer">
-          {racket && onAddSpare && !gear.loadError ? (
-            <button type="button" className="setup-link setup-footer-link" onClick={onAddSpare} disabled={!gear.online}>
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>add</span>
-              {ts('addSpare')}
-            </button>
-          ) : <span />}
-          {onOpenFit && (
-            <button type="button" className="setup-link setup-footer-link" onClick={onOpenFit}>
-              {t('fitTitle')}
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>chevron_right</span>
-            </button>
-          )}
         </div>
       )}
     </div>
   );
 }
 
-/**
- * The Strings line's label, with the string's packet under it when the catalog
- * string has one. The packet's string is drawn in the colour the RACKET is
- * strung in — the member's pick, else the stock white every racket picture
- * shows — so the two never disagree on the card.
- */
-function StringsLabel({ text, item, racket }: { text: string; item: GearItem | null; racket: GearItem | null }) {
-  if (!item || !stringPackSrc(item.catalogId)) return <span className="setup-line-label">{text}</span>;
+/** A catalog string's packet at the start of its line; nothing for a string
+ *  with no packet, so its name still starts on the title's edge. */
+function Packet({ catalogId, coil }: { catalogId: string | null; coil: string }) {
+  if (!stringPackSrc(catalogId)) return null;
+  return <StringPackImage catalogId={catalogId} size="line" coil={coil} />;
+}
+
+function Tension({ lbs, unit }: { lbs: number; unit: string }) {
   return (
-    <span className="setup-line-label setup-line-label--pack">
-      {text}
-      <StringPackImage catalogId={item.catalogId} size="line" coil={racket?.look?.string ?? STOCK_STRING} />
+    <span className="setup-tension setup-glass">
+      {/* Keyed: a just-saved tension ticks in, instead of the number silently
+          being different when the sheet closes. */}
+      <span key={lbs} className="setup-tension-value animate-count-tick">{lbs}</span>
+      <span className="setup-tension-unit">{unit}</span>
     </span>
   );
 }

@@ -6366,34 +6366,36 @@ html:root .swipe-row {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.setup-lines { display: flex; flex-direction: column; gap: var(--space-4); }
-.setup-line {
+/* The Set-up card, design A (2026-11-05, the Stats canvas): every item's
+   name on the title's left edge, its role leading the sub-line; the main
+   racket's head close up across the right half; the fitting door in the main
+   area; the spares as one group below a rule. */
+.setup-main { display: flex; flex-direction: column; gap: var(--space-4); }
+.setup-item {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-3);
   width: 100%;
-  padding: 0 0 var(--space-4);
-  /* Lines are set apart by space, not a hairline (fill-only / no hard
-     dividers, 2026-11-04). The dashed underline of an EMPTY slot below
-     stays: it marks an absence, not a row boundary. */
+  padding: 0;
   border: none;
   background: transparent;
   text-align: left;
   font: inherit;
   color: inherit;
 }
-button.setup-line { cursor: pointer; }
-button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
-.setup-line:last-child { padding-bottom: 0; }
-.setup-line--blank { border-bottom: 1px dashed var(--divider-dashed); }
-.setup-line--blank:last-child { border-bottom: 1px dashed var(--divider-dashed); padding-bottom: var(--space-4); }
-/* The tappable part of a line that ALSO holds its own control (the empty
-   tension slot): buttons cannot nest, so the line is a div and this is the
-   button inside it, carrying the line's layout but none of its border. */
-.setup-line-hit {
+button.setup-item { cursor: pointer; }
+button.setup-item:disabled { opacity: 0.5; pointer-events: none; }
+/* An empty item keeps the dashed underline: it marks an absence. */
+.setup-item--blank { padding-bottom: var(--space-3); border-bottom: 1px dashed var(--divider-dashed); }
+.setup-item--pair { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+.setup-item-row { display: flex; align-items: center; gap: var(--space-3); }
+.setup-item-body { flex: 1; min-width: 0; }
+/* The tappable part of an item that ALSO holds its own control (the empty
+   tension slot): buttons cannot nest. */
+.setup-item-hit {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-3);
   flex: 1;
   min-width: 0;
   padding: 0;
@@ -6404,50 +6406,92 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
   color: inherit;
   cursor: pointer;
 }
-.setup-line-hit:disabled { opacity: 0.5; pointer-events: none; }
-.setup-line-label {
-  /* Wide enough for "Main racket" on one line (2026-10-19). */
-  width: 88px;
-  flex: 0 0 auto;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+.setup-item-hit:disabled { opacity: 0.5; pointer-events: none; }
+/* "Racket and tension fitting": a filled accent row, the one door the card
+   leads with after the set-up itself. */
+.setup-fit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  /* Frosted like the glass controls: the racket's head can reach behind it. */
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: blur(10px) saturate(1.6);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+  text-align: left;
+  cursor: pointer;
 }
-/* The Strings label with the string's packet under it. */
-/* The spares, set apart from the racket-and-string set-up by one rule. */
+/* The spares: one group below one rule, a row per spare and the add row. */
 .setup-spares {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   padding-top: var(--space-4);
   border-top: 1px solid var(--divider-dashed);
 }
-.setup-spares .setup-line { align-items: center; padding-bottom: 0; }
-.setup-line-label--pack { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
-/* The main racket close up (2026-11-05): its picture across the right half
-   of the card, head filling it, handle off the bottom edge, faded into the
-   card on its left so the lines over it stay readable. Behind every line. */
+.setup-spare-rows { display: flex; flex-direction: column; gap: var(--space-05); border-radius: var(--radius-lg); overflow: hidden; }
+.setup-spare-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  background: var(--inner-card-bg);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.setup-spare-row:disabled { opacity: 0.5; pointer-events: none; }
+.setup-spare-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setup-spare-row--add { justify-content: flex-start; color: var(--accent); }
+/* The main racket's head close up (2026-11-05, design A): its own large
+   render (`racketHeadSrc`), sharp, tilted in from the right edge across the
+   card's right half and clipped by the card, faded into the card along its
+   left side so the names over it stay clean. Behind everything on the card. */
 .setup-card { position: relative; overflow: hidden; isolation: isolate; }
 .setup-card > :not(.setup-corner) { position: relative; z-index: 1; }
+/* The card frosts its ground from a layer BEHIND its content, not from the
+   card itself: Chromium draws no backdrop blur inside an element that has one
+   of its own (dark mode's `brightness()` in the token made it plain), so the
+   glass controls over the racket showed the strings sharp through them. Same
+   token, same look; the controls now frost the racket. */
+html:root .glass-card.setup-card { -webkit-backdrop-filter: none; backdrop-filter: none; }
+html:root .glass-card.setup-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+}
 .setup-corner {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 50%;
-  overflow: hidden;
+  top: -24px;
+  right: -78px;
+  width: 270px;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.6;
-  /* Faded in from the left and out toward the bottom: the head sits beside
-     the racket and its string, and the spares and footer below stay clean. */
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 55%), linear-gradient(to bottom, black 50%, transparent 92%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent 0%, black 55%), linear-gradient(to bottom, black 50%, transparent 92%);
-  mask-composite: intersect;
+  transform: rotate(-14deg);
+  transform-origin: 50% 30%;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 96px);
+  mask-image: linear-gradient(to right, transparent 0, black 96px);
 }
+.setup-corner img { display: block; width: 100%; height: auto; }
 /* Liquid glass (2026-11-05, Grant: "for UI thats on top of the racket, apply
    apple liquid glass refraction effect"): the controls over the racket are a
    lens, not a tint. Frosted and saturated everywhere, lit along the top-left
@@ -6456,9 +6500,9 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
    racket behind is bent through it. Fill only, no rim (2026-11-04 rule): the
    edge is light, not a stroke. Only inside the Set-up card. */
 .setup-card .setup-glass {
-  background: rgba(var(--glass-tint), 0.1);
-  -webkit-backdrop-filter: blur(6px) saturate(1.8);
-  backdrop-filter: blur(6px) saturate(1.8);
+  background: rgba(var(--glass-tint), 0.12);
+  -webkit-backdrop-filter: blur(10px) saturate(1.8);
+  backdrop-filter: blur(10px) saturate(1.8);
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.55),
     inset -1px -1px 0 rgba(255, 255, 255, 0.14),
@@ -6467,34 +6511,11 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
   border-color: transparent;
 }
 .setup-card--refract .setup-glass {
-  backdrop-filter: url(#setup-refract) blur(1.5px) saturate(1.8);
+  backdrop-filter: url(#setup-refract) blur(5px) saturate(1.8);
 }
 .setup-card .setup-tension.setup-glass { padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); }
 .setup-card .setup-chip-dashed.setup-glass { border: 1px dashed var(--divider-dashed); }
-.setup-glass-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-pill);
-  font-size: var(--icon-md);
-  color: var(--text-secondary);
-  align-self: center;
-}
 .setup-glass-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
-.setup-corner img {
-  position: absolute;
-  top: -36px;
-  right: -110px;
-  width: 300px;
-  height: 780px;
-  max-width: none;
-  object-fit: contain;
-  transform: rotate(-16deg);
-  transform-origin: 50% 20%;
-}
-.setup-line-body { flex: 1; min-width: 0; }
 .setup-line-value {
   display: block;
   font-size: var(--fs-lg);
@@ -6504,7 +6525,7 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.setup-line--blank .setup-line-value { font-weight: 400; color: var(--text-muted); }
+.setup-item--blank .setup-line-value { font-weight: 400; color: var(--text-muted); }
 .setup-line-sub {
   display: block;
   margin-top: var(--space-05);
@@ -6512,26 +6533,6 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
   color: var(--text-muted);
 }
 .setup-line-sub--accent { color: var(--accent); }
-.setup-line-spare { font-size: var(--fs-md); font-weight: 400; color: var(--text-secondary); }
-/* The Set-up card's footer: "Add a spare racket" and "Your fit", two optional
-   extras at the same quiet weight, one at each end. */
-.setup-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
-.setup-footer-link { display: inline-flex; align-items: center; gap: var(--space-05); color: var(--text-secondary); }
-/* A hybrid on the Strings line: mains over crosses, each row its own role,
-   name and figure. The role is the label column's type at body size, so the
-   two names still start on one vertical. */
-.setup-line-pair { display: flex; flex-direction: column; gap: var(--space-2); }
-.setup-line-pair-row { display: flex; align-items: baseline; gap: var(--space-3); min-width: 0; }
-.setup-line-pair-row .setup-line-value { flex: 1; min-width: 0; }
-.setup-line-role {
-  width: 52px;
-  flex: 0 0 auto;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
 .setup-tension { display: inline-flex; align-items: baseline; gap: var(--space-05); }
 .setup-tension-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 700; color: var(--text-primary); }
 .setup-tension-unit { font-size: var(--fs-xs); color: var(--text-secondary); }
@@ -7591,19 +7592,24 @@ a.setup-price-row:active { background: var(--press-bg); }
 button.sheet-row,
 .cc-mini-card,
 .cc-session-chip,
-button.setup-line,
-.setup-line-hit,
+button.setup-item,
+.setup-item-hit,
+.setup-spare-row,
+.setup-fit-row,
 .bpm-row-link,
 .rail-tab {
   -webkit-tap-highlight-color: transparent;
 }
 button.sheet-row:active,
-.cc-session-chip:active { background: var(--press-bg); }
-button.setup-line,
-.setup-line-hit,
+.cc-session-chip:active,
+.setup-spare-row:active { background: var(--press-bg); }
+button.setup-item,
+.setup-item-hit,
+.setup-fit-row,
 .bpm-row-link { transition: opacity 100ms var(--ease-glass); }
-button.setup-line:active,
-.setup-line-hit:active,
+button.setup-item:active,
+.setup-item-hit:active,
+.setup-fit-row:active,
 .bpm-row-link:active { opacity: 0.6; }
 /* ONE transition list for the rail tab. This used to be a second `.rail-tab`
    rule declaring only `transform`, which — same specificity, later in the
@@ -7703,8 +7709,10 @@ html:root .state-link:active { opacity: 0.6; }
   .btn-primary,
   .btn-ghost,
   .sheet-row,
-  button.setup-line,
-  .setup-line-hit,
+  button.setup-item,
+  .setup-item-hit,
+  .setup-spare-row,
+  .setup-fit-row,
   .filter-chip,
   .cc-session-chip { min-height: 44px; }
 

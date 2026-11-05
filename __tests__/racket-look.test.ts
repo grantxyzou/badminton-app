@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import catalogSeed from '../scripts/data/equipment-catalog.json';
-import { DEFAULT_LOOK, RACKET_LOOKS, racketLook, racketSrc } from '../lib/racketLook';
+import { DEFAULT_LOOK, RACKET_LOOKS, racketHeadSrc, racketLook, racketSrc } from '../lib/racketLook';
 import { PATTERNS, SHAPES } from '../lib/racketModel';
 
 type Row = { id: string; category: string };
@@ -57,5 +57,26 @@ describe('pre-rendered racket images', () => {
 
   it('points at the same-origin file for a known racket', () => {
     expect(racketSrc('racket-yonex-astrox-88s-pro')).toMatch(/\/rackets\/racket-yonex-astrox-88s-pro\.webp$/);
+  });
+});
+
+describe('the Equipment card\'s close-up of each racket head', () => {
+  // `node scripts/render-racket-images.mjs --head` writes these. The card draws
+  // the main racket's head large; the list picture scaled up went soft.
+  const HEADS = join(IMAGES, 'head');
+
+  it('every look, and the default, has one', () => {
+    const missing = ['_default', ...Object.keys(RACKET_LOOKS)].filter((id) => !existsSync(join(HEADS, `${id}.webp`)));
+    expect(missing).toEqual([]);
+  });
+
+  it('none is left behind for a racket the table no longer has', () => {
+    const known = new Set(['_default', ...Object.keys(RACKET_LOOKS)]);
+    expect(readdirSync(HEADS).filter((f) => f.endsWith('.webp') && !known.has(f.replace(/\.webp$/, '')))).toEqual([]);
+  });
+
+  it('an unknown racket gets the default head', () => {
+    expect(racketHeadSrc('racket-nobody-makes-this')).toMatch(/\/rackets\/head\/_default\.webp$/);
+    expect(racketHeadSrc('racket-yonex-astrox-88s-pro')).toMatch(/\/rackets\/head\/racket-yonex-astrox-88s-pro\.webp$/);
   });
 });
