@@ -33,6 +33,8 @@ fix before anything in Phase 2 starts.
 
 ## Decisions
 
+- **2026-11-05 — A no-script way in is planned** (`docs/plans/payments-forwarding.md`): the organiser forwards Interac's emails to a per-club address the app receives, in place of pasting the Gmail script. It waits on one real forwarded email passing DKIM.
+
 - **2026-10-07 — Phase 2 started before the 2026-11-07 gate, by Grant's decision** ("then why not just do
   phase 2?" after asking where the cost of everything is tracked). Scope chosen: **stages 1–3** — mirror,
   reconcile, one money view — with club outlay INCLUDING admin-entered expenses, and the full history
