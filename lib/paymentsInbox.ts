@@ -546,8 +546,15 @@ export async function signupHeldForUnpaid(scope: GroupScope, memberId: string): 
  * "I've sent it" gets the benefit of the doubt until the money is matched —
  * otherwise a slow match would hold exactly the people who paid.
  */
-/** The lines that count toward the hold: settled, and not self-reported. One rule for the sign-up and the preview. */
-export const heldLines = (sessions: UnpaidSession[]): number => sessions.filter((s) => s.settled && !s.selfReported).length;
+/**
+ * The SESSIONS that count toward the hold: settled, and not self-reported. One
+ * rule for the sign-up and the preview. Counted by session, not by line: a
+ * guest's share is a second line on the host's balance for the SAME night, and
+ * counting lines held a host after one unpaid session with a plus-one (audit,
+ * 2026-11-05) — the threshold is "owes for N sessions".
+ */
+export const heldLines = (sessions: UnpaidSession[]): number =>
+  new Set(sessions.filter((s) => s.settled && !s.selfReported).map((s) => s.sessionId)).size;
 
 export async function holdCount(scope: GroupScope, memberId: string): Promise<number> {
   const identity = await resolveIdentity({ memberId }, scope.groupId);

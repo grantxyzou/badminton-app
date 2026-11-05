@@ -7,6 +7,9 @@ import { resettleSession } from '@/lib/resettleSession';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export type CoverSheetMode = 'cover-only' | 'cover-and-remove';
+
+/** The server refused a re-split because someone already paid this bill. */
+const PAID_WOULD_CHANGE = 'Someone has already paid this bill, and splitting this share would change what they owe. Cover it yourself instead.';
 export type CoverChoice = 'absorb' | 'resplit';
 
 interface Props {
@@ -58,15 +61,16 @@ export default function CoverSheet({
       body: JSON.stringify({ id: playerId, sessionId, ...body }),
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(text || `PATCH failed with ${res.status}`);
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (data?.error === 'paid_would_change') throw new Error(PAID_WOULD_CHANGE);
+      throw new Error(`PATCH failed with ${res.status}`);
     }
     return res.json();
   }
 
   // Re-freeze the bill after a cover change so the per-person math reflects it.
   // Only runs when the session was already settled. `resettleSession` is the
-  // one owner of the DELETE+POST pair and throws if either half fails.
+  // one owner of that request and throws if it fails.
   async function resettle() {
     if (!wasSettled) return;
     await resettleSession(sessionId);
@@ -80,8 +84,8 @@ export default function CoverSheet({
       await resettle();
       onCovered();
       onClose();
-    } catch {
-      setError("Couldn't cover — try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message === PAID_WOULD_CHANGE ? PAID_WOULD_CHANGE : "Couldn't cover — try again.");
     } finally {
       setSubmitting(false);
     }

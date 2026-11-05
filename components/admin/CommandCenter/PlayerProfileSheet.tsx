@@ -14,6 +14,8 @@ interface SessionEntry {
   date: string;
   attended: boolean;
   paid: boolean;
+  /** Covered by the club: neither paid nor owed (absent from an older server). */
+  covered?: boolean;
   costPerPerson: number;
 }
 
@@ -255,7 +257,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                   </p>
                 ) : (
                   <ul role="list" style={{ display: 'flex', flexDirection: 'column', gap: '0', listStyle: 'none', margin: '0', padding: '0' }}>
-                    {history.sessions.slice(0, 12).map((s, i, arr) => (
+                    {history.sessions.slice(0, 12).map((s) => (
                       <li
                         key={s.sessionId}
                         style={{
@@ -264,7 +266,6 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                           justifyContent: 'space-between',
                           gap: 'var(--space-4)',
                           padding: 'var(--space-4) 0',
-                          borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle))' : 'none',
                           fontSize: 'var(--fs-md)',
                         }}
                       >
@@ -273,7 +274,10 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                           {!s.attended && (
                             <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Missed</span>
                           )}
-                          {s.attended && (
+                          {s.attended && s.covered && (
+                            <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Covered</span>
+                          )}
+                          {s.attended && !s.covered && (
                             <button
                               type="button"
                               onClick={() => handleTogglePaid(s)}

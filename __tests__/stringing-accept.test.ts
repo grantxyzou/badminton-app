@@ -412,3 +412,29 @@ describe('the colour follows the string', () => {
     expect(stored(job.id)).toMatchObject({ stringLabel: 'BG65', stringColor: 'Yellow' });
   });
 });
+
+describe('accepting after the job was paid (audit, 2026-11-05)', () => {
+  it('refuses to re-price a PAID job through an old proposal, and leaves it as paid', async () => {
+    const job = await seedJob({ priceCents: 3000, pendingEdit: { priceCents: 3400, proposedAt: new Date().toISOString() } as StringingJob['pendingEdit'], paidAt: '2026-09-11T00:00:00Z' });
+    const res = await answer(job, 'wei', 'accept');
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('job_paid');
+    expect(stored(job.id).priceCents).toBe(3000);
+  });
+
+  it('an accepted re-price reaches the ledger mirror', async () => {
+    const before = process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
+    process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
+    try {
+      const job = await seedJob({ priceCents: 3000 });
+      await propose(job, { priceCents: 3400 });
+      expect((await answer(job, 'wei', 'accept')).status).toBe(200);
+      const charges = ((getStore()['ledger'] ?? []) as Array<{ ref?: { id?: string }; amountCents?: number; account?: string }>)
+        .filter((e) => e.ref?.id === job.id && e.account === 'member_owed');
+      expect(charges.reduce((sum, e) => sum + (e.amountCents ?? 0), 0)).toBe(3400);
+    } finally {
+      if (before === undefined) delete process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
+      else process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = before;
+    }
+  });
+});

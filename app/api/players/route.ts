@@ -1084,6 +1084,27 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'session_settled' }, { status: 409 });
     }
 
+    // A RESPLIT cover moves everyone else's share (lib/sessionCost.ts). On a
+    // frozen bill that someone has already paid, the re-settle would stamp a
+    // new amount under their `paid: true` — a figure nobody paid, and the
+    // difference never collected (audit, 2026-11-05). Refused before any
+    // write, so the cover and the bill never disagree; covering it yourself
+    // ("absorb") moves nobody and stays open.
+    const wasResplit = existing.writtenOff === true && existing.coverMode === 'resplit';
+    const willResplit = typeof body.writtenOff === 'boolean'
+      ? body.writtenOff === true && updates.coverMode === 'resplit'
+      : wasResplit;
+    if (sessionDoc?.settled && wasResplit !== willResplit) {
+      const billed = await scope.query<{ id: string; paid?: boolean; settledAt?: string }>('players', {
+        where: 'c.sessionId = @sessionId AND IS_DEFINED(c.settledAt)',
+        params: [{ name: '@sessionId', value: sessionId }],
+        partitionKey: sessionId,
+      });
+      if (billed.some((p) => p.id !== id && p.paid === true && typeof p.settledAt === 'string')) {
+        return NextResponse.json({ error: 'paid_would_change' }, { status: 409 });
+      }
+    }
+
     // Capacity check when restoring a removed player or promoting a waitlisted
     // player — only when the row comes out of it HOLDING A SPOT. A restore
     // that lands on the waitlist (the row was waiting when it left, or the

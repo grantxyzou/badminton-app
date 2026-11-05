@@ -48,6 +48,15 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Money fixes from the November audit (2026-11-05)
+
+- **Covering or removing someone after the bill is done now does what the buttons say.** "Cover & remove" means the club pays their share, and everyone else's amount stays the same. "Remove without covering" means they still owe it. Before, both quietly spread the person's share over everyone else and wiped their own debt.
+- **Splitting a share differently after people have paid is refused.** It would have changed what they owed after they had paid it. You can still cover the share yourself.
+- **Stringing:** accepting a price change now updates the club's money records. A price change proposed before a job was paid can no longer be accepted after it.
+- **The unpaid hold counts sessions.** A member who brought a guest to one unpaid session is no longer held as if they owed for two.
+- **Store credit** can pay a session that still owes after the person was removed from the list.
+- **A member's history** shows a session they played and were later removed from as played, shows "Covered" instead of "Unpaid", and never picks up another person's session by name.
+
 ### Two people with the same name (2026-11-05)
 
 When two accounts share a name, a club gives the second one a different name, such as "Lin W". Before this fix the app sometimes went by the account name instead of the club name. Lin W could be refused her own balance and stats, see the other Lin's balance instead, or pay the other Lin's session out of her own credit. The app now goes by the person's account, never by the name, everywhere this mattered. A stringing job can also only be billed to someone in the club.
