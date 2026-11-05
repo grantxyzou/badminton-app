@@ -20,6 +20,7 @@
  * catalog row added later gets `DEFAULT_LOOK`, the app's own graphite and
  * green.
  */
+import { assetUrl } from './assetUrl';
 
 export interface RacketLook {
   /** The name the maker or retailer lists the colourway under. */
@@ -208,18 +209,18 @@ export function racketLook(catalogId: string | null | undefined): RacketLook {
   return (catalogId && RACKET_LOOKS[catalogId]) || DEFAULT_LOOK;
 }
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
  * An `<img src>` (and canvas `Image.src`) for a racket: the image pre-rendered
  * from the 3D model (`lib/racketModel.ts`) for that catalog id, or the default
- * look for a racket the table does not know. Same-origin files under
- * `public/rackets/`, written by `scripts/render-racket-images.mjs` — so a
- * canvas that draws one can still export.
+ * look for a racket the table does not know. Files under `public/rackets/`,
+ * written by `scripts/render-racket-images.mjs`, served by the app or from the
+ * storage container `lib/assetUrl.ts` names (a canvas drawing one asks with
+ * CORS, so it can still export).
  */
 export function racketSrc(catalogId: string | null | undefined): string {
   const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
-  return `${BASE}/rackets/${key}.webp`;
+  return assetUrl(`rackets/${key}.webp`);
 }
 
 /**
@@ -230,5 +231,5 @@ export function racketSrc(catalogId: string | null | undefined): string {
  */
 export function racketHeadSrc(catalogId: string | null | undefined): string {
   const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
-  return `${BASE}/rackets/head/${key}.webp`;
+  return assetUrl(`rackets/head/${key}.webp`);
 }

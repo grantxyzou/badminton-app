@@ -4,14 +4,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
-import { racketLook, racketSrc } from '@/lib/racketLook';
-import { hasItemLook, modelInputs } from '@/lib/racketCustom';
+import { racketHeadSrc } from '@/lib/racketLook';
+import { STOCK_STRING } from '@/lib/racketCustom';
 import type { ItemLook } from '@/lib/types';
+import { stringPackSrc } from '@/lib/stringPackSrc';
+import { indexCatalog, stringSpecLine } from '@/lib/gearSetup';
+import { useCatalog } from './useCatalog';
 import { shareOrSaveImage } from '@/lib/shareImage';
 import { recordEngagement } from '@/lib/engagement';
 import { drawSetupShareCanvas, type ShareCanvasContent } from '@/lib/setupShareCanvas';
-import { shareCardText, stringsFact, tensionFact, type ShareCard } from '@/lib/shareCard';
+import { shareCardText, type ShareCard, type ShareString } from '@/lib/shareCard';
 import type { SetupShare } from '@/lib/gearSetup';
+
+const LOGO_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/brand/bpm-trajectory.png`;
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -23,9 +28,8 @@ export interface SetupShareSheetProps {
   share: SetupShare;
   /** The racket in play's catalog id, for its drawing. */
   racketCatalogId?: string | null;
-  /** The member's string and wrap colours (and a typed racket's paint). When
-   *  set, the card draws a still of the 3D model in those colours instead of
-   *  the catalog pre-render. */
+  /** The member's string colour: each packet's string is drawn in it, as the
+   *  Equipment card draws it. */
   racketItemLook?: ItemLook;
 }
 
@@ -37,12 +41,29 @@ function localCard(share: SetupShare): ShareCard {
     name, initial: name.charAt(0).toUpperCase(), sinceYear: null, clubName: null,
     racket: share.racket ? { name: share.racket, brand: null, weight: null, balance: null } : null,
     restrings: null, tensionVsClub: null, string: share.string, tensionLbs: share.tensionLbs, crosses: share.crosses ?? null, grip: null, clubCount: null,
+    strings: share.string
+      ? [
+        { role: share.crosses ? 'mains' : null, catalogId: null, label: share.string, tensionLbs: share.tensionLbs },
+        ...(share.crosses ? [{ role: 'crosses' as const, catalogId: null, label: share.crosses.name, tensionLbs: share.crosses.tensionLbs }] : []),
+      ]
+      : [],
   };
+}
+
+/** A card read from before the strings list existed carries only names. */
+function stringsOf(card: ShareCard): ShareString[] {
+  if (card.strings) return card.strings;
+  if (!card.string) return [];
+  return [
+    { role: card.crosses ? 'mains' : null, catalogId: null, label: card.string, tensionLbs: card.tensionLbs },
+    ...(card.crosses ? [{ role: 'crosses' as const, catalogId: null, label: card.crosses.name, tensionLbs: card.crosses.tensionLbs }] : []),
+  ];
 }
 
 /**
  * "Answer 'what are you playing?'" (claude.ai/design "Equipment redesign",
- * screen 07, reworked). Identity and club-relative facts lead; specs support.
+ * screen 07, reworked). Since 2026-11-05 the image mirrors the Equipment card
+ * (`lib/setupShareCanvas.ts`). Identity and club-relative facts lead; specs support.
  *
  * Every number is server-derived (`GET /api/equipment/share-card`, built by
  * `lib/shareCard.ts`), and a fact the server cannot honestly state is null and
@@ -60,22 +81,12 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saveHint, setSaveHint] = useState(false);
-  /** The racket picture: the catalog pre-render, or a still of the model in the
-   *  member's own colours once it has rendered. */
-  const [racketImage, setRacketImage] = useState(() => racketSrc(racketCatalogId));
-
-  useEffect(() => {
-    if (!hasItemLook(racketItemLook)) return;
-    let live = true;
-    const { look, tweaks } = modelInputs(racketLook(racketCatalogId), racketItemLook, racketCatalogId);
-    import('@/lib/racketSnapshot')
-      .then(({ racketSnapshot }) => racketSnapshot(look, tweaks))
-      .then((url) => { if (live && url) setRacketImage(url); })
-      .catch(() => { /* the pre-render stays */ });
-    return () => { live = false; };
-    // Once per opening: the sheet remounts on each open.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const strings = useCatalog('string');
+  const stringRows = useMemo(() => indexCatalog(strings.items), [strings.items]);
+  const coil = racketItemLook?.string ?? STOCK_STRING;
+  /** Each catalog string's packet, drawn from its spec with the racket's own
+   *  string colour (the packet table is loaded only here, on demand). */
+  const [packets, setPackets] = useState<Record<string, HTMLCanvasElement>>({});
 
   useEffect(() => {
     let live = true;
@@ -97,31 +108,61 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
   }, [locale]);
 
   const club = card?.clubName ?? null;
+  const rows = useMemo(() => (card ? stringsOf(card) : []), [card]);
+
+  useEffect(() => {
+    const ids = rows.map((r) => r.catalogId).filter((id): id is string => !!id && !!stringPackSrc(id));
+    if (ids.length === 0) return;
+    let live = true;
+    void Promise.all([import('@/lib/stringPacks'), import('@/lib/stringPack')]).then(([{ STRING_PACKS }, { drawStringPack }]) => {
+      const out: Record<string, HTMLCanvasElement> = {};
+      for (const id of ids) {
+        const pack = STRING_PACKS[id];
+        if (!pack) continue;
+        const cv = document.createElement('canvas');
+        cv.width = 240;
+        cv.height = 336;
+        const ctx = cv.getContext('2d');
+        if (!ctx) continue;
+        drawStringPack(ctx, pack.coil ? { ...pack, coil: { ...pack.coil, colour: coil } } : pack, cv.width, cv.height);
+        out[id] = cv;
+      }
+      if (live) setPackets(out);
+    }).catch(() => { /* rows without packets */ });
+    return () => { live = false; };
+  }, [rows, coil]);
+
   const content = useMemo<ShareCanvasContent | null>(() => {
     if (!card) return null;
-    const stats: ShareCanvasContent['stats'] = [];
-    if (card.restrings) stats.push({ num: String(card.restrings.count), text: t('statRestrings', { count: card.restrings.count, since: monthYear(card.restrings.since) }) });
-    if (card.tensionVsClub !== null) stats.push({ num: `${card.tensionVsClub > 0 ? '+' : ''}${card.tensionVsClub}`, text: t('statVsClub') });
-    const facts: ShareCanvasContent['facts'] = [];
-    const strings = stringsFact(card);
-    const tension = tensionFact(card);
-    if (strings) facts.push({ label: t('factStrings'), value: strings });
-    if (tension) facts.push({ label: t('factTension'), value: tension, unit: t('lbUnit') });
-    if (card.grip) facts.push({ label: t('factGrip'), value: card.grip });
-    if (card.clubCount !== null) facts.push({ label: club ? t('factAtClub', { club }) : t('factInClub'), value: t('factOneOf', { count: card.clubCount }) });
-    const specs = card.racket
-      ? [card.racket.brand, card.racket.weight, card.racket.balance ? t('specBalance', { balance: card.racket.balance.toLowerCase() }) : null].filter(Boolean).join(' · ') || null
+    const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' · ');
+    const racket = card.racket
+      ? {
+        // The card's own words: the bag's full name, its role first under it.
+        name: card.racket.label ?? [card.racket.brand, card.racket.name].filter(Boolean).join(' '),
+        sub: join(t('mainRacket'), card.racket.weight, card.racket.balance?.toLowerCase()),
+      }
+      : null;
+    const lines = rows.map((r) => ({
+      packet: r.catalogId ? packets[r.catalogId] ?? null : null,
+      name: r.label,
+      sub: join(r.role ? t(r.role) : t('factStrings'), r.catalogId ? stringSpecLine(stringRows.get(r.catalogId), (k) => t(k)) : null),
+      lbs: r.tensionLbs,
+    }));
+    // The story keeps one line on its bottom edge (Grant: "it's so busy",
+    // "take out the grip"); the grip, the restrings, the club comparison and
+    // the "1 of N" stay in the copied text.
+    const footer = card.sinceYear !== null
+      ? (club ? t('shareSinceClub', { club, year: card.sinceYear }) : t('shareSince', { year: card.sinceYear }))
       : null;
     return {
-      initial: card.initial,
+      eyebrow: t('eyebrow'),
       name: card.name,
-      since: card.sinceYear !== null ? (club ? t('shareSinceClub', { club, year: card.sinceYear }) : t('shareSince', { year: card.sinceYear })) : null,
-      racketName: card.racket?.name ?? null,
-      specs,
-      stats,
-      facts,
+      racket,
+      strings: lines,
+      footer,
+      lbUnit: t('lbUnit'),
     };
-  }, [card, club, monthYear, t]);
+  }, [card, club, t, rows, packets, stringRows]);
 
   const text = useMemo(() => (card ? shareCardText(card, {
     title: t('shareTextTitle', { name: card.name }),
@@ -142,15 +183,26 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
     canvasRef.current = canvas;
     if (!canvas || !content) return;
     const img = new Image();
-    const paint = () => { if (canvasRef.current === canvas) setPng(drawSetupShareCanvas(canvas, content, img)); };
-    // Draw at once without the racket, then again when it (and the fonts) land.
-    setPng(drawSetupShareCanvas(canvas, content, null));
-    img.onload = () => {
-      const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready ?? Promise.resolve();
-      fonts.then(paint).catch(paint);
+    // Asked with CORS: the racket picture may come from the storage container
+    // (`lib/assetUrl.ts`), and a canvas that draws a cross-origin picture
+    // without it can no longer be exported. Harmless on the same origin.
+    img.crossOrigin = 'anonymous';
+    const logo = new Image();
+    let headIn = false;
+    let logoIn = false;
+    const paint = () => {
+      if (canvasRef.current === canvas) setPng(drawSetupShareCanvas(canvas, content, headIn ? img : null, logoIn ? logo : null));
     };
-    img.src = racketImage;
-  }, [content, racketImage]);
+    const fonts = () => (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready ?? Promise.resolve();
+    // Draw at once without the pictures, then again as each (and the fonts) lands.
+    setPng(drawSetupShareCanvas(canvas, content, null, null));
+    img.onload = () => { headIn = true; fonts().then(paint).catch(paint); };
+    logo.onload = () => { logoIn = true; fonts().then(paint).catch(paint); };
+    // The card's own close-up of the racket head, as the Equipment card draws it.
+    img.src = racketHeadSrc(racketCatalogId);
+    // The app icon's mark, for the bottom-right corner.
+    logo.src = LOGO_SRC;
+  }, [content, racketCatalogId]);
 
   async function saveImage() {
     setError(null);
@@ -194,7 +246,7 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
 
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {content && <canvas key={`${JSON.stringify(content)}|${racketImage.length}`} ref={drawCanvas} aria-hidden="true" style={{ display: 'none' }} />}
+          {content && <canvas key={`${JSON.stringify(card)}|${Object.keys(packets).join(',')}|${stringRows.size}`} ref={drawCanvas} aria-hidden="true" style={{ display: 'none' }} />}
           {png ? (
             // eslint-disable-next-line @next/next/no-img-element -- a data: URL from the canvas above; next/image cannot optimise it and must not try.
             <img src={png} alt={text} className="setup-share-preview" />

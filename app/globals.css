@@ -6867,16 +6867,21 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 .setup-feel-chip:disabled { opacity: 0.5; pointer-events: none; }
 
 /* The shared set-up image, shown as the exported PNG so it is exactly what
-   leaves (and so iOS can press-and-hold to save it). */
+   leaves (and so iOS can press-and-hold to save it).
+   It is a 9:16 story, so it is sized by HEIGHT, centred, leaving the sheet's
+   buttons on screen. */
 .setup-share-preview {
   display: block;
-  width: 100%;
-  height: auto;
+  height: min(58dvh, 560px);
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 9 / 16;
+  margin-inline: auto;
   border-radius: var(--radius-xl);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
-/* Before the canvas lands: the card's night ground at its usual proportions. */
-.setup-share-preview--pending { aspect-ratio: 360 / 300; background: var(--bpm-night); }
+/* Before the canvas lands: the story's night ground at its own proportions. */
+.setup-share-preview--pending { background: var(--bpm-night); }
 
 /* "Racket to try next": the whole frame, large, beside the pick. */
 button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
