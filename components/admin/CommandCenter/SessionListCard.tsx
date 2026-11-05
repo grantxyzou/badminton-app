@@ -15,6 +15,7 @@ import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateC
 import { sharedFetch } from '@/lib/sharedRead';
 import { compareBySignup } from '@/lib/capacity';
 import { membersFirstOpen } from '@/lib/membersFirst';
+import { clubRunOf, courtLine, playersPerCourtFor, type ClubRun } from '@/lib/clubRun';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { useOnline } from '@/lib/useOnline';
 import {
@@ -62,11 +63,13 @@ interface Player {
 
 interface SessionListCardProps {
   refreshKey?: number;
+  /** How the club runs (lib/clubRun.ts), for players per court. Absent reads as BPM's. */
+  run?: ClubRun;
   /** Called after a change, so the session card's counts move with the list. */
   onChanged?: () => void;
 }
 
-export default function SessionListCard({ refreshKey = 0, onChanged }: SessionListCardProps) {
+export default function SessionListCard({ refreshKey = 0, onChanged, run = clubRunOf(null) }: SessionListCardProps) {
   const online = useOnline();
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -149,8 +152,20 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
     return { confirmed, waiting, cancelled };
   }, [players]);
 
+  /* THE COURTS ARE THE CAP. A club with players per court has its cap written
+     as courts × that number by both session forms (`capacityForCourts`), and
+     the waitlist is what a full set of courts overflows into. So, once full,
+     every way this card adds a person lands them on the waitlist rather than
+     failing, and the full message talks in courts. */
   const cap = session?.maxPlayers ?? null;
   const full = cap !== null && lists.confirmed.length >= cap;
+  const courts = session?.courts && session.courts > 0 ? session.courts : null;
+  const perCourt = playersPerCourtFor(session, run);
+  const line = courtLine(session, run, players);
+  const fullHint =
+    courts !== null && perCourt !== null
+      ? `All ${courts} ${courts === 1 ? 'court is' : 'courts are'} full at ${perCourt} a court. Add a court in Edit details, or remove someone first.`
+      : 'The session is full. Remove someone, or raise the max players in Edit details, first.';
   const lateCount = lists.cancelled.filter((p) => p.lateCancel).length;
 
   /** After a change: the console bumps its refresh key, which reloads this card too. */
@@ -169,7 +184,7 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
     setActionError('');
   }
 
-  async function run(action: () => Promise<RowActionResult>) {
+  async function act(action: () => Promise<RowActionResult>) {
     if (busy) return;
     setBusy(true);
     setActionError('');
@@ -190,7 +205,7 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
     if (!target) return;
     if (!confirm(`Remove ${target.name} from this session?`)) return;
     const name = target.name;
-    void run(() => removePlayer(name));
+    void act(() => removePlayer(name));
   }
 
   async function restore(player: Player) {
@@ -198,7 +213,8 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
     setBusy(true);
     setRestoreError('');
     try {
-      const result = await restorePlayer(player.id);
+      // Full courts: they come back onto the waitlist, never 409.
+      const result = await restorePlayer(player.id, null, { toWaitlist: full });
       if (!result.ok) {
         setRestoreError(result.error);
         return;
@@ -216,7 +232,8 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
     setAdding(true);
     setAddError('');
     try {
-      const result = await addPlayerByName(name);
+      // A spot while there is one; the waitlist once the courts are full.
+      const result = await addPlayerByName(name, { waitlistIfFull: true });
       if (!result.ok) {
         setAddError(result.error);
         return;
@@ -285,6 +302,7 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
           <div className="flex items-center justify-between gap-3">
             <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
               {cap !== null ? `${lists.confirmed.length} of ${cap} in` : `${lists.confirmed.length} in`}
+              {courts !== null ? ` · ${courts} ${courts === 1 ? 'court' : 'courts'}` : ''}
               {lists.waiting.length > 0 ? ` · ${lists.waiting.length} waiting` : ''}
             </span>
             <button
@@ -314,7 +332,11 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
               )}
               {lists.waiting.length > 0 && (
                 <>
-                  <p className="section-label-muted roster-waitlist-label">Waitlist</p>
+                  <p className="section-label-muted roster-waitlist-label">
+                    Waitlist
+                    {/* How close the waitlist is to another court, in the session card's words. */}
+                    {line && line.waiting > 0 ? (line.more > 0 ? ` · ${line.more} more fills a court` : " · a court's worth") : ''}
+                  </p>
                   <ol className="roster-list" aria-label="Waitlist">
                     {lists.waiting.map((p, i) => row(p, lists.confirmed.length + i + 1))}
                   </ol>
@@ -333,7 +355,7 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
           autoComplete="off"
           value={addName}
           onChange={(e) => { setAddName(e.target.value); setAddError(''); }}
-          placeholder="Add player by name"
+          placeholder={full ? 'Add to the waitlist by name' : 'Add player by name'}
           maxLength={50}
           style={{ flex: 1 }}
         />
@@ -406,7 +428,7 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
                     disabled={busy || !online}
                     className="cc-btn cc-btn-secondary fs-xs"
                   >
-                    Restore
+                    {full || p.waitlisted ? 'To waitlist' : 'Restore'}
                   </button>
                 </li>
               ))}
@@ -440,16 +462,16 @@ export default function SessionListCard({ refreshKey = 0, onChanged }: SessionLi
                 label="Move to the waitlist"
                 hint="Nobody moves up into their spot. They wait in line by when they signed up."
                 disabled={busy || !online}
-                onClick={() => { const id = target.id; void run(() => moveToWaitlist(id)); }}
+                onClick={() => { const id = target.id; void act(() => moveToWaitlist(id)); }}
               />
             )}
             {target?.waitlisted && (
               <ActionRow
                 icon="how_to_reg"
                 label="Move into the session"
-                hint={full ? 'The session is full. Remove someone or raise the cap first.' : 'Takes a free spot now.'}
+                hint={full ? fullHint : 'Takes a free spot now.'}
                 disabled={busy || full || !online}
-                onClick={() => { const id = target.id; void run(() => promotePlayer(id)); }}
+                onClick={() => { const id = target.id; void act(() => promotePlayer(id)); }}
               />
             )}
             {/* A plus-one has no account (docs/plans/plus-one.md): the way in is an invite. */}

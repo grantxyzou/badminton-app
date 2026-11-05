@@ -174,6 +174,24 @@ describe('waitlist auto-promote', () => {
     expect(res.status).toBe(409);
   });
 
+  it('a full session refuses a restore INTO a spot and takes one onto the waitlist', async () => {
+    seedFull();
+    const eve = seedPlayer(SESSION_ID, 'Eve', { removed: true, timestamp: at(5), memberId: 'm-eve' });
+    const fay = seedPlayer(SESSION_ID, 'Fay', { removed: true, waitlisted: true, timestamp: at(6), memberId: 'm-fay' });
+    const active = () =>
+      (getStore()['players'] as Array<Record<string, unknown>>).filter((p) => !p.removed && !p.waitlisted).length;
+    // Into a spot: still capacity-checked (security rule 8).
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { id: eve.id, removed: false }))).status).toBe(409);
+    expect(rowOf(eve.id).removed).toBe(true);
+    // Onto the waitlist: takes no spot, so a full session has room for it.
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { id: eve.id, removed: false, waitlisted: true }))).status).toBe(200);
+    expect(rowOf(eve.id)).toMatchObject({ removed: false, waitlisted: true });
+    // A row that was waiting when it left comes back waiting, with no flag sent.
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { id: fay.id, removed: false }))).status).toBe(200);
+    expect(rowOf(fay.id)).toMatchObject({ removed: false, waitlisted: true });
+    expect(active()).toBe(2);
+  });
+
   it('a manual promotion stamps promotedAt; a move back clears it', async () => {
     seedSession(SESSION_ID, { maxPlayers: 3 });
     const p = seedPlayer(SESSION_ID, 'Eve', { waitlisted: true });

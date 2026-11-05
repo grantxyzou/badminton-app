@@ -39,9 +39,14 @@ async function send(
 
 const onSession = (sessionId?: string | null) => (sessionId ? { sessionId } : {});
 
-/** Add a player to the ACTIVE session by name, as the admin. */
-export function addPlayerByName(name: string): Promise<RowActionResult> {
-  return send('POST', { name }, 'Failed to add.');
+/**
+ * Add a player to the ACTIVE session by name, as the admin. With
+ * `waitlistIfFull`, a full session puts them on the waitlist instead of
+ * answering 409: the server takes a spot while there is one and the waitlist
+ * once the courts are full (`isFull && joinWaitlist`).
+ */
+export function addPlayerByName(name: string, opts: { waitlistIfFull?: boolean } = {}): Promise<RowActionResult> {
+  return send('POST', { name, ...(opts.waitlistIfFull ? { waitlist: true } : {}) }, 'Failed to add.');
 }
 
 /**
@@ -67,7 +72,15 @@ export function moveToWaitlist(id: string, sessionId?: string | null): Promise<R
   return send('PATCH', { id, waitlisted: true, ...onSession(sessionId) }, 'Failed to move to the waitlist.');
 }
 
-/** Bring back a removed or cancelled player. Capacity-checked by the server. */
-export function restorePlayer(id: string, sessionId?: string | null): Promise<RowActionResult> {
-  return send('PATCH', { id, removed: false, ...onSession(sessionId) }, 'Failed to restore.');
+/**
+ * Bring back a removed or cancelled player. A row that would take a spot is
+ * capacity-checked by the server; with `toWaitlist` it comes back onto the
+ * waitlist instead, which a full session has room for.
+ */
+export function restorePlayer(
+  id: string,
+  sessionId?: string | null,
+  opts: { toWaitlist?: boolean } = {},
+): Promise<RowActionResult> {
+  return send('PATCH', { id, removed: false, ...(opts.toWaitlist ? { waitlisted: true } : {}), ...onSession(sessionId) }, 'Failed to restore.');
 }

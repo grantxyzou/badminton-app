@@ -5,6 +5,7 @@ import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-li
 import { NextIntlClientProvider } from 'next-intl';
 import SessionListCard from '../../components/admin/CommandCenter/SessionListCard';
 import { resetSharedReads } from '../../lib/sharedRead';
+import { applyStyle, type ClubRun } from '../../lib/clubRun';
 import enMessages from '../../messages/en.json';
 
 /**
@@ -65,7 +66,7 @@ async function openList() {
   fireEvent.click(await screen.findByRole('button', { name: 'Show the list' }));
 }
 
-function renderCard(props: { onChanged?: () => void } = {}) {
+function renderCard(props: { onChanged?: () => void; run?: ClubRun } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <SessionListCard {...props} />
@@ -235,6 +236,70 @@ describe('the row sheet', () => {
     fireEvent.change(await screen.findByRole('textbox', { name: 'Add player by name' }), { target: { value: ' Taufik ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
-    expect(writes()).toEqual([{ method: 'POST', body: { name: 'Taufik' } }]);
+    // `waitlist: true` always: a spot while there is one, the waitlist once full.
+    expect(writes()).toEqual([{ method: 'POST', body: { name: 'Taufik', waitlist: true } }]);
+  });
+});
+
+describe('the courts are the cap', () => {
+  /** Two courts of two: the cap is 4, and the waitlist is what overflows them. */
+  const run: ClubRun = { ...applyStyle('members_first'), playersPerCourt: 2, membersFirst: null };
+  const fullSession = () => {
+    session = { ...SESSION, courts: 2, maxPlayers: 4 };
+    players = [
+      row('p1', 'Lin', 1), row('p2', 'Viktor', 2), row('p3', 'Carolina', 3), row('p4', 'Akane', 4),
+      row('w1', 'Kento', 5, { waitlisted: true }),
+      row('x1', 'Sindhu', 6, { removed: true, removedAt: '2026-11-12T14:00:00.000Z', cancelledBySelf: true }),
+      row('x2', 'Ratchanok', 7, { removed: true, waitlisted: true, removedAt: '2026-11-11T14:00:00.000Z', cancelledBySelf: true }),
+    ];
+  };
+
+  it('counts the courts on the line and says how close the waitlist is to another court', async () => {
+    fullSession();
+    renderCard({ run });
+    expect(await screen.findByText('4 of 4 in · 2 courts · 1 waiting')).toBeTruthy();
+    await openList();
+    expect(screen.getByText('Waitlist · 1 more fills a court')).toBeTruthy();
+  });
+
+  it('a full session says so in courts and offers nobody a spot', async () => {
+    fullSession();
+    renderCard({ run });
+    await openList();
+    fireEvent.click(await screen.findByRole('button', { name: 'Actions for Kento' }));
+    expect(screen.getByText('All 2 courts are full at 2 a court. Add a court in Edit details, or remove someone first.')).toBeTruthy();
+    fireEvent.click(screen.getByText('Move into the session'));
+    expect(writes()).toEqual([]);
+  });
+
+  it('adding to a full session joins the waitlist', async () => {
+    fullSession();
+    renderCard({ run });
+    const field = await screen.findByRole('textbox', { name: 'Add player by name' });
+    expect(field.getAttribute('placeholder')).toBe('Add to the waitlist by name');
+    fireEvent.change(field, { target: { value: 'Taufik' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(writes()).toEqual([{ method: 'POST', body: { name: 'Taufik', waitlist: true } }]));
+  });
+
+  it('restoring into a full session brings them back onto the waitlist', async () => {
+    fullSession();
+    renderCard({ run });
+    fireEvent.click(await screen.findByRole('button', { name: 'Show cancelled' }));
+    const buttons = screen.getAllByRole('button', { name: 'To waitlist' });
+    expect(buttons).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
+    fireEvent.click(buttons[0]);
+    await waitFor(() => expect(writes()).toEqual([{ method: 'PATCH', body: { id: 'x1', removed: false, waitlisted: true } }]));
+  });
+
+  it('with room, a restore takes a spot and the line says nothing of courts it cannot know', async () => {
+    session = { ...SESSION, maxPlayers: 13, courts: 2 };
+    players = [row('p1', 'Lin', 1), row('w1', 'Kento', 2, { waitlisted: true })];
+    renderCard({ run: applyStyle('first_come') });
+    await openList();
+    // 13 on 2 courts does not divide: no players-per-court, so no court line.
+    expect(screen.getByText('Waitlist')).toBeTruthy();
+    expect(screen.getByText('1 of 13 in · 2 courts · 1 waiting')).toBeTruthy();
   });
 });

@@ -368,7 +368,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       </div>
       {moneyOff && (
         <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.sessionList} />}>
-          <SessionListCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
+          <SessionListCard refreshKey={composedRefresh} run={run} onChanged={() => setLocalRefresh((n) => n + 1)} />
         </RevealSlot>
       )}
       {!moneyOff && (
