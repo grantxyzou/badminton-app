@@ -11,6 +11,8 @@ import { stringSpecLine } from '@/lib/gearSetup';
 import { parseShelf, shelfPrice, stringColours, stringTypeOf, typeBand, type Shelf } from '@/lib/stringShelf';
 import type { CatalogItem } from '@/lib/types';
 import StockBadge from './StockBadge';
+import StringPackImage from './StringPackImage';
+import { stringPackSrc } from '@/lib/stringPackSrc';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -487,7 +489,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                     <span className="material-icons icon-lg" aria-hidden="true" style={{ flex: 'none', color: on ? 'var(--accent)' : 'var(--text-muted)' }}>
                       {on ? 'radio_button_checked' : 'radio_button_unchecked'}
                     </span>
-                    {item && (
+                    {/* The packet when the string has one, else the gauge tile it
+                        always had (the gauge is in the line below either way). */}
+                    {item && stringPackSrc(item.id) && <StringPackImage catalogId={item.id} size="row" />}
+                    {item && !stringPackSrc(item.id) && (
                       <span aria-hidden="true" style={{ flex: 'none', width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: typeBand(stringTypeOf(item)), display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {mm !== null ? mm.toFixed(2) : ''}
                       </span>
