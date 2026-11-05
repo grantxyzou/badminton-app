@@ -33,6 +33,7 @@ import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import CourtLine from './home/CourtLine';
 import { courtLine } from '@/lib/clubRun';
+import { compareBySignup } from '@/lib/capacity';
 import { useClubRun } from '@/lib/useClubRun';
 import PlusOneRow from './home/PlusOneRow';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
@@ -346,12 +347,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     ? waitlistPlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase() && p.heldForUnpaid === true)
     : false;
 
-  // A plus-one (docs/plans/plus-one.md): the viewer's own row, and the guest
+  // Guests (docs/plans/plus-one.md): the viewer's own row, and the guests
   // it brought. A guest row carries `guestOf`, never the viewer's name.
   const myRow = currentUser
     ? players.find((p) => !p.guestOf && p.name.toLowerCase() === currentUser.toLowerCase())
     : undefined;
-  const myGuest = myRow?.memberId ? players.find((p) => p.guestOf === myRow.memberId) ?? null : null;
+  const myGuests = myRow?.memberId ? players.filter((p) => p.guestOf === myRow.memberId).sort(compareBySignup) : [];
 
   // Members first (docs/plans/members-first-window.md): while it runs, only
   // members take a spot; a drop-in, an unmarked name or a guest waits for it.
@@ -386,7 +387,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       ? courtLine(session, clubRun, players)
       : null;
   // The server holds every rule; this only decides whether to OFFER it.
-  const canAddGuest = session?.guestsAllowed === true && !isDeadlinePast && !isSignupClosed && !session.settled;
+  // A phone the server has not told the number yet reads the old switch as one.
+  const guestCap = typeof session?.guestsPerMember === 'number' ? session.guestsPerMember : session?.guestsAllowed === true ? 1 : 0;
+  const canAddGuest = guestCap > myGuests.length && !isDeadlinePast && !isSignupClosed && !session?.settled;
+  // "Their share goes on your balance" is only true where the club collects in the app.
+  const showGuestShare = clubRunKnown && clubRun.money !== 'off';
 
   const isDeadlineApproaching = session?.deadline
     ? (() => { const diff = new Date(session.deadline).getTime() - Date.now(); return diff > 0 && diff <= 24 * 60 * 60 * 1000; })()
@@ -807,7 +812,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             </div>
             {isFull && courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
-            <PlusOneRow guest={myGuest} canAdd={canAddGuest} online={online} onChanged={() => void loadData()} windowEnd={windowEnd} />
+            <PlusOneRow
+              guests={myGuests}
+              canAdd={canAddGuest}
+              online={online}
+              onChanged={() => void loadData()}
+              windowEnd={windowEnd}
+              showShare={showGuestShare}
+            />
             <button
               type="button"
               className="link-quiet"
@@ -863,11 +875,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             {courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             <PlusOneRow
-              guest={myGuest}
+              guests={myGuests}
               canAdd={canAddGuest && !heldForUnpaid}
               online={online}
               onChanged={() => void loadData()}
               windowEnd={windowEnd}
+              showShare={showGuestShare}
             />
             <button
               type="button"
@@ -1061,7 +1074,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             <div key="cancel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <p className="fs-base m-0" style={{ color: 'var(--text-secondary)' }}>
                 {isWaitlisted ? tPlayers('leaveSheetBody') : tPlayers('cancelSheetBody')}
-                {myGuest && ` ${tGuest('cancelNote', { name: myGuest.guestName ?? myGuest.name })}`}
+                {myGuests.length > 0 &&
+                  ` ${tGuest('cancelNote', { name: format.list(myGuests.map((g) => g.guestName ?? g.name), { type: 'conjunction' }) })}`}
               </p>
               {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>

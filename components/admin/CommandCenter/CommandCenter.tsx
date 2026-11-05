@@ -242,7 +242,8 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
         { icon: 'groups', label: 'Club name', onClick: () => setView('club-name') },
         { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
         { icon: 'schedule', label: 'Late cancellations', onClick: () => setView('late-cancel') },
-        { icon: 'person_add', label: 'Guests', onClick: () => setView('guests') },
+        // Guests are a rule of How your club runs (docs/plans/six-feathers-guests.md).
+        { icon: 'person_add', label: 'Guests', onClick: () => setView('club-run') },
       ],
     },
     {

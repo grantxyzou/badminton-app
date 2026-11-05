@@ -389,6 +389,7 @@
     },
     "guest": {
       "bring": "带一位朋友",
+      "bringAnother": "再带一位朋友",
       "namePlaceholder": "朋友的名字",
       "add": "添加",
       "adding": "正在添加…",
@@ -402,7 +403,9 @@
       "invalidName": "请输入名字，最多 20 个字符。",
       "addFailed": "无法添加朋友，请重试。",
       "removeFailed": "无法移除朋友，请重试。",
-      "rosterName": "{guest}（{host}的朋友）",
+      "removeNamed": "移除{name}",
+      "onRoster": "{name}已在俱乐部名单上，请让对方自己报名。",
+      "rosterName": "{guest}（{host}）",
       "cancelNote": "{name}也会一起被移除。"
     },
     "balance": {

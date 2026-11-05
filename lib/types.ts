@@ -49,6 +49,8 @@ export interface Session {
   /** RESPONSE-ONLY, never stored: `GET /api/session` reports whether the
    *  club lets members bring a guest (docs/plans/plus-one.md). */
   guestsAllowed?: boolean;
+  /** How many guests a member may bring (docs/plans/six-feathers-guests.md); on the session read only. */
+  guestsPerMember?: number;
   /** prev* fields are written together at advance time; they're related
    *  but kept as flat fields rather than nested because existing prod
    *  records already have the flat shape and the schema rule forbids

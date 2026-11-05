@@ -34,7 +34,10 @@ const DEFAULT_PER_COURT = 8;
  * "First come, first served", where spots do not follow the courts and the
  * per-court choice is closed.
  */
-export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64, window: 64 } as const;
+export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64, window: 64, guests: 64 } as const;
+
+/** Guests a member may bring, offered once guests are on. The server accepts 1–2 (lib/clubRun.ts). */
+const GUEST_CHOICES = [1, 2] as const;
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -137,7 +140,9 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
       const res = await fetch(`${BASE}/api/admin/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ run: { playersPerCourt: next.playersPerCourt, money: next.money, membersFirst: next.membersFirst } }),
+        body: JSON.stringify({
+          run: { playersPerCourt: next.playersPerCourt, money: next.money, membersFirst: next.membersFirst, guests: next.guests },
+        }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -167,6 +172,7 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
         <section className="flex flex-col gap-2">
           <ProfileEyebrow>Rules</ProfileEyebrow>
           <CardSkeleton height={CLUB_RUN_HEIGHTS.window} />
+          <CardSkeleton height={CLUB_RUN_HEIGHTS.guests} />
           <CardSkeleton height={CLUB_RUN_HEIGHTS.spots} />
           <CardSkeleton height={CLUB_RUN_HEIGHTS.money} />
         </section>
@@ -242,7 +248,7 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
                   role="radio"
                   aria-checked={selected}
                   disabled={busy}
-                  onClick={() => { if (!selected) void persist(applyStyle(key)); }}
+                  onClick={() => { if (!selected) void persist(applyStyle(key, run)); }}
                   className="cc-choice"
                 >
                   <span
@@ -347,6 +353,51 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
                 )}
               </div>
             )}
+          </Collapse>
+        </section>
+
+        <section className="glass-card" aria-label="Guests">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>
+                Members can bring guests
+              </p>
+              <p id="club-run-guests" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                {run.guests > 0
+                  ? `On · up to ${run.guests} ${run.guests === 1 ? 'guest' : 'guests'} each, shown as “Jenny (Josh)”`
+                  : 'Off · members sign up only themselves'}
+              </p>
+            </div>
+            <Switch
+              checked={run.guests > 0}
+              onChange={(next) => void persist(withSetting(run, 'guests', next ? 1 : 0))}
+              ariaLabel="Members can bring guests"
+              ariaDescribedBy="club-run-guests"
+              disabled={busy}
+            />
+          </div>
+          <Collapse open={run.guests > 0} spaceAbove="var(--space-3)">
+            <div className="flex flex-col gap-3">
+              <div className="segment-control flex" role="radiogroup" aria-label="Guests each">
+                {GUEST_CHOICES.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    role="radio"
+                    aria-checked={run.guests === n}
+                    onClick={() => { if (run.guests !== n) void persist(withSetting(run, 'guests', n)); }}
+                    disabled={busy}
+                    className={`flex-1 flex items-center justify-center fs-sm rounded-full ${run.guests === n ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                  >
+                    {n === 1 ? '1 guest' : `${n} guests`}
+                  </button>
+                ))}
+              </div>
+              <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                A guest takes a spot or waits like anyone, waits for members first when that is on, and leaves when
+                their member cancels. You can add one for a member from the session card.
+              </p>
+            </div>
           </Collapse>
         </section>
 
