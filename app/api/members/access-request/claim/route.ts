@@ -18,6 +18,7 @@ import { setMemberCookie } from '@/lib/auth';
 import type { Member } from '@/lib/types';
 import { groupIdWithHint } from '@/lib/groupContext';
 import { resolveClaimLink } from '@/lib/claimLinks';
+import { collectJoinRequest } from '@/lib/joinRequests';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,21 @@ export async function POST(req: NextRequest) {
     const viaLink = body?.claimToken !== undefined && body?.claimToken !== null;
     const groupId = viaLink ? await resolveClaimLink(body.claimToken) : groupIdWithHint(req, body?.club);
     if (!groupId) return NextResponse.json({ status: 'none' });
+
+    // THE DOOR (docs/plans/door-link.md): a phone that asked to JOIN holds a
+    // secret for a request on the club, not on a member. Looked at first,
+    // because approval puts the new name on the roster, and the member path
+    // below would then find a person with no request and answer `none`.
+    if (viaLink) {
+      const joined = await collectJoinRequest(groupId, secret);
+      if (joined.status === 'approved') {
+        const res = NextResponse.json({ status: 'approved', name: joined.member.name, hasPin: false, joined: true });
+        setMemberCookie(res, joined.member.id, joined.member.name, groupId);
+        return res;
+      }
+      if (joined.status === 'pending') return NextResponse.json({ status: 'pending' });
+    }
+
     const memberId = await resolveActiveMemberId(groupId, name);
     if (!memberId) return NextResponse.json({ status: 'none' });
 

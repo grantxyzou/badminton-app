@@ -24,7 +24,7 @@ describe('ClaimLinkSheet', () => {
     vi.stubGlobal('fetch', vi.fn(() => respond({ link: { token: 'a'.repeat(32), createdAt: '2026-11-04' }, unclaimed: 30 })));
     render(<ClaimLinkSheet open onClose={() => {}} clubName="Six Feathers" />);
     expect(await screen.findByText(/30 people on the roster haven’t signed in yet/)).toBeDefined();
-    expect((screen.getByLabelText('The link') as HTMLInputElement).value).toContain(`?claim=${'a'.repeat(32)}`);
+    expect((screen.getByLabelText('The link') as HTMLInputElement).value).toContain(`/j/${'a'.repeat(32)}`);
   });
 
   it('offers to make one when the club has none', async () => {
@@ -51,7 +51,7 @@ describe('ClaimLinkSheet', () => {
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Make a new link' }));
     await vi.waitFor(() =>
-      expect((screen.getByLabelText('The link') as HTMLInputElement).value).toContain(`?claim=${'c'.repeat(32)}`),
+      expect((screen.getByLabelText('The link') as HTMLInputElement).value).toContain(`/j/${'c'.repeat(32)}`),
     );
   });
 });
@@ -72,8 +72,8 @@ describe('AskAccessSheet through a claim link', () => {
       </NextIntlClientProvider>,
     );
     expect(screen.getByText('Join Six Feathers')).toBeDefined();
-    fireEvent.change(screen.getByLabelText('Your name in Six Feathers'), { target: { value: 'Lin' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask to be let in' }));
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Lin' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, { body: string }];
     expect(JSON.parse(init.body)).toEqual({ name: 'Lin', claimToken: 'a'.repeat(32) });

@@ -2,9 +2,11 @@
  * The invite as a picture: "Save as image" on the Invite page
  * (docs/superpowers/plans/2026-11-04-app-clip.md, Task 1.3).
  *
- * An organiser sends it to one person, or holds it up on a phone: the club's
- * name, who runs it, when it plays and where, and the one-time invite's QR
- * and code. Everything on it comes in already in words; this file only draws.
+ * The club's name, who runs it, when it plays and where, and a QR. Two kinds:
+ * a one-time invite's (with its code, for one person) and the club's door
+ * link's (docs/plans/door-link.md: reusable, every join approved by an
+ * organiser, so it can go in a group chat or on a wall). Everything on it
+ * comes in already in words; this file only draws.
  *
  * Canvas, not a DOM screenshot, for the same reasons as the share card
  * (`lib/setupShareCanvas.ts`): the PNG must look the same on every phone, and
@@ -31,10 +33,11 @@ export interface PosterContent {
   /** The QR grid (`qrGrid`), quiet zone included. */
   qr: { size: number; data: boolean[][] };
   scanLine: string;
-  codeLine: string;
-  /** "ABCD EFGH". */
-  code: string;
-  /** "Works once, for one person, until Nov 12". */
+  /** "Or type this invite code…", or null when there is no code (the door link). */
+  codeLine: string | null;
+  /** "ABCD EFGH", or null. */
+  code: string | null;
+  /** "Works once, for one person, until Nov 12", or the door's "An organiser lets each person in". */
   onceLine: string;
   appName: string;
 }
@@ -144,7 +147,7 @@ export function drawInvitePoster(canvas: HTMLCanvasElement, c: PosterContent): s
     H += 16; // panel bottom padding
   }
   H += 24 + QR_PX + 12 + LINE.small; // QR and its line
-  H += 16 + LINE.small + 30; // code
+  if (c.code) H += 16 + LINE.small + 30; // code
   H += 20 + LINE.small; // once line
   H += 20 + LINE.small + PAD; // app name
 
@@ -262,15 +265,17 @@ export function drawInvitePoster(canvas: HTMLCanvasElement, c: PosterContent): s
   ctx.fillText(fit(ctx, c.scanLine, inner), W / 2, y);
   y += LINE.small - 13;
 
-  y += 16 + 12;
-  ctx.fillStyle = INK.muted;
-  ctx.font = `400 12px ${SANS}`;
-  ctx.fillText(fit(ctx, c.codeLine, inner), W / 2, y);
-  y += LINE.small - 12 + 24;
-  ctx.fillStyle = INK.ink;
-  ctx.font = `700 22px ${MONO}`;
-  ctx.fillText(c.code, W / 2, y);
-  y += 6;
+  if (c.code) {
+    y += 16 + 12;
+    ctx.fillStyle = INK.muted;
+    ctx.font = `400 12px ${SANS}`;
+    if (c.codeLine) ctx.fillText(fit(ctx, c.codeLine, inner), W / 2, y);
+    y += LINE.small - 12 + 24;
+    ctx.fillStyle = INK.ink;
+    ctx.font = `700 22px ${MONO}`;
+    ctx.fillText(c.code, W / 2, y);
+    y += 6;
+  }
 
   y += 20 + 12;
   ctx.fillStyle = INK.muted;

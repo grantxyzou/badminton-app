@@ -33,6 +33,8 @@ import { rosterMemberIds } from '@/lib/roster';
 import type { Member } from '@/lib/types';
 import { isUnclaimed } from '@/lib/claimLinks';
 import type { StoredAccessRequest } from '@/lib/accessRequest';
+import { approveJoinRequest, declineJoinRequest, pendingJoinRequests } from '@/lib/joinRequests';
+import { readGroup, rosterNameHolder } from '@/lib/groups';
 
 /**
  * Whether an ask is THIS club's. A request older than the field carries no
@@ -50,9 +52,16 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`access-list:${ip}`, 120, HOUR_MS)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  // Read-only: the cheap sync check (cookie signature + expiry), per the
-  // documented split.
+  // Read-only, but it also answers whether THIS admin is an organiser, which
+  // only the membership can say: through the door link only an organiser lets
+  // anyone in (docs/plans/door-link.md), and the card must not offer an
+  // Approve it will refuse. The sync check stays first, so a stranger costs
+  // no read.
   if (!isAdminAuthed(req)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  const admin = await isAdminAuthedWithMember(req);
+  if (!admin.authed) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -102,7 +111,20 @@ export async function GET(req: NextRequest) {
       }))
       .sort((a, b) => a.at - b.at);
 
-    return NextResponse.json({ requests: waiting });
+    // People asking to JOIN through the door link: on the club, not on a
+    // person. `nameTaken` lets the card say so before anyone taps Approve.
+    const group = await readGroup(groupId);
+    const joins = await Promise.all(
+      pendingJoinRequests(group).map(async (r) => ({
+        joinRequestId: r.id,
+        name: r.name,
+        at: r.expiresAt,
+        nameTaken: (await rosterNameHolder(groupId, r.name)) !== null,
+      })),
+    );
+    joins.sort((a, b) => a.at - b.at);
+
+    return NextResponse.json({ requests: waiting, joins, organiser: admin.organiser });
   } catch (err) {
     console.error('GET /api/admin/access-requests failed:', err);
     return NextResponse.json({ error: 'read_failed' }, { status: 503 });
@@ -122,6 +144,33 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
+
+  // A JOIN through the door link (docs/plans/door-link.md). Organisers only
+  // (Grant, 2026-11-05), in either direction: declining is a decision about
+  // who comes in too.
+  const joinRequestId = body && typeof body.joinRequestId === 'string' ? body.joinRequestId : '';
+  if (joinRequestId) {
+    const decision = body?.decision;
+    if (decision !== 'approve' && decision !== 'decline') {
+      return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+    }
+    if (!admin.organiser) return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+    try {
+      if (decision === 'decline') {
+        return (await declineJoinRequest(admin.groupId, joinRequestId))
+          ? NextResponse.json({ ok: true })
+          : NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
+      const result = await approveJoinRequest(admin.groupId, joinRequestId);
+      if (result.outcome === 'approved') return NextResponse.json({ ok: true });
+      if (result.outcome === 'name_taken') return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    } catch (err) {
+      console.error('POST /api/admin/access-requests (join) failed:', err);
+      return NextResponse.json({ error: 'write_failed' }, { status: 503 });
+    }
+  }
+
   const memberId = body && typeof body.memberId === 'string' ? body.memberId : '';
   const requestId = body && typeof body.requestId === 'string' ? body.requestId : '';
   const decision = body?.decision;
@@ -140,7 +189,7 @@ export async function POST(req: NextRequest) {
     if (!(await rosterMemberIds(admin.groupId)).has(memberId)) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
-    let refusal: 'not_found' | 'several_requests' | null = null;
+    let refusal: 'not_found' | 'several_requests' | 'organiser_only' | null = null;
 
     const result = await updateAccessRequests(memberId, (open) => {
       if (decision === 'decline') {
@@ -157,12 +206,18 @@ export async function POST(req: NextRequest) {
       // person on both rosters: it signs the device in to the club it names.
       const target = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId));
       if (!target) { refusal = 'not_found'; return null; }
+      // An ask through the club's door link is an organiser's to approve,
+      // whoever it is for (Grant, 2026-11-05: "Organisers only").
+      if (target.via === 'link' && !admin.organiser) { refusal = 'organiser_only'; return null; }
       // Re-checked at write time, not trusted from the list the admin saw: a
       // second ask may have landed since.
       if (open.length > 1) { refusal = 'several_requests'; return null; }
       return [{ ...target, approvedAt: Date.now() }];
     });
 
+    if (refusal === 'organiser_only') {
+      return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+    }
     if (refusal === 'several_requests') {
       return NextResponse.json({ error: 'several_requests' }, { status: 409 });
     }

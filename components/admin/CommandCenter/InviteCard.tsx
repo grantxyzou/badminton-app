@@ -162,7 +162,7 @@ export default function InviteCard({ enabled = true, groupName, bare = false }: 
                     invite, drawn big for their camera. */}
                 <InviteQr invite={showing} onUsed={onUsed} />
                 <InviteShare token={showing.token} code={showing.code} groupName={groupName} expiresAt={showing.expiresAt} />
-                <InvitePosterButton invite={showing} groupName={groupName} />
+                <InvitePosterButton token={showing.token} code={showing.code} expiresAt={showing.expiresAt} groupName={groupName} />
                 <button type="button" onClick={() => void doRevoke(showing.id)} disabled={busy} className="cc-btn cc-btn-ghost" style={{ width: '100%' }}>
                   {t('revoke')}
                 </button>
