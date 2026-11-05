@@ -251,7 +251,12 @@ submitted by Grant on device.
   sign-up link); `components/auth/ProviderButtons.tsx`; `lib/usePush.ts`;
   `components/NativeBridge.tsx` (renders nothing; `appUrlOpen`, `bpm:resume`,
   the Android back button, status-bar style, push-tap routing);
-  `lib/sheetStack.ts` (which sheets are open, for the back button).
+  `lib/sheetStack.ts` (which sheets are open, for the back button) and
+  `lib/pageStack.ts` (which in-tab page is open — an admin page, a Profile
+  sub-screen, a Stats page — so back steps out of it before leaving the tab;
+  `docs/plans/back-navigation.md`). **Admin keeps a TRAIL of pages, not one
+  page** (`AdminDashboard`, `lib/viewTrail.ts`): Back pops one, so a page
+  opened from another returns to it.
 - **OAuth runs in the SYSTEM browser sheet** — Google answers
   `disallowed_useragent` in an embedded WebView. That is a separate cookie jar,
   the exact split `lib/authHandoff.ts` already bridges. `/start?native=1`
