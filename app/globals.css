@@ -6759,6 +6759,11 @@ button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); 
 }
 button.setup-next-row { cursor: pointer; }
 .setup-next-img { flex: 0 0 auto; width: 54px; height: 156px; object-fit: contain; }
+/* A string's retail packet (docs/plans/string-packets.md): a pre-rendered
+   240×336 image, shown at two sizes. The packet carries its own shadow. */
+.string-pack-img { flex: 0 0 auto; object-fit: contain; }
+.string-pack-row { width: 40px; height: 56px; }
+.string-pack-hero { width: 80px; height: 112px; }
 .setup-next-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 /* The name is the door to the pick's detail; the chevron rides on it. */
 .setup-next-name {

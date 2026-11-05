@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Every string shows its packet (2026-11-05)
+
+The strings on the Stringing tab now have pictures: each string's 10 m retail packet, matched to maker and retailer photos and drawn without the maker's logo. The packet shows on every row of the strings list and in the map view's selected string, beside the name on a string's page, and in the request form's string list in place of the gauge tile. Each picture is about 9 KB, drawn ahead of time; nothing loads on screens that show no strings. A string with no packet keeps what it showed before. Plan: `docs/plans/string-packets.md`.
+
 ### Every racket in its real paint (2026-11-04)
 
 The racket pictures on Stats → Equipment, in the 3D viewer and on the share card now show each catalog racket in its real paint, matched to maker and retailer photos. That includes its fades, split halves, crown and throat colours and slashes, the shaft's colour change, the handle and grip, and its head outline. Every one of the 153 catalog rackets has it; 23 are approximate, because only angled photos existed. Four catalog rackets that do not exist (Victor Arrow Speed 88 and NitroLite 80X, Li-Ning Halberd 900 and G-Force Superlite) were deleted from the catalog, in production too, on the next deploy. Every racket, including the default, also got new materials: lacquer over a carbon weave, a ridged octagonal grip, a woven string bed, flush grommets and sharper edges. The list images are the same 240 × 624 pictures they were (2.8 MB for all 154), and nothing extra loads on screens that show no 3D. Logos are left off. Plan: `docs/plans/racket-fidelity.md`.

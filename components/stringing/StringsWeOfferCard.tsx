@@ -7,6 +7,8 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import Collapse from '@/components/primitives/Collapse';
 import ListRow from '@/components/primitives/ListRow';
+import StringPackImage from './StringPackImage';
+import { stringPackSrc } from '@/lib/stringPackSrc';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import { useCatalog } from '@/components/stats/useCatalog';
 import { stringSpecLine } from '@/lib/gearSetup';
@@ -258,6 +260,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   }));
   const openEntry = entries.find((e) => e.label === open) ?? null;
 
+  const anyPack = entries.some((e) => stringPackSrc(e.item?.id));
   const row = (e: ShelfEntry) => {
     const price = priceText(e.label);
     const p = powerOf(e.item);
@@ -279,6 +282,12 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
             read as "not available". */}
         {(() => {
           const content = {
+            // The packet, when the string has one; a row without keeps its old shape.
+            // A row with no packet keeps the packet's room while any row has
+            // one, so every name in the list starts at the same edge.
+            leading: stringPackSrc(e.item?.id)
+              ? <StringPackImage catalogId={e.item!.id} size="row" />
+              : anyPack ? <span aria-hidden="true" className="string-pack-row" style={{ flex: 'none' }} /> : undefined,
             title: (
               <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                 <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{e.label}</span>
@@ -388,8 +397,11 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
                     gap: 'var(--space-2)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    <span className="fs-lg" style={{ fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>{selected.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0 }}>
+                      <StringPackImage catalogId={selected.item?.id} size="row" />
+                      <span className="fs-lg" style={{ fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>{selected.label}</span>
+                    </span>
                     {priceText(selected.label) && (
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)', flex: 'none' }}>{priceText(selected.label)}</span>
                     )}
