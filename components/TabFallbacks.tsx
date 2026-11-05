@@ -40,9 +40,10 @@ export const STRINGING_HEIGHTS = {
 /** StringingTab: header, the register switch (32px), then the Racket
  *  register's service card. */
 export function StringingFallback() {
+  const tLoading = useTranslations('a11y');
   const tNav = useTranslations('nav');
   return (
-    <div className="space-y-5 w-full" role="status" aria-label="Loading">
+    <div className="space-y-5 w-full" role="status" aria-label={tLoading('loading')}>
       <PageHeader>{tNav('stringing')}</PageHeader>
       <div className="segment-control w-full" style={{ height: 32 }} aria-hidden="true" />
       <div>
@@ -83,9 +84,10 @@ export const STATS_HEIGHTS = {
  * arriving moved the page.
  */
 export function StatsFallback() {
+  const tLoading = useTranslations('a11y');
   const t = useTranslations('stats');
   return (
-    <div className="space-y-5 w-full" role="status" aria-label="Loading">
+    <div className="space-y-5 w-full" role="status" aria-label={tLoading('loading')}>
       <PageHeader>{t('heading')}</PageHeader>
       <p className="fs-md text-gray-400 px-2" style={{ marginTop: 'var(--space-1)' }}>
         {t('subheadV2')}
@@ -116,13 +118,14 @@ export function StatsFallback() {
  * nothing on the page it stood in for.
  */
 export function ProfileSkeleton({ title }: { title: string }) {
+  const tLoading = useTranslations('a11y');
   const label = (
     <div style={{ height: 22, display: 'flex', alignItems: 'center' }} aria-hidden="true">
       <div className="shimmer-line rounded-lg" style={{ height: 10, width: '30%' }} />
     </div>
   );
   return (
-    <div className="flex flex-col gap-4" role="status" aria-label="Loading">
+    <div className="flex flex-col gap-4" role="status" aria-label={tLoading('loading')}>
       <PageHeader>{title}</PageHeader>
       <CardSkeleton height={84} />
       {label}
@@ -148,9 +151,10 @@ export function ProfileFallback() {
  * It is on screen only while the admin chunk downloads.
  */
 export function AdminFallback() {
+  const tLoading = useTranslations('a11y');
   const pageT = useTranslations('pages.admin');
   return (
-    <div className="space-y-5" role="status" aria-label="Loading">
+    <div className="space-y-5" role="status" aria-label={tLoading('loading')}>
       <div className="bpm-topbar">
         <span className="bpm-topbar__back" aria-hidden="true">
           <span className="material-icons" aria-hidden="true">chevron_left</span>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { shareTextOrCopy } from '@/lib/shareText';
 import { inviteUrl } from '@/lib/useInvites';
 
@@ -35,6 +35,7 @@ interface Props {
  */
 export default function InviteShare({ token, code, groupName, expiresAt }: Props) {
   const t = useTranslations('groups.invite');
+  const locale = useLocale();
   const [copied, setCopied] = useState(false);
 
   const url = token ? inviteUrl(token) : '';
@@ -83,7 +84,7 @@ export default function InviteShare({ token, code, groupName, expiresAt }: Props
         </p>
         {expiresAt && (
           <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-            {t('onceUntil', { date: new Date(expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })}
+            {t('onceUntil', { date: new Date(expiresAt).toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' }) })}
           </p>
         )}
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>

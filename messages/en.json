@@ -297,6 +297,16 @@
       "nameRequired": "Add your name to sign up",
       "pinHint": "Required. Use this PIN to recover access if you change phones.",
       "genericFailure": "That didn't go through — give it another try.",
+      "errors": {
+        "notOpen": "Sign-ups aren't open yet — check back when the organiser opens them.",
+        "deadlinePassed": "Sign-ups for this session have closed.",
+        "alreadyIn": "You're already on the list for this session.",
+        "full": "The session filled up just now — you can join the waitlist instead.",
+        "settled": "This session's bill has been finalised, so the list can't change.",
+        "noSession": "There's no session to sign up for yet.",
+        "tooMany": "Give it a minute, then try again.",
+        "signedOut": "Your sign-in has expired — sign in again to sign up."
+      },
       "waitlistFailure": "That didn't go through — try the waitlist again.",
       "signingUpAs": "Signing up as {name}",
       "joining": "Joining…",
@@ -2821,5 +2831,16 @@
     "owedUnknown": "Your balance",
     "stringing": "Request stringing",
     "stringingSub": "Book your next restring"
+  },
+  "a11y": {
+    "primaryNav": "Main tabs",
+    "loading": "Loading",
+    "refreshing": "Refreshing",
+    "pullToRefresh": "Pull to refresh",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "related": "Related pages"
   }
 }

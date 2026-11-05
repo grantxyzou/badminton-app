@@ -326,6 +326,16 @@
         "savedToast": "PIN 已保存",
         "errorInvalid": "PIN 必须是 4 位数字",
         "errorTooCommon": "换一个不那么常见的 PIN"
+      },
+      "errors": {
+        "notOpen": "还没开放报名，等组织者开放后再来。",
+        "deadlinePassed": "这次活动的报名已经截止。",
+        "alreadyIn": "你已经在这次的名单上了。",
+        "full": "名额刚刚满了，可以先加入候补。",
+        "settled": "这次活动的账单已经结算，名单不能再改。",
+        "noSession": "现在还没有可以报名的活动。",
+        "tooMany": "稍等一分钟再试。",
+        "signedOut": "登录已过期，请重新登录后再报名。"
       }
     },
     "waitlistPing": {
@@ -2809,5 +2819,16 @@
     "owedUnknown": "我的余额",
     "stringing": "预约穿线",
     "stringingSub": "预约下一次穿线"
+  },
+  "a11y": {
+    "primaryNav": "主标签栏",
+    "loading": "加载中",
+    "refreshing": "正在刷新",
+    "pullToRefresh": "下拉刷新",
+    "switchToLight": "切换到浅色模式",
+    "switchToDark": "切换到深色模式",
+    "previousMonth": "上个月",
+    "nextMonth": "下个月",
+    "related": "相关页面"
   }
 }

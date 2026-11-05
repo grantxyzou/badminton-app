@@ -677,13 +677,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       .then((s: { id?: string; datetime?: string }) => {
         if (!s?.id) return;
         const label = s.datetime
-          ? new Date(s.datetime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+          // The app's language and the club's clock, like every other session
+          // date — not the phone's (audit, 2026-11-05).
+          ? new Date(s.datetime).toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' })
           : '';
         sessionIdRef.current = s.id;
         setProfileSession({ id: s.id, label });
       })
       .catch(() => undefined);
-  }, []);
+  }, [locale]);
 
   // Show admin tab if user has admin role OR already has a valid admin cookie.
   // Re-runs on mount, after any identity change (sign-in / sign-out from any

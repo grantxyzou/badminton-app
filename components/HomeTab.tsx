@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations, useFormatter } from 'next-intl';
+import { signupErrorKey } from '@/lib/signupError';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useReportFetchFailure } from '@/lib/useOnline';
@@ -543,7 +544,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         if (data.error === 'invite_list_not_found') {
           setError(t('signup.inviteError', { name: trimmed }));
         } else {
-          setError(data.error ?? (waitlist ? t('signup.waitlistFailure') : t('signup.genericFailure')));
+          // Never the server's own words: some refusals are English sentences
+          // and some are codes (`lib/signupError.ts`).
+          const key = signupErrorKey(res.status, data.error);
+          setError(key ? t(`signup.errors.${key}`) : waitlist ? t('signup.waitlistFailure') : t('signup.genericFailure'));
         }
         if (res.status === 409) void loadData();
         return;

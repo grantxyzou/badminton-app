@@ -204,14 +204,17 @@ export default function StringTensionCard({ activeName, gear, suppressed, suppre
     <div className="glass-card p-5 flex flex-col gap-3">
       <CardHeader icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} />
 
-      <div className="segment-control flex w-full">
+      {/* A choice of one, so radios: `aria-current` means "you are here", not
+          "this one is chosen" (audit, 2026-11-05). */}
+      <div className="segment-control flex w-full" role="radiogroup" aria-label={t('formatLabel')}>
         {(['doubles', 'singles'] as const).map((f) => (
           <button
             key={f}
             type="button"
+            role="radio"
             onClick={() => { void pick(f); }}
             disabled={gear.busy}
-            aria-current={selected === f ? 'true' : undefined}
+            aria-checked={selected === f}
             className={`flex-1 flex items-center justify-center fs-sm ${
               selected === f ? 'segment-tab-active' : 'segment-tab-inactive'
             }`}

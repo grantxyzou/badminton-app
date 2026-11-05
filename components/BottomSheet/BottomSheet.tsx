@@ -255,6 +255,10 @@ export default function BottomSheet({
           .join(' ')}
         style={{ zIndex: 60 }}
         role="dialog"
+        // Modal: the focus trap keeps a keyboard inside, and this tells a
+        // screen reader the same, so VoiceOver's swipe stops at the sheet
+        // instead of walking on into the page behind it (audit, 2026-11-05).
+        aria-modal="true"
         aria-label={ariaLabel}
         // Always attached, never conditional on a drag being live: the drag
         // lives in a ref (no re-render), so a handler attached "once dragging"

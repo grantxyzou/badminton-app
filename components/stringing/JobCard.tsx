@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { STATUS_TONE } from './statusTone';
 import { dueFor, dueStyle, formatReadyBy } from '@/lib/stringingDue';
@@ -69,6 +69,7 @@ export default function JobCard({
   action?: ReactNode;
 }) {
   const t = useTranslations('home.stringing');
+  const locale = useLocale();
   const tAdmin = useTranslations('admin.stringing');
 
   const spec = [
@@ -85,7 +86,7 @@ export default function JobCard({
   const dueText =
     due.key === 'pickedUp' ? null
       : due.key === 'overdue' ? tAdmin('due.overdue', { days: due.days ?? 0 })
-        : due.key === 'onDate' ? (formatReadyBy(due.date) ?? tAdmin('due.noDate'))
+        : due.key === 'onDate' ? (formatReadyBy(due.date, locale) ?? tAdmin('due.noDate'))
           : tAdmin(`due.${due.key}`);
 
   return (

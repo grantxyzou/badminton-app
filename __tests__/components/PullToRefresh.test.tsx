@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, cleanup, act } from '@testing-library/react';
+import { render as rtlRender, cleanup, act } from '@testing-library/react';
 import PullToRefresh from '../../components/PullToRefresh';
 import { registerOpenSheet } from '../../lib/sheetStack';
+import { NextIntlClientProvider } from 'next-intl';
+import enMessages from '@/messages/en.json';
+
+// Loading frames and the pull-to-refresh disc carry translated spoken names
+// (`a11y.*`), so they need the provider like every other translated component.
+const render = (ui: React.ReactElement) =>
+  rtlRender(<NextIntlClientProvider locale="en" messages={enMessages}>{ui}</NextIntlClientProvider>);
 
 afterEach(() => {
   cleanup();

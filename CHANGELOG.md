@@ -48,6 +48,19 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Easier to read, and kinder to screen readers and to Chinese (2026-11-05)
+
+- **A refused sign-up explains itself in your language.** If a session was full, closed or already settled, the card used to show the server's own words. Sometimes that was an English sentence on the Chinese page, sometimes a code like `session_settled`. It now says what happened, in English or Chinese.
+- **Faint text is easier to read in dark mode.** Hints and captions were too faint over the bright corner of each tab's background. They are a little lighter now and meet the standard contrast for reading.
+- **Screen readers:**
+  - A screen reader now stays inside an open sheet instead of reading the page behind it.
+  - The tab bar, the light/dark switch, pull-to-refresh and loading screens are named in Chinese when the app is in Chinese.
+  - A skill's close button now has a name.
+  - The tension and racket-pick options are announced as choices, not as tabs.
+- **The small round buttons at the top are easier to tap.** They look the same, but each now takes a tap across a full fingertip-sized area.
+- **Keyboard users see where they are.** Every button now shows the same clear green focus ring.
+- **Dates follow the app's language.** The stringing "ready by" date, an invite's expiry and Profile's session date now use the app's language and the club's time zone, not the phone's.
+
 ### The app opens with less to download (2026-11-05)
 
 - **Each visitor now downloads only their own screen.** The app and the signed-out welcome screen came in one bundle, so members also downloaded the sign-up forms and newcomers downloaded the whole app. Now each gets only theirs. That is 13% less for a newcomer (254 → 220 KB) and 4% less for a member (254 → 245 KB) before anything appears.
