@@ -5,7 +5,9 @@
  * holding an invite link has not joined anything yet, and a join sheet that
  * cannot say whose club it is asks people to accept an invitation blind.
  *
- * It answers with the group's NAME AND NOTHING ELSE. Not the roster, not the
+ * It answers with the group's NAME AND NOTHING ELSE, plus `kind`: whether the
+ * token is a one-time invite or the club's door link, which the page needs to
+ * pick between the sign-up form and "Ask to join". Not the roster, not the
  * member count, not the owner, not the id. A valid token that leaked how big a
  * club is would make this an enumeration surface; the name is the minimum that
  * makes the sheet honest, so the name is all it returns.
@@ -47,15 +49,24 @@ export async function GET(req: NextRequest) {
   if ([token, code, claim].filter(Boolean).length !== 1) return noSuchInvite();
 
   try {
-    const groupId = claim
+    let kind: 'invite' | 'door' = claim ? 'door' : 'invite';
+    let groupId = claim
       ? await resolveClaimLink(claim)
       : token
         ? await resolveInvite(token, 'invite')
         : await resolveInvite(code!, 'code');
+    // THE ONE LINK (docs/plans/door-link.md): `/bpm/j/<token>` carries both a
+    // one-time invite and the club's door link, and both are 32 hex. A token
+    // that is not a live invite may be the door; the page then shows "Ask to
+    // join" instead of the sign-up form. Every miss is still the one 404.
+    if (!groupId && token) {
+      groupId = await resolveClaimLink(token);
+      if (groupId) kind = 'door';
+    }
     if (!groupId) return noSuchInvite();
     const group = await readGroup(groupId);
     if (!group || group.closedAt) return noSuchInvite();
-    return NextResponse.json({ name: group.name });
+    return NextResponse.json({ name: group.name, kind });
   } catch (error) {
     console.error('GET /api/groups/preview:', error);
     return NextResponse.json({ error: 'preview_failed' }, { status: 500 });

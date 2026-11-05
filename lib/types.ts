@@ -396,6 +396,34 @@ export interface Group {
    * same reason as `invites`. `lib/claimLinks.ts` owns it. Additive.
    */
   claimLinkId?: string;
+  /**
+   * People asking to JOIN through the club's door link (docs/plans/door-link.md):
+   * a name not on the roster, waiting for an organiser. They live on the club
+   * because a new person has no Member doc to hold a request. Bounded and
+   * short-lived; `lib/joinRequests.ts` owns them. Additive: absent means none.
+   */
+  joinRequests?: StoredJoinRequest[];
+}
+
+/**
+ * One ask to join through the door link. Device-bound like an access request
+ * (`lib/accessRequest.ts`): only the sha256 of the asking phone's secret is
+ * kept, so approving lets in the phone that asked and nobody else.
+ */
+export interface StoredJoinRequest {
+  /** Random, public-safe handle the organiser approves by. Never the hash. */
+  id: string;
+  /** The name they typed, trimmed. Becomes their roster name on approval. */
+  name: string;
+  /** sha256 of the asking phone's secret. */
+  hash: string;
+  createdAt: string;
+  /** Epoch ms. An hour after asking, the same life as an access request. */
+  expiresAt: number;
+  /** When an organiser approved. Absent = still waiting. */
+  approvedAt?: number;
+  /** The account approval created. Set after `approvedAt`; the phone collects it. */
+  memberId?: string;
 }
 
 /** One live one-time invite, as listed on its `Group`. */

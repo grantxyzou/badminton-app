@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { inviteUrl, type Invite } from '@/lib/useInvites';
+import { inviteUrl } from '@/lib/useInvites';
 import { qrGrid } from '@/lib/qr';
 import { drawInvitePoster, posterWhen, type PosterContent } from '@/lib/invitePoster';
 import { shareOrSaveImage } from '@/lib/shareImage';
@@ -58,8 +58,17 @@ function usePosterFacts(): Facts {
 }
 
 interface Props {
-  invite: Invite;
+  /** The token the QR carries: a one-time invite's, or the club's door link's. */
+  token: string;
+  /** A one-time invite's 8-character code; absent for the door link. */
+  code?: string;
+  /** When a one-time invite dies unused; absent for the door link. */
+  expiresAt?: string;
+  /** The club's door link (docs/plans/door-link.md): reusable, every join approved. */
+  door?: boolean;
   groupName?: string;
+  /** The button's words; "Save as image" by default. */
+  label?: string;
 }
 
 /**
@@ -67,11 +76,12 @@ interface Props {
  * club's name, who runs it, when and where it plays, and this one-time
  * invite's QR and code (Grant, 2026-11-05). Drawn by `lib/invitePoster.ts`.
  *
- * The poster says it works once, for one person, until it expires: it carries
- * a one-time invite, and posted in a group chat it would let in only the
- * first person to scan it.
+ * A one-time invite's poster says it works once, for one person, until it
+ * expires: posted in a group chat it would let in only the first person to
+ * scan it. The club's DOOR poster (`door`) is the one for a chat or a wall:
+ * anyone can ask, and an organiser lets each person in.
  */
-export default function InvitePosterButton({ invite, groupName }: Props) {
+export default function InvitePosterButton({ token, code, expiresAt, door = false, groupName, label }: Props) {
   const t = useTranslations('groups.invite');
   const locale = useLocale();
   const { group } = useCurrentGroup();
@@ -86,7 +96,7 @@ export default function InvitePosterButton({ invite, groupName }: Props) {
     const organisers = facts.organisers.length
       ? new Intl.ListFormat(locale, { type: 'conjunction' }).format(facts.organisers)
       : null;
-    const until = new Date(invite.expiresAt).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+    const until = expiresAt ? new Date(expiresAt).toLocaleDateString(locale, { month: 'short', day: 'numeric' }) : '';
     return {
       eyebrow: t('posterEyebrow'),
       club: groupName?.trim() || group?.name?.trim() || APP_NAME,
@@ -96,11 +106,11 @@ export default function InvitePosterButton({ invite, groupName }: Props) {
       cadence: when ? t('posterCadence', { day: when.day, time: when.time }) : null,
       location: facts.location,
       address: facts.address,
-      qr: qrGrid(inviteUrl(invite.token)),
-      scanLine: t('posterScan'),
-      codeLine: t('posterCode'),
-      code: `${invite.code.slice(0, 4)} ${invite.code.slice(4)}`,
-      onceLine: t('posterOnce', { date: until }),
+      qr: qrGrid(inviteUrl(token)),
+      scanLine: door ? t('posterDoorScan') : t('posterScan'),
+      codeLine: !door && code ? t('posterCode') : null,
+      code: !door && code ? `${code.slice(0, 4)} ${code.slice(4)}` : null,
+      onceLine: door ? t('posterDoorLine') : t('posterOnce', { date: until }),
       appName: APP_NAME,
     };
   }
@@ -116,7 +126,7 @@ export default function InvitePosterButton({ invite, groupName }: Props) {
       return;
     }
     setBusy(true);
-    const outcome = await shareOrSaveImage(canvas, `invite-${invite.code}.png`);
+    const outcome = await shareOrSaveImage(canvas, door ? 'club-poster.png' : `invite-${code ?? 'poster'}.png`);
     setBusy(false);
     if (outcome.kind === 'error') setFailed(true);
     // iOS without a file share: show the picture so it can be pressed and held.
@@ -128,7 +138,7 @@ export default function InvitePosterButton({ invite, groupName }: Props) {
       <canvas ref={canvasRef} aria-hidden="true" style={{ display: 'none' }} />
       <button type="button" onClick={() => void save()} disabled={busy} className="cc-btn cc-btn-secondary" style={{ width: '100%' }}>
         <span className="material-icons icon-sm" aria-hidden="true">image</span>
-        {t('posterSave')}
+        {label ?? t('posterSave')}
       </button>
       {failed && <p className="field-error" role="alert">{t('posterFailed')}</p>}
       {preview && (

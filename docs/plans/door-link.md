@@ -1,7 +1,7 @@
 # The club's door link: one poster, every join approved
 
 **Track:** the native shell's App Clip (`docs/plans/native-ios-targets.md`, Reach): the sticker that plan kept "behind the organiser's approval", which the reusable poster turns out to be too. Its web half ships before the clip and helps every phone.
-**Status:** intent
+**Status:** in-flight
 **Review on:** 2026-12-03 — of the people who joined through the door link, did an organiser ever approve someone they didn't know had asked? One case means stop (see Kill criterion). And did anyone get stuck waiting more than ten minutes?
 
 ## Problem
@@ -26,7 +26,8 @@ Grant's answers on 2026-11-05:
 
 - **No auto-approval**, no "approve everyone from this link" switch. The approval is the point.
 - **Not the App Clip.** The clip later opens the same request natively. This plan is the server and the website.
-- **Not the rest of the PIN phase-out.** People already on a PIN keep it, and Log in keeps its PIN path. This plan only stops OFFERING a PIN to a person who came through the door. Retiring PIN sign-in for existing members is its own plan, with its own migration and kill criterion.
+- **Not the rest of the PIN phase-out.** People already on a PIN keep it, and Log in keeps its PIN path. This plan only stops OFFERING a PIN to a person who came through the door.
+- **A taken name is not merged.** If a new person types a name a member already holds, the organiser sees "that name is taken" and asks them to try again with another; the door never attaches a stranger to an existing account. Retiring PIN sign-in for existing members is its own plan, with its own migration and kill criterion.
 - **Not a second link per club.** The club already has one reusable link, its claim link (`docs/plans/claim-your-name.md`). The door widens it rather than adding another (see Decisions).
 
 ## Decisions
@@ -39,7 +40,7 @@ Grant's answers on 2026-11-05:
 - **After they're in, Home offers a way to keep the account, never a PIN.** Today a person let in by an admin sees "Set a PIN so you can get back in" (`OFFER_PIN_KEY`). A door member sees "Keep your account" instead: Sign in with Apple, Google, or email and password. Their session lasts 30 days, so this is what stands between them and asking again next month.
 - **Password rule: today's, unchanged** (Grant, 2026-11-05: "Keep today's rule", after the trade-off was put to him). He first asked for "min 8 characters with upper and lower case + number + special character". Today's rule is at least 10 characters plus a blocklist of common passwords, with no composition rules on purpose (`lib/passwordRules.ts`): current NIST guidance (SP 800-63B) says composition rules push people to `Passw0rd!` and that length matters more, and his rule as written would have lowered the minimum from 10 to 8.
 
-## Shape (intended)
+## Shape
 
 | Piece | Where |
 |---|---|
@@ -53,10 +54,12 @@ Grant's answers on 2026-11-05:
 | Keep your account | Home, after the first sign-in: Apple, Google, email and password; no PIN |
 | The poster | "Save as image" on the Invite page offers the door poster: no "works once" line |
 
-## Tasks (to become the build plan)
+## Tasks
 
-1. Preview tells invite from door; the signed-out shell shows "Ask to join".
-2. A join request on the club; organiser push; inbox card; organiser-only approval that creates the account.
-3. The asking phone signs in on approval.
-4. "Keep your account" instead of "Set a PIN".
-5. The door poster on the Invite page, and the claim link moved onto `/bpm/j/`.
+- [x] Preview tells invite from door; the signed-out page opens "Join {club} · Ask to join" for a door token.
+- [x] A join request on the club; organiser-only push; the inbox card's join rows; organiser-only approval that creates the account. A name a member already holds is shown as taken and refused; a removed member's name is free again, and approval makes a new person.
+- [x] The asking phone signs in on approval, and is not offered a PIN.
+- [x] The door poster on the Invite page ("A poster for everyone"), and the club link shared on `/bpm/j/`.
+- [ ] "Keep your account" instead of "Set a PIN": Apple, Google, or a new route to add an email and password to a signed-in account.
+
+Checked on the mock store, 2026-11-05: an organiser made the club link and saved the poster (a QR decoder read it as the `/bpm/j/` link); a signed-out phone opened that link, asked as a new name, the organiser tapped "Let them in", and the phone landed on Home signed in.

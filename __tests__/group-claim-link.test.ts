@@ -101,7 +101,7 @@ describe('the link', () => {
 
   it('previews the club’s name, and one 404 for anything else', async () => {
     const ok = await PREVIEW(makeRequest('GET', `http://x/api/groups/preview?claim=${token}`));
-    expect(await ok.json()).toEqual({ name: 'Six Feathers' });
+    expect(await ok.json()).toEqual({ name: 'Six Feathers', kind: 'door' });
     for (const bad of ['f'.repeat(32), 'not-a-token', '']) {
       const res = await PREVIEW(makeRequest('GET', `http://x/api/groups/preview?claim=${bad}`));
       expect(res.status).toBe(404);

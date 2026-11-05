@@ -237,6 +237,30 @@ describe('landings', () => {
     expect(window.location.search).not.toContain('claim');
   });
 
+  it('the club’s door link on the one-link path opens the ask, not the sign-up form', async () => {
+    // docs/plans/door-link.md: /bpm/j/<token> redirects to ?join=, and the
+    // preview says the token is the door rather than an invite.
+    const token = 'e5'.repeat(16);
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes('/api/groups/preview') ? json({ name: 'BPM Badminton', kind: 'door' }) : json({}),
+    );
+    at(`?join=${token}`);
+    renderShell();
+    await waitFor(() => expect(captured.AskAccessSheet?.open).toBe(true));
+    expect(captured.AskAccessSheet?.claim).toEqual({ token, clubName: 'BPM Badminton' });
+    expect(captured.EmailSignUpForm).toBeUndefined();
+    expect(window.location.search).not.toContain('join');
+  });
+
+  it('a person let in through the door is not offered a PIN', async () => {
+    const token = 'f6'.repeat(16);
+    at(`?claim=${token}`);
+    renderShell();
+    await waitFor(() => expect(captured.AskAccessSheet?.open).toBe(true));
+    (captured.AskAccessSheet!.onSignedIn as (r: { name: string; hasPin: boolean }) => void)({ name: 'Akane', hasPin: false });
+    expect(sessionStorage.getItem('badminton_offer_pin')).toBeNull();
+  });
+
   it('a claim link that no longer resolves says so, and opens nothing', async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) =>
       String(input).includes('/api/groups/preview') ? json({ error: 'invite_not_found' }, 404) : json({}),
