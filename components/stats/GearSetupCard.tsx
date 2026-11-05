@@ -156,7 +156,9 @@ export default function GearSetupCard({ activeName, gear, picks, onOpenLine, onO
           <h3 className="setup-name">{activeName}</h3>
         </div>
         {!gear.loadError && filled < 2 && (
-          <StatusBadge>{ts('progress', { filled })}</StatusBadge>
+          // On glass when the racket is behind it, like every control over it.
+          racket ? <span className="setup-glass setup-glass-pill"><StatusBadge>{ts('progress', { filled })}</StatusBadge></span>
+            : <StatusBadge>{ts('progress', { filled })}</StatusBadge>
         )}
         {!gear.loadError && filled === 2 && onShare && (
           <button type="button" className="setup-share-btn setup-glass" onClick={onShare}>
@@ -243,7 +245,7 @@ export default function GearSetupCard({ activeName, gear, picks, onOpenLine, onO
                 {string && typeof string.tensionLbs === 'number' ? (
                   <Tension lbs={string.tensionLbs} unit={t('lb')} />
                 ) : !string ? (
-                  <EditGlyph accent={!!pairingText} />
+                  <EditGlyph accent={!!pairingText} glass={!!racket} />
                 ) : null}
               </button>
             )}
@@ -323,10 +325,12 @@ function Tension({ lbs, unit }: { lbs: number; unit: string }) {
   );
 }
 
-function EditGlyph({ accent = false }: { accent?: boolean }) {
+/** The pencil on an empty line; on a glass disc when the racket's head is
+ *  behind it, or it vanishes into the strings. */
+function EditGlyph({ accent = false, glass = false }: { accent?: boolean; glass?: boolean }) {
   return (
     <span
-      className="material-icons"
+      className={`material-icons${glass ? ' setup-glass setup-glass-icon' : ''}`}
       aria-hidden="true"
       style={{ fontSize: 'var(--icon-md)', color: accent ? 'var(--accent)' : 'var(--text-muted)', alignSelf: 'center' }}
     >

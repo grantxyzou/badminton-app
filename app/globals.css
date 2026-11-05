@@ -6488,8 +6488,10 @@ html:root .glass-card.setup-card::before {
   z-index: 0;
   transform: rotate(-14deg);
   transform-origin: 50% 30%;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, black 96px);
-  mask-image: linear-gradient(to right, transparent 0, black 96px);
+  /* A long fade: a long racket name (Astrox 99 Pro 3rd Gen) reaches under
+     the head on a 375 px phone, and the strings behind it stay faint there. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, rgba(0, 0, 0, 0.35) 70px, black 150px);
+  mask-image: linear-gradient(to right, transparent 0, rgba(0, 0, 0, 0.35) 70px, black 150px);
 }
 .setup-corner img { display: block; width: 100%; height: auto; }
 /* Liquid glass (2026-11-05, Grant: "for UI thats on top of the racket, apply
@@ -6515,6 +6517,15 @@ html:root .glass-card.setup-card::before {
 }
 .setup-card .setup-tension.setup-glass { padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); }
 .setup-card .setup-chip-dashed.setup-glass { border: 1px dashed var(--divider-dashed); }
+.setup-card .setup-glass-pill { display: inline-flex; border-radius: var(--radius-pill); }
+.setup-card .setup-glass-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+}
 .setup-glass-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .setup-line-value {
   display: block;
