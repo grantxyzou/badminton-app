@@ -1,3 +1,10 @@
+/** The origin of NEXT_PUBLIC_ASSET_BASE, or '' when the pictures are served here. */
+const assetOrigin = (() => {
+  const base = (process.env.NEXT_PUBLIC_ASSET_BASE || '').trim();
+  if (!base) return '';
+  try { return new URL(base).origin; } catch { return ''; }
+})();
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: '/bpm',
@@ -99,7 +106,9 @@ const nextConfig = {
                 : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self'",
-              "img-src 'self' data:",
+              // The generated pictures' storage container, when the build
+              // names one (`lib/assetUrl.ts`, docs/plans/asset-storage.md).
+              `img-src 'self' data:${assetOrigin ? ` ${assetOrigin}` : ''}`,
               "connect-src 'self'",
               // The four the 2026-09-28 audit found missing. `frame-ancestors`
               // is the CSP form of the X-Frame-Options DENY above (XFO is

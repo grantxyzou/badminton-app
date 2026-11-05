@@ -216,8 +216,11 @@ conditional.
     image or an image with no look.
   - **Live 3D only on big views**: `Racket3D` (falls back to the image without
     WebGL; no autorotate under reduced motion) inside `RacketLookSheet`
-    ("3D rendering", marked Preview, on the racket's line sheet). The share card draws a still
-    of the model in the member's colours (`lib/racketSnapshot.ts`).
+    ("3D rendering", marked Preview, on the racket's line sheet). The share card
+    mirrors the Set-up card (2026-11-05): the same head close-up
+    (`racketHeadSrc`), the full names WRAPPED never cut, a row per string with
+    its packet (drawn from its spec in the racket's string colour) and its
+    tension pill (`lib/setupShareCanvas.ts`).
   - **Paint comes from the catalog; a member dresses it** (`lib/racketCustom.ts`,
     `GearItem.look`, PATCH `itemLook`): string and wrap colour on any racket,
     frame colour, paint pattern and head shape only on a typed-in racket — a

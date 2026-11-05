@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageBack } from '@/lib/pageStack';
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 
@@ -28,6 +29,10 @@ export default function AdminTab({ onExit, knownAuthed = false }: {
   knownAuthed?: boolean;
 }) {
   const pageT = useTranslations('pages.admin');
+  // Admin is opened from Profile, and its own back arrow returns there; the
+  // Android back button does the same rather than jumping Home. A page open
+  // inside admin sits above this one (lib/pageStack.ts).
+  usePageBack(true, onExit, -1);
   const [isAuthed, setIsAuthed] = useState<boolean | null>(knownAuthed ? true : null); // null = loading
   /* Guarded, matching HomeTab's initializer. `getIdentity()` reads
      localStorage, which does not exist on the server. This is safe today only

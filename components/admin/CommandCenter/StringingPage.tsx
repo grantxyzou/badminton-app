@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { usePageBack } from '@/lib/pageStack';
+import { popView, pushView, topView } from '@/lib/viewTrail';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
@@ -75,11 +77,23 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   // mean a stringer believing they have no rackets to string.
   const [loadError, setLoadError] = useState(false);
   const [mine, setMine] = useState(false);
-  const [view, setView] = useState<'bench' | 'detail' | 'new' | 'archive' | 'setup'>('bench');
+  /* The bench's own pages, a TRAIL (docs/plans/back-navigation.md): Archive →
+     a job → Back returns to the Archive, and a job → Add holes → Back to the
+     job. Each Back used to land on the bench. */
+  type BenchView = 'bench' | 'detail' | 'new' | 'archive' | 'setup';
+  const [views, setViews] = useState<BenchView[]>([]);
+  const view: BenchView = topView(views, 'bench');
+  const setView = useCallback((next: BenchView) => setViews((v) => pushView(v, next, 'bench')), []);
+  const back = useCallback(() => setViews(popView), []);
   // Each job's grommet holes, matched from its racket label (docs/plans/grommet-holes.md, Phase 4).
   const holes = useHoleLookup();
   // A racket to open the Set-up screen's hole-count card on, from a job's "Add a hole count".
   const [holesPreset, setHolesPreset] = useState<string | null>(null);
+  // Inside the admin trail (or the Stringing tab), so one level deeper.
+  usePageBack(views.length > 0, () => {
+    if (view === 'setup') { setHolesPreset(null); holes.reload(); }
+    back();
+  }, 1);
   /* Mine/All is only worth a control when somebody else strings too. Read off
      an ALL load — the jobs already on screen, so it arrives in the same frame
      as the list instead of one request later, pushing it down — and kept once
@@ -436,7 +450,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
         <StringingJobDetail
           job={selected}
           crumb={crumb}
-          onBack={() => setView('bench')}
+          onBack={back}
           onChanged={() => void load()}
           holesFor={holes.forLabel}
           onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('setup'); }}
@@ -574,7 +588,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   if (view === 'archive') {
     return (
       <div className="animate-slideInRight">
-        <AdminBackHeader onBack={() => setView('bench')} title={t('archive.title')} crumb={crumb} />
+        <AdminBackHeader onBack={back} title={t('archive.title')} crumb={crumb} />
         <div className="flex flex-col gap-4 pb-6">
           {archiveError && (
             <ErrorState
@@ -612,7 +626,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     return (
       <div className="animate-slideInRight">
         <AdminBackHeader
-          onBack={() => { setHolesPreset(null); holes.reload(); setView('bench'); }}
+          onBack={() => { setHolesPreset(null); holes.reload(); back(); }}
           title={t('setupRow')}
           crumb={crumb}
         />
@@ -634,7 +648,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
         <StringingIntake
           crumb={crumb}
           recent={recentMembers}
-          onBack={() => setView('bench')}
+          onBack={back}
           onCreated={() => {
             setView('bench');
             void load();

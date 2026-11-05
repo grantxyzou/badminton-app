@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageBack } from '@/lib/pageStack';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
@@ -52,6 +53,7 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
   // A page inside the Play register ("Your kudos"), shown in place of its
   // cards with the shell's chrome hidden, the way Equipment shows Your fit.
   const [playPage, setPlayPage] = useState<'kudos' | null>(null);
+  usePageBack(playPage !== null, () => setPlayPage(null));
   // Identity for the signed-out empty state, from the module that owns the
   // chain. `resolved` carries "not known yet" so the first paint doesn't flash
   // the signed-out state at a signed-in member — unknown is not known-absent.

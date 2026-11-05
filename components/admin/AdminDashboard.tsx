@@ -30,6 +30,8 @@ import ClubRunPage from './CommandCenter/ClubRunPage';
 import ClubNameEditor from './CommandCenter/ClubNameEditor';
 import { isFlagOn } from '@/lib/flags';
 import { TabActiveContext, useTabActive, useTabReturn } from '@/lib/tabActivity';
+import { usePageBack } from '@/lib/pageStack';
+import { popView, pushView, topView } from '@/lib/viewTrail';
 
 /*
  * The admin subtree's router. Every view is a Command Center page; the
@@ -52,25 +54,52 @@ const RESTORABLE: ReadonlySet<AdminView> = new Set<AdminView>([
   'skip-dates', 'late-cancel', 'past-sessions', 'stringing', 'catalog-gaps', 'metrics', 'invite', 'gift-cards',
   'sign-in-readiness', 'etransfers', 'club-name', 'club-run',
 ]);
-function storeView(v: AdminView | null) {
+/** The trail kept across a refresh: the pages from the console up, as far as each can be restored. */
+function restorable(trail: readonly AdminView[]): AdminView[] {
+  const kept: AdminView[] = [];
+  for (const v of trail) {
+    if (!RESTORABLE.has(v)) break;
+    kept.push(v);
+  }
+  return kept;
+}
+function storeTrail(trail: readonly AdminView[]) {
   try {
-    if (v && RESTORABLE.has(v)) sessionStorage.setItem(VIEW_KEY, v);
+    const kept = restorable(trail);
+    if (kept.length > 0) sessionStorage.setItem(VIEW_KEY, JSON.stringify(kept));
     else sessionStorage.removeItem(VIEW_KEY);
   } catch { /* private mode: the place is not kept, nothing else changes */ }
 }
+function readTrail(): AdminView[] {
+  try {
+    const raw = sessionStorage.getItem(VIEW_KEY);
+    if (!raw) return [];
+    // A single view, as stored before the trail (2026-11-05).
+    if (!raw.startsWith('[')) return restorable([raw as AdminView]);
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? restorable(parsed.filter((v): v is AdminView => typeof v === 'string')) : [];
+  } catch {
+    return [];
+  }
+}
 
 export default function AdminDashboard({ onExit }: { onExit: () => void }) {
-  const [view, setView] = useState<AdminView>('dashboard');
+  /* THE TRAIL (docs/plans/back-navigation.md): the pages open above the
+     console, top-most last. Opening a page pushes it and Back pops ONE, so
+     How your club runs → Late cancellations → Back returns to How your club
+     runs. It held only the current page until 2026-11-05, and every Back went
+     to the console, skipping the page the admin came from (Grant: "forward to
+     a page then back takes me to a page before"). */
+  const [trail, setTrail] = useState<AdminView[]>([]);
+  const view: AdminView = topView(trail, 'dashboard');
   // Restored after mount, never in the initializer (the HomeShell rule:
   // sessionStorage during hydration is a mismatch).
   useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(VIEW_KEY) as AdminView | null;
-      if (saved && RESTORABLE.has(saved)) setView(saved);
-    } catch { /* nothing to restore */ }
+    const saved = readTrail();
+    if (saved.length > 0) setTrail(saved);
   }, []);
-  useEffect(() => { storeView(view); }, [view]);
-  const exit = useCallback(() => { storeView(null); onExit(); }, [onExit]);
+  useEffect(() => { storeTrail(trail); }, [trail]);
+  const exit = useCallback(() => { storeTrail([]); onExit(); }, [onExit]);
   const [refreshKey, setRefreshKey] = useState(0);
   // Session the Ledger drilled into; PaymentsCard preselects its chip.
   const [paymentsSessionId, setPaymentsSessionId] = useState<string | null>(null);
@@ -91,23 +120,20 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const [popped, setPopped] = useState(false);
   const push = useCallback((next: AdminView) => {
     setPopped(false);
-    setView(next);
+    // The console is the bottom of the trail, never a page on it; the page
+    // already on top is not stacked twice.
+    setTrail((t) => pushView(t, next, 'dashboard'));
   }, []);
 
   const goBack = useCallback(() => {
     setRefreshKey(k => k + 1);
     setPopped(true);
-    setView('dashboard');
+    setTrail(popView);
   }, []);
 
-  // Payments is reached from the Ledger or from Past sessions (itself under
-  // the Ledger), so Back retraces the trail rather than jumping home.
-  const [paymentsFrom, setPaymentsFrom] = useState<'ledger' | 'past-sessions'>('ledger');
-  const goBackTo = useCallback((to: AdminView) => {
-    setRefreshKey(k => k + 1);
-    setPopped(true);
-    setView(to);
-  }, []);
+  // The Android back button steps back through the same trail before it
+  // leaves the tab (lib/pageStack.ts).
+  usePageBack(trail.length > 0, goBack);
 
   /* ── Drill-down routing ──
      The page on top of the console, or null on the console itself. The
@@ -150,7 +176,6 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
             onBack={goBack}
             onOpenSession={(sessionId) => {
               setPaymentsSessionId(sessionId);
-              setPaymentsFrom('ledger');
               push('payments');
             }}
             onOpenPastSessions={() => push('past-sessions')}
@@ -162,7 +187,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
       // Reached from a Ledger row or a Past sessions row.
       return (
         <div className="animate-slideInRight space-y-3">
-          <AdminBackHeader onBack={() => goBackTo(paymentsFrom)} title="Payments" />
+          <AdminBackHeader onBack={goBack} title="Payments" />
           <PaymentsCard refreshKey={refreshKey} initialSessionId={paymentsSessionId} />
         </div>
       );
@@ -254,10 +279,9 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     if (view === 'past-sessions') {
       return (
         <PastSessionsPage
-          onBack={() => goBackTo('ledger')}
+          onBack={goBack}
           onOpenSession={(sessionId) => {
             setPaymentsSessionId(sessionId);
-            setPaymentsFrom('past-sessions');
             push('payments');
           }}
         />

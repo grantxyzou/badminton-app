@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageBack } from '@/lib/pageStack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -68,6 +69,8 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
   const [pages, setPages] = useState<GearPage[]>([]);
   const page = pages[pages.length - 1] ?? null;
   const popPage = () => setPages((s) => s.slice(0, -1));
+  // The Android back button walks the same stack (lib/pageStack.ts).
+  usePageBack(pages.length > 0, popPage);
   const openFrame = (frameId: string) => setPages((s) => [...s, { kind: 'frame', frameId }]);
   // Back to the fit page already underneath rather than a second copy on top.
   const openFitPage = () => setPages((s) => {

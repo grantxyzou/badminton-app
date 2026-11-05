@@ -50,7 +50,28 @@ describe('buildShareCard', () => {
 
   it('has no field for a level, a result, kudos or arm history', () => {
     const keys = Object.keys(buildShareCard(input({ gear: gear({ fitArmComfort: 'often_sore', fitSwing: 'fast' }) }))).sort();
-    expect(keys).toEqual(['clubCount', 'clubName', 'crosses', 'grip', 'initial', 'name', 'racket', 'restrings', 'sinceYear', 'string', 'tensionLbs', 'tensionVsClub'].sort());
+    expect(keys).toEqual(['clubCount', 'clubName', 'crosses', 'grip', 'initial', 'name', 'racket', 'restrings', 'sinceYear', 'string', 'strings', 'tensionLbs', 'tensionVsClub'].sort());
+  });
+
+  // 2026-11-05: the image mirrors the Equipment card, so it needs the card's
+  // own rows — the bag's full names, each string's catalog id and tension.
+  it('lists the strings as the card does: full names, catalog ids, mains then crosses', () => {
+    const one = buildShareCard(input({ gear: gear() }));
+    expect(one.strings?.map((r) => r.role)).toEqual([null]);
+    const hybrid = buildShareCard(input({
+      gear: gear({
+        items: [
+          { id: 'r1', catalogId: 'rk-af79', category: 'racket', label: 'Li-Ning Air Force 79' },
+          { id: 's1', catalogId: 'string-yx-bg80', category: 'string', label: 'Yonex BG80', tensionLbs: 26, racketId: 'r1', crosses: { catalogId: 'string-yx-ex63', label: 'Yonex Exbolt 63', tensionLbs: 28 } },
+        ],
+        activeRacketId: 'r1',
+      }),
+    }));
+    expect(hybrid.strings).toEqual([
+      { role: 'mains', catalogId: 'string-yx-bg80', label: 'Yonex BG80', tensionLbs: 26 },
+      { role: 'crosses', catalogId: 'string-yx-ex63', label: 'Yonex Exbolt 63', tensionLbs: 28 },
+    ]);
+    expect(hybrid.racket?.label).toBe('Li-Ning Air Force 79');
   });
 
   it('the text carries the same facts, one per line, and omits what the card omits', () => {

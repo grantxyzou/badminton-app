@@ -1,4 +1,5 @@
 'use client';
+import { usePageBack } from '@/lib/pageStack';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { sharedFetch } from '@/lib/sharedRead';
 import { useLocale, useTranslations } from 'next-intl';
@@ -169,6 +170,8 @@ export default function ProfileTab({
   // from AdminDashboard, which is the only place in the app that already does
   // sub-screens.
   const [view, setView] = useState<'root' | 'stats-privacy' | 'groups'>('root');
+  // A sub-screen answers the Android back button (lib/pageStack.ts).
+  usePageBack(view !== 'root', () => setView('root'));
   const [methodsOpen, setMethodsOpen] = useState(false);
   // Read once here so the row's summary and the sheet's body agree.
   //
