@@ -1,7 +1,7 @@
 # A session list for clubs with money off
 
 **Track:** multi-group critical path — "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). Six Feathers (`docs/plans/six-feathers-onboarding.md`) is the club, and it runs with money off.
-**Status:** in-flight — Option B built 2026-11-05 (Decisions); shipped once merged
+**Status:** shipped 2026-11-05 (#796)
 **Review on:** 2026-11-30 — has Six Feathers run a Saturday, and did its organiser use the list (remove, move, restore, read a late cancel)? If two Saturdays ran and nobody opened it, remove it (Kill criterion).
 
 ## Problem
