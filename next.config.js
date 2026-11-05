@@ -77,7 +77,10 @@ const nextConfig = {
       // for anyone whose copy is past a day (stale-while-revalidate serves the
       // old one once and fetches the new one behind it). sw.js, the manifest,
       // payments/ and the changelog stay uncached on purpose.
-      ...['/rackets/:path*', '/brand/:path*', '/icons/:path*'].map((source) => ({
+      // `strings/` (the packet pictures) joined on 2026-11-05: it was left out
+      // when the packets shipped, so every packet on the Stringing tab and the
+      // Equipment card waited on a round trip before it could draw.
+      ...['/rackets/:path*', '/strings/:path*', '/brand/:path*', '/icons/:path*'].map((source) => ({
         source,
         headers: [
           {
