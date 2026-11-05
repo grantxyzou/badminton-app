@@ -39,13 +39,13 @@ describe('GearRegister — the Set-up card', () => {
 
   it('renders the card, and no rail or kit list', async () => {
     mount();
-    expect(await screen.findByText('Set-up')).toBeTruthy();
+    expect(await screen.findByText('Equipment')).toBeTruthy();
     expect(screen.queryByText('Your equipment')).toBeNull();
   });
 
   it('one gear read, one tally read, one recommend read per sourced category', async () => {
     mount();
-    await screen.findByText('Set-up');
+    await screen.findByText('Equipment');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     await waitFor(() => expect(calls((u) => u.includes('/api/recommend')).length).toBe(2));
     expect(calls((u) => u.includes('/api/equipment/gear')).length).toBe(1);
@@ -136,11 +136,12 @@ describe('GearRegister — swapping rackets', () => {
 
   it('a burst of swaps re-asks the picks once, not twice per swap', async () => {
     mount();
-    await screen.findByText('Set-up');
+    await screen.findByText('Equipment');
     await waitFor(() => expect(calls((u) => u.includes('/api/recommend')).length).toBe(2));
     // A spare's row opens its sheet; "Make it your main racket" swaps it in.
     for (let i = 0; i < 3; i++) {
-      const spare = await screen.findByRole('button', { name: /^Spare/ });
+      await screen.findByText('Spare rackets');
+      const spare = document.querySelector('.setup-spare-row:not(.setup-spare-row--add)') as HTMLButtonElement;
       await act(async () => { spare.click(); });
       const swap = await screen.findByRole('button', { name: /Make it your main racket/ });
       await act(async () => { swap.click(); await new Promise((r) => setTimeout(r, 20)); });
@@ -171,7 +172,7 @@ describe('GearRegister — single owner of the gear document', () => {
     mount();
     const gearReads = () => calls((u) => u.includes('/api/equipment/gear') && !u.includes('method'));
     await waitFor(() => expect(gearReads().length).toBe(1));
-    await screen.findByText('Set-up');
+    await screen.findByText('Equipment');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     expect(gearReads().length).toBe(1);
   });
@@ -218,7 +219,7 @@ describe('GearRegister — D2, one tension number at a time', () => {
 
   it('hides the level-based tension card once a pairing has given a real number', async () => {
     mountWith(25.5);
-    await screen.findByText('Set-up');
+    await screen.findByText('Equipment');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     await waitFor(() => expect(screen.queryByText('String tension')).toBeNull());
   });
@@ -227,7 +228,7 @@ describe('GearRegister — D2, one tension number at a time', () => {
     // 11 of 71 frames publish no tension ceiling. Falling back is the whole
     // reason lib/tension.ts is not deleted.
     mountWith(null);
-    await screen.findByText('Set-up');
+    await screen.findByText('Equipment');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     await waitFor(() => expect(screen.queryByText('String tension')).not.toBeNull());
   });

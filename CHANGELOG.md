@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The Equipment card, redrawn (2026-11-05)
+
+The Set-up card on Stats → Equipment now follows design A from the Stats canvas. It is headed "Equipment". Your main racket's head is drawn large and sharp across the right half of the card, from a new close-up picture of every catalog racket (about 40 KB each, and only the main racket's loads). Each item's name starts on the title's edge with its role in the line beneath ("Main racket · 4U · even", "Strings · 0.68mm · repulsion"), and the string's packet starts its line. "Racket and tension fitting" (formerly "Your fit") sits right under them. Below a rule, "Spare rackets" groups each spare and "+ Add a spare racket"; tapping a spare opens its sheet, which shows its string. The card no longer counts how many others play your racket; "What the club plays" still does.
+
 ### Each racket keeps its own string (2026-11-05)
 
 On Stats → Equipment, swapping your main racket used to carry the string and its tension onto the new racket. Now each racket keeps its own: swapping in a spare shows that spare's string and tension, or a blank Strings line if it has none, and swapping back brings the first one's back. The same string can be on two rackets at different tensions. A string logged before today stays with the racket that was in play when you first swap. The Set-up card puts the racket and its string together, then a divider and your spares, each saying what it is strung with; tapping a spare opens its own sheet, where you can make it your main racket. The Strings line shows the string's packet with the string drawn in your racket's string colour, and no longer counts how many others use it. The main racket is drawn close up across the right half of the card, with the controls over it in a liquid-glass style. The club tension band, the fit verdict, the racket page and the share card all read the main racket's string. Plan: `docs/plans/string-follows-racket.md`.

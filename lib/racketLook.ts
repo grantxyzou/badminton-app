@@ -221,3 +221,14 @@ export function racketSrc(catalogId: string | null | undefined): string {
   const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
   return `${BASE}/rackets/${key}.webp`;
 }
+
+/**
+ * The same racket's HEAD, drawn large on a transparent ground: the Equipment
+ * card's close-up (`public/rackets/head/`, `--head` on the render script).
+ * 540 px wide, twice what the card shows, so it stays sharp where the list
+ * picture scaled up went soft.
+ */
+export function racketHeadSrc(catalogId: string | null | undefined): string {
+  const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
+  return `${BASE}/rackets/head/${key}.webp`;
+}

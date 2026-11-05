@@ -21,7 +21,7 @@ describe('fields do not zoom the page on iOS', () => {
 
 describe('every tappable family answers a tap', () => {
   // The four that answered with nothing but WebKit's grey flash.
-  const families = ['button.sheet-row', 'button.setup-line', '.bpm-row-link', '.rail-tab'];
+  const families = ['button.sheet-row', 'button.setup-item', '.setup-spare-row', '.bpm-row-link', '.rail-tab'];
   for (const sel of families) {
     it(`${sel} has a press state`, () => {
       const escaped = sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

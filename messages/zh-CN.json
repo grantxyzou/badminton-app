@@ -1016,7 +1016,7 @@
         "removeRacket": "删除这支球拍",
         "removeString": "删除这根球线",
         "cancel": "取消",
-        "eyebrow": "装备配置",
+        "eyebrow": "装备",
         "progress": "已填 {filled}/2",
         "tapToName": "点击填写",
         "mainRacket": "主力球拍",
@@ -1037,7 +1037,9 @@
         "spareStrungLb": "穿的是 {string}，{lb} 磅",
         "spareUnstrung": "还没有记录穿线",
         "useAsMain": "设为主力球拍",
-        "spareEyebrow": "备用球拍"
+        "spareEyebrow": "备用球拍",
+        "fitting": "球拍和磅数适配",
+        "spareRackets": "备用球拍"
       },
       "picksLocked": "<link>登录</link>后查看为你挑的装备。",
       "clubLocked": "<link>登录</link>后看看大家都在用什么。",
