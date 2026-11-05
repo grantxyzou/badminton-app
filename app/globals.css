@@ -5761,6 +5761,13 @@ html:root[data-theme="light"] {
 .invite-qr path {
   fill: var(--qr-ink);
 }
+/* "Save as image" on iOS with no file share: the poster itself, to press and hold. */
+.invite-poster-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+}
 
 /* ── Foldables: two panes on a big touch screen ──
    docs/plans/foldable-layout.md, after Apple's "Designing for iPhone Duo"
