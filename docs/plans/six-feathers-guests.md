@@ -1,7 +1,7 @@
 # Guests the way Six Feathers brings them
 
 **Track:** multi-group critical path — "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). Step F of `docs/plans/six-feathers-onboarding.md`, the last rule from the club's chat that the app does not yet match.
-**Status:** intent
+**Status:** in-flight — built in #795
 **Review on:** 2026-12-09 — after Six Feathers' first two Saturdays: did any guest reach the list through the app, and did the organiser add or fix one by hand in the chat?
 
 ## Problem
@@ -37,7 +37,19 @@ Nobody at Six Feathers has used the app yet, so none of these has been reported 
 - **Changing BPM Core.** It keeps one guest and its own switch.
 - **Guests skipping the members-first window.** Settled in #790 (Q5): they wait with the drop-ins.
 
-## Proposed — for Grant to confirm
+## Decisions
+
+Grant, 2026-11-05: "Yes to all four" (the recommended answer to each question below).
+
+- **Q1, a club setting of 1 or 2 guests.** `ClubRun.guests` (`0 | 1 | 2`, `lib/clubRun.ts`). "Members first" presets 2. "First come, first served" says nothing about guests (its preset is `null`), so choosing it keeps the club's number and any number still reads as that style. A club whose `run` never named a number reads the old `guestsAllowed` switch (on = 1), so BPM Core is unchanged; every save of the run writes the switch beside it for rollback, and the old Guests screen's switch, if a phone still sends it, moves the number too.
+- **Q2, `Jenny (Josh)` everywhere.** New rows store that name (`guestDisplayName`). Home's roster and Copy list build it from `guestName` and the host's row, so rows written before as `Jenny (Josh's guest)` read the new way too. A copied list pasted into the roster import skips the guests.
+- **Q3, guests are a rule of How your club runs**, and "Members first" turns them on. The separate Guests page is gone; the Command Center's Guests row opens How your club runs.
+- **Q4, an organiser adds a guest for a member** from "Add a guest" on the session card: a sheet to pick a member on this week's list and type the name (`hostMemberId` on the same `POST /api/players`). It skips the sign-ups-open and deadline gates, as an admin's sign-up does, and meets every other rule. It lives on the session card because a club with money off has no other list of the week's sign-ups (the Payments card is hidden); a money-free session list for those organisers is a separate suggestion.
+- **A name already on the club's roster is refused** (`guest_on_roster`), in that club only. **So is the same guest name twice for one member.**
+- **A member removes one guest at a time** (`DELETE { guest: true, guestId }`); a phone from before sends no id and removes the only one, as it always did.
+- **"Their share goes on your balance" shows only where the club collects money in the app.** Six Feathers keeps its money outside it.
+
+## Questions Grant answered
 
 **Q1. How many guests a member can bring.**
 - **(Recommended) A club setting: 1 or 2 guests per member per session.** "Members first" sets 2, BPM stays at 1. "Friends" is plural, the original Six Feathers plan said "at most two", and a cap keeps one member from filling the waitlist.
@@ -59,11 +71,18 @@ Nobody at Six Feathers has used the app yet, so none of these has been reported 
 - **A guest whose name is already on the roster is refused** ("Kodai is on the club's list — ask them to sign up themselves"). Otherwise one person could hold two spots under two rows.
 - **Each guest is their own row**, as now. Removing one removes that one, and a host who leaves takes all of theirs.
 
-## Shape (to confirm with the answers)
+## Shape
 
-- **The cap.** `ClubRun.guests: 0 | 1 | 2` in `lib/clubRun.ts`, read through `clubRunOf` like the other rules. `0` replaces the `guestsAllowed` switch: absent reads the old switch (`guestsAllowed: true` = 1) so BPM is unchanged, and the settings route keeps writing `guestsAllowed` for rollback. "Members first" presets 2.
-- **The add.** `addGuest` in `app/api/players/route.ts` counts the host's live guests against the cap instead of refusing a second outright, and refuses a guest name that resolves to an active roster name (`guest_on_roster`). An admin may pass `hostMemberId`, checked against the session's rows, with the same rules.
-- **The name.** `guestDisplayName` writes `Jenny (Josh)`; `isGuestRow` and `matchesIdentity` already key on `guestOf`, never the name, so nothing reads the old form. Rows written before keep their stored name.
-- **Screens.** The guest row on Home shows "Add another guest" up to the cap. The organiser's card gets "Add a guest for …" on a member's row. How your club runs shows the guests rule beside Members first. English and Chinese for every member string.
-- **The demo.** The six-feathers seed turns guests on and adds a `Jenny (Josh)`-style guest, so the screens can be looked at.
-- **Tests.** Two clubs: the cap per club, the second guest refused at 1 and allowed at 2, a roster name refused as a guest, an organiser's add obeying the window and the cap, Copy list writing `Name (Host)` and the roster import skipping it, and BPM unchanged.
+| piece | file |
+|---|---|
+| The number of guests, its preset, the old switch as a fallback | `lib/clubRun.ts` (`ClubRun.guests`), `lib/plusOne.ts` (`guestsPerMemberOf`) |
+| Saving it, and the old switch beside it | `app/api/admin/settings/route.ts` |
+| The cap, a roster name refused, an organiser's add, one guest removed by id | `app/api/players/route.ts` (`addGuest`, `DELETE`) |
+| The number on the session read | `app/api/session/route.ts` (`guestsPerMember`) |
+| `Jenny (Josh)` | `lib/plusOne.ts` (`guestDisplayName`), `lib/rosterText.ts` (Copy list), `messages/*.json` (`home.guest.rosterName`) |
+| A line per guest on Home | `components/home/PlusOneRow.tsx`, `components/HomeTab.tsx` |
+| The guests rule | `components/admin/CommandCenter/ClubRunPage.tsx` (the Guests page and `GuestsEditor` removed) |
+| "Add a guest" for a member | `components/admin/CommandCenter/AddGuestSheet.tsx`, `components/admin/CommandCenter/NextSessionCard.tsx` |
+| The demo club's guest | `lib/cosmos.ts` (`SEED_DEV_SCENARIO=six-feathers`) |
+
+Tests: `__tests__/group-guests.test.ts` (two clubs: the number per club, `Jenny (Josh)`, a roster name refused, the organiser's add obeying the cap, the list and the window, a member unable to name another host, one guest removed by id, Copy list and the roster import), `__tests__/components/PlusOneRow.test.tsx`, `__tests__/club-run.test.ts`, `__tests__/components/ClubRunPage.test.tsx`.

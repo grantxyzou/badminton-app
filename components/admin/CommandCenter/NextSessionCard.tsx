@@ -11,6 +11,7 @@ import { useClubRun } from '@/lib/useClubRun';
 import { courtLine } from '@/lib/clubRun';
 import { membersFirstOpen, membersFirstUntil } from '@/lib/membersFirst';
 import { useOnline } from '@/lib/useOnline';
+import AddGuestSheet, { type GuestHost } from './AddGuestSheet';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -48,6 +49,9 @@ interface Player {
   waitlisted?: boolean;
   heldForUnpaid?: boolean;
   waitingForMembers?: boolean;
+  memberId?: string;
+  guestOf?: string;
+  guestName?: string;
 }
 
 interface NextSessionCardProps {
@@ -108,6 +112,8 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const [lettingIn, setLettingIn] = useState(false);
   const [letInError, setLetInError] = useState('');
   const online = useOnline();
+  // "Add a guest" for a member (docs/plans/six-feathers-guests.md, Q4).
+  const [addingGuest, setAddingGuest] = useState(false);
 
   // Build a ready-to-paste sign-up invite and share it (native share sheet on
   // mobile, clipboard fallback elsewhere). Lets the admin blast "sign-up is
@@ -376,6 +382,14 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // Members first: only while it is still running. Once it ends the next
   // visit lets the waitlist in on its own, and the card goes back to normal.
   const windowEnd = windowRunning ? membersFirstUntil(session) : null;
+  // Who can bring a guest: members on this week's list, in or waiting, not
+  // held for unpaid sessions. Offered only on a known club run with guests on.
+  const guestCap = runKnown ? run.guests : 0;
+  const live = players.filter((p) => !p.removed);
+  const guestHosts: GuestHost[] = live
+    .filter((p) => !p.guestOf && typeof p.memberId === 'string' && p.memberId && !p.heldForUnpaid)
+    .map((p) => ({ memberId: p.memberId!, name: p.name, guests: live.filter((g) => g.guestOf === p.memberId).length }));
+  const canAddGuest = guestCap > 0 && !isSettled && guestHosts.some((h) => h.guests < guestCap);
   const waitingForWindow = players.filter((p) => !p.removed && p.waitlisted && p.waitingForMembers).length;
 
   async function letWaitlistIn() {
@@ -573,6 +587,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             Edit details
           </button>
         )}
+        {canAddGuest && (
+          <button type="button" onClick={() => setAddingGuest(true)} className="cc-btn cc-btn-secondary" disabled={!online}>
+            <span className="material-icons fs-lg align-middle">person_add</span>
+            Add a guest
+          </button>
+        )}
         {isSettled && !moneyOff && (
           <button
             type="button"
@@ -650,6 +670,14 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       )}
 
       {/* Advance confirm — a bottom sheet (was an inline two-step confirm). */}
+      <AddGuestSheet
+        open={addingGuest}
+        onClose={() => setAddingGuest(false)}
+        hosts={guestHosts}
+        cap={guestCap}
+        onAdded={() => { void load(); onChanged?.(); }}
+      />
+
       {onAdvance && (
         <BottomSheet
           open={confirmingAdvance}

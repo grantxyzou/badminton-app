@@ -8,7 +8,7 @@ import { readGroup, renameGroup, setGuestsAllowed, setLateCancelHours, updateGro
 import { cleanString, GROUP_NAME_MIN, GROUP_NAME_MAX } from '@/lib/groupRoutes';
 import { isValidLateCancelHours, lateCancelHoursOf } from '@/lib/cancelPolicy';
 import { guestsAllowedOf } from '@/lib/plusOne';
-import { clubRunOf, parseClubRun } from '@/lib/clubRun';
+import { clubRunOf, parseClubRun, withSetting } from '@/lib/clubRun';
 import { recipientOf } from '@/lib/payTo';
 import type { ETransferRecipient } from '@/lib/types';
 
@@ -159,14 +159,26 @@ export async function PATCH(req: NextRequest) {
     if (body.lateCancelHours !== undefined) {
       await setLateCancelHours(groupId, body.lateCancelHours as number | null);
     }
-    if (typeof body.guestsAllowed === 'boolean') {
+    if (typeof body.guestsAllowed === 'boolean' && !run) {
+      // The old Guests switch (a screen from before guests joined "How your
+      // club runs"). A club with a stored `run` keeps its guest number there,
+      // so the switch moves that number too, or it would change nothing.
       await setGuestsAllowed(groupId, body.guestsAllowed);
+      if (group?.settings?.run) {
+        const current = clubRunOf(group.settings);
+        const guests = body.guestsAllowed ? (current.guests > 0 ? current.guests : 1) : 0;
+        await updateGroupSettings(groupId, { run: withSetting(current, 'guests', guests) });
+      }
     }
     if (run) {
-      // Parsed again against the stored window, which a request without one
-      // keeps (lib/clubRun.ts `parseClubRun`).
-      const stored = parseClubRun(body.run, clubRunOf(group?.settings).membersFirst) ?? run;
+      // Parsed again against the stored window and guest number, which a
+      // request without them keeps (lib/clubRun.ts `parseClubRun`).
+      const current = clubRunOf(group?.settings);
+      const stored = parseClubRun(body.run, { membersFirst: current.membersFirst, guests: current.guests }) ?? run;
       await updateGroupSettings(groupId, { run: stored });
+      // The old switch is written beside it, so a rollback still sees guests
+      // on or off the way the club left them.
+      await setGuestsAllowed(groupId, stored.guests > 0);
     }
     // The club's name lives on the group record ONLY — it has no Member-doc
     // copy, because a club is not a person's setting.

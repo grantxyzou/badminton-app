@@ -18,8 +18,16 @@ import {
 describe('clubRunOf', () => {
   it('reads a club with no settings as BPM runs today', () => {
     for (const settings of [undefined, null, {}, { run: null }, { run: 'members_first' }]) {
-      expect(clubRunOf(settings)).toEqual({ style: 'first_come', playersPerCourt: null, money: 'split', membersFirst: null });
+      expect(clubRunOf(settings)).toEqual({ style: 'first_come', playersPerCourt: null, money: 'split', membersFirst: null, guests: 0 });
     }
+  });
+
+  it('reads guests from the old switch for a club that never set a number, and a stored number over it', () => {
+    expect(clubRunOf({ guestsAllowed: true }).guests).toBe(1);
+    expect(clubRunOf({ guestsAllowed: true, run: { style: 'first_come', playersPerCourt: null, money: 'split' } }).guests).toBe(1);
+    expect(clubRunOf({ guestsAllowed: true, run: { style: 'custom', playersPerCourt: null, money: 'split', guests: 0 } }).guests).toBe(0);
+    // "Members first" brings friends whatever the old switch says.
+    expect(clubRunOf({ run: { style: 'members_first' } }).guests).toBe(2);
   });
 
   it('keeps every stored value, including an explicit null', () => {
@@ -28,6 +36,7 @@ describe('clubRunOf', () => {
       playersPerCourt: 6,
       money: 'off',
       membersFirst: null,
+      guests: 0,
     });
     expect(clubRunOf({ run: { style: 'members_first', playersPerCourt: null, money: 'off' } }).playersPerCourt).toBeNull();
   });
@@ -35,7 +44,13 @@ describe('clubRunOf', () => {
   it("fills a gap from the club's own style, so a setting added later follows the style it chose", () => {
     expect(clubRunOf({ run: { style: 'members_first' } })).toEqual(applyStyle('members_first'));
     // A custom club, or a corrupt value, falls back to how BPM runs.
-    expect(clubRunOf({ run: { style: 'custom' } })).toEqual({ style: 'custom', playersPerCourt: null, money: 'split', membersFirst: null });
+    expect(clubRunOf({ run: { style: 'custom' } })).toEqual({
+      style: 'custom',
+      playersPerCourt: null,
+      money: 'split',
+      membersFirst: null,
+      guests: 0,
+    });
     expect(clubRunOf({ run: { style: 'members_first', playersPerCourt: 99, money: 'maybe' } })).toEqual(
       applyStyle('members_first'),
     );
@@ -45,7 +60,14 @@ describe('clubRunOf', () => {
 describe('styles', () => {
   it('a style writes all of its values', () => {
     expect(applyStyle('members_first')).toEqual({ style: 'members_first', ...CLUB_STYLES.members_first.values });
-    expect(applyStyle('first_come')).toEqual({ style: 'first_come', ...CLUB_STYLES.first_come.values });
+    expect(applyStyle('first_come')).toEqual({ style: 'first_come', ...CLUB_STYLES.first_come.values, guests: 0 });
+  });
+
+  it('"First come, first served" leaves guests to the club; "Members first" sets two', () => {
+    expect(applyStyle('first_come', { guests: 1 }).guests).toBe(1);
+    expect(applyStyle('members_first', { guests: 0 }).guests).toBe(2);
+    expect(styleOf({ ...applyStyle('first_come'), guests: 2 })).toBe('first_come');
+    expect(withSetting(applyStyle('members_first'), 'guests', 1).style).toBe('custom');
   });
 
   it('changing one setting turns a style custom, and changing it back restores the style', () => {
@@ -62,13 +84,13 @@ describe('styles', () => {
   it('no two styles share their values, so a style can always be read back from them', () => {
     const seen = new Set(Object.values(CLUB_STYLES).map((s) => JSON.stringify(s.values)));
     expect(seen.size).toBe(Object.keys(CLUB_STYLES).length);
-    for (const [name, s] of Object.entries(CLUB_STYLES)) expect(styleOf(s.values)).toBe(name);
+    for (const name of Object.keys(CLUB_STYLES) as Array<keyof typeof CLUB_STYLES>) expect(styleOf(applyStyle(name))).toBe(name);
   });
 });
 
 describe('parseClubRun', () => {
   it('derives the style from the values, never from the request', () => {
-    expect(parseClubRun({ style: 'first_come', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' } })).toEqual(
+    expect(parseClubRun({ style: 'first_come', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2 })).toEqual(
       applyStyle('members_first'),
     );
     expect(parseClubRun({ playersPerCourt: 4, money: 'split' })).toEqual({
@@ -76,13 +98,14 @@ describe('parseClubRun', () => {
       playersPerCourt: 4,
       money: 'split',
       membersFirst: null,
+      guests: 0,
     });
   });
 
   it('keeps the stored window when a request does not name one, and clears it on an explicit null', () => {
     const window = { daysBefore: 5, time: '23:59' };
-    expect(parseClubRun({ playersPerCourt: 8, money: 'off' }, window)).toEqual(applyStyle('members_first'));
-    expect(parseClubRun({ playersPerCourt: 8, money: 'off', membersFirst: null }, window)?.membersFirst).toBeNull();
+    expect(parseClubRun({ playersPerCourt: 8, money: 'off' }, { membersFirst: window, guests: 2 })).toEqual(applyStyle('members_first'));
+    expect(parseClubRun({ playersPerCourt: 8, money: 'off', membersFirst: null }, { membersFirst: window })?.membersFirst).toBeNull();
   });
 
   it('refuses a partial, unknown or out-of-range value', () => {
@@ -96,12 +119,14 @@ describe('parseClubRun', () => {
       { playersPerCourt: 13, money: 'off' },
       { playersPerCourt: 7.5, money: 'off' },
       { playersPerCourt: 8, money: 'flat' },
-      { playersPerCourt: 8, money: 'off', guests: 2 },
+      { playersPerCourt: 8, money: 'off', fees: 2 },
       { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 0, time: '23:59' } },
       { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 7, time: '23:59' } },
       { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '24:00' } },
       { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '9:00' } },
       { playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59', extra: 1 } },
+      { playersPerCourt: 8, money: 'off', guests: 3 },
+      { playersPerCourt: 8, money: 'off', guests: '2' },
     ]) {
       expect(parseClubRun(bad)).toBeNull();
     }

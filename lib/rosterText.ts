@@ -24,6 +24,10 @@ export interface RosterTextPlayer {
   timestamp?: string;
   waitlisted?: boolean;
   removed?: boolean;
+  memberId?: string;
+  /** A guest's host (docs/plans/plus-one.md); with `guestName`, written `Jenny (Josh)`. */
+  guestOf?: string;
+  guestName?: string;
 }
 
 export interface RosterTextInput {
@@ -58,6 +62,20 @@ function headerDate(iso: string | null | undefined, timeZone?: string): string {
   return `${day}, ${time}`;
 }
 
+/**
+ * How a row reads on the club's list. A guest is `Jenny (Josh)`, the club's
+ * own way of writing one (docs/plans/six-feathers-guests.md), whatever form
+ * the row stored — rows written before 2026-11-05 say `Jenny (Josh's guest)`.
+ * Pasted back into the roster import, that form is skipped as a guest.
+ */
+function listName(p: RosterTextPlayer, players: RosterTextPlayer[]): string {
+  if (p.guestOf && p.guestName) {
+    const host = players.find((h) => !h.guestOf && h.memberId === p.guestOf);
+    if (host) return `${p.guestName.trim()} (${host.name.trim()})`;
+  }
+  return p.name.trim();
+}
+
 export function formatRosterText(input: RosterTextInput): string {
   const live = input.players.filter((p) => p.removed !== true);
   const confirmed = live.filter((p) => p.waitlisted !== true).sort(compareBySignup);
@@ -77,7 +95,7 @@ export function formatRosterText(input: RosterTextInput): string {
   const rows = showBlanks ? Math.max(cap, confirmed.length) : confirmed.length;
   for (let i = 0; i < rows; i++) {
     const p = confirmed[i];
-    lines.push(p ? `${i + 1}. ${p.name.trim()}` : `${i + 1}.`);
+    lines.push(p ? `${i + 1}. ${listName(p, live)}` : `${i + 1}.`);
   }
   if (!showBlanks && cap > confirmed.length) {
     const left = cap - confirmed.length;
@@ -86,7 +104,7 @@ export function formatRosterText(input: RosterTextInput): string {
 
   lines.push('', 'Waiting list');
   if (waiting.length === 0) lines.push('1.');
-  waiting.forEach((p, i) => lines.push(`${i + 1}. ${p.name.trim()}`));
+  waiting.forEach((p, i) => lines.push(`${i + 1}. ${listName(p, live)}`));
 
   if (input.link) lines.push('', `Join or drop out in the app: ${input.link}`);
 

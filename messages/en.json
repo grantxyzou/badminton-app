@@ -389,6 +389,7 @@
     },
     "guest": {
       "bring": "Bring a guest",
+      "bringAnother": "Bring another guest",
       "namePlaceholder": "Their first name",
       "add": "Add",
       "adding": "Adding\u2026",
@@ -402,7 +403,9 @@
       "invalidName": "Use a first name, up to 20 letters.",
       "addFailed": "Couldn\u2019t add your guest. Try again.",
       "removeFailed": "Couldn\u2019t remove your guest. Try again.",
-      "rosterName": "{guest} ({host}\u2019s guest)",
+      "removeNamed": "Remove {name}",
+      "onRoster": "{name} is on the club\u2019s list already \u2014 ask them to sign up themselves.",
+      "rosterName": "{guest} ({host})",
       "cancelNote": "{name} will be taken off too."
     },
     "balance": {
