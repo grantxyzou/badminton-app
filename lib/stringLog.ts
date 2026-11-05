@@ -1,4 +1,4 @@
-import { activeRacket } from './activeRacket';
+import { activeRacket, rackets } from './activeRacket';
 import type { GearItem, PlayerGear, StringLogEntry } from './types';
 
 /**
@@ -17,9 +17,11 @@ function append(log: StringLogEntry[] | undefined, entry: StringLogEntry): Strin
   return [...(log ?? []), entry].slice(-STRING_LOG_CAP);
 }
 
-/** The racket a string is going on: the one in play, as the doc stands. */
-function racketFields(gear: PlayerGear | null): Pick<StringLogEntry, 'racketItemId' | 'racketCatalogId'> {
-  const racket = activeRacket(gear);
+/** The racket a string is going on: the one it names (`racketId`), else the
+ *  one in play, as the doc stands. */
+function racketFields(gear: PlayerGear | null, string?: GearItem): Pick<StringLogEntry, 'racketItemId' | 'racketCatalogId'> {
+  const named = string?.racketId ? rackets(gear).find((r) => r.id === string.racketId) : undefined;
+  const racket = named ?? activeRacket(gear);
   return racket ? { racketItemId: racket.id, racketCatalogId: racket.catalogId } : {};
 }
 
@@ -31,7 +33,7 @@ export function logStringAdded(prior: PlayerGear | null, string: GearItem, at: s
     stringItemId: string.id,
     stringLabel: string.label,
     ...(typeof string.tensionLbs === 'number' ? { tensionLbs: string.tensionLbs } : null),
-    ...racketFields(prior),
+    ...racketFields(prior, string),
   });
 }
 
@@ -60,6 +62,6 @@ export function logTension(
     stringItemId: string.id,
     stringLabel: string.label,
     tensionLbs,
-    ...racketFields(prior),
+    ...racketFields(prior, string),
   });
 }

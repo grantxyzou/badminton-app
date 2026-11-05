@@ -116,7 +116,7 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
   // describes one visit (a saved row, a half-chosen tension, a pending
   // remove), and a remount is the whole reset.
   const [sheet, setSheet] = useState<
-    | { kind: 'line'; category: SetupCategory; key: number }
+    | { kind: 'line'; category: SetupCategory; spareId?: string; key: number }
     | { kind: 'add'; category: SetupCategory; makeActive: boolean; replacesId?: string; crossesForId?: string; key: number }
     | { kind: 'look'; itemId: string; title: string; key: number }
     | null
@@ -181,6 +181,7 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
         picks={picks}
         club={club}
         onOpenLine={openLine}
+        onOpenSpare={(spareId) => setSheet((s) => ({ kind: 'line', category: 'racket', spareId, key: (s?.key ?? 0) + 1 }))}
         onShare={() => setShareOpen(true)}
         onOpenFit={openFitPage}
         onAddTension={() => openLine('string')}
@@ -251,6 +252,7 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
           open
           onClose={() => setSheet(null)}
           category={sheet.category}
+          spareId={sheet.spareId}
           gear={gear}
           // The two sheets swap, never stack.
           // A racket change keeps the old frame as a visible spare; a string

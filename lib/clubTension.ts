@@ -1,6 +1,6 @@
-import { activeRacket } from './activeRacket';
+import { activeRacket, currentString } from './activeRacket';
 import { CLUB_GEAR_MIN_COHORT } from './clubGear';
-import type { GearItem, PlayerGear } from './types';
+import type { PlayerGear } from './types';
 
 /**
  * "The club strings this frame 24–27 lb": the range of tensions members
@@ -26,13 +26,10 @@ export interface ClubTensionBand {
   mean: number;
 }
 
-/** The tension on the string a member has on now: the newest live string. */
+/** The tension on the string a member has on now: the active racket's string. */
 function currentTension(doc: TensionDoc): number | null {
-  let latest: GearItem | null = null;
-  for (const i of doc.items ?? []) {
-    if (i && !i.retiredAt && i.category === 'string') latest = i;
-  }
-  return typeof latest?.tensionLbs === 'number' ? latest.tensionLbs : null;
+  const s = currentString(doc as PlayerGear);
+  return typeof s?.tensionLbs === 'number' ? s.tensionLbs : null;
 }
 
 /** Every frame's band at once, keyed by catalog id. */

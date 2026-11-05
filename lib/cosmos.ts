@@ -712,6 +712,21 @@ function seedDevSixFeathers(now: Date) {
       removed: false,
     });
   });
+  // A member's guest, the way the club writes one: `Busanan (Hendra)`
+  // (docs/plans/six-feathers-guests.md). "Members first" lets members bring
+  // two; the session is full, so the guest waits behind the drop-ins.
+  mockStore.players!.push({
+    id: 'dev-sf-guest-busanan',
+    sessionId,
+    groupId,
+    name: 'Busanan (Hendra)',
+    guestName: 'Busanan',
+    guestOf: memberIdOf('Hendra'),
+    timestamp: new Date(opened.getTime() + (confirmed.length + waiting.length + 1) * 7 * 60 * 1000).toISOString(),
+    waitlisted: true,
+    waitingForMembers: true,
+    removed: false,
+  });
 }
 
 /** Monotonic across the whole mock store — an etag only has to be unique. */

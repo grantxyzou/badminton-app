@@ -13,7 +13,7 @@ import { buildSignupOpenPayload } from '@/lib/pushMessages';
 import { defaultMaxPlayers } from '@/lib/defaults';
 import { promoteFromWaitlist } from '@/lib/waitlistPromote';
 import { readGroup } from '@/lib/groups';
-import { guestsAllowedOf } from '@/lib/plusOne';
+import { guestsPerMemberOf } from '@/lib/plusOne';
 import type { BirdUsage, ETransferRecipient, Session } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
@@ -80,7 +80,14 @@ export async function GET(req: NextRequest) {
       current = (await scope.read<SessionDoc>('sessions', sessionId, sessionId)) ?? stored;
     }
     const session = current ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
-    const out = { ...(isAdminAuthed(req) ? session : stripForPublic(session)), guestsAllowed: guestsAllowedOf(group?.settings) };
+    // How many guests a member may bring (docs/plans/six-feathers-guests.md);
+    // `guestsAllowed` stays for a phone from before the number.
+    const guestsPerMember = guestsPerMemberOf(group?.settings);
+    const out = {
+      ...(isAdminAuthed(req) ? session : stripForPublic(session)),
+      guestsAllowed: guestsPerMember > 0,
+      guestsPerMember,
+    };
     return NextResponse.json(out);
   } catch (error) {
     // A failed read is a 503, never a default session with a 200. The client's

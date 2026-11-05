@@ -1,6 +1,6 @@
 import type { CatalogItem, EquipmentCategory, GearItem, PlayerGear, RacketFeel } from './types';
 import type { ClubGearEntry } from './clubGear';
-import { activeRacket } from './activeRacket';
+import { activeRacket, stringOn } from './activeRacket';
 
 /**
  * The Set-up card's arithmetic: which item
@@ -19,8 +19,8 @@ export interface SetupLines {
   racket: GearItem | null;
   /** Every other live racket, in the order they were added. */
   spares: GearItem[];
-  /** The newest live string. `items` is append-ordered, so the last one is
-   *  what is on the racket now — `YourKitCard` learned that the hard way. */
+  /** The string on THAT racket (`stringOn`): each racket keeps its own, so
+   *  swapping in a spare shows the spare's string and tension. */
   string: GearItem | null;
   /** 0, 1 or 2 — how many of the two lines hold something. */
   filled: number;
@@ -34,8 +34,7 @@ export function setupLines(gear: PlayerGear | null): SetupLines {
   const live = (gear?.items ?? []).filter((i): i is GearItem => !!i && !i.retiredAt);
   const racket = activeRacket(gear);
   const spares = live.filter((i) => categoryOf(i) === 'racket' && i.id !== racket?.id);
-  let string: GearItem | null = null;
-  for (const i of live) if (categoryOf(i) === 'string') string = i;
+  const string = stringOn(gear, racket);
   return { racket, spares, string, filled: (racket ? 1 : 0) + (string ? 1 : 0) };
 }
 

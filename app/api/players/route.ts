@@ -23,7 +23,7 @@ import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import { promoteFromWaitlist, releaseMembersFirst } from '@/lib/waitlistPromote';
 import { membersFirstDue, membersFirstOpen } from '@/lib/membersFirst';
-import { cleanGuestName, guestDisplayName, guestsAllowedOf, isGuestRow } from '@/lib/plusOne';
+import { cleanGuestName, guestDisplayName, guestsPerMemberOf, isGuestRow } from '@/lib/plusOne';
 import type { ActiveMember } from '@/lib/auth';
 import type { RecoveryEvent, Session } from '@/lib/types';
 
@@ -146,23 +146,39 @@ async function softRemoveGuest(
 }
 
 /**
- * ADD A PLUS-ONE (docs/plans/plus-one.md): the signed-in host brings one
- * guest to the ACTIVE session. The guest is a row of their own with
- * `guestOf: host` and no `memberId` — no account, no cookie, no member doc —
- * and goes on the waitlist when the session is full or the host is waiting
- * there themselves. The host must hold a row, and not one held for unpaid
- * sessions: auto-promote skips a held row, so a guest beside a held host would
- * be moved up while the person who brought them waits.
+ * ADD A GUEST (docs/plans/plus-one.md, docs/plans/six-feathers-guests.md): a
+ * host brings up to the club's number of guests (`ClubRun.guests`) to the
+ * ACTIVE session. A guest is a row of their own with `guestOf: host` and no
+ * `memberId` — no account, no cookie, no member doc — named `Jenny (Josh)`,
+ * and goes on the waitlist when the session is full, the host is waiting
+ * there themselves, or the members-first window is open. The host must hold a
+ * row, and not one held for unpaid sessions: auto-promote skips a held row, so
+ * a guest beside a held host would be moved up while the person who brought
+ * them waits.
+ *
+ * The host is the caller, or — for an ORGANISER passing `hostMemberId` — a
+ * member already on this session's list ("Add a guest for Josh", the pilot's
+ * bridge while some members still text the organiser). The organiser's add
+ * skips the sign-up open and deadline gates, as an admin's sign-up does, and
+ * meets every other rule.
+ *
+ * A name already on the club's roster is refused (`guest_on_roster`): that
+ * person signs up themselves, or one person would hold two rows.
  */
-async function addGuest(req: NextRequest, body: { guest?: unknown }, host: ActiveMember | null): Promise<NextResponse> {
-  if (!host) return unauthorized();
+async function addGuest(
+  req: NextRequest,
+  body: { guest?: unknown; hostMemberId?: unknown },
+  who: { admin: boolean; caller: ActiveMember | null },
+): Promise<NextResponse> {
+  const forHost = who.admin && typeof body.hostMemberId === 'string' && body.hostMemberId ? body.hostMemberId : null;
+  if (!forHost && !who.caller) return unauthorized();
   const guestName = cleanGuestName((body.guest as { name?: unknown } | null)?.name);
   if (!guestName) return NextResponse.json({ error: 'invalid_guest_name' }, { status: 400 });
 
   const scope = groupScope(resolveGroupId(req));
   const sessionId = await getActiveSessionId(scope.groupId);
   if (!sessionId) return noActiveSession();
-  const [sessionData, group, rows] = await Promise.all([
+  const [sessionData, group, rows, onRoster] = await Promise.all([
     scope.read<Session>('sessions', sessionId, sessionId),
     readGroup(scope.groupId),
     scope.query<Player>('players', {
@@ -170,14 +186,19 @@ async function addGuest(req: NextRequest, body: { guest?: unknown }, host: Activ
       params: [{ name: '@sessionId', value: sessionId }],
       partitionKey: sessionId,
     }),
+    resolveActiveMemberId(scope.groupId, guestName),
   ]);
-  if (!guestsAllowedOf(group?.settings)) return NextResponse.json({ error: 'guests_off' }, { status: 403 });
-  if (sessionData?.signupOpen === false) return NextResponse.json({ error: 'Sign-ups are not open yet' }, { status: 403 });
-  if (sessionData?.deadline && new Date() > new Date(sessionData.deadline)) {
-    return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
+  const cap = guestsPerMemberOf(group?.settings);
+  if (cap === 0) return NextResponse.json({ error: 'guests_off' }, { status: 403 });
+  if (!forHost) {
+    if (sessionData?.signupOpen === false) return NextResponse.json({ error: 'Sign-ups are not open yet' }, { status: 403 });
+    if (sessionData?.deadline && new Date() > new Date(sessionData.deadline)) {
+      return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
+    }
   }
   // Settle froze the bill on the rows it found; a row added after owes nothing.
   if (sessionData?.settled) return NextResponse.json({ error: 'session_settled' }, { status: 409 });
+  if (onRoster) return NextResponse.json({ error: 'guest_on_roster' }, { status: 409 });
 
   let current = rows;
   if (await letInIfDue(scope, sessionId, sessionData)) {
@@ -188,10 +209,18 @@ async function addGuest(req: NextRequest, body: { guest?: unknown }, host: Activ
     });
   }
   const live = current.filter((r) => r.sessionId === sessionId && r.removed !== true);
-  const hostRow = live.find((r) => r.memberId === host.memberId);
+  const hostId = forHost ?? who.caller!.memberId;
+  const hostRow = live.find((r) => r.memberId === hostId && !isGuestRow(r));
   if (!hostRow) return NextResponse.json({ error: 'host_not_signed_up' }, { status: 409 });
   if (hostRow.heldForUnpaid === true) return NextResponse.json({ error: 'host_held' }, { status: 409 });
-  if (live.some((r) => r.guestOf === host.memberId)) return NextResponse.json({ error: 'guest_exists' }, { status: 409 });
+  const theirs = live.filter((r) => r.guestOf === hostId);
+  if (theirs.length >= cap) return NextResponse.json({ error: 'guest_exists', limit: cap }, { status: 409 });
+  if (theirs.some((r) => (r.guestName ?? '').toLowerCase() === guestName.toLowerCase())) {
+    return NextResponse.json({ error: 'guest_exists', limit: cap }, { status: 409 });
+  }
+  // The roster name the club calls the host: the caller's own, or the row's
+  // for an organiser's add (written at sign-up from the same roster).
+  const hostName = forHost ? hostRow.name : who.caller!.name;
 
   const maxPlayers = sessionData?.maxPlayers ?? defaultMaxPlayers();
   // A guest is not a member: while only members take a spot, they wait with
@@ -201,9 +230,9 @@ async function addGuest(req: NextRequest, body: { guest?: unknown }, host: Activ
     waitsForMembers || hostRow.waitlisted === true || live.filter((r) => r.waitlisted !== true).length >= maxPlayers;
   const guest = {
     id: randomBytes(12).toString('hex'),
-    name: guestDisplayName(guestName, host.name),
+    name: guestDisplayName(guestName, hostName),
     guestName,
-    guestOf: host.memberId,
+    guestOf: hostId,
     sessionId,
     timestamp: new Date().toISOString(),
     paid: false,
@@ -310,8 +339,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    // A plus-one is the caller's OWN guest, so even an admin brings one as a member.
-    if (body.guest !== undefined) return await addGuest(req, body, signedIn ?? (await requireGroupMember(req)));
+    // A guest is the caller's own, unless an organiser names the host.
+    if (body.guest !== undefined) {
+      return await addGuest(req, body, { admin, caller: signedIn ?? (await requireGroupMember(req)) });
+    }
     const sessionId = admin && typeof body.sessionId === 'string'
       ? body.sessionId
       : await getActiveSessionId(resolveGroupId(req));
@@ -1211,7 +1242,10 @@ export async function DELETE(req: NextRequest) {
       if (!host || host.groupId !== scope.groupId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      const [guest] = await guestsOf(scope, sessionId, host.memberId);
+      // One guest by id when the host has several; the only one otherwise
+      // (a phone from before a host could bring two sends no id).
+      const guests = await guestsOf(scope, sessionId, host.memberId);
+      const guest = typeof body.guestId === 'string' ? guests.find((g) => g.id === body.guestId) : guests[0];
       if (!guest) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       const late = await lateOf(guest);
       if (late.late && body.acknowledgeLateFee !== true) {

@@ -77,7 +77,7 @@ Revised 2026-10-29: these rules ship as settings any club can choose, and Six Fe
 - **C** (shipped, #771): claim a pre-added name with the club link (`docs/plans/claim-your-name.md`).
 - ~~**D**: last week's list carries over.~~ Dropped (Grant, 2026-11-04: "Dont carry over"); see Decisions.
 - **E** (built in #790): the members-first window (`docs/plans/members-first-window.md`). The waitlist moving up into a freed spot shipped on its own (`docs/plans/waitlist-auto-promote.md`), so E is only the window now.
-- **F**: guests. Shipped as plus-one (`docs/plans/plus-one.md`, #751); what remains is checking that a guest written "Jenny (Josh)" maps onto it.
+- **F** (built in #795): guests. Plus-one (`docs/plans/plus-one.md`, #751), then up to two guests, the `Jenny (Josh)` form, guests on for the style and an organiser adding one (`docs/plans/six-feathers-guests.md`).
 
 The original order follows for the record.
 

@@ -5,6 +5,7 @@ import type { FitFacts } from '@/lib/fitVerdict';
 import type { FitVerdictCopy } from '@/lib/fitVerdictCopy';
 import type { PlayerGear } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
+import { activeRacket, currentString } from '@/lib/activeRacket';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -31,9 +32,8 @@ export interface UseFitVerdict {
  *  the bag (a spare, a note) does not re-ask. */
 function signature(gear: PlayerGear | null): string {
   if (!gear) return 'none';
-  const active = gear.items.find((i) => i.id === gear.activeRacketId) ?? gear.items.find((i) => i.category === 'racket');
-  const strings = gear.items.filter((i) => i.category === 'string' && !i.retiredAt);
-  const newest = strings[strings.length - 1];
+  const active = activeRacket(gear);
+  const newest = currentString(gear);
   return JSON.stringify([
     active?.id, active?.catalogId, active?.feel, newest?.catalogId, newest?.tensionLbs,
     gear.fitLevelOverride, gear.fitPlayStyle, gear.fitSwing, gear.fitGrip, gear.fitSoreness, gear.fitGoal,
