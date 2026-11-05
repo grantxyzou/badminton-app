@@ -48,9 +48,9 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
-### The share image looks like the Equipment card (2026-11-05)
+### The share image is a story, drawn like the Equipment card (2026-11-05)
 
-Grant: "This shared card should mirror what the card in app looks like and not truncate." The picture made by Share on the Equipment card is now drawn like the card itself: "Equipment" over your name, the main racket's head close up on the right, the racket's full name with "Main racket · 4U · even" beneath it, then each string with its packet, "Mains · 0.66mm · repulsion" (or Crosses) and its tension in a pill, and the grip and club line at the foot. It is drawn in the app's own typefaces. Nothing is cut short: a long racket or string name wraps onto a second line and the picture grows to fit, where it used to end in "…". The old flat 3D snapshot of the racket is gone.
+Grant: "This shared card should mirror what the card in app looks like and not truncate", then "Omg it's so busy … Can be vertical ig story size". The picture made by Share on the Equipment card is now a 9:16 story (1080 × 1920). It has your name at the top, your main racket's head large across the middle, then the racket's full name with "Main racket · 4U · even" under it, each string with its packet, "Mains · 0.66mm · repulsion" (or Crosses) and its tension in a pill, and one quiet line at the foot: your grip and how long you've played at the club. The words stay clear of the bars story apps draw over the top and bottom. It uses the app's own typefaces. Nothing is cut short: a long racket or string name wraps onto further lines and the racket moves up to make room. The restring count, the club tension comparison and "1 of 4 at BPM Core" are left off the picture and stay in "Copy as text". The old flat 3D snapshot of the racket is gone.
 
 ### The Equipment card, redrawn (2026-11-05)
 

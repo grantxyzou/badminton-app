@@ -132,9 +132,6 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
 
   const content = useMemo<ShareCanvasContent | null>(() => {
     if (!card) return null;
-    const stats: ShareCanvasContent['stats'] = [];
-    if (card.restrings) stats.push({ num: String(card.restrings.count), text: t('statRestrings', { count: card.restrings.count, since: monthYear(card.restrings.since) }) });
-    if (card.tensionVsClub !== null) stats.push({ num: `${card.tensionVsClub > 0 ? '+' : ''}${card.tensionVsClub}`, text: t('statVsClub') });
     const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' · ');
     const racket = card.racket
       ? {
@@ -149,21 +146,21 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
       sub: join(r.role ? t(r.role) : t('factStrings'), r.catalogId ? stringSpecLine(stringRows.get(r.catalogId), (k) => t(k)) : null),
       lbs: r.tensionLbs,
     }));
+    // The story keeps one quiet line (Grant: "it's so busy"); the restrings,
+    // the club comparison and the "1 of N" stay in the copied text.
     const footer = join(
       card.grip ? `${t('factGrip')} ${card.grip}` : null,
-      card.clubCount !== null ? `${t('factOneOf', { count: card.clubCount })} · ${club ? t('factAtClub', { club }) : t('factInClub')}` : null,
+      card.sinceYear !== null ? (club ? t('shareSinceClub', { club, year: card.sinceYear }) : t('shareSince', { year: card.sinceYear })) : null,
     ) || null;
     return {
       eyebrow: t('eyebrow'),
       name: card.name,
-      since: card.sinceYear !== null ? (club ? t('shareSinceClub', { club, year: card.sinceYear }) : t('shareSince', { year: card.sinceYear })) : null,
       racket,
-      stats,
       strings: lines,
       footer,
       lbUnit: t('lbUnit'),
     };
-  }, [card, club, monthYear, t, rows, packets, stringRows]);
+  }, [card, club, t, rows, packets, stringRows]);
 
   const text = useMemo(() => (card ? shareCardText(card, {
     title: t('shareTextTitle', { name: card.name }),
