@@ -98,3 +98,14 @@ describe('sharedFetch reuses a landed answer only while nothing was written', ()
     expect(replaced).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('the usage beacons are not writes', () => {
+  it('an app_open or tab_view beacon does not void a landed answer', async () => {
+    const { sharedFetch, watchWrites } = await import('../lib/sharedRead');
+    watchWrites();
+    await sharedFetch('/api/members');
+    await window.fetch('/bpm/api/events', { method: 'POST', body: '{"kind":"tab_view"}' });
+    await sharedFetch('/api/members');
+    expect(reads()).toBe(1);
+  });
+});

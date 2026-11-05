@@ -46,13 +46,25 @@ const SETTLED_SHARE_MS = 8000;
 let writeEpoch = 0;
 let watchedFetch: typeof fetch | null = null;
 
+/**
+ * The usage beacons (`app_open`, `tab_view`, a client error: `POST
+ * /api/events`, lib/engagement.ts) append to a log nothing on screen reads
+ * back, and they fire on every open and tab switch — counted as writes they
+ * voided every reuse the moment the app opened (measured: no duplicate went
+ * away until they were excluded).
+ */
+function isUsageBeacon(input: RequestInfo | URL): boolean {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  return /\/api\/events(?:[?#]|$)/.test(url);
+}
+
 /** Count the page's writes, so a settled answer is never reused across one. Idempotent. */
 export function watchWrites(): void {
   if (typeof window === 'undefined' || (watchedFetch && window.fetch === watchedFetch)) return;
   const inner = window.fetch.bind(window);
   const wrapped: typeof fetch = (input, init) => {
     const method = (init?.method ?? (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
-    if (method !== 'GET' && method !== 'HEAD') writeEpoch++;
+    if (method !== 'GET' && method !== 'HEAD' && !isUsageBeacon(input)) writeEpoch++;
     return inner(input, init);
   };
   window.fetch = wrapped;
