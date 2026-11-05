@@ -48,6 +48,18 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The club's door link: one poster for everyone, every join approved by an organiser (2026-11-05)
+
+A club can now hand out one reusable link, on a poster, in a group chat or on an NFC sticker. Opening it shows "Join <club> · Ask to join": someone whose name is already on the roster and unclaimed asks to be let in as themselves, and anyone else asks to join. Only an organiser approves; approving creates the account and the asking phone is signed in. A name a member already holds is refused, so the door never hands a stranger an existing account. The Invite page gains "A poster for everyone", and "New link" retires the old poster and the asks still waiting on it. `docs/plans/door-link.md`.
+
+### Guests the way Six Feathers brings them (2026-11-05)
+
+A club now sets how many guests a member may bring, none, one or two, under How your club runs; "Members first" sets two. A guest is written the club's way, `Jenny (Josh)`, on Home and in Copy list, a guest name already on the roster is refused, and an organiser can add a guest for a member from the session card. Home lists each guest with its own Remove. BPM Core reads exactly as before: one guest, if the club switches guests on. `docs/plans/six-feathers-guests.md`.
+
+### Invite in person: the QR on the Invite page, and a poster to save (2026-11-05)
+
+The Invite page shows the invite as a QR code for the person standing next to you, with the 8-character code under it for a phone that will not scan. When it is used the page says "They're in" and offers Next person, so a used code never stays on screen. "Save as image" draws a poster with the club's name, organisers, when and where it plays, the QR and the code, and says it works once, for one person.
+
 ### Each racket keeps its own string (2026-11-05)
 
 On Stats → Equipment, swapping your main racket used to carry the string and its tension onto the new racket. Now each racket keeps its own: swapping in a spare shows that spare's string and tension, or a blank Strings line if it has none, and swapping back brings the first one's back. The same string can be on two rackets at different tensions. A string logged before today stays with the racket that was in play when you first swap. The Set-up card puts the racket and its string together, then a divider and your spares, each saying what it is strung with; tapping a spare opens its own sheet, where you can make it your main racket. The Strings line shows the string's packet with the string drawn in your racket's string colour, and no longer counts how many others use it. The main racket is drawn close up across the right half of the card, with the controls over it in a liquid-glass style. The club tension band, the fit verdict, the racket page and the share card all read the main racket's string. Plan: `docs/plans/string-follows-racket.md`.
@@ -55,6 +67,34 @@ On Stats → Equipment, swapping your main racket used to carry the string and i
 ### Every string shows its packet (2026-11-05)
 
 The strings on the Stringing tab now have pictures: each string's 10 m retail packet, matched to maker and retailer photos and drawn without the maker's logo. The packet shows on every row of the strings list and in the map view's selected string, beside the name on a string's page, and in the request form's string list in place of the gauge tile. Each picture is about 9 KB, drawn ahead of time; nothing loads on screens that show no strings. A string with no packet keeps what it showed before. Plan: `docs/plans/string-packets.md`.
+
+### A sign-up link the app opens (2026-11-04)
+
+The weekly sign-up link is now `/bpm/s`. In a browser it opens Home; with the store app installed, the app opens it and lands on Home signed in. Shared messages carry the link once instead of twice, and the invite copy leads with the tap.
+
+### Members first: spots kept for members until a set time (2026-11-04)
+
+A club can keep its spots for members until a cutoff before the session (Six Feathers: Monday 11:59 PM), then let the waitlist in, in sign-up order, with the usual push. Until then a sign-up from someone not marked member, and every guest, waits. Nothing runs on a timer: the first visit after the cutoff lets the waitlist in, and the organiser can do it early from the session card. `docs/plans/members-first-window.md`.
+
+### Claim your name, and sign out everywhere (2026-11-04)
+
+Someone an organiser imported onto the roster can ask to be let in through the club's link; the ask names their club, so it reaches that club's organisers and nobody else's. An organiser can also sign a member out everywhere from the Roster sheet, which ends every session that person holds, the admin console's included; issuing a recovery code does the same. A phone that has signed in before remembers its club, so a later "let me in" ask goes to the right club's admins. `docs/plans/claim-your-name.md`.
+
+### Profile shows your rank in this club (2026-11-04)
+
+The Profile card shows a small chip beside your name, Organiser or Admin, for the club you are in; a player has none. It used to say Admin for every admin, organisers included. "Member since" and the chip now read in Chinese for Chinese users.
+
+### Five fixes from a code review (2026-11-04)
+
+Another club's admin could put someone on BPM's stringing bench; that switch now stays with the club that set it. Cancelling a guest could undo an admin's edit made at the same moment; it no longer can. Home's session card no longer fails when the club record cannot be read, only the plus-one row hides. The operator's change log keeps the newest 200 entries. The fifth, a "Get the app" card shown to people already getting notifications, went with the card when Notifications replaced it.
+
+### Notifications, behind a bell (2026-11-04)
+
+A bell beside the language and theme buttons opens a Notifications page, with a red dot when something new arrives. Turning notifications on, and on the web "Get the BPM app on your phone", sit at the top; below is what the club told you: sign-ups open, a spot from the waitlist, racket updates. The Stats privacy question is asked once, and closing it answers "Keep it private".
+
+### How close the waitlist is to another court (2026-11-04)
+
+When sign-ups fill up early, the sign-up card says how many more people would fill another court ("3 more fills a court"), and the admin's session card shows the same. It describes what could happen; booking the court is still the organiser's call.
 
 ### Every racket in its real paint (2026-11-04)
 
@@ -95,11 +135,35 @@ The rest of roles v2 (`docs/plans/roles-v2.md`). **Stringer is held per club**: 
 
 Any admin could make anyone an admin, and each new admin could make more; a club that two friends run together had no way to say so, because a club held exactly one owner. Now a club may have several organisers, and a rank — admin or organiser — and the gift-card switch are an organiser's alone to hand out; an admin still runs the night and grants Stringer. Nobody removes an organiser, not another organiser and not an admin: they step down themselves from Profile → Your groups, and when the last one steps down or deletes their account the club passes to the longest-serving admin, else the longest-serving player. The privacy policy's "if you're the only organiser, the group closes" now says what the code has done since succession shipped. The reasoning and the three PRs still to come are `docs/plans/roles-v2.md`.
 
+### Import a club's list (2026-10-29)
+
+An admin can paste a list, cells from a spreadsheet or a numbered chat post, or pick a `.csv`, and put the names on the roster, each marked member or drop-in. A preview shows what each line will do before anything is saved, and running the same paste again only adds what is new. `docs/plans/roster-import.md`.
+
+### Bring a guest (2026-10-29)
+
+A club can let members bring a guest. The guest gets a spot of their own, or waits when the session is full, and their share is on the member's balance. A guest leaves with the member who brought them. Off unless the club switches it on. `docs/plans/plus-one.md`.
+
 ### One level everywhere (2026-10-29)
 
 The app showed a member two different levels. Home's "Your level is climbing" card quoted the latest check-in's raw score (Lin: 3.4, "+0.8 since September"), while the Stats LEVEL tile showed the canonical level, the smoothed check-ins blended with logged games (3.1), under a caption that was the raw jump again ("▲ 0.8"), so nothing on screen added up. "Your level over time" plotted the raw scores (2.6 → 3.4). All three now show the canonical level, and every "since …" change is the step between two points of its new trail, the level as of each check-in, which `GET /api/stats/level` returns as an additive `trail` (`docs/plans/one-level.md`). Lin now reads 3.1, "+0.5 since September", on Home, the tile and the chart alike, and the chart's sentence reads its phase off the same 3.1.
 
 The LEVEL tile also lost its filled green slab, which in light mode read as a dark block on a pale page (Grant: "This colour... it feels odd"). It is now the same glass as the Games and Kudos tiles beside it, in both themes, and leads by colour alone: its number and a rise's ▲ are green, the "0.5 since September" words the same grey as the other captions, and a fall's ▼ stays grey.
+
+### How your club runs (2026-10-28)
+
+An organiser picks how the club runs, first come first served like BPM Core, or members first like Six Feathers, and can adjust each rule: players per court, whether the app handles money, and more since. "Copy list" puts the week's list in the club's group chat as text. `docs/plans/six-feathers-onboarding.md`.
+
+### Add to calendar (2026-10-28)
+
+The green sign-up banner's second line repeated the date and place. It is now one button, Add to calendar, which opens the phone's own New Event screen filled in. Nothing is saved until you tap Add.
+
+### A freed spot goes to the first person waiting (2026-10-28)
+
+When someone cancels, an admin removes a player or the player cap goes up, the waitlist moves up in sign-up order and each person promoted gets a push. It stops once the session starts. Someone moved up inside the late-cancel window can give the spot back without it counting as late. The waitlist card says so.
+
+### Stringing, redesigned (2026-10-28)
+
+A player sees the exact price their stringer quoted instead of a $4 band, and the email quotes it too; the push still carries no money. One progress card per racket, a two-step request sheet, and a strings map you can zoom into. `docs/plans/stringing-canvas-redesign.md`.
 
 ### Google and Apple sign-in no longer depend on a deprecated library (2026-10-27)
 
