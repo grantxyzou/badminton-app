@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import InviteCard from '../../components/admin/CommandCenter/InviteCard';
 import enMessages from '../../messages/en.json';
+import { QR_POLL_MS } from '../../components/admin/CommandCenter/InviteQr';
+import { qrPath } from '../../lib/qr';
+import { inviteUrl } from '../../lib/useInvites';
 
 /**
  * The admin's Invite card for ONE-TIME invites (docs/plans/one-time-invites.md):
@@ -54,7 +57,8 @@ describe('InviteCard', () => {
     expect(screen.queryByText(/CCCC/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.getByText(/CCCC/)).toBeDefined());
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Two reads of the invite list; the poster's own reads are not counted.
+    expect(fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/api/groups/invite'))).toHaveLength(2);
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -69,14 +73,44 @@ describe('InviteCard', () => {
     expect(screen.getByText(/Works once, until/)).toBeDefined();
   });
 
-  it('Show as QR opens the sheet on the invite the card is showing', async () => {
+  it('draws the shown invite as a QR right on the card, with Save as image', async () => {
     fetchMock = vi.fn().mockResolvedValue(jsonResponse({ invites: [B, A] }));
     vi.stubGlobal('fetch', fetchMock);
     mount();
-    fireEvent.click(await screen.findByRole('button', { name: 'Show as QR' }));
-    expect(await screen.findByRole('img', { name: 'QR code for the invite link' })).toBeDefined();
-    // The newest live invite is the one shown, so its code is the one drawn.
-    expect(screen.getAllByText('CCCC DDDD').length).toBeGreaterThanOrEqual(2);
+    const qr = await screen.findByRole('img', { name: 'QR code for the invite link' });
+    // The newest live invite is the one shown, so its link is the one drawn.
+    expect(qr.querySelector('path')!.getAttribute('d')).toBe(qrPath(inviteUrl(B.token)).d);
+    expect(screen.getByRole('button', { name: /Save as image/ })).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('when the shown invite is used, says so, and Next person shows a fresh one', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    let listed = [B];
+    fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return jsonResponse(NEW, 201);
+      if (String(url).endsWith('/api/groups/invite')) return jsonResponse({ invites: listed });
+      return jsonResponse({}, 404);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      mount();
+      expect(await screen.findByRole('img', { name: 'QR code for the invite link' })).toBeDefined();
+      listed = [];
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(QR_POLL_MS);
+      });
+      expect(await screen.findByText("That invite has been used. They're in.")).toBeDefined();
+      expect(screen.queryByRole('img', { name: 'QR code for the invite link' })).toBeNull();
+      // One way to make the next invite, not two.
+      expect(screen.queryByRole('button', { name: 'Create an invite' })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Next person' }));
+      expect(await screen.findByText(/EEEE FFFF/)).toBeDefined();
+      const drawn = screen.getByRole('img', { name: 'QR code for the invite link' }).querySelector('path')!.getAttribute('d');
+      expect(drawn).toBe(qrPath(inviteUrl(NEW.token)).d);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('Create an invite posts, and the new one is shown in full', async () => {

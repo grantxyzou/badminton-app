@@ -1,7 +1,7 @@
 import { encode } from 'uqr';
 
 /**
- * A QR code as ONE SVG path, for the Invite card's "Show as QR"
+ * A QR code as ONE SVG path, for the Invite card's QR
  * (docs/superpowers/plans/2026-11-04-app-clip.md, Task 1.3).
  *
  * `uqr` (MIT, no dependencies, pinned) does the encoding and hands back the
@@ -23,8 +23,14 @@ export interface QrPath {
 
 export const QR_QUIET_ZONE = 4;
 
-export function qrPath(text: string): QrPath {
+/** The grid itself, quiet zone included: `data[y][x]` is true for a dark square. Drawn as SVG on the page and on a canvas for the poster (`lib/invitePoster.ts`). */
+export function qrGrid(text: string): { size: number; data: boolean[][] } {
   const { data, size } = encode(text, { ecc: 'M', border: QR_QUIET_ZONE });
+  return { size, data };
+}
+
+export function qrPath(text: string): QrPath {
+  const { data, size } = qrGrid(text);
   let d = '';
   for (let y = 0; y < size; y += 1) {
     const row = data[y]!;
