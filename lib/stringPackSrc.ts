@@ -15,6 +15,7 @@ export const STRING_PACK_IDS: ReadonlyArray<string> = [
   'string-yx-bg66br',
   'string-yx-bg80',
   'string-yx-bg80p',
+  'string-yx-bg85',
   'string-yx-nbg95',
   'string-yx-nbg98',
   'string-yx-nbg99',
