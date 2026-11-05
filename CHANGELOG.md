@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Each racket keeps its own string (2026-11-05)
+
+On Stats → Equipment, swapping your main racket used to carry the string and its tension onto the new racket. Now each racket keeps its own: swapping in a spare shows that spare's string and tension, or a blank Strings line if it has none, and swapping back brings the first one's back. The same string can be on two rackets at different tensions. A string logged before today stays with the racket that was in play when you first swap. The Set-up card puts the racket and its string together, then a divider and your spares, each saying what it is strung with; tapping a spare opens its own sheet, where you can make it your main racket. The Strings line shows the string's packet with the string drawn in your racket's string colour, and no longer counts how many others use it. The main racket is drawn close up across the right half of the card, with the controls over it in a liquid-glass style. The club tension band, the fit verdict, the racket page and the share card all read the main racket's string. Plan: `docs/plans/string-follows-racket.md`.
+
 ### Every string shows its packet (2026-11-05)
 
 The strings on the Stringing tab now have pictures: each string's 10 m retail packet, matched to maker and retailer photos and drawn without the maker's logo. The packet shows on every row of the strings list and in the map view's selected string, beside the name on a string's page, and in the request form's string list in place of the gauge tile. Each picture is about 9 KB, drawn ahead of time; nothing loads on screens that show no strings. A string with no packet keeps what it showed before. Plan: `docs/plans/string-packets.md`.
