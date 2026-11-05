@@ -383,6 +383,18 @@ export function verifyMemberAuth(req: NextRequest): MemberSession | null {
 }
 
 /**
+ * When this device's `member_session` was minted (seconds), or undefined.
+ * For a route that hands the session into ANOTHER club than the one the
+ * cookie names: the live check read only the named club's "Sign out
+ * everywhere" cutoff, and the other club's has to be compared too.
+ */
+export function memberSessionIssuedAt(req: NextRequest): number | undefined {
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return undefined;
+  return verifyToken(cookie, 'member')?.iat;
+}
+
+/**
  * The member id of whoever is signed in on this device, from EITHER cookie:
  * the `member_session` if there is one, else the `admin_session` (re-read, so
  * a demoted or removed admin is nobody). `null` is anonymous.

@@ -65,19 +65,46 @@ export function recordPinFailure(value: unknown, now: number = Date.now()): PinL
 }
 
 /** Record a wrong PIN against the account. Best-effort: a write failure is
- *  logged and never turns the 401 into a 500. */
+ *  logged and never turns the 401 into a 500.
+ *
+ *  COUNTED ON A FRESH READ, UNDER `IfMatch` (audit, 2026-11-05). It used to
+ *  write `{ ...member, pinLock }` from the doc the caller read before its
+ *  scrypt, so twenty guesses sent at once all read "0 failures" and all wrote
+ *  "1": the lock never formed, however many arrived in parallel. Now each
+ *  failure re-reads and adds to what is THERE, retrying when another lands
+ *  first, so a burst counts in full and locks the account behind it. */
 export async function notePinFailure(member: LockableMember): Promise<void> {
-  const next = recordPinFailure(member.pinLock);
-  if (next === member.pinLock) return; // locked: nothing to write
-  member.pinLock = next;
-  try {
-    await getContainer('members').items.upsert({ ...member, pinLock: next });
-  } catch (err) {
-    console.error('[pin-lock] could not record failure:', err);
+  const container = getContainer('members');
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let fresh: (LockableMember & { _etag?: string }) | undefined;
+    try {
+      ({ resource: fresh } = await container.item(member.id, member.id).read<LockableMember & { _etag?: string }>());
+    } catch {
+      fresh = undefined;
+    }
+    const base = fresh ?? member;
+    const next = recordPinFailure(base.pinLock);
+    member.pinLock = next;
+    if (next === base.pinLock) return; // locked: nothing to write
+    try {
+      if (fresh && typeof fresh._etag === 'string') {
+        await container
+          .item(member.id, member.id)
+          .replace({ ...fresh, pinLock: next }, { accessCondition: { type: 'IfMatch', condition: fresh._etag } });
+      } else {
+        await container.items.upsert({ ...base, pinLock: next });
+      }
+      return;
+    } catch (err) {
+      const code = (err as { code?: number; statusCode?: number })?.code ?? (err as { statusCode?: number })?.statusCode;
+      if (code === 412) continue; // another failure landed first: count on top of it
+      console.error('[pin-lock] could not record failure:', err);
+      return;
+    }
   }
+  console.error('[pin-lock] gave up recording a failure after repeated conflicts');
 }
 
-/** A correct PIN clears the counter. No write when there is nothing to clear. */
 export async function notePinSuccess(member: LockableMember): Promise<void> {
   if (!member.pinLock) return;
   delete member.pinLock;

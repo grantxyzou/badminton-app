@@ -48,6 +48,20 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Security fixes from the November audit (2026-11-05)
+
+Nine ways in were closed. None is known to have been used.
+
+- An admin can no longer reset the PIN of an organiser or another admin. The reset code clears the PIN, so it was a way to take over a higher rank. Only an organiser can do it now.
+- "Sign out everywhere" in one club now holds when a phone switches into that club, or rejoins it, from another club.
+- Release notes, which every club reads, can only be written by the person who runs the app. Before, the admin of any club could write them, and anyone can create a club. The AI writing helper stays open to club admins, with a daily limit per person.
+- The e-transfer inbox only marks someone paid when the Interac email was sent to the club. A genuine Interac email about a transfer to someone else no longer counts. **The Gmail script needs updating**: paste the new `public/payments/apps-script.gs` and run `install` once. Until then it works as before.
+- Wrong PINs sent all at once now each count toward the lock. Before, they could all slip past it together.
+- A recovery code stops working after 5 wrong tries.
+- A club's join link no longer hands over a name whose owner has signed in since asking.
+- Moving to the store app now re-issues the cancel token for your own spot, never for another person with the same name.
+- An API request whose size it does not declare is refused, so the 256 KB limit can't be avoided.
+
 ### The club's door link: one poster for everyone, every join approved by an organiser (2026-11-05)
 
 A club can now hand out one reusable link, on a poster, in a group chat or on an NFC sticker. Opening it shows "Join <club> · Ask to join": someone whose name is already on the roster and unclaimed asks to be let in as themselves, and anyone else asks to join. Only an organiser approves; approving creates the account and the asking phone is signed in. A name a member already holds is refused, so the door never hands a stranger an existing account. The Invite page gains "A poster for everyone", and "New link" retires the old poster and the asks still waiting on it. `docs/plans/door-link.md`.

@@ -100,8 +100,11 @@ function wellKnown(req: NextRequest): NextResponse | null {
  *    `req.json()` had already read the lot. A declared `content-length` over
  *    `MAX_BODY_BYTES` is refused with 413 before any read. The largest real
  *    body here is a report (2,000 chars) or a Claude prompt; 256 KiB is a
- *    ceiling on abuse, not a budget. A chunked body declares no length and
- *    passes this check — the per-route rate limits bound that case.
+ *    ceiling on abuse, not a budget. A chunked body declares no length, so
+ *    it could not be measured here at all: it is refused with 411 (audit,
+ *    2026-11-05). Nothing in the app streams a request body — a browser
+ *    `fetch` of a string, the native WebView and Apps Script all send a
+ *    length.
  *  - CROSS-SITE WRITES. The session cookies are SameSite=Lax (OAuth callbacks
  *    need it), which is what stops a cross-site form from carrying them — one
  *    setting, no second line. A `Sec-Fetch-Site: cross-site` mutation, or an
@@ -127,9 +130,13 @@ export function apiGuards(req: NextRequest): NextResponse | null {
   const path = apiPath(req);
   if (!path || SAFE_METHODS.has(req.method.toUpperCase())) return null;
 
-  const declared = Number(req.headers.get('content-length') ?? '');
+  const length = req.headers.get('content-length');
+  const declared = Number(length ?? '');
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
+  }
+  if (length === null && /chunked/i.test(req.headers.get('transfer-encoding') ?? '')) {
+    return NextResponse.json({ error: 'length_required' }, { status: 411 });
   }
 
   if (!CROSS_SITE_WRITE_ALLOWED.has(path)) {

@@ -21,7 +21,7 @@
  * still being in the old one is not what anybody means by tapping an invite.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyLiveMemberAuth, unauthorized } from '@/lib/auth';
+import { verifyLiveMemberAuth, memberSessionIssuedAt, sessionRevoked, unauthorized } from '@/lib/auth';
 import { completeSignIn } from '@/lib/authSession';
 import { getContainer } from '@/lib/cosmos';
 import { addMembership, readGroup, readMembership, RosterNameTakenError } from '@/lib/groups';
@@ -88,7 +88,12 @@ export async function POST(req: NextRequest) {
 
     // Asked BEFORE the write, because `addMembership` is idempotent and its
     // return value cannot tell "already in" from "just joined".
-    const wasMember = (await readMembership(group.id, member.id))?.status === 'active';
+    const existing = await readMembership(group.id, member.id);
+    const wasMember = existing?.status === 'active';
+    // A "welcome back" re-mints a cookie for a club this person is already
+    // in, so that club's "Sign out everywhere" has to hold, as it does in
+    // `switch`; the claim is released below.
+    if (wasMember && sessionRevoked(memberSessionIssuedAt(req), existing.sessionsNotBefore)) return unauthorized();
 
     const membership = await addMembership({
       groupId: group.id,

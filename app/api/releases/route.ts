@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { unauthorized } from '@/lib/auth';
+import { isOperator } from '@/lib/operator';
 import { getEnv } from '@/lib/flags';
 import { RELEASE_KIND } from '@/lib/feedback';
 
@@ -74,8 +75,20 @@ export async function GET(_req: NextRequest) {
   }
 }
 
+/**
+ * Release notes are the DEPLOYMENT's, read by every club, so writing them is
+ * the operator's job, not any club's admin's: with groups on, anyone can
+ * create a club and hold an admin cookie for it (audit, 2026-11-05).
+ */
+async function refuseNonOperator(req: NextRequest): Promise<NextResponse | null> {
+  const op = await isOperator(req);
+  if (op.ok) return null;
+  return op.reason === 'unauthorized' ? unauthorized() : NextResponse.json({ error: 'operator_only' }, { status: 403 });
+}
+
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const refused = await refuseNonOperator(req);
+  if (refused) return refused;
   try {
     await ensureReleasesContainer();
     const raw = await req.json();
@@ -108,7 +121,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const refused = await refuseNonOperator(req);
+  if (refused) return refused;
   try {
     await ensureReleasesContainer();
     const raw = await req.json();
@@ -151,7 +165,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const refused = await refuseNonOperator(req);
+  if (refused) return refused;
   try {
     await ensureReleasesContainer();
     const { id } = await req.json();

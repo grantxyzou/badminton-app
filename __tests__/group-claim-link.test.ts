@@ -165,6 +165,24 @@ describe('approving and claiming', () => {
     expect(session).toMatchObject({ memberId: xLin.id, groupId: 'club-x' });
   });
 
+  it('a name claimed after the ask is never handed over: not approved, and not collected (audit, 2026-11-05)', async () => {
+    const { secret } = await (await ask('Lin')).json();
+    const [row] = await list('club-x');
+    // The real Lin sets a PIN before the organiser looks.
+    memberDoc(xLin.id)!.pinHash = 'set-by-the-real-lin';
+    const refused = await approve('club-x', xLin.id, row.requestId!);
+    expect(refused.status).toBe(409);
+    expect((await refused.json()).error).toBe('already_claimed');
+
+    // Approved first, claimed before the asking phone collects.
+    delete memberDoc(xLin.id)!.pinHash;
+    expect((await approve('club-x', xLin.id, row.requestId!)).status).toBe(200);
+    memberDoc(xLin.id)!.pinHash = 'set-by-the-real-lin';
+    const res = await claim('Lin', secret);
+    expect((await res.json()).status).toBe('none');
+    expect(res.headers.get('set-cookie') ?? '').not.toContain('member_session=');
+  });
+
   it('a new link cancels the asks made with the old one', async () => {
     const { secret } = await (await ask('Lin')).json();
     const [row] = await list('club-x');

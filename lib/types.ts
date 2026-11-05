@@ -281,7 +281,7 @@ export interface PaymentAllocation {
  * and the body carries the admin's own name and bank details.
  */
 export interface EtransferPayment {
-  /** `etx:${sha256(messageId)}` — a re-sent email is the same doc. */
+  /** `etx:${sha256(ref or messageId)}`, prefixed `<groupId>:` outside BPM — a re-sent email is the same doc. */
   id: string;
   groupId?: string;
   source: 'etransfer';

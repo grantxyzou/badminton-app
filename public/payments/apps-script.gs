@@ -21,6 +21,10 @@
  * its wording.
  *
  * To stop: run `uninstall`, or delete the key in the app (every send then fails).
+ *
+ * UPDATING (2026-11-05 adds the To check): paste this file over the old one and
+ * run `install` once. Google asks again, because the script now reads which
+ * Gmail address it runs in.
  */
 
 const SEARCH = 'from:notify@payments.interac.ca newer_than:3d';
@@ -86,6 +90,11 @@ function forwardInteracEmails() {
           body: m.getPlainBody(),
           date: m.getDate().toISOString(),
           authResults: firstHeader(raw, 'Authentication-Results'),
+          // Who it was sent TO, and whose Gmail this is: the app matches only
+          // a payment addressed to the club, never Interac's notice of a
+          // transfer to somebody else delivered here intact.
+          to: m.getTo(),
+          owner: Session.getEffectiveUser().getEmail(),
         }),
       });
       const code = res.getResponseCode();

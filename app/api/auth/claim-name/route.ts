@@ -33,7 +33,7 @@ import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
-import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
+import { verifyRecoveryCode, noteRecoveryCodeFailure } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { completeSignIn } from '@/lib/authSession';
 import { reserveIdentity, releaseIdentity, normalizeEmail } from '@/lib/authIdentity';
@@ -127,14 +127,7 @@ export async function POST(req: NextRequest) {
       await notePinSuccess(member);
     } else {
       if (!(await verifyRecoveryCode(member.recoveryCode, code!))) {
-        await container.items.upsert({
-          ...member,
-          recoveryEvents: appendEvent(member.recoveryEvents, {
-            event: 'recovery-failed',
-            at: new Date().toISOString(),
-            reason: 'wrong_code',
-          }),
-        });
+        await noteRecoveryCodeFailure(member.id, { event: true });
         return FAIL();
       }
     }
