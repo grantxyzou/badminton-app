@@ -120,7 +120,7 @@ const READS_NAME = /\.get\(\s*['"]name['"]\s*\)/;
  * two name-shaped gates count; a genuinely admin-only handler goes in EXEMPT,
  * where the claim is written down instead of inferred from a substring.
  */
-const GATED = /ownsNameOrAdmin\s*\(|authorizeBagWrite\s*\(/;
+const GATED = /ownsNameOrAdmin\s*\(|nameOwnership\s*\(|authorizeBagWrite\s*\(/;
 
 /**
  * Split a route file into its exported handlers, so each is judged alone.

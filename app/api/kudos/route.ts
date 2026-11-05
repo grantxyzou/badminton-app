@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
   // Through the shared helper, not a local copy of it — an inlined gate is
   // invisible to the grep that asks which name-keyed reads are unguarded, and
   // three of these had drifted into three separate spellings of one rule.
-  if (!ownsNameOrAdmin(req, name)) {
+  if (!(await ownsNameOrAdmin(req, name))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

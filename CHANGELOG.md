@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Two people with the same name (2026-11-05)
+
+When two accounts share a name, a club gives the second one a different name, such as "Lin W". Before this fix the app sometimes went by the account name instead of the club name. Lin W could be refused her own balance and stats, see the other Lin's balance instead, or pay the other Lin's session out of her own credit. The app now goes by the person's account, never by the name, everywhere this mattered. A stringing job can also only be billed to someone in the club.
+
 ### Security fixes from the November audit (2026-11-05)
 
 Nine ways in were closed. None is known to have been used.

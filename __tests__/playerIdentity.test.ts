@@ -50,8 +50,11 @@ describe('matchesIdentity', () => {
   it('matches by memberId regardless of name', () => {
     expect(matchesIdentity({ name: 'Whoever', memberId: 'm-1' }, idy)).toBe(true);
   });
-  it('matches by name when memberId differs', () => {
-    expect(matchesIdentity({ name: 'Lynn', memberId: 'm-2' }, idy)).toBe(true);
+  it("never matches ANOTHER member's row by name (audit, 2026-11-05: two clubs, two Lins)", () => {
+    expect(matchesIdentity({ name: 'Lynn', memberId: 'm-2' }, idy)).toBe(false);
+  });
+  it('matches a legacy row with no memberId by name', () => {
+    expect(matchesIdentity({ name: 'Lynn' }, idy)).toBe(true);
   });
   it('does not match an unrelated row', () => {
     expect(matchesIdentity({ name: 'Viktor', memberId: 'm-2' }, idy)).toBe(false);

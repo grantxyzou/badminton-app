@@ -5,7 +5,9 @@ import { getContainer, getActiveSessionId, ensureContainer, sessionIdFromDate } 
 import { groupScope, groupDocId, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { topPartners } from '@/lib/recommend';
-import { ownsNameOrAdmin, verifyMemberAuth } from '@/lib/auth';
+import { nameOwnership, verifyMemberAuth } from '@/lib/auth';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
+import { isFlagOn } from '@/lib/flags';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import type { CanonicalLevel } from '@/lib/level';
@@ -203,7 +205,8 @@ export async function GET(req: NextRequest) {
   //      2. A cache miss GENERATES — an unauthenticated caller could spend
   //         Anthropic budget at will. The gate therefore sits above every DB
   //         read and every generation path, not merely above the model call.
-  if (!ownsNameOrAdmin(req, name)) {
+  const ownership = await nameOwnership(req, name);
+  if (!ownership.allowed) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -234,6 +237,13 @@ export async function GET(req: NextRequest) {
   let member: { id: string; name: string } | null = null;
   let lookupFailed = false;
   try {
+    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+      // With groups on a name means someone only inside a club: the scan
+      // below would find another club's Lin (audit, 2026-11-05). The club's
+      // reservation answers it, and the name narrated is the one the club uses.
+      const id = ownership.selfMemberId ?? (await resolveActiveMemberId(scope.groupId, name));
+      if (id) member = { id, name };
+    } else {
     // A member asking about THEMSELVES is read by their cookie's id; the scan
     // below runs only when that read does not find them active under this name
     // (performance audit, 2026-10-19; same rule as lib/memberResolve.ts).
@@ -262,6 +272,7 @@ export async function GET(req: NextRequest) {
           .fetchAll();
     const m = resources[0] as { id?: string; name?: string } | undefined;
     if (m && typeof m.id === 'string' && typeof m.name === 'string') member = { id: m.id, name: m.name };
+    }
   } catch (err) {
     console.error('insight member lookup failed:', err);
     lookupFailed = true;
