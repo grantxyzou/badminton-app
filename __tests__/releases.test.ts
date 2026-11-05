@@ -150,3 +150,21 @@ describe('DELETE /api/releases', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('GET /api/releases — bounded (audit, 2026-11-05)', () => {
+  it('shows the newest 30; the editor asks for all', async () => {
+    const { resetMockStore, getStore } = await import('./helpers');
+    resetMockStore();
+    const store = getStore();
+    store['releases'] = Array.from({ length: 35 }, (_, i) => ({
+      id: `r${i}`, version: `1.${i}`, title: `T${i}`, body: 'x', kind: 'release',
+      publishedAt: new Date(Date.UTC(2026, 0, 1 + i)).toISOString(),
+    }));
+    const { makeRequest } = await import('./helpers');
+    const shown = await (await GET(makeRequest('GET', 'http://localhost:3000/api/releases'))).json();
+    expect(shown).toHaveLength(30);
+    expect(shown[0].id).toBe('r34');
+    const all = await (await GET(makeRequest('GET', 'http://localhost:3000/api/releases?all=1'))).json();
+    expect(all).toHaveLength(35);
+  });
+});

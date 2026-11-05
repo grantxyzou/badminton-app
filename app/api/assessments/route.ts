@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`assessments-read:${ip}`, 30, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!ownsNameOrAdmin(req, name)) {
+  if (!(await ownsNameOrAdmin(req, name))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

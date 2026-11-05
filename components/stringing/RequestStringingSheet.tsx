@@ -22,6 +22,9 @@ import {
 } from '@/lib/stringing';
 import { usePush } from '@/lib/usePush';
 
+/** The request refusals that have their own sentence under `home.stringing.error`. */
+const KNOWN_REQUEST_ERRORS = new Set(['shop_closed', 'too_many_open', 'invalid_tension', 'invalid_request', 'unauthorized', 'rate_limited']);
+
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** A row in the string list: inner-card chrome, radius 12. */
@@ -326,7 +329,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(t(`error.${data.error ?? 'generic'}`));
+        // Only a code with its own sentence; anything else (`not_found`,
+        // `write_failed`, a gate's code) would print the key path on screen.
+        const code = typeof data.error === 'string' && KNOWN_REQUEST_ERRORS.has(data.error) ? data.error : 'generic';
+        setError(t(`error.${code}`));
         setBusy(false);
         return;
       }

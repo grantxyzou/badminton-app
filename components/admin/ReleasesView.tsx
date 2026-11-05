@@ -30,7 +30,7 @@ export default function ReleasesView({ onBack }: Props) {
   // delete used to put the loading text back over the whole list (the refetch rule).
   async function load() {
     try {
-      const res = await fetch(`${BASE}/api/releases`, { cache: 'no-store' });
+      const res = await fetch(`${BASE}/api/releases?all=1`, { cache: 'no-store' });
       if (res.ok) {
         setReleases(await res.json());
         setLoadError(false);

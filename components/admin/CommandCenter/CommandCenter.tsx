@@ -66,6 +66,18 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
   const { run, known: runKnown } = useClubRun();
   const moneyOff = runKnown && run.money === 'off';
   const styleLabel = run.style === 'custom' ? 'Custom' : CLUB_STYLES[run.style].label;
+  // Release notes are the deployment's, written by the operator alone (the
+  // route refuses anyone else). Hidden until the answer says so: a row that
+  // opens a screen whose every save is refused is worse than no row.
+  const [operator, setOperator] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    sharedFetch('/api/admin')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { operator?: boolean } | null) => { if (!cancelled) setOperator(d?.operator === true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   useEffect(() => {
     if (!stringingOn) return;
     let cancelled = false;
@@ -252,7 +264,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       rows: [
         // Club totals: who plays, how fast sessions fill, who comes back.
         { icon: 'bar_chart', label: 'Metrics', onClick: () => setView('metrics') },
-        { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
+        ...(operator ? [{ icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') }] : []),
         // Rackets members typed in by name: the models the catalog is missing.
         { icon: 'sports_tennis', label: 'Missing from the catalog', onClick: () => setView('catalog-gaps') },
       ],

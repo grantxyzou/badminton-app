@@ -128,6 +128,18 @@ describe('POST /api/players/recover', () => {
     expect(data.error).toBe('invalid_credentials');
   });
 
+  it('a code survives five wrong tries and no more, even the right one after (audit, 2026-11-05)', async () => {
+    const { code, stored } = await issueRecoveryCode();
+    const riley = seedMember('Riley', { recoveryCode: stored });
+    const wrong = code === '000000' ? '000001' : '000000';
+    for (let i = 0; i < 5; i++) {
+      expect((await POST(makeRequest('POST', URL_PATH, { name: 'Riley', code: wrong }))).status).toBe(401);
+    }
+    const doc = (getStore()['members'] as Array<{ id: string; recoveryCode?: { attempts?: number } }>).find((m) => m.id === riley.id);
+    expect(doc?.recoveryCode?.attempts).toBe(5);
+    expect((await POST(makeRequest('POST', URL_PATH, { name: 'Riley', code }))).status).toBe(401);
+  });
+
   it('Expired code → 401', async () => {
     const { code, stored } = await issueRecoveryCode();
     seedMember('Riley', { recoveryCode: { ...stored, expiresAt: Date.now() - 1000 } });

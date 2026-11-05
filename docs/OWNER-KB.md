@@ -174,7 +174,7 @@ change; Phase 3's onboarding screens, which this line used to name, shipped
 | Need | Command |
 |---|---|
 | See repo topology | `git log --graph --oneline --decorate --all -20` |
-| Roll back production | `gh workflow run deploy-next.yml --ref <good-sha>` — runbook: the `deploy-promotion` skill |
+| Roll back production | `gh run rerun <run-id>` of the good commit's deploy (within 30 days), else dispatch on a throwaway branch at that commit — runbook: the `deploy-promotion` skill |
 | Confirm what is live | `node scripts/smoke-prod.mjs --sha <sha>` (runs automatically after every deploy) |
 | Local dev | `npm run dev` → http://localhost:3000/bpm (mock store when `COSMOS_CONNECTION_STRING` is unset) |
 | Tests / lint / types | `npm test` · `npm run lint` · `npm run typecheck` |

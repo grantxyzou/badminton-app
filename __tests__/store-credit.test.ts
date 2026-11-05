@@ -258,6 +258,13 @@ describe('gift cards', () => {
 describe('Pay with credit', () => {
   const pay = () => spend(makeRequest('POST', `${BASE}/credit/spend`, {}, asLin()));
 
+  it('pays a line whose row was removed AFTER its bill froze — it still owes it (audit, 2026-11-05)', async () => {
+    Object.assign(row(row1.id), { removed: true, removedAt: '2026-10-03T00:00:00Z' });
+    await giveLin(1200);
+    expect(await (await pay()).json()).toMatchObject({ ok: true, paid: 1, spentCents: 1200, balanceCents: 0 });
+    expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'credit' });
+  });
+
   it('pays the oldest lines the credit covers IN FULL, and nothing partly', async () => {
     await giveLin(2000); // covers $12, not then $15
     expect(await (await pay()).json()).toEqual({ ok: true, paid: 1, spentCents: 1200, balanceCents: 800 });
@@ -451,14 +458,24 @@ describe('a stale spend is reconciled against the ROW, whatever happened to it',
     expect(await balance()).toBe(800);
   });
 
-  it('covered or removed since → refunded', async () => {
+  it('covered, or removed with no bill left on the row, since → refunded', async () => {
     entry('grant:a', 'credit_grant', 3000);
     entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'));
     entry(`spend:${row2.id}:0`, 'credit_spend', -1500, sessionRef(row2.id, 'session-2026-10-01'));
     Object.assign(row(row1.id), { writtenOff: true, coverMode: 'absorb' });
     Object.assign(row(row2.id), { removed: true });
+    delete row(row2.id).settledAt; // its bill was thawed, then it was removed
     expect(await balance()).toBe(3000);
     expect(ledgerIds()).toEqual(expect.arrayContaining([`refund:${row1.id}:0`, `refund:${row2.id}:0`]));
+  });
+
+  it('removed AFTER its bill froze → still owed, so the spend is finished, not refunded (audit, 2026-11-05)', async () => {
+    entry('grant:a', 'credit_grant', 1500);
+    entry(`spend:${row2.id}:0`, 'credit_spend', -1500, sessionRef(row2.id, 'session-2026-10-01'));
+    Object.assign(row(row2.id), { removed: true });
+    expect(await balance()).toBe(0);
+    expect(row(row2.id)).toMatchObject({ paid: true, paidVia: 'credit' });
+    expect(ledgerIds()).not.toContain(`refund:${row2.id}:0`);
   });
 
   // Counts point reads of the row containers, the way the mirror-failure tests spy.

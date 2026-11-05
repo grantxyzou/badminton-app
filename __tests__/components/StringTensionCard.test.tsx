@@ -82,7 +82,7 @@ describe('StringTensionCard — no number without something behind it', () => {
     mockLevel(200, { level: { level: 3 } });
     renderCard(fakeGear({ gear: { name: 'Lin', items: [], playFormat: 'both', fitPlayStyle: 'mixed_back' } as never }));
     await waitFor(() => expect(screen.getByText('26')).toBeTruthy());
-    expect(screen.getByRole('button', { name: 'Singles' }).className).toContain('segment-tab-active');
+    expect(screen.getByRole('radio', { name: 'Singles' }).className).toContain('segment-tab-active');
   });
 
   it('picks the singles number when the stored format says singles', async () => {
@@ -114,7 +114,7 @@ describe('StringTensionCard — no number without something behind it', () => {
     renderCard();
     expect(await screen.findByText(sentence(enMessages.stats.gear.tensionLocked))).toBeDefined();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.queryByRole('button', { name: enMessages.stats.gear.doubles })).toBeNull();
+    expect(screen.queryByRole('radio', { name: enMessages.stats.gear.doubles })).toBeNull();
   });
 
   // ── B1: a failed gear read used to print a doubles number at a singles
@@ -132,7 +132,7 @@ describe('StringTensionCard — no number without something behind it', () => {
     mockLevel(200, { level: { level: 3 } });
     renderCard(fakeGear({ gear: null, loaded: true, loadError: false }));
     await waitFor(() => expect(screen.getByText('24')).toBeTruthy());
-    expect(screen.getByText(enMessages.stats.gear.doubles).getAttribute('aria-current')).toBe('true');
+    expect(screen.getByRole('radio', { name: enMessages.stats.gear.doubles }).getAttribute('aria-checked')).toBe('true');
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -165,8 +165,8 @@ describe('StringTensionCard — a refused format change is not silent', () => {
     });
     renderCard(gear);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Singles' })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Singles' }));
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Singles' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: 'Singles' }));
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(SIGN_IN_COPY));
     expect(gear.setPrefs).toHaveBeenCalledWith({ playFormat: 'singles' });
@@ -178,12 +178,12 @@ describe('StringTensionCard — a refused format change is not silent', () => {
       setPrefs: vi.fn(async () => ({ ok: false as const, reason: 'error' as const })),
     }));
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Singles' })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Singles' }));
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Singles' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: 'Singles' }));
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(TENSION_ERROR));
     // The number is still valid data; a refused change must not blank the card.
-    expect(screen.getByRole('button', { name: 'Doubles' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'Doubles' })).toBeTruthy();
   });
 
   it('stays silent when the change is accepted', async () => {
@@ -191,8 +191,8 @@ describe('StringTensionCard — a refused format change is not silent', () => {
     const gear = fakeGear();
     renderCard(gear);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Singles' })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Singles' }));
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Singles' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: 'Singles' }));
 
     await waitFor(() => expect(gear.setPrefs).toHaveBeenCalled());
     expect(screen.queryByRole('alert')).toBeNull();

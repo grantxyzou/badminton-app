@@ -59,6 +59,8 @@ type Entry = { kind: 'gated' } | { kind: 'authed'; helper: string } | { kind: 'p
 const GATED: Entry = { kind: 'gated' };
 const admin = (helper = 'isAdminAuthed'): Entry => ({ kind: 'authed', helper });
 const owner: Entry = { kind: 'authed', helper: 'ownsNameOrAdmin' };
+/** The same gate, called for its answer as well (the caller's own id). */
+const ownerById: Entry = { kind: 'authed', helper: 'nameOwnership' };
 
 const ROUTES: Record<string, Entry> = {
   // ── Club data, members only ──────────────────────────────────────────────
@@ -121,11 +123,11 @@ const ROUTES: Record<string, Entry> = {
   'groups/claim-link': admin('isAdminAuthedWithMember'),
   assessments: owner,
   kudos: owner,
-  'players/unpaid': owner,
+  'players/unpaid': ownerById,
   'stats/attendance': owner,
   'stats/club/bands': owner,
   'stats/drills': owner,
-  'stats/insight': owner,
+  'stats/insight': ownerById,
   'stats/level': owner,
   'stats/partners': owner,
   'kudos/eligible': { kind: 'authed', helper: 'requireGroupMember' },

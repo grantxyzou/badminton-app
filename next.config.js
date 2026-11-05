@@ -1,10 +1,3 @@
-/** The origin of NEXT_PUBLIC_ASSET_BASE, or '' when the pictures are served here. */
-const assetOrigin = (() => {
-  const base = (process.env.NEXT_PUBLIC_ASSET_BASE || '').trim();
-  if (!base) return '';
-  try { return new URL(base).origin; } catch { return ''; }
-})();
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: '/bpm',
@@ -97,32 +90,9 @@ const nextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=31536000; includeSubDomains',
           },
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              process.env.NODE_ENV === 'development'
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-                : "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "font-src 'self'",
-              // The generated pictures' storage container, when the build
-              // names one (`lib/assetUrl.ts`, docs/plans/asset-storage.md).
-              `img-src 'self' data:${assetOrigin ? ` ${assetOrigin}` : ''}`,
-              "connect-src 'self'",
-              // The four the 2026-09-28 audit found missing. `frame-ancestors`
-              // is the CSP form of the X-Frame-Options DENY above (XFO is
-              // ignored by a browser that honours this); `base-uri` stops an
-              // injected <base> from redirecting every relative URL;
-              // `object-src` shuts the plugin door; `form-action` keeps a form
-              // from posting off-origin. Apple's form_post lands ON this origin
-              // from Apple's page, which Apple's CSP governs, not this one.
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "object-src 'none'",
-              "form-action 'self'",
-            ].join('; '),
-          },
+          // The Content-Security-Policy is set per request by `proxy.ts`
+          // (`lib/csp.ts`), with a nonce for each page — a static header
+          // here could only say 'unsafe-inline' (audit, 2026-11-05).
         ],
       },
     ];

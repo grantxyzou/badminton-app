@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
       if (!checkRateLimit(`games-all:${getClientIp(req)}`, 30, 60 * 1000)) {
         return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
       }
-      if (!ownsNameOrAdmin(req, rawName)) {
+      if (!(await ownsNameOrAdmin(req, rawName))) {
         return NextResponse.json({ error: 'forbidden' }, { status: 403 });
       }
       // This player's games in THIS group — "all-time" stops at the group's

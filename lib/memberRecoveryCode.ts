@@ -1,5 +1,8 @@
 import { randomInt } from 'crypto';
 import { hashPin, verifyPin } from './recoveryHash';
+import { getContainer } from './cosmos';
+import { appendEvent } from './recoveryAudit';
+import type { RecoveryEvent } from './types';
 
 /**
  * Member-scoped PIN-reset codes.
@@ -16,7 +19,17 @@ const TTL_MS = 15 * 60 * 1000;
 export interface StoredRecoveryCode {
   hash: string;
   expiresAt: number;
+  /** Wrong codes tried against this one (additive; absent = 0). */
+  attempts?: number;
 }
+
+/**
+ * Wrong tries a code survives. Six digits is a million codes, and every
+ * guard on redeeming one was per IP: rotate the address and the 15 minutes
+ * were the only limit. Past this the code is dead and the admin issues a new
+ * one (audit, 2026-11-05).
+ */
+export const MAX_CODE_ATTEMPTS = 5;
 
 /**
  * Generate a fresh 6-digit code. Returns the plaintext `code` (shown once to
@@ -44,5 +57,45 @@ export async function verifyRecoveryCode(
     return false;
   }
   if (Date.now() > stored.expiresAt) return false;
+  if ((stored.attempts ?? 0) >= MAX_CODE_ATTEMPTS) return false;
   return verifyPin(candidate, stored.hash);
+}
+
+/**
+ * A wrong code against this member: count it on the code they hold and, when
+ * asked, write the audit event, in ONE write on a FRESH read under `IfMatch`,
+ * so guesses sent at once all count (the PIN lock's lesson, lib/pinLockout.ts).
+ * Best-effort: never throws.
+ */
+export async function noteRecoveryCodeFailure(memberId: string, opts: { event?: boolean } = {}): Promise<void> {
+  const container = getContainer('members');
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const { resource: fresh } = await container
+        .item(memberId, memberId)
+        .read<{ id: string; _etag?: string; recoveryCode?: StoredRecoveryCode; recoveryEvents?: RecoveryEvent[] }>();
+      if (!fresh) return;
+      const code = fresh.recoveryCode;
+      const live = !!code && typeof code.expiresAt === 'number' && Date.now() <= code.expiresAt;
+      if (!live && !opts.event) return;
+      const next = {
+        ...fresh,
+        ...(live ? { recoveryCode: { ...code!, attempts: (code!.attempts ?? 0) + 1 } } : {}),
+        ...(opts.event
+          ? { recoveryEvents: appendEvent(fresh.recoveryEvents, { event: 'recovery-failed', at: new Date().toISOString(), reason: 'wrong_code' }) }
+          : {}),
+      };
+      if (typeof fresh._etag === 'string') {
+        await container.item(memberId, memberId).replace(next, { accessCondition: { type: 'IfMatch', condition: fresh._etag } });
+      } else {
+        await container.items.upsert(next);
+      }
+      return;
+    } catch (err) {
+      const status = (err as { code?: number; statusCode?: number })?.code ?? (err as { statusCode?: number })?.statusCode;
+      if (status === 412) continue;
+      console.error('[recovery-code] could not record a wrong code:', err);
+      return;
+    }
+  }
 }

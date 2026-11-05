@@ -1,5 +1,5 @@
+import { catalogByCategory } from './catalogQuery';
 import { randomBytes } from 'crypto';
-import { getContainer } from './cosmos';
 import { ensureCatalogSeeded } from './catalogSeed';
 import { groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
@@ -29,10 +29,8 @@ import { MAX_UNITS, MAX_METRES_PER_UNIT, MAX_COST_CENTS } from './stringStockMat
 /** The string catalog by id (GLOBAL container, seeded — not club data). */
 export async function readStringCatalog(): Promise<Map<string, CatalogItem>> {
   await ensureCatalogSeeded();
-  const { resources } = await getContainer('equipmentCatalog').items
-    .query<CatalogItem>({ query: 'SELECT * FROM c WHERE c.category = @category', parameters: [{ name: '@category', value: 'string' }] })
-    .fetchAll();
-  return new Map(resources.filter((r) => r.category === 'string').map((r) => [r.id, r]));
+  const resources = await catalogByCategory('string');
+  return new Map(resources.map((r) => [r.id, r]));
 }
 
 // ── Storage ────────────────────────────────────────────────────────────────

@@ -91,7 +91,6 @@ const UNSWEPT: readonly string[] = [
   'app/api/stats/drills/done/route.ts',
   'app/api/stats/drills/route.ts',
   'app/api/stats/insight/route.ts',
-  'app/api/stats/level/route.ts',
   'app/api/stringing/jobs/[id]/accept/route.ts',
   'app/api/stringing/requests/route.ts',
 ];

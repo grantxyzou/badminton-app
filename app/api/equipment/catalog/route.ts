@@ -1,5 +1,5 @@
+import { catalogByCategory } from '@/lib/catalogQuery';
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import type { EquipmentCategory } from '@/lib/types';
 
@@ -51,16 +51,9 @@ export async function GET(req: NextRequest) {
     if (hit && Date.now() - hit.at < MEMO_TTL_MS) {
       return NextResponse.json({ items: hit.items }, { headers });
     }
-    const container = getContainer('equipmentCatalog');
-    const { resources } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.category = @category',
-        parameters: [{ name: '@category', value: category }],
-      })
-      .fetchAll();
-    // JS-side category filter so the mock store (which ignores @category) and
-    // real Cosmos agree. Per CLAUDE.md: filter JS-side where mock + prod must match.
-    const items = resources.filter((r) => r.category === category);
+    // One partition (lib/catalogQuery.ts), re-checked in JS so the mock store
+    // (which ignores @category) and real Cosmos agree.
+    const items = await catalogByCategory<Record<string, unknown>>(category);
     if (memoEnabled()) memo.set(category, { at: Date.now(), items });
     return NextResponse.json({ items }, { headers });
   } catch (error) {

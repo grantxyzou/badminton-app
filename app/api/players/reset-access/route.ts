@@ -6,7 +6,7 @@ import { issueRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
-import { signOutEverywhereIn } from '@/lib/groups';
+import { readMembership, signOutEverywhereIn } from '@/lib/groups';
 import { isFlagOn } from '@/lib/flags';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 
@@ -56,6 +56,20 @@ export async function POST(req: NextRequest) {
   if (!member) {
     return NextResponse.json({ error: 'No account found for that name' }, { status: 404 });
   }
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+
+  // A code issued here CLEARS the PIN when it is redeemed and signs every
+  // device out, so on someone who holds a rank it is a takeover of that rank:
+  // an admin could reset the organiser, redeem the code and set a PIN of their
+  // own. Ranks are an organiser's business (docs/plans/roles-v2.md), the same
+  // rule `PATCH /api/members` applies to "Sign out everywhere". Your own reset
+  // is yours. Flag off every admin is an organiser.
+  if (groupsOn && !admin.organiser && member.id !== admin.memberId) {
+    const rank = (await readMembership(admin.groupId, member.id))?.role;
+    if (rank === 'owner' || rank === 'admin') {
+      return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+    }
+  }
 
   const { code, stored } = await issueRecoveryCode();
   const updatedEvents = appendEvent(member.recoveryEvents, {
@@ -71,7 +85,6 @@ export async function POST(req: NextRequest) {
    * or groups off.
    */
   const at = new Date().toISOString();
-  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   if (groupsOn) await signOutEverywhereIn(admin.groupId, member.id, at);
   const memberCopy = !groupsOn || admin.groupId === BPM_GROUP_ID;
   await membersContainer.items.upsert({

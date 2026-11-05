@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { openSheetCount } from '@/lib/sheetStack';
 import { HOLD, MIN_SPIN_MS, SCROLL_SETTLE_MS, TRIGGER, pullDistance, pullProgress } from '@/lib/pullToRefresh';
@@ -47,6 +48,7 @@ const UP_CANCEL = 8; // px of upward travel that marks the gesture as a scroll
 const H_SLOP = 10; // px of sideways travel tolerated before a diagonal drag disqualifies
 
 export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<void> | void }) {
+  const t = useTranslations('a11y');
   const [refreshing, setRefreshing] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLSpanElement>(null);
@@ -170,7 +172,7 @@ export default function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<
 
   return (
     <div ref={wrapRef} className="ptr" aria-hidden={!refreshing} data-settle="true" data-armed="false">
-      <div className="ptr-disc" role="status" aria-label={refreshing ? 'Refreshing' : 'Pull to refresh'}>
+      <div className="ptr-disc" role="status" aria-label={t(refreshing ? 'refreshing' : 'pullToRefresh')}>
         <span
           ref={ringRef}
           className="ring-spinner"

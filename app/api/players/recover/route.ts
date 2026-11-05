@@ -8,7 +8,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
 import { signInCandidates, type SignInCandidate } from '@/lib/memberResolve';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
-import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
+import { verifyRecoveryCode, noteRecoveryCodeFailure } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
 import type { Player } from '@/lib/types';
 
@@ -232,16 +232,13 @@ async function handlePost(req: NextRequest) {
   }
 
   if (codeMatches.length !== 1) {
-    const only = codeCandidates.candidates.length === 1 ? codeCandidates.candidates[0].member : null;
-    if (only) {
-      await membersContainer.items.upsert({
-        ...only,
-        recoveryEvents: appendEvent(only.recoveryEvents as Parameters<typeof appendEvent>[0], {
-          event: 'recovery-failed',
-          at: new Date().toISOString(),
-          reason: 'wrong_code',
-        }),
-      });
+    // Every candidate's live code takes the wrong guess (each is a code this
+    // name could have been aiming at); the audit line is written only where
+    // the name means one person, as before.
+    const only = codeCandidates.candidates.length === 1;
+    for (const c of codeCandidates.candidates) {
+      if (codeMatches.includes(c)) continue;
+      await noteRecoveryCodeFailure(c.member.id, { event: only });
     }
     return FAIL();
   }

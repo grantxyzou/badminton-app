@@ -1,3 +1,4 @@
+import { catalogByCategory } from '@/lib/catalogQuery';
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -5,7 +6,7 @@ import { rosterMemberIds } from '@/lib/roster';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { verifyMemberAuth, ownsNameOrAdmin, requireMember } from '@/lib/auth';
+import { verifyMemberAuth, nameOwnership, requireMember } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendFit, comfortTensionDeltaLb, FIT_ENGINE_VERSION } from '@/lib/racketFit';
@@ -143,17 +144,18 @@ export async function GET(req: NextRequest) {
       // ratings ("smash 3/5"), and member names are enumerable via
       // GET /api/members. The flag-off branch below stays public because it
       // returns only a coarse stage-derived pick.
-      // The GATE goes through the shared helper, not a local copy of it — see
-      // the note in `ownsNameOrAdmin`: an inlined gate cannot be found by the
+      // The GATE goes through the shared helper (`nameOwnership`, the answer
+      // behind `ownsNameOrAdmin`), not a local copy — an inlined gate cannot be found by the
       // grep that asks which name-keyed reads are unguarded.
-      if (!name || !ownsNameOrAdmin(req, name)) {
+      const ownership = name ? await nameOwnership(req, name) : null;
+      if (!name || !ownership?.allowed) {
         return NextResponse.json({ error: 'forbidden' }, { status: 403 });
       }
       // Still needed separately below: an ADMIN passes the gate but is not the
       // person being recommended to, and `recordServed` must not attribute a
       // served item to a member who never saw it.
       const member = verifyMemberAuth(req);
-      const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
+      const ownsName = ownership?.selfMemberId != null;
 
       if (!ENGINE_CATEGORIES.includes(category)) {
         // A valid category we cannot score yet. NOT an error: the rail
@@ -195,12 +197,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
       }
 
-      const { resources: catalogItems } = await getContainer('equipmentCatalog')
-        .items.query({
-          query: 'SELECT * FROM c WHERE c.category = @category',
-          parameters: [{ name: '@category', value: category }],
-        })
-        .fetchAll();
+      const catalogItems = await catalogByCategory(category);
 
       if (catalogItems.length === 0) {
         return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
@@ -209,10 +206,7 @@ export async function GET(req: NextRequest) {
       // Pairing needs frames as well as strings, and `category` only fetched
       // one of the two. Queried only when it is actually needed.
       const catalogRackets = category === 'string'
-        ? (await getContainer('equipmentCatalog').items.query({
-            query: 'SELECT * FROM c WHERE c.category = @category',
-            parameters: [{ name: '@category', value: 'racket' }],
-          }).fetchAll()).resources.filter((r) => (r as CatalogItem).category === 'racket')
+        ? await catalogByCategory('racket')
         : [];
 
       if (category === 'string') {
@@ -342,13 +336,7 @@ export async function GET(req: NextRequest) {
       stage = typeof canonical.stage === 'number' ? canonical.stage : undefined;
     }
 
-    const catalog = getContainer('equipmentCatalog');
-    const { resources: items } = await catalog.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.category = @category',
-        parameters: [{ name: '@category', value: 'racket' }],
-      })
-      .fetchAll();
+    const items = await catalogByCategory('racket');
 
     // recommendRacket filters to category='racket' internally, so the mock store
     // ignoring @category is harmless here.

@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   // Privacy gate: this is a member's social graph (who they play with). Own
   // the name via `member_session`, or be an admin. Same posture as /stats/level.
-  if (!ownsNameOrAdmin(req, name)) {
+  if (!(await ownsNameOrAdmin(req, name))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

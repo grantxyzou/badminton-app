@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { ownsNameOrAdmin, verifyMemberAuth } from '@/lib/auth';
+import { nameOwnership } from '@/lib/auth';
 import { resolveIdentity } from '@/lib/playerIdentity';
 import { computeOwed } from '@/lib/owedBalance';
 import { stringingTotal } from '@/lib/stringingBilling';
@@ -54,7 +54,8 @@ export async function GET(req: NextRequest) {
   }
 
   // Auth before DB (rule 3).
-  if (!ownsNameOrAdmin(req, name)) {
+  const ownership = await nameOwnership(req, name);
+  if (!ownership.allowed) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -64,8 +65,10 @@ export async function GET(req: NextRequest) {
     // carries: one point read instead of a case-insensitive scan of every
     // member, on a route Home calls on every visit (performance audit,
     // 2026-10-19). An admin asking about someone else still goes by name.
-    const session = verifyMemberAuth(req);
-    const self = session && session.name?.trim().toLowerCase() === name.toLowerCase() ? session.memberId : null;
+    // By id, never by comparing the cookie's account name with the club name
+    // asked about (`nameOwnership`): with groups on those differ for anyone
+    // whose club renamed them, and match for someone else's same name.
+    const self = ownership.selfMemberId;
     const identity = await resolveIdentity(self ? { memberId: self, name } : { name }, scope.groupId);
     // The name path always matched rows under the asked-for name; keep that
     // when the member's stored name differs from it (a rename since sign-in).

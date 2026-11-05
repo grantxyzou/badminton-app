@@ -297,6 +297,16 @@
       "nameRequired": "Add your name to sign up",
       "pinHint": "Required. Use this PIN to recover access if you change phones.",
       "genericFailure": "That didn't go through — give it another try.",
+      "errors": {
+        "notOpen": "Sign-ups aren't open yet — check back when the organiser opens them.",
+        "deadlinePassed": "Sign-ups for this session have closed.",
+        "alreadyIn": "You're already on the list for this session.",
+        "full": "The session filled up just now — you can join the waitlist instead.",
+        "settled": "This session's bill has been finalised, so the list can't change.",
+        "noSession": "There's no session to sign up for yet.",
+        "tooMany": "Give it a minute, then try again.",
+        "signedOut": "Your sign-in has expired — sign in again to sign up."
+      },
       "waitlistFailure": "That didn't go through — try the waitlist again.",
       "signingUpAs": "Signing up as {name}",
       "joining": "Joining…",
@@ -765,7 +775,12 @@
       "pageNoAppBody": "If the app is installed, go back to the web app and type the six-digit code instead. If it isn't, your account is right here on the web — nothing has changed.",
       "pageNoCode": "There's no code in this link.",
       "pageFailed": "That link didn't work — it may have expired or already been used. Get a fresh one from the web app.",
-      "pageHome": "Back to %APP_SHORT%"
+      "pageHome": "Back to %APP_SHORT%",
+      "pageConfirm": "Finish moving to the app?",
+      "pageConfirmBody": "Only continue if you made this link yourself, on your own phone, in the last few minutes. A link someone else sent you would sign this app in as them.",
+      "pageReplaces": "{name} is signed in here now and will be signed out.",
+      "pageConfirmCta": "Sign me in",
+      "pageCancel": "Not me — go back"
     },
     "deleteAccount": {
       "link": "Delete account",
@@ -2340,7 +2355,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "updated": "25 October 2026",
+      "updated": "5 November 2026",
       "sections": [
         {
           "h": "Who we are",
@@ -2359,7 +2374,12 @@
             "• **A push token**, if you turn on notifications, for that device. It identifies the device to Apple, Google, or your browser — not you.",
             "• **A problem report**, only when you tap \"Report a problem\": your message, your name if you add it, the screen you were on, and your internet address (used only to stop the form being flooded).",
             "• **How you use the app**: when you open it, which tab you look at, and when you sign in, sign up for or cancel a session, give kudos, request stringing, or turn notifications on or off. It's linked to your account, it stays in this app's own database, and the organiser sees it only as group totals (for example, \"18 members opened the app this week\") — never as a list of what one person did. If a screen stops working while you're signed in, we also record that it failed and which tab it was on — never what was on the screen or the details of the error — so a broken screen gets noticed without anyone having to report it. Those are counted the same way.",
-            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear all of it at any time from that page — it's also deleted with your account."
+            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear all of it at any time from that page — it's also deleted with your account.",
+            "• **Guests you bring**, if your group allows them: the name you give for your guest, shown on the roster beside yours. Their share of the cost is added to your balance.",
+            "• **A request to join**, if you ask through a group's join link: the name you typed. An organiser sees it, and it is kept for an hour or until they answer.",
+            "• **E-transfer notices**, if your group's organiser turns on automatic payment matching: the organiser's email forwards Interac's notification to the app. We keep the sender's name, the amount, the memo and which sessions it paid — never the email itself. Only admins see it.",
+            "• **Stringing and store credit**: rackets you hand in for stringing, with the string, tension, price and whether it is paid; and any store credit or gift card on your account.",
+            "• **Notices**: a copy of each notification we send you, so you can read it again on the Notifications page."
           ]
         },
         {
@@ -2816,5 +2836,58 @@
     "owedUnknown": "Your balance",
     "stringing": "Request stringing",
     "stringingSub": "Book your next restring"
+  },
+  "a11y": {
+    "primaryNav": "Main tabs",
+    "loading": "Loading",
+    "refreshing": "Refreshing",
+    "pullToRefresh": "Pull to refresh",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "related": "Related pages",
+    "switchLanguage": "Switch to {language}",
+    "languageOffline": "Language switches when you’re back online"
+  },
+  "push": {
+    "signupOpen": {
+      "title": "Sign-ups are open",
+      "bodyWhenWhere": "{when} at {where}. Tap to grab a spot.",
+      "bodyWhen": "{when}. Tap to grab a spot.",
+      "body": "Tap to grab a spot before it fills up."
+    },
+    "waitlistIn": {
+      "title": "You're in",
+      "bodyDay": "A spot opened for {day}'s session. If you can't make it, cancel from Home.",
+      "body": "A spot opened and you're off the waitlist. If you can't make it, cancel from Home."
+    },
+    "stringing": {
+      "readyTitle": "Your racket is ready",
+      "strungTitle": "On the machine",
+      "readyBody": "{racket} — ready to pick up.",
+      "strungBodyBy": "{racket} is being strung. Ready by {by}.",
+      "strungBody": "{racket} is being strung.",
+      "yourRacket": "Your racket"
+    },
+    "announcement": {
+      "title": "New announcement",
+      "empty": "Tap to read it in the app."
+    },
+    "pendingEdit": {
+      "title": "A change to confirm",
+      "body": "Something changed on {racket}. Open %APP_SHORT% to have a look.",
+      "yourRacket": "your racket"
+    },
+    "assignment": {
+      "title": "A racket for you to string",
+      "body": "{name}'s {racket} is yours.",
+      "racket": "racket"
+    },
+    "reminder": {
+      "title": "Time to settle up",
+      "bodyMany": "You’ve got a couple of sessions to settle up.",
+      "bodyOne": "You’ve got a session to settle up."
+    }
   }
 }

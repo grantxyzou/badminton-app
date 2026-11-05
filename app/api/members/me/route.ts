@@ -18,12 +18,7 @@ import {
   clearAdminCookie,
   requireMember,
 } from '@/lib/auth';
-import {
-  purgeMember,
-  anonymizePlayerRows,
-  anonymizeGameResults,
-  anonymizeFeedback,
-} from '@/lib/memberPurge';
+import { purgeMember, anonymizePlayerRows, anonymizeGameResults, anonymizeFeedback, purgeNamesFor } from '@/lib/memberPurge';
 import { normalizeAvatar, parseAvatar } from '@/lib/memberAvatar';
 import {
   normalizeStatsPrivacy,
@@ -583,14 +578,23 @@ export async function DELETE(req: NextRequest) {
     }
     const name = String(member.name ?? caller.name);
 
+    // The names they went by, club by club, read BEFORE the purge deletes the
+    // memberships: a name is matched only in the club where it was theirs.
+    const names = await purgeNamesFor(caller.memberId, name);
+    // And every one of those clubs' active session: the seat they hold is
+    // freed in each, not only in the club this request came from.
+    const active = new Map<string, string | null>();
+    for (const groupId of new Set([...names.keys(), resolveGroupId(req)])) {
+      active.set(groupId, await getActiveSessionId(groupId));
+    }
+
     // Shared history first: if a later step fails, the rows that OTHER members
     // depend on have already been made safe, and the owned rows can be retried.
-    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
-    const players = await anonymizePlayerRows(caller.memberId, name, activeSessionId);
-    const games = await anonymizeGameResults(name);
-    const reports = await anonymizeFeedback(name);
+    const players = await anonymizePlayerRows(caller.memberId, names, active);
+    const games = await anonymizeGameResults(names);
+    const reports = await anonymizeFeedback(names, caller.memberId);
 
-    const summary = await purgeMember(caller.memberId, name);
+    const summary = await purgeMember(caller.memberId, names);
 
     /* BEST-EFFORT, NOT TRANSACTIONAL — and deliberately not resumable.
        Cosmos has no cross-container transaction, so a container that fails

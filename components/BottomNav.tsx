@@ -31,6 +31,7 @@ type NavItem = { id: Tab; label: string; icon: string };
  */
 export default function BottomNav({ activeTab, onTabChange }: Props) {
   const t = useTranslations('nav');
+  const tA11y = useTranslations('a11y');
   const visibleTabs: NavItem[] = [
     { id: 'home',    label: t('home'),    icon: 'home' },
     { id: 'stringing', label: t('stringing'), icon: 'grid_4x4' },
@@ -52,7 +53,7 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
   return (
     <nav
       className="rail-bar"
-      aria-label="Primary navigation"
+      aria-label={tA11y('primaryNav')}
       style={{ '--ri': activeIndex } as CSSProperties}
     >
       <span className="rail-indicator" aria-hidden="true">

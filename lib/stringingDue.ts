@@ -112,10 +112,14 @@ export function todayIso(now: Date = new Date()): string {
  * before it became a date still hold "Sunday" or "next week", and the honest
  * thing is to show those back unchanged rather than to relabel them as broken.
  */
-export function formatReadyBy(readyBy: string | null | undefined): string | null {
+export function formatReadyBy(readyBy: string | null | undefined, locale?: string): string | null {
   const ms = midnight(readyBy ?? null);
   if (ms === null) return null;
-  return new Date(ms).toLocaleDateString(undefined, {
+  // `locale` is the APP's language (`useLocale()`), passed by a member's
+  // screen. Left out, the runtime's own default decides: a Chinese-language
+  // phone wrote a Chinese date into an English sentence, and an English one
+  // wrote English into the Chinese page (audit, 2026-11-05).
+  return new Date(ms).toLocaleDateString(locale, {
     timeZone: 'UTC',
     weekday: 'short',
     month: 'short',

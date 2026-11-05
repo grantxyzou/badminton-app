@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { match } from '@formatjs/intl-localematcher';
+import { buildCsp, newNonce } from './lib/csp';
 
 const SUPPORTED_LOCALES = ['en', 'zh-CN'] as const;
 const DEFAULT_LOCALE = 'en';
@@ -100,8 +101,11 @@ function wellKnown(req: NextRequest): NextResponse | null {
  *    `req.json()` had already read the lot. A declared `content-length` over
  *    `MAX_BODY_BYTES` is refused with 413 before any read. The largest real
  *    body here is a report (2,000 chars) or a Claude prompt; 256 KiB is a
- *    ceiling on abuse, not a budget. A chunked body declares no length and
- *    passes this check — the per-route rate limits bound that case.
+ *    ceiling on abuse, not a budget. A chunked body declares no length, so
+ *    it could not be measured here at all: it is refused with 411 (audit,
+ *    2026-11-05). Nothing in the app streams a request body — a browser
+ *    `fetch` of a string, the native WebView and Apps Script all send a
+ *    length.
  *  - CROSS-SITE WRITES. The session cookies are SameSite=Lax (OAuth callbacks
  *    need it), which is what stops a cross-site form from carrying them — one
  *    setting, no second line. A `Sec-Fetch-Site: cross-site` mutation, or an
@@ -127,9 +131,13 @@ export function apiGuards(req: NextRequest): NextResponse | null {
   const path = apiPath(req);
   if (!path || SAFE_METHODS.has(req.method.toUpperCase())) return null;
 
-  const declared = Number(req.headers.get('content-length') ?? '');
+  const length = req.headers.get('content-length');
+  const declared = Number(length ?? '');
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
+  }
+  if (length === null && /chunked/i.test(req.headers.get('transfer-encoding') ?? '')) {
+    return NextResponse.json({ error: 'length_required' }, { status: 411 });
   }
 
   if (!CROSS_SITE_WRITE_ALLOWED.has(path)) {
@@ -152,18 +160,41 @@ export function apiGuards(req: NextRequest): NextResponse | null {
   return null;
 }
 
+/** A non-page response (API, `.well-known`) still carries the policy, nonce-less. */
+function withPolicy(res: NextResponse): NextResponse {
+  res.headers.set('Content-Security-Policy', buildCsp());
+  return res;
+}
+
+/**
+ * A page request: a fresh nonce, handed to Next on the REQUEST (it reads the
+ * nonce from this header and stamps it on its own scripts; `app/layout.tsx`
+ * reads `x-nonce` for the launch screen's) and sent to the browser on the
+ * response. `lib/csp.ts` says why.
+ */
+function pageResponse(req: NextRequest): NextResponse {
+  const nonce = newNonce();
+  const policy = buildCsp({ nonce });
+  const headers = new Headers(req.headers);
+  headers.set('x-nonce', nonce);
+  headers.set('Content-Security-Policy', policy);
+  const res = NextResponse.next({ request: { headers } });
+  res.headers.set('Content-Security-Policy', policy);
+  return res;
+}
+
 export function proxy(req: NextRequest): NextResponse {
   const known = wellKnown(req);
-  if (known) return known;
+  if (known) return withPolicy(known);
 
   if (apiPath(req) !== null) {
     // API responses never carry the locale cookie; the guards are all that
     // runs here.
-    return apiGuards(req) ?? NextResponse.next();
+    return withPolicy(apiGuards(req) ?? NextResponse.next());
   }
 
   if (req.cookies.get(COOKIE_NAME)) {
-    return NextResponse.next();
+    return pageResponse(req);
   }
 
   const accept = req.headers.get('accept-language') ?? '';
@@ -180,7 +211,7 @@ export function proxy(req: NextRequest): NextResponse {
     locale = DEFAULT_LOCALE;
   }
 
-  const res = NextResponse.next();
+  const res = pageResponse(req);
   res.cookies.set({
     name: COOKIE_NAME,
     value: locale,
@@ -195,6 +226,13 @@ export function proxy(req: NextRequest): NextResponse {
 // Run on all user-visible paths AND the API (for `apiGuards`); skip Next
 // internals and static files. `.well-known` is deliberately NOT excluded —
 // the three association files above are answered from here.
+//
+// `'/'` is listed on its own because the pattern after it needs a path segment:
+// built under the `/bpm` basePath it compiles to `^/bpm/…`, so `/bpm` ITSELF —
+// the app's one page — never ran this proxy (found 2026-11-05 by checking the
+// production build's headers). That went unseen while it only skipped the
+// locale cookie; with the page's security policy set here, it would have left
+// the home page with none.
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/', '/((?!_next/static|_next/image|favicon.ico).*)'],
 };

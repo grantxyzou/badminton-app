@@ -46,7 +46,7 @@ export async function notifyStringersOfRequest(
 export async function notifyStringerOfAssignment(job: StringingJob): Promise<{ sent: number }> {
   if (!job.stringerId) return { sent: 0 };
   try {
-    const { sent } = await sendPushToMembers([job.stringerId], buildAssignmentPayload(job));
+    const { sent } = await sendPushToMembers([job.stringerId], (locale) => buildAssignmentPayload(job, locale));
     return { sent };
   } catch (err) {
     console.error('[stringing] assignment notify failed (the assignment stands):', err);

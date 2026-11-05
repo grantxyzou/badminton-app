@@ -7,6 +7,8 @@ import { costSplit, type SplitPlayer } from '@/lib/sessionCost';
 import { expandAliasNames } from '@/lib/playerIdentity';
 import type { Member, Player, Session } from '@/lib/types';
 import { readAliases } from '@/lib/aliases';
+import { isFlagOn } from '@/lib/flags';
+import { readMembership } from '@/lib/groups';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +17,8 @@ interface SessionEntry {
   date: string;
   attended: boolean;
   paid: boolean;
+  /** Covered by the club (`writtenOff`): neither paid nor owed. Additive. */
+  covered: boolean;
   costPerPerson: number;
 }
 
@@ -45,12 +49,18 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     // Fallback: name + aliases (covers legacy records the migration missed).
     if (players.length === 0) {
+      // Legacy rows that never carried a member id, found by the name THIS
+      // club knows the person by (with groups on, not the account name), and
+      // never a row that names someone else (audit, 2026-11-05).
+      const rosterName = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
+        ? (await readMembership(scope.groupId, memberId))?.name
+        : undefined;
       const aliasRows = await readAliases(scope);
-      const candidateNames = expandAliasNames(member.name, aliasRows);
+      const candidateNames = expandAliasNames(rosterName ?? member.name, aliasRows);
 
       const allPlayers = await scope.query<Player>('players');
       players = allPlayers.filter(
-        (p) => typeof p.name === 'string' && candidateNames.has(p.name.toLowerCase()),
+        (p) => !p.memberId && !p.guestOf && typeof p.name === 'string' && candidateNames.has(p.name.toLowerCase()),
       );
     }
 
@@ -103,7 +113,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const entries: SessionEntry[] = players.map((player) => {
       const session = sessionMap.get(player.sessionId);
-      const attended = !player.removed && !player.waitlisted;
+      // Removed AFTER the bill froze is still a night they played and owe for
+      // (audit, 2026-11-05); a removal before it is a night they missed.
+      const attended = (!player.removed || typeof player.settledAt === 'string') && !player.waitlisted;
       const costPerPerson = session ? (costBySession.get(player.sessionId) ?? 0) : 0;
 
       return {
@@ -111,6 +123,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         date: session?.datetime ?? '',
         attended,
         paid: player.paid === true,
+        covered: player.writtenOff === true,
         costPerPerson,
       };
     });

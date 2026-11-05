@@ -222,6 +222,20 @@ export async function updateGroupSettings(groupId: string, patch: Partial<GroupS
 }
 
 /**
+ * Take the club's pay-to (`settings.eTransferRecipient`) off it: the name and
+ * e-mail of the person who set it, which a deletion of that person's account
+ * must not leave showing to members as where to send money (audit,
+ * 2026-11-05). The next organiser sets their own.
+ */
+export async function clearGroupPayTo(groupId: string): Promise<Group | undefined> {
+  return mutateGroup(groupId, (group) => {
+    if (!group.settings?.eTransferRecipient) return group;
+    const { eTransferRecipient: _gone, ...settings } = group.settings;
+    return { ...group, settings: settings as Group['settings'] };
+  });
+}
+
+/**
  * Rename the club. `Group.name` is what members see on Home, on an invite and
  * on a receipt's memo — the CLUB's name, never the product's (`lib/brand.ts`).
  * The caller validates (`GROUP_NAME_MIN`..`GROUP_NAME_MAX`, trimmed). Resolves
