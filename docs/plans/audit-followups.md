@@ -60,7 +60,7 @@ request.
 | 4 | Set `OPERATOR_MEMBER_IDS` in App Settings | Until set, "the operator" is any BPM admin; once BPM has several admins that is a club's power, not a person's. | Azure → App Service → Configuration; `lib/operator.ts` |
 | 5 | Three Azure alerts and the health check path | Nothing watches the running app today; a database outage is learned from a player. | `docs/plans/infra-baseline.md` |
 | 6 | Defender for App Service: keep or drop | It is the larger charge on the plan; the alerts in #5 are the cheaper watch. Vulnerabilities in dependencies are watched by Dependabot either way. | Azure → Defender for Cloud |
-| 7 | Turn on GitHub secret push protection and CodeQL | Push protection refuses a commit carrying a key before it lands; CodeQL reads the code for known bug shapes on every PR. Free for a public repository; a private one needs GitHub's paid code security. | GitHub → Settings → Code security |
+| 7 | Turn on GitHub secret push protection | Push protection refuses a commit carrying a key before it lands. CodeQL is already on: it ran on this PR's head (2026-11-05), so it needs nothing. | GitHub → Settings → Code security |
 | 8 | Cosmos: confirm the account's throughput cap stays inside the free 1000 RU/s | The free tier covers the first 1000 RU/s; a container or database set above it starts billing. | Azure → Cosmos → Cost management; `docs/azure.md` §9 |
 | 9 | Restore drill | A backup nobody has restored is a claim. One point-in-time restore into a scratch account proves it. | `docs/plans/infra-baseline.md` |
 | 10 | Next store builds (iPhone and Android) | The migration-link confirm, the widget pass staying on its phone, and the push locale for the native app reach phones only with a new build. | `native/README.md` |
