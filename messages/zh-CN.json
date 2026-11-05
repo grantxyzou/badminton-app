@@ -32,6 +32,16 @@
       "sentLabel": "穿线",
       "sentBody": "把球拍送来，进度会通知你。",
       "sentTitle": "送来你的球拍",
+      "story": {
+        "open": "拆开一包新的 {string}",
+        "onto": "上穿线机",
+        "stringing": "以 {tension} 磅穿线，先竖线后横线",
+        "off": "下机",
+        "ready": "可以来取了，好了会通知你。",
+        "pill": "可取 · {string} {tension} 磅",
+        "lb": "{tension} 磅",
+        "again": "再看一遍"
+      },
       "back": "返回",
       "stepOf": "第 {step} 步，共 {total} 步",
       "tensionHint": "选择磅数，或问穿线师的建议。",

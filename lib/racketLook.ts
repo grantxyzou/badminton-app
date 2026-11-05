@@ -233,3 +233,13 @@ export function racketHeadSrc(catalogId: string | null | undefined): string {
   const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
   return assetUrl(`rackets/head/${key}.webp`);
 }
+
+/**
+ * The same racket in the list pose with NO strings (`public/rackets/bare/`,
+ * `--bare` on the render script): the frame the stringing animation strings,
+ * with `racketSrc` laid over it as the strings go in.
+ */
+export function racketBareSrc(catalogId: string | null | undefined): string {
+  const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
+  return assetUrl(`rackets/bare/${key}.webp`);
+}
