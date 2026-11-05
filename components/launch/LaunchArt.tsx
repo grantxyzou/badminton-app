@@ -1,7 +1,7 @@
 import { ARC, ARC_PX, frameStyles, loopFrame, SETTLED_FRAME } from '@/lib/launchMotion';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-export const SHUTTLE_SRC = `${BASE}/brand/launch/shuttle.png`;
+export const SHUTTLE_SRC = `${BASE}/brand/launch/shuttle.webp`;
 
 interface Props {
   tagline: string;

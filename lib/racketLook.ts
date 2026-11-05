@@ -208,6 +208,31 @@ export function racketLook(catalogId: string | null | undefined): RacketLook {
   return (catalogId && RACKET_LOOKS[catalogId]) || DEFAULT_LOOK;
 }
 
+function luminance(hex: string): number {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return 0;
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => c / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/* Two fixed grounds for a racket shown in a circle (a member's avatar), not the
+   per-name colour: the name colours are mid-dark and swallowed dark frames and
+   pale ones alike ("the background is making the racket not seen", Grant). The
+   racket is the identity there, so its ground is chosen for contrast with its
+   own frame paint. Moved here from `lib/memberAvatar.ts` on 2026-11-05 so the
+   avatar script can bake the same ground into each image (it imports this
+   file, which imports nothing). */
+/* eslint-disable no-restricted-syntax -- fixed grounds for a painted image, not theme colours */
+const LIGHT_GROUND = '#eef0f2';
+const DARK_GROUND = '#1c2024';
+/* eslint-enable no-restricted-syntax */
+
+/** The ground behind a racket's avatar: light behind a dark frame, dark behind a light one. */
+export function racketGround(catalogId: string | null | undefined): string {
+  return luminance(racketLook(catalogId).frame) > 0.5 ? DARK_GROUND : LIGHT_GROUND;
+}
+
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
@@ -221,6 +246,20 @@ export function racketSrc(catalogId: string | null | undefined): string {
   const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
   return `${BASE}/rackets/${key}.webp`;
 }
+
+/**
+ * A roster avatar's picture: the top of the list picture (the head, which is
+ * all `.member-avatar__racket` shows), 128 px wide, ~6 KB where the list
+ * picture is ~18 KB (`scripts/make-racket-avatars.mjs`). For circles up to
+ * `AVATAR_CROP_MAX_PX`; a larger one (Profile's) still takes the list picture.
+ */
+export function racketAvatarSrc(catalogId: string | null | undefined): string {
+  const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
+  return `${BASE}/rackets/avatar/${key}.webp`;
+}
+
+/** The largest avatar (px) the 128 px crop stays sharp at on a 3× screen. */
+export const AVATAR_CROP_MAX_PX = 48;
 
 /**
  * The same racket's HEAD, drawn large on a transparent ground: the Equipment

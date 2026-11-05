@@ -1,7 +1,7 @@
 'use client';
 
 import { avatarColors } from '@/lib/avatar';
-import { racketSrc } from '@/lib/racketLook';
+import { AVATAR_CROP_MAX_PX, racketAvatarSrc, racketSrc } from '@/lib/racketLook';
 import { racketAvatarGround, type MemberAvatar as Avatar } from '@/lib/memberAvatar';
 import { useMemberAvatars } from '@/lib/useMemberAvatars';
 
@@ -61,7 +61,9 @@ export default function MemberAvatar({ name, avatar: given, size = 32, tone = 'n
           // Keyed so a changed racket (AvatarSheet's shuffle) fades in anew.
           key={racketId}
           className="member-avatar__racket"
-          src={racketSrc(racketId)}
+          // A roster-sized circle takes the head crop (~6 KB, not ~18 KB);
+          // Profile's large one keeps the full picture so it stays sharp.
+          src={size <= AVATAR_CROP_MAX_PX ? racketAvatarSrc(racketId) : racketSrc(racketId)}
           alt=""
           // Every catalog image is 240×624. The CSS sets the rendered width;
           // these only give a lazy image its ratio before it loads (Chrome

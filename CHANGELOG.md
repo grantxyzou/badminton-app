@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The app opens with less to download (2026-11-05)
+
+- **Each visitor now downloads only their own screen.** The app and the signed-out welcome screen came in one bundle, so members also downloaded the sign-up forms and newcomers downloaded the whole app. Now each gets only theirs. That is 13% less for a newcomer (254 → 220 KB) and 4% less for a member (254 → 245 KB) before anything appears.
+- **Racket pictures next to names are about 6 times smaller.** A 32 px circle was downloading the whole ~18 KB racket picture to show its head. It now loads a 3 KB crop. Profile's large picture keeps the full one so it stays sharp.
+- **The opening shuttle is 6 KB instead of 44 KB**, and the browser-tab icon is 3 KB instead of 55 KB. They look the same.
+- **The admin screen is 69 KB lighter.** One setting was quietly pulling in server-only code. A check now fails the build if any screen does that again.
+
 ### Faster and cheaper behind the scenes (2026-11-05)
 
 - **Opening Home no longer reads every session record the club has ever had.** Looking up what you owe used a database search that couldn't use the index, so it read all of a club's history every time. It now goes straight to the few records that matter.

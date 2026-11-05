@@ -27,7 +27,7 @@
  * own shading.
  *
  * Outputs (all square PNG):
- *   app/icon.png              512  Next's file-convention favicon
+ *   app/icon.png               64  Next's file-convention favicon (a tab draws 16–32)
  *   apple-touch-icon-180.png  180  iOS home screen (full-bleed; iOS rounds it)
  *   icon-192.png              192  manifest purpose:any
  *   icon-512.png              512  manifest purpose:any
@@ -119,8 +119,11 @@ await make(512, MASKABLE_RATIO, 'icon-maskable-512.png');
 
 /* Next's file convention: app/icon.png becomes the favicon link. Square and
    regenerated here so it cannot drift from the set above — it used to be the
-   raw 942×1021 shuttlecock, which is neither square nor the current mark. */
-await make(512, ANY_RATIO, 'icon.png', join(ROOT, 'app'));
+   raw 942×1021 shuttlecock, which is neither square nor the current mark.
+   64 px since 2026-11-05: a browser tab draws it at 16–32 px, and at 512 it was
+   a 55 KB download on a first visit for a 32 px picture. The home-screen and
+   manifest sizes above are what installs use. */
+await make(64, ANY_RATIO, 'icon.png', join(ROOT, 'app'));
 console.log('[gen-icons] done →', OUT);
 
 /**
