@@ -99,6 +99,20 @@ account the identity row does not exist yet at the callback), and
 JWT is hand-signed there because arctic keeps its own private —
 `dsaEncoding: 'ieee-p1363'` is load-bearing and asserted.
 
+**A name is matched only in the club where it was theirs** (audit, 2026-11-05,
+`__tests__/group-account-delete.test.ts`). `purgeNamesFor` reads the person's
+roster name in each club BEFORE the purge deletes the memberships, and every
+by-name match — legacy `players` rows, `gameResults`, `skills`, unowned aliases
+— keeps a row only when its club's name for them is the row's name; a row
+carrying another member's id is never theirs. Before, a deletion with groups on
+anonymized (and, for `skills`, deleted) another club's Lin. The seat is freed
+in EVERY club's active session, not only the one the request came from; the
+pay-to of a club they organised is cleared (`clearGroupPayTo`); their name
+leaves jobs they strung for others, payment suggestions in the review queue
+and uncollected join requests; reports are signed with `memberId` so a
+deletion finds them by id; and the delete sheet clears the badge, shortcuts
+and widget pass (`clearDeviceTraces`), as sign-out does.
+
 Two consequences worth knowing: the anonymized `players` row has its
 `deleteToken`, `pinHash` and `memberId` stripped (an anonymized row keeping a
 live credential is the strip-canary rule at rest), and purging `events` LOWERS

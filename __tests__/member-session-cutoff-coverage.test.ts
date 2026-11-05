@@ -44,6 +44,10 @@ const EXEMPT: Record<string, Exempt> = {
   'lib/auth.ts#verifyMemberAuth': { reason: 'the definition' },
   'lib/auth.ts#ownsNameOrAdmin': { reason: 'the definition: the read-only privacy gate for name-keyed Stats reads (a wrapper over nameOwnership)' },
   'lib/auth.ts#nameOwnership': { reason: 'the definition behind ownsNameOrAdmin: who may read a name-keyed Stats read, and whether it is the caller' },
+  'app/api/report/route.ts#POST': {
+    reason: 'only TAGS a problem report with who sent it (so account deletion can find it by id); grants nothing and writes nothing as the member',
+    write: true,
+  },
   'lib/auth.ts#callerMemberId': {
     reason: 'answers what the caller HAS for auth/methods and auth/nudge — reads that drive Profile rows; neither mints, links or writes',
   },

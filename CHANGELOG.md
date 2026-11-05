@@ -48,6 +48,19 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Deleting an account, done properly with more than one club (2026-11-05)
+
+- **Deleting your account no longer touches anyone else's history.** Before, it removed the name "Lin" from records in every club. Another club's Lin could lose her games, her skill ratings and her session records. Now a name is only removed in the clubs where it was yours.
+- **Your spot is freed in every club you'd signed up in**, not just the one you deleted from.
+- **More of your details are removed:**
+  - your name and e-mail as the pay-to on a club you organised
+  - your name on rackets you strung for others
+  - your name on payments waiting for an organiser to check
+  - your name on a join request nobody picked up
+  - your name on problem reports you sent
+- **On a phone, deleting your account also clears the app's icon badge, its long-press shortcuts and its widgets**, the same way signing out does.
+- **The privacy policy now lists** guests, join requests, e-transfer notices, stringing, store credit and in-app notices.
+
 ### Money fixes from the November audit (2026-11-05)
 
 - **Covering or removing someone after the bill is done now does what the buttons say.** "Cover & remove" means the club pays their share, and everyone else's amount stays the same. "Remove without covering" means they still owe it. Before, both quietly spread the person's share over everyone else and wiped their own debt.
