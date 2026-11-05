@@ -16,6 +16,8 @@ import { drawSetupShareCanvas, type ShareCanvasContent } from '@/lib/setupShareC
 import { shareCardText, type ShareCard, type ShareString } from '@/lib/shareCard';
 import type { SetupShare } from '@/lib/gearSetup';
 
+const LOGO_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/brand/bpm-trajectory.png`;
+
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export interface SetupShareSheetProps {
@@ -146,12 +148,12 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
       sub: join(r.role ? t(r.role) : t('factStrings'), r.catalogId ? stringSpecLine(stringRows.get(r.catalogId), (k) => t(k)) : null),
       lbs: r.tensionLbs,
     }));
-    // The story keeps one quiet line (Grant: "it's so busy"); the restrings,
-    // the club comparison and the "1 of N" stay in the copied text.
-    const footer = join(
-      card.grip ? `${t('factGrip')} ${card.grip}` : null,
-      card.sinceYear !== null ? (club ? t('shareSinceClub', { club, year: card.sinceYear }) : t('shareSince', { year: card.sinceYear })) : null,
-    ) || null;
+    // The story keeps one line on its bottom edge (Grant: "it's so busy",
+    // "take out the grip"); the grip, the restrings, the club comparison and
+    // the "1 of N" stay in the copied text.
+    const footer = card.sinceYear !== null
+      ? (club ? t('shareSinceClub', { club, year: card.sinceYear }) : t('shareSince', { year: card.sinceYear }))
+      : null;
     return {
       eyebrow: t('eyebrow'),
       name: card.name,
@@ -185,15 +187,21 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
     // (`lib/assetUrl.ts`), and a canvas that draws a cross-origin picture
     // without it can no longer be exported. Harmless on the same origin.
     img.crossOrigin = 'anonymous';
-    const paint = () => { if (canvasRef.current === canvas) setPng(drawSetupShareCanvas(canvas, content, img)); };
-    // Draw at once without the racket, then again when it (and the fonts) land.
-    setPng(drawSetupShareCanvas(canvas, content, null));
-    img.onload = () => {
-      const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready ?? Promise.resolve();
-      fonts.then(paint).catch(paint);
+    const logo = new Image();
+    let headIn = false;
+    let logoIn = false;
+    const paint = () => {
+      if (canvasRef.current === canvas) setPng(drawSetupShareCanvas(canvas, content, headIn ? img : null, logoIn ? logo : null));
     };
+    const fonts = () => (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready ?? Promise.resolve();
+    // Draw at once without the pictures, then again as each (and the fonts) lands.
+    setPng(drawSetupShareCanvas(canvas, content, null, null));
+    img.onload = () => { headIn = true; fonts().then(paint).catch(paint); };
+    logo.onload = () => { logoIn = true; fonts().then(paint).catch(paint); };
     // The card's own close-up of the racket head, as the Equipment card draws it.
     img.src = racketHeadSrc(racketCatalogId);
+    // The app icon's mark, for the bottom-right corner.
+    logo.src = LOGO_SRC;
   }, [content, racketCatalogId]);
 
   async function saveImage() {

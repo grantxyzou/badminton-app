@@ -5,7 +5,9 @@
  * story size"). It carries the Equipment card's own things (design A) and
  * little else: the name at the top, the main racket's head large across the
  * middle, then the racket's full name with its role and spec, a row per string
- * with its packet and tension pill, and one quiet line at the foot. Every name
+ * with its packet and tension pill. On the bottom edge, "At BPM Core since …"
+ * and the app's logo in the corner (Grant: "Instead of bpm just use our
+ * logo bottom right corner"). Every name
  * WRAPS onto a second line rather than being cut short ("not truncate").
  *
  * Story apps lay their own controls over the top and bottom of the frame, so
@@ -39,7 +41,7 @@ export interface ShareCanvasContent {
   /** The main racket's full name and its line under it ("Main racket · 4U · even"). */
   racket: { name: string; sub: string } | null;
   strings: ShareCanvasString[];
-  /** One quiet line at the foot ("Grip G5 · At BPM Core since 2024"), or null. */
+  /** The line on the bottom edge ("At BPM Core since 2024"), or null. */
   footer: string | null;
   lbUnit: string;
 }
@@ -58,6 +60,9 @@ const SAFE_BOTTOM = 548;
 /** The packet at a string row's start, as the card draws it. */
 const PACK_W = 30;
 const PACK_H = 42;
+/** The logo in the bottom-right corner, and how far the foot sits off the edge. */
+const LOGO_W = 46;
+const FOOT_INSET = 24;
 /** The head close-up's tilt, as on the card. */
 const HEAD_TILT = (-14 * Math.PI) / 180;
 
@@ -215,17 +220,12 @@ export function storyLayout(m: Measurer, c: ShareCanvasContent): StoryLayout {
     y = rowTop + rowH;
   });
 
-  // The foot: the quiet line, and the wordmark at its end (clear of the racket).
-  y += 26;
+  // The foot, on the image's bottom edge: the club line on the left; the logo
+  // takes the corner on the right (drawn with the pictures).
   if (c.footer) {
     m.font = `400 13px ${F.sans}`;
-    const lines = wrapText(m, c.footer, W - 56);
-    lines.forEach((l, i) => text(null, l, PAD, y + 13 + i * 17, `400 13px ${F.sans}`, 0.55));
-    text(null, 'b p m', SHARE_W - PAD, y + 13, `600 11px ${F.mono}`, 0.45, 'right');
-    y += 13 + (lines.length - 1) * 17;
-  } else {
-    text(null, 'b p m', SHARE_W - PAD, y + 13, `600 11px ${F.mono}`, 0.45, 'right');
-    y += 13;
+    const line = wrapText(m, c.footer, W - LOGO_W - 16, 1)[0];
+    text(top, line, PAD, SHARE_H - FOOT_INSET - 6, `400 13px ${F.sans}`, 0.55);
   }
 
   const blockTop = SAFE_BOTTOM - y;
@@ -272,6 +272,8 @@ export function drawSetupShareCanvas(
   canvas: HTMLCanvasElement,
   c: ShareCanvasContent,
   head: (CanvasImageSource & { width: number; height: number }) | null,
+  /** The app icon's mark (`public/brand/bpm-trajectory.png`), or null until it lands. */
+  logo: (CanvasImageSource & { width: number; height: number }) | null = null,
 ): string {
   const probe = canvas.getContext('2d');
   if (!probe) return '';
@@ -294,6 +296,10 @@ export function drawSetupShareCanvas(
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, W, H);
   if (head && head.width > 0) drawHead(ctx, head, blockTop);
+  if (logo && logo.width > 0) {
+    const lh = (logo.height / logo.width) * LOGO_W;
+    ctx.drawImage(logo, SHARE_W - PAD - LOGO_W, SHARE_H - FOOT_INSET - lh, LOGO_W, lh);
+  }
 
   for (const op of ops) op(ctx);
 

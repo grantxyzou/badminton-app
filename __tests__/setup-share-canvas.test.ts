@@ -41,7 +41,7 @@ describe('the share card wraps names instead of cutting them', () => {
  */
 describe('the share image is a story', () => {
   const content = (name: string, n = 2) => ({
-    eyebrow: 'Equipment', name: 'Lin', lbUnit: 'lb', footer: 'Grip G5 · At BPM Core since 2024',
+    eyebrow: 'Equipment', name: 'Lin', lbUnit: 'lb', footer: 'At BPM Core since 2024',
     racket: { name: 'Li-Ning Halbertec 9000', sub: 'Main racket · 4U · even' },
     strings: Array.from({ length: n }, () => ({ packet: null, name, sub: 'Mains · 0.66mm · repulsion', lbs: 29 })),
   });
