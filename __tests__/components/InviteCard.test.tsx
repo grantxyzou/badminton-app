@@ -69,6 +69,16 @@ describe('InviteCard', () => {
     expect(screen.getByText(/Works once, until/)).toBeDefined();
   });
 
+  it('Show as QR opens the sheet on the invite the card is showing', async () => {
+    fetchMock = vi.fn().mockResolvedValue(jsonResponse({ invites: [B, A] }));
+    vi.stubGlobal('fetch', fetchMock);
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Show as QR' }));
+    expect(await screen.findByRole('img', { name: 'QR code for the invite link' })).toBeDefined();
+    // The newest live invite is the one shown, so its code is the one drawn.
+    expect(screen.getAllByText('CCCC DDDD').length).toBeGreaterThanOrEqual(2);
+  });
+
   it('Create an invite posts, and the new one is shown in full', async () => {
     fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
       init?.method === 'POST' ? jsonResponse(NEW, 201) : jsonResponse({ invites: [] }),

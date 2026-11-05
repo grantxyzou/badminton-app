@@ -5738,6 +5738,30 @@ html:root[data-theme="light"] {
   gap: var(--home-stack-gap);
 }
 
+/* ── Invite QR (Command Center → Invite someone → Show as QR) ──
+   A one-time invite drawn as a QR code on the organiser's screen and read by
+   another phone's camera. Dark squares on a LIGHT ground in both themes: a
+   camera reads dark-on-light reliably, and a code drawn light-on-dark in dark
+   mode is the classic one that will not scan. The ground is a square of its
+   own, so the code never sits on the field behind the sheet. The quiet zone is
+   in the drawing (lib/qr.ts), not padding, so it scales with the code. */
+:root {
+  --qr-ink: #111111;
+  --qr-ground: #ffffff;
+}
+.invite-qr {
+  display: block;
+  width: min(72vw, 280px);
+  height: auto;
+  margin-inline: auto;
+  background: var(--qr-ground);
+  border-radius: var(--radius-lg);
+  shape-rendering: crispEdges;
+}
+.invite-qr path {
+  fill: var(--qr-ink);
+}
+
 /* ── Foldables: two panes on a big touch screen ──
    docs/plans/foldable-layout.md, after Apple's "Designing for iPhone Duo"
    (2026-09-09). On ONE phone-sized screen nothing here applies: the page is

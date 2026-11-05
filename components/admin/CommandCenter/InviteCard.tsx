@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import InviteShare from '@/components/onboarding/InviteShare';
+import InviteQrSheet from '@/components/admin/CommandCenter/InviteQrSheet';
 import ListRow from '@/components/primitives/ListRow';
 import { useInvites, type Invite } from '@/lib/useInvites';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
@@ -37,6 +38,7 @@ export default function InviteCard({ enabled = true, groupName, bare = false }: 
   const { invites, loading, error, busy, create, revoke, reload } = useInvites(enabled);
   const [latest, setLatest] = useState<Invite | null>(null);
   const [failed, setFailed] = useState<'create' | 'revoke' | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
 
   // The console's RevealSlot holds this place until the list has answered.
   useRevealReady(!enabled || !loading);
@@ -47,6 +49,19 @@ export default function InviteCard({ enabled = true, groupName, bare = false }: 
     const made = await create();
     if (made) setLatest(made);
     else setFailed('create');
+  }
+
+  /** "Next person" in the QR sheet: the same create as the card's button. */
+  async function nextForQr(): Promise<Invite | null> {
+    const made = await create();
+    if (made) setLatest(made);
+    return made;
+  }
+
+  function closeQr() {
+    setQrOpen(false);
+    // The sheet may have watched its invite get used; show the card as it is now.
+    void reload();
   }
 
   async function doRevoke(id: string) {
@@ -103,6 +118,11 @@ export default function InviteCard({ enabled = true, groupName, bare = false }: 
             {showing && (
               <div key={showing.id} className="motion-fade" style={{ display: 'grid', gap: 'var(--space-4)' }}>
                 <InviteShare token={showing.token} code={showing.code} groupName={groupName} expiresAt={showing.expiresAt} />
+                {/* For the person standing next to you: the same one-time
+                    invite, drawn big for their camera (InviteQrSheet). */}
+                <button type="button" onClick={() => setQrOpen(true)} className="cc-btn cc-btn-secondary" style={{ width: '100%' }}>
+                  {t('showQr')}
+                </button>
                 <button type="button" onClick={() => void doRevoke(showing.id)} disabled={busy} className="cc-btn cc-btn-ghost" style={{ width: '100%' }}>
                   {t('revoke')}
                 </button>
@@ -144,6 +164,7 @@ export default function InviteCard({ enabled = true, groupName, bare = false }: 
           </>
         )}
       </div>
+      <InviteQrSheet open={qrOpen} onClose={closeQr} invite={showing} groupName={groupName} onNext={nextForQr} />
     </div>
   );
 }
