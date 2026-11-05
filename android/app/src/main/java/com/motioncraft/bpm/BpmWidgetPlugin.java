@@ -5,6 +5,12 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.net.URI;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+
 /**
  * The app's side of the home-screen widget (docs/plans/native-widgets.md).
  *
@@ -15,11 +21,38 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "BpmWidget")
 public class BpmWidgetPlugin extends Plugin {
 
+    /**
+     * The app's own hosts. Any https address was accepted until 2026-11-05
+     * (audit): the pass is a credential, and only the app's own server should
+     * ever be handed one. motioncraft-bpm.com is the domain the app is moving
+     * to, allowed ahead so the move does not switch widgets off until the next
+     * store build. BpmWidgetPlugin.swift holds the same list, and
+     * __tests__/native-shell-projects.test.ts pins both to capacitor.config.ts.
+     */
+    static final Set<String> ALLOWED_HOSTS = new HashSet<>(Arrays.asList(
+        "bpm.grantzou.com", "vnext-badminton-app.azurewebsites.net", "motioncraft-bpm.com"));
+    static final String ALLOWED_HOST_SUFFIX = ".motioncraft-bpm.com";
+
+    /** Parsed, never a string prefix: https://bpm.grantzou.com.evil.example starts with the right text. */
+    static boolean isAllowedBaseUrl(String raw) {
+        if (raw == null) return false;
+        try {
+            URI uri = new URI(raw);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (scheme == null || host == null || !scheme.equalsIgnoreCase("https")) return false;
+            host = host.toLowerCase(Locale.ROOT);
+            return ALLOWED_HOSTS.contains(host) || host.endsWith(ALLOWED_HOST_SUFFIX);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @PluginMethod
     public void setSession(PluginCall call) {
         String token = call.getString("token");
         String baseUrl = call.getString("baseUrl");
-        if (token == null || token.isEmpty() || baseUrl == null || !baseUrl.startsWith("https://")) {
+        if (token == null || token.isEmpty() || !isAllowedBaseUrl(baseUrl)) {
             call.reject("token and an https baseUrl are required");
             return;
         }

@@ -48,6 +48,18 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The app's sign-in stays on your phone, and the safety notes are right (2026-11-05)
+
+- **Moving from the web app to the store app now asks first.** The "Move to the app" link used to sign the app in the moment it opened. Someone could send you their own link, and your app would quietly become their account. Now it asks you to confirm, and says who would be signed out.
+- **The home-screen widget's sign-in stays on the phone it was made on.** Restoring a backup onto a new phone no longer brings it along. The widget simply waits until you open the app once. The widget also only ever sends its pass to the app's own website.
+- *Both of these reach phones with the next store build.*
+- **Behind the scenes:**
+  - Next.js 16.4.5.
+  - The iPhone app is pinned to the same Capacitor version as the Android app and the website.
+  - The rollback instructions in the owner's notes did not work as written; they are fixed.
+  - The AI settings table and the store build numbers in the docs are corrected.
+  - The plan to replace Defender's watching with three cheap Azure alerts is written down.
+
 ### Easier to read, and kinder to screen readers and to Chinese (2026-11-05)
 
 - **A refused sign-up explains itself in your language.** If a session was full, closed or already settled, the card used to show the server's own words. Sometimes that was an English sentence on the Chinese page, sometimes a code like `session_settled`. It now says what happened, in English or Chinese.

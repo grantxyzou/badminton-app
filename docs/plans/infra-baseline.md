@@ -68,6 +68,23 @@ conditions are about whether they get done and whether they earn their keep:
 - **The deploy skill's backup sentence is marked unverified rather than
   deleted** until the Backup & Restore page has been read. Deleting it would
   lose the one place the intent was ever written down.
+- **Three cheap alerts replace what Defender for App Service watched**
+  (audit, 2026-11-05). Defender (~$13.50 a month on one plan) watches the
+  RUNNING server for attack patterns; it never scanned code, which GitHub
+  already does (Dependabot alerts and security updates, secret scanning,
+  CodeQL on every PR). With it off, nothing would tell the owner the site is
+  failing or being hammered, so the alert rows below are the replacement:
+  blunter than Defender (they name a symptom, not an attack) and about $0.10
+  a rule a month. Whether Defender stays is the owner's call; the alerts are
+  worth having either way, because Defender does not alert on errors or
+  throttling. Two free GitHub switches go with it: secret-scanning **push
+  protection** (off today — it blocks a push carrying a key instead of
+  warning after) and confirming CodeQL's default setup in Settings → Code
+  security.
+- **The rollback runbook was wrong and is corrected** (2026-11-05):
+  `gh workflow run deploy-next.yml --ref <sha>` cannot work — a manual run
+  takes a branch or tag NAME — so the runbook now re-runs the good commit's
+  own deploy run, or dispatches on a throwaway branch at that commit.
 
 ## Shape
 
@@ -76,8 +93,10 @@ conditions are about whether they get done and whether they earn their keep:
 | The five portal pages and what to read on each | `docs/azure.md` §9 (table), and the field guide's "judge's checklist" |
 | Container count against the shared-throughput cap of 25 (added 2026-10-09; the code defines 27) | `docs/azure.md` §10, read on the same Cosmos Data Explorer visit |
 | Observed facts, dated | `docs/azure.md` §9, one sub-heading per look |
-| Alert rule: HTTP 5xx count > 0 over 5 minutes, email to owner | Azure portal, App Service → Alerts (not in repo; record the rule name in §9) |
+| Alert rule 1, errors: App Service metric **Http Server Errors** (5xx), Total > 5 over 5 minutes, email to owner | Azure portal, App Service → Alerts (not in repo; record the rule name in §9). Five, not zero: one 5xx is a single bad request; five in five minutes is a broken screen |
+| Alert rule 2, site down: App Service **Health check status** < 100 over 5 minutes (after the health check path below is set), email | same blade |
+| Alert rule 3, database throttling: Cosmos metric **Total Requests**, split by Status Code = 429, Total > 0 over 5 minutes, email | Cosmos → Alerts. A 429 means the account ran out of RU/s; it is the alert that says to raise throughput (free up to 1000 RU/s on this account's tier, `docs/azure.md` §9) |
 | Health check path | `/bpm/api/releases` — public, Cosmos-backed, answers 503 on a read failure rather than lying; set under App Service → Health check |
 | Continuous backup, 7-day tier (no storage charge) | Cosmos → Backup & Restore; record the date switched in §9 |
 | Restore drill | Restore to a new account, point `staging-badminton-app` at it with its own connection string, open the ledger, delete the drill account; write the steps into `docs/azure.md` as a "Restore" section |
-| Rollback runbook correction | `.claude/skills/deploy-promotion/SKILL.md`, "Rolling back" |
+| Rollback runbook correction — **done 2026-11-05** | `.claude/skills/deploy-promotion/SKILL.md`, "Rolling back"; `docs/azure.md`; `docs/OWNER-KB.md` |

@@ -375,9 +375,20 @@ submitted by Grant on device.
   checkout builds the widgets; Xcode had raised the app's minimum iOS to its
   "recommended" variable while doing it, and `native-shell-projects` now pins
   the floors (app 15.0, widget 17.0). Store build 5 (#719) is the first that
-  carries the widgets, the icon badge and the shortcuts; the iPhone is on 6
-  (#724) because TestFlight already held a 6, and Android stays at 5. Bump
-  from whatever the store holds, not from what the project says.
+  carries the widgets, the icon badge and the shortcuts; build 7 on the iPhone
+  and 6 on Android (#748, 2026-10-28) add Add to calendar. Bump from whatever
+  the store holds, not from what the project says. **The widget pass stays
+  where it was made** (audit, 2026-11-05): both plugins hand it only to the
+  app's own hosts (`bpm.grantzou.com`, the Azure host, and `motioncraft-bpm.com`
+  ahead of the move — the same list in Swift and Java, pinned to
+  `capacitor.config.ts`), Android's backup and phone-to-phone transfer leave
+  `bpm_widget.xml` out, and iOS stores the phone's `identifierForVendor`
+  beside the pass and ignores a pass restored onto another phone; a restored
+  widget is dark until the app is opened and mints its own. **The migration
+  link asks before it signs in** (same day): a link is minted by whoever is
+  signed in on the web, so one sent to someone else signed THEIR app in as the
+  sender on arrival; `MigrateClaim` now shows who would be signed out and
+  claims only on the tap.
 - **Add to calendar** (`docs/plans/add-to-calendar.md`, 2026-10-28): the
   sign-up banner's one action. In the store app it is the in-house
   `BpmCalendar` plugin (iOS `BpmCalendarPlugin.swift`, Android

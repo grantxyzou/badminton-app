@@ -775,7 +775,12 @@
       "pageNoAppBody": "If the app is installed, go back to the web app and type the six-digit code instead. If it isn't, your account is right here on the web — nothing has changed.",
       "pageNoCode": "There's no code in this link.",
       "pageFailed": "That link didn't work — it may have expired or already been used. Get a fresh one from the web app.",
-      "pageHome": "Back to %APP_SHORT%"
+      "pageHome": "Back to %APP_SHORT%",
+      "pageConfirm": "Finish moving to the app?",
+      "pageConfirmBody": "Only continue if you made this link yourself, on your own phone, in the last few minutes. A link someone else sent you would sign this app in as them.",
+      "pageReplaces": "{name} is signed in here now and will be signed out.",
+      "pageConfirmCta": "Sign me in",
+      "pageCancel": "Not me — go back"
     },
     "deleteAccount": {
       "link": "Delete account",

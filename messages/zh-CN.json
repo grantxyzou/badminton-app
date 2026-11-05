@@ -775,7 +775,12 @@
       "pageNoAppBody": "如果已经装了应用，回到网页版改用六位验证码。如果没装，你的账号就在网页版里 — 什么都没变。",
       "pageNoCode": "这个链接里没有验证码。",
       "pageFailed": "链接无效 — 可能已过期或已经用过。去网页版重新获取一个。",
-      "pageHome": "返回 %APP_SHORT%"
+      "pageHome": "返回 %APP_SHORT%",
+      "pageConfirm": "完成迁移到应用？",
+      "pageConfirmBody": "只有在你几分钟内用自己的手机生成了这个链接时才继续。别人发给你的链接会让这个应用登录成他们的账号。",
+      "pageReplaces": "目前登录的是 {name}，继续后会退出。",
+      "pageConfirmCta": "登录我的账号",
+      "pageCancel": "不是我 — 返回"
     },
     "deleteAccount": {
       "link": "注销账号",
