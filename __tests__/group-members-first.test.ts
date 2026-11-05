@@ -28,7 +28,7 @@ import {
   getStore,
   ADMIN_MEMBER_ID,
 } from './helpers';
-import { POST as SIGN_UP, GET as ROSTER, DELETE as REMOVE } from '@/app/api/players/route';
+import { POST as SIGN_UP, GET as ROSTER, DELETE as REMOVE, PATCH as MOVE } from '@/app/api/players/route';
 import { GET as SESSION } from '@/app/api/session/route';
 import { POST as LET_IN } from '@/app/api/session/members-first/route';
 import { POST as ADVANCE } from '@/app/api/session/advance/route';
@@ -150,6 +150,43 @@ describe('a spot freed during the window', () => {
     expect(rowOf(a.id).removed).toBe(true);
     expect(rowOf(member.id).waitlisted).toBe(false);
     expect(rowOf(dropIn.id).waitlisted).toBe(true);
+  });
+});
+
+describe('the organiser moves a drop-in by hand during the window', () => {
+  /**
+   * The money-off list (docs/plans/money-off-session-list.md) can move a row
+   * into the session and back. A hand promotion keeps `waitingForMembers` on
+   * the row, and that is what keeps a drop-in moved BACK behind the members:
+   * the automatic promotion passes over a flagged row while the window runs.
+   * Clearing it on a hand promotion (as the plan first proposed) would have
+   * let the drop-in take the next freed spot ahead of a member.
+   */
+  it('a drop-in promoted and moved back still waits behind a member; moving back promotes nobody', async () => {
+    const sessionId = club('club-x', { rule: OPEN, maxPlayers: 2 });
+    const ann = seedPlayer(sessionId, 'Ann', { groupId: 'club-x', timestamp: '2026-11-01T10:00:00.000Z' });
+    const dee = seedPlayer(sessionId, 'Dee', {
+      groupId: 'club-x', waitlisted: true, waitingForMembers: true, timestamp: '2026-11-01T10:01:00.000Z',
+    });
+    const cai = seedPlayer(sessionId, 'Cai', { groupId: 'club-x', waitlisted: true, timestamp: '2026-11-01T10:02:00.000Z' });
+    seedMembership('club-x', ADMIN_MEMBER_ID, { name: 'Organiser', role: 'owner' });
+    const admin = () => headers(asAdmin('club-x'));
+
+    const up = await MOVE(makeRequest('PATCH', URL, { id: dee.id, waitlisted: false }, admin()));
+    expect(up.status).toBe(200);
+    expect(rowOf(dee.id)).toMatchObject({ waitlisted: false, waitingForMembers: true });
+
+    const back = await MOVE(makeRequest('PATCH', URL, { id: dee.id, waitlisted: true }, admin()));
+    expect(back.status).toBe(200);
+    expect(rowOf(dee.id).waitlisted).toBe(true);
+    // A move back is the admin's choice of who waits: nobody moves up.
+    expect(rowOf(cai.id).waitlisted).toBe(true);
+
+    const res = await REMOVE(makeRequest('DELETE', URL, { name: 'Ann' }, admin()));
+    expect(res.status).toBe(200);
+    expect(rowOf(ann.id).removed).toBe(true);
+    expect(rowOf(cai.id).waitlisted).toBe(false);
+    expect(rowOf(dee.id).waitlisted).toBe(true);
   });
 });
 
