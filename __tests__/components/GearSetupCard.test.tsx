@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { racketHeadSrc } from '../../lib/racketLook';
 import { NextIntlClientProvider } from 'next-intl';
 import GearSetupCard from '../../components/stats/GearSetupCard';
