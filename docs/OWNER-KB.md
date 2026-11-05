@@ -40,7 +40,8 @@ initiative, so the next lock edit is a strategy decision for you, not a tidy-up.
   dates at session start. The full list is in `CLAUDE.md` under "Automation
   hooks". (The soak tracker and the `bpm confirm` gate this list used to name
   were retired in August 2026 with the second deployment.)
-- `main` auto-deploys to production on every push via
+- `main` deploys to production three times a day (only when app files
+  changed) or at once from "Run workflow", via
   `.github/workflows/deploy-next.yml` → app service `vnext-badminton-app` →
   https://bpm.grantzou.com/bpm. There is ONE deployment. The name is inverted
   and historical; verify by DNS, never by name.

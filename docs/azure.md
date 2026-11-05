@@ -30,7 +30,9 @@ calls to Cosmos DB (for data persistence) and to the Anthropic API (for AI
 features). The Anthropic API key and Cosmos DB connection string are never
 exposed to the browser.
 
-**There is ONE deployment.** `main` deploys to production on every push. The
+**There is ONE deployment.** `main` deploys to production three times a day
+when something the app is built from changed, or at once from "Run workflow"
+(grouped since 2026-11-05; see the workflow's header). The
 app service's name, `vnext-badminton-app`, is inverted and historical: the
 service called `badminton-app` was deleted on 2026-08-25 along with
 `deploy-stable.yml`. Verify which app is live by DNS, never by name.
@@ -66,8 +68,9 @@ Node.js server under `.next/standalone/`. The deployment zip bundles:
 
 ### Deployment — GitHub Actions
 
-One workflow, `.github/workflows/deploy-next.yml`, on every push to `main` and
-on manual dispatch:
+One workflow, `.github/workflows/deploy-next.yml`, on a schedule (three times a
+day; its `decide` job skips a run when production already has every app file)
+and on manual dispatch (always deploys):
 
 1. `npm ci` — install from lockfile
 2. `npm run typecheck` and `npm test` — the deploy itself gates on both

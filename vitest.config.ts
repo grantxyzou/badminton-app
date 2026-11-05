@@ -17,7 +17,7 @@ export default defineConfig({
     env: { TRUSTED_IP_HEADER: 'x-client-ip' },
     // Fails any test during which `lib/groupScope.ts` logged `[group-leak]` —
     // the sentinel the multi-group flip is gated on (Phase 5).
-    setupFiles: ['./__tests__/setup/group-leak-spy.ts'],
+    setupFiles: ['./__tests__/setup/group-leak-spy.ts', './__tests__/setup/reset-page-memory.ts'],
     // Never scan git worktrees under .claude/ — they carry their own copy of
     // __tests__, which double-counts the suite and surfaces failures from
     // unrelated branches. (Defaults already exclude node_modules, dist, etc.)
