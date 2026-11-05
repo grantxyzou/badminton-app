@@ -5,6 +5,7 @@
  * loading every packet's paint. `__tests__/string-pack.test.ts` holds the list
  * equal to the table's keys and to the files on disk.
  */
+import { assetUrl } from './assetUrl';
 
 export const STRING_PACK_IDS: ReadonlyArray<string> = [
   'string-yx-bg65',
@@ -55,9 +56,8 @@ export const STRING_PACK_IDS: ReadonlyArray<string> = [
 ];
 
 const HAS = new Set(STRING_PACK_IDS);
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** The packet image for a catalog string, or null when it has none. */
 export function stringPackSrc(catalogId: string | null | undefined): string | null {
-  return catalogId && HAS.has(catalogId) ? `${BASE}/strings/${catalogId}.webp` : null;
+  return catalogId && HAS.has(catalogId) ? assetUrl(`strings/${catalogId}.webp`) : null;
 }

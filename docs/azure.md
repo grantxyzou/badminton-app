@@ -254,6 +254,32 @@ ignores partition keys and filters by parameter name, not SQL — the two traps
 
 ---
 
+### Blob Storage: the generated pictures (being set up)
+
+The racket renders (`public/rackets/`, including `head/`) and string packets
+(`public/strings/`) can be served from a storage container instead of the app,
+so re-renders stop growing the repository (`docs/plans/asset-storage.md`).
+
+| Item | Value |
+|---|---|
+| Account † | `bpmgrantzouassets` (the scripts' default; Standard_LRS, StorageV2, Canada Central, resource group `grantzou`) |
+| Container | `public`, anonymous read of blobs only (no listing) |
+| CORS | GET/HEAD from `https://bpm.grantzou.com`, `https://vnext-badminton-app.azurewebsites.net`, `http://localhost:3000` |
+| Cache-Control | `public, max-age=86400, stale-while-revalidate=604800`, as the app sends |
+| Switch | `NEXT_PUBLIC_ASSET_BASE` in `deploy-next.yml`'s build `env:` (build-time). Unset = served by the app, as before. |
+
+Set up and fill it with the Azure CLI from a signed-in machine (this
+repository holds no Azure credentials; deploys use a publish profile):
+
+```bash
+az login
+scripts/assets/storage-setup.sh      # once; prints the NEXT_PUBLIC_ASSET_BASE
+scripts/assets/upload.sh             # after every render-racket-images / render-string-images run
+```
+
+† Not created yet as of 2026-11-05; the name is the scripts' default and may
+change if Azure reports it taken.
+
 ## 4. Anthropic Claude API (External)
 
 | Setting | Value |

@@ -142,6 +142,10 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
     canvasRef.current = canvas;
     if (!canvas || !content) return;
     const img = new Image();
+    // Asked with CORS: the racket picture may come from the storage container
+    // (`lib/assetUrl.ts`), and a canvas that draws a cross-origin picture
+    // without it can no longer be exported. Harmless on the same origin.
+    img.crossOrigin = 'anonymous';
     const paint = () => { if (canvasRef.current === canvas) setPng(drawSetupShareCanvas(canvas, content, img)); };
     // Draw at once without the racket, then again when it (and the fonts) land.
     setPng(drawSetupShareCanvas(canvas, content, null));
