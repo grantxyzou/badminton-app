@@ -14,6 +14,7 @@ import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { crossesFor } from '@/lib/stringing';
 import { racketFeelLine, racketRowSpec, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
+import { stringOn } from '@/lib/activeRacket';
 import type { GearItem, RacketFeel } from '@/lib/types';
 import Collapse from '@/components/primitives/Collapse';
 
@@ -31,6 +32,9 @@ export interface SetupLineSheetProps {
   onViewFrame?: (catalogId: string) => void;
   /** A hybrid's crosses string, to add or change: the add sheet in crosses mode. */
   onCrosses?: () => void;
+  /** A SPARE racket's sheet (2026-11-05): that racket, its own string, and
+   *  "Make it your main racket". Absent = the line's item. */
+  spareId?: string;
 }
 
 /**
@@ -44,7 +48,7 @@ export interface SetupLineSheetProps {
  *
  * Mount with a fresh `key` per opening; its state describes one visit.
  */
-export default function SetupLineSheet({ open, onClose, category, gear, onChange, onViewLook, onViewFrame, onCrosses }: SetupLineSheetProps) {
+export default function SetupLineSheet({ open, onClose, category, gear, onChange, onViewLook, onViewFrame, onCrosses, spareId }: SetupLineSheetProps) {
   const t = useTranslations('stats.gear.setup');
   const tGear = useTranslations('stats.gear');
   const tHub = useTranslations('valueHub');
@@ -65,7 +69,11 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
   const [feel, setFeel] = useState<RacketFeel | null>(null);
 
   const lines = setupLines(gear.loadError ? null : gear.gear);
-  const item = category === 'racket' ? lines.racket : lines.string;
+  // A spare is looked up among the spares only: once it is swapped in it is
+  // the main racket, and this sheet closes rather than describing the wrong one.
+  const spare = spareId ? lines.spares.find((r) => r.id === spareId) ?? null : null;
+  const item = spareId ? spare : category === 'racket' ? lines.racket : lines.string;
+  const spareString = spare ? stringOn(gear.gear, spare) : null;
   // The string's frame: the racket on the card.
   const racketCatalog = useCatalog('racket');
   const frameId = category === 'string' ? lines.racket?.catalogId ?? null : null;
@@ -73,7 +81,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
   const clubTension = useClubTension(frameId);
   const row = item?.catalogId ? catalog.items.find((c) => c.id === item.catalogId) : undefined;
 
-  const label = category === 'racket' ? tGear('catRacket') : tGear('catString');
+  const label = spareId ? t('spareEyebrow') : category === 'racket' ? tGear('catRacket') : tGear('catString');
   const title = row?.model ?? item?.label ?? label;
   // A racket typed by name has no catalog row; its only spec is what the
   // member said about it.
@@ -125,7 +133,25 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
             <ErrorState message={tGear('kitError')} />
           ) : (
             <div className="setup-actions">
-              {category === 'racket' ? (
+              {spare ? (
+                <>
+                  {/* Its own string, as a fact: the set-up card shows only the
+                      main racket's, and a spare carries its own. */}
+                  <div className="setup-action">
+                    <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>tune</span>
+                    <span className="setup-action-label">
+                      {spareString
+                        ? (typeof spareString.tensionLbs === 'number'
+                          ? t('spareStrungLb', { string: spareString.label, lb: spareString.tensionLbs })
+                          : t('spareStrung', { string: spareString.label }))
+                        : t('spareUnstrung')}
+                    </span>
+                  </div>
+                  <ActionRow icon="swap_horiz" label={t('useAsMain')} onClick={() => { void run(() => gear.activate(spare.id), onClose); }} disabled={!gear.online} />
+                  {onViewFrame && spare.catalogId && <ActionRow icon="fact_check" label={t('viewFrame')} onClick={() => onViewFrame(spare.catalogId!)} />}
+                  {onViewLook && <ActionRow icon="sports_tennis" label={t('viewIn3d')} badge={t('preview')} onClick={() => onViewLook(spare, title)} />}
+                </>
+              ) : category === 'racket' ? (
                 <>
                   <div className="setup-action setup-action--current">
                     <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--accent)' }}>check</span>

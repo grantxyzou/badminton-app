@@ -8,7 +8,7 @@ import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { readGroup, readMembership } from '@/lib/groups';
 import { readGearOrNull } from '@/lib/racketFitInput';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
-import { activeRacket } from '@/lib/activeRacket';
+import { activeRacket, currentString } from '@/lib/activeRacket';
 import { tallyClubGear } from '@/lib/clubGear';
 import { clubTensionFor } from '@/lib/clubTension';
 import { readClubGearDocs } from '@/lib/clubGearDocs';
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
 
     // The string's model name reads better on the card than brand + model.
     let stringRow: CatalogItem | null = null;
-    const latestString = [...(gear?.items ?? [])].reverse().find((i) => i && !i.retiredAt && i.category === 'string');
+    const latestString = currentString(gear);
     if (latestString?.catalogId) {
       try {
         await ensureCatalogSeeded();

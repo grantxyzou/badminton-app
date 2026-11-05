@@ -1,7 +1,7 @@
-import { activeRacket } from './activeRacket';
+import { activeRacket, currentString } from './activeRacket';
 import { CLUB_GEAR_MIN_COHORT, type ClubGearEntry } from './clubGear';
 import type { ClubTensionBand } from './clubTension';
-import type { CatalogItem, GearItem, PlayerGear } from './types';
+import type { CatalogItem, PlayerGear } from './types';
 
 /**
  * "Answer 'what are you playing?'" — the share card's facts (design
@@ -51,16 +51,11 @@ function text(item: CatalogItem | null, key: string): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
 }
 
-function newestString(gear: PlayerGear | null): GearItem | null {
-  let latest: GearItem | null = null;
-  for (const i of gear?.items ?? []) if (i && !i.retiredAt && i.category === 'string') latest = i;
-  return latest;
-}
 
 export function buildShareCard(input: ShareCardInput): ShareCard {
   const { gear, racketRow, band } = input;
   const racket = activeRacket(gear);
-  const string = newestString(gear);
+  const string = currentString(gear);
   const tensionLbs = typeof string?.tensionLbs === 'number' ? string.tensionLbs : null;
 
   const log = racket ? (gear?.stringLog ?? []).filter((e) => e.racketItemId === racket.id) : [];

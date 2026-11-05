@@ -1,4 +1,4 @@
-import { activeRacket } from './activeRacket';
+import { activeRacket, stringOn } from './activeRacket';
 import { isOffered } from './catalogOffer';
 import { axesOf, buildTarget, compareFit, isScorable, scoreFit, type FitInput } from './racketFit';
 import { scalePosition } from './tension';
@@ -104,7 +104,8 @@ export interface FrameHistory {
   restrings: StringLogEntry[];
   /** The last four recorded tensions, oldest first ("24 → 25 → 26 → 26"). */
   lastFour: number[];
-  /** The newest live string, only while this model is in play. */
+  /** The string on that racket (`stringOn`): each racket keeps its own, so a
+   *  spare of this model shows the spare's string. */
   currentString: GearItem | null;
 }
 
@@ -125,8 +126,7 @@ export function frameHistory(gear: PlayerGear | null, frameId: string): FrameHis
     .filter((v): v is number => typeof v === 'number')
     .slice(0, 4)
     .reverse();
-  let currentString: GearItem | null = null;
-  if (inPlay) for (const i of gear?.items ?? []) if (i && !i.retiredAt && i.category === 'string') currentString = i;
+  const currentString: GearItem | null = owned ? stringOn(gear, owned) : null;
   return { owned, inPlay, restrings, lastFour, currentString };
 }
 
