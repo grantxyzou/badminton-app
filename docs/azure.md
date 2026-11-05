@@ -150,8 +150,11 @@ Set globally in `next.config.js` `headers()`:
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 - `Strict-Transport-Security: max-age=31536000; includeSubDomains` — `preload`
   is deliberately NOT set (one-way submission; Grant's call)
-- `Content-Security-Policy` with `frame-ancestors 'none'`, `base-uri 'self'`,
-  `object-src 'none'`, `form-action 'self'` (dev adds `unsafe-eval` for HMR)
+The `Content-Security-Policy` is NOT among them since 2026-11-05: `proxy.ts`
+sends it (built by `lib/csp.ts`) with a fresh script nonce per page request,
+which a build-time header cannot carry. It keeps `frame-ancestors 'none'`,
+`base-uri 'self'`, `object-src 'none'`, `form-action 'self'` (dev adds
+`unsafe-eval` for HMR).
 
 `proxy.ts` adds two request guards on every `/api/*` call before any handler:
 a 413 for bodies over 256 KB and a 403 for cross-site non-safe methods.

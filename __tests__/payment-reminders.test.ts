@@ -1,3 +1,4 @@
+import { payloadFor, type PushContent } from '@/lib/push';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const { sendPushToMembers } = vi.hoisted(() => ({
@@ -108,7 +109,10 @@ describe('POST /api/payments/remind', () => {
       const b = seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: ago(3.5) });
       expect(await (await call()).json()).toEqual({ ok: true, reminded: 1, sent: 1, reconcile: null });
       expect(sendPushToMembers).toHaveBeenCalledTimes(1);
-      expect(sendPushToMembers).toHaveBeenCalledWith([lin.id], expect.objectContaining({ body: expect.stringContaining('couple of sessions') }));
+      // The payload is built per reader's language; read it in English.
+      const [ids, content] = sendPushToMembers.mock.calls[0] as unknown as [string[], PushContent];
+      expect(ids).toEqual([lin.id]);
+      expect(payloadFor(content, 'en').body).toContain('couple of sessions');
       expect(row(a.id).remindedAt).toHaveLength(1);
       expect(row(b.id).remindedAt).toHaveLength(1);
 

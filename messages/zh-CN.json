@@ -2834,6 +2834,48 @@
     "switchToDark": "切换到深色模式",
     "previousMonth": "上个月",
     "nextMonth": "下个月",
-    "related": "相关页面"
+    "related": "相关页面",
+    "switchLanguage": "切换到{language}",
+    "languageOffline": "联网后才能切换语言"
+  },
+  "push": {
+    "signupOpen": {
+      "title": "报名开始了",
+      "bodyWhenWhere": "{when}，在{where}。点一下抢个位置。",
+      "bodyWhen": "{when}。点一下抢个位置。",
+      "body": "趁还有名额，点一下报名。"
+    },
+    "waitlistIn": {
+      "title": "你报上了",
+      "bodyDay": "{day}的活动空出一个位置，你已从候补转为正式。去不了的话，在首页取消。",
+      "body": "空出一个位置，你已从候补转为正式。去不了的话，在首页取消。"
+    },
+    "stringing": {
+      "readyTitle": "你的球拍穿好了",
+      "strungTitle": "正在穿线",
+      "readyBody": "{racket} — 可以来取了。",
+      "strungBodyBy": "{racket} 正在穿线，预计 {by} 完成。",
+      "strungBody": "{racket} 正在穿线。",
+      "yourRacket": "你的球拍"
+    },
+    "announcement": {
+      "title": "新公告",
+      "empty": "点开在应用里查看。"
+    },
+    "pendingEdit": {
+      "title": "有改动需要你确认",
+      "body": "{racket} 有改动。打开 %APP_SHORT% 看看。",
+      "yourRacket": "你的球拍"
+    },
+    "assignment": {
+      "title": "有一支球拍要你穿线",
+      "body": "{name} 的 {racket} 交给你了。",
+      "racket": "球拍"
+    },
+    "reminder": {
+      "title": "该结账了",
+      "bodyMany": "你有几次活动还没结账。",
+      "bodyOne": "你有一次活动还没结账。"
+    }
   }
 }

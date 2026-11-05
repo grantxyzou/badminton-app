@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       // member whose phone is still subscribed.
       const recipients = await rosterMemberIds(scope.groupId);
       await recordNotices(scope.groupId, [...recipients], { type: 'announcement', text: announcement.text });
-      await sendPushToMembers([...recipients], buildAnnouncementPayload(announcement));
+      await sendPushToMembers([...recipients], (locale) => buildAnnouncementPayload(announcement, locale));
     } catch (err) {
       console.error('[announcements] push failed (announcement still saved):', err);
     }

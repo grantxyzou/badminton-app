@@ -25,15 +25,12 @@ async function urls() {
   return { racketSrc, racketHeadSrc, racketAvatarSrc, stringPackSrc, assetsCrossOrigin };
 }
 
-type Rule = { source: string; headers: Array<{ key: string; value: string }> };
 async function csp(): Promise<string> {
-  // next.config.js reads the variable when it loads, so load it afresh.
-  const path = require.resolve('../next.config.js');
-  delete require.cache[path];
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const cfg = require(path) as { headers: () => Promise<Rule[]> };
-  const rules = await cfg.headers();
-  return rules.flatMap((r) => r.headers).find((h) => h.key === 'Content-Security-Policy')?.value ?? '';
+  // The policy is built per request now (lib/csp.ts, audit 2026-11-05); it
+  // reads the variable when called.
+  vi.resetModules();
+  const { buildCsp } = await import('../lib/csp');
+  return buildCsp({ dev: false });
 }
 
 describe('where the racket and string pictures come from', () => {

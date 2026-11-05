@@ -2846,6 +2846,48 @@
     "switchToDark": "Switch to dark mode",
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
-    "related": "Related pages"
+    "related": "Related pages",
+    "switchLanguage": "Switch to {language}",
+    "languageOffline": "Language switches when you’re back online"
+  },
+  "push": {
+    "signupOpen": {
+      "title": "Sign-ups are open",
+      "bodyWhenWhere": "{when} at {where}. Tap to grab a spot.",
+      "bodyWhen": "{when}. Tap to grab a spot.",
+      "body": "Tap to grab a spot before it fills up."
+    },
+    "waitlistIn": {
+      "title": "You're in",
+      "bodyDay": "A spot opened for {day}'s session. If you can't make it, cancel from Home.",
+      "body": "A spot opened and you're off the waitlist. If you can't make it, cancel from Home."
+    },
+    "stringing": {
+      "readyTitle": "Your racket is ready",
+      "strungTitle": "On the machine",
+      "readyBody": "{racket} — ready to pick up.",
+      "strungBodyBy": "{racket} is being strung. Ready by {by}.",
+      "strungBody": "{racket} is being strung.",
+      "yourRacket": "Your racket"
+    },
+    "announcement": {
+      "title": "New announcement",
+      "empty": "Tap to read it in the app."
+    },
+    "pendingEdit": {
+      "title": "A change to confirm",
+      "body": "Something changed on {racket}. Open %APP_SHORT% to have a look.",
+      "yourRacket": "your racket"
+    },
+    "assignment": {
+      "title": "A racket for you to string",
+      "body": "{name}'s {racket} is yours.",
+      "racket": "racket"
+    },
+    "reminder": {
+      "title": "Time to settle up",
+      "bodyMany": "You’ve got a couple of sessions to settle up.",
+      "bodyOne": "You’ve got a session to settle up."
+    }
   }
 }

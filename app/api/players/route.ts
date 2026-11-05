@@ -48,6 +48,9 @@ async function reconcileCapacity(
   doc: { id: string; timestamp?: string; [k: string]: unknown },
   maxPlayers: number,
   joinWaitlist: boolean,
+  /** What "full" undoes: a NEW row is deleted; a REJOIN is put back as it was
+   *  (its row holds its history and maybe its bill — never deleted). */
+  undo: () => Promise<unknown> = () => scope.remove('players', doc.id, sessionId),
 ): Promise<'kept' | 'waitlisted' | 'full'> {
   const resources = await scope.query<{ id: string; timestamp?: string }>('players', {
     where: ACTIVE_PLAYERS_WHERE,
@@ -59,7 +62,7 @@ async function reconcileCapacity(
     await scope.upsert('players', { ...doc, waitlisted: true });
     return 'waitlisted';
   }
-  await scope.remove('players', doc.id, sessionId);
+  await undo();
   return 'full';
 }
 
@@ -701,6 +704,27 @@ export async function POST(req: NextRequest) {
       };
       const resource = await scope.upsert('players', restored as typeof restored & { id: string });
 
+      // The same race as a new row (#79): two sign-ups for the last spot can
+      // both pass the check above. A rejoin was never re-counted, so one
+      // racing a new sign-up filled the session past its cap (audit,
+      // 2026-11-05). Past the cap it waits if it asked to, else it goes back
+      // to the cancelled row it was.
+      let restoredWaitlisted = restored.waitlisted;
+      if (!restored.waitlisted) {
+        const outcome = await reconcileCapacity(
+          scope,
+          sessionId,
+          resource as unknown as { id: string; timestamp?: string },
+          maxPlayers,
+          joinWaitlist,
+          () => scope.upsert('players', removedRecord as typeof removedRecord & { id: string }),
+        );
+        if (outcome === 'full') {
+          return NextResponse.json({ error: 'Session is full' }, { status: 409 });
+        }
+        restoredWaitlisted = outcome === 'waitlisted';
+      }
+
       // Update member stats + mirror pinHash for unified admin auth
       if (matchedMember) {
         await membersContainer.items.upsert({
@@ -713,7 +737,10 @@ export async function POST(req: NextRequest) {
 
       // The one-time `deleteToken` is added back on purpose: sign-up is the
       // only response that ever carries it (security rule 1).
-      const out = NextResponse.json({ ...publicPlayer(resource as unknown as Record<string, unknown>), deleteToken }, { status: 201 });
+      const out = NextResponse.json(
+        { ...publicPlayer({ ...(resource as unknown as Record<string, unknown>), waitlisted: restoredWaitlisted }), deleteToken },
+        { status: 201 },
+      );
       if (matchedMember && pinHash && !admin) {
         setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
       }

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { match } from '@formatjs/intl-localematcher';
+import { buildCsp, newNonce } from './lib/csp';
 
 const SUPPORTED_LOCALES = ['en', 'zh-CN'] as const;
 const DEFAULT_LOCALE = 'en';
@@ -159,18 +160,41 @@ export function apiGuards(req: NextRequest): NextResponse | null {
   return null;
 }
 
+/** A non-page response (API, `.well-known`) still carries the policy, nonce-less. */
+function withPolicy(res: NextResponse): NextResponse {
+  res.headers.set('Content-Security-Policy', buildCsp());
+  return res;
+}
+
+/**
+ * A page request: a fresh nonce, handed to Next on the REQUEST (it reads the
+ * nonce from this header and stamps it on its own scripts; `app/layout.tsx`
+ * reads `x-nonce` for the launch screen's) and sent to the browser on the
+ * response. `lib/csp.ts` says why.
+ */
+function pageResponse(req: NextRequest): NextResponse {
+  const nonce = newNonce();
+  const policy = buildCsp({ nonce });
+  const headers = new Headers(req.headers);
+  headers.set('x-nonce', nonce);
+  headers.set('Content-Security-Policy', policy);
+  const res = NextResponse.next({ request: { headers } });
+  res.headers.set('Content-Security-Policy', policy);
+  return res;
+}
+
 export function proxy(req: NextRequest): NextResponse {
   const known = wellKnown(req);
-  if (known) return known;
+  if (known) return withPolicy(known);
 
   if (apiPath(req) !== null) {
     // API responses never carry the locale cookie; the guards are all that
     // runs here.
-    return apiGuards(req) ?? NextResponse.next();
+    return withPolicy(apiGuards(req) ?? NextResponse.next());
   }
 
   if (req.cookies.get(COOKIE_NAME)) {
-    return NextResponse.next();
+    return pageResponse(req);
   }
 
   const accept = req.headers.get('accept-language') ?? '';
@@ -187,7 +211,7 @@ export function proxy(req: NextRequest): NextResponse {
     locale = DEFAULT_LOCALE;
   }
 
-  const res = NextResponse.next();
+  const res = pageResponse(req);
   res.cookies.set({
     name: COOKIE_NAME,
     value: locale,
@@ -202,6 +226,13 @@ export function proxy(req: NextRequest): NextResponse {
 // Run on all user-visible paths AND the API (for `apiGuards`); skip Next
 // internals and static files. `.well-known` is deliberately NOT excluded —
 // the three association files above are answered from here.
+//
+// `'/'` is listed on its own because the pattern after it needs a path segment:
+// built under the `/bpm` basePath it compiles to `^/bpm/…`, so `/bpm` ITSELF —
+// the app's one page — never ran this proxy (found 2026-11-05 by checking the
+// production build's headers). That went unseen while it only skipped the
+// locale cookie; with the page's security policy set here, it would have left
+// the home page with none.
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/', '/((?!_next/static|_next/image|favicon.ico).*)'],
 };

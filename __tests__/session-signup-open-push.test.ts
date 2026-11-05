@@ -63,7 +63,8 @@ describe('PUT /api/session — sign-up-open push trigger', () => {
       expect(res.status).toBe(200);
 
       expect(sendPushToMembers).toHaveBeenCalledTimes(1);
-      const payload = sendPushToMembers.mock.calls[0][1];
+      const content = sendPushToMembers.mock.calls[0][1];
+      const payload = typeof content === 'function' ? content('en') : content;
       expect(payload.title).toBe('Sign-ups are open');
       expect(sessionDoc()?.signupOpenNotifiedAt).toBeTruthy();
       expect(sessionDoc()?.signupOpenedAt).toBeTruthy();

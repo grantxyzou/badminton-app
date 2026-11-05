@@ -48,6 +48,16 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Notifications in your language, and the last spot goes to one person (2026-11-05)
+
+- **Notifications now arrive in the language you read the app in.** Switch to 中文 and the next "sign-ups are open" or "you're in from the waitlist" comes in Chinese on that phone. Session times in them are now Vancouver time; one used to say Friday 4 AM for a Thursday 8 PM session.
+- **Rejoining can no longer take a spot that was already gone.** If you cancelled, then rejoined at the same moment someone else signed up for the last spot, you could both get in. Now one of you does and the other is told the session is full.
+- **The language button says what it does**, in both languages, to a screen reader.
+- **Behind the scenes:**
+  - The page only runs scripts the server marked for that one page load, which shuts the usual door for an injected script.
+  - The home page now runs the same first-visit step every other page did (it had been skipped).
+  - What is left from the November audit, and who each item waits on, is in `docs/plans/audit-followups.md`.
+
 ### The app's sign-in stays on your phone, and the safety notes are right (2026-11-05)
 
 - **Moving from the web app to the store app now asks first.** The "Move to the app" link used to sign the app in the moment it opened. Someone could send you their own link, and your app would quietly become their account. Now it asks you to confirm, and says who would be signed out.

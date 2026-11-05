@@ -1,3 +1,4 @@
+import type { PushContent } from '@/lib/push';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PATCH } from '../app/api/stringing/jobs/[id]/route';
 import {
@@ -109,7 +110,8 @@ describe('a stringer hears when a job is assigned to them', () => {
     const job = await seedJob();
     expect((await patch(job, { stringerId: 'm-zach' })).status).toBe(200);
     expect(sendPushToMembers).toHaveBeenCalledTimes(1);
-    const [ids, payload] = sendPushToMembers.mock.calls[0];
+    const [ids, content] = sendPushToMembers.mock.calls[0] as unknown as [string[], PushContent];
+    const payload = typeof content === 'function' ? content('en') : content;
     expect(ids).toEqual(['m-zach']);
     expect(payload.body).toContain('Astrox 99 Pro');
     expect(payload.body).toContain('Wei');
