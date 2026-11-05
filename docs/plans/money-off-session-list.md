@@ -1,8 +1,8 @@
 # A session list for clubs with money off
 
 **Track:** multi-group critical path — "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). Six Feathers (`docs/plans/six-feathers-onboarding.md`) is the club, and it runs with money off.
-**Status:** intent — waiting on Grant's choice between Option A and Option B (Decisions)
-**Review on:** 2026-11-19 — has Grant picked A or B? If not, and Six Feathers has not run a Saturday, park this until the Six Feathers review (2026-11-30).
+**Status:** in-flight — Option B built 2026-11-05 (Decisions); shipped once merged
+**Review on:** 2026-11-30 — has Six Feathers run a Saturday, and did its organiser use the list (remove, move, restore, read a late cancel)? If two Saturdays ran and nobody opened it, remove it (Kill criterion).
 
 ## Problem
 
@@ -29,9 +29,9 @@ Checked against every admin call site of `/api/players` on 2026-11-05.
 
 Put simply, today's set-up is like a restaurant that took the tables off the floor plan because it stopped printing bills. The host can still read the reservation book on Home, but cannot seat, move or cross anyone off.
 
-### A server detail either option runs into
+### A server detail, checked and left alone
 
-A hand promotion (`PATCH { waitlisted: false }` in `app/api/players/route.ts`) clears `heldForUnpaid` but leaves `waitingForMembers: true` on the row. The automatic promotion clears both (`lib/waitlistPromote.ts`). It does no harm today, because every reader also checks `waitlisted === true`. Once an organiser can move a row back to the waitlist, a person promoted by hand and then sent back would carry the stale flag and be skipped by auto-promote while the members-first window runs. The fix is one line beside the `heldForUnpaid` clear, and it belongs in the same PR as any "Move to waitlist" button.
+A hand promotion (`PATCH { waitlisted: false }` in `app/api/players/route.ts`) clears `heldForUnpaid` and leaves `waitingForMembers: true` on the row; the automatic promotion clears both (`lib/waitlistPromote.ts`). The first draft of this plan called that a stale flag to clear. **It was wrong** (see Decisions): the flag is what keeps a drop-in the organiser moves BACK behind the members while the window runs.
 
 ## Kill criterion
 
@@ -81,16 +81,13 @@ A new card, rendered only in the money-off branch, directly below `NextSessionCa
 
 ### Both options
 
-- The one-line server fix above, if "Move to waitlist" ships.
 - Moving a row back to the waitlist does **not** promote anyone, as today (`docs/plans/waitlist-auto-promote.md`: never on an admin's move back). The sheet should say so ("Nobody moves up").
 - English only, like every admin surface.
 - `verify-ui` on the seeded `six-feathers` scenario (`SEED_DEV_SCENARIO=six-feathers`, organiser Chong Wei / 1357), at a phone width, before claiming it works.
 
 ## Questions for Grant
 
-1. **A or B?** I recommend B: the promise that money is off holds by construction, and the list is in the order the club reads it.
-2. **Include "Move to waitlist"?** It exists nowhere today, so it is a new action, not a restored one. I recommend including it with the server fix, since the request names it and the chat shows it is how Six Feathers corrects mistakes.
-3. **Should past sessions wait for a `later` issue?** I recommend yes.
+Answered 2026-11-05: B, with "Move to waitlist". Past sessions was not answered and stays a non-goal, as recommended.
 
 <!--
 Everything above is written BEFORE the work and is the gate for starting it.
@@ -99,17 +96,21 @@ Everything below is appended AS the work proceeds.
 
 ## Decisions
 
-_None yet. Waiting on the three questions above._
+- **Option B** (Grant, 2026-11-05: "Go with B, include move to waitlist"). A new `SessionListCard` under the session card, in the money-off branch only, over a money mode inside `PaymentsCard`: the card's row type has no money field, so the promise that money is off holds by construction.
+- **"Move to the waitlist" ships, and moving back promotes nobody.** The row returns to its place by sign-up time, which is usually the FRONT of the line, so the next freed spot goes back to them unless the organiser promotes someone else first. The sheet says so ("They wait in line by when they signed up").
+- **No server change** (2026-11-05, while building). The plan proposed clearing `waitingForMembers` on a hand promotion. Tracing `planPromotions` showed that would be a regression: the automatic promotion only takes a flagged row once the window has closed, so clearing it there is harmless, but clearing it on a HAND promotion would let a drop-in the organiser moves back take the next freed spot ahead of a member. The flag left on the row means "not a member", which stays true. `__tests__/group-members-first.test.ts` pins it.
+- **The list is folded behind one line** ("32 of 32 in · 3 waiting", then Show), as Home folds the same list. Open, Six Feathers' 35 rows stood 1,574px in the middle of the console (verify-ui, the six-feathers seed, 430px); folded, the card is 178px and the line carries the counts. The cancelled rows fold the same way, with the late count on their line ("2 cancelled · 1 late").
+- **Removal is by NAME, as `PaymentsCard` sends it.** `DELETE` is the path that stamps `removedAt`, marks the row removed by an admin, takes a host's guest along and hands the spot on; `PATCH { removed: true }` targets by id but stamps no `removedAt`, so the cancelled list could not say when.
+- **Recovery code and Clear PIN are left to the Roster page**, as the Non-goals say; the sheet offers move, remove and, on a guest, the invite.
+- **The per-row calls are one copy**, `lib/sessionRowActions.ts`, and `PaymentsCard` now sends its add, promote, restore and remove through it. Its cover-and-remove intercept stays in the card and runs before the call.
 
 ## Shape
-
-Proposed, for Option B:
 
 | Piece | File |
 |---|---|
 | The money-off branch renders the list | `components/admin/CommandCenter/CommandCenter.tsx` |
-| The list card | `components/admin/CommandCenter/SessionListCard.tsx` (new) |
-| Shared row calls (add, remove, promote, demote, restore) | `lib/sessionRowActions.ts` (new); `PaymentsCard.tsx` switches to it |
-| Clear `waitingForMembers` on a hand promote | `app/api/players/route.ts` |
-| Measured skeleton height | `components/primitives/CardSkeleton.tsx` (`CONSOLE_HEIGHTS`) |
-| Tests | `__tests__/components/SessionListCard.test.tsx`, plus a case in the players PATCH tests |
+| The list card | `components/admin/CommandCenter/SessionListCard.tsx` |
+| The pressable roster row | `app/globals.css` (`.roster-row--action`, beside Home's `.roster-row`) |
+| Shared row calls (add, remove, promote, move back, restore) | `lib/sessionRowActions.ts`; `PaymentsCard.tsx` sends through it |
+| Measured skeleton height | `components/primitives/CardSkeleton.tsx` (`CONSOLE_HEIGHTS.sessionList`) |
+| Tests | `__tests__/components/SessionListCard.test.tsx` (order, numbering, no money, fold, each action's body, failure vs empty), `__tests__/components/CommandCenter.moneyOff.test.tsx` (which card each club gets), `__tests__/group-members-first.test.ts` (a drop-in moved back waits behind a member) |

@@ -9,6 +9,7 @@ import { isFlagOn } from '@/lib/flags';
 import AccessRequestsCard from './AccessRequestsCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
+import SessionListCard from './SessionListCard';
 import NeedsYouCard from './NeedsYouCard';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import SettingsList, { type SettingsRow } from '@/components/profile/SettingsList';
@@ -331,7 +332,10 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
           2026-11-04: "to save vertical space"; a side-scrolling rail was
           tried first and stood as tall as the taller card). Both stay
           mounted, so switching reads nothing; the one not showing is
-          `hidden`. With money off there is no toggle, only the session. */}
+          `hidden`. With money off there is no toggle: the session, then the
+          week's list without money (SessionListCard,
+          docs/plans/money-off-session-list.md), because Payments was the
+          only admin list of who signed up. */}
       <div className="cc-week-head">
         <ProfileEyebrow>This week</ProfileEyebrow>
         {!moneyOff && (
@@ -362,6 +366,11 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       />
       </RevealSlot>
       </div>
+      {moneyOff && (
+        <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.sessionList} />}>
+          <SessionListCard refreshKey={composedRefresh} onChanged={() => setLocalRefresh((n) => n + 1)} />
+        </RevealSlot>
+      )}
       {!moneyOff && (
         <div hidden={weekView !== 'payments'}>
         <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>

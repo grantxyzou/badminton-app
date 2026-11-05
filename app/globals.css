@@ -3264,6 +3264,19 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 }
 .roster-row__kudos:active { transform: scale(0.94); }
 .roster-waitlist-label { margin: var(--space-3) 0 var(--space-1) var(--space-3); }
+/* The organiser's copy of the list (SessionListCard, money-off clubs): the
+   same row as Home's, pressable as a whole to open its actions. A list row
+   flashes --press-bg under a finger (the Press recipe). */
+.roster-row--action {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-press) ease-out;
+}
+.roster-row--action:active { background: var(--press-bg); }
+.roster-row__more { color: var(--text-muted); }
 .status-celebrate .icon-status {
   animation: signupIconPop 420ms var(--ease-glass) both;
 }

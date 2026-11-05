@@ -90,6 +90,10 @@ export const CONSOLE_HEIGHTS = {
   // Re-measured 2026-10-20 at 430px after the redesign: hero block, two
   // still-owed rows, a paid-chips row and the add field (4 players, 2 owing).
   payments: 541,
+  // The money-off club's list (SessionListCard), folded: header, the
+  // "32 of 32 in · 3 waiting" line and the add field, no cancellations
+  // (measured 2026-11-05, 430px, the six-feathers seed).
+  sessionList: 178,
   invite: 343,
   // The grouped lists (People / Money / Club / More, eyebrows included) since
   // the admin regroup, plus the Sign-in readiness and E-transfers rows that
