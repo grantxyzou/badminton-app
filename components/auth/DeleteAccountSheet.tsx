@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import { clearIdentity } from '@/lib/identity';
+import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -68,6 +69,10 @@ export default function DeleteAccountSheet({
          for an account that no longer exists, and Home would offer to sign a
          ghost up for next week. */
       clearIdentity();
+      // And what the phone shows OUTSIDE the app — the icon badge, the
+      // long-press menu, the widgets' pass — as signing out does (audit,
+      // 2026-11-05). Bounded by its own timeout, so it never holds the sheet.
+      await clearDeviceTraces();
       onDeleted();
       onClose();
     } catch {

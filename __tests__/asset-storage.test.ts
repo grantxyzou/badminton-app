@@ -17,23 +17,20 @@ afterEach(() => {
 
 async function urls() {
   vi.resetModules();
-  const [{ racketSrc, racketHeadSrc }, { stringPackSrc }, { assetsCrossOrigin }] = await Promise.all([
+  const [{ racketSrc, racketHeadSrc, racketAvatarSrc }, { stringPackSrc }, { assetsCrossOrigin }] = await Promise.all([
     import('../lib/racketLook'),
     import('../lib/stringPackSrc'),
     import('../lib/assetUrl'),
   ]);
-  return { racketSrc, racketHeadSrc, stringPackSrc, assetsCrossOrigin };
+  return { racketSrc, racketHeadSrc, racketAvatarSrc, stringPackSrc, assetsCrossOrigin };
 }
 
-type Rule = { source: string; headers: Array<{ key: string; value: string }> };
 async function csp(): Promise<string> {
-  // next.config.js reads the variable when it loads, so load it afresh.
-  const path = require.resolve('../next.config.js');
-  delete require.cache[path];
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const cfg = require(path) as { headers: () => Promise<Rule[]> };
-  const rules = await cfg.headers();
-  return rules.flatMap((r) => r.headers).find((h) => h.key === 'Content-Security-Policy')?.value ?? '';
+  // The policy is built per request now (lib/csp.ts, audit 2026-11-05); it
+  // reads the variable when called.
+  vi.resetModules();
+  const { buildCsp } = await import('../lib/csp');
+  return buildCsp({ dev: false });
 }
 
 describe('where the racket and string pictures come from', () => {
@@ -42,6 +39,7 @@ describe('where the racket and string pictures come from', () => {
     const u = await urls();
     expect(u.racketSrc('racket-li-ning-halbertec-9000')).toMatch(/^(\/bpm)?\/rackets\/racket-li-ning-halbertec-9000\.webp$/);
     expect(u.racketHeadSrc(null)).toMatch(/^(\/bpm)?\/rackets\/head\/_default\.webp$/);
+    expect(u.racketAvatarSrc(null)).toMatch(/^(\/bpm)?\/rackets\/avatar\/_default\.webp$/);
     expect(u.stringPackSrc('string-yx-bg80')).toMatch(/^(\/bpm)?\/strings\/string-yx-bg80\.webp$/);
     expect(u.assetsCrossOrigin()).toBe(false);
   });
@@ -51,6 +49,8 @@ describe('where the racket and string pictures come from', () => {
     const u = await urls();
     expect(u.racketSrc('racket-li-ning-halbertec-9000')).toBe('https://bpmassets.blob.core.windows.net/public/rackets/racket-li-ning-halbertec-9000.webp');
     expect(u.racketHeadSrc('racket-li-ning-halbertec-9000')).toBe('https://bpmassets.blob.core.windows.net/public/rackets/head/racket-li-ning-halbertec-9000.webp');
+    // The roster avatars (public/rackets/avatar/) ride in the same upload: upload.sh sends all of rackets/.
+    expect(u.racketAvatarSrc('racket-li-ning-halbertec-9000')).toBe('https://bpmassets.blob.core.windows.net/public/rackets/avatar/racket-li-ning-halbertec-9000.webp');
     expect(u.stringPackSrc('string-yx-bg80')).toBe('https://bpmassets.blob.core.windows.net/public/strings/string-yx-bg80.webp');
     expect(u.stringPackSrc('string-nobody-makes')).toBeNull();
     expect(u.assetsCrossOrigin()).toBe(true);

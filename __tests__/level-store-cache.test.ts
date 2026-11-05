@@ -57,7 +57,7 @@ describe('level store calibration cache', () => {
     try {
       await getCanonicalLevel(subject, 'bpm');
       for (let i = 0; i < 10; i++) seedGame('session-2026-09-24', 'Lin', 'Viktor', `2026-09-24T${String(10 + i)}:00:00Z`);
-      vi.advanceTimersByTime(31_000);
+      vi.advanceTimersByTime(10 * 60_000 + 1_000);
       const after = await getCanonicalLevel(subject, 'bpm');
       expect(after.basis.game).not.toBeNull();
     } finally {

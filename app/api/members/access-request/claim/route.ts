@@ -17,7 +17,7 @@ import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { setMemberCookie } from '@/lib/auth';
 import type { Member } from '@/lib/types';
 import { groupIdWithHint } from '@/lib/groupContext';
-import { resolveClaimLink } from '@/lib/claimLinks';
+import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
 import { collectJoinRequest } from '@/lib/joinRequests';
 
 export const dynamic = 'force-dynamic';
@@ -128,10 +128,16 @@ export async function POST(req: NextRequest) {
        * Conditioned on the etag: if two claims race, only the one whose entry
        * is still there when it writes gets a session.
        */
-      const burned = await updateAccessRequests(memberId, (open) =>
-        open.some((r) => r.id === mine.id && typeof r.approvedAt === 'number') ? [] : null,
-      );
-      if (!burned) return NextResponse.json({ status: 'none' });
+      // A link ask stands only while the name is still unclaimed: if its owner
+      // set a PIN, a password or a provider after the approval, the asks are
+      // burned and nobody is signed in (audit, 2026-11-05).
+      let claimedSince = false;
+      const burned = await updateAccessRequests(memberId, (open, fresh) => {
+        if (!open.some((r) => r.id === mine.id && typeof r.approvedAt === 'number')) return null;
+        if (mine.via === 'link' && !isUnclaimed(fresh)) claimedSince = true;
+        return [];
+      });
+      if (!burned || claimedSince) return NextResponse.json({ status: 'none' });
 
       const res = NextResponse.json({
         status: 'approved',

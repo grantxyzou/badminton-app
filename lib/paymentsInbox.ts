@@ -22,6 +22,7 @@ import { defaultMaxPlayers } from './defaults';
 import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
 import { parseInteracEmail, type RawInteracEmail } from './etransferParse';
+import { clubPayTo } from './payTo';
 import { decideMatch, allocateAmount, type MatchCandidate } from './etransferMatch';
 import { computeOwed, computeOwedForRoster, owedLines, settledLines, type OwedLine, type RosterOwed, type UnpaidSession } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
@@ -209,6 +210,24 @@ export async function applyAllocations(
   return landed;
 }
 
+const EMAIL = /[^\s<>@,;"]+@[^\s<>@,;"]+/g;
+
+/**
+ * True when the script said who the email was addressed to and it was
+ * neither the Gmail the script runs in nor the club's pay-to address. False
+ * when there is nothing to compare: an older script, or no known address.
+ */
+export async function addressedElsewhere(groupId: string, raw: RawInteracEmail): Promise<boolean> {
+  if (typeof raw.to !== 'string') return false;
+  const to = new Set((raw.to.match(EMAIL) ?? []).map((a) => a.toLowerCase()));
+  const club = (await clubPayTo(groupId))?.email;
+  const ours = [raw.owner, club]
+    .filter((a): a is string => typeof a === 'string' && a.includes('@'))
+    .map((a) => a.trim().toLowerCase());
+  if (ours.length === 0) return false;
+  return !ours.some((a) => to.has(a));
+}
+
 export interface IngestResult {
   id: string;
   status: EtransferPayment['status'];
@@ -218,18 +237,31 @@ export interface IngestResult {
 export async function ingestEmail(groupId: string, raw: RawInteracEmail): Promise<IngestResult> {
   await ensurePayments();
   const scope = groupScope(groupId);
-  const parsed = parseInteracEmail(raw);
+  const parsedRaw = parseInteracEmail(raw);
+  // Sent to someone else? Then Google's verdict on the sender proves nothing
+  // about THIS club's money: it is a review, never an auto-match, and it may
+  // not claim a reference id either (below).
+  const parsed = parsedRaw.authenticated && (await addressedElsewhere(groupId, raw))
+    ? { ...parsedRaw, authenticated: false }
+    : parsedRaw;
   // Interac's reference when the email carries one (it does — verified on a
   // real notification), so two notices about ONE transfer are one payment.
   // Only an AUTHENTICATED email may claim a reference: a forged one could
   // otherwise squat a real transfer's id before the real email arrives.
-  const id =
+  // Per CLUB (bare for BPM, whose ids stay as they were): `payments` is keyed
+  // by id across the whole deployment, so one club's doc for a transfer must
+  // not answer 409 to another's (audit, 2026-11-05).
+  const bareId =
     parsed.referenceNumber && parsed.authenticated
       ? `etx:${sha256(`ref:${parsed.referenceNumber}`)}`
       : `etx:${sha256(raw.messageId)}`;
+  const id = groupDocId(groupId, bareId);
 
-  const existing = await scope.read<EtransferPayment>('payments', id);
-  if (existing) return { id, status: existing.status, duplicate: true };
+  // A club's doc written before the prefix still answers for its email.
+  const existing =
+    (await scope.read<EtransferPayment>('payments', id)) ??
+    (id !== bareId ? await scope.read<EtransferPayment>('payments', bareId) : undefined);
+  if (existing) return { id: existing.id, status: existing.status, duplicate: true };
 
   const candidates = parsed.kind === 'received' ? await candidatesFor(scope, parsed.senderName, parsed.memo) : [];
   const decision = decideMatch({
@@ -514,8 +546,15 @@ export async function signupHeldForUnpaid(scope: GroupScope, memberId: string): 
  * "I've sent it" gets the benefit of the doubt until the money is matched —
  * otherwise a slow match would hold exactly the people who paid.
  */
-/** The lines that count toward the hold: settled, and not self-reported. One rule for the sign-up and the preview. */
-export const heldLines = (sessions: UnpaidSession[]): number => sessions.filter((s) => s.settled && !s.selfReported).length;
+/**
+ * The SESSIONS that count toward the hold: settled, and not self-reported. One
+ * rule for the sign-up and the preview. Counted by session, not by line: a
+ * guest's share is a second line on the host's balance for the SAME night, and
+ * counting lines held a host after one unpaid session with a plus-one (audit,
+ * 2026-11-05) — the threshold is "owes for N sessions".
+ */
+export const heldLines = (sessions: UnpaidSession[]): number =>
+  new Set(sessions.filter((s) => s.settled && !s.selfReported).map((s) => s.sessionId)).size;
 
 export async function holdCount(scope: GroupScope, memberId: string): Promise<number> {
   const identity = await resolveIdentity({ memberId }, scope.groupId);

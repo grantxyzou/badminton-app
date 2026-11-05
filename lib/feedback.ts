@@ -25,6 +25,8 @@ export interface FeedbackDoc {
   kind: typeof FEEDBACK_KIND;
   message: string;
   name?: string;
+  /** Who sent it, when signed in (additive, 2026-11-05) — what deletion finds it by. */
+  memberId?: string;
   tab?: string;
   url?: string;
   createdAt: string;
@@ -65,7 +67,7 @@ export async function readFeedbackSince(since: string): Promise<Row[]> {
  * submitting IP, both personal data; the text is operational and stays.
  * Returns the count rewritten.
  */
-export async function anonymizeFeedbackRows(name: string, tombstone: string): Promise<number> {
+export async function anonymizeFeedbackRows(name: string, tombstone: string, memberId = ''): Promise<number> {
   const lower = name.trim().toLowerCase();
   await ensureContainer(FEEDBACK_HOME, '/id');
   const home = getContainer(FEEDBACK_HOME);
@@ -75,9 +77,12 @@ export async function anonymizeFeedbackRows(name: string, tombstone: string): Pr
       parameters: [{ name: '@name', value: lower }],
     })
     .fetchAll();
+  // A report signed by another member's id is theirs, whatever name it gives
+  // (audit, 2026-11-05); one that names nobody's id goes by the name.
+  const theirs = (r: Row) => !r.memberId || r.memberId === memberId;
   let count = 0;
-  for (const row of (resources ?? []).filter((r) => isFeedback(r) && typeof r.name === 'string' && r.name.trim().toLowerCase() === lower)) {
-    const { ip: _ip, ...rest } = row;
+  for (const row of (resources ?? []).filter((r) => isFeedback(r) && theirs(r) && typeof r.name === 'string' && r.name.trim().toLowerCase() === lower)) {
+    const { ip: _ip, memberId: _m, ...rest } = row;
     await home.items.upsert({ ...rest, name: tombstone });
     count += 1;
   }

@@ -182,3 +182,31 @@ describe('groups off: the Member copy is the cutoff', () => {
     expect((await ME_DELETE(bpmReq('DELETE', 'members/me', { confirm: true }))).status).toBe(401);
   });
 });
+
+describe('a cutoff in ANOTHER club than the cookie names (audit, 2026-11-05)', () => {
+  // Lin is in club-x (the cookie's club) and in club-y. Club-y signs Lin out;
+  // club-x does not. The live check reads only club-x's cutoff, so both doors
+  // that hand back a club-y cookie have to read club-y's.
+  beforeEach(() => {
+    seedGroup('clubyy', { ownerMemberId: ADMIN_MEMBER_ID, name: 'Late Smashers' });
+    seedMembership('clubyy', lin.id, { name: 'Lin' });
+  });
+  const linY = () => ((getStore()['memberships'] ?? []) as Row[]).find((m) => m.id === `clubyy:${lin.id}`)!;
+
+  it('switch refuses a club whose own cutoff is newer than the cookie', async () => {
+    signOutAt(-120, linY());
+    expect((await SWITCH_GROUP(req('POST', 'groups/switch', { groupId: 'clubyy' }))).status).toBe(200);
+    signOutAt(0, linY());
+    expect((await SWITCH_GROUP(req('POST', 'groups/switch', { groupId: 'clubyy' }))).status).toBe(401);
+  });
+
+  it('a "welcome back" join refuses it too, and leaves the invite for its owner', async () => {
+    const { mintInvite } = await import('@/lib/invites');
+    signOutAt(0, linY());
+    const invite = await mintInvite('clubyy', ADMIN_MEMBER_ID);
+    const res = await JOIN_GROUP(req('POST', 'groups/join', { token: invite!.token }));
+    expect(res.status).toBe(401);
+    const { resolveInvite } = await import('@/lib/invites');
+    expect(await resolveInvite(invite!.token, 'invite')).not.toBeNull();
+  });
+});

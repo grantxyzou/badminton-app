@@ -24,8 +24,9 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isFlagOn } from '@/lib/flags';
-import { BPM_GROUP_ID } from '@/lib/groupScope';
-import { readMembership, readGroupAdmin } from '@/lib/groups';
+import { BPM_GROUP_ID, groupScope } from '@/lib/groupScope';
+import { readMembership, readGroupAdmin, nameReservationId } from '@/lib/groups';
+import type { NameReservation } from '@/lib/types';
 import type { Member, MembershipRole } from '@/lib/types';
 /** Server-read: while off, every claim reads as BPM and memberships are not consulted. */
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
@@ -383,6 +384,18 @@ export function verifyMemberAuth(req: NextRequest): MemberSession | null {
 }
 
 /**
+ * When this device's `member_session` was minted (seconds), or undefined.
+ * For a route that hands the session into ANOTHER club than the one the
+ * cookie names: the live check read only the named club's "Sign out
+ * everywhere" cutoff, and the other club's has to be compared too.
+ */
+export function memberSessionIssuedAt(req: NextRequest): number | undefined {
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return undefined;
+  return verifyToken(cookie, 'member')?.iat;
+}
+
+/**
  * The member id of whoever is signed in on this device, from EITHER cookie:
  * the `member_session` if there is one, else the `admin_session` (re-read, so
  * a demoted or removed admin is nobody). `null` is anonymous.
@@ -731,14 +744,52 @@ function claimsDisagree(req: NextRequest, admin: SessionPayload): boolean {
  * Read-only by contract: uses the cheap sync `isAdminAuthed` (no Cosmos
  * round-trip). Mutating routes must use `isAdminAuthedWithMember` instead.
  *
- * Name comparison is trim + lowercase on BOTH sides. Every current call site
- * already parses `name` with `.trim()`, so this is a no-op for them; it exists
- * so a future caller passing a raw query value can't be silently denied.
+ * Groups off, the name comparison is trim + lowercase on BOTH sides; groups
+ * on, it is the club's reservation for the name (`nameOwnership`, below).
  */
-export function ownsNameOrAdmin(req: NextRequest, name: string): boolean {
+export async function ownsNameOrAdmin(req: NextRequest, name: string): Promise<boolean> {
+  return (await nameOwnership(req, name)).allowed;
+}
+
+/**
+ * `ownsNameOrAdmin` with the answer a route keys its read on: whether the
+ * caller may read `name`, and the caller's own member id when `name` IS them.
+ *
+ * WITH GROUPS ON, A NAME IS NOT A PERSON (audit, 2026-11-05). The cookie
+ * carries the ACCOUNT name; the app asks about the CLUB's name for the person
+ * (`requireGroupMember` hands the shell the roster name). Comparing the two
+ * strings went wrong both ways: an account called "Lin" whose club calls her
+ * "Lin W" (another Lin was there first) was refused her own balance, and
+ * asking about "Lin" read the OTHER Lin's. So with groups on the name is
+ * resolved in the cookie's club — one point read of its reservation, which
+ * exists exactly while the name is held — and compared by member id. Groups
+ * off there is one club and one name per person, and the string compare
+ * stands.
+ */
+export async function nameOwnership(
+  req: NextRequest,
+  name: string,
+): Promise<{ allowed: boolean; selfMemberId: string | null }> {
   const member = verifyMemberAuth(req);
-  const ownsName = member?.name?.trim().toLowerCase() === name.trim().toLowerCase();
-  return ownsName || isAdminAuthed(req);
+  let self: string | null = null;
+  if (member) {
+    const asked = name.trim();
+    if (groupsOn()) {
+      try {
+        const held = await groupScope(member.groupId).read<NameReservation>(
+          'memberships',
+          nameReservationId(member.groupId, asked),
+          member.groupId,
+        );
+        if (held && held.kind === 'name' && held.memberId === member.memberId) self = member.memberId;
+      } catch {
+        self = null; // unknown is not "yours": an admin may still pass below
+      }
+    } else if (member.name?.trim().toLowerCase() === asked.toLowerCase()) {
+      self = member.memberId;
+    }
+  }
+  return { allowed: self !== null || isAdminAuthed(req), selfMemberId: self };
 }
 
 /**

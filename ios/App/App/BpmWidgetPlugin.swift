@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Capacitor
 import WidgetKit
 
@@ -28,6 +29,12 @@ public class BpmWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
     static let expiresKey = "widget.expiresAt"
     static let baseUrlKey = "widget.baseUrl"
     static let snapshotKey = "widget.snapshot"
+    /// The device the pass was saved on (`identifierForVendor`). An iCloud or
+    /// computer backup restored onto ANOTHER phone carries the App Group with
+    /// it, and a sixty-day pass with it; that phone has a different vendor id,
+    /// so `BPMWidgetStore.token` ignores the copy and the widget stays dark
+    /// until the app is opened and mints its own (audit, 2026-11-05).
+    static let deviceKey = "widget.device"
     /// The score widget's game (BPMScoreWidget.swift `ScoreStore`): cleared on
     /// sign-out with the rest, and the parked game dropped once Add a game
     /// has logged it.
@@ -38,13 +45,24 @@ public class BpmWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var store: UserDefaults? { UserDefaults(suiteName: Self.appGroup) }
 
-    /// https anywhere, or plain http on localhost ITSELF — parsed, never a
-    /// string prefix: `http://localhost.example.com` starts with
-    /// `http://localhost` and is somebody else's server.
+    /// The app's own hosts over https, or plain http on localhost ITSELF —
+    /// parsed, never a string prefix: `http://localhost.example.com` starts
+    /// with `http://localhost` and is somebody else's server. It was "https
+    /// anywhere" until 2026-11-05 (audit): the pass is a credential, and only
+    /// the app's own server should ever be handed one. `motioncraft-bpm.com`
+    /// is the domain the app is moving to, allowed ahead so the move does not
+    /// switch widgets off until the next store build. The Java twin
+    /// (`BpmWidgetPlugin.java`) holds the same list, and
+    /// `__tests__/native-shell-projects.test.ts` pins both to
+    /// `capacitor.config.ts`'s server host.
+    static let allowedHosts: Set<String> = ["bpm.grantzou.com", "vnext-badminton-app.azurewebsites.net", "motioncraft-bpm.com"]
+    static let allowedHostSuffix = ".motioncraft-bpm.com"
+
     static func isAllowedBaseUrl(_ raw: String) -> Bool {
-        guard let url = URL(string: raw), let scheme = url.scheme?.lowercased() else { return false }
-        if scheme == "https" { return true }
-        return scheme == "http" && url.host?.lowercased() == "localhost"
+        guard let url = URL(string: raw), let scheme = url.scheme?.lowercased(),
+              let host = url.host?.lowercased() else { return false }
+        if scheme == "https" { return allowedHosts.contains(host) || host.hasSuffix(allowedHostSuffix) }
+        return scheme == "http" && host == "localhost"
     }
 
     @objc func setSession(_ call: CAPPluginCall) {
@@ -66,13 +84,14 @@ public class BpmWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
         store.set(token, forKey: Self.tokenKey)
         store.set(call.getString("expiresAt") ?? "", forKey: Self.expiresKey)
         store.set(baseUrl, forKey: Self.baseUrlKey)
+        store.set(UIDevice.current.identifierForVendor?.uuidString ?? "", forKey: Self.deviceKey)
         Self.reloadTimelines()
         call.resolve()
     }
 
     @objc func clear(_ call: CAPPluginCall) {
         if let store = store {
-            for key in [Self.tokenKey, Self.expiresKey, Self.baseUrlKey, Self.snapshotKey] + Self.scoreKeys {
+            for key in [Self.tokenKey, Self.expiresKey, Self.baseUrlKey, Self.deviceKey, Self.snapshotKey] + Self.scoreKeys {
                 store.removeObject(forKey: key)
             }
         }

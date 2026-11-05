@@ -41,12 +41,10 @@ function range(item: CatalogItem): [number, number] | null {
 }
 
 async function catalogItem(id: string, category: 'string' | 'racket'): Promise<CatalogItem | null> {
-  const { resources } = await getContainer('equipmentCatalog').items.query({
-    query: 'SELECT * FROM c WHERE c.id = @id AND c.category = @category',
-    parameters: [{ name: '@id', value: id }, { name: '@category', value: category }],
-  }).fetchAll();
-  // Re-checked in JS: the mock store filters by parameter name only.
-  return (resources as CatalogItem[]).find((r) => r.id === id && r.category === category) ?? null;
+  // A POINT READ (the container's key is `/category`): it was a query over every
+  // partition for one known row (audit, 2026-11-05).
+  const { resource } = await getContainer('equipmentCatalog').item(id, category).read<CatalogItem>();
+  return resource && resource.id === id && resource.category === category ? resource : null;
 }
 
 export async function GET(req: NextRequest) {

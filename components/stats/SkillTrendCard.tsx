@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
+import SheetCloseButton from '@/components/BottomSheet/SheetCloseButton';
 import { useSkillText } from '@/lib/useSkillText';
 import { useActiveName } from '@/lib/useActiveName';
 import DimensionBars from './DimensionBars';
@@ -330,6 +331,7 @@ function SkillList({
 
 function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; value: number; onClose: () => void }) {
   const skillText = useSkillText();
+  const t = useTranslations('stats');
   const skill = SKILL_BY_KEY.get(skillKey);
   if (!skill) return null;
   return (
@@ -347,13 +349,9 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
       >
         <BottomSheetHeader>
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{skillText.label(skill.key)}</h2>
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center rounded-full"
-            style={{ width: 32, height: 32, background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}
-          >
-            <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>close</span>
-          </button>
+          {/* The shared ✕: a hand-rolled one here had no name, so a screen
+              reader read the icon's ligature, "close", in English. */}
+          <SheetCloseButton onClose={onClose} label={t('assess.close')} />
         </BottomSheetHeader>
         <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(var(--space-8), env(safe-area-inset-bottom))' }}>
           <div className="space-y-2">

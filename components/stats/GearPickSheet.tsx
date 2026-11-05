@@ -376,13 +376,15 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     <>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('formatLabel')}</p>
-        <div className="segment-control flex" role="tablist" aria-label={t('formatLabel')}>
+        {/* A choice of one, so radios (as FitProfilePage asks it): a tablist
+            promised tab panels that do not exist (audit, 2026-11-05). */}
+        <div className="segment-control flex" role="radiogroup" aria-label={t('formatLabel')}>
           {(['doubles', 'singles', 'both'] as const).map((f) => (
             <button
               key={f}
               type="button"
-              role="tab"
-              aria-selected={playFormat === f}
+              role="radio"
+              aria-checked={playFormat === f}
               disabled={gear.busy}
               className={`flex-1 flex items-center justify-center fs-sm ${playFormat === f ? 'segment-tab-active' : 'segment-tab-inactive'}`}
               onClick={() => setPref({ playFormat: f })}
@@ -395,7 +397,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('budgetLabel')}</p>
-        <div className="segment-control flex" role="tablist" aria-label={t('budgetLabel')}>
+        <div className="segment-control flex" role="radiogroup" aria-label={t('budgetLabel')}>
           {([
             [100, 'budget_100'],
             [200, 'budget_200'],
@@ -405,8 +407,8 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
             <button
               key={key}
               type="button"
-              role="tab"
-              aria-selected={budgetMaxCad === band}
+              role="radio"
+              aria-checked={budgetMaxCad === band}
               disabled={gear.busy}
               className={`flex-1 flex items-center justify-center fs-sm ${budgetMaxCad === band ? 'segment-tab-active' : 'segment-tab-inactive'}`}
               onClick={() => setPref({ budgetMaxCad: band })}

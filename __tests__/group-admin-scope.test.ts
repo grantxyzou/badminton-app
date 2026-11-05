@@ -16,6 +16,8 @@ import {
 import { isAdminAuthed, isAdminAuthedWithMember } from '@/lib/auth';
 import { PATCH as patchMember, DELETE as deleteMember } from '@/app/api/members/route';
 import { POST as resetAccess } from '@/app/api/players/reset-access/route';
+import { POST as postRelease } from '@/app/api/releases/route';
+import { GET as adminMe } from '@/app/api/admin/route';
 
 /**
  * An admin acts on THEIR club and nobody else's (security review, 2026-10-24).
@@ -179,5 +181,55 @@ describe('/api/members edits reach the membership; the Member copy is BPM\'s alo
     expect((await self({ role: 'admin', canString: true })).status).toBe(200);
     expect((await self({ role: 'member' })).status).toBe(403);
     expect((await deleteMember(makeRequest('DELETE', 'http://x/api/members', { id: ADMIN_MEMBER_ID }, cookies('club-x')))).status).toBe(403);
+  });
+});
+
+describe('reset-access on someone who holds a rank is an organiser\'s call (audit, 2026-11-05)', () => {
+  // The code CLEARS the PIN when redeemed: issued by an admin for the
+  // organiser, it was a way to take the organiser's account.
+  const post = (name: string) =>
+    resetAccess(makeRequest('POST', 'http://x/api/players/reset-access', { name }, cookies('club-x')));
+
+  beforeEach(() => {
+    const store = getStore()['memberships'] as { id: string; role: string }[];
+    store.find((m) => m.id === `club-x:${ADMIN_MEMBER_ID}`)!.role = 'admin';
+    seedMembership('club-x', lin.id, { name: 'Lin', role: 'owner' });
+  });
+
+  it('an admin cannot reset the organiser', async () => {
+    const res = await post('Lin');
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('organiser_only');
+    expect((linDoc() as { recoveryCode?: unknown })?.recoveryCode).toBeUndefined();
+  });
+
+  it('an admin can still reset a member', async () => {
+    const viktor = seedMember('Viktor');
+    seedMembership('club-x', viktor.id, { name: 'Viktor', role: 'member' });
+    expect((await post('Viktor')).status).toBe(200);
+  });
+
+  it('an organiser can reset an admin', async () => {
+    const store = getStore()['memberships'] as { id: string; role: string }[];
+    store.find((m) => m.id === `club-x:${ADMIN_MEMBER_ID}`)!.role = 'owner';
+    store.find((m) => m.id === `club-x:${lin.id}`)!.role = 'admin';
+    expect((await post('Lin')).status).toBe(200);
+  });
+});
+
+describe('release notes are the deployment\'s: only the operator writes them (audit, 2026-11-05)', () => {
+  // The test admin is the organiser of club-x, a club anyone could create.
+  const body = { version: '9.9.9', title: 'Not yours', body: 'x' };
+
+  it('refuses a club-x organiser', async () => {
+    const res = await postRelease(makeRequest('POST', 'http://x/api/releases', body, cookies('club-x')));
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('operator_only');
+    expect((getStore()['releases'] ?? []).length).toBe(0);
+  });
+
+  it('tells the console who is the operator, without guessing', async () => {
+    const res = await adminMe(makeRequest('GET', 'http://x/api/admin', undefined, cookies('club-x')));
+    expect(await res.json()).toMatchObject({ authed: true, operator: false });
   });
 });

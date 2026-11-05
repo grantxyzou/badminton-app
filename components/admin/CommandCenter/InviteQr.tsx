@@ -10,6 +10,9 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** How often the code on screen asks whether its invite has been used. */
 export const QR_POLL_MS = 3000;
+/** A QR left up all evening stops asking after this long; coming back to the
+ *  screen (visibility) checks again (audit, 2026-11-05). */
+export const QR_POLL_FOR_MS = 10 * 60 * 1000;
 
 interface Props {
   /** The invite the card is showing. */
@@ -61,7 +64,14 @@ export default function InviteQr({ invite, onUsed }: Props) {
       }
     }
 
-    const timer = window.setInterval(() => void check(), QR_POLL_MS);
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      if (Date.now() - started > QR_POLL_FOR_MS) {
+        window.clearInterval(timer);
+        return;
+      }
+      void check();
+    }, QR_POLL_MS);
     const onVisible = () => {
       if (!document.hidden) void check();
     };

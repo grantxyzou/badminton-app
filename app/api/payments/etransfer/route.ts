@@ -49,12 +49,20 @@ export async function POST(req: NextRequest) {
   const text = str(body.body, 50_000);
   const date = str(body.date, 100);
   const authResults = body.authResults === undefined ? undefined : str(body.authResults, 5000);
-  if (!messageId || from === null || subject === null || text === null || !date || authResults === null) {
+  // Additive, from the script's current version; an older copy sends neither.
+  const to = body.to === undefined ? undefined : str(body.to, 1000);
+  const owner = body.owner === undefined ? undefined : str(body.owner, 300);
+  if (!messageId || from === null || subject === null || text === null || !date || authResults === null || to === null || owner === null) {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
   try {
-    const result = await ingestEmail(groupId, { messageId, from, subject, body: text, date, authResults: authResults ?? undefined });
+    const result = await ingestEmail(groupId, {
+      messageId, from, subject, body: text, date,
+      authResults: authResults ?? undefined,
+      to: to ?? undefined,
+      owner: owner ?? undefined,
+    });
     return NextResponse.json({ ok: true, status: result.status, duplicate: result.duplicate });
   } catch (err) {
     console.error('POST /api/payments/etransfer failed', err);

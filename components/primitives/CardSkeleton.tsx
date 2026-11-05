@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 /**
  * Fixed-height shimmer placeholder shaped like a `.glass-card`. Used while a
  * card's data loads so the page reserves the card's final footprint instead of
@@ -53,8 +54,9 @@ export default function CardSkeleton({
  * header strip here — the header slot is the real component, not a shimmer.
  */
 export function TabSkeleton({ announcement }: { announcement?: React.ReactNode } = {}) {
+  const tLoading = useTranslations('a11y');
   return (
-    <div className="space-y-5 bpm-home-skeleton" role="status" aria-label="Loading">
+    <div className="space-y-5 bpm-home-skeleton" role="status" aria-label={tLoading('loading')}>
       {/* tile row: Location | When. 133, re-measured 2026-10-03 at 400px: the
           club's address and a long date ("Monday, October 5") both wrap to two
           lines on a phone, so the old 108 (one line) jumped every week. */}
@@ -112,11 +114,12 @@ export const CONSOLE_HEIGHTS = {
  * jumped as it replaced this. The bar above is the caller's.
  */
 export function AdminTabSkeleton() {
+  const tLoading = useTranslations('a11y');
   // The console's order since 2026-11-04: the glance tiles first, then "This
   // week" — the Session · Payments toggle and the session card, which the
   // toggle opens on.
   return (
-    <div className="flex flex-col gap-5" role="status" aria-label="Loading">
+    <div className="flex flex-col gap-5" role="status" aria-label={tLoading('loading')}>
       <div className="cc-dgrid">
         <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
         <CardSkeleton height={CONSOLE_HEIGHTS.tile} />
@@ -133,8 +136,9 @@ export function AdminTabSkeleton() {
  * caller, so there is no header strip here.
  */
 export function AdminPageSkeleton() {
+  const tLoading = useTranslations('a11y');
   return (
-    <div className="space-y-4" role="status" aria-label="Loading">
+    <div className="space-y-4" role="status" aria-label={tLoading('loading')}>
       <CardSkeleton height={120} />
       <CardSkeleton height={260} />
     </div>

@@ -94,7 +94,7 @@ export async function promoteFromWaitlist(scope: GroupScope, sessionId: string):
       const memberIds = promoted.map((r) => r.memberId).filter((m): m is string => typeof m === 'string' && m.length > 0);
       if (memberIds.length > 0) {
         await recordNotices(scope.groupId, memberIds, { type: 'promoted', sessionAt: session?.datetime });
-        await sendPushToMembers(memberIds, buildWaitlistPromotedPayload(session ?? { id: sessionId }));
+        await sendPushToMembers(memberIds, (locale) => buildWaitlistPromotedPayload(session ?? { id: sessionId }, locale));
       }
     } catch (err) {
       console.error('[waitlist] promotion push failed (the promotion stands):', err);

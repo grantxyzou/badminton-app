@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { useActiveName } from '@/lib/useActiveName';
+import { useTabActive } from '@/lib/tabActivity';
 
 /**
  * Shared client hook for the distributed AI insight (greeting + per-card chips).
@@ -42,8 +43,8 @@ export interface InsightData {
  * carries it so a consumer can render the actionable sign-in state instead.
  */
 export type InsightLoad =
-  | { data: InsightData; forbidden: false; serverError: false }
-  | { data: null; forbidden: boolean; serverError: boolean };
+  | { data: InsightData; forbidden: false; serverError: false; deferred?: false }
+  | { data: null; forbidden: boolean; serverError: boolean; deferred?: boolean };
 
 type Entry = { promise: Promise<InsightLoad> };
 const cache = new Map<string, Entry>();
@@ -56,12 +57,20 @@ function cacheKey(name: string, locale: string): string {
   return `${locale}:${name.toLowerCase()}`;
 }
 
-function load(name: string, locale: string): Promise<InsightLoad> {
+/**
+ * `warm`: a BACKGROUND request (Home's pre-warm, or the Stats tab preloading
+ * while off screen). The server then answers 204 instead of asking the model
+ * for someone who has not opened Stats lately (audit, 2026-11-05), and that
+ * answer is never memoized, so the request made when Stats IS on screen
+ * writes the read.
+ */
+function load(name: string, locale: string, warm = false): Promise<InsightLoad> {
   const key = cacheKey(name, locale);
   const hit = cache.get(key);
   if (hit) return hit.promise;
-  const promise = fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
-    .then(async (r) => {
+  const promise: Promise<InsightLoad> = fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}${warm ? '&warm=1' : ''}`, { cache: 'no-store' })
+    .then(async (r): Promise<InsightLoad> => {
+      if (r.status === 204) return { data: null, forbidden: false, serverError: false, deferred: true };
       if (r.ok) return { data: (await r.json()) as InsightData, forbidden: false as const, serverError: false as const };
       // Only 403 is a known "you may not read this". Every other non-ok
       // status (429, flag-off 404) stays a plain load failure — telling
@@ -74,7 +83,7 @@ function load(name: string, locale: string): Promise<InsightLoad> {
       // 429 or a 404 without guessing, which is why those stay lumped together.
       return { data: null, forbidden: r.status === 403, serverError: r.status >= 500 };
     })
-    .catch(() => ({ data: null, forbidden: false, serverError: false }));
+    .catch((): InsightLoad => ({ data: null, forbidden: false, serverError: false }));
   cache.set(key, { promise });
   // A refusal must not be memoized past the in-flight window. The cache is
   // keyed by NAME and only cleared on a name → different-name transition, so a
@@ -84,7 +93,7 @@ function load(name: string, locale: string): Promise<InsightLoad> {
   // share the one request; only a LATER mount re-asks, and a 403 costs neither
   // a Cosmos read nor a Claude call.
   void promise.then((res) => {
-    if (res.forbidden && cache.get(key)?.promise === promise) cache.delete(key);
+    if ((res.forbidden || res.deferred) && cache.get(key)?.promise === promise) cache.delete(key);
   });
   return promise;
 }
@@ -104,7 +113,7 @@ function load(name: string, locale: string): Promise<InsightLoad> {
  */
 export function prewarmInsight(name: string, locale: string): void {
   const key = cacheKey(name, locale);
-  const promise = load(name, locale);
+  const promise = load(name, locale, true);
   void promise.then((res) => {
     if (res.data === null && cache.get(key)?.promise === promise) cache.delete(key);
   });
@@ -145,6 +154,9 @@ export function useInsight(enabled = true): UseInsight {
   // insight keyed to the departed member while the prop-driven cards moved on.
   const { name: activeName } = useActiveName();
   const locale = useLocale();
+  // Off screen (the Stats tab preloading behind Home), the request is a
+  // background one; coming on screen re-runs the effect below.
+  const onScreen = useTabActive();
   /* Seeded from the inputs so a hook that mounts ready to fetch reports
      `loading` on its very first render, which is what the old effect's
      synchronous `setState` was really for. `useActiveName` resolves in an
@@ -204,8 +216,10 @@ export function useInsight(enabled = true): UseInsight {
   useEffect(() => {
     if (!enabled || !activeName) return;
     let cancelled = false;
-    load(activeName, locale).then((res) => {
+    load(activeName, locale, !onScreen).then((res) => {
       if (cancelled) return;
+      // Deferred until the person is actually on Stats: keep the skeleton.
+      if (res.deferred) return;
       setState({
         data: res.data,
         loading: false,
@@ -220,7 +234,7 @@ export function useInsight(enabled = true): UseInsight {
     return () => {
       cancelled = true;
     };
-  }, [enabled, activeName, locale, nonce]);
+  }, [enabled, activeName, locale, nonce, onScreen]);
 
   const reload = useCallback(() => {
     if (!activeName) return;

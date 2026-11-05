@@ -328,7 +328,8 @@ async function writeRefund(scope: GroupScope, memberId: string, line: SpendLine,
  *               from the mirror's payment entry without reading the row.
  *   'already' — paid some other way (an e-transfer, an admin's tap): the
  *               credit must go back.
- *   'gone'    — removed, covered or deleted: the credit must go back too.
+ *   'gone'    — covered, deleted, or removed before any bill froze on it:
+ *               the credit must go back too.
  */
 async function markRowPaid(
   scope: GroupScope,
@@ -337,7 +338,10 @@ async function markRowPaid(
 ): Promise<'paid' | 'credit' | 'already' | 'gone'> {
   if (line.kind === 'session') {
     const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
-    if (!row || row.writtenOff === true || row.removed === true) return 'gone';
+    // A row removed AFTER its bill froze still owes it (Home shows it, and
+    // "Remove without covering" means exactly that), so credit may pay it;
+    // only a removal with no frozen bill on the row is "gone" (audit, 2026-11-05).
+    if (!row || row.writtenOff === true || (row.removed === true && typeof row.settledAt !== 'string')) return 'gone';
     if (row.paid === true) return row.paidVia === 'credit' ? 'credit' : 'already';
     const written = await scope.replace('players', { ...row, paid: true, paidAt: opts.spendAt, paidVia: 'credit' }, line.pk);
     if (!written) return 'gone';

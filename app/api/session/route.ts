@@ -271,7 +271,7 @@ export async function PUT(req: NextRequest) {
         });
         await sendPushToMembers(
           [...recipients],
-          buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0]),
+          (locale) => buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0], locale),
         );
       } catch (err) {
         console.error('[session] signup-open push failed (session still saved):', err);

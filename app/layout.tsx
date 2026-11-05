@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { headers } from 'next/headers';
 import IntlProvider from '@/components/intl/IntlProvider';
 import PreviewBanner from '@/components/PreviewBanner';
 import LaunchScreen from '@/components/launch/LaunchScreen';
@@ -170,6 +171,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // The splash renders outside NextIntlClientProvider, so its one string is
   // resolved here on the server.
   const tagline = (await getTranslations('signedOut'))('tagline');
+  // This request's script nonce (`proxy.ts`, `lib/csp.ts`): the policy runs
+  // only inline scripts that carry it.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   return (
     /* This used to carry `data-visual="field"`, stamped on the SERVER from
@@ -207,8 +211,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               so a light-mode member watched the whole dark splash and then a
               flash to cream. Same rule as ThemeToggle's `read()`: a stored
               choice wins, else the system setting.
-            Synchronous on purpose, and tiny; CSP allows inline scripts. */}
+            Synchronous on purpose, and tiny; it carries this request's nonce,
+            the one inline script the policy lets run besides Next's own. */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){var d=document.documentElement,l;function k(){var v=Math.min(innerWidth/360,innerHeight/740);if(v>0&&v!==l){l=v;d.style.setProperty('--launch-k',String(v))}}k();addEventListener('resize',k);try{var t=localStorage.getItem('badminton_theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.setAttribute('data-theme',t)}catch(e){}})()`,
           }}

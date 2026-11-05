@@ -281,7 +281,7 @@ export interface PaymentAllocation {
  * and the body carries the admin's own name and bank details.
  */
 export interface EtransferPayment {
-  /** `etx:${sha256(messageId)}` — a re-sent email is the same doc. */
+  /** `etx:${sha256(ref or messageId)}`, prefixed `<groupId>:` outside BPM — a re-sent email is the same doc. */
   id: string;
   groupId?: string;
   source: 'etransfer';
@@ -1288,6 +1288,13 @@ export interface PushSubscriptionDoc {
   createdAt: string;
   /** Bumped on re-subscribe. Also the eviction order when a member exceeds the device cap. */
   lastSeenAt: string;
+  /**
+   * The app's language on this device when it subscribed, refreshed when the
+   * member switches language (`PATCH /api/push/subscribe`). A push is written
+   * in it (audit, 2026-11-05). Additive: absent means English, which is what
+   * every push said before.
+   */
+  locale?: 'en' | 'zh-CN';
   lastSuccessAt?: string;
   /** Incremented on transient send failures (429/5xx). A 404/410 deletes the
    *  doc outright instead — that status means the subscription is truly gone. */

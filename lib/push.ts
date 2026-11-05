@@ -47,6 +47,21 @@ export interface PushPayload {
   tag?: string;
 }
 
+/** The languages a push is written in; a device with none recorded reads English. */
+export type PushLocale = 'en' | 'zh-CN';
+
+/**
+ * What a sender hands over: one payload for everyone, or a builder the send
+ * calls once per language among the recipients' devices — so a member whose
+ * app is in Chinese gets the banner in Chinese (audit, 2026-11-05). Admin
+ * pushes stay a plain payload: the admin surfaces are English by decision.
+ */
+export type PushContent = PushPayload | ((locale: PushLocale) => PushPayload);
+
+export function payloadFor(content: PushContent, locale: PushLocale): PushPayload {
+  return typeof content === 'function' ? content(locale) : content;
+}
+
 export interface PushResult {
   /** False means NO transport is configured and nothing was attempted.
    *  Distinct from `sent: 0`, which means we tried and nobody was subscribed. */
@@ -323,7 +338,7 @@ async function deliverNative(subs: NativeSub[], payload: PushPayload, tally: Tal
 let warnedWeb = false;
 let warnedNative = false;
 
-async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promise<PushResult> {
+async function deliver(subs: PushSubscriptionDoc[], content: PushContent): Promise<PushResult> {
   if (!isPushConfigured()) return { ...NOT_CONFIGURED };
   if (subs.length === 0) return { configured: true, sent: 0, failed: 0, removed: 0 };
 
@@ -331,6 +346,15 @@ async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promi
   const now = new Date().toISOString();
   const web = subs.filter(isWebSub);
   const native = subs.filter(isNativeSub);
+  // One payload per language present, built once each.
+  const byLocale = (list: PushSubscriptionDoc[]) => {
+    const groups = new Map<PushLocale, PushSubscriptionDoc[]>();
+    for (const s of list) {
+      const locale: PushLocale = s.locale === 'zh-CN' ? 'zh-CN' : 'en';
+      groups.set(locale, [...(groups.get(locale) ?? []), s]);
+    }
+    return groups;
+  };
 
   /**
    * A row that is neither is dropped, and a SILENT drop is the wrong posture
@@ -352,7 +376,7 @@ async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promi
 
   if (web.length > 0) {
     if (isWebPushConfigured()) {
-      await deliverWeb(web, payload, tally, now);
+      for (const [locale, group] of byLocale(web)) await deliverWeb(group as WebSub[], payloadFor(content, locale), tally, now);
     } else if (!warnedWeb) {
       warnedWeb = true;
       console.warn(`[push] ${web.length} web subscription(s) skipped: VAPID not configured`);
@@ -360,7 +384,7 @@ async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promi
   }
   if (native.length > 0) {
     if (isFcmConfigured()) {
-      await deliverNative(native, payload, tally, now);
+      for (const [locale, group] of byLocale(native)) await deliverNative(group as NativeSub[], payloadFor(content, locale), tally, now);
     } else if (!warnedNative) {
       warnedNative = true;
       console.warn(`[push] ${native.length} native subscription(s) skipped: FCM_SERVICE_ACCOUNT_JSON not configured`);
@@ -373,7 +397,7 @@ async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promi
 /** Send to specific members (payment reminders, admin self-test). */
 export async function sendPushToMembers(
   memberIds: string[],
-  payload: PushPayload,
+  payload: PushContent,
 ): Promise<PushResult> {
   if (!isPushConfigured()) return { ...NOT_CONFIGURED };
   if (memberIds.length === 0) return { configured: true, sent: 0, failed: 0, removed: 0 };
@@ -386,7 +410,7 @@ export async function sendPushToMembers(
 }
 
 /** Broadcast to everyone subscribed (sign-ups open). */
-export async function sendPushToAll(payload: PushPayload): Promise<PushResult> {
+export async function sendPushToAll(payload: PushContent): Promise<PushResult> {
   if (!isPushConfigured()) return { ...NOT_CONFIGURED };
   try {
     return await deliver(await loadSubscriptions(), payload);

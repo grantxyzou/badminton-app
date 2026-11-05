@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The default keyboard focus ring (audit, 2026-11-05). Only 17 controls had
+   their own :focus-visible rule; everything else got the browser's, which in
+   Safari is a dark blue that all but vanishes on the dark glass. `:where()`
+   keeps this at the specificity of the bare pseudo-class, so every control's
+   own rule still wins. The accent passes 3:1 against both grounds. */
+@layer base {
+  :where(a, button, summary, [role="button"], [role="radio"], [role="tab"], [role="switch"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════
    Theme System — CSS custom properties for dark/light mode
    ══════════════════════════════════════════════════════════ */
@@ -16,9 +28,13 @@
   /* Dark-mode contrast: bumped from 0.6 / 0.35 because the original values
      fell below AA on `.glass-card` regions where the aurora gradient blooms
      through the translucent surface. Light mode untouched (already
-     well-contrasted on cream). */
+     well-contrasted on cream).
+     Muted 0.55 -> 0.62 on 2026-11-05 (audit): the fields shipped after the
+     0.55 bump, and muted text straight on a field's lit corner measured
+     3.9:1 (Home, Stringing), under AA's 4.5. At 0.62 the worst tab reads
+     4.5 bare and 5.1 on a card, and it stays a step below secondary (0.7). */
   --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-muted: rgba(255, 255, 255, 0.55);
+  --text-muted: rgba(255, 255, 255, 0.62);
   --accent: #4ade80;
   --accent-dark: #16a34a;
   --accent-amber: #fbbf24;
@@ -3778,6 +3794,18 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   box-shadow: var(--glass-shadow);
 }
 
+/* The TAP target is 44×44 (Apple's minimum) while the drawn circle stays 36:
+   the row's centres sit 44px apart, so the targets meet and never overlap
+   (audit, 2026-11-05). Fixed elements are already containing blocks. */
+.theme-toggle::before,
+.lang-toggle::before,
+.notif-toggle::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+}
+
 /* Plus the side inset: a phone held sideways, and iPhone Duo, whose camera
    and system controls sit on the right edge. Portrait phones report 0, so
    nothing moves there (docs/plans/foldable-layout.md). */
@@ -6152,6 +6180,13 @@ button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offs
   color: var(--toast-muted);
 }
 
+/* The toast's ✕ draws 36 but takes a 44×44 tap (::before), like the
+   top-right toggles. */
+.top-toast-close::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
 .top-toast-close {
   position: relative;
   flex-shrink: 0;

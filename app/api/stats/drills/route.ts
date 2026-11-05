@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 });
 
   // Privacy gate: own this name (member cookie) or admin. Same posture as /level.
-  if (!ownsNameOrAdmin(req, name)) {
+  if (!(await ownsNameOrAdmin(req, name))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

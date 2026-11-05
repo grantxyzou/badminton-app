@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/react';
+import { render as rtlRender, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/react';
 import LedgerPage from '@/components/admin/LedgerPage';
+import { NextIntlClientProvider } from 'next-intl';
+import enMessages from '@/messages/en.json';
+
+// Loading frames and the pull-to-refresh disc carry translated spoken names
+// (`a11y.*`), so they need the provider like every other translated component.
+const render = (ui: React.ReactElement) =>
+  rtlRender(<NextIntlClientProvider locale="en" messages={enMessages}>{ui}</NextIntlClientProvider>);
 
 /**
  * The money view renders from ONE payload, and the things that can go wrong

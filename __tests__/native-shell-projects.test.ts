@@ -167,7 +167,8 @@ describe('ios/', () => {
     // through as local (security review, 2026-10-24).
     const plugin = read('ios', 'App', 'App', 'BpmWidgetPlugin.swift');
     expect(plugin).not.toContain('hasPrefix("http://localhost")');
-    expect(plugin).toContain('url.host?.lowercased() == "localhost"');
+    expect(plugin).toContain('let host = url.host?.lowercased()');
+    expect(plugin).toContain('return scheme == "http" && host == "localhost"');
   });
 
   /* "Add to calendar" (docs/plans/add-to-calendar.md). The app's floor is
@@ -357,5 +358,63 @@ describe('the links the app claims', () => {
     expect(bridge).toContain('isSignupPath(u.pathname, BASE)');
     expect(bridge).toContain("from '@/lib/inviteLink'");
     expect(read('lib', 'inviteLink.ts')).toContain("export const INVITE_LINK_SEGMENT = '/j/';");
+  });
+});
+
+/**
+ * The widget's pass is a sixty-day credential (audit, 2026-11-05). Three
+ * things keep it on the phone and the server it was made for, none of which a
+ * build here can compile, so they are pinned as source.
+ */
+describe('the widget pass stays where it was made', () => {
+  const swiftPlugin = read('ios', 'App', 'App', 'BpmWidgetPlugin.swift');
+  const swiftStore = read('ios', 'App', 'BPMWidget', 'BPMWidgetStore.swift');
+  const javaPlugin = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmWidgetPlugin.java');
+  const serverHost = new URL(/url:\s*'([^']+)'/.exec(read('capacitor.config.ts'))![1]).host;
+
+  const swiftHosts = (/allowedHosts: Set<String> = \[([^\]]+)\]/.exec(swiftPlugin)?.[1] ?? '').match(/"([^"]+)"/g)?.map((h) => h.slice(1, -1)) ?? [];
+  const javaHosts = (/ALLOWED_HOSTS = new HashSet<>\(Arrays\.asList\(([^)]+)\)\)/.exec(javaPlugin)?.[1] ?? '').match(/"([^"]+)"/g)?.map((h) => h.slice(1, -1)) ?? [];
+
+  it('is handed only to the app’s own server, the same list on both platforms', () => {
+    expect(swiftHosts.length).toBeGreaterThan(0);
+    expect(swiftHosts).toContain(serverHost);
+    expect(new Set(javaHosts)).toEqual(new Set(swiftHosts));
+    expect(swiftPlugin).toContain('static let allowedHostSuffix = ".motioncraft-bpm.com"');
+    expect(javaPlugin).toContain('static final String ALLOWED_HOST_SUFFIX = ".motioncraft-bpm.com";');
+    // Parsed, never "starts with https://".
+    expect(javaPlugin).not.toContain('startsWith("https://")');
+    expect(javaPlugin).toContain('!isAllowedBaseUrl(baseUrl)');
+    expect(swiftPlugin).not.toMatch(/if scheme == "https" \{ return true \}/);
+  });
+
+  it('Android leaves it out of backups and phone-to-phone transfer', () => {
+    const manifest = read('android', 'app', 'src', 'main', 'AndroidManifest.xml');
+    expect(manifest).toContain('android:fullBackupContent="@xml/backup_rules"');
+    expect(manifest).toContain('android:dataExtractionRules="@xml/data_extraction_rules"');
+    const exclude = '<exclude domain="sharedpref" path="bpm_widget.xml" />';
+    expect(read('android', 'app', 'src', 'main', 'res', 'xml', 'backup_rules.xml')).toContain(exclude);
+    const transfer = read('android', 'app', 'src', 'main', 'res', 'xml', 'data_extraction_rules.xml');
+    expect(transfer.split(exclude).length - 1).toBe(2); // cloud-backup AND device-transfer
+    // The store's file name is the one excluded.
+    expect(read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmWidgetStore.java'))
+      .toContain('private static final String PREFS = "bpm_widget";');
+  });
+
+  it('iOS reads a pass only on the phone it was saved on', () => {
+    expect(swiftPlugin).toContain('static let deviceKey = "widget.device"');
+    expect(swiftStore).toContain('static let deviceKey = "widget.device"');
+    expect(swiftPlugin).toContain('forKey: Self.deviceKey)');
+    expect(swiftStore).toContain('saved != UIDevice.current.identifierForVendor?.uuidString');
+    expect(swiftPlugin).toContain('Self.deviceKey, Self.snapshotKey]'); // cleared on sign-out
+  });
+});
+
+describe('the iOS shell runs the Capacitor the web side was built against', () => {
+  it('pins capacitor-swift-pm to the installed @capacitor/ios version', () => {
+    const installed = JSON.parse(read('node_modules', '@capacitor', 'ios', 'package.json')).version as string;
+    expect(read('ios', 'App', 'CapApp-SPM', 'Package.swift')).toContain(`capacitor-swift-pm.git", exact: "${installed}")`);
+    const resolved = JSON.parse(read('ios', 'App', 'App.xcodeproj', 'project.xcworkspace', 'xcshareddata', 'swiftpm', 'Package.resolved'));
+    const pin = resolved.pins.find((p: { identity: string }) => p.identity === 'capacitor-swift-pm');
+    expect(pin.state.version).toBe(installed);
   });
 });

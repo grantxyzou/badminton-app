@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   // Privacy gate: the calling device must own this name (member cookie) or be
   // an admin. A known-not-authed caller gets 403 (the client renders an
   // actionable "sign in again" state — unknown ≠ known-false).
-  if (!ownsNameOrAdmin(req, name)) {
+  if (!(await ownsNameOrAdmin(req, name))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

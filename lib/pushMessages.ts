@@ -2,36 +2,70 @@
  * Notification copy. Pure functions — no I/O, no env reads — so the wording is
  * unit-testable without a send path.
  *
- * ENGLISH ONLY for now. The service worker has no next-intl access, so payload
- * language must be decided server-side, and there is currently no per-member
- * locale to decide it from (locale lives in the NEXT_LOCALE cookie, which a
- * broadcast send doesn't have for anyone but the caller). The fix is an
- * additive optional `Member.locale`, written whenever LanguageToggle sets the
- * cookie — deliberately deferred so this change stays scoped to delivery.
+ * IN THE READER'S LANGUAGE since 2026-11-05 (audit). The service worker has no
+ * next-intl access, so the language is decided here, server-side: every
+ * member-facing builder takes a `locale`, and its caller hands `sendPushToMembers`
+ * a function of the locale, which the send calls once per language among the
+ * recipients' devices (`PushSubscriptionDoc.locale`, stamped at subscribe and
+ * refreshed when the member switches language). The words live in the `push`
+ * group of `messages/*.json`, like every other member-facing string. Pushes
+ * to ADMINS (a new request, a join or access ask, the test) stay English,
+ * matching the admin surfaces' English-only decision.
  *
  * Nothing here may include private data: a broadcast reaches every subscriber.
  * Session time and venue are already public via GET /api/session.
  */
+import { createTranslator } from 'next-intl';
 import type { Session } from './types';
-import { safeTag, type PushPayload } from './push';
+import { safeTag, type PushLocale, type PushPayload } from './push';
+import en from '../messages/en.json';
+import zhCN from '../messages/zh-CN.json';
+import { brandMessages, deepMerge, type MessageTree } from './messageTree';
 import { shouldNotify, type PlayerNotice } from './stringingNotify';
 import { APP_SHORT_NAME } from './brand';
 import { formatReadyBy } from './stringingDue';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-/** "Thu, Aug 7 at 7:00 PM" — undefined when the datetime is missing/unparseable. */
-function formatWhen(datetime: string | undefined): string | undefined {
+/** The merged, branded message tree per language, built once. */
+const trees = new Map<PushLocale, MessageTree>();
+function treeFor(locale: PushLocale): MessageTree {
+  let tree = trees.get(locale);
+  if (!tree) {
+    const base = en as unknown as MessageTree;
+    tree = brandMessages(locale === 'zh-CN' ? deepMerge(base, zhCN as unknown as MessageTree) : base);
+    trees.set(locale, tree);
+  }
+  return tree;
+}
+
+/** `t('signupOpen.title')` in the reader's language, from `messages/*.json` → `push`. */
+function pushT(locale: PushLocale): (key: string, values?: Record<string, string>) => string {
+  const t = createTranslator({ locale, messages: treeFor(locale) as Record<string, never>, namespace: 'push' as never });
+  return (key, values) => (t as unknown as (k: string, v?: Record<string, string>) => string)(key, values);
+}
+
+/** The `Intl` locale for a push language: Canadian English, as before, or Chinese. */
+const intlLocale = (locale: PushLocale) => (locale === 'zh-CN' ? 'zh-CN' : 'en-CA');
+
+/**
+ * "Thu, Aug 7 at 7:00 PM" — undefined when the datetime is missing/unparseable.
+ * In the club's clock, `America/Vancouver`, like every session time the app
+ * shows: without it the server's zone decided, and App Service runs in UTC, so
+ * a 7 PM session went out as the next morning (audit, 2026-11-05).
+ */
+function formatWhen(datetime: string | undefined, locale: PushLocale = 'en'): string | undefined {
   if (!datetime) return undefined;
   const parsed = Date.parse(datetime);
   if (Number.isNaN(parsed)) return undefined;
   try {
-    return new Intl.DateTimeFormat('en-CA', {
+    return new Intl.DateTimeFormat(intlLocale(locale), {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
+      timeZone: 'America/Vancouver',
     }).format(new Date(parsed));
   } catch {
     return undefined;
@@ -42,17 +76,18 @@ function formatWhen(datetime: string | undefined): string | undefined {
  * Sign-ups just opened. Body degrades gracefully: with a parseable datetime it
  * names the session, otherwise it still says the useful part.
  */
-export function buildSignupOpenPayload(session: Partial<Session>): PushPayload {
-  const when = formatWhen(session.datetime);
+export function buildSignupOpenPayload(session: Partial<Session>, locale: PushLocale = 'en'): PushPayload {
+  const t = pushT(locale);
+  const when = formatWhen(session.datetime, locale);
   const where = typeof session.locationName === 'string' ? session.locationName.trim() : '';
 
   let body: string;
-  if (when && where) body = `${when} at ${where}. Tap to grab a spot.`;
-  else if (when) body = `${when}. Tap to grab a spot.`;
-  else body = 'Tap to grab a spot before it fills up.';
+  if (when && where) body = t('signupOpen.bodyWhenWhere', { when, where });
+  else if (when) body = t('signupOpen.bodyWhen', { when });
+  else body = t('signupOpen.body');
 
   return {
-    title: 'Sign-ups are open',
+    title: t('signupOpen.title'),
     body,
     url: `${BASE}/`,
     // Session-scoped so a re-send for the SAME session collapses, but a genuine
@@ -68,23 +103,33 @@ export function buildSignupOpenPayload(session: Partial<Session>): PushPayload {
  * evening session read in UTC lands on the next day. No money: a banner shows
  * on a lock screen.
  */
-export function buildWaitlistPromotedPayload(session: Partial<Session>): PushPayload {
+export function buildWaitlistPromotedPayload(session: Partial<Session>, locale: PushLocale = 'en'): PushPayload {
+  const t = pushT(locale);
   let day: string | undefined;
   const parsed = typeof session.datetime === 'string' ? Date.parse(session.datetime) : NaN;
   if (Number.isFinite(parsed)) {
     try {
-      day = new Intl.DateTimeFormat('en-CA', { weekday: 'long', timeZone: 'America/Vancouver' }).format(new Date(parsed));
+      day = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'long', timeZone: 'America/Vancouver' }).format(new Date(parsed));
     } catch {
       day = undefined;
     }
   }
   return {
-    title: "You're in",
-    body: day
-      ? `A spot opened for ${day}'s session. If you can't make it, cancel from Home.`
-      : "A spot opened and you're off the waitlist. If you can't make it, cancel from Home.",
+    title: t('waitlistIn.title'),
+    body: day ? t('waitlistIn.bodyDay', { day }) : t('waitlistIn.body'),
     url: `${BASE}/`,
     tag: safeTag(`waitlist-in-${session.id ?? session.sessionId ?? 'current'}`),
+  };
+}
+
+/** A nudge to settle up: a count, never an amount (lock-screen rule). */
+export function buildReminderPayload(lineCount: number, locale: PushLocale = 'en'): PushPayload {
+  const t = pushT(locale);
+  return {
+    title: t('reminder.title'),
+    body: lineCount > 1 ? t('reminder.bodyMany') : t('reminder.bodyOne'),
+    url: `${BASE}/?tab=home`,
+    tag: 'settle-up',
   };
 }
 
@@ -152,21 +197,22 @@ export function flattenMarkdown(raw: string): string {
  * Returns null for the quiet stages rather than empty copy, so the caller has
  * one thing to check instead of two.
  */
-export function buildStringingPayload(notice: PlayerNotice): PushPayload | null {
+export function buildStringingPayload(notice: PlayerNotice, locale: PushLocale = 'en'): PushPayload | null {
   if (!shouldNotify(notice.key)) return null;
+  const t = pushT(locale);
 
-  const racket = notice.racketLabel?.trim() || 'Your racket';
+  const racket = notice.racketLabel?.trim() || t('stringing.yourRacket');
   // Null for the legacy free-text rows ("Sunday"), which are not dates and are
   // shown back verbatim elsewhere. A banner just omits the line instead.
-  const by = formatReadyBy(notice.readyBy);
+  const by = formatReadyBy(notice.readyBy, intlLocale(locale));
 
   const ready = notice.key === 'ready_for_you';
-  const title = ready ? 'Your racket is ready' : 'On the machine';
+  const title = ready ? t('stringing.readyTitle') : t('stringing.strungTitle');
   let body: string;
   if (ready) {
-    body = `${racket} — ready to pick up.`;
+    body = t('stringing.readyBody', { racket });
   } else {
-    body = by ? `${racket} is being strung. Ready by ${by}.` : `${racket} is being strung.`;
+    body = by ? t('stringing.strungBodyBy', { racket, by }) : t('stringing.strungBody', { racket });
   }
 
   return {
@@ -182,11 +228,13 @@ export function buildStringingPayload(notice: PlayerNotice): PushPayload | null 
   };
 }
 
-export function buildAnnouncementPayload(announcement: { id?: string; text?: string }): PushPayload {
+export function buildAnnouncementPayload(announcement: { id?: string; text?: string }, locale: PushLocale = 'en'): PushPayload {
+  const t = pushT(locale);
   const body = flattenMarkdown(typeof announcement.text === 'string' ? announcement.text : '');
   return {
-    title: 'New announcement',
-    body: body || 'Tap to read it in the app.',
+    title: t('announcement.title'),
+    // The announcement itself is shown as the organiser wrote it.
+    body: body || t('announcement.empty'),
     url: `${BASE}/`,
     // Per-announcement, so two different notices both show rather than the
     // second silently replacing the first.
@@ -211,11 +259,12 @@ export function buildAnnouncementPayload(announcement: { id?: string; text?: str
 export function buildPendingEditPayload(job: {
   jobNo: string;
   racketLabel?: string | null;
-}): PushPayload {
-  const racket = job.racketLabel?.trim() || 'your racket';
+}, locale: PushLocale = 'en'): PushPayload {
+  const t = pushT(locale);
+  const racket = job.racketLabel?.trim() || t('pendingEdit.yourRacket');
   return {
-    title: 'A change to confirm',
-    body: `Something changed on ${racket}. Open ${APP_SHORT_NAME} to have a look.`,
+    title: t('pendingEdit.title'),
+    body: t('pendingEdit.body', { racket }),
     url: `${BASE}/?tab=stringing`,
     // Job first, same reasoning as the stage payload above.
     tag: safeTag(`str-${job.jobNo}-edit`),
@@ -253,11 +302,12 @@ export function buildAssignmentPayload(job: {
   jobNo: string;
   memberName: string;
   racketLabel?: string | null;
-}): PushPayload {
-  const racket = job.racketLabel?.trim() || 'racket';
+}, locale: PushLocale = 'en'): PushPayload {
+  const t = pushT(locale);
+  const racket = job.racketLabel?.trim() || t('assignment.racket');
   return {
-    title: 'A racket for you to string',
-    body: `${job.memberName}'s ${racket} is yours.`,
+    title: t('assignment.title'),
+    body: t('assignment.body', { name: job.memberName, racket }),
     url: `${BASE}/?tab=stringing`,
     tag: safeTag(`str-${job.jobNo}-assigned`),
   };

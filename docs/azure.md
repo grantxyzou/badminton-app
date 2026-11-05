@@ -85,9 +85,11 @@ on manual dispatch:
 
 All GitHub Actions SHAs are pinned (not floating tags).
 
-**Rollback** is re-dispatching the same workflow at an older commit:
-`gh workflow run deploy-next.yml --ref <good-sha>`. Runbook: the
-`deploy-promotion` skill. A rollback runs older code against the same live
+**Rollback** is redeploying an older commit: re-run that commit's own
+`deploy-next.yml` run (`gh run rerun <run-id>`, within 30 days), or push the
+commit to a throwaway branch and dispatch the workflow on it. A manual run
+takes a branch or tag NAME, so `--ref <sha>` — what this line said until
+2026-11-05 — fails. Runbook: the `deploy-promotion` skill. A rollback runs older code against the same live
 database, which is why `lib/types.ts` changes are additive-and-optional only.
 
 ### Manual deploy (fallback only)
@@ -148,8 +150,11 @@ Set globally in `next.config.js` `headers()`:
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 - `Strict-Transport-Security: max-age=31536000; includeSubDomains` — `preload`
   is deliberately NOT set (one-way submission; Grant's call)
-- `Content-Security-Policy` with `frame-ancestors 'none'`, `base-uri 'self'`,
-  `object-src 'none'`, `form-action 'self'` (dev adds `unsafe-eval` for HMR)
+The `Content-Security-Policy` is NOT among them since 2026-11-05: `proxy.ts`
+sends it (built by `lib/csp.ts`) with a fresh script nonce per page request,
+which a build-time header cannot carry. It keeps `frame-ancestors 'none'`,
+`base-uri 'self'`, `object-src 'none'`, `form-action 'self'` (dev adds
+`unsafe-eval` for HMR).
 
 `proxy.ts` adds two request guards on every `/api/*` call before any handler:
 a 413 for bodies over 256 KB and a 403 for cross-site non-safe methods.
@@ -286,8 +291,8 @@ change if Azure reports it taken.
 |---------|-------|
 | SDK | `@anthropic-ai/sdk` |
 | Models | `PROSE_MODEL = claude-sonnet-5`, `INSIGHT_MODEL = claude-sonnet-4-6` (`lib/aiModels.ts`) |
-| Max output tokens | `MAX_OUTPUT_TOKENS = 8192` (`lib/claudeLimits.ts`) |
-| Rate limit | `POST /api/claude`: 10 requests/min per IP, before auth |
+| Max output tokens | per caller: `POST /api/claude` 8192 (`MAX_OUTPUT_TOKENS`, `lib/claudeLimits.ts`), the Stats read 600 (`MAX_OUTPUT_TOKENS_CARDS` in its route), the fit verdict 400 (its route's `MAX_OUTPUT_TOKENS`) |
+| Rate limit | `POST /api/claude`: 10 requests/min per IP, before auth, then 30 a day per admin (since 2026-11-05) |
 
 ### Callers
 
@@ -297,7 +302,7 @@ Three routes call the SDK:
   the async `isAdminAuthedWithMember` check, accepting the cost, because it
   spends API budget.
 - `GET /api/stats/insight` — the member-facing weekly read on Stats.
-- `POST /api/equipment/fit-verdict` — the racket-fit verdict (its flag retired
+- `GET /api/equipment/fit-verdict` — the racket-fit verdict (its flag retired
   2026-10-19; with no API key it answers without AI words).
 
 The browser never calls Anthropic directly. The shared voice in

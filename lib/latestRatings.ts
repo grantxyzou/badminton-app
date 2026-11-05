@@ -37,7 +37,9 @@ export interface LatestRating {
   ratings: Rating[];
 }
 
-const TTL_MS = 60_000;
+// Ten minutes (was 60 s until the 2026-11-05 audit): the two writers clear it,
+// so the lifetime only bounds a second instance's copy, and production runs one.
+const TTL_MS = 10 * 60_000;
 
 const ratingsCache = new Map<'all', { at: number; promise: Promise<Map<string, LatestRating>> }>();
 

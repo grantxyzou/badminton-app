@@ -35,6 +35,15 @@ describe('BottomSheet — skeleton', () => {
     );
     expect(screen.getByRole('dialog', { name: 'Release history' })).toBeTruthy();
   });
+
+  it('is modal to a screen reader, as the focus trap makes it to a keyboard', () => {
+    render(
+      <BottomSheet open={true} onClose={vi.fn()} ariaLabel="Release history">
+        <BottomSheetBody>x</BottomSheetBody>
+      </BottomSheet>,
+    );
+    expect(screen.getByRole('dialog').getAttribute('aria-modal')).toBe('true');
+  });
 });
 
 describe('BottomSheet — interactions', () => {

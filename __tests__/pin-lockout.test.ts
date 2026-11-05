@@ -96,6 +96,18 @@ describe('POST /api/admin — the account locks after repeated wrong PINs', () =
     expect(ok.status).toBe(200);
     expect(admin().pinLock).toBeUndefined();
   });
+
+  it('guesses sent at once all count: each failure adds to what is stored, not to what it read (audit, 2026-11-05)', async () => {
+    // Two requests that read the account BEFORE either wrote — the shape of a
+    // parallel burst. Before: both wrote "1 failure", so twenty at once left
+    // the counter at 1 and the lock never formed.
+    const { notePinFailure } = await import('../lib/pinLockout');
+    const staleA = { ...admin() };
+    const staleB = { ...admin() };
+    await notePinFailure(staleA);
+    await notePinFailure(staleB);
+    expect(admin().pinLock?.failures).toBe(2);
+  });
 });
 
 describe('POST /api/players/recover — same lock, same generic answer', () => {

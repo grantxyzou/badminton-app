@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { readStored, useClientSubscription } from '@/lib/useClientValue';
 
@@ -52,6 +53,7 @@ function subscribe(onChange: () => void): () => void {
 }
 
 export default function ThemeToggle() {
+  const t = useTranslations('a11y');
   const stored = useClientSubscription(subscribe, read, 'dark');
   /* The in-page override, and it is load-bearing in exactly one case: private
      mode, where `localStorage.setItem` throws and `read()` therefore keeps
@@ -85,12 +87,13 @@ export default function ThemeToggle() {
     listeners.forEach((l) => l());
   }
 
+  const label = t(theme === 'dark' ? 'switchToLight' : 'switchToDark');
   return (
     <button
       className="theme-toggle"
       onClick={toggle}
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      aria-label={label}
+      title={label}
     >
       <span className="material-icons">
         {theme === 'dark' ? 'light_mode' : 'dark_mode'}

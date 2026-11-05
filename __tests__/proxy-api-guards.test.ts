@@ -33,6 +33,11 @@ describe('apiGuards', () => {
     expect(res?.status).toBe(413);
   });
 
+  it('refuses a chunked body with no declared length (411): it could not be measured', () => {
+    expect(apiGuards(req('/api/report', { headers: { 'transfer-encoding': 'chunked' } }))?.status).toBe(411);
+    expect(apiGuards(req('/api/report', { headers: { 'transfer-encoding': 'chunked', 'content-length': '10' } }))).toBeNull();
+  });
+
   it('refuses Sec-Fetch-Site: cross-site with 403', () => {
     expect(apiGuards(req('/api/players', { headers: { 'sec-fetch-site': 'cross-site' } }))?.status).toBe(403);
   });

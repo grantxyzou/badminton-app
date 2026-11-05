@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What Android's backup may take, Android 11 and below (android:fullBackupContent).
+  Everything else is backed up as before. The widget's pass (bpm_widget.xml) is a
+  sixty-day credential: restored onto another phone it would keep working there
+  until it expired or the member signed out (audit, 2026-11-05). Left out, a
+  restored widget is dark until the app is opened, which mints a fresh pass.
+  data_extraction_rules.xml says the same for Android 12 and up.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="bpm_widget.xml" />
+</full-backup-content>

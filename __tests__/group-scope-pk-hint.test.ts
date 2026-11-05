@@ -231,7 +231,10 @@ function collectHints(root: string): { hints: Hint[]; rawHintCount: number; quer
     // The accessor declares the field and returns the option; it hints nothing.
     // `ensureContainer`'s `partitionKey: { paths }` is a container definition,
     // not a hint — a hint is a scalar expression, never an object literal.
-    if (rel !== 'lib/groupScope.ts') rawHintCount += (src.match(/\bpartitionKey:(?!\s*\{)/g) ?? []).length;
+    // `lib/catalogQuery.ts` is the GLOBAL catalog's one hinted read: a fixed
+    // `c.category = @category` with the hint bound to the same value, in one
+    // place (audit, 2026-11-05).
+    if (rel !== 'lib/groupScope.ts' && rel !== 'lib/catalogQuery.ts') rawHintCount += (src.match(/\bpartitionKey:(?!\s*\{)/g) ?? []).length;
     const localConsts = new Map(globalConsts);
     for (const m of src.matchAll(STRING_CONST)) localConsts.set(m[1], m[2]);
     for (const m of src.matchAll(QUERY_CALL)) {

@@ -8,6 +8,7 @@ export const metadata: Metadata = { title: `Support — ${APP_NAME}` };
 
 export default async function SupportPage() {
   const t = await getTranslations('legal.support');
+  const tA11y = await getTranslations('a11y');
   // Server-only env, read at request time: changing the address is an App
   // Setting, not a rebuild. Unset → the line is omitted, never a placeholder.
   const email = process.env.SUPPORT_EMAIL?.trim() || null;
@@ -23,7 +24,7 @@ export default async function SupportPage() {
         </section>
       )}
       <nav
-        aria-label="Related"
+        aria-label={tA11y('related')}
         style={{ marginTop: 'var(--space-8)', display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap' }}
       >
         <Link href="/legal/delete-account" className="bpm-row-link">{t('deleteLink')}</Link>

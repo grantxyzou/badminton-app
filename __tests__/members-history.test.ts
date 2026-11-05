@@ -126,4 +126,36 @@ describe('GET /api/members/[id]/history', () => {
     expect(body.lifetime.attended).toBe(0);
     expect(body.lifetime.totalPaid).toBe(0);
   });
+
+  describe('the November audit (2026-11-05)', () => {
+    const history = async (id: string) =>
+      (await (await GET(makeAdminRequest('GET', `http://localhost:3000/api/members/${id}/history`), ctx(id))).json()).sessions as Array<{
+        sessionId: string; attended: boolean; covered: boolean; paid: boolean;
+      }>;
+
+    it('a row removed AFTER its bill froze still counts as a night played; one removed before does not', async () => {
+      seedMember('Eve', { id: 'm-eve' });
+      seedSession('session-2026-05-06', { datetime: '2026-05-06T20:00:00-04:00' });
+      seedSession('session-2026-05-13', { datetime: '2026-05-13T20:00:00-04:00' });
+      seedPlayer('session-2026-05-06', 'Eve', { memberId: 'm-eve', removed: true, settledAt: '2026-05-07T00:00:00Z', owedAmount: 10 });
+      seedPlayer('session-2026-05-13', 'Eve', { memberId: 'm-eve', removed: true });
+      const rows = await history('m-eve');
+      expect(rows.find((r) => r.sessionId === 'session-2026-05-06')?.attended).toBe(true);
+      expect(rows.find((r) => r.sessionId === 'session-2026-05-13')?.attended).toBe(false);
+    });
+
+    it('a covered night says so, instead of reading as unpaid', async () => {
+      seedMember('Fay', { id: 'm-fay' });
+      seedSession('session-2026-05-06', { datetime: '2026-05-06T20:00:00-04:00' });
+      seedPlayer('session-2026-05-06', 'Fay', { memberId: 'm-fay', writtenOff: true, coverMode: 'absorb' });
+      expect((await history('m-fay'))[0]).toMatchObject({ covered: true, paid: false });
+    });
+
+    it('the by-name fallback never takes a row that names somebody else', async () => {
+      seedMember('Gus', { id: 'm-gus' });
+      seedSession('session-2026-05-06', { datetime: '2026-05-06T20:00:00-04:00' });
+      seedPlayer('session-2026-05-06', 'Gus', { memberId: 'm-other-gus' });
+      expect(await history('m-gus')).toEqual([]);
+    });
+  });
 });

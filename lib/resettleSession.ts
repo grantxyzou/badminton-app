@@ -1,18 +1,13 @@
 /**
  * Re-freeze a settled session's bill after a cover change, from the client.
  *
- * DELETE preserves the paid checkmarks; POST re-stamps every `owedAmount` with
- * the cover flags applied. It is two requests because settle is, and that is
- * the hazard: if the DELETE lands and the POST does not (network, or settle's
- * own 400 when everyone is covered), the session is left UNSETTLED — the bill
- * silently thaws and the admin's screen reloads showing live numbers as if
- * they were the frozen ones. So BOTH responses are checked and either failure
- * throws; a caller that swallowed them (`.catch(() => {})`, no `ok` check) is
- * how `PaymentsCard`'s uncover diverged from `CoverSheet`'s, which had it
- * right. ONE owner now, so the two paths cannot disagree again.
- *
- * A 404 on the DELETE means "was not settled" and is not a failure — the POST
- * that follows is the whole point.
+ * ONE request since 2026-11-05: `POST /api/session/settle { resettle: true }`
+ * thaws and re-freezes together on the server. It used to be DELETE then
+ * POST from here, which could leave the bill silently thawed between them,
+ * and the POST billed only the rows still on the list — so "Cover & remove"
+ * and "Remove without covering" both put the removed person's share on
+ * everyone else and wiped their debt. ONE owner, shared by `CoverSheet` and
+ * `PaymentsCard`'s uncover, so the two paths cannot disagree.
  */
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -20,11 +15,15 @@ export const RESETTLE_FAILED = 'Could not refresh the bill.';
 
 export async function resettleSession(sessionId: string | null | undefined): Promise<void> {
   const q = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : '';
-  const del = await fetch(`${BASE}/api/session/settle${q}`, { method: 'DELETE' });
-  if (!del.ok && del.status !== 404) {
-    throw new Error(RESETTLE_FAILED);
-  }
-  const post = await fetch(`${BASE}/api/session/settle${q}`, { method: 'POST' });
+  // ONE request (audit, 2026-11-05): the server thaws and re-freezes the bill
+  // together, keeping everyone the old bill billed, and refuses before
+  // touching anything when the new split would change what someone paid.
+  // Two requests from here could leave the bill thawed between them.
+  const post = await fetch(`${BASE}/api/session/settle${q}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resettle: true }),
+  });
   if (!post.ok) {
     throw new Error(RESETTLE_FAILED);
   }

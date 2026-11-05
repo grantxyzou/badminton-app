@@ -189,9 +189,9 @@ export async function POST(req: NextRequest) {
     if (!(await rosterMemberIds(admin.groupId)).has(memberId)) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
-    let refusal: 'not_found' | 'several_requests' | 'organiser_only' | null = null;
+    let refusal: 'not_found' | 'several_requests' | 'organiser_only' | 'already_claimed' | null = null;
 
-    const result = await updateAccessRequests(memberId, (open) => {
+    const result = await updateAccessRequests(memberId, (open, member) => {
       if (decision === 'decline') {
         // Declining clears every open request for the person IN THIS CLUB
         // (another club's asks stand). The asking devices then poll into
@@ -209,6 +209,11 @@ export async function POST(req: NextRequest) {
       // An ask through the club's door link is an organiser's to approve,
       // whoever it is for (Grant, 2026-11-05: "Organisers only").
       if (target.via === 'link' && !admin.organiser) { refusal = 'organiser_only'; return null; }
+      // The link admits only an UNCLAIMED name, and that was checked when the
+      // ask was made. If the person has since set a PIN, a password or a
+      // provider, the real owner is in, and approving would hand a stranger's
+      // phone their account (audit, 2026-11-05).
+      if (target.via === 'link' && !isUnclaimed(member)) { refusal = 'already_claimed'; return null; }
       // Re-checked at write time, not trusted from the list the admin saw: a
       // second ask may have landed since.
       if (open.length > 1) { refusal = 'several_requests'; return null; }
@@ -217,6 +222,9 @@ export async function POST(req: NextRequest) {
 
     if (refusal === 'organiser_only') {
       return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+    }
+    if (refusal === 'already_claimed') {
+      return NextResponse.json({ error: 'already_claimed' }, { status: 409 });
     }
     if (refusal === 'several_requests') {
       return NextResponse.json({ error: 'several_requests' }, { status: 409 });

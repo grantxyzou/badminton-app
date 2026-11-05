@@ -157,6 +157,19 @@ describe('matching', () => {
     expect(inbox.review[0].suggestions[0].proposed.map((a: { ref: string }) => a.ref)).toEqual([row1.id]);
   });
 
+  it('an authentic notice of a transfer to SOMEONE ELSE, delivered here intact, waits for a person (audit, 2026-11-05)', async () => {
+    // DKIM proves Interac wrote it, not that the money came to this club.
+    const res = await post(email('Lin', '12.00', { to: 'Lin Partner <partner@example.com>', owner: 'grant@gmail.com' }));
+    expect((await res.json()).status).toBe('review');
+    expect(rowById(row1.id).paid).toBe(false);
+  });
+
+  it('a notice addressed to the script\'s own Gmail matches, whatever the case and display name', async () => {
+    const res = await post(email('Lin', '12.00', { to: 'Grant Zou <GRANT@gmail.com>', owner: 'grant@gmail.com' }));
+    expect((await res.json()).status).toBe('matched');
+    expect(rowById(row1.id).paid).toBe(true);
+  });
+
   it('?count=1 answers the menu row only: set up, and how many wait, with no names', async () => {
     await post(email('Lin', '12.00', { authResults: undefined }));
     const res = await inboxGet(makeAdminRequest('GET', `${BASE}/admin/payments?count=1`));

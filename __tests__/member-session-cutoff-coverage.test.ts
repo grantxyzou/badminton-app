@@ -25,7 +25,7 @@ import { join, relative, sep } from 'path';
  */
 
 const ROOT = join(__dirname, '..');
-const SIGNATURE_ONLY = /\b(verifyMemberAuth|ownsNameOrAdmin)\(/;
+const SIGNATURE_ONLY = /\b(verifyMemberAuth|ownsNameOrAdmin|nameOwnership)\(/;
 const REREADING = /\b(verifyLiveMemberAuth|readLiveMemberSession|requireGroupMember|requireMember|activeMemberFor)\(/;
 const TOP_LEVEL = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\*?\s+([A-Za-z0-9_$]+)|(?:const|let)\s+([A-Za-z0-9_$]+))/gm;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -42,7 +42,12 @@ const hint = (behind: string): Exempt => ({
 const EXEMPT: Record<string, Exempt> = {
   // ── lib/auth.ts: the definitions, and the one "what does the caller have" read
   'lib/auth.ts#verifyMemberAuth': { reason: 'the definition' },
-  'lib/auth.ts#ownsNameOrAdmin': { reason: 'the definition: the read-only privacy gate for name-keyed Stats reads, sync by contract' },
+  'lib/auth.ts#ownsNameOrAdmin': { reason: 'the definition: the read-only privacy gate for name-keyed Stats reads (a wrapper over nameOwnership)' },
+  'lib/auth.ts#nameOwnership': { reason: 'the definition behind ownsNameOrAdmin: who may read a name-keyed Stats read, and whether it is the caller' },
+  'app/api/report/route.ts#POST': {
+    reason: 'only TAGS a problem report with who sent it (so account deletion can find it by id); grants nothing and writes nothing as the member',
+    write: true,
+  },
   'lib/auth.ts#callerMemberId': {
     reason: 'answers what the caller HAS for auth/methods and auth/nudge — reads that drive Profile rows; neither mints, links or writes',
   },
