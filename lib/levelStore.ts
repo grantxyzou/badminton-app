@@ -134,7 +134,12 @@ async function fetchSeeds(groupId: string): Promise<{ seeds: CalSeed[] }> {
 }
 
 // ── In-process group-calibration cache (critique I), one entry per group ──
-const CAL_TTL_MS = 30_000;
+// Ten minutes (was 30 s until the 2026-11-05 audit). Every writer of the rows
+// the fold reads clears it (a game, a check-in, an account deletion), so the
+// lifetime only bounds what NO writer reports — a roster change narrowing the
+// self-seeds — and 30 s meant the two unbounded scans below ran again on
+// nearly every Stats open of a quiet week.
+const CAL_TTL_MS = 10 * 60_000;
 const calCache = new Map<string, { at: number; map: Map<string, PlayerCalibration> }>();
 
 /**

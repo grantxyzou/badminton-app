@@ -48,6 +48,19 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Faster and cheaper behind the scenes (2026-11-05)
+
+- **Opening Home no longer reads every session record the club has ever had.** Looking up what you owe used a database search that couldn't use the index, so it read all of a club's history every time. It now goes straight to the few records that matter.
+- **The AI greeting on Stats is only written for people who read it.** Home used to have it written for every member every week, even people who never open Stats. Now it's written in the background only for members who've opened Stats in the last month; everyone else gets theirs when they open the tab. A greeting with nothing to say is also remembered, so the AI isn't asked again on every visit.
+- **Release notes:** Home and Profile load the newest 30 instead of every one ever written, and the page has a rate limit.
+- **Other loading work:**
+  - The organiser's payments screen loads its data all at once instead of one piece after another.
+  - Looking up a member's name takes one fewer step.
+  - Skill-level and club-rating figures are re-worked out less often. They still refresh the moment someone logs a game or checks in.
+  - Equipment lookups ask only the part of the database they need.
+  - The payments calendar loads only the two details it shows.
+  - The invite QR stops checking whether it's been used after 10 minutes.
+
 ### Deleting an account, done properly with more than one club (2026-11-05)
 
 - **Deleting your account no longer touches anyone else's history.** Before, it removed the name "Lin" from records in every club. Another club's Lin could lose her games, her skill ratings and her session records. Now a name is only removed in the clubs where it was yours.

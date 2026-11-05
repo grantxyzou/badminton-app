@@ -64,6 +64,9 @@ export async function GET(req: NextRequest) {
     // sort + slice stays because the mock store ignores ORDER BY / LIMIT
     // (same contract as sessions/recent).
     const allSessions = await scope.query<Session>('sessions', {
+      // The calendar's dots need two fields of up to 200 sessions; reading
+      // whole session docs for them was most of this read (audit, 2026-11-05).
+      ...(countsOnly ? { select: 'c.id, c.datetime' } : {}),
       where: 'c.id != @activeId',
       params: [{ name: '@activeId', value: activeId }],
       orderBy: 'c.id DESC',

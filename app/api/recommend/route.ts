@@ -1,3 +1,4 @@
+import { catalogByCategory } from '@/lib/catalogQuery';
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -196,12 +197,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
       }
 
-      const { resources: catalogItems } = await getContainer('equipmentCatalog')
-        .items.query({
-          query: 'SELECT * FROM c WHERE c.category = @category',
-          parameters: [{ name: '@category', value: category }],
-        })
-        .fetchAll();
+      const catalogItems = await catalogByCategory(category);
 
       if (catalogItems.length === 0) {
         return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
@@ -210,10 +206,7 @@ export async function GET(req: NextRequest) {
       // Pairing needs frames as well as strings, and `category` only fetched
       // one of the two. Queried only when it is actually needed.
       const catalogRackets = category === 'string'
-        ? (await getContainer('equipmentCatalog').items.query({
-            query: 'SELECT * FROM c WHERE c.category = @category',
-            parameters: [{ name: '@category', value: 'racket' }],
-          }).fetchAll()).resources.filter((r) => (r as CatalogItem).category === 'racket')
+        ? await catalogByCategory('racket')
         : [];
 
       if (category === 'string') {
@@ -343,13 +336,7 @@ export async function GET(req: NextRequest) {
       stage = typeof canonical.stage === 'number' ? canonical.stage : undefined;
     }
 
-    const catalog = getContainer('equipmentCatalog');
-    const { resources: items } = await catalog.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.category = @category',
-        parameters: [{ name: '@category', value: 'racket' }],
-      })
-      .fetchAll();
+    const items = await catalogByCategory('racket');
 
     // recommendRacket filters to category='racket' internally, so the mock store
     // ignoring @category is harmless here.

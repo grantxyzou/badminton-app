@@ -63,12 +63,12 @@ describe('latestRatingsByMember', () => {
     expect(fetchAll).toHaveBeenCalledTimes(2);
   });
 
-  it('expires after a minute', async () => {
+  it('expires after ten minutes', async () => {
     vi.useFakeTimers();
     fetchAll.mockResolvedValue(rows());
     const { latestRatingsByMember } = await import('@/lib/latestRatings');
     await latestRatingsByMember();
-    vi.advanceTimersByTime(61_000);
+    vi.advanceTimersByTime(10 * 60_000 + 1_000);
     await latestRatingsByMember();
     expect(fetchAll).toHaveBeenCalledTimes(2);
   });

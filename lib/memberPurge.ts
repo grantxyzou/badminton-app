@@ -40,6 +40,7 @@ import type { LedgerEntry } from './types';
 import { anonymizeFeedbackRows } from './feedback';
 import { ALIAS_KIND } from './aliases';
 import { invalidateLatestRatings } from './latestRatings';
+import { invalidateGroupCalibration } from './levelStore';
 
 /** What an anonymized row says instead of a name. */
 export const TOMBSTONE_NAME = 'Former member';
@@ -475,6 +476,8 @@ export async function purgeMember(memberId: string, nameOrNames: string | PurgeN
   // (lib/latestRatings.ts); a deleted person's ratings leave it now, not when
   // it next expires.
   invalidateLatestRatings();
+  // And the level fold, which read their games and check-ins.
+  invalidateGroupCalibration();
   return summary;
 }
 

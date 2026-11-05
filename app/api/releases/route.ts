@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { unauthorized } from '@/lib/auth';
@@ -40,13 +41,24 @@ function validateReleaseBody(raw: unknown): ReleaseBody | null {
   };
 }
 
-export async function GET(_req: NextRequest) {
+/** What Home and Profile show: the newest notes, not every note ever written.
+ *  The operator's editor asks for `?all=1`. */
+const RELEASES_SHOWN = 30;
+
+export async function GET(req: NextRequest) {
+  // Public, and read on every Home and Profile open: a per-IP ceiling well
+  // above any one phone's use, so a script cannot spend the database on it
+  // (audit, 2026-11-05). Generous because one gym's wifi is one IP.
+  if (!checkRateLimit(`releases:${getClientIp(req)}`, 120, 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+  const all = req.nextUrl.searchParams.get('all') === '1';
   try {
     await ensureReleasesContainer();
     const container = getContainer('releases');
     const { resources } = await container.items
       .query<{ kind?: unknown; publishedAt: string }>({
-        query: `SELECT * FROM c WHERE c.kind = '${RELEASE_KIND}' OR NOT IS_DEFINED(c.kind) ORDER BY c.publishedAt DESC`,
+        query: `SELECT * FROM c WHERE c.kind = '${RELEASE_KIND}' OR NOT IS_DEFINED(c.kind) ORDER BY c.publishedAt DESC${all ? '' : ` OFFSET 0 LIMIT ${RELEASES_SHOWN}`}`,
       })
       .fetchAll();
     // Defensive sort — real Cosmos honors ORDER BY, but the in-memory mock
@@ -62,7 +74,7 @@ export async function GET(_req: NextRequest) {
     // on 2026-08-19 the surviving one was rebuilt as `stable` instead of `next`,
     // so the filter's only remaining effect was to hide every note ever
     // published from it. `env` is still stamped on write, as history.
-    const filtered = sorted;
+    const filtered = all ? sorted : sorted.slice(0, RELEASES_SHOWN);
 
     return NextResponse.json(filtered);
   } catch (error) {

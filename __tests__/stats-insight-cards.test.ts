@@ -240,3 +240,55 @@ describe('GET /api/stats/insight — a failed read is not an empty one', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 });
+
+describe('/api/stats/insight — what a read costs (audit, 2026-11-05)', () => {
+  beforeEach(() => {
+    resetMockStore();
+    setupAdminPin();
+    mockCreate.mockReset();
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    seedPointer('session-2026-06-17');
+  });
+  afterAll(() => {
+    delete process.env.ANTHROPIC_API_KEY;
+  });
+  const warm = (name: string) =>
+    makeRequest('GET', `${BASE}?name=${encodeURIComponent(name)}&warm=1`, undefined, {
+      Cookie: `member_session=${memberCookieValue(name)}`,
+    });
+
+  it('a background request for someone who has not opened Stats lately asks the model nothing', async () => {
+    const m = seedMember('Lin');
+    seedAssessment(m.id, '2026-04-01', 3.1, ['net_play']);
+    seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
+    const res = await GET(warm('Lin'));
+    expect(res.status).toBe(204);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('…but writes it for someone who opens Stats, and an on-screen request always does', async () => {
+    const m = seedMember('Lin');
+    seedAssessment(m.id, '2026-04-01', 3.1, ['net_play']);
+    seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
+    mockCreate.mockResolvedValue(textResponse({ greeting: 'Hi.', trend: { headline: 'Net play keeps lagging' } }));
+    const store = getStore();
+    store['events'] = [{ id: 'e1', memberId: m.id, name: 'Lin', kind: 'stats_open', at: new Date().toISOString() }];
+    expect((await GET(warm('Lin'))).status).toBe(200);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    store['events'] = [];
+    store['insights'] = [];
+    expect((await GET(getAs('Lin'))).status).toBe(200);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it('an empty read is remembered: the next open does not ask the model again', async () => {
+    const m = seedMember('Akane');
+    seedAssessment(m.id, '2026-05-01', 2.7);
+    mockCreate.mockResolvedValue(textResponse({ greeting: null, trend: null }));
+    await GET(getAs('Akane'));
+    const calls = mockCreate.mock.calls.length;
+    const again = await (await GET(getAs('Akane'))).json();
+    expect(again.account).toBe(true);
+    expect(mockCreate.mock.calls.length).toBe(calls);
+  });
+});
