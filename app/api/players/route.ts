@@ -1084,8 +1084,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'session_settled' }, { status: 409 });
     }
 
-    // Capacity check when restoring a removed player or promoting a waitlisted player
-    if (body.removed === false || body.waitlisted === false) {
+    // Capacity check when restoring a removed player or promoting a waitlisted
+    // player — only when the row comes out of it HOLDING A SPOT. A restore
+    // that lands on the waitlist (the row was waiting when it left, or the
+    // admin sends `waitlisted: true` with it) takes no spot, so a full session
+    // is no reason to refuse it: the waitlist is what a full set of courts
+    // overflows into (docs/plans/money-off-session-list.md).
+    const endsWaitlisted = body.waitlisted === true || (body.waitlisted !== false && existing.waitlisted === true);
+    if ((body.removed === false || body.waitlisted === false) && !endsWaitlisted) {
       const active = await scope.query<{ id: string }>('players', {
         where: ACTIVE_PLAYERS_WHERE,
         params: [{ name: '@sessionId', value: sessionId }],

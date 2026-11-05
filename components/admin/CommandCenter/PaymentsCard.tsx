@@ -23,6 +23,7 @@ import StatusBadge from '@/components/primitives/StatusBadge';
 import { sharedFetch } from '@/lib/sharedRead';
 import { sessionDay, sessionMoneyState, SESSION_CALENDAR_LIMIT } from '@/lib/sessionCalendar';
 import SessionDatePicker, { type PickerSession } from './SessionDatePicker';
+import { addPlayerByName, promotePlayer, removePlayer, restorePlayer } from '@/lib/sessionRowActions';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -369,20 +370,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     setAdding(true);
     setAddError('');
     try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setAddError(data.error ?? 'Failed to add.');
+      const result = await addPlayerByName(name);
+      if (!result.ok) {
+        setAddError(result.error);
         return;
       }
       setAddName('');
       if (viewedSessionId) await loadPlayers(viewedSessionId);
-    } catch {
-      setAddError('Network error.');
     } finally {
       setAdding(false);
     }
@@ -392,14 +386,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     if (busyId) return;
     setBusyId(player.id);
     try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: player.id, waitlisted: false }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? 'Failed to promote.');
+      const result = await promotePlayer(player.id);
+      if (!result.ok) {
+        alert(result.error);
         return;
       }
       if (viewedSessionId) await loadPlayers(viewedSessionId);
@@ -412,14 +401,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     if (busyId) return;
     setBusyId(player.id);
     try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: player.id, removed: false, ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? 'Failed to restore.');
+      const result = await restorePlayer(player.id, isCurrentSession ? null : viewedSessionId);
+      if (!result.ok) {
+        alert(result.error);
         return;
       }
       if (viewedSessionId) await loadPlayers(viewedSessionId);
@@ -444,22 +428,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     }
     if (!confirm(`Remove ${actionTarget.name} from this session?`)) return;
     setActionError('');
-    try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: actionTarget.name, ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setActionError(data.error ?? 'Failed to remove.');
-        return;
-      }
-      setActionTarget(null);
-      if (viewedSessionId) await loadPlayers(viewedSessionId);
-    } catch {
-      setActionError('Network error.');
+    const result = await removePlayer(actionTarget.name, isCurrentSession ? null : viewedSessionId);
+    if (!result.ok) {
+      setActionError(result.error);
+      return;
     }
+    setActionTarget(null);
+    if (viewedSessionId) await loadPlayers(viewedSessionId);
   }
 
   async function actionUncover() {
