@@ -2066,6 +2066,12 @@
       "theySee": "{name} 看到",
       "theyFallback": "对方",
       "saving": "保存中…",
+      "missing": {
+        "who": "请先在顶部的“谁的球拍？”里选择球拍的主人。",
+        "racket": "请先填写球拍。",
+        "string": "请先填写球线。",
+        "price": "请先修正价格，或留空。"
+      },
       "saveAndTell": "保存穿线单",
       "error": {
         "invalid_date": "选一个完成日期。",

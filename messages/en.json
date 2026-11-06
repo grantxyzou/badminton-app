@@ -2078,6 +2078,12 @@
         "theySee": "{name} sees",
         "theyFallback": "The player",
         "saving": "Saving…",
+        "missing": {
+          "who": "Pick whose racket it is first, under Whose racket? at the top.",
+          "racket": "Add the racket first.",
+          "string": "Add the string first.",
+          "price": "Fix the price first, or leave it blank."
+        },
         "saveAndTell": "Save job",
         "error": {
           "invalid_date": "Pick a date for when it'll be ready.",
