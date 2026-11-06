@@ -5,10 +5,9 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-import { getIdentity } from '@/lib/identity';
 import { AdminTabSkeleton } from './primitives/CardSkeleton';
 import AdminDashboard from './admin/AdminDashboard';
-import PinInput from './PinInput';
+import AdminSignInCard from './admin/AdminSignInCard';
 import TopBar from './primitives/TopBar';
 import ErrorState from './primitives/ErrorState';
 import { isRefused } from '@/lib/apiFetch';
@@ -19,8 +18,12 @@ import { isRefused } from '@/lib/apiFetch';
    var is retired. Admin powers come from `member.role === 'admin'` on
    the matched record. */
 
-export default function AdminTab({ onExit, knownAuthed = false }: {
+export default function AdminTab({ onExit, knownAuthed = false, onSignedIn }: {
   onExit: () => void;
+  /** A PIN sign-in here minted the admin cookie: the shell re-checks, so the
+   *  Stringing bench (which reads the shell's verdict) opens without a second
+   *  sign-in. */
+  onSignedIn?: () => void;
   /** The shell's own `GET /api/admin` already said yes. The console then
    *  renders at once and this tab's check runs behind it, instead of every
    *  console read waiting on a second answer to the same question
@@ -34,16 +37,6 @@ export default function AdminTab({ onExit, knownAuthed = false }: {
   // inside admin sits above this one (lib/pageStack.ts).
   usePageBack(true, onExit, -1);
   const [isAuthed, setIsAuthed] = useState<boolean | null>(knownAuthed ? true : null); // null = loading
-  /* Guarded, matching HomeTab's initializer. `getIdentity()` reads
-     localStorage, which does not exist on the server. This is safe today only
-     because routing never server-renders AdminTab — an accident of
-     `showAdmin` starting false, not a property of this file. */
-  const [name, setName] = useState(() =>
-    typeof window === 'undefined' ? '' : (getIdentity()?.name ?? ''),
-  );
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState('');
-  const [checking, setChecking] = useState(false);
   /* Unknown is not "signed out". A thrown or 5xx check used to fall through to
      `{ authed: false }` and put a signed-in admin in front of the PIN form, as
      if their session had ended. `GET /api/admin` answers a real refusal with a
@@ -79,31 +72,6 @@ export default function AdminTab({ onExit, knownAuthed = false }: {
     setCheckFailed(false);
     setIsAuthed(null);
     setCheckAttempt((n) => n + 1);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setChecking(true);
-    setError('');
-    try {
-      const res = await fetch(`${BASE}/api/admin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), pin }),
-      });
-      if (res.ok) {
-        setIsAuthed(true);
-      } else if (res.status === 429) {
-        setError(pageT('signInErrorRateLimited'));
-      } else {
-        setError(pageT('signInErrorInvalid'));
-        setPin('');
-      }
-    } catch {
-      setError(pageT('signInErrorNetwork'));
-    } finally {
-      setChecking(false);
-    }
   }
 
   if (checkFailed) {
@@ -144,45 +112,12 @@ export default function AdminTab({ onExit, knownAuthed = false }: {
             moment the console loaded, from a page title to a back bar. */}
         <TopBar title={pageT('title')} onBack={onExit} backLabel="Back to profile" />
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="glass-card p-5 w-full max-w-xs space-y-5">
-            <div className="text-center">
-              <span className="material-icons icon-xl text-green-400">lock</span>
-              <p className="fs-md text-gray-400 mt-2">{pageT('signInHelp')}</p>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label htmlFor="admin-name" className="sr-only">{pageT('nameLabel')}</label>
-                <input
-                  id="admin-name"
-                  name="name"
-                  type="text"
-                  placeholder={pageT('namePlaceholder')}
-                  aria-label={pageT('nameLabel')}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={50}
-                  autoComplete="nickname"
-                  autoFocus={!name}
-                />
-              </div>
-              <PinInput
-                value={pin}
-                onChange={setPin}
-                digits={4}
-                label={pageT('pinLabel')}
-                ariaInvalid={!!error}
-                autoFocus={!!name}
-              />
-              {error && <p id="admin-error" role="alert" className="field-error">{error}</p>}
-              <button
-                type="submit"
-                disabled={checking || !name.trim() || pin.length !== 4}
-                className="cc-btn cc-btn-primary cc-btn-lg"
-              >
-                {checking ? pageT('signInChecking') : pageT('signInButton')}
-              </button>
-            </form>
-          </div>
+          <AdminSignInCard
+            onSignedIn={() => {
+              setIsAuthed(true);
+              onSignedIn?.();
+            }}
+          />
         </div>
       </div>
     );

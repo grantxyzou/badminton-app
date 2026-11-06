@@ -50,6 +50,7 @@
       "notPriced": "还没定价",
       "quoted": "报价",
       "registers": {
+        "benchSignIn": "这台设备上的管理员登录已失效。请用名字和 PIN 登录以使用工作台。",
         "racket": "申请穿线",
         "strings": "价格详情",
         "bench": "穿线单"

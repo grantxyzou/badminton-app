@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Adding a stringing job works again after the admin sign-in runs out (2026-11-06)
+
+- **"Save job" on the Stringing bench could stay greyed out for good.** When an admin's separate admin sign-in had run out on a phone, the app still showed the bench. But the job list wouldn't load ("Try again"), searching for a player found nobody, and so "Save job" never turned on. The bench now asks for your name and PIN first, just like the Admin page, then opens. Signing in on either one opens both.
+
 ### The app opens with a little less to download (2026-11-06)
 
 - **The Notifications page now loads after the app opens**, in the background, so the first screen arrives sooner. The bell's red dot still appears as soon as there's something new: it never waited for the page. A tap that beats the download sees the page's usual loading frame for a moment.

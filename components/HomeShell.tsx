@@ -1127,7 +1127,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
               >
                 <TabActiveContext.Provider value={tab === activeTab && !noticesOpen}>
                   {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} push={push} webApp={webAppOffer} />}
-                  {tab === 'stringing' && <StringingTab isAdmin={showAdmin} view={stringingView} onViewChange={setStringingView} />}
+                  {tab === 'stringing' && <StringingTab isAdmin={showAdmin} adminSession={adminKnown ? adminCookieLive : null} onAdminSignedIn={refreshAdminAccess} view={stringingView} onViewChange={setStringingView} />}
                   {tab === 'skills' && <SkillsTab onTabChange={setActiveTab} />}
                   {tab === 'profile' && (
                     <ProfileTab
@@ -1166,7 +1166,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           {showAdmin && (activeTab === 'admin' || kept.includes('admin')) && (
             <div key={`admin-${refreshNonce}-${tabNonce.admin ?? 0}`} {...{ [TAB_PANEL_ATTR]: 'admin' }} hidden={activeTab !== 'admin' || noticesOpen} className="motion-fade">
               <TabActiveContext.Provider value={activeTab === 'admin' && !noticesOpen}>
-                <AdminErrorBoundary><AdminTabView onExit={() => setActiveTab('profile')} knownAuthed={adminCookieLive} /></AdminErrorBoundary>
+                <AdminErrorBoundary><AdminTabView onExit={() => setActiveTab('profile')} knownAuthed={adminCookieLive} onSignedIn={refreshAdminAccess} /></AdminErrorBoundary>
               </TabActiveContext.Provider>
             </div>
           )}

@@ -15,6 +15,7 @@ import StringsWeOfferCard from '@/components/stringing/StringsWeOfferCard';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { isFlagOn } from '@/lib/flags';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
+import AdminSignInCard from '@/components/admin/AdminSignInCard';
 import { STRINGING_HEIGHTS } from '@/components/TabFallbacks';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -47,13 +48,20 @@ export type StringingView = 'racket' | 'strings' | 'bench';
 interface Props {
   /** HomeShell's server-checked admin verdict; the bench routes re-check it anyway. */
   isAdmin?: boolean;
+  /** Whether this device's ADMIN cookie is live, which every bench read and
+   *  save checks; `null` while the shell is still asking. `isAdmin` alone is
+   *  the shell's view of the ROLE, and is also true for an admin whose admin
+   *  cookie has lapsed. Absent reads as live (the old behaviour). */
+  adminSession?: boolean | null;
+  /** The bench's sign-in minted the cookie: the shell re-checks. */
+  onAdminSignedIn?: () => void;
   /** The register, owned by HomeShell above this tab's refresh key so a
    *  pull-to-refresh keeps it. Uncontrolled (Racket first) without it. */
   view?: StringingView;
   onViewChange?: (view: StringingView) => void;
 }
 
-export default function StringingTab({ isAdmin = false, view: controlled, onViewChange }: Props) {
+export default function StringingTab({ isAdmin = false, adminSession = true, onAdminSignedIn, view: controlled, onViewChange }: Props) {
   const tNav = useTranslations('nav');
   const t = useTranslations('home.stringing.registers');
   const [uncontrolled, setUncontrolled] = useState<StringingView>('racket');
@@ -151,7 +159,18 @@ export default function StringingTab({ isAdmin = false, view: controlled, onView
 
         {current === 'bench' && benchPending && <CardSkeleton height={STRINGING_HEIGHTS.queue} />}
 
-        {current === 'bench' && adminBench && (
+        {/* An admin by role whose admin cookie has lapsed: every read and save
+            on the bench would be refused (the job list said "Try again" and
+            "Save job" never turned on), so the sign-in comes first. */}
+        {current === 'bench' && adminBench && adminSession === null && <CardSkeleton height={STRINGING_HEIGHTS.queue} />}
+
+        {current === 'bench' && adminBench && adminSession === false && (
+          <div className="flex justify-center">
+            <AdminSignInCard help={t('benchSignIn')} onSignedIn={() => onAdminSignedIn?.()} />
+          </div>
+        )}
+
+        {current === 'bench' && adminBench && adminSession === true && (
           <AdminErrorBoundary>
             <StringingPage embedded crumb={tNav('stringing')} onBack={() => setView('racket')} onTakeover={setTakeover} />
           </AdminErrorBoundary>
