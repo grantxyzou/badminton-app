@@ -27,6 +27,7 @@ What survived that arrangement, and the rules that came with it:
   counter — an out-of-order-response race that shipped here twice. **Never
   add a gear fetch outside `useGear`; every child takes the `UseGear` object
   as a prop instead.**
+- **The last bag is kept for the page load** (`components/stats/gearMemory.ts`, 2026-11-05): the register switch remounts the Gear register on every visit to Equipment, so `useGear` starts from the bag that name last read or wrote and re-reads behind it — no skeleton, no wait. Page memory only (signing in or out reloads); the suite resets it before every test (`__tests__/setup/reset-page-memory.ts`). The card also remembers the member's own head and packet picture addresses (`lib/warmPictures.ts`), which the shell fetches while the other tabs open; sign-out forgets them (`clearDeviceTraces`).
 - **`components/stats/useGear.ts`** holds `gear/rackets/active/loaded/
   loadError/busy/online` plus `reload/add/activate/remove/setPrefs`, and ONE
   monotonic op counter shared by the read and all writes. The Set-up card's

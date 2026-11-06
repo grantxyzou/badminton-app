@@ -34,7 +34,13 @@ import { consumeRecentExcursion } from '@/lib/excursion';
 import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
 import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
-import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
+import { resetSharedReads, sharedFetch, watchWrites } from '@/lib/sharedRead';
+
+// Count the page's writes from the first moment, so a read answered a few
+// seconds ago is reused only while nothing has been saved since
+// (lib/sharedRead.ts, `SETTLED_SHARE_MS`). Module level, not an effect: the
+// tabs' own effects run before the shell's, and their reads must be counted.
+if (typeof window !== 'undefined') watchWrites();
 import { useInAppNavigation } from '@/lib/inAppNavigate';
 import { useAppShortcuts } from '@/lib/appShortcuts';
 import { useWidgetBridge } from '@/lib/widgetBridge';
@@ -44,6 +50,7 @@ import { useEverOpened } from '@/lib/useEverOpened';
 import { prewarmInsight } from '@/lib/useInsight';
 import { TabActiveContext } from '@/lib/tabActivity';
 import { appSettled, APP_SHELL_ATTR, TAB_PANEL_ATTR } from '@/lib/appSettled';
+import { warmRememberedPictures } from '@/lib/warmPictures';
 import { rememberClub } from '@/lib/lastClub';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
@@ -708,7 +715,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       (() => {
         const name = getIdentity()?.name ?? null;
         if (!name) return Promise.resolve({ role: 'member' });
-        return fetch(`${BASE}/api/members/me?name=${encodeURIComponent(name)}`)
+        return sharedFetch(`/api/members/me?name=${encodeURIComponent(name)}`)
           // A 401 (no live cookie) or 403 (not this person) IS a verdict —
           // that caller holds no admin role here. Anything else non-ok is
           // not: the body carries no `role` and reading it as "not admin"
@@ -917,6 +924,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       window.clearInterval(id);
       setPreloaded(true);
       setKept((k) => [...k, ...KEPT_TABS.filter((t) => !k.includes(t))]);
+      // The member's own racket and string pictures, so Equipment draws them
+      // the moment it opens (lib/warmPictures.ts).
+      warmRememberedPictures();
     }, 150);
     return () => window.clearInterval(id);
   }, [preloaded, canPreload]);

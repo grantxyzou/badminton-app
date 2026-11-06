@@ -12,6 +12,7 @@ import { parseShelf, shelfPrice, stringColours, stringTypeOf, typeBand, type She
 import type { CatalogItem } from '@/lib/types';
 import StockBadge from './StockBadge';
 import StringPackImage from './StringPackImage';
+import StringingStory from './StringingStory';
 import { stringPackSrc } from '@/lib/stringPackSrc';
 import {
   TENSION_MIN_LB,
@@ -659,6 +660,15 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
    *  opt-in that makes "get notified" true. */
   const sentStep = (
     <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+      {/* Their racket, step by step, in their own racket and string (Stringing
+          canvas, 2026-11-05). A racket typed in has no catalog row and draws
+          the default frame; a string with no packet starts at the machine. */}
+      <StringingStory
+        racketId={kit.find((r) => r.label === racketLabel.trim())?.catalogId ?? null}
+        stringId={pickedItem?.id ?? null}
+        stringName={stringLabel}
+        tension={playerTensionText(mains, finalCrosses)}
+      />
       <p role="status" className="fs-md" style={{ margin: '0', color: 'var(--text-primary)' }}>
         {t('sentBody')}
       </p>

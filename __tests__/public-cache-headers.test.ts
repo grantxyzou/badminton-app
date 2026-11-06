@@ -30,7 +30,7 @@ describe('public/ cache headers', () => {
   it('caches rackets, brand art and icons for a day in production', async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
     const all = await rules();
-    for (const source of ['/rackets/:path*', '/brand/:path*', '/icons/:path*']) {
+    for (const source of ['/rackets/:path*', '/strings/:path*', '/brand/:path*', '/icons/:path*']) {
       const value = cacheFor(all, source);
       expect(value).toBe('public, max-age=86400, stale-while-revalidate=604800');
       expect(value).not.toMatch(/immutable/);

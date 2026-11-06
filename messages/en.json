@@ -32,6 +32,16 @@
       "sentLabel": "Stringing",
       "sentBody": "Drop off the racket and get notified of the progress.",
       "sentTitle": "Drop off your racket",
+      "story": {
+        "open": "Opening a fresh set of {string}",
+        "onto": "Onto the stringing machine",
+        "stringing": "Stringing at {tension} lb, mains then crosses",
+        "off": "Off the machine",
+        "ready": "Ready to pick up. We'll let you know.",
+        "pill": "Ready · {string} at {tension} lb",
+        "lb": "{tension} lb",
+        "again": "Play again"
+      },
       "back": "Back",
       "stepOf": "{step} of {total}",
       "tensionHint": "Select the tension or chat with your stringer for recommendations.",

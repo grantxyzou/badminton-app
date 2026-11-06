@@ -1,9 +1,19 @@
-name: Deploy to bpm-next (auto, on push to main)
+name: Deploy to bpm-next (three times a day, or on demand)
 
+# Deploys are GROUPED, not one per merge (Grant, 2026-11-05: "the app is
+# getting really slow"). Every deploy restarts the server, which empties its
+# in-memory caches, and renames the code files it changed, which every phone
+# downloads again on its next open; on a day of five merges members paid that
+# five times. So `main` ships three times a day, off-peak in Vancouver
+# (06:17, 13:17 and 23:17 in winter, an hour later in summer: cron is UTC),
+# and only when something the app is built from changed since the build that
+# is live. "Run workflow" (workflow_dispatch) ships `main` at once, for a fix
+# that cannot wait; it always deploys.
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '17 14 * * *'
+    - cron: '17 21 * * *'
+    - cron: '17 7 * * *'
   workflow_dispatch:
 
 # One deploy at a time. Azure OneDeploy refuses a second deployment while one
@@ -16,7 +26,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Is there anything to ship? A scheduled run compares `main` with the build
+  # production reports (`/api/health` → `build`) and deploys only when a file
+  # the app is built from changed: notes under docs/ and Markdown files other
+  # than CHANGELOG.md (which the release form reads) do not. If production
+  # cannot be asked, it deploys (failing open beats shipping nothing).
+  decide:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      deploy: ${{ steps.check.outputs.deploy }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "schedule" ]; then echo "deploy=true" >> "$GITHUB_OUTPUT"; echo "On demand: deploying."; exit 0; fi
+          live=$(curl -fsS --max-time 20 https://bpm.grantzou.com/bpm/api/health | jq -r '.build // empty' || true)
+          if [ -z "$live" ]; then echo "deploy=true" >> "$GITHUB_OUTPUT"; echo "Could not read the live build; deploying."; exit 0; fi
+          if [ "$live" = "$GITHUB_SHA" ]; then echo "deploy=false" >> "$GITHUB_OUTPUT"; echo "Production already runs $GITHUB_SHA."; exit 0; fi
+          files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$live...$GITHUB_SHA" --paginate --jq '.files[].filename' || echo '__unknown__')
+          app=$(printf '%s\n' "$files" | grep -v -E '^docs/' | grep -v -E '\.md$' ; printf '%s\n' "$files" | grep -E '^CHANGELOG\.md$' || true)
+          if [ -n "$(printf '%s' "$app" | tr -d '[:space:]')" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"; echo "App files changed since $live:"; printf '%s\n' "$app" | head -40
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"; echo "Only notes changed since $live; nothing to ship."
+          fi
+
   build_and_deploy:
+    needs: decide
+    if: needs.decide.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read

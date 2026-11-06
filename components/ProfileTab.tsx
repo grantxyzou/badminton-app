@@ -44,10 +44,10 @@ import MemberAvatar from './primitives/MemberAvatar';
 import AvatarSheet from './profile/AvatarSheet';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
+import { useBuildSha } from '@/lib/buildSha';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** The deployed commit, baked in at build time (`deploy-next.yml`); `dev` locally. */
-const BUILD_SHA = (process.env.NEXT_PUBLIC_GIT_SHA || 'dev').slice(0, 7);
 
 interface Props {
   sessionId: string;
@@ -106,6 +106,7 @@ export default function ProfileTab({
 }: Props) {
   const t = useTranslations('profile');
   const tGroups = useTranslations('groups');
+  const buildSha = useBuildSha();
   // Multi-group: the switcher's data. Resolves to `group: null` with the flag
   // off (the endpoints 404 by design), so the row simply does not render.
   const { group, groups, loading: groupsLoading, error: groupsError, refresh: refreshGroups } = useCurrentGroup();
@@ -214,7 +215,7 @@ export default function ProfileTab({
   useEffect(() => {
     const id = getIdentity();
     setLocalIdentity(id);
-    fetch(`${BASE}/api/releases`, { cache: 'no-store' })
+    sharedFetch('/api/releases')
       .then(async (r) => {
         if (!r.ok) throw new Error(`releases fetch ${r.status}`);
         return r.json();
@@ -948,7 +949,7 @@ export default function ProfileTab({
           off when something looks old, and "what does yours say?" answers
           whether a fix has reached them. Quiet, last, and not a control. */}
       <p className="fs-xs text-center" style={{ margin: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-        {tSettings('version', { sha: BUILD_SHA })}
+        {tSettings('version', { sha: buildSha })}
       </p>
 
       {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}

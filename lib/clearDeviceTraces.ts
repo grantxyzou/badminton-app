@@ -1,6 +1,7 @@
 import { clearAppBadge } from './appBadge';
 import { clearAppShortcuts } from './appShortcuts';
 import { clearWidgets } from './widgetBridge';
+import { forgetPictures } from './warmPictures';
 
 /** How long sign-out waits for the phone to clear what it shows. */
 export const CLEAR_TRACES_MS = 1500;
@@ -19,6 +20,8 @@ export const CLEAR_TRACES_MS = 1500;
  * cannot sign out. Resolves, never rejects.
  */
 export async function clearDeviceTraces(timeoutMs = CLEAR_TRACES_MS): Promise<void> {
+  // Which racket and string pictures to fetch early: the next person's own.
+  forgetPictures();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<void>((resolve) => {
     timer = setTimeout(resolve, timeoutMs);
