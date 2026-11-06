@@ -32,6 +32,7 @@ function mockMetrics(payload: unknown, ok = true) {
 
 const HAPPY: ClubMetrics = {
   clientErrors: { last7d: 0, members7d: 0, byTab: {} },
+  appReady: { opens7d: 0, medianMs: null, slowMs: null, medianLaunchMs: null, byStart: {} },
   generatedAt: '2026-10-07T12:00:00.000Z',
   rosterSize: 40,
   activeMembers: { last4: 23, previous4: 19 },

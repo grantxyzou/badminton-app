@@ -39,6 +39,16 @@ A production build of the app on the mock store, played as a mid-range phone: 4�
 - **The bag is kept for the page load**, so the register switch's remount draws at once and re-reads behind it.
 - **Deploys three times a day, off-peak**, skipped when only notes changed; "Run workflow" ships at once. Every deploy restarts the server (its caches empty) and renamed the code files it touched, which every phone downloads again; the commit was inlined into two large chunks, so even a docs merge cost every phone 54 KB. The commit is now read from the page's `bpm-build` tag at run time.
 
+## Round 2 (2026-11-06): real phones, quick returns, last time's week
+
+Grant chose, from the list of further ideas, "Ok" to: measure real phones first, then skip the launch screen when coming back, then show last time's Home at once.
+
+- **Real phones** — `app_ready`, one event per page load: `ms` to the first screen filled in, `launchMs` to the launch screen leaving (fresh opens only), `start` (`open` or `return`), `platform`. Read back as `appReady` in `clubMetrics` (typical, slow, per start; null under three opens) and tallied in slice0. The privacy policy says so in both languages.
+- **Quick return** (`lib/quickReturn.ts`) — the signed-in app notes when it was last in use (opening, going to the background); a load within 30 minutes marks the launch screen lifted in the pre-paint script before it is drawn. Sign-out forgets the note.
+- **Last time's week** (`lib/homeSnapshot.ts`) — after every week that loads, Home keeps a copy (session, who is in, announcement; never money), keyed by club and member, for a week. The next open draws it at once: dimmed, "Updating…" in the sign-up card, every button and link held (and the sign-up and cancel handlers refuse it); the server's week replaces it, and a failed refresh shows the error instead. Sign-out forgets it.
+
+Measured on the production build, slowed phone: a first open showed Home at 2.3 s (launch screen gone 2.3 s). A quick return showed no launch screen, the copied week at 1.1 s and the server's week at 1.4 s.
+
 ## The short finish (not built)
 
 The launch screen holds about 0.9 s after Home is ready, finishing its shot. A short finish would land the shuttle in about 0.4 s and fade in 0.15 s when Home is already ready — saving roughly half a second on every open and every return after iOS drops the app.

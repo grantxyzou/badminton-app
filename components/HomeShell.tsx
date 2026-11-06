@@ -51,6 +51,7 @@ import { prewarmInsight } from '@/lib/useInsight';
 import { TabActiveContext } from '@/lib/tabActivity';
 import { appSettled, APP_SHELL_ATTR, TAB_PANEL_ATTR } from '@/lib/appSettled';
 import { warmRememberedPictures } from '@/lib/warmPictures';
+import { noteActive } from '@/lib/quickReturn';
 import { rememberClub } from '@/lib/lastClub';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
@@ -159,9 +160,11 @@ interface Props {
    * the flag off, where identity stays a client-side matter as it always was.
    */
   memberName?: string | null;
+  /** The club the session cookie names, as the server read it; keys Home's copy of the week (lib/homeSnapshot.ts). */
+  groupId?: string | null;
 }
 
-export default function HomeShell({ initialAnnouncement, authProviders = [], memberName = null }: Props) {
+export default function HomeShell({ initialAnnouncement, authProviders = [], memberName = null, groupId = null }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   /* The Notifications page (docs/plans/notification-center.md): a full page
      over whichever tab is on screen, opened from the bell or Profile's row.
@@ -837,6 +840,21 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // App opens and tab views, for Admin → Metrics (docs/plans/usage-metrics.md).
   // Never for a signed-out visitor.
   useUsageBeacons(activeTab, hasIdentity === true);
+  // When the app was last in use on this phone, so coming back within half an
+  // hour skips the launch screen (lib/quickReturn.ts). Noted on opening and
+  // whenever the app goes to the background, where iOS may drop it.
+  useEffect(() => {
+    if (hasIdentity !== true) return;
+    noteActive();
+    const onHidden = () => { if (document.visibilityState === 'hidden') noteActive(); };
+    const onPageHide = () => noteActive();
+    document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [hasIdentity]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-tab', activeTab);
@@ -1126,7 +1144,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
                 className="motion-fade"
               >
                 <TabActiveContext.Provider value={tab === activeTab && !noticesOpen}>
-                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} push={push} webApp={webAppOffer} />}
+                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} groupId={groupId} deferFetch={!tabResolved} push={push} webApp={webAppOffer} />}
                   {tab === 'stringing' && <StringingTab isAdmin={showAdmin} adminSession={adminKnown ? adminCookieLive : null} onAdminSignedIn={refreshAdminAccess} view={stringingView} onViewChange={setStringingView} />}
                   {tab === 'skills' && <SkillsTab onTabChange={setActiveTab} />}
                   {tab === 'profile' && (

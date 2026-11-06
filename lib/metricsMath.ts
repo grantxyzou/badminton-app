@@ -65,6 +65,8 @@ export interface MetricsInput {
   usageEvents?: Array<{ memberId: string; kind: string; at: string; tab?: string; via?: string }>;
   /** `client_error` rows from the last 7 days (docs/plans/client-error-beacon.md). */
   errorEvents?: Array<{ memberId: string; at: string; tab?: string }>;
+  /** `app_ready` rows from the last 7 days: how long opening took on real phones (docs/plans/startup-speed.md). */
+  timingEvents?: Array<{ memberId: string; at: string; ms: number; launchMs?: number; start?: string }>;
   /**
    * Every `sign_in` through the PWA-to-app migration link, all time (bounded
    * only by the events container's TTL). Kept apart from `usageEvents`
@@ -135,6 +137,35 @@ export interface ClubMetrics {
   usage: UsageMetrics;
   /** Screens that crashed for roster members in the last 7 days. Zero is a real answer: the beacon is always on. */
   clientErrors: ClientErrorMetrics;
+  /** How long opening the app took on roster members' phones in the last 7 days. */
+  appReady: AppReadyMetrics;
+}
+
+/**
+ * How long opening the app took on members' real phones, last 7 days
+ * (`app_ready`, docs/plans/startup-speed.md). Milliseconds from the page
+ * starting. A figure from fewer than `MIN_TIMING_SAMPLES` opens is null —
+ * "—", never a number two opens happened to produce.
+ */
+export interface AppReadyMetrics {
+  opens7d: number;
+  /** The typical open: half were faster. */
+  medianMs: number | null;
+  /** A slow open: nine in ten were faster. */
+  slowMs: number | null;
+  /** The typical time to the launch screen leaving. */
+  medianLaunchMs: number | null;
+  /** The same, for fresh opens and for quick returns that skipped the launch screen. */
+  byStart: Record<string, { opens: number; medianMs: number | null }>;
+}
+
+export const MIN_TIMING_SAMPLES = 3;
+
+/** The value `q` of the way through an ascending list (nearest rank). */
+function quantile(sorted: number[], q: number): number | null {
+  if (sorted.length < MIN_TIMING_SAMPLES) return null;
+  const i = Math.min(sorted.length - 1, Math.max(0, Math.ceil(q * sorted.length) - 1));
+  return sorted[i];
 }
 
 /** Screens that crashed for roster members (docs/plans/client-error-beacon.md). */
@@ -390,6 +421,38 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
     },
     usage,
     clientErrors: computeClientErrors(input.errorEvents ?? [], rosterIds, input.now),
+    appReady: computeAppReady(input.timingEvents ?? [], rosterIds, input.now),
+  };
+}
+
+function computeAppReady(
+  raw: NonNullable<MetricsInput['timingEvents']>,
+  rosterIds: Set<string>,
+  now: Date,
+): AppReadyMetrics {
+  const since = now.getTime() - 7 * DAY;
+  const all: number[] = [];
+  const launch: number[] = [];
+  const byStart = new Map<string, number[]>();
+  for (const e of raw) {
+    const t = Date.parse(e.at);
+    if (!Number.isFinite(t) || t < since || t > now.getTime() || !rosterIds.has(e.memberId)) continue;
+    if (!Number.isFinite(e.ms) || e.ms < 0) continue;
+    all.push(e.ms);
+    if (typeof e.launchMs === 'number' && Number.isFinite(e.launchMs)) launch.push(e.launchMs);
+    const key = e.start ?? 'open';
+    const list = byStart.get(key) ?? [];
+    list.push(e.ms);
+    byStart.set(key, list);
+  }
+  const asc = (xs: number[]) => [...xs].sort((a, b) => a - b);
+  const sorted = asc(all);
+  return {
+    opens7d: all.length,
+    medianMs: quantile(sorted, 0.5),
+    slowMs: quantile(sorted, 0.9),
+    medianLaunchMs: quantile(asc(launch), 0.5),
+    byStart: Object.fromEntries([...byStart].map(([k, xs]) => [k, { opens: xs.length, medianMs: quantile(asc(xs), 0.5) }])),
   };
 }
 
