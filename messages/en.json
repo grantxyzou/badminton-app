@@ -50,6 +50,7 @@
       "notPriced": "Not priced yet",
       "quoted": "Quoted",
       "registers": {
+        "benchSignIn": "Your admin sign-in has ended on this device. Sign in with your name and PIN to use the bench.",
         "racket": "Submit request",
         "strings": "Pricing details",
         "bench": "Stringing jobs"
