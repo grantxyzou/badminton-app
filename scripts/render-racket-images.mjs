@@ -3,10 +3,12 @@
  * Pre-render one list image per catalog racket from the 3D model.
  *
  *   PORT=3106 npm run dev:next:mock        # in another terminal
- *   node scripts/render-racket-images.mjs [--base http://localhost:3106/bpm] [--only <id>] [--executable <chromium>] [--head]
+ *   node scripts/render-racket-images.mjs [--base http://localhost:3106/bpm] [--only <id>] [--executable <chromium>] [--head | --bare]
  *
  * `--head` writes the Equipment card's close-ups instead: each racket's head,
  * drawn large on a transparent ground, into `public/rackets/head/<id>.webp`.
+ * `--bare` writes the list pose with no strings into `public/rackets/bare/`:
+ * the frame the stringing animation strings.
  *
  * `--executable` renders in that Chromium with software WebGL (SwiftShader)
  * instead of system Chrome on the GPU — for a machine with no Chrome, such as
@@ -31,7 +33,9 @@ const arg = (name, fallback) => {
 const base = arg('base', 'http://localhost:3106/bpm');
 const only = arg('only', null);
 const head = args.includes('--head');
-const outDir = head ? join(process.cwd(), 'public', 'rackets', 'head') : join(process.cwd(), 'public', 'rackets');
+const bare = args.includes('--bare');
+const sub = head ? 'head' : bare ? 'bare' : null;
+const outDir = sub ? join(process.cwd(), 'public', 'rackets', sub) : join(process.cwd(), 'public', 'rackets');
 mkdirSync(outDir, { recursive: true });
 
 const executable = arg('executable', null);
@@ -52,13 +56,13 @@ try {
   for (const id of ids) {
     const url = head
       ? await page.evaluate((racketId) => window.__renderRacketHead(racketId), id)
-      : await page.evaluate((racketId) => window.__renderRacket(racketId), id);
+      : await page.evaluate(([racketId, b]) => window.__renderRacket(racketId, { bare: b }), [id, bare]);
     if (!url.startsWith('data:image/webp')) throw new Error(`${id}: the browser returned ${url.slice(0, 20)}, not a WebP`);
     const buf = Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
     writeFileSync(join(outDir, `${id}.webp`), buf);
     bytes += buf.length;
   }
-  console.log(`rendered ${ids.length} images, ${(bytes / 1024).toFixed(0)} KB, into ${head ? 'public/rackets/head' : 'public/rackets'}`);
+  console.log(`rendered ${ids.length} images, ${(bytes / 1024).toFixed(0)} KB, into public/rackets${sub ? `/${sub}` : ''}`);
 } finally {
   await browser.close();
 }

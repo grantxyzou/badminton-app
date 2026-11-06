@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { sharedFetch } from '@/lib/sharedRead';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export type Provider = 'google' | 'apple';
 
@@ -46,7 +46,7 @@ export function useSignInMethods(enabled = true): UseSignInMethods {
   const reload = useCallback(async () => {
     if (!enabled) return;
     try {
-      const res = await fetch(`${BASE}/api/auth/methods`, { cache: 'no-store' });
+      const res = await sharedFetch('/api/auth/methods');
       if (!res.ok) throw new Error(String(res.status));
       const d = (await res.json()) as Methods;
       if (d.linked === null) throw new Error('unknown');

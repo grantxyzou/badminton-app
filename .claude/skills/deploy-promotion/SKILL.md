@@ -5,7 +5,9 @@ description: Deploy or roll back the BPM badminton app. Use when shipping to pro
 
 # Deploying BPM
 
-**There is one deployment.** `main` auto-deploys to production on every push via
+**There is one deployment.** `main` deploys to production three times a day
+(only when app files changed since the live build) or at once from "Run
+workflow" (since 2026-11-05; a merge is not live until then), via
 `.github/workflows/deploy-next.yml`, which targets the `vnext-badminton-app` Azure
 app service, reachable at **https://bpm.grantzou.com/bpm**.
 

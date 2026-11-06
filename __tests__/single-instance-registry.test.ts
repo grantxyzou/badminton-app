@@ -53,6 +53,7 @@ const REGISTRY: ReadonlyArray<{ file: string; name: string; scaleOut: ScaleOut; 
   { file: 'lib/useNotices.ts', name: 'listeners', scaleOut: 'browser', note: "the bell and the Notifications page share one read, so the page's 'seen' clears the dot" },
   { file: 'lib/sharedRead.ts', name: 'inflightFetches', scaleOut: 'browser', note: 'client-side fetch dedupe for cards that mount together' },
   { file: 'lib/sharedRead.ts', name: 'primed', scaleOut: 'browser', note: 'one-shot early read handed to a card that mounts later' },
+  { file: 'lib/sharedRead.ts', name: 'settled', scaleOut: 'browser', note: 'a landed answer reused for a few seconds while the page has written nothing since' },
   { file: 'lib/useInsight.ts', name: 'cache', scaleOut: 'browser', note: 'client hook' },
   { file: 'lib/useMemberAvatars.ts', name: 'byName', scaleOut: 'browser', note: 'client hook, module-cached roster avatars' },
   { file: 'lib/useMemberAvatars.ts', name: 'listeners', scaleOut: 'browser', note: 'client hook subscriber set' },

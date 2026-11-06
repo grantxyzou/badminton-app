@@ -6918,6 +6918,135 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 /* Before the canvas lands: the story's night ground at its own proportions. */
 .setup-share-preview--pending { background: var(--bpm-night); }
 
+/* ── "Your racket, step by step" (StringingStory) ──
+   The stringing animation on the "Request sent" screen. Drawn on a fixed
+   420 × 490 stage, scaled to the sheet by --ss-k (set from the box's width),
+   so the picture's geometry stays in the stage's own units. Twelve seconds,
+   played ONCE: every keyframe ends on the last frame with fill-mode both, so
+   the reduced-motion rule above (0.01 ms, one iteration) lands straight on it.
+   It is a dark scene in both themes, like the share image: the racket and
+   packet renders are lit for a dark ground. */
+.ss { display: flex; flex-direction: column; gap: var(--space-3); }
+.ss-box {
+  --ss-amber: var(--color-amber);
+  --ss-thread: #f2efe6;
+  --ss-steel-1: #3c3c44;
+  --ss-steel-2: #1f1f24;
+  --ss-steel-3: #34343a;
+  --ss-steel-4: #222226;
+  --ss-steel-5: #6b6b75;
+  --ss-steel-6: #8a8a94;
+  --ss-shadow: rgba(0, 0, 0, 0.5);
+  position: relative;
+  width: 100%;
+  aspect-ratio: 420 / 490;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: radial-gradient(80% 70% at 30% 0%, rgba(245, 158, 11, 0.16), transparent 70%), var(--bpm-night);
+}
+.ss-stage { position: absolute; left: 0; top: 0; width: 420px; height: 490px; transform-origin: 0 0; transform: scale(var(--ss-k, 0)); }
+.ss-stage > *, .ss-machine > *, .ss-head > * { position: absolute; display: block; }
+
+/* 1. The packet: its top tears away and the string comes out. */
+.ss-pack { left: 155px; top: 100px; width: 110px; height: 154px; }
+.ss-pack-body { clip-path: inset(17% 0 0 0); animation: ss-pack-body 12s both; }
+.ss-pack-top { clip-path: polygon(0 0, 100% 0, 100% 15%, 88% 18%, 74% 15%, 60% 18%, 46% 15%, 32% 18%, 18% 15%, 0 18%); animation: ss-pack-top 12s both; }
+.ss-out-line { left: 150px; top: -10px; }
+.ss-out { fill: none; stroke: var(--ss-thread); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 320; animation: ss-out 12s both; }
+
+/* 2–4. The machine, seen from above: a turntable under the head, mounting
+   posts, two clamps and the tension head. No maker's name or logo. */
+.ss-machine { left: 20px; top: 202px; width: 380px; height: 170px; animation: ss-machine 12s both; }
+.ss-turntable { left: 28px; top: 23px; width: 124px; height: 124px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, var(--ss-steel-1), var(--ss-steel-2)); box-shadow: 0 10px 28px var(--ss-shadow); }
+.ss-rail { left: 0; top: 72px; width: 380px; height: 26px; border-radius: 13px; background: linear-gradient(180deg, var(--ss-steel-3), var(--ss-steel-4)); box-shadow: 0 8px 24px var(--ss-shadow); }
+.ss-post { width: 12px; height: 16px; border-radius: 4px; background: var(--ss-steel-5); }
+.ss-post-1 { left: 84px; top: 14px; }
+.ss-post-2 { left: 84px; top: 140px; }
+.ss-post-3 { left: 0; top: 77px; }
+.ss-post-4 { left: 172px; top: 77px; }
+.ss-clamp { width: 22px; height: 12px; border-radius: 3px; background: var(--ss-steel-6); }
+.ss-clamp-l { left: 52px; top: 30px; animation: ss-clamp-l 12s both; }
+.ss-clamp-r { left: 108px; top: 128px; animation: ss-clamp-r 12s both; }
+.ss-head { left: 300px; top: 116px; width: 76px; height: 44px; border-radius: 10px; background: linear-gradient(180deg, var(--ss-steel-1), var(--ss-steel-4)); box-shadow: 0 6px 16px var(--ss-shadow); }
+.ss-head-track, .ss-head-pull { left: 12px; top: 9px; width: 52px; height: 6px; border-radius: 3px; }
+.ss-head-track { background: rgba(255, 255, 255, 0.12); }
+.ss-head-pull { background: var(--ss-amber); transform-origin: left center; animation: ss-pull 0.55s ease-in-out 22 alternate both; }
+.ss-head-lb { left: 0; top: 20px; width: 76px; text-align: center; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: #ffffff; }
+.ss-feed-line { left: 140px; top: 96px; }
+.ss-feed { fill: none; stroke: var(--ss-thread); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 6 10; animation: ss-feed 0.5s linear 24 both; }
+
+/* 2–5. The racket: the bare frame, with the strung picture revealed across it. */
+.ss-racket { left: 141px; top: 107px; width: 138px; height: 360px; transform-origin: 50% 50%; animation: ss-racket 12s both; }
+.ss-racket-img { position: absolute; left: 0; top: 0; width: 138px; height: 360px; }
+.ss-strung { animation: ss-strung 12s both; }
+
+/* 5. Tada. */
+.ss-burst { left: 210px; top: 250px; width: 0; height: 0; }
+.ss-spark { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: var(--ss-amber); opacity: 0; animation: ss-spark 12s both; }
+.ss-spark-2, .ss-spark-5, .ss-spark-8 { background: var(--accent); }
+.ss-spark-3, .ss-spark-6 { background: var(--ss-thread); }
+.ss-spark-1 { --dx: -110px; --dy: -90px; }
+.ss-spark-2 { --dx: 110px; --dy: -90px; }
+.ss-spark-3 { --dx: -130px; --dy: 20px; }
+.ss-spark-4 { --dx: 130px; --dy: 20px; }
+.ss-spark-5 { --dx: -70px; --dy: -150px; }
+.ss-spark-6 { --dx: 70px; --dy: -150px; }
+.ss-spark-7 { --dx: -100px; --dy: 120px; }
+.ss-spark-8 { --dx: 100px; --dy: 120px; }
+.ss-done {
+  left: 0; right: 0; top: 432px; margin-inline: auto; width: max-content; max-width: 380px;
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 100px;
+  background: rgba(74, 222, 128, 0.16); color: #4ade80; font-size: 14px; font-weight: 600;
+  animation: ss-done 12s both;
+}
+
+/* The captions under the stage, one at a time, and the step dots. */
+.ss-captions { display: grid; }
+.ss-cap { grid-area: 1 / 1; margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); opacity: 0; }
+.ss-cap-1 { animation: ss-cap-1 12s both; }
+.ss-cap-2 { animation: ss-cap-2 12s both; }
+.ss-cap-3 { animation: ss-cap-3 12s both; }
+.ss-cap-4 { animation: ss-cap-4 12s both; }
+.ss-cap-5 { animation: ss-cap-5 12s both; }
+.ss-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ss-dots { display: flex; align-items: center; gap: var(--space-2); }
+.ss-dot { display: block; height: 6px; width: 6px; border-radius: 3px; background: var(--text-muted); opacity: 0.5; }
+.ss-dot-1 { animation: ss-dot-1 12s both; }
+.ss-dot-2 { animation: ss-dot-2 12s both; }
+.ss-dot-3 { animation: ss-dot-3 12s both; }
+.ss-dot-4 { animation: ss-dot-4 12s both; }
+.ss-dot-5 { animation: ss-dot-5 12s both; }
+
+@keyframes ss-pack-body { 0% { opacity: 0; transform: none; } 3%, 20% { opacity: 1; transform: none; } 30%, 68% { opacity: 1; transform: translate(-128px, -82px) scale(0.5); } 76%, 100% { opacity: 0; transform: translate(-128px, -82px) scale(0.5); } }
+@keyframes ss-pack-top { 0% { opacity: 0; transform: none; } 3%, 6% { opacity: 1; transform: none; } 12%, 100% { opacity: 0; transform: translate(34px, -56px) rotate(28deg); } }
+@keyframes ss-out { 0%, 8% { stroke-dashoffset: 320; opacity: 1; } 19% { stroke-dashoffset: 0; opacity: 1; } 24%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes ss-machine { 0%, 19% { opacity: 0; transform: translateY(12px); } 25%, 71% { opacity: 1; transform: none; } 78%, 100% { opacity: 0; transform: translateY(12px); } }
+@keyframes ss-pull { from { transform: scaleX(0.55); } to { transform: scaleX(1); } }
+@keyframes ss-feed { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+@keyframes ss-racket {
+  0%, 21% { opacity: 0; transform: translateY(300px) rotate(-90deg); }
+  33%, 71% { opacity: 1; transform: translateY(0) rotate(-90deg); }
+  76% { opacity: 1; transform: translateY(-26px) rotate(-90deg) scale(1.04); }
+  84%, 100% { opacity: 1; transform: translateY(-34px) rotate(0deg) scale(0.86); }
+}
+@keyframes ss-strung { 0%, 36% { clip-path: inset(0 100% 0 0); } 68%, 100% { clip-path: inset(0 0 0 0); } }
+@keyframes ss-clamp-l { 0%, 31% { transform: translateX(-14px); } 34%, 70% { transform: none; } 73%, 100% { transform: translateX(-14px); } }
+@keyframes ss-clamp-r { 0%, 31% { transform: translateX(14px); } 34%, 70% { transform: none; } 73%, 100% { transform: translateX(14px); } }
+@keyframes ss-spark { 0%, 84% { opacity: 0; transform: translate(0, 0) scale(0.2); } 86% { opacity: 1; transform: translate(0, 0) scale(1); } 92%, 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.6); } }
+@keyframes ss-done { 0%, 85% { opacity: 0; transform: translateY(10px); } 89%, 100% { opacity: 1; transform: none; } }
+@keyframes ss-cap-1 { 0% { opacity: 0; } 2%, 18% { opacity: 1; } 21%, 100% { opacity: 0; } }
+@keyframes ss-cap-2 { 0%, 19% { opacity: 0; } 22%, 33% { opacity: 1; } 36%, 100% { opacity: 0; } }
+@keyframes ss-cap-3 { 0%, 34% { opacity: 0; } 37%, 68% { opacity: 1; } 71%, 100% { opacity: 0; } }
+@keyframes ss-cap-4 { 0%, 69% { opacity: 0; } 72%, 82% { opacity: 1; } 85%, 100% { opacity: 0; } }
+@keyframes ss-cap-5 { 0%, 83% { opacity: 0; } 86%, 100% { opacity: 1; } }
+@keyframes ss-dot-1 { 0%, 19% { background: var(--color-amber); width: 18px; opacity: 1; } 21%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
+@keyframes ss-dot-2 { 0%, 19% { background: var(--text-muted); width: 6px; opacity: 0.5; } 21%, 34% { background: var(--color-amber); width: 18px; opacity: 1; } 36%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
+@keyframes ss-dot-3 { 0%, 34% { background: var(--text-muted); width: 6px; opacity: 0.5; } 36%, 69% { background: var(--color-amber); width: 18px; opacity: 1; } 71%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
+@keyframes ss-dot-4 { 0%, 69% { background: var(--text-muted); width: 6px; opacity: 0.5; } 71%, 83% { background: var(--color-amber); width: 18px; opacity: 1; } 85%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
+@keyframes ss-dot-5 { 0%, 83% { background: var(--text-muted); width: 6px; opacity: 0.5; } 85%, 100% { background: var(--color-amber); width: 18px; opacity: 1; } }
+/* Reduced motion lands on the last frame at once, so replaying shows nothing new. */
+@media (prefers-reduced-motion: reduce) { .ss-again { display: none; } }
+
 /* "Racket to try next": the whole frame, large, beside the pick. */
 button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .setup-next-row {

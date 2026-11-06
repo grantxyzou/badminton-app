@@ -11,12 +11,11 @@ import type { GameResult } from '@/lib/types';
 import SteppedGameLoggerSheet from './SteppedGameLoggerSheet';
 import CourtsideScoreboard from './CourtsideScoreboard';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
-import { sharedRead } from '@/lib/sharedRead';
+import { sharedFetch, sharedRead } from '@/lib/sharedRead';
 import { takeGameIntent, hasGameIntent } from '@/lib/gameIntent';
 import { useTabActive } from '@/lib/tabActivity';
 import type { Score } from '@/lib/scoreRules';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** Rows shown. The header count is always the FULL total, not this. */
 const CAP = 8;
@@ -63,7 +62,7 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
 
   useEffect(() => {
     let live = true;
-    fetch(`${BASE}/api/session`, { cache: 'no-store' })
+    sharedFetch('/api/session')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       // Same field order as GameLoggerCard: session docs carry `sessionId`,
       // the DEFAULT_SESSION fallback carries `id`.

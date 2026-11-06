@@ -13,7 +13,9 @@ import { RACKET_LOOKS, DEFAULT_LOOK } from '@/lib/racketLook';
  * '_default') and resolves a WebP data URL. `window.__renderRacketHead(id)`
  * renders the same pose larger and returns its HEAD only, on a transparent
  * ground: the Equipment card's close-up (`public/rackets/head/`), which a
- * list image scaled up would draw soft.
+ * list image scaled up would draw soft. `window.__renderRacket(id, { bare: true })`
+ * renders the list pose with the strings hidden: the frame the stringing
+ * animation strings (`public/rackets/bare/`).
  */
 
 const RENDER_W = 240;
@@ -30,7 +32,7 @@ const HEAD_FRACTION = 0.46;
 
 declare global {
   interface Window {
-    __renderRacket?: (id: string) => Promise<string>;
+    __renderRacket?: (id: string, opts?: { bare?: boolean }) => Promise<string>;
     __renderRacketHead?: (id: string) => Promise<string>;
     __racketIds?: string[];
   }
@@ -85,8 +87,11 @@ export default function RacketRenderPage() {
           stage.resize(RENDER_W * SUPERSAMPLE, RENDER_H * SUPERSAMPLE);
         }
       };
-      window.__renderRacket = async (id: string) => {
+      window.__renderRacket = async (id: string, opts?: { bare?: boolean }) => {
         const racket = pose(id);
+        // A bare frame: the same picture with the string bed taken out, so
+        // the stringing animation can string it (StringingStory).
+        if (opts?.bare) { const bed = racket.getObjectByName('strings'); if (bed) bed.visible = false; }
         stage.renderOnce();
         const out = document.createElement('canvas');
         out.width = RENDER_W;

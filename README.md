@@ -2,7 +2,7 @@
 
 A Next.js 16 app for casual badminton clubs — sign-ups (with invite-list gating), waitlist, payment tracking, session history, AI-polished announcements, and a formalized design system. Several clubs share one deployment: an account is a person, a membership carries their role in each club, and every club-scoped read is filtered by group (`docs/plans/multi-group.md`). Each club is run by its own organisers; one operator runs the service (`app/legal/privacy`).
 
-**One deployment**: every push to `main` deploys to production at https://bpm.grantzou.com/bpm via `.github/workflows/deploy-next.yml` (the app service is named `vnext-badminton-app`; the name is historical — verify by DNS, never by name). The second App Service was deleted 2026-08-25. Runbook: the `deploy-promotion` skill; history in [`docs/deployment-model.md`](docs/deployment-model.md).
+**One deployment**: `main` deploys to production three times a day when app files changed, or at once from "Run workflow", at https://bpm.grantzou.com/bpm via `.github/workflows/deploy-next.yml` (the app service is named `vnext-badminton-app`; the name is historical — verify by DNS, never by name). The second App Service was deleted 2026-08-25. Runbook: the `deploy-promotion` skill; history in [`docs/deployment-model.md`](docs/deployment-model.md).
 
 ---
 

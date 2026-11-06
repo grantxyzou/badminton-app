@@ -49,8 +49,12 @@ export default function StringPackImage({ catalogId, size, coil }: {
       {/* Twice the picture's size, so the drawing stays crisp on a phone. */}
       {coil && <canvas ref={canvasRef} width={480} height={672} aria-hidden="true" className={cls} hidden={!painted} />}
       {!painted && (
+        // Not `loading="lazy"`: a tab opened behind the launch screen is
+        // hidden, and a lazy picture inside it waited for the tap before it
+        // even started (Grant: "a split second to load out the string asset").
+        // A list row asks at low priority so it never competes with a screen.
         // eslint-disable-next-line @next/next/no-img-element -- a same-origin pre-rendered WebP; next/image adds nothing here.
-        <img src={src} alt="" width={240} height={336} loading="lazy" decoding="async" className={cls} />
+        <img src={src} alt="" width={240} height={336} decoding="async" fetchPriority={size === 'row' ? 'low' : 'auto'} className={cls} />
       )}
     </>
   );

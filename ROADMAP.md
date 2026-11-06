@@ -37,7 +37,7 @@
 
 ## Deployment
 
-**One deployment, trunk-based.** Every push to `main` deploys to production via `deploy-next.yml`. The second app service (`bpm-stable` / `badminton-app`) and its B1 plan were **deleted 2026-08-25**; `deploy-stable.yml` went with them. There is no promotion step, no soak period, and no stable tag to cut — feature flags now gate unfinished work *inside* the one deployment, and their `plannedRemoval` dates are the only thing keeping them from becoming permanent.
+**One deployment, trunk-based.** `main` deploys to production via `deploy-next.yml` three times a day when app files changed, or at once on demand (grouped since 2026-11-05). The second app service (`bpm-stable` / `badminton-app`) and its B1 plan were **deleted 2026-08-25**; `deploy-stable.yml` went with them. There is no promotion step, no soak period, and no stable tag to cut — feature flags now gate unfinished work *inside* the one deployment, and their `plannedRemoval` dates are the only thing keeping them from becoming permanent.
 
 - **Rollback** = re-dispatch `deploy-next.yml` at an older SHA. Runbook: the `deploy-promotion` skill.
 - **Schema rule** is still additive-and-optional only — a rollback runs older code against the same live database.

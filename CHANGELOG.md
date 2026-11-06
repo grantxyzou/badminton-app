@@ -48,6 +48,18 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Faster to open, to come back to and to switch tabs (2026-11-05)
+
+Grant: "this app is getting really slow". Measured on a production build played as a mid-range phone on mobile data, then fixed:
+
+- **The app asks the server less when it opens: 27 requests instead of 35.** The tabs that open behind the launch screen used to ask again for what Home had asked a second before. They now reuse that answer, but only while nothing has been saved since, so after a sign-up or a payment the app still checks again.
+- **Racket and string pictures are ready when you get there.** String packets used to wait until you opened their tab before they even started downloading. Your own racket and string pictures are now fetched while the app opens, and phones keep the packet pictures for a day as they already did the rackets. Opening Equipment takes about 0.3 s, and going back to it is instant instead of showing a loading card again.
+- **Updates ship three times a day, not after every change.** Each update restarts the server and made every phone download part of the app again on its next open. Now updates go out off-peak in the morning, early afternoon and late evening, and an update that only changed notes doesn't go out at all. An update that changes no code no longer makes phones download anything. An urgent fix can still go out at once.
+
+### Your racket, step by step (2026-11-05)
+
+Grant: "a step by step animation when user send in an request … Racket goes on to [the] machine > stringing through a racket > off machine > tada", and "when the string package tears open at the top string comes out". After a member sends a stringing request, the screen plays a twelve-second animation in their own racket and string: the string's packet tears open at the top and the string comes out, the bare frame goes onto a stringing machine and the clamps close, it is strung while the machine pulls to the tension they asked for, it comes off and turns upright, and "Ready · Yonex BG80 at 26 lb". A caption under it says each step, and "Play again" replays it. It plays once and stays on the last frame; with reduced motion it shows only that frame. The machine is a generic one with no maker's name. A racket typed in by name draws the default frame, and a string with no packet picture starts at the machine. Every catalog racket now has a picture without strings for this (`public/rackets/bare/`, about 1.2 MB). Plan: `docs/plans/stringing-story.md`.
+
 ### Notifications in your language, and the last spot goes to one person (2026-11-05)
 
 - **Notifications now arrive in the language you read the app in.** Switch to 中文 and the next "sign-ups are open" or "you're in from the waitlist" comes in Chinese on that phone. Session times in them are now Vancouver time; one used to say Friday 4 AM for a Thursday 8 PM session.

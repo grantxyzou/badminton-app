@@ -24,6 +24,7 @@ import StringPackImage from '@/components/stringing/StringPackImage';
 import { stringPackSrc } from '@/lib/stringPackSrc';
 import { racketHeadSrc } from '@/lib/racketLook';
 import { STOCK_STRING } from '@/lib/racketCustom';
+import { rememberPictures } from '@/lib/warmPictures';
 
 export interface GearSetupCardProps {
   activeName: string | null;
@@ -86,6 +87,14 @@ export default function GearSetupCard({ activeName, gear, picks, onOpenLine, onO
   const [refract, setRefract] = useState(false);
   useEffect(() => { setRefract(typeof navigator !== 'undefined' && 'userAgentData' in navigator); }, []);
 
+  // Remember this member's own pictures so the next open fetches them while
+  // the app starts, before Equipment is tapped (lib/warmPictures.ts).
+  const own = gear.loaded && !gear.loadError && gear.gear ? setupLines(gear.gear) : null;
+  const ownPictures = own
+    ? [own.racket ? racketHeadSrc(own.racket.catalogId) : null, stringPackSrc(own.string?.catalogId), stringPackSrc(own.string?.crosses?.catalogId)].filter(Boolean).join('|')
+    : '';
+  useEffect(() => { if (ownPictures) rememberPictures(ownPictures.split('|')); }, [ownPictures]);
+
   // The Gear register's RevealSlot holds this place on first load.
   useRevealReady(!activeName || gear.loaded);
   if (!activeName) return null;
@@ -138,7 +147,7 @@ export default function GearSetupCard({ activeName, gear, picks, onOpenLine, onO
       {racket && !gear.loadError && (
         <span className="setup-corner" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element -- a same-origin pre-rendered WebP; next/image adds nothing here. */}
-          <img key={racket.id} src={racketHeadSrc(racket.catalogId)} alt="" width={540} height={646} decoding="async" className="motion-fade" />
+          <img key={racket.id} src={racketHeadSrc(racket.catalogId)} alt="" width={540} height={646} decoding="async" fetchPriority="high" className="motion-fade" />
         </span>
       )}
       {/* The lens the glass controls bend the racket through (see `refract`). */}

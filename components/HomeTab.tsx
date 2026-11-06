@@ -230,10 +230,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       // each while it is in flight (lib/sharedRead.ts).
       const [sRes, pRes, aRes, mRes, rRes] = await Promise.all([
         sharedFetch('/api/session'),
-        fetch(`${BASE}/api/players`, { cache: 'no-store' }),
+        sharedFetch('/api/players'),
         fetch(`${BASE}/api/announcements`, { cache: 'no-store' }),
         sharedFetch('/api/members').catch(() => null),
-        fetch(`${BASE}/api/releases`, { cache: 'no-store' }).catch(() => null),
+        sharedFetch('/api/releases').catch(() => null),
       ]);
       // The players list is half of the sign-up card (spots left, are you
       // in), so it failing is the week failing too.
@@ -292,7 +292,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${BASE}/api/auth/methods`, { cache: 'no-store' });
+        const res = await sharedFetch('/api/auth/methods');
         if (res.ok) {
           const m = (await res.json()) as { hasPin?: boolean; hasPassword?: boolean; linked?: string[] };
           if (cancelled) return;
@@ -300,7 +300,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           setHasCredential(has);
           return;
         }
-        const me = await fetch(`${BASE}/api/members/me?name=${encodeURIComponent(memberName)}`, { cache: 'no-store' });
+        const me = await sharedFetch(`/api/members/me?name=${encodeURIComponent(memberName)}`);
         if (!me.ok || cancelled) return;
         const d = (await me.json()) as { hasPin?: boolean; createdAt?: string | null };
         if (typeof d.createdAt === 'string' && !cancelled) setHasCredential(d.hasPin === true);
