@@ -78,7 +78,7 @@ export default async function Page() {
   const initialAnnouncement = (await readActiveAnnouncements(groupId))[0] ?? null;
   return (
     <OnlineProvider>
-      <HomeShell initialAnnouncement={initialAnnouncement} authProviders={authProviders} memberName={memberName} />
+      <HomeShell initialAnnouncement={initialAnnouncement} authProviders={authProviders} memberName={memberName} groupId={groupId} />
     </OnlineProvider>
   );
 }

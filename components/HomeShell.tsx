@@ -160,9 +160,11 @@ interface Props {
    * the flag off, where identity stays a client-side matter as it always was.
    */
   memberName?: string | null;
+  /** The club the session cookie names, as the server read it; keys Home's copy of the week (lib/homeSnapshot.ts). */
+  groupId?: string | null;
 }
 
-export default function HomeShell({ initialAnnouncement, authProviders = [], memberName = null }: Props) {
+export default function HomeShell({ initialAnnouncement, authProviders = [], memberName = null, groupId = null }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   /* The Notifications page (docs/plans/notification-center.md): a full page
      over whichever tab is on screen, opened from the bell or Profile's row.
@@ -1142,7 +1144,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
                 className="motion-fade"
               >
                 <TabActiveContext.Provider value={tab === activeTab && !noticesOpen}>
-                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} push={push} webApp={webAppOffer} />}
+                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} groupId={groupId} deferFetch={!tabResolved} push={push} webApp={webAppOffer} />}
                   {tab === 'stringing' && <StringingTab isAdmin={showAdmin} adminSession={adminKnown ? adminCookieLive : null} onAdminSignedIn={refreshAdminAccess} view={stringingView} onViewChange={setStringingView} />}
                   {tab === 'skills' && <SkillsTab onTabChange={setActiveTab} />}
                   {tab === 'profile' && (

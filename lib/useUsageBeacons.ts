@@ -98,7 +98,13 @@ export function useUsageBeacons(activeTab: string, signedIn: boolean): void {
         finished = true;
         if (readyAt === null || launchAt === null) return;
         const start = document.documentElement.dataset.launchSkipped === 'return' ? 'return' : 'open';
-        void recordEngagement('app_ready', { ms: Math.round(readyAt), launchMs: Math.round(launchAt), start, platform: usagePlatform() });
+        // A quick return had no launch screen, so there is no time for it to leave.
+        void recordEngagement('app_ready', {
+          ms: Math.round(readyAt),
+          ...(start === 'open' ? { launchMs: Math.round(launchAt) } : {}),
+          start,
+          platform: usagePlatform(),
+        });
       }
     }, 50);
     return () => {

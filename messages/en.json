@@ -1,6 +1,7 @@
 {
   "home": {
     "weekLoadError": "Couldn't load this week's session.",
+    "updating": "Updating…",
     "retry": "Try again",
       "firstSession": {
       "title": "No session yet",

@@ -1,6 +1,7 @@
 {
   "home": {
     "weekLoadError": "本周场次加载失败。",
+    "updating": "更新中…",
     "retry": "重试",
     "firstSession": {
       "title": "还没有安排",
