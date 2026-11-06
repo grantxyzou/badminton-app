@@ -46,6 +46,7 @@ import { primeFetch, sharedFetch } from '@/lib/sharedRead';
 import { primeMemberAvatars } from '@/lib/useMemberAvatars';
 import { useEverOpened } from '@/lib/useEverOpened';
 import { addSessionToCalendar, canAddToCalendar } from '@/lib/addToCalendar';
+import { homeSnapshotKey, readHomeSnapshot, saveHomeSnapshot } from '@/lib/homeSnapshot';
 
 // HomeTab itself stays eager (it carries the LCP announcement), but the
 // sheets it can open do not need to: each is behind a tap or a one-shot
@@ -93,6 +94,8 @@ interface HomeTabProps {
    * the card then names the local identity, and offers no form without one.
    */
   memberName?: string | null;
+  /** The club the session names; keys the copy of last time's week (lib/homeSnapshot.ts). */
+  groupId?: string | null;
   /**
    * HomeShell has not decided the starting tab yet (it restores the last tab
    * after mount). Home holds its fetches until it has, so a restore to another
@@ -109,7 +112,7 @@ interface HomeTabProps {
   webApp?: boolean;
 }
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, deferFetch = false, push, webApp = false }: HomeTabProps) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, groupId = null, deferFetch = false, push, webApp = false }: HomeTabProps) {
   const t = useTranslations('home');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   /**
@@ -145,6 +148,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const weekLoadedRef = useRef(false);
+  /**
+   * The week on screen is last time's copy (lib/homeSnapshot.ts), not yet the
+   * server's answer: drawn at once, dimmed with "Updating…", its actions held
+   * until the real week lands a moment later.
+   */
+  const [fromCopy, setFromCopy] = useState(false);
+  const snapshotKey = homeSnapshotKey(groupId, memberName);
   /* The week could not be read — distinct from a club that has no week yet
      (`sessionMissing`, a 404). Before this, every failure was a console.error
      and Home rendered "—" tiles and "12 of 12 spots left" for a session that
@@ -211,7 +221,17 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // that fails still sets weekLoadError below, which replaces the week with
     // the error, so stale data never stands in for a failure.
     if (!weekLoadedRef.current) {
-      setLoading(true);
+      // Last time's week, at once, while the real one loads behind it.
+      const copy = readHomeSnapshot(snapshotKey);
+      if (copy) {
+        setSession(copy.session);
+        setPlayers(copy.players);
+        setAnnouncement(copy.announcement);
+        setFromCopy(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
       // The balance and skill cards mount only once the week below has
       // landed; start their reads NOW, beside it, so they are not a second
       // wave behind it (lib/sharedRead.ts `primeFetch`). First load only — a
@@ -240,13 +260,20 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (sRes.status === 404) setSessionMissing(true);
       else if (!sRes.ok || !pRes.ok) setWeekLoadError(true);
       weekLoadedRef.current = sRes.ok && pRes.ok;
-      if (sRes.ok) {
-        setSession(await sRes.json() as Session);
-      }
-      if (pRes.ok) setPlayers(await pRes.json());
+      const freshSession = sRes.ok ? await sRes.json() as Session : null;
+      const freshPlayers: Player[] | null = pRes.ok ? await pRes.json() : null;
+      if (freshSession) setSession(freshSession);
+      if (freshPlayers) setPlayers(freshPlayers);
+      let freshAnnouncement: Announcement | null | undefined;
       if (aRes.ok) {
         const list: Announcement[] = await aRes.json();
-        setAnnouncement(list.length > 0 ? list[0] : null);
+        freshAnnouncement = list.length > 0 ? list[0] : null;
+        setAnnouncement(freshAnnouncement);
+      }
+      // Keep this week for the next open's instant draw (never money: the
+      // balance is not in it).
+      if (freshSession && freshPlayers) {
+        saveHomeSnapshot(snapshotKey, { session: freshSession, players: freshPlayers, announcement: freshAnnouncement ?? null });
       }
       if (mRes?.ok) {
         // The roster's avatars come from this read; the store used to fetch
@@ -261,8 +288,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       reportFetchFailure();
     } finally {
       setLoading(false);
+      // Answered either way: the server's week, or the error in its place.
+      setFromCopy(false);
     }
-  }, [reportFetchFailure, memberName]);
+  }, [reportFetchFailure, memberName, snapshotKey]);
 
   useEffect(() => {
     // The server-verified member IS the user, and the state above was
@@ -480,7 +509,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
    * confirms. A failure keeps the sheet open and says so.
    */
   async function handleCancel(acknowledgeLateFee = false) {
-    if (!currentUser || !online) return;
+    // Never act on last time's copy of the week (lib/homeSnapshot.ts).
+    if (!currentUser || !online || fromCopy) return;
     const id = getIdentity();
     try {
       const res = await fetch(`${BASE}/api/players`, {
@@ -563,6 +593,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    if (fromCopy) return;
     // Fetch the haptics code while the server works, so the tap is ready the
     // instant the shuttles launch (see applySignup). A no-op off the shell.
     primeHaptics();
@@ -571,6 +602,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   async function handleJoinWaitlist(e: React.FormEvent) {
     e.preventDefault();
+    if (fromCopy) return;
     await performSignup(true);
   }
 
@@ -716,7 +748,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         </section>
       ) : (
-      <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')}>
+      <section className={`bpm-home-group bpm-home-week${fromCopy ? ' is-updating' : ''}`} aria-label={t('groups.session')} aria-busy={fromCopy || undefined}>
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}
@@ -769,6 +801,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {/* Sign-Up Card — the submit button / payment action / "I paid" button
           sit in the thumb zone for one-handed use. */}
       <div className="glass-card p-5 vt-signup-card">
+        {/* Last time's week is on screen: say so, and hold its buttons until
+            the server's answer lands (lib/homeSnapshot.ts, `.is-updating`). */}
+        {fromCopy && <span className="home-updating-tag motion-fade" role="status">{t('updating')}</span>}
         {isSessionFinished ? (
           /* ── State: Session finished ── */
           <div className="space-y-4">

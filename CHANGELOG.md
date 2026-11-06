@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Coming back is quicker, and Home shows up at once (2026-11-06)
+
+Following "this app is getting really slow":
+
+- **Coming back to the app skips the opening animation.** If you used the app in the last half hour (iPhones often close it in the background while you're in another app), it opens straight to Home. The first open of the day still plays the shuttle.
+- **Home shows last time's week straight away.** Where, when, who's in and the announcement appear the moment the app opens, slightly dimmed with "Updating…", and the buttons wait a moment until the up-to-date week arrives. What you owe always waits for the up-to-date figures. Signing out clears it from the phone.
+- **The app now notes how long it takes to open on your phone**, so slowness can be measured rather than guessed: a number of milliseconds and the kind of device, never anything on the screen. The privacy policy says so.
+
 ### Adding a stringing job works again after the admin sign-in runs out (2026-11-06)
 
 - **"Save job" on the Stringing bench could stay greyed out for good.** When an admin's separate admin sign-in had run out on a phone, the app still showed the bench. But the job list wouldn't load ("Try again"), searching for a player found nobody, and so "Save job" never turned on. The bench now asks for your name and PIN first, just like the Admin page, then opens. Signing in on either one opens both.

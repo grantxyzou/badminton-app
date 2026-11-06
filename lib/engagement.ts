@@ -22,6 +22,11 @@ export interface EngagementMeta {
   platform?: (typeof USAGE_PLATFORMS)[number];
   /** `client_error` only. */
   where?: ErrorWhere;
+  /** `app_ready` only: milliseconds to the first screen filled in, and to the launch screen leaving. */
+  ms?: number;
+  launchMs?: number;
+  /** `app_ready` only: a fresh open, or a quick return that skipped the launch screen. */
+  start?: 'open' | 'return';
 }
 
 /**

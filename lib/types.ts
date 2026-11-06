@@ -1025,6 +1025,12 @@ export interface EngagementEvent {
   where?: string;
   /** `sign_in` only — one of SIGN_IN_VIAS. Additive. */
   via?: string;
+  /** `app_ready` only: milliseconds from the page starting to the first screen filled in. Additive. */
+  ms?: number;
+  /** `app_ready` only: milliseconds to the launch screen leaving. Additive. */
+  launchMs?: number;
+  /** `app_ready` only — one of APP_STARTS. Additive. */
+  start?: string;
 }
 
 /** One source of truth for the kinds is `lib/events.ts`; this union is

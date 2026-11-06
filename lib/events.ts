@@ -44,6 +44,8 @@ export const CLIENT_KINDS = [
   'tab_view',
   // A screen crashed for a signed-in member (docs/plans/client-error-beacon.md).
   'client_error',
+  // How long the first screen took on a real phone (docs/plans/startup-speed.md).
+  'app_ready',
 ] as const;
 /**
  * The Equipment surfaces' own beacons (design "Equipment redesign", Turn 3 §9).
@@ -90,6 +92,21 @@ export type SignInVia = (typeof SIGN_IN_VIAS)[number];
 export const ERROR_WHERES = ['render'] as const;
 export type ErrorWhere = (typeof ERROR_WHERES)[number];
 export const ERROR_KINDS = ['client_error'] as const;
+
+/**
+ * How long opening the app takes on members' real phones
+ * (docs/plans/startup-speed.md, Grant 2026-11-05: "this app is getting really
+ * slow"). One `app_ready` per page load: milliseconds from the page starting
+ * to the first screen being filled in (`ms`), to the launch screen leaving
+ * (`launchMs`), whether it was a fresh open or a quick return that skipped
+ * the launch screen (`start`), and the platform. Numbers and bounded words
+ * only — never a screen's content, a URL or a name.
+ */
+export const TIMING_KINDS = ['app_ready'] as const;
+export const APP_STARTS = ['open', 'return'] as const;
+export type AppStart = (typeof APP_STARTS)[number];
+/** A timing past this is a phone left on a screen, not a load; the beacon drops it. */
+export const MAX_TIMING_MS = 60_000;
 
 export const PICK_KINDS = ['pick_served', 'pick_added', 'pick_tried', 'pick_rated'] as const;
 
@@ -138,7 +155,7 @@ export function isValueHubKind(v: string): boolean {
  *  is dropped: an open payload turns the container into a free-text sink. */
 export const CLIENT_PAYLOAD: Record<
   ClientKind,
-  ReadonlyArray<'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform' | 'where'>
+  ReadonlyArray<'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform' | 'where' | 'ms' | 'launchMs' | 'start'>
 > = {
   rec_card_tap: [],
   pick_added: ['catalogId', 'engineVersion', 'category'],
@@ -157,6 +174,7 @@ export const CLIENT_PAYLOAD: Record<
   app_open: ['platform'],
   tab_view: ['tab'],
   client_error: ['where', 'tab'],
+  app_ready: ['ms', 'launchMs', 'start', 'platform'],
 };
 
 export function isClientKind(v: unknown): v is ClientKind {

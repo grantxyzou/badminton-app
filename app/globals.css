@@ -3142,6 +3142,24 @@ textarea {
    Weekly path, so no overshoot: ease-out-quart, no bounce. */
 html.vt-signup .vt-signup-confirm { view-transition-name: signup-confirm; }
 html.vt-signup .vt-signup-card { view-transition-name: signup-card; }
+
+/* Last time's week, drawn at once while the real one loads (lib/homeSnapshot.ts):
+   a little dimmer, a quiet "Updating…" in the sign-up card's corner, and its
+   buttons and links held until the server's answer replaces it. The tag is
+   placed over the card, so its arrival and departure move nothing. */
+.vt-signup-card { position: relative; }
+.bpm-home-week.is-updating { opacity: 0.72; transition: opacity var(--duration-fast) var(--ease-out-quart); }
+.bpm-home-week.is-updating button,
+.bpm-home-week.is-updating a { pointer-events: none; }
+.home-updating-tag {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
 html.vt-signup .vt-home-account { view-transition-name: home-account; }
 /* The shuttle burst is deliberately NOT part of this transition. It is fired
    from `withViewTransition`'s onFinished, after the morph has landed. Two
