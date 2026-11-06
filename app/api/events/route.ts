@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS, ERROR_WHERES, USAGE_CLIENT_KINDS } from '@/lib/events';
+import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS, ERROR_WHERES, USAGE_CLIENT_KINDS, APP_STARTS, MAX_TIMING_MS } from '@/lib/events';
 import { skipsUsageRecord } from '@/lib/operator';
 
 const isUsageClientKind = (kind: string): boolean => (USAGE_CLIENT_KINDS as readonly string[]).includes(kind);
@@ -27,7 +27,11 @@ const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T =>
  * the feedback loop's denominator) is not a client kind at all, so it is
  * refused as unknown.
  */
-type Payload = Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform' | 'where'>;
+type Payload = Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform' | 'where' | 'ms' | 'launchMs' | 'start'>;
+
+/** A whole number of milliseconds a load can plausibly take, or nothing. */
+const timing = (v: unknown): number | undefined =>
+  typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= MAX_TIMING_MS ? Math.round(v) : undefined;
 
 function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unknown>): Payload {
   const out: Payload = {};
@@ -44,6 +48,9 @@ function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unkn
     if (field === 'tab' && oneOf(USAGE_TABS, body.tab)) out.tab = body.tab;
     if (field === 'where' && oneOf(ERROR_WHERES, body.where)) out.where = body.where;
     if (field === 'platform' && oneOf(USAGE_PLATFORMS, body.platform)) out.platform = body.platform;
+    if (field === 'ms' && timing(body.ms) !== undefined) out.ms = timing(body.ms);
+    if (field === 'launchMs' && timing(body.launchMs) !== undefined) out.launchMs = timing(body.launchMs);
+    if (field === 'start' && oneOf(APP_STARTS, body.start)) out.start = body.start;
   }
   return out;
 }

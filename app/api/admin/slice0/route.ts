@@ -4,7 +4,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { PICK_KINDS, GEAR_SURFACE_KINDS, USAGE_KINDS, ERROR_KINDS, isCheckInSource } from '@/lib/events';
+import { PICK_KINDS, GEAR_SURFACE_KINDS, USAGE_KINDS, ERROR_KINDS, TIMING_KINDS, isCheckInSource } from '@/lib/events';
 import { SKILLS } from '@/lib/assessment';
 import { rosterMembers } from '@/lib/roster';
 
@@ -179,6 +179,8 @@ export async function GET(req: NextRequest) {
     /** Client crashes (docs/plans/client-error-beacon.md): how many, and how many members hit one. */
     const clientErrors = { events: 0, members: 0 };
     const clientErrorMembers = new Set<string>();
+    /** How long opening took on real phones (docs/plans/startup-speed.md): opens timed and the typical one. */
+    const appReadyMs: number[] = [];
     const gearSurfaceMembers = new Map<string, Set<string>>();
     const statsOpeners = new Set<string>();
     const checkInOpeners = new Set<string>();
@@ -196,7 +198,7 @@ export async function GET(req: NextRequest) {
       // row per racket pick served.
       // The GROUP's events: Slice-0 is a per-club readout.
       const events = await scope.query<Partial<PickEvent> & Record<string, unknown>>('events', {
-        select: 'c.memberId, c.name, c.kind, c.at, c.catalogId, c.engineVersion, c.rating, c.source',
+        select: 'c.memberId, c.name, c.kind, c.at, c.catalogId, c.engineVersion, c.rating, c.source, c.ms',
         where: 'c.at >= @since',
         params: [{ name: '@since', value: since }],
       });
@@ -221,6 +223,9 @@ export async function GET(req: NextRequest) {
             gearSurfaceMembers.set(e.kind, seen);
             row.members = seen.size;
           }
+        }
+        if ((TIMING_KINDS as readonly string[]).includes(e.kind) && typeof e.ms === 'number' && rosterKey(e.memberId, e.name)) {
+          appReadyMs.push(e.ms);
         }
         if ((ERROR_KINDS as readonly string[]).includes(e.kind)) {
           const rk = rosterKey(e.memberId, e.name);
@@ -441,6 +446,10 @@ export async function GET(req: NextRequest) {
       gearSurfaces,
       usage,
       clientErrors,
+      appReady: {
+        events: appReadyMs.length,
+        medianMs: appReadyMs.length >= 3 ? [...appReadyMs].sort((a, b) => a - b)[Math.ceil(appReadyMs.length / 2) - 1] : null,
+      },
       verdict,
     });
   } catch (error) {

@@ -1,7 +1,7 @@
 import { getContainer, ensureContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import { rosterMembers } from './roster';
-import { USAGE_KINDS, ERROR_KINDS } from './events';
+import { USAGE_KINDS, ERROR_KINDS, TIMING_KINDS } from './events';
 import { computeClubMetrics, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
 
 /**
@@ -131,6 +131,14 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
       { name: '@kinds', value: [...ERROR_KINDS] },
     ],
   });
+  const timingRows = await scope.query<{ memberId?: unknown; kind?: unknown; at?: unknown; ms?: unknown; launchMs?: unknown; start?: unknown }>('events', {
+    select: 'c.memberId, c.kind, c.at, c.ms, c.launchMs, c.start',
+    where: 'c.at >= @since AND ARRAY_CONTAINS(@kinds, c.kind)',
+    params: [
+      { name: '@since', value: since7 },
+      { name: '@kinds', value: [...TIMING_KINDS] },
+    ],
+  });
   // The "Move to the app" sign-ins, all time (the container's TTL is the only
   // bound): one per person, so a 28-day window would lose them within a month
   // of the link going live. Cosmos filters by kind and method; the mock does
@@ -179,6 +187,17 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     errorEvents: errorRows.flatMap((r) =>
       typeof r.memberId === 'string' && typeof r.at === 'string' && (ERROR_KINDS as readonly string[]).includes(r.kind as string)
         ? [{ memberId: r.memberId, at: r.at, ...(typeof r.tab === 'string' ? { tab: r.tab } : {}) }]
+        : [],
+    ),
+    timingEvents: timingRows.flatMap((r) =>
+      typeof r.memberId === 'string' && typeof r.at === 'string' && typeof r.ms === 'number' && (TIMING_KINDS as readonly string[]).includes(r.kind as string)
+        ? [{
+            memberId: r.memberId,
+            at: r.at,
+            ms: r.ms,
+            ...(typeof r.launchMs === 'number' ? { launchMs: r.launchMs } : {}),
+            ...(typeof r.start === 'string' ? { start: r.start } : {}),
+          }]
         : [],
     ),
     migrations: migrationRows.flatMap((r) =>

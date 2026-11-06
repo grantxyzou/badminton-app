@@ -57,6 +57,8 @@ function seedEventRow(memberId: string, name: string, kind: string) {
     rating: 'up',
     category: 'racket',
     source: 'strip',
+    // The timing tally reads it (app_ready; docs/plans/startup-speed.md).
+    ms: 1200,
   });
 }
 

@@ -51,6 +51,7 @@ import { prewarmInsight } from '@/lib/useInsight';
 import { TabActiveContext } from '@/lib/tabActivity';
 import { appSettled, APP_SHELL_ATTR, TAB_PANEL_ATTR } from '@/lib/appSettled';
 import { warmRememberedPictures } from '@/lib/warmPictures';
+import { noteActive } from '@/lib/quickReturn';
 import { rememberClub } from '@/lib/lastClub';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
@@ -837,6 +838,21 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // App opens and tab views, for Admin → Metrics (docs/plans/usage-metrics.md).
   // Never for a signed-out visitor.
   useUsageBeacons(activeTab, hasIdentity === true);
+  // When the app was last in use on this phone, so coming back within half an
+  // hour skips the launch screen (lib/quickReturn.ts). Noted on opening and
+  // whenever the app goes to the background, where iOS may drop it.
+  useEffect(() => {
+    if (hasIdentity !== true) return;
+    noteActive();
+    const onHidden = () => { if (document.visibilityState === 'hidden') noteActive(); };
+    const onPageHide = () => noteActive();
+    document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [hasIdentity]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-tab', activeTab);
