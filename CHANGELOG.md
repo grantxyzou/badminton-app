@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The app opens with a little less to download (2026-11-06)
+
+- **The Notifications page now loads after the app opens**, in the background, so the first screen arrives sooner. The bell's red dot still appears as soon as there's something new: it never waited for the page. A tap that beats the download sees the page's usual loading frame for a moment.
+- **Behind the scenes:** `npm audit` is back to zero. The one warning came from a pattern-matching library inside the code checker, which never ships to anyone; it now uses the fixed version.
+
 ### Notifications in your language, and the last spot goes to one person (2026-11-05)
 
 - **Notifications now arrive in the language you read the app in.** Switch to 中文 and the next "sign-ups are open" or "you're in from the waitlist" comes in Chinese on that phone. Session times in them are now Vancouver time; one used to say Friday 4 AM for a Thursday 8 PM session.

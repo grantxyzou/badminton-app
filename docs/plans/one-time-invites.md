@@ -2,7 +2,7 @@
 
 **Track:** members-only (docs/plans/members-only.md) — how a new person gets in
 **Status:** in-flight (built 2026-10-06; ships with its PR)
-**Review on:** 2026-11-06 — did an admin get stuck creating or sending a link, and did anyone report a link that "didn't work" (used, expired, or the old club-wide one)?
+**Review on:** 2026-12-06 — did an admin get stuck creating or sending a link, did anyone report a link that "didn't work" (used, expired, or the old club-wide one), and did more new accounts arrive by invite than by access request?
 
 ## Problem
 
@@ -28,6 +28,8 @@ should come back as an option.
 - Any change to the "I play here already" access-request path.
 
 ## Decisions
+
+- **2026-11-06 — first review: nothing reported yet** (Grant: "Not yet"). No admin stuck, no broken link. The kill criterion's count (invites against access requests) was not read; moved a month on with that question added.
 
 - **Replace, not add.** Grant chose per-person one-time links over keeping the
   club-wide link alongside them: a permanent door next to single-use ones makes
