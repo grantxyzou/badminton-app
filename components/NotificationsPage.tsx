@@ -7,6 +7,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
+import { NOTICES_LIST_H } from '@/components/TabFallbacks';
 import PushSettings from './PushSettings';
 import InstallSheet from './InstallSheet';
 import MigrateSheet from './MigrateSheet';
@@ -39,9 +40,9 @@ const ICONS: Record<Notice['type'], string> = {
   settle_up: 'payments',
 };
 
-/** The first loading frame, MEASURED: one card holding two rows at 375px
- *  (2026-11-04: 222px). The bell has usually read the list already, so it is rare. */
-const LIST_SKELETON_H = 222;
+/** The first loading frame (measured; `TabFallbacks.tsx` holds the number so
+ *  the code-loading frame matches). The bell has usually read the list already. */
+const LIST_SKELETON_H = NOTICES_LIST_H;
 
 /** Later groups trail the first by one stagger step (loading cascade). */
 const GROUP_STAGGER_MS = 40;

@@ -3,6 +3,9 @@
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
 import CardSkeleton, { AdminTabSkeleton } from '@/components/primitives/CardSkeleton';
+import TopBar from '@/components/primitives/TopBar';
+import ErrorState from '@/components/primitives/ErrorState';
+import { useOnline } from '@/lib/useOnline';
 
 /**
  * What a lazy tab shows while its JavaScript chunk downloads (`HomeShell`'s
@@ -164,6 +167,43 @@ export function AdminFallback() {
         </div>
       </div>
       <AdminTabSkeleton />
+    </div>
+  );
+}
+
+/** The Notifications page's list skeleton: one card holding two rows at 375px
+ *  (2026-11-04: 222px). Read by the page and by its fallback below. */
+export const NOTICES_LIST_H = 222;
+
+/**
+ * The Notifications page while its code downloads. The page is not in the
+ * first download (2026-11-06, Grant: "Notification should load after"): the
+ * bell reads the list itself for its red dot, and `HomeShell` fetches the
+ * page's code in the background with the other tabs, so this shows only for a
+ * tap that beats that download, or on a phone that asked to save data. It is
+ * the page's own first frame: its top bar, then the "Recent" skeleton.
+ */
+export function NotificationsFallback({ onBack, failed, onRetry }: { onBack: () => void; failed: boolean; onRetry: () => void }) {
+  const tn = useTranslations('notifications');
+  const online = useOnline();
+  return (
+    <div className="animate-slideInRight space-y-5">
+      <TopBar title={tn('title')} onBack={onBack} backLabel={tn('back')} />
+      <section className="space-y-3">
+        <p className="section-label-muted">{tn('recent')}</p>
+        {failed ? (
+          <ErrorState
+            message={tn('loadError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" disabled={!online} onClick={onRetry}>
+                {tn('retry')}
+              </button>
+            }
+          />
+        ) : (
+          <CardSkeleton height={NOTICES_LIST_H} />
+        )}
+      </section>
     </div>
   );
 }
