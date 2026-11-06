@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The app opens with a little less to download (2026-11-06)
+
+- **The Notifications page now loads after the app opens**, in the background, so the first screen arrives sooner. The bell's red dot still appears as soon as there's something new: it never waited for the page. A tap that beats the download sees the page's usual loading frame for a moment.
+- **Behind the scenes:** `npm audit` is back to zero. The one warning came from a pattern-matching library inside the code checker, which never ships to anyone; it now uses the fixed version.
+
 ### Faster to open, to come back to and to switch tabs (2026-11-05)
 
 Grant: "this app is getting really slow". Measured on a production build played as a mid-range phone on mobile data, then fixed:

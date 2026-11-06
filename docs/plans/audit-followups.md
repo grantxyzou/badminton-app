@@ -37,6 +37,8 @@ same as no list.
 | Inline scripts allowed | The page's Content-Security-Policy had `script-src 'self' 'unsafe-inline'`, so an injected `<script>` would have run. | `proxy.ts` mints a fresh nonce per page request and sends the policy with it (`lib/csp.ts`); Next stamps the nonce on its own scripts and `app/layout.tsx` on the launch screen's. Verified on a production standalone build: every page dynamic, 17 of 17 scripts nonced, no violations in Chromium through sign-in and a tab switch. `__tests__/csp-nonce.test.ts`. |
 | Proxy skipped the home page | The proxy's matcher compiled to `^/bpm/…` under the base path, so `/bpm` itself, the app's one page, never ran it (no locale cookie; with the policy moved there, it would have had no policy at all). | `'/'` is listed in the matcher. Pinned in `__tests__/csp-nonce.test.ts`. |
 | Language switch spoke English | The language button's spoken name and tooltip were hard-coded English. | `a11y.switchLanguage` / `a11y.languageOffline` in both languages. |
+| Notifications page in the first download (2026-11-06) | Grant: "Notification should load after, then render the red dot." The page's code rode in every first load, though the bell reads the list on its own. | The page's code is fetched in the background once the first screen has settled, with the other tabs, and rendered directly on a tap (`HomeShell`). The dot never waited for it. A tap that beats the download, or a phone on save-data, shows the page's own first frame (`NotificationsFallback`). Pinned in `__tests__/bundle-split-canary.test.ts`. |
+| `npm audit`: 8 moderate (2026-11-06) | One advisory (GHSA-g3hv-75wg-m249) in `minimatch` below 11.0.1, pulled in by the TypeScript lint plugin, which still asks for 10 in its newest release. `npm audit fix --force` would have downgraded the lint config to Next 15. | An `overrides` entry gives `@typescript-eslint/typescript-estree` `minimatch` 11.0.5. It calls one function, which 11 keeps. `npm audit`: 0. Lint runs clean on it. Remove the override once the plugin asks for 11 itself. |
 
 ### Left as a known edge
 
@@ -64,18 +66,17 @@ request.
 | 8 | Cosmos: confirm the account's throughput cap stays inside the free 1000 RU/s | The free tier covers the first 1000 RU/s; a container or database set above it starts billing. | Azure → Cosmos → Cost management; `docs/azure.md` §9 |
 | 9 | Restore drill | A backup nobody has restored is a claim. One point-in-time restore into a scratch account proves it. | `docs/plans/infra-baseline.md` |
 | 10 | Next store builds (iPhone and Android) | The migration-link confirm, the widget pass staying on its phone, and the push locale for the native app reach phones only with a new build. | `native/README.md` |
-| 11 | Answer the OAuth handoff review | Due today: has anyone been stuck on a return code since members started using the store app? | `docs/plans/oauth-handoff-gaps.md` |
+| 11 | Say what happened in the stuck sign-in | Grant, 2026-11-06: yes, someone got stuck. Which app (store app, home-screen web app, browser), Google or Apple, and what they saw decide the fix. | `docs/plans/oauth-handoff-gaps.md` |
 
 ## Deliberately left, with the reason
 
 | Item | Why not now |
 |---|---|
-| Split the Chinese translations further | English is bundled and Chinese loads only for Chinese readers (#650). A per-screen split saves a few KB for a few readers at the cost of a loader per screen. |
-| `npm audit` minimatch advisory | It is in a build-time tool, not in anything the server or a browser runs. It clears when the tool updates; Dependabot will raise it. |
-| Admin screens in English (DatePicker included) | By decision (`CLAUDE.md`, "admin surfaces are English-only"): three admins, all reading English. |
+| Split the Chinese translations further | Grant, 2026-11-06: "Translation stays on account level": one language loaded per person, not per screen. English is bundled and Chinese loads only for Chinese readers (#650). |
+| Admin screens in English (DatePicker included) | For now. Grant, 2026-11-06: "Admin eventually gets to Chinese." About 600 strings to key; not started. |
 | Times pinned to Vancouver | Every club is in BC. A per-club time zone is needed before the first club that is not; the trigger is that club, not a date. |
-| In-memory rate limiter | One instance, Always On. `__tests__/single-instance-registry.test.ts` is the migration list for the day there are two. |
-| Notifications page loaded with the app | It is small and the bell reads it on every screen anyway; loading it later would trade a few KB for a delay on the one tap that opens it. |
+| In-memory rate limiter | Grant, 2026-11-06: "look into it later." One instance, Always On. `__tests__/single-instance-registry.test.ts` is the migration list for the day there are two. |
+| Sign-in cookie carries the account name | Grant, 2026-11-06: "look into it later." Nothing decides anything from it since the same-name fix, so changing it now is risk without benefit. |
 
 ## Decisions
 

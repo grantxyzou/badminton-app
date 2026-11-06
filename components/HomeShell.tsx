@@ -14,13 +14,15 @@ import ThemeToggle from '@/components/ThemeToggle';
 import PaneFlip from '@/components/PaneFlip';
 import LanguageToggle from '@/components/LanguageToggle';
 import NotificationsButton from '@/components/NotificationsButton';
-import NotificationsPage, { type NoticeTab } from '@/components/NotificationsPage';
+import type { NoticeTab } from '@/components/NotificationsPage';
+
+type NotificationsPageComponent = typeof import('@/components/NotificationsPage').default;
 import { usePush } from '@/lib/usePush';
 import { isNative } from '@/lib/native';
 import TopToast from '@/components/primitives/TopToast';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import PullToRefresh from '@/components/PullToRefresh';
-import { StringingFallback, StatsFallback, ProfileFallback, AdminFallback } from '@/components/TabFallbacks';
+import { StringingFallback, StatsFallback, ProfileFallback, AdminFallback, NotificationsFallback } from '@/components/TabFallbacks';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -960,6 +962,31 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   }, [preloaded, showAdmin, PreloadedAdminTab]);
   const AdminTabView = PreloadedAdminTab ?? AdminTab;
 
+  // The Notifications page's CODE is not in the first download either (Grant,
+  // 2026-11-06: "Notification should load after, then render the red dot").
+  // The bell reads the list on its own, so the dot never waited for the page;
+  // only the page's code did. It is fetched with the other tabs once the first
+  // screen has settled, so a tap after that opens it at once, and a tap before
+  // it (or with save-data on) shows the page's own first frame while it loads.
+  // Kept and rendered directly, like Admin above, so a tap never suspends.
+  const [NoticesPageView, setNoticesPageView] = useState<NotificationsPageComponent | null>(null);
+  const [noticesChunkFailed, setNoticesChunkFailed] = useState(false);
+  const noticesLoading = useRef(false);
+  const loadNoticesPage = useCallback(() => {
+    if (noticesLoading.current) return;
+    noticesLoading.current = true;
+    setNoticesChunkFailed(false);
+    import('@/components/NotificationsPage')
+      .then((m) => setNoticesPageView(() => m.default))
+      .catch(() => setNoticesChunkFailed(true))
+      .finally(() => {
+        noticesLoading.current = false;
+      });
+  }, []);
+  useEffect(() => {
+    if (!NoticesPageView && (preloaded || noticesOpen)) loadNoticesPage();
+  }, [NoticesPageView, preloaded, noticesOpen, loadNoticesPage]);
+
 
   return (
     <>
@@ -1075,15 +1102,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             />
           ) : (
           <>
-          {noticesOpen && (
-            <NotificationsPage
+          {noticesOpen && (NoticesPageView ? (
+            <NoticesPageView
               onBack={closeNotices}
               onNavigate={goFromNotice}
               push={push}
               isAdmin={showAdmin}
               migrateOn={webAppOffer}
             />
-          )}
+          ) : (
+            <NotificationsFallback onBack={closeNotices} failed={noticesChunkFailed} onRetry={loadNoticesPage} />
+          ))}
           {/* Each kept tab is its own panel: hidden, not unmounted, while
               another is on screen (`kept` above). The panel's key is what a
               refresh changes — `refreshNonce` for everything, `tabNonce` for

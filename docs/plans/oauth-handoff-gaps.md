@@ -2,7 +2,7 @@
 
 **Track:** Store launch — Sign in with Apple is required once the native app offers Google, and it rides the same hand-off, so it would open a second door into both gaps below.
 **Status:** shipped 2026-09-15 — #430, #435; pop-up sign-in confirmed on Grant's iPhone
-**Review on:** 2026-11-05 — the native app is the path that leans on the return code; once members use it, has anyone been stuck on a code or not signed in?
+**Review on:** 2026-11-13 — Grant said on 2026-11-06 that someone did get stuck: which app (store, home-screen web app, browser), Google or Apple, and what did they see? That decides whether the kill criterion fired.
 
 ## Problem
 
@@ -117,6 +117,8 @@ This failed if either:
   `components/auth/ProviderButtons.tsx`.
 
 ## Decisions
+
+- **2026-11-06 — review answered: yes, someone got stuck** (Grant). Details not yet in hand. The kill criterion fires if it was Google or Apple sign-in failing because of this fix; the next step is to learn the path before changing anything.
 
 - **2026-09-14 — partial fix first** (Grant), over a typed code or hiding the
   buttons. Shipped as #425.

@@ -30,6 +30,15 @@ describe('HomeShell keeps the unopened tabs out of the first payload', () => {
   it('HomeTab stays eager: it carries the server-rendered announcement (the LCP element)', () => {
     expect(source).toMatch(/^import HomeTab from/m);
   });
+
+  // Grant, 2026-11-06: "Notification should load after, then render the red
+  // dot". The bell reads the list itself; only the page's code waited, and it
+  // now loads behind the first screen. A type import is erased and is fine.
+  it('the Notifications page is fetched after, never imported statically', () => {
+    expect(source).not.toMatch(/^import (?!type )[^;]*from '@\/components\/NotificationsPage'/m);
+    expect(source).toMatch(/import\('@\/components\/NotificationsPage'\)/);
+    expect(source).toMatch(/<NotificationsFallback /);
+  });
 });
 
 /**
