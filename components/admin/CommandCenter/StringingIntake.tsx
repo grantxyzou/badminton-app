@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
 import DatePicker from '@/components/DatePicker';
@@ -226,8 +226,35 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
     return Math.round(n * 100);
   }, [priceDollars]);
 
-  const canSave =
-    !busy && online && !!picked && !!racketLabel.trim() && !!stringLabel.trim() && priceCents !== undefined;
+  /* What still stands between the form and a save, first one first. Save is
+     never a dead button (Grant, 2026-11-06: "I still can't save this job" —
+     the player was not picked, in a card scrolled out of view, and nothing
+     said so): a tap with something missing scrolls to it instead, and the
+     line under the button names it before anyone taps. */
+  const missing: 'who' | 'racket' | 'string' | 'price' | null =
+    !picked ? 'who'
+      : !racketLabel.trim() ? 'racket'
+      : !stringLabel.trim() ? 'string'
+      : priceCents === undefined ? 'price'
+      : null;
+  const canSave = !busy && online && missing === null;
+  const whoRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const racketRef = useRef<HTMLInputElement>(null);
+  const stringRef = useRef<HTMLInputElement>(null);
+  const priceRef = useRef<HTMLDivElement>(null);
+  const [pointedAt, setPointedAt] = useState(false);
+  function showMissing() {
+    setPointedAt(true);
+    const target =
+      missing === 'who' ? (searchRef.current ?? whoRef.current)
+        : missing === 'racket' ? racketRef.current
+        : missing === 'string' ? stringRef.current
+        : priceRef.current;
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (target instanceof HTMLInputElement) target.focus({ preventScroll: true });
+  }
 
   async function save() {
     if (!canSave || !picked) return;
@@ -266,7 +293,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
       <AdminBackHeader onBack={onBack} title={t('newJob')} crumb={crumb} />
       <div className="flex flex-col gap-4 pb-6">
         {/* Who */}
-        <div className="glass-card p-5 space-y-3">
+        <div ref={whoRef} className="glass-card p-5 space-y-3">
           <CardHeader icon="person" title={t('who')} subtitle={t('whoHint')} />
           {membersError && (
             <ErrorState
@@ -288,6 +315,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
           ) : (
             <>
               <input
+                ref={searchRef}
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -327,6 +355,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
           <CardHeader icon="sports_tennis" title={t('theRacket')} />
           <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
             <input
+              ref={racketRef}
               type="text"
               value={racketLabel}
               onChange={(e) => setRacketLabel(e.target.value)}
@@ -360,6 +389,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
               </div>
             )}
             <input
+              ref={stringRef}
               type="text"
               value={stringLabel}
               onChange={(e) => changeString(e.target.value)}
@@ -471,6 +501,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
               </div>
             </div>
           )}
+          <div ref={priceRef}>
           <MoneyInput
             value={priceDollars}
             onChange={(v) => {
@@ -480,6 +511,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
             placeholder={t('pricePlaceholder')}
             ariaLabel={t('yourPrice')}
           />
+          </div>
           {priceCents === undefined && <p className="field-error" role="alert">{t('error.invalid_price')}</p>}
           {/* A DATE, not free text. See lib/stringingDue.ts: the old free-text
               field could not be translated, could not be compared, and so
@@ -515,13 +547,24 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
 
         <button
           type="button"
-          onClick={save}
-          disabled={!canSave}
+          onClick={missing ? showMissing : save}
+          disabled={busy || !online}
+          aria-describedby={missing ? 'intake-missing' : undefined}
           className="cc-btn cc-btn-primary cc-btn-lg"
           style={{ width: '100%' }}
         >
           {busy ? t('saving') : t('saveAndTell', { name: picked?.name ?? t('theyFallback') })}
         </button>
+        {missing && (
+          <p
+            id="intake-missing"
+            role={pointedAt ? 'alert' : undefined}
+            className={pointedAt ? 'field-error' : 'fs-sm'}
+            style={pointedAt ? { textAlign: 'center' } : { textAlign: 'center', color: 'var(--text-muted)', margin: 0 }}
+          >
+            {t(`missing.${missing}`)}
+          </p>
+        )}
       </div>
     </div>
   );

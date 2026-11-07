@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### "Save job" says what it still needs (2026-11-06)
+
+- **Save on a new stringing job is never a greyed-out dead end now.** If something is missing, usually whose racket it is, a line under the button says so, and tapping Save takes you straight to it with the search box ready. Once everything is in, it saves as before.
+
 ### Coming back is quicker, and Home shows up at once (2026-11-06)
 
 Following "this app is getting really slow":
