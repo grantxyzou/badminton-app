@@ -14,9 +14,9 @@
         "account": "Your account"
       },
     "signInSetup": {
-      "noneTitle": "Set a PIN so you can get back in",
-      "noneBody": "You're signed in on this phone, but your account has no PIN, password or Google. Without one, you'll need an admin to let you in again next time.",
-      "noneAction": "Set a PIN"
+      "noneTitle": "Keep your account",
+      "noneBody": "You're signed in on this phone, but there's nothing to sign in with next time. Add Apple, Google or an email and password.",
+      "noneAction": "Choose how to sign in"
     },
     "stringing": {
       "cancelError": "Couldn't cancel that. Try again.",
@@ -865,7 +865,11 @@
     "announcementTitle": "New announcement",
     "announcementBodyEmpty": "Read it on Home.",
     "settleUpTitle": "Time to settle up",
-    "settleUpBody": "{count, plural, one {You've got a session to settle up.} other {You've got # sessions to settle up.}}"
+    "settleUpBody": "{count, plural, one {You've got a session to settle up.} other {You've got # sessions to settle up.}}",
+    "memberJoinedTitle": "Someone new joined",
+    "memberJoinedBody": "{name} has joined {club}. Say hi at the next session.",
+    "memberJoinedBodyNoClub": "{name} has joined. Say hi at the next session.",
+    "someoneNew": "Someone new"
   },
   "report": {
     "title": "Report a problem",
@@ -884,9 +888,6 @@
     "intro": "Save %APP_SHORT% to your home screen and it opens full-screen, like a normal app.",
     "done": "Got it",
     "close": "Close",
-    "bannerTitle": "Add %APP_SHORT% to your home screen",
-    "bannerCta": "Show me how →",
-    "dismiss": "Dismiss",
     "ios": {
       "step1": "Tap the Share button in Safari's toolbar.",
       "step2": "Scroll down and tap \"Add to Home Screen\".",
@@ -2111,6 +2112,21 @@
       "close": "Close"
     }
   },
+  "keepAccount": {
+    "title": "Keep your account",
+    "body": "You're in, {name}! Pick how you'll sign in next time, so you never have to ask again.",
+    "bodyNoName": "Pick how you'll sign in next time, so you never have to ask again.",
+    "or": "or use your email",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Done. Next time, log in with {email} and your password.",
+    "savedMailed": "Done. Next time, log in with {email} and your password. We sent a link there to confirm it.",
+    "failed": "Couldn't save that. Try again.",
+    "passwordExists": "This account already has a password. Use Forgot password on the log-in page to change it.",
+    "notNow": "Not now",
+    "done": "Done",
+    "close": "Close"
+  },
   "recovery": {
     "sheetTitle": "Sign in",
     "pinPathTitle": "Use my PIN",
@@ -2129,10 +2145,14 @@
     "askRateLimited": "That's a few tries already. Give it an hour, or find an admin in person.",
     "askAgain": "Ask again",
     "claimTitle": "Join {club}",
-    "claimIntro": "Type your name. If {club} already has you on its list, use the name it knows you by. An organiser lets you in from their phone.",
-    "claimNameLabel": "Your name",
+    "claimIntro": "Hey, glad you're here! What's your name and email?",
+    "claimNameLabel": "First and last name",
+    "claimNameNeedsLast": "Add your last name too.",
+    "claimEmailLabel": "Email",
+    "claimEmailInvalid": "That email doesn't look right.",
+    "claimEmailNote": "Don't worry, we don't have the bandwidth to send you junk mail.",
     "claimCta": "Ask to join",
-    "claimWaiting": "Request sent. Keep this open — you'll be signed in as soon as an organiser lets you in.",
+    "claimWaiting": "Sent! Keep this open. You're in as soon as an organiser says yes.",
     "claimExpired": "That request expired. Ask again, or find an organiser at the session.",
     "noPinYet": "You haven't set a PIN yet \u2014 that's why this isn't working.",
     "offerPinTitle": "Set a PIN?",

@@ -35,6 +35,7 @@ export const NOTICE_TYPES = [
   'stringing_change',
   'announcement',
   'settle_up',
+  'member_joined',
 ] as const;
 export type NoticeType = (typeof NOTICE_TYPES)[number];
 
@@ -51,6 +52,9 @@ export interface NoticeInput {
   text?: string;
   /** Settle-up: how many sessions. Never an amount — the lock-screen rule. */
   count?: number;
+  /** Member joined: the new person's roster name, and the club's name then. */
+  memberName?: string;
+  club?: string;
 }
 
 export interface NoticeDoc extends NoticeInput {
@@ -95,6 +99,8 @@ function clean(input: NoticeInput): NoticeInput {
     if (flat) out.text = flat.length > TEXT_MAX ? `${flat.slice(0, TEXT_MAX - 1)}…` : flat;
   }
   if (typeof input.count === 'number' && Number.isFinite(input.count) && input.count > 0) out.count = Math.floor(input.count);
+  if (typeof input.memberName === 'string' && input.memberName.trim()) out.memberName = input.memberName.trim().slice(0, 80);
+  if (typeof input.club === 'string' && input.club.trim()) out.club = input.club.trim().slice(0, 80);
   return out;
 }
 

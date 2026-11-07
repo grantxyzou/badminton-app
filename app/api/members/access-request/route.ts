@@ -26,6 +26,7 @@ import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
 import { rosterMembers } from '@/lib/roster';
 import { addJoinRequest } from '@/lib/joinRequests';
 import { listOrganisers, readGroup, rosterNameHolder } from '@/lib/groups';
+import { isFullName } from '@/lib/fullName';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +88,15 @@ export async function POST(req: NextRequest) {
      * on the roster.
      */
     if (viaLink && groupId && !askable) {
+      /*
+       * A NEW person gives a first AND last name (Grant, 2026-11-07), so an
+       * organiser approving from a lock screen knows which Sandra. The sheet
+       * will not send one without it (lib/fullName.ts is shared with it); a
+       * caller that does gets the same 200 as every other miss and nothing is
+       * stored, so the rule cannot be used to learn which names are on the
+       * roster. An imported roster name is claimed as it is written.
+       */
+      if (!isFullName(name)) return NextResponse.json({ ok: true, secret });
       const joined = await addJoinRequest(groupId, name);
       if (joined) {
         await notifyOrganisersOfJoin(groupId, joined.request.id, joined.request.name);

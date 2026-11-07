@@ -33,7 +33,7 @@ import {
   clearOnboardingResume,
 } from '@/lib/onboardingResume';
 import { isFlagOn } from '@/lib/flags';
-import { OFFER_PIN_KEY } from '@/lib/offerPin';
+import { OFFER_PIN_KEY, KEEP_ACCOUNT_EMAIL_KEY } from '@/lib/offerPin';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -692,17 +692,17 @@ function LogInView({
         sessionId=""
         initialName={staleName}
         claim={claim}
-        onSignedIn={({ hasPin }) => {
+        onSignedIn={({ hasPin, email }) => {
           setAskOpen(false);
           // An approval signs them in with no credential. The reload the sign-in
           // triggers is async, so this lands before the page goes — Home then
-          // opens the PIN sheet instead of letting them leave with nothing.
-          // Through the club's door link no PIN is offered (Grant, 2026-11-05:
-          // PIN is being phased out); Home asks them to keep the account with
-          // Google, Apple or an email instead.
-          if (!hasPin && !claim) {
+          // opens "Keep your account" (Apple, Google, or an email and password;
+          // never a PIN, Grant 2026-11-05/07) instead of letting them leave with
+          // nothing. Through the door it also carries the email they typed.
+          if (!hasPin) {
             try {
               window.sessionStorage.setItem(OFFER_PIN_KEY, '1');
+              if (email) window.sessionStorage.setItem(KEEP_ACCOUNT_EMAIL_KEY, email);
             } catch {
               /* Home still shows the card */
             }

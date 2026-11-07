@@ -252,13 +252,19 @@ describe('landings', () => {
     expect(window.location.search).not.toContain('join');
   });
 
-  it('a person let in through the door is not offered a PIN', async () => {
+  it('a person let in through the door is offered to keep the account, with the email they typed', async () => {
     const token = 'f6'.repeat(16);
     at(`?claim=${token}`);
     renderShell();
     await waitFor(() => expect(captured.AskAccessSheet?.open).toBe(true));
-    (captured.AskAccessSheet!.onSignedIn as (r: { name: string; hasPin: boolean }) => void)({ name: 'Akane', hasPin: false });
-    expect(sessionStorage.getItem('badminton_offer_pin')).toBeNull();
+    (captured.AskAccessSheet!.onSignedIn as (r: { name: string; hasPin: boolean; email?: string }) => void)({
+      name: 'Akane Yamaguchi',
+      hasPin: false,
+      email: 'akane@example.com',
+    });
+    // Home opens "Keep your account" (Apple, Google, email and password), never a PIN.
+    expect(sessionStorage.getItem('badminton_offer_pin')).toBe('1');
+    expect(sessionStorage.getItem('badminton_keep_account_email')).toBe('akane@example.com');
   });
 
   it('a claim link that no longer resolves says so, and opens nothing', async () => {

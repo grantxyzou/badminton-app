@@ -8,10 +8,13 @@ import { setIdentity } from '@/lib/identity';
 import { lastClub } from '@/lib/lastClub';
 import { useClientValue } from '@/lib/useClientValue';
 import { isFlagOn } from '@/lib/flags';
+import { isFullName } from '@/lib/fullName';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** Often enough to feel immediate when Grant is standing right there. */
 const POLL_MS = 3_000;
+/** A light shape check; the email is checked properly where it becomes an account. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Which club the ask is for: the claim link when the person came through one,
@@ -58,8 +61,9 @@ export default function AskAccessSheet({
   sessionId: string;
   initialName?: string;
   /** Fired once they are actually signed in. `hasPin` decides whether it is
-   *  worth offering them one. */
-  onSignedIn: (result: { name: string; hasPin: boolean }) => void;
+   *  worth offering them one; `email` is what a door ask typed, carried to the
+   *  "keep your account" step so they are not asked for it twice. */
+  onSignedIn: (result: { name: string; hasPin: boolean; email?: string }) => void;
   /**
    * The club's claim link, when the person arrived through one
    * (docs/plans/claim-your-name.md): the ask and the claim name that club
@@ -71,6 +75,11 @@ export default function AskAccessSheet({
   const t = useTranslations('recovery');
   const online = useOnline();
   const [name, setName] = useState(initialName);
+  // Only the door asks for an email (Grant, 2026-11-07). It never leaves this
+  // phone with the ask: it waits here for the account step after approval.
+  const [email, setEmail] = useState('');
+  // Show the field rules only once the person has tried to send.
+  const [tried, setTried] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
   const secret = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -101,8 +110,10 @@ export default function AskAccessSheet({
   const [prevOpenFor, setPrevOpenFor] = useState({ open, initialName });
   if (prevOpenFor.open !== open || prevOpenFor.initialName !== initialName) {
     setPrevOpenFor({ open, initialName });
-    if (open) setName(initialName);
-    else setPhase('idle');
+    if (open) {
+      setName(initialName);
+      setTried(false);
+    } else setPhase('idle');
   }
 
   // The imperative half stays an effect: clearing the interval and dropping
@@ -129,7 +140,7 @@ export default function AskAccessSheet({
         secret.current = null;
         setIdentity({ name: body.name, sessionId });
         setPhase('approved');
-        onSignedIn({ name: body.name, hasPin: body.hasPin === true });
+        onSignedIn({ name: body.name, hasPin: body.hasPin === true, ...(claim && email.trim() ? { email: email.trim() } : {}) });
       } else if (body.status === 'none') {
         // Expired, or Grant declined. One answer, because there is nothing
         // useful to do differently with the two.
@@ -139,11 +150,19 @@ export default function AskAccessSheet({
     } catch {
       /* keep polling — a dropped request is not an answer */
     }
-  }, [name, sessionId, stop, onSignedIn, claim]);
+  }, [name, email, sessionId, stop, onSignedIn, claim]);
+
+  const door = !!claim;
+  const nameOk = door ? isFullName(name) : name.trim().length > 0;
+  const emailOk = !door || EMAIL_SHAPE.test(email.trim());
 
   async function ask() {
     const trimmed = name.trim();
     if (!trimmed || phase === 'sending' || !online) return;
+    if (!nameOk || !emailOk) {
+      setTried(true);
+      return;
+    }
     setPhase('sending');
     try {
       const res = await fetch(`${BASE}/api/members/access-request`, {
@@ -187,7 +206,7 @@ export default function AskAccessSheet({
           ) : (
             <>
               <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>
-                {club ? t('claimIntro', { club }) : t('askIntro')}
+                {club ? t('claimIntro') : t('askIntro')}
               </p>
               {sayOtherClub && (
                 <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>{t('askOtherClub')}</p>
@@ -215,22 +234,43 @@ export default function AskAccessSheet({
                 <>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
                     <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {club ? t('claimNameLabel', { club }) : t('askNameLabel')}
+                      {club ? t('claimNameLabel') : t('askNameLabel')}
                     </span>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      aria-label={club ? t('claimNameLabel', { club }) : t('askNameLabel')}
-                      maxLength={80}
+                      aria-label={club ? t('claimNameLabel') : t('askNameLabel')}
+                      aria-invalid={tried && !nameOk ? true : undefined}
+                      maxLength={50}
                       autoComplete="name"
                     />
+                    {tried && !nameOk && <span className="field-error" role="alert">{t('claimNameNeedsLast')}</span>}
                   </label>
+                  {door && (
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                      <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('claimEmailLabel')}</span>
+                      <input
+                        type="email"
+                        inputMode="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        aria-label={t('claimEmailLabel')}
+                        aria-invalid={tried && !emailOk ? true : undefined}
+                        maxLength={254}
+                        autoComplete="email"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                      />
+                      {tried && !emailOk && <span className="field-error" role="alert">{t('claimEmailInvalid')}</span>}
+                      <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('claimEmailNote')}</span>
+                    </label>
+                  )}
                   <button
                     type="button"
                     className="btn-primary"
                     style={{ width: '100%' }}
-                    disabled={!name.trim() || phase === 'sending' || !online}
+                    disabled={!name.trim() || (door && !email.trim()) || phase === 'sending' || !online}
                     onClick={() => void ask()}
                   >
                     {phase === 'sending'

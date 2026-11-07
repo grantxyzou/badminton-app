@@ -35,6 +35,7 @@ import { isUnclaimed } from '@/lib/claimLinks';
 import type { StoredAccessRequest } from '@/lib/accessRequest';
 import { approveJoinRequest, declineJoinRequest, pendingJoinRequests } from '@/lib/joinRequests';
 import { readGroup, rosterNameHolder } from '@/lib/groups';
+import { noticeClubOfJoin } from '@/lib/joinNotify';
 
 /**
  * Whether an ask is THIS club's. A request older than the field carries no
@@ -162,7 +163,11 @@ export async function POST(req: NextRequest) {
           : NextResponse.json({ error: 'not_found' }, { status: 404 });
       }
       const result = await approveJoinRequest(admin.groupId, joinRequestId);
-      if (result.outcome === 'approved') return NextResponse.json({ ok: true });
+      if (result.outcome === 'approved') {
+        // The whole club hears it on the Notifications page (no push).
+        await noticeClubOfJoin(admin.groupId, { id: result.memberId, name: result.name });
+        return NextResponse.json({ ok: true });
+      }
       if (result.outcome === 'name_taken') return NextResponse.json({ error: 'name_taken' }, { status: 409 });
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     } catch (err) {

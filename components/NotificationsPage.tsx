@@ -38,6 +38,7 @@ const ICONS: Record<Notice['type'], string> = {
   stringing_change: 'fact_check',
   announcement: 'campaign',
   settle_up: 'payments',
+  member_joined: 'group_add',
 };
 
 /** The first loading frame (measured; `TabFallbacks.tsx` holds the number so
@@ -116,6 +117,7 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
       case 'stringing_change': return t('stringingChangeTitle');
       case 'announcement': return t('announcementTitle');
       case 'settle_up': return t('settleUpTitle');
+      case 'member_joined': return t('memberJoinedTitle');
     }
   }
 
@@ -146,6 +148,10 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
         return n.text || t('announcementBodyEmpty');
       case 'settle_up':
         return t('settleUpBody', { count: n.count ?? 1 });
+      case 'member_joined': {
+        const name = n.memberName || t('someoneNew');
+        return n.club ? t('memberJoinedBody', { name, club: n.club }) : t('memberJoinedBodyNoClub', { name });
+      }
     }
   }
 
