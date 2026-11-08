@@ -478,6 +478,22 @@
     "profile": "Profile"
   },
   "profile": {
+    "nickname": {
+      "title": "Your name",
+      "back": "Profile",
+      "question": "What should {club} call you?",
+      "body": "It's the name on the sign-up list, kudos and receipts. Use the one people call you at the court.",
+      "label": "Name",
+      "note": "Only people in {club} see it. Each name is used once in the club.",
+      "save": "Save",
+      "saving": "Saving…",
+      "taken": "Someone in {club} already goes by {name}. Try adding a last initial.",
+      "invalid": "Type a name.",
+      "rateLimited": "That's a few changes already. Try again in an hour.",
+      "signedOut": "Sign in again, then change your name.",
+      "failed": "Couldn't save that. Try again.",
+      "theClub": "the club"
+    },
     "avatar": {
       "title": "Your picture",
       "myRacket": "My racket",
@@ -730,6 +746,7 @@
       "close": "Close"
     },
     "settings": {
+      "clubName": "Your name in the club",
       "helpGroup": "Help",
       "privacyGroup": "Privacy",
       "title": "Account",

@@ -478,6 +478,22 @@
     "profile": "我的"
   },
   "profile": {
+    "nickname": {
+      "title": "你的名字",
+      "back": "我的",
+      "question": "想让{club}怎么称呼你？",
+      "body": "这个名字会显示在报名名单、点赞和收据上。用大家在球场上叫你的那个。",
+      "label": "名字",
+      "note": "只有{club}的成员能看到。同一个俱乐部里每个名字只能用一次。",
+      "save": "保存",
+      "saving": "保存中…",
+      "taken": "{club}里已经有人叫{name}了。试试加上姓的首字母。",
+      "invalid": "请输入名字。",
+      "rateLimited": "改得有点多了，一小时后再试。",
+      "signedOut": "请重新登录后再改名字。",
+      "failed": "没保存成功，再试一次。",
+      "theClub": "俱乐部"
+    },
     "avatar": {
       "title": "我的头像",
       "myRacket": "我的球拍",
@@ -730,6 +746,7 @@
       "close": "关闭"
     },
     "settings": {
+      "clubName": "你在俱乐部的名字",
       "helpGroup": "帮助",
       "privacyGroup": "隐私",
       "title": "账号",

@@ -6,6 +6,9 @@ import {
   seedMember,
   seedMembership,
   seedGroup,
+  seedDoc,
+  seedPlayer,
+  seedAlias,
   makeRequest,
   memberCookieValue,
   adminCookieValue,
@@ -87,6 +90,19 @@ describe('the two cookies must name the same club', () => {
 });
 
 describe('/api/members PATCH and DELETE stay inside the admin\'s roster', () => {
+  it('an organiser’s rename carries this week’s sign-up row and the e-transfer alias (profile-nickname)', async () => {
+    const kento = seedMember('Kento');
+    seedMembership('club-x', kento.id, { name: 'Kento' });
+    const session = 'club-x:session-2026-11-12';
+    seedDoc('sessions', { id: 'club-x:active-session-pointer', sessionId: 'club-x:active-session-pointer', activeSessionId: session, groupId: 'club-x' });
+    const row = seedPlayer(session, 'Kento', { memberId: kento.id, groupId: 'club-x' });
+    const alias = seedAlias('Kento', 'KENTO MOMOTA', 'club-x');
+    const res = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: kento.id, name: 'Kento M' }, cookies('club-x')));
+    expect(res.status).toBe(200);
+    expect((getStore()['players'] as { id: string; name: string }[]).find((p) => p.id === row.id)?.name).toBe('Kento M');
+    expect((getStore()['clubSettings'] as { id: string; appName: string }[]).find((a) => a.id === alias.id)?.appName).toBe('Kento M');
+  });
+
   it('refuses a hard delete outright, and leaves the person alone', async () => {
     const res = await deleteMember(makeRequest('DELETE', 'http://x/api/members', { id: lin.id, hard: true }, cookies('club-x')));
     expect(res.status).toBe(403);
