@@ -99,7 +99,7 @@ export function findJoinBySecret(
 }
 
 export type ApproveJoinOutcome =
-  | { outcome: 'approved'; memberId: string }
+  | { outcome: 'approved'; memberId: string; name: string }
   | { outcome: 'not_found' }
   | { outcome: 'name_taken' };
 
@@ -146,7 +146,7 @@ export async function approveJoinRequest(groupId: string, requestId: string, now
   }
 
   await updateJoinRequests(groupId, (open) => open.map((r) => (r.id === requestId ? { ...r, memberId } : r)));
-  return { outcome: 'approved', memberId };
+  return { outcome: 'approved', memberId, name: target.name };
 }
 
 async function unmark(groupId: string, requestId: string): Promise<void> {

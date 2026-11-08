@@ -38,7 +38,7 @@ By the review date, if fewer than a quarter of active members open the bell in a
   - Set a PIN, when the account has no way to sign back in.
   - What's new (`ReleaseNotesTrigger`).
 - **A dot on the bell** while any prompt is undone and not dismissed. Each row keeps its own "done" and "dismissed" rules, which already exist per card.
-- **Home loses those cards, Set a PIN included** (decided below). The one-shot PIN sheet that opens straight after an admin approval (`lib/offerPin.ts`) is not a card and stays.
+- **Home loses those cards, Set a PIN included** (decided below). The one-shot PIN sheet that opens straight after an admin approval (the `OFFER_PIN_KEY` marker) is not a card and stays. (Since 2026-11-08 that step is the "Keep your account" page on the signed-out screen; docs/plans/door-link.md.)
 - **Members already in the waitlist** see the waitlist push ask on the sign-up card, not in the bell ([waitlist-push-ask.md](waitlist-push-ask.md)): it belongs to that moment.
 
 ## Phase 2: what pushes said, kept for everyone

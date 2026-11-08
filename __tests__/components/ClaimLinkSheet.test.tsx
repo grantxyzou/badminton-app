@@ -72,10 +72,57 @@ describe('AskAccessSheet through a claim link', () => {
       </NextIntlClientProvider>,
     );
     expect(screen.getByText('Join Six Feathers')).toBeDefined();
-    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Lin' } });
+    fireEvent.change(screen.getByLabelText('First and last name'), { target: { value: 'Lin Dan' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'lin@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, { body: string }];
-    expect(JSON.parse(init.body)).toEqual({ name: 'Lin', claimToken: 'a'.repeat(32) });
+    // The email stays on the phone until the person saves a password with it.
+    expect(JSON.parse(init.body)).toEqual({ name: 'Lin Dan', claimToken: 'a'.repeat(32) });
+  });
+
+  it('asks a new person for a first and last name and an email, and sends nothing without them', async () => {
+    const fetchMock = vi.fn(() => respond({ ok: true, secret: 's'.repeat(64) }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <AskAccessSheet open onClose={() => {}} sessionId="" onSignedIn={() => {}} claim={{ token: 'a'.repeat(32), clubName: 'BPM Core' }} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("Hey, glad you're here! What's your name and email?")).toBeDefined();
+    expect(screen.getByText("Don't worry, we don't have the bandwidth to send you junk mail.")).toBeDefined();
+    fireEvent.change(screen.getByLabelText('First and last name'), { target: { value: 'Sandra' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'not-an-email' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    expect(screen.getByText('Add your last name too.')).toBeDefined();
+    expect(screen.getByText("That email doesn't look right.")).toBeDefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('hands the email on once the organiser lets them in', async () => {
+    const fetchMock = vi.fn((url: string) =>
+      url.includes('/claim')
+        ? respond({ status: 'approved', name: 'Sandra Lee', hasPin: false })
+        : respond({ ok: true, secret: 's'.repeat(64) }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const onSignedIn = vi.fn();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(
+        <NextIntlClientProvider locale="en" messages={enMessages}>
+          <AskAccessSheet open onClose={() => {}} sessionId="" onSignedIn={onSignedIn} claim={{ token: 'a'.repeat(32), clubName: 'BPM Core' }} />
+        </NextIntlClientProvider>,
+      );
+      fireEvent.change(screen.getByLabelText('First and last name'), { target: { value: 'Sandra Lee' } });
+      fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'sandra@example.com' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      await vi.advanceTimersByTimeAsync(3_100);
+      await vi.waitFor(() => expect(onSignedIn).toHaveBeenCalled());
+      expect(onSignedIn).toHaveBeenCalledWith({ name: 'Sandra Lee', hasPin: false, email: 'sandra@example.com' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

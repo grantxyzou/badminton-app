@@ -25,11 +25,10 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import WaitlistPingSheet, { waitlistPingKind, type WaitlistPingKind } from '@/components/home/WaitlistPingSheet';
 import MigrateSheet from '@/components/MigrateSheet';
 import type { UsePushResult } from '@/lib/usePush';
-import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
-import { OFFER_PIN_KEY } from '@/lib/offerPin';
+import { usePageBack } from '@/lib/pageStack';
 import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import CourtLine from './home/CourtLine';
@@ -55,7 +54,7 @@ import { homeSnapshotKey, readHomeSnapshot, saveHomeSnapshot } from '@/lib/homeS
 // chunk is fetched on first open and never for a visitor who never taps.
 const GiveKudosSheet = dynamic(() => import('@/components/stats/GiveKudosSheet'), { ssr: false });
 const ReleaseNotesSheet = dynamic(() => import('./ReleaseNotesSheet'), { ssr: false });
-const RecoveryPinSheet = dynamic(() => import('./RecoveryPinSheet'), { ssr: false });
+const KeepAccountPage = dynamic(() => import('./auth/KeepAccountPage'), { ssr: false });
 
 /** The Home balance row (UnpaidSessionsCard, collapsed), measured at 400px. */
 const BALANCE_ROW_HEIGHT = 50;
@@ -198,8 +197,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const releaseEver = useEverOpened(releaseSheetOpen);
   /* The first-PIN sheet, for a member signed in with nothing to sign in with
      next time (the card below, or straight after an admin let them in). */
-  const [setPinOpen, setSetPinOpen] = useState(false);
-  const [recoveredName, setRecoveredName] = useState('');
+  // "Keep your account" (docs/plans/door-link.md): Apple, Google, or an email
+  // and password, for a member signed in with nothing to sign in WITH. A PAGE
+  // in place of Home, not a sheet (Grant, 2026-11-08), so Back steps out of it.
+  const [keepOpen, setKeepOpen] = useState(false);
+  usePageBack(keepOpen, () => setKeepOpen(false));
   /**
    * Does the verified member have any way to sign in again —
    * a PIN, a password or a linked provider? Tri-state: `null` is unknown and
@@ -343,23 +345,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       cancelled = true;
     };
   }, [memberName]);
-
-  // Straight after an admin let this member in, open the PIN sheet rather than
-  // only showing the card: the approval is the moment they are thinking about
-  // how they got in. SignedOutShell leaves the one-shot marker before reloading.
-  useEffect(() => {
-    if (!memberName || hasCredential !== false) return;
-    let offer = false;
-    try {
-      offer = window.sessionStorage.getItem(OFFER_PIN_KEY) === '1';
-      window.sessionStorage.removeItem(OFFER_PIN_KEY);
-    } catch {
-      /* storage unavailable — the card still shows */
-    }
-    if (!offer) return;
-    setRecoveredName(memberName);
-    setSetPinOpen(true);
-  }, [memberName, hasCredential]);
 
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
@@ -642,6 +627,20 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     ? `https://maps.google.com/?q=${encodeURIComponent(session.locationAddress)}`
     : null;
 
+  // The page stands in for Home while it is open: everything Home holds stays
+  // in this component's state, so closing it shows the week as it was.
+  if (keepOpen && memberName) {
+    const close = () => setKeepOpen(false);
+    return (
+      <KeepAccountPage
+        onBack={close}
+        onDone={close}
+        /* A password now exists; the "no way back in" card has nothing left to say. */
+        onSaved={() => setHasCredential(true)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
       {/* PageHeader must be a DIRECT child of this space-y-5 scroll root so its
@@ -702,9 +701,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       >
       {!loading && (
       <div className="bpm-home-stack">
-      {/* One-time nudge to install to the home screen (mobile browser only). */}
-      <InstallBanner />
-
       {/* A CLUB WITH NO SESSION YET.
           `GET /api/session` answers 404 for a group with no pointer, which is
           every club on the day it is created. Rendering the ordinary week
@@ -1042,7 +1038,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
       <section className="bpm-home-group vt-home-account" aria-label={t('groups.account')}>
       {/* Signed in, but nothing to sign in WITH next time — the state an
-          admin-approved access request leaves. One tap to a PIN. */}
+          approval leaves. One tap to "Keep your account". */}
       {memberName && (
       <RevealSlot ready={credentialChecked} empty={!needsCredential} placeholder={null}>
       {needsCredential && (
@@ -1058,8 +1054,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 className="link-quiet"
                 style={{ paddingInline: 0, fontWeight: 600 }}
                 onClick={() => {
-                  setRecoveredName(memberName ?? '');
-                  setSetPinOpen(true);
+                  setKeepOpen(true);
+                  window.scrollTo(0, 0);
                 }}
               >
                 {t('signInSetup.noneAction')}
@@ -1155,26 +1151,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         <GiveKudosSheet open={kudosFor !== null} onClose={() => setKudosFor(null)} recipient={kudosFor} />
       )}
 
-      {/* Only mounted once we have a name — `identity` is required, and a
-          sheet that cannot say who it is setting a PIN for should not exist. */}
-      {recoveredName !== '' && (
-      <RecoveryPinSheet
-        open={setPinOpen}
-        onClose={() => setSetPinOpen(false)}
-        identity={{ name: recoveredName, sessionId: session?.id ?? '' }}
-        /* Always the two-field first-set shape: it opens only when the
-           account has no PIN. */
-        hasPin={false}
-        /* Signed in with a live member_session, so the first-set guard is
-           satisfied — `true`, not the tri-state unknown. */
-        authed
-        onSaved={() => {
-          setSetPinOpen(false);
-          // A PIN now exists; the "no way back in" card has nothing left to say.
-          if (memberName) setHasCredential(true);
-        }}
-      />
-      )}
       </div>
       )}
       </RevealSlot>

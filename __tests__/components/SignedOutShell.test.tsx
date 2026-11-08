@@ -54,7 +54,8 @@ vi.mock('@/components/auth/EmailSignUpForm', () => ({
     return <p>stub: email sign-up</p>;
   },
 }));
-vi.mock('@/components/AskAccessSheet', () => ({ default: capture('AskAccessSheet') }));
+vi.mock('@/components/auth/AskAccessForm', () => ({ default: capture('AskAccessForm') }));
+vi.mock('@/components/auth/KeepAccountPage', () => ({ default: capture('KeepAccountPage') }));
 vi.mock('@/components/auth/ForgotPasswordSheet', () => ({ default: capture('ForgotPasswordSheet') }));
 vi.mock('@/components/auth/ChooseNameSheet', () => ({ default: capture('ChooseNameSheet') }));
 vi.mock('@/components/auth/ResetPasswordSheet', () => ({ default: capture('ResetPasswordSheet') }));
@@ -144,14 +145,20 @@ describe('Log in', () => {
     expect(screen.getByText('Continue with Google')).toBeDefined();
     expect(screen.getByText('stub: PIN sign-in')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
-    expect(captured.AskAccessSheet?.open).toBe(true);
+    // A page, not a sheet (Grant, 2026-11-08): a real person approves it.
+    expect(screen.getByText('Can\'t sign in?')).toBeDefined();
+    expect(captured.AskAccessForm?.claim).toBeNull();
+    // Back goes to Log in, where they came from.
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByText('stub: PIN sign-in')).toBeDefined();
   });
 
   it('prefills "I play here already" with a stale local name', () => {
     localStorage.setItem('badminton_identity', JSON.stringify({ name: 'Viktor', sessionId: 'old' }));
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    expect(captured.AskAccessSheet?.initialName).toBe('Viktor');
+    fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
+    expect(captured.AskAccessForm?.initialName).toBe('Viktor');
   });
 
   it('switches to email and routes "forgot" to the password sheet', () => {
@@ -226,13 +233,15 @@ describe('landings', () => {
     expect(window.location.search).not.toContain('join');
   });
 
-  it('?claim= opens Log in with the club’s ask already up, and strips the link from the URL', async () => {
+  it('?claim= opens the club’s ask page, and strips the link from the URL', async () => {
     // docs/plans/claim-your-name.md: an imported name asks to be let in.
     const token = 'c3'.repeat(16);
     at(`?claim=${token}`);
     renderShell();
-    await waitFor(() => expect(captured.AskAccessSheet?.open).toBe(true));
-    expect(captured.AskAccessSheet?.claim).toEqual({ token, clubName: 'BPM Badminton' });
+    await waitFor(() => expect(captured.AskAccessForm?.claim).toEqual({ token, clubName: 'BPM Badminton' }));
+    expect(screen.getByText('Join BPM Badminton')).toBeDefined();
+    // A new person's name, not a stale one from this phone.
+    expect(captured.AskAccessForm?.initialName).toBe('');
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes(`/api/groups/preview?claim=${token}`))).toBe(true);
     expect(window.location.search).not.toContain('claim');
   });
@@ -246,19 +255,29 @@ describe('landings', () => {
     );
     at(`?join=${token}`);
     renderShell();
-    await waitFor(() => expect(captured.AskAccessSheet?.open).toBe(true));
-    expect(captured.AskAccessSheet?.claim).toEqual({ token, clubName: 'BPM Badminton' });
+    await waitFor(() => expect(captured.AskAccessForm?.claim).toEqual({ token, clubName: 'BPM Badminton' }));
     expect(captured.EmailSignUpForm).toBeUndefined();
     expect(window.location.search).not.toContain('join');
   });
 
-  it('a person let in through the door is not offered a PIN', async () => {
+  it('a person let in through the door gets the "Keep your account" page, and goes in when they leave it', async () => {
     const token = 'f6'.repeat(16);
     at(`?claim=${token}`);
     renderShell();
-    await waitFor(() => expect(captured.AskAccessSheet?.open).toBe(true));
-    (captured.AskAccessSheet!.onSignedIn as (r: { name: string; hasPin: boolean }) => void)({ name: 'Akane', hasPin: false });
-    expect(sessionStorage.getItem('badminton_offer_pin')).toBeNull();
+    await waitFor(() => expect(captured.AskAccessForm?.claim).toBeTruthy());
+    (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean; email?: string }) => void)({
+      name: 'Akane Yamaguchi',
+      hasPin: false,
+      email: 'akane@example.com',
+    });
+    // The account step first, with the email they typed, and not signed in yet:
+    // writing the identity would reload this screen out from under it.
+    await waitFor(() => expect(captured.KeepAccountPage?.name).toBe('Akane Yamaguchi'));
+    expect(captured.KeepAccountPage?.initialEmail).toBe('akane@example.com');
+    expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
+    (captured.KeepAccountPage!.onDone as () => void)();
+    await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
+    expect(JSON.parse(localStorage.getItem('badminton_identity') ?? '{}').name).toBe('Akane Yamaguchi');
   });
 
   it('a claim link that no longer resolves says so, and opens nothing', async () => {
@@ -268,7 +287,7 @@ describe('landings', () => {
     at(`?claim=${'d4'.repeat(16)}`);
     renderShell();
     expect((await screen.findByRole('alert')).textContent).toMatch(/link has been replaced/);
-    expect(captured.AskAccessSheet?.open).toBe(false);
+    expect(captured.AskAccessForm).toBeUndefined();
   });
 
   it('a new Google identity gets the name sheet, carrying the invite that rode the excursion', () => {
@@ -316,23 +335,27 @@ describe('signing in hands control to the server', () => {
 
 /**
  * 2026-09-13 flow audit, finding 1: an admin approval signs someone in with no
- * credential. This screen leaves a one-shot marker so Home opens the PIN sheet.
+ * credential. Since 2026-11-08 the ask page itself offers "Keep your account"
+ * before going in, instead of leaving Home a marker.
  */
 describe('after an admin lets someone in', () => {
-  it('leaves the "offer a PIN" marker when they have no PIN', () => {
+  function approve(result: { name: string; hasPin: boolean }) {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    const onSignedIn = captured.AskAccessSheet?.onSignedIn as (r: { name: string; hasPin: boolean }) => void;
-    onSignedIn({ name: 'Kento', hasPin: false });
-    expect(sessionStorage.getItem('badminton_offer_pin')).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
+    (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean }) => void)(result);
+  }
+
+  it('offers to keep the account when they have nothing to sign in with', async () => {
+    approve({ name: 'Kento', hasPin: false });
+    await waitFor(() => expect(captured.KeepAccountPage?.name).toBe('Kento'));
+    expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
   });
 
-  it('leaves no marker when they already have one', () => {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    const onSignedIn = captured.AskAccessSheet?.onSignedIn as (r: { name: string; hasPin: boolean }) => void;
-    onSignedIn({ name: 'Lin', hasPin: true });
-    expect(sessionStorage.getItem('badminton_offer_pin')).toBeNull();
+  it('goes straight in when they already have a PIN', async () => {
+    approve({ name: 'Lin', hasPin: true });
+    await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
+    expect(captured.KeepAccountPage).toBeUndefined();
   });
 });
 

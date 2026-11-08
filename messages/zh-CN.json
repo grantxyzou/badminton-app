@@ -14,9 +14,9 @@
       "account": "我的账号"
     },
     "signInSetup": {
-      "noneTitle": "设置 PIN，下次可自己登录",
-      "noneBody": "这台手机已登录，但账号还没有 PIN、密码或 Google。没有的话，下次还得找管理员放你进来。",
-      "noneAction": "设置 PIN"
+      "noneTitle": "保留你的账号",
+      "noneBody": "这台手机已登录，但下次没有可以登录的方式。添加 Apple、Google 或邮箱和密码。",
+      "noneAction": "选择登录方式"
     },
     "stringing": {
       "cancelError": "取消失败，再试一次。",
@@ -865,7 +865,11 @@
     "announcementTitle": "新公告",
     "announcementBodyEmpty": "请在首页查看。",
     "settleUpTitle": "该结账了",
-    "settleUpBody": "{count, plural, other {你有 # 次活动需要结账。}}"
+    "settleUpBody": "{count, plural, other {你有 # 次活动需要结账。}}",
+    "memberJoinedTitle": "有新成员加入",
+    "memberJoinedBody": "{name} 加入了{club}。下次打球时打个招呼吧。",
+    "memberJoinedBodyNoClub": "{name} 加入了。下次打球时打个招呼吧。",
+    "someoneNew": "新成员"
   },
   "report": {
     "title": "问题反馈",
@@ -884,9 +888,6 @@
     "intro": "把 %APP_SHORT% 添加到主屏幕，就能像普通 App 一样全屏打开。",
     "done": "知道了",
     "close": "关闭",
-    "bannerTitle": "把 %APP_SHORT% 添加到主屏幕",
-    "bannerCta": "怎么操作 →",
-    "dismiss": "关闭",
     "ios": {
       "step1": "点击 Safari 工具栏里的分享按钮。",
       "step2": "向下滑动，点击「添加到主屏幕」。",
@@ -2099,6 +2100,21 @@
       "close": "关闭"
     }
   },
+  "keepAccount": {
+    "title": "保留你的账号",
+    "body": "欢迎，{name}！选一个下次登录的方式，就不用再申请了。",
+    "bodyNoName": "选一个下次登录的方式，就不用再申请了。",
+    "or": "或者用邮箱",
+    "save": "保存",
+    "saving": "保存中…",
+    "saved": "好了。下次用 {email} 和密码登录。",
+    "savedMailed": "好了。下次用 {email} 和密码登录。我们发了一封确认邮件到这个邮箱。",
+    "failed": "没保存成功，再试一次。",
+    "passwordExists": "这个账号已经有密码了。要改密码，请在登录页点「忘记密码」。",
+    "notNow": "以后再说",
+    "done": "完成",
+    "back": "返回"
+  },
   "recovery": {
     "sheetTitle": "登录",
     "pinPathTitle": "用 PIN 登录",
@@ -2117,10 +2133,15 @@
     "askRateLimited": "已经试了几次了。过一小时再试，或当面找管理员。",
     "askAgain": "再请求一次",
     "claimTitle": "加入{club}",
-    "claimIntro": "填写你的名字。如果{club}的名单上已经有你，请用大家叫你的名字。组织者在手机上通过后你就能进来。",
-    "claimNameLabel": "你的名字",
+    "joinTitle": "加入",
+    "claimIntro": "嘿，很高兴你来了！你叫什么名字，邮箱是多少？",
+    "claimNameLabel": "姓名（姓和名）",
+    "claimNameNeedsLast": "请把姓也填上。",
+    "claimEmailLabel": "邮箱",
+    "claimEmailInvalid": "这个邮箱看起来不对。",
+    "claimEmailNote": "放心，我们没那个精力给你发垃圾邮件。",
     "claimCta": "申请加入",
-    "claimWaiting": "请求已发送。先别关这个页面，组织者一通过你就会自动登录。",
+    "claimWaiting": "已发送！先别关这个页面，组织者一同意你就进来了。",
     "claimExpired": "请求已过期。可以再发一次，或者到场上找组织者。",
     "noPinYet": "你还没设置 PIN，所以这里登录不了。",
     "offerPinTitle": "要设置 PIN 吗？",

@@ -2,8 +2,8 @@
  * One-shot sessionStorage marker: "open this Profile sub-screen when Profile
  * mounts". A Stats card's "turn this off" link writes it and switches tab, and
  * `ProfileTab` consumes it, so the member lands on Stats & privacy rather than
- * at the top of Profile looking for the switch. Same shape as `OFFER_PIN_KEY`
- * (`lib/offerPin.ts`). Storage can throw (private mode, blocked site data), and
+ * at the top of Profile looking for the switch. Same shape as the old `OFFER_PIN_KEY`
+ * marker (retired 2026-11-08). Storage can throw (private mode, blocked site data), and
  * then the link still lands on Profile, one tap short.
  */
 export const PROFILE_VIEW_KEY = 'badminton_profile_view';
