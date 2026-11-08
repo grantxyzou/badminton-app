@@ -31,6 +31,7 @@ import PageHeader from './primitives/PageHeader';
 import { ProfileSkeleton } from './TabFallbacks';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
+import NicknamePage from './profile/NicknamePage';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
 import { takeProfileView } from '@/lib/profileView';
 import { useTabActive } from '@/lib/tabActivity';
@@ -170,7 +171,7 @@ export default function ProfileTab({
   // pattern (view state + early return + slideInRight + TopBar) is borrowed
   // from AdminDashboard, which is the only place in the app that already does
   // sub-screens.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name'>('root');
   // A sub-screen answers the Android back button (lib/pageStack.ts).
   usePageBack(view !== 'root', () => setView('root'));
   const [methodsOpen, setMethodsOpen] = useState(false);
@@ -693,6 +694,10 @@ export default function ProfileTab({
     return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
   }
 
+  if (view === 'name') {
+    return <NicknamePage currentName={identity.name} clubName={group?.name ?? null} onBack={() => setView('root')} />;
+  }
+
   // This device: every row here can be absent (push still probing, already
   // installed, no migration), so the group hides rather than titling nothing.
   const appRows: SettingsRow[] = [
@@ -800,6 +805,14 @@ export default function ProfileTab({
       <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
       <SettingsList
         rows={[
+          // What the club calls you (docs/plans/profile-nickname.md): the one
+          // roster name, set by the member. No meta: the name is the identity
+          // card's title right above, and saying it twice reads as two names.
+          {
+            icon: 'person',
+            label: tSettings('clubName'),
+            onClick: () => setView('name'),
+          },
           // "Your groups" leads the list when there is more than one club to be
           // in: it changes what every other screen is about, so it outranks the
           // per-account rows below it. Absent entirely with the flag off, and

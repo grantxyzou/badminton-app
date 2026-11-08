@@ -20,6 +20,7 @@ import {
   RosterNameTakenError,
 } from '@/lib/groups';
 import { normalizeAvatar } from '@/lib/memberAvatar';
+import { carryRosterRename } from '@/lib/rosterRename';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -211,7 +212,10 @@ export async function PATCH(req: NextRequest) {
         const holder = await rosterNameHolder(groupId, nextName);
         if (holder && holder !== id) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
         try {
+          const before = (await readMembership(groupId, id))?.name;
           await renameRosterMember(groupId, id, nextName);
+          // This week's sign-up rows and the e-transfer aliases follow the name.
+          if (before && before !== nextName) await carryRosterRename(groupId, id, before, nextName);
         } catch (err) {
           if (err instanceof RosterNameTakenError) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
           throw err;
@@ -229,6 +233,7 @@ export async function PATCH(req: NextRequest) {
         if (clash.length > 0) {
           return NextResponse.json({ error: 'name_taken' }, { status: 409 });
         }
+        await carryRosterRename(BPM_GROUP_ID, id, String(existing.name ?? ''), nextName);
       }
       if (memberCopy) updates.name = nextName;
     }
