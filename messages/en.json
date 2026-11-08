@@ -2125,7 +2125,7 @@
     "passwordExists": "This account already has a password. Use Forgot password on the log-in page to change it.",
     "notNow": "Not now",
     "done": "Done",
-    "close": "Close"
+    "back": "Back"
   },
   "recovery": {
     "sheetTitle": "Sign in",
@@ -2145,6 +2145,7 @@
     "askRateLimited": "That's a few tries already. Give it an hour, or find an admin in person.",
     "askAgain": "Ask again",
     "claimTitle": "Join {club}",
+    "joinTitle": "Join",
     "claimIntro": "Hey, glad you're here! What's your name and email?",
     "claimNameLabel": "First and last name",
     "claimNameNeedsLast": "Add your last name too.",

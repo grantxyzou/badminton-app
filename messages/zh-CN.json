@@ -2113,7 +2113,7 @@
     "passwordExists": "这个账号已经有密码了。要改密码，请在登录页点「忘记密码」。",
     "notNow": "以后再说",
     "done": "完成",
-    "close": "关闭"
+    "back": "返回"
   },
   "recovery": {
     "sheetTitle": "登录",
@@ -2133,6 +2133,7 @@
     "askRateLimited": "已经试了几次了。过一小时再试，或当面找管理员。",
     "askAgain": "再请求一次",
     "claimTitle": "加入{club}",
+    "joinTitle": "加入",
     "claimIntro": "嘿，很高兴你来了！你叫什么名字，邮箱是多少？",
     "claimNameLabel": "姓名（姓和名）",
     "claimNameNeedsLast": "请把姓也填上。",

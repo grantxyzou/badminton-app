@@ -28,7 +28,7 @@ import type { UsePushResult } from '@/lib/usePush';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
-import { OFFER_PIN_KEY, KEEP_ACCOUNT_EMAIL_KEY } from '@/lib/offerPin';
+import { usePageBack } from '@/lib/pageStack';
 import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import CourtLine from './home/CourtLine';
@@ -54,7 +54,7 @@ import { homeSnapshotKey, readHomeSnapshot, saveHomeSnapshot } from '@/lib/homeS
 // chunk is fetched on first open and never for a visitor who never taps.
 const GiveKudosSheet = dynamic(() => import('@/components/stats/GiveKudosSheet'), { ssr: false });
 const ReleaseNotesSheet = dynamic(() => import('./ReleaseNotesSheet'), { ssr: false });
-const KeepAccountSheet = dynamic(() => import('./auth/KeepAccountSheet'), { ssr: false });
+const KeepAccountPage = dynamic(() => import('./auth/KeepAccountPage'), { ssr: false });
 
 /** The Home balance row (UnpaidSessionsCard, collapsed), measured at 400px. */
 const BALANCE_ROW_HEIGHT = 50;
@@ -198,9 +198,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   /* The first-PIN sheet, for a member signed in with nothing to sign in with
      next time (the card below, or straight after an admin let them in). */
   // "Keep your account" (docs/plans/door-link.md): Apple, Google, or an email
-  // and password, for a member signed in with nothing to sign in WITH.
+  // and password, for a member signed in with nothing to sign in WITH. A PAGE
+  // in place of Home, not a sheet (Grant, 2026-11-08), so Back steps out of it.
   const [keepOpen, setKeepOpen] = useState(false);
-  const [keepEmail, setKeepEmail] = useState('');
+  usePageBack(keepOpen, () => setKeepOpen(false));
   /**
    * Does the verified member have any way to sign in again —
    * a PIN, a password or a linked provider? Tri-state: `null` is unknown and
@@ -344,27 +345,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       cancelled = true;
     };
   }, [memberName]);
-
-  // Straight after an approval let this member in, open "Keep your account"
-  // rather than only showing the card: the approval is the moment they are
-  // thinking about how they got in. SignedOutShell leaves the one-shot marker
-  // (and, from the door, the email they typed) before reloading.
-  useEffect(() => {
-    if (!memberName || hasCredential !== false) return;
-    let offer = false;
-    let email = '';
-    try {
-      offer = window.sessionStorage.getItem(OFFER_PIN_KEY) === '1';
-      email = window.sessionStorage.getItem(KEEP_ACCOUNT_EMAIL_KEY) ?? '';
-      window.sessionStorage.removeItem(OFFER_PIN_KEY);
-      window.sessionStorage.removeItem(KEEP_ACCOUNT_EMAIL_KEY);
-    } catch {
-      /* storage unavailable — the card still shows */
-    }
-    if (!offer) return;
-    setKeepEmail(email);
-    setKeepOpen(true);
-  }, [memberName, hasCredential]);
 
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
@@ -646,6 +626,20 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const mapsUrl = session?.locationAddress
     ? `https://maps.google.com/?q=${encodeURIComponent(session.locationAddress)}`
     : null;
+
+  // The page stands in for Home while it is open: everything Home holds stays
+  // in this component's state, so closing it shows the week as it was.
+  if (keepOpen && memberName) {
+    const close = () => setKeepOpen(false);
+    return (
+      <KeepAccountPage
+        onBack={close}
+        onDone={close}
+        /* A password now exists; the "no way back in" card has nothing left to say. */
+        onSaved={() => setHasCredential(true)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -1059,7 +1053,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 type="button"
                 className="link-quiet"
                 style={{ paddingInline: 0, fontWeight: 600 }}
-                onClick={() => setKeepOpen(true)}
+                onClick={() => {
+                  setKeepOpen(true);
+                  window.scrollTo(0, 0);
+                }}
               >
                 {t('signInSetup.noneAction')}
               </button>
@@ -1154,16 +1151,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         <GiveKudosSheet open={kudosFor !== null} onClose={() => setKudosFor(null)} recipient={kudosFor} />
       )}
 
-      {memberName && (
-      <KeepAccountSheet
-        open={keepOpen}
-        onClose={() => setKeepOpen(false)}
-        name={memberName}
-        initialEmail={keepEmail}
-        /* A password now exists; the "no way back in" card has nothing left to say. */
-        onSaved={() => setHasCredential(true)}
-      />
-      )}
       </div>
       )}
       </RevealSlot>
