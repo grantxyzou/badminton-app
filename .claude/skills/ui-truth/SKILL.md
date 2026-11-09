@@ -67,7 +67,37 @@ Check the written rules, not taste:
 **Screenshots:** run browser steps one at a time (parallel calls lose their
 order) and save under `.playwright-mcp/uitruth/`. Hide the dev badge with a
 `nextjs-portal{display:none!important}` style. Check `innerWidth` is 430
-before trusting a shot.
+before trusting a shot, and read the computed style before calling something
+wrong: a "different-looking" label can be identical underneath.
+
+**Side by side — every proposal about something you can SEE carries one.**
+Take the "wrong" shot as it ships. Then make "right" from the first of these
+that exists:
+1. **Preview the fix.** Edit the working tree, let hot reload apply it, and
+   take the shot (re-open the sheet if the reload closed it). Then
+   `git checkout -- <file>` and confirm `git status` shows the file clean
+   **before anything else**. That edit is a camera, never a commit.
+2. Use the same component done right on another screen.
+3. Use the specimen at `/bpm/design/*`.
+
+```bash
+node scripts/ui-truth-compare.mjs --wrong .playwright-mcp/uitruth/<n>-wrong.png \
+  --right .playwright-mcp/uitruth/<n>-right.png --crop "x,y,w,h" \
+  --title "<screen> — <what is untrue>" --rule "<the rule, quoted, + theme/viewport>" \
+  --wrong-label "Wrong — <what>" --right-label "Right — <what> (preview)" \
+  --out .playwright-mcp/uitruth/<n>.png
+scripts/ui-truth-publish.sh <n>-<slug> .playwright-mcp/uitruth/<n>.png   # prints ![..](url)
+```
+
+`--crop` cuts the same region from both shots and enlarges it. Use it when the
+defect is a few pixels: a 20px vs 18px glyph is invisible on a full phone
+screen. Centre the crop on the element, say the enlargement in `--rule`, and
+**open the composed image and look at it** before filing. The publish script
+pushes to the orphan branch `ui-truth-shots`, which is never merged or
+deployed; the repo is public, so the raw URL renders in the issue.
+
+Behaviour (a key that does nothing) and timing (a duration) get no image. Say
+so in the issue rather than attach a still that proves nothing.
 
 ### 3. Find patterns nobody wrote down
 
@@ -108,6 +138,8 @@ gh issue list --label ui-proposal --state all --limit 200 --json number,title,st
 ```
 Title: UI: <screen> — <what is untrue>     |     UI patterns to document — <date>
 
+![<n>](<url from ui-truth-publish.sh>)      ← the side by side; omit only for behaviour/timing
+
 **Rule:** <the doc line it breaks, quoted>  (patterns: "Not written down anywhere an AI reads")
 **Where:** <file:line(s)>; <screen, theme, viewport>
 **Evidence:** <what you saw, or the pattern's count and files>
@@ -118,8 +150,7 @@ Title: UI: <screen> — <what is untrue>     |     UI patterns to document — <
 Label `ui-approved` to have it made as a draft PR, or `ui-declined` to never see it again.
 ```
 
-`gh` can't attach images. Describe what you saw precisely enough that Grant can
-find it on his phone.
+The image comes first, so Grant can judge from his phone without opening the app.
 
 ### 5. Report
 
