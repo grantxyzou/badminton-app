@@ -30,7 +30,15 @@ A run that finds nothing new files nothing.
 
 ```bash
 git fetch origin
+# A revert of ours, by its subject OR by the commit it reverts. A one-commit PR
+# squashes under the COMMIT's subject (repo setting COMMIT_OR_PR_TITLE), not the
+# PR title, so the subject alone missed the first eight fixes (2026-11-09).
 git log origin/main --since="5 weeks ago" --format='%h %s' | grep -iE '^[0-9a-f]+ revert.*ui-truth:'
+for rev in $(git log origin/main --since="5 weeks ago" --grep='This reverts commit' --format=%h); do
+  sha=$(git log -1 --format=%B "$rev" | grep -oE 'This reverts commit [0-9a-f]+' | head -1 | awk '{print $4}')
+  [ -n "$sha" ] && git log -1 --format=%B "$sha" 2>/dev/null | grep -qi 'ui-truth' \
+    && echo "$rev reverts ui-truth fix $sha"
+done
 ```
 
 Any output, or a production problem Grant has tied to a `ui-truth/*` PR:
@@ -62,7 +70,9 @@ For each one not already being made:
 2. Make **exactly** the proposed change, nothing extra.
 3. Run `npm test && npm run lint && npm run typecheck`.
 4. Screenshot the screen (`verify-ui`).
-5. Open a draft PR titled `ui-truth: <what it fixes>` with `Closes #<issue>`.
+5. Commit with the subject `ui-truth: <what it fixes>` and open a draft PR with
+   the same title and `Closes #<issue>`. The COMMIT subject is what lands on
+   `main` for a one-commit PR, so it must carry the prefix, not only the title.
    The title prefix is what Step 0 finds if it is ever reverted.
 6. Comment on the issue with the PR link. That comment, the branch and the
    PR are what tell the next run it's handled.
