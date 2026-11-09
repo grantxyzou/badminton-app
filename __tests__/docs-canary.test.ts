@@ -315,3 +315,49 @@ describe('docs canary — the sentences a regex can hold', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * How big the docs Claude loads may get (2026-11-09). CLAUDE.md said "under
+ * 150k" and "each one under 40k" — and nothing measured either, so the root
+ * reached 211k before anyone split it (#815). A limit only written down is the
+ * ruleset that targeted no branch.
+ *
+ * - The ROOT is loaded in full every session and Claude Code's limit is 150k.
+ *   This fails at 100k, a third early, so the warning arrives while trimming is
+ *   a small PR and not a rescue in the middle of an unrelated one.
+ * - A path-scoped rule or a nested CLAUDE.md loads on demand and is CUT OFF
+ *   past 40k in a 200K-context session, so 40k is the real line for those.
+ * - A rule with no `paths:` loads every session, i.e. it is root text that
+ *   this budget would not see.
+ * Characters, not bytes: the limit is in characters, and the docs are full of
+ * em dashes that are three bytes each.
+ */
+const ROOT_MAX_CHARS = 100_000;
+const ON_DEMAND_MAX_CHARS = 40_000;
+
+describe('docs canary — what Claude loads stays under its limits', () => {
+  const chars = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').length;
+  const rules = GOVERNING_DOCS.filter((d) => d.startsWith('.claude/rules/'));
+  const nested = execFileSync('git', ['ls-files', '*CLAUDE.md'], { cwd: process.cwd(), encoding: 'utf8' })
+    .split('\n')
+    .filter((p) => p && p !== 'CLAUDE.md');
+
+  it(`CLAUDE.md is under ${ROOT_MAX_CHARS} characters (the real limit is 150k)`, () => {
+    const n = chars('CLAUDE.md');
+    expect(n, `CLAUDE.md is ${n} characters: move a section that matters to one part of the code into .claude/rules/<topic>.md`).toBeLessThanOrEqual(ROOT_MAX_CHARS);
+  });
+
+  it(`every rule and nested CLAUDE.md is under ${ON_DEMAND_MAX_CHARS} characters`, () => {
+    expect(rules.length).toBeGreaterThan(0);
+    const over = [...rules, ...nested]
+      .map((p) => [p, chars(p)] as const)
+      .filter(([, n]) => n > ON_DEMAND_MAX_CHARS)
+      .map(([p, n]) => `${p} is ${n} characters: split it into two rules, each with its own paths:`);
+    expect(over).toEqual([]);
+  });
+
+  it('every rule says which paths load it', () => {
+    const always = rules.filter((p) => !/^---\n[\s\S]*?^paths:\s*$[\s\S]*?^---$/m.test(readFileSync(join(process.cwd(), p), 'utf8')));
+    expect(always, 'a rule with no paths: frontmatter loads every session, outside the root budget').toEqual([]);
+  });
+});
