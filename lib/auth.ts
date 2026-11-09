@@ -419,6 +419,10 @@ export async function callerMemberId(req: NextRequest): Promise<string | null> {
   return admin.authed ? admin.memberId : null;
 }
 
+/** What `liveCallerMemberId` found. `unknown` is a failed re-read, never
+ *  reported as "nobody" (the auth twin of the lying-empty-state rule). */
+export type LiveCaller = { status: 'live'; memberId: string } | { status: 'none' } | { status: 'unknown' };
+
 /**
  * `callerMemberId` for a WRITE: the same "either cookie" reading, but the
  * member cookie through `readLiveMemberSession`, so a session minted before
@@ -426,15 +430,15 @@ export async function callerMemberId(req: NextRequest): Promise<string | null> {
  * `callerMemberId` reads the member cookie's signature alone, which is fine
  * for `auth/methods` (a read behind the page gate) and not for `auth/nudge`,
  * which writes on the Member. A signed-out member cookie falls through to the
- * admin cookie, whose own re-read honours the cutoff; a failed re-read is
- * nobody, as `verifyLiveMemberAuth` decides.
+ * admin cookie, whose own re-read honours the cutoff. A failed re-read is
+ * `unknown`, so the route can answer 503 rather than claim nobody is signed in.
  */
-export async function liveCallerMemberId(req: NextRequest): Promise<string | null> {
+export async function liveCallerMemberId(req: NextRequest): Promise<LiveCaller> {
   const live = await readLiveMemberSession(req);
-  if (live.status === 'live') return live.session.memberId;
-  if (live.status === 'unknown') return null;
+  if (live.status === 'live') return { status: 'live', memberId: live.session.memberId };
+  if (live.status === 'unknown') return { status: 'unknown' };
   const admin = await isAdminAuthedWithMember(req);
-  return admin.authed ? admin.memberId : null;
+  return admin.authed ? { status: 'live', memberId: admin.memberId } : { status: 'none' };
 }
 
 /**

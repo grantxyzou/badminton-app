@@ -27,8 +27,10 @@ export async function POST(req: NextRequest) {
   // from `auth/methods`, which answers for the admin cookie too. The LIVE
   // reading, because this writes on the Member: a phone signed out
   // everywhere is nobody here (liveCallerMemberId).
-  const memberId = await liveCallerMemberId(req);
-  if (!memberId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const caller = await liveCallerMemberId(req);
+  if (caller.status === 'unknown') return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
+  if (caller.status === 'none') return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const memberId = caller.memberId;
 
   try {
     const container = getContainer('members');

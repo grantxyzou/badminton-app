@@ -227,6 +227,16 @@ describe('every caller of a cutoff-blind check is classified', () => {
     for (const name of WRAPPERS) expect(fns.has(`lib/auth.ts#${name}`), `${name} is not in lib/auth.ts — renamed?`).toBe(true);
   });
 
+  it('an app/ EXEMPT entry is a route handler, never a helper whose callers would go unscanned', () => {
+    // The lib/ half is WRAPPERS above. A helper inside a route file is the same
+    // hazard one level down: exempt it as a "read" and a POST in the same file
+    // that calls it is never classified. Name the handler instead, or have the
+    // helper re-read and list it in REREADS (as authorizeBagWrite is).
+    const HANDLERS = new Set(['GET', 'HEAD', 'OPTIONS', ...MUTATING]);
+    const helpers = Object.keys(EXEMPT).filter((key) => key.startsWith('app/') && !HANDLERS.has(key.split('#')[1]));
+    expect(helpers).toEqual([]);
+  });
+
   it('every REREADS function re-reads and none slid back to the signature alone', () => {
     for (const key of REREADS) {
       const body = fns.get(key);
