@@ -297,7 +297,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
           {error && <ErrorState message={error} />}
 
           {specRows.length > 0 && (
-            <section style={{ borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-4)' }}>
+            <section style={{ paddingTop: 'var(--space-4)' }}>
               <button
                 type="button"
                 onClick={() => setSpecsOpen((v) => !v)}

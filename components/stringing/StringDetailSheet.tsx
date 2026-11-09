@@ -330,7 +330,7 @@ function FitCard({ fit }: { fit: StringFit }) {
         <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{fit.reason}</p>
       )}
       {checks.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--inner-card-border)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', paddingTop: 'var(--space-4)' }}>
           {checks.map((c) => (
             <div key={c.key} className="fs-base" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
               <span
