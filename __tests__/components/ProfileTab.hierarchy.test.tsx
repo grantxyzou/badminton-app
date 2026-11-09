@@ -76,7 +76,9 @@ describe('ProfileTab — hierarchy pass', () => {
   });
 
   // #3 — money leaves Profile entirely. Home's balance card owns it, so a
-  // figure appearing here again means the two surfaces can disagree.
+  // figure appearing here again means the two surfaces can disagree. (The
+  // MONEY group's credit figure is a different number, shown only with store
+  // credit on — ProfileTab.money.test.tsx; this runs with it off.)
   it('shows no money at all when signed in', async () => {
     signedIn();
     renderWith();

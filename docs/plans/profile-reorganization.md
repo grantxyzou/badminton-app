@@ -70,7 +70,7 @@ A player who is not an admin or gifter sees: card, CLUB (1 row), SIGNING IN (1),
 1. "Your profile" page from the card: picture and name together (moves "Your name in the club" off the list). No question blocks it. **Built 2026-11-09 as "Edit profile"** (spec §2): picture saves on tap, Delete my account moved onto it, the delete deep link lands there.
 2. SIGNING IN folded to one row (PIN and recovery code inside "How you sign in"). **Built 2026-11-09** (spec §9): one row opens the page; no new PIN is offered.
 3. CLUB group (Your clubs, Admin tools, Give a gift card).
-4. THIS PHONE and MONEY, once questions 1 and 2 are answered.
+4. THIS PHONE and MONEY, once questions 1 and 2 are answered. **MONEY built 2026-11-09** (spec §3, §5): a MONEY group with Gift cards & credit (the credit figure as its value, opening a page with the redeem field and the history) and, for a `canGift` member, Give a gift card (a page: $10 / $25 / $50, the code shown once, asks before leaving it uncopied). Both sheets they replace are deleted. Account balance joins the group in spec step 5; question 2 (redeem on Home too) is still open.
 
 ## Decisions (mock-up review, 2026-11-09)
 
