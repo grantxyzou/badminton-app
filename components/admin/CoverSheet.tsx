@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { resettleSession } from '@/lib/resettleSession';
+import { fmtMoney } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -124,8 +125,8 @@ export default function CoverSheet({
 
   const title =
     mode === 'cover-only'
-      ? `Cover ${playerName}'s $${amount}?`
-      : `${playerName} owes $${amount}`;
+      ? `Cover ${playerName}'s ${fmtMoney(amount)}?`
+      : `${playerName} owes ${fmtMoney(amount)}`;
   const subtitle =
     mode === 'cover-only'
       ? `${sessionLabel ? `From ${sessionLabel}. ` : ''}Shows on the ledger as covered by you.`

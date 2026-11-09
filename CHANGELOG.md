@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Money shows its cents properly on the admin screens and receipts (2026-11-09)
+
+- **"$18.5" is now "$18.50" everywhere an admin sees money**: the Payments card (per player, each row, "owed", "covered", "Cover their …"), the cover sheet, the session card's "Sent · …" and "Share again", Past sessions, and the receipt image and text sent to the group. Whole amounts stay whole ("$18"). They all use the one money formatter the member screens already use.
+
 ### "Save job" says what it still needs (2026-11-06)
 
 - **Save on a new stringing job is never a greyed-out dead end now.** If something is missing, usually whose racket it is, a line under the button says so, and tapping Save takes you straight to it with the search box ready. Once everything is in, it saves as before.

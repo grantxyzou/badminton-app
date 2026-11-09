@@ -10,7 +10,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
 import EmptyState from '@/components/primitives/EmptyState';
 import ActionRow from '@/components/primitives/ActionRow';
-import { fmtSessionLabel } from '@/lib/fmt';
+import { fmtMoney, fmtSessionLabel } from '@/lib/fmt';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import { resettleSession, RESETTLE_FAILED } from '@/lib/resettleSession';
@@ -76,11 +76,6 @@ interface HistoryRow {
 interface HistoryCount {
   unpaid: number;
   players: number;
-}
-
-/** Money for a status line: whole dollars stay whole, cents keep two places. */
-function fmtMoney(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
 interface PaymentsCardProps {
@@ -694,7 +689,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   lineHeight: 1,
                 }}
               >
-                {receiptBuild?.costPerPerson != null ? `$${receiptBuild.costPerPerson}` : '—'}
+                {receiptBuild?.costPerPerson != null ? fmtMoney(receiptBuild.costPerPerson) : '—'}
               </p>
             </div>
             <button
@@ -719,11 +714,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           >
             <span><strong style={{ color: 'var(--text-primary)' }}>{`${paidCount} of ${total}`}</strong> paid</span>
             {stillOwedTotal != null && stillOwedTotal > 0 && (
-              <span style={{ color: 'var(--amber)' }}><strong>{`$${fmtMoney(stillOwedTotal)}`}</strong> owed</span>
+              <span style={{ color: 'var(--amber)' }}><strong>{fmtMoney(stillOwedTotal)}</strong> owed</span>
             )}
             {!!viewedSession.settled?.coveredTotal && (
               <span style={{ color: 'var(--violet)' }} title="What you absorbed by covering players this session">
-                {`$${viewedSession.settled.coveredTotal} covered`}
+                {`${fmtMoney(viewedSession.settled.coveredTotal)} covered`}
               </span>
             )}
           </p>
@@ -768,7 +763,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     style={{ color: 'var(--amber)', fontFamily: 'var(--font-mono), ui-monospace, monospace' }}
                     title="What they owe — frozen when the bill went out."
                   >
-                    ${player.owedAmount}
+                    {fmtMoney(player.owedAmount)}
                   </span>
                 )}
                 <button
@@ -811,7 +806,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   <span className="fs-md truncate" style={{ flex: 1, minWidth: 0 }}>{player.name}</span>
                   {!!viewedSession?.settled && typeof player.owedAmount === 'number' && (
                     <span className="fs-sm" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono), ui-monospace, monospace' }}>
-                      ${player.owedAmount}
+                      {fmtMoney(player.owedAmount)}
                     </span>
                   )}
                   <span className="pay-row-status" style={{ color: covered ? 'var(--violet)' : 'var(--sev-good-text)' }}>
@@ -1001,7 +996,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             {actionTarget && canCover(actionTarget) && (
               <ActionRow
                 icon="paid"
-                label={`Cover their $${actionTarget.owedAmount}`}
+                label={`Cover their ${fmtMoney(actionTarget.owedAmount ?? 0)}`}
                 hint="I'll pay for them — choose how to split it"
                 onClick={() => {
                   setCoverMode('cover-only');

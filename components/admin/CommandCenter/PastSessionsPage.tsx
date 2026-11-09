@@ -6,7 +6,7 @@ import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
-import { fmtShortDate } from '@/lib/fmt';
+import { fmtMoney, fmtShortDate } from '@/lib/fmt';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -108,7 +108,7 @@ export default function PastSessionsPage({ onBack, onOpenSession }: PastSessions
                       color: hasCost ? 'var(--text-primary)' : 'var(--text-muted)',
                     }}
                   >
-                    {hasCost ? `$${row.costPerPerson}/ea` : '—'}
+                    {hasCost ? `${fmtMoney(row.costPerPerson ?? 0)}/ea` : '—'}
                   </span>
                 }
               />
