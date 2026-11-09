@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from '../BottomSheet';
 import { racketHeadSrc } from '@/lib/racketLook';
 import { STOCK_STRING } from '@/lib/racketCustom';
 import type { ItemLook } from '@/lib/types';
@@ -233,15 +233,7 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
         <span className="fs-stat" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.015em' }}>
           {t('shareTitle')}
         </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={tRecovery('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={onClose} label={tRecovery('close')} />
       </BottomSheetHeader>
 
       <BottomSheetBody>

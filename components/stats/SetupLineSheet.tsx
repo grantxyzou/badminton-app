@@ -4,7 +4,7 @@ import { Fragment, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import StatusBadge from '@/components/primitives/StatusBadge';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from '../BottomSheet';
 import TensionField, { ratedRange } from './TensionField';
 import { useClubTension } from './useClubTension';
 import RacketFeelChips from './RacketFeelChips';
@@ -114,15 +114,10 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
           </span>
           {spec && <span className="fs-sm" style={{ display: 'block', marginTop: 'var(--space-05)', color: 'var(--text-secondary)' }}>{spec}</span>}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={tRecovery('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        {/* Three-line title: the ✕ stays with the top line, not the middle. */}
+        <div style={{ alignSelf: 'flex-start' }}>
+          <SheetCloseButton onClose={onClose} label={tRecovery('close')} />
+        </div>
       </BottomSheetHeader>
 
       <BottomSheetBody>

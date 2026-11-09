@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from '@/components/BottomSheet';
 
 interface Props {
   open: boolean;
@@ -37,15 +37,7 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
     <BottomSheet open={open} onClose={onClose} ariaLabel={titleText}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{titleText}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={onClose} label={t('close')} />
       </BottomSheetHeader>
       <BottomSheetBody>
         <div style={{ textAlign: 'center' }}>

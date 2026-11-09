@@ -1,6 +1,6 @@
 'use client';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
 import { isIOS } from '@/lib/standalone';
 import { useClientValue } from '@/lib/useClientValue';
 
@@ -36,15 +36,7 @@ export default function InstallSheet({ open, onClose }: Props) {
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
       <BottomSheetHeader>
         <span className="bpm-h3" style={{ margin: '0' }}>{t('title')}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 'calc(-1 * var(--space-3))' }}
-        >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-muted)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={onClose} label={t('close')} />
       </BottomSheetHeader>
       <BottomSheetBody bare className="px-5 pb-6" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
         <p className="fs-md" style={{ margin: '0', color: 'var(--text-secondary)' }}>

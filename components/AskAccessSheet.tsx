@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from '@/components/BottomSheet';
 import { setIdentity } from '@/lib/identity';
 import AskAccessForm from '@/components/auth/AskAccessForm';
 
@@ -39,9 +39,7 @@ export default function AskAccessSheet({
     <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{title}</span>
-        <button type="button" onClick={onClose} aria-label={t('close')} className="sheet-close-btn">
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={onClose} label={t('close')} />
       </BottomSheetHeader>
       <BottomSheetBody>
         <AskAccessForm

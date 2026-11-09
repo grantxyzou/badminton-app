@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import Switch from '@/components/primitives/Switch';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from '../BottomSheet';
 import RacketThumb from './RacketThumb';
 import TensionField, { ratedRange } from './TensionField';
 import { useClubTension } from './useClubTension';
@@ -412,15 +412,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
         <span className="fs-stat" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.015em' }}>
           {heading}
         </span>
-        <button
-          type="button"
-          onClick={() => { void finish(); }}
-          aria-label={tRecovery('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={() => { void finish(); }} label={tRecovery('close')} />
       </BottomSheetHeader>
 
       {showControls && !saved && (

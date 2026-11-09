@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
 import PinInput from './PinInput';
 import { setIdentity } from '@/lib/identity';
 
@@ -73,15 +73,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('codePathTitle')}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('codePathTitle')}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={onClose} label={t('close')} />
       </BottomSheetHeader>
       <BottomSheetBody>
         {success ? (
