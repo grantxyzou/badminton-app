@@ -286,7 +286,7 @@ The chain is `docs/plans/<slug>.md` → `docs/superpowers/specs/*-design.md` →
 - **IDs**: Always `randomBytes` from `crypto` — never `Math.random()`.
 - **Datetimes**: ISO 8601 with timezone offset via `withLocalTz(date, time)`. Never store plain `YYYY-MM-DDThh:mm:00`.
 - **Session IDs**: `sessionIdFromDate(iso)` → `'session-YYYY-MM-DD'`. Legacy `'current-session'` exists in prod.
-- **Cosmos DB**: Use `getContainer(name)`. **There are 24 containers**, grouped by partition key. This list used to name 8 and was three times short for months — the authoritative set is `lib/memberPurge.ts` (`OWNED_CONTAINERS` + `NOT_MEMBER_SCOPED` + `CLASSIFIED_ELSEWHERE`), which `__tests__/member-purge-coverage.test.ts` forces to stay complete, and `__tests__/docs-canary.test.ts` now compares THIS list against it. Add a container there in the same change you add it here.
+- **Cosmos DB**: Use `getContainer(name)`. **There are 24 containers**, grouped by partition key. The authoritative set is `lib/memberPurge.ts` (`OWNED_CONTAINERS` + `NOT_MEMBER_SCOPED` + `CLASSIFIED_ELSEWHERE`), which `__tests__/member-purge-coverage.test.ts` forces to stay complete, and `__tests__/docs-canary.test.ts` now compares THIS list against it. Add a container there in the same change you add it here.
   - **PK `/sessionId`** — `sessions`, `players`, `announcements`, `skills`, `gameResults`. **Always filter by `sessionId`** on these.
   - **PK `/memberId`** — `events`, `assessments`, `insights`, `playerGear`, `pushSubscriptions`, `drillCompletions`, `stringingJobs`, `ledger`.
   - **PK `/id`** — `members`, `birds`, `identities`, `authhandoff`, `releases`, `clubSettings`, `groups`, `payments`. Global; no sessionId filter.

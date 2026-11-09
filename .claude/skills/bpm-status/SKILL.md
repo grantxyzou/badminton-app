@@ -1,12 +1,12 @@
 ---
 name: bpm-status
-description: Print current BPM deployment + workstream status — stable vs next version, in-flight branches, open PRs, soak status, parked next task, drift-routine next run. User-invoked via /bpm-status.
+description: Print current BPM deployment + workstream status — the live build, in-flight branches, open PRs, soak status, the North Star, drift-routine next run. User-invoked via /bpm-status.
 disable-model-invocation: true
 ---
 
 # bpm-status
 
-Read-only "where am I" snapshot for the badminton-app dual-deploy workflow.
+Read-only "where am I" snapshot for the badminton-app (one deployment: `main` → production).
 Run the commands below, then present a tight summary (no prose padding —
 the user wants it scannable).
 
@@ -14,15 +14,10 @@ the user wants it scannable).
 
 1. **Deploy state:**
    ```bash
-   # --sort=-v:refname, NOT `| tail -1`: a plain lexical sort ranks
-   # bpm-stable-v1.10 BELOW v1.8, so the readout would silently report a
-   # stale tag as current the first time a minor version reaches double
-   # digits. Same version-sort footgun as blind-tagging main.
-   T=$(git tag -l 'bpm-stable-*' --sort=-v:refname | head -1)
-   echo "stable tag: $T"
-   echo "stable tag commit: $(git rev-list -n1 "$T" 2>/dev/null | cut -c1-7)"
-   echo "main (= bpm-next): $(git rev-parse --short origin/main 2>/dev/null || git rev-parse --short main)"
+   gh run list --workflow=deploy-next.yml --limit 1
+   echo "main: $(git rev-parse --short origin/main 2>/dev/null || git rev-parse --short main)"
    ```
+   A merge is live only after the next deploy run, so report whether `main` is ahead of the last one.
 
 2. **In-flight local branches (WIP-cap signal — >2 = converge):**
    ```bash
@@ -38,10 +33,9 @@ the user wants it scannable).
 
 4. **Soak status:** read `.claude/soak.local.md` if present (raw print).
 
-5. **Parked next task + lock:** print the `▶ NEXT SESSION` line and the
-   `🔒 LOCKED` North Star from `ROADMAP.md`:
+5. **North Star:** print it from `ROADMAP.md`:
    ```bash
-   grep -n '▶ NEXT SESSION\|North Star:' ROADMAP.md
+   grep -n 'North Star:' ROADMAP.md
    ```
 
 6. **Drift routine:** remind that a monthly drift review runs as a scheduled
@@ -51,8 +45,7 @@ the user wants it scannable).
 
 ## Output format
 
-A compact block: Deploy (stable vN @hash · next @hash) · Branches (n
-in-flight, list) · PRs (list) · Soak (summary) · Parked (the next-task
-line) · Drift (next run). Flag if >2 in-flight branches (WIP-cap breach
+A compact block: Deploy (last run @hash · main @hash) · Branches (n
+in-flight, list) · PRs (list) · Soak (summary) · North Star · Drift (next run). Flag if >2 in-flight branches (WIP-cap breach
 per the ROADMAP lock). No recommendations unless asked — this is a
 status readout, not a planning session.

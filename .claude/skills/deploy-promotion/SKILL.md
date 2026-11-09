@@ -37,8 +37,9 @@ the repo; the workflow's `APP_ORIGIN` proves only `bpm.grantzou.com`.)
 
 ## Shipping
 
-Merge to `main`. That's it — the push triggers `deploy-next.yml`, which runs typecheck,
-the full test suite and the build before deploying. A failing test cannot reach production.
+Merge to `main`. The next scheduled run of `deploy-next.yml` (three a day) ships it, or
+"Run workflow" ships `main` at once. Either way the run does the typecheck, the full test
+suite and the build before deploying, so a failing test cannot reach production.
 
 There is no promotion step and no tag to cut. `bpm-stable-v*` tags exist in history and
 are a **historical record only**; the last one (`bpm-stable-v1.8`, `b7c77e0`) points at a
@@ -81,7 +82,8 @@ takes a branch or tag NAME, never a commit SHA (this page said otherwise until
 Then confirm with `node scripts/smoke-prod.mjs --sha <full good sha>`. This does not depend
 on the deleted stable service in any way. Deploys run one at a time
 (`concurrency: deploy-production`, `cancel-in-progress: false`), so a rollback queues
-behind a deploy already in flight, and the next merge to `main` deploys `main` over it.
+behind a deploy already in flight. The next scheduled run compares `main` with the live
+build and deploys `main` over the rollback, so fix or revert `main` before that run.
 
 For data rollback: Cosmos point-in-time restore. The account is in continuous 7-day
 backup mode† (the cost export of 2026-10-14 carries a `PITR · Cont 7D Bkup` meter for
