@@ -19,14 +19,14 @@ Omit `COSMOS_CONNECTION_STRING` from `.env.local` to use the in-memory mock stor
 
 ## Where the rules live
 
-This file is loaded in full every session and must stay under 150k characters (Claude Code's limit; it was 211k on 2026-11-08). It holds the rules that apply to every edit. Detail that matters for one part of the code lives in a **path-scoped rule**, `.claude/rules/<topic>.md`, whose `paths:` frontmatter makes it load only when Claude touches a matching file: `.claude/rules/multi-group.md`, `.claude/rules/money.md`, `.claude/rules/push.md`, `.claude/rules/native.md`, `.claude/rules/design-system.md`, `.claude/rules/racket-fit.md`, `.claude/rules/app-shell.md`, `.claude/rules/home.md`, `.claude/rules/auth.md`, `.claude/rules/i18n.md`, `.claude/rules/stringing.md`, and `components/stats/CLAUDE.md` for the Equipment register. **Add new detail there, not here**, and keep each one under 40k characters — a file that loads on demand is cut off past that in a 200K-context session. `__tests__/docs-canary.test.ts` checks the rules like this file.
+This file is loaded in full every session and must stay under 150k characters (Claude Code's limit; it was 211k on 2026-11-08). It holds the rules that apply to every edit. Detail that matters for one part of the code lives in a **path-scoped rule**, `.claude/rules/<topic>.md`, whose `paths:` frontmatter makes it load only when Claude touches a matching file: `.claude/rules/multi-group.md`, `.claude/rules/money.md`, `.claude/rules/push.md`, `.claude/rules/native.md`, `.claude/rules/design-system.md`, `.claude/rules/racket-fit.md`, `.claude/rules/app-shell.md`, `.claude/rules/home.md`, `.claude/rules/auth.md`, `.claude/rules/i18n.md`, `.claude/rules/stringing.md`, `.claude/rules/stats.md`, `.claude/rules/kudos.md`, `.claude/rules/account-deletion.md`, `.claude/rules/metrics.md`, `.claude/rules/birds.md`, `.claude/rules/signup.md`, `.claude/rules/avatars.md`, and `components/stats/CLAUDE.md` for the Equipment register. **Add new detail there, not here**, and keep each one under 40k characters — a file that loads on demand is cut off past that in a 200K-context session. `__tests__/docs-canary.test.ts` checks the rules like this file.
 
 ## Key Architecture
 
 ### Single-Page App
 `app/page.tsx` is the only browser route. **It is an async server component** (since 2026-05-07): it server-renders the announcement (the LCP element on Home) into the initial HTML payload and delegates all client state to `<HomeShell>`. **Both shells reach the page through `components/PageShells.tsx`** (`next/dynamic`, server rendering on), so a member's browser downloads only the app shell and a stranger's only the signed-out one (2026-11-05: signed-out first load 254 → 220 KB gzipped, signed-in 254 → 245); a static import of either in `app/page.tsx` puts both back in every visitor's first load. `HomeShell` is the `'use client'` boundary — owns tab routing, identity, dev mode, admin gating, the easter egg, etc. Tabs: Home, Stringing, Stats, Profile, with Admin reached from Profile (see "4 tabs" in `.claude/rules/app-shell.md`). All client-fetched data via API routes under `app/api/` with `{ cache: 'no-store' }`; server-side reads go through `lib/announcements.ts` etc. (single source of truth shared with API routes).
 
-**Members only (`docs/plans/members-only.md`; its flag `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` retired 2026-10-17, ON branch kept): the page decides who is signed in ON THE SERVER, before it reads anything.** It calls the same `requireMember` the API routes use, on a `NextRequest` built from its own cookie header — not a second definition of "signed in". Refused → it returns `<SignedOutShell>` (`components/onboarding/SignedOutShell.tsx`: Welcome with Sign up / Log in, then a page for each) and reads nothing; passed → `HomeShell` gets `memberName`, the verified name. **With groups on there is a THIRD outcome** (`decidePage` in `lib/pageGate.ts`, 2026-10-07): a signed-in ACTIVE member with no membership in the claimed group — a new organiser half-way through "Create a club", or someone removed from the club their cookie names — gets the same shell in `noClub` mode (Create a club / I have an invite / Sign out, or a list of their other clubs to pick from) and still reads nothing; `HomeShell` never mounts for them. That is the members-only half of Phase 5's "what does a person in no club see", confirmed by Grant on 2026-10-09 (he kept the list over an automatic switch to the oldest group). The members-only-OFF half closed when the flag retired on 2026-10-17: there is no OFF case any more. A client-side gate over HomeShell would not do: child effects run before a parent's, so the tabs would fetch the roster before the gate decided. **Signing in anywhere on that screen reloads** — every way in ends in `setIdentity`, the shell answers IDENTITY_EVENT with one guarded `location.reload()`, and the server renders the app; there is no client-held opinion of "signed in" to drift from the cookie. `HomeShell` reconciles `badminton_identity` to `memberName` (a shared phone can hold the previous person), and Home's sign-up card is locked to that name — no name field, no PIN field, no `members/me` probe. The iOS-PWA handoff collection lives in `lib/useHandoffCollect.ts`, shared by both shells.
+**Members only**: how the page decides who is signed in before it reads anything (and the no-club outcome) is in `.claude/rules/auth.md`, which loads with `app/page.tsx`, `lib/pageGate.ts` and the shells.
 
 **If you need to add another server-rendered initial value to `<HomeShell>`:** extract the read into a `lib/<thing>.ts` server-only function, call it from the async `Page()` in `app/page.tsx`, pass it as a prop to `HomeShell`, and have the client component receiving it use it as `useState` initial value (with a useEffect refresh in background). Don't add the lib function to a `'use client'` file — it imports from `@azure/cosmos` which is server-only.
 
@@ -59,67 +59,11 @@ Players are never hard-deleted by default (`removed: true` + `removedAt`). `?all
 
 ### Account Deletion
 
-`DELETE /api/members/me` — App Store Guideline 5.1.1(v) requires it, and PIPEDA
-does independently. Distinct from the admin `DELETE /api/members`, which is
-admin-gated and only sets `active: false`.
-
-**The rule: remove the person, keep everyone else's records correct.** A naive
-purge deletes every row the member wrote, which is wrong here because the
-records are SHARED — a `players` row is one line of a cost split, and a
-`gameResults` row holds four names. So member-scoped data is DELETED and shared
-history is ANONYMIZED to `TOMBSTONE_NAME` ('Former member'): arithmetic
-preserved, person not identifiable. The ACTIVE session is the exception — that
-row is soft-removed rather than anonymized, because a ghost holding a seat keeps
-a real person on the waitlist.
-
-`lib/memberPurge.ts` owns it, table-driven across three lists (`OWNED`,
-`CLASSIFIED_ELSEWHERE`, `NOT_MEMBER_SCOPED`) with partition keys recorded as
-DATA — the mock ignores the PK argument, so a wrong value passes CI and no-ops
-in production. `__tests__/member-purge-coverage.test.ts` fails the build when a
-container appears in none of the three lists, and **it resolves single-level
-`const` aliases**: `authHandoff`/`authMigration` write `const CONTAINER = '…'`,
-were invisible to a literal-only scan, and `authhandoff` (which parks a
-`memberId`) therefore survived a deletion request in the first cut.
-
-**Sign in with Apple is revoked at Apple first** (2026-09-15, Apple's rule for
-apps offering it): `purgeMember` reads the member's `apple:<sub>` identity
-BEFORE its loop deletes `identities`, and `revokeAppleIdentity`
-(`lib/appleRevoke.ts`) sends the stored refresh token to Apple, then forgets it
-whether or not Apple accepted — a failure lands in `failed` as `apple:revoke`
-and never blocks the deletion. Disconnecting Apple does the same. The token
-lives in its own `apple-refresh:<sub>` doc with NO `memberId` (for a new
-account the identity row does not exist yet at the callback), and
-`__tests__/apple-token-canary.test.ts` pins it to its files. The client-secret
-JWT is hand-signed there because arctic keeps its own private —
-`dsaEncoding: 'ieee-p1363'` is load-bearing and asserted.
-
-**A name is matched only in the club where it was theirs** (audit, 2026-11-05,
-`__tests__/group-account-delete.test.ts`). `purgeNamesFor` reads the person's
-roster name in each club BEFORE the purge deletes the memberships, and every
-by-name match — legacy `players` rows, `gameResults`, `skills`, unowned aliases
-— keeps a row only when its club's name for them is the row's name; a row
-carrying another member's id is never theirs. Before, a deletion with groups on
-anonymized (and, for `skills`, deleted) another club's Lin. The seat is freed
-in EVERY club's active session, not only the one the request came from; the
-pay-to of a club they organised is cleared (`clearGroupPayTo`); their name
-leaves jobs they strung for others, payment suggestions in the review queue
-and uncollected join requests; reports are signed with `memberId` so a
-deletion finds them by id; and the delete sheet clears the badge, shortcuts
-and widget pass (`clearDeviceTraces`), as sign-out does.
-
-Two consequences worth knowing: the anonymized `players` row has its
-`deleteToken`, `pinHash` and `memberId` stripped (an anonymized row keeping a
-live credential is the strip-canary rule at rest), and purging `events` LOWERS
-the Value-Hub Slice-0 metric — the caveat is repeated at the point the number is
-read in `app/api/admin/slice0/route.ts`.
+The rules are in `.claude/rules/account-deletion.md`, which loads when Claude touches the deletion files (`lib/memberPurge.ts`, `app/api/members/me/`, the delete sheet).
 
 ### Usage metrics (first-party tracking, the Metrics page, the report keys)
-`docs/plans/usage-metrics.md`, its flag `NEXT_PUBLIC_FLAG_USAGE_METRICS` was ON from 2026-10-07 and retired 2026-10-21, ON branch kept, so stopping the beacons is now a code change, not a setting. **Three usage kinds only**, in the existing append-only `events` container: `sign_in` (written by `completeSignIn`, whose `via` argument is REQUIRED so no sign-in path can forget it; group create/join/switch pass `null`), and the `app_open` / `tab_view` beacons from `lib/useUsageBeacons.ts` (mounted once in `HomeShell`, signed-in only, admin tab excluded, `tab` and `platform` from bounded lists). Sign-ups, cancels, kudos, stringing, push and reports are counted from their OWN containers, never re-logged as events. **The operator is STAFF** (roles v2 PR 4, 2026-11-03): the ids in `OPERATOR_MEMBER_IDS` skip those three kinds (`skipsUsageRecord` in `lib/operator.ts`, read by `POST /api/events` and `recordSignIn`) so one person checking a payment ten times a day cannot carry a club of thirty's daily-active; a `client_error` from that phone is still written, and the list IS the staff list — no field, no setter (`__tests__/usage-staff.test.ts`). **A fourth kind is an ERROR, not usage** (`client_error`, 2026-10-25, `docs/plans/client-error-beacon.md`): `reportClientError()` in `lib/engagement.ts`, fired from `app/error.tsx` and `app/global-error.tsx`, at most 3 per page load and never for a stale-chunk error (which reloads itself), carrying only `where` (`ERROR_WHERES`) and the tab — no message, stack or URL. It is read as `clientErrors` by `GET /api/admin/slice0` and `clubMetrics()` (last 7 days, roster-narrowed), so the key-protected report carries it into the daily health check; it is how a screen that breaks in a player's browser gets noticed without the player saying so.
-- **`lib/metrics.ts` `clubMetrics()` is the one reader**; the admin `GET /api/admin/metrics` and the key-protected `GET /api/reports/metrics` both call it, so the page and the weekly report cannot disagree. `lib/metricsMath.ts` is pure. Every aggregate is narrowed to the roster, and a metric without enough data is `null` ("—"), never 0 — the lying-empty-state rule on a screen an admin decides from.
-- **Totals only, never a list of names.** `GET /api/reports/feedback` is operator-club only and strips `ip` and `name` and cuts `url` to its path (an invite token rides in the query).
-- **`x-reports-key`** is a read-only per-club secret minted on the Metrics page (`lib/reportsAccess.ts`, hashed in `clubSettings`, compared through `lib/clubKey.ts` — the same helper the payments key uses). The scheduled report helpers read it from the `BPM_REPORTS_KEY` environment variable; it is never pasted into a chat.
-- **Retention is a Cosmos container TTL on `events`** (396 days, set in the portal), not purge code. The privacy policy promises 13 months; account deletion already deletes a member's events.
-- **Never point a browser at production to test this** — it writes real `app_open` / `tab_view` rows. Use the mock store (`SEED_DEV_SCENARIO=metrics-history`).
+
+The rules are in `.claude/rules/metrics.md`, which loads when Claude touches the metrics files (`lib/metrics.ts`, `app/api/events/`, `app/api/reports/`, the beacons).
 
 ### Payments inbox and the ledger
 
@@ -130,11 +74,9 @@ The full rules (e-transfer auto-detection, store credit, gift cards, the ledger 
 - **`lib/owedBalance.ts` is the one reading of what someone owes** — Home, the inbox, reminders and the reconcile all go through it.
 - **No amount in a push body** (the lock-screen rule).
 
-### Waitlist
-Full session + `POST { waitlist: true }` → `waitlisted: true`. An admin promotes by hand via `PATCH { waitlisted: false }` — capacity-checked. **A freed spot is filled automatically since 2026-10-28** (`lib/waitlistPromote.ts`, `docs/plans/waitlist-auto-promote.md`): a cancel of a confirmed spot, an admin removal (`DELETE`, purge-one, `PATCH removed: true`) or a RAISED `maxPlayers` promotes waitlisters in sign-up order (`compareBySignup`) into every free spot and pushes each one — never a `heldForUnpaid` row, never once the session has started, never on a settled session, and never on an admin's move BACK to the waitlist (the first in line is often that same person). Adding a COURT moves nobody: `courts` and `maxPlayers` are separate fields. **How close the waitlist is to another court** shows on the sign-up card and the admin's Next session card (`courtLine` in `lib/clubRun.ts`, `docs/plans/waitlist-court-line.md`): players per court is the club's `playersPerCourt`, else `maxPlayers ÷ courts` when it divides evenly (BPM: 6), else nothing; held-for-unpaid rows don't count. Every promotion stamps `Player.promotedAt`; a cancel by a row promoted inside the club's late-cancel window is not tagged late, and a rejoin or an admin restore clears the stamp. **A club may keep its spots for members first** (`ClubRun.membersFirst`, `lib/membersFirst.ts`, `docs/plans/members-first-window.md`): advance copies the rule onto the session, and until it ends a sign-up from anyone not marked member (`Membership.regular`), and every guest, starts waitlisted with `waitingForMembers: true`, which promotion skips while the window runs. Nothing runs on a timer, so the first visit after the end (the session read, the roster read, a sign-up) stamps `membersFirstReleasedAt` under the session's etag and promotes in sign-up order; the organiser can do it early from the session card.
+### Waitlist and Plus-one
 
-### Plus-one
-A club may let members bring guests (`ClubRun.guests`, 0–2 a session, a rule of How your club runs; a club that never set it reads the old `groups.settings.guestsAllowed` switch as 1, and every save writes that switch beside it; `docs/plans/plus-one.md`, `docs/plans/six-feathers-guests.md`, `lib/plusOne.ts`). The guest is a `players` row of their own with `guestOf: <host memberId>` and NO `memberId`, so the cap, the split and the waitlist count them unchanged; the row's `name` is the club's own form, `Jenny (Josh)` (rows from before say `Jenny (Josh's guest)`; nothing finds a guest by name), and a guest name already on the club's roster is refused (`guest_on_roster`). An organiser may add one for a member on the week's list (`hostMemberId`, the session card's "Add a guest"). **A guest row is its HOST's money**: `matchesIdentity` matches it to the host and never by name, `loadOwedInputs` reads it by `@guestOf`, and the ledger charges it to the host. It leaves with the host, is cancelled only through the host's cookie (`DELETE { guest: true }`), and is anonymized when the host's account is deleted.
+The rules are in `.claude/rules/signup.md`, which loads when Claude touches the sign-up files (`app/api/players/`, `lib/waitlistPromote.ts`, `lib/membersFirst.ts`, `lib/plusOne.ts`, Home's sign-up card).
 
 ### Invite List
 `session.approvedNames` is a dead field: nothing writes it, and `POST /api/players` stopped reading it when members-only made an account the gate (rule 13).
@@ -143,75 +85,16 @@ A club may let members bring guests (`ClubRun.guests`, 0–2 a session, a rule o
 `session.signupOpen` (boolean) — `false` blocks non-admin sign-ups. New sessions via advance always start `signupOpen: false`. `session.deadline` enforced server-side.
 
 ### Stats Tab
-Bottom-nav "Stats" (formerly "Skills"; `nav.skills` i18n key kept for backcompat). One layout for everyone — there is no admin variant. `SkillsTab` resolves an active name, renders `StatsSignedOut` when there isn't one, and otherwise hands four slots to `StatsV2Shell`, in the order **You · Equipment · Play · Learn** (Equipment second since 2026-10-19, Grant's call on the Stats canvas): **You** (AI greeting, `SkillTrendCard` + `DimensionBars`, `WhereYouSitCard`, kudos received), **Play** (`YourRecordCard`, `WhoYouPlayWithCard`, give-kudos), **Learn** (`LearnRegister` — weekly focus + two drills), **Gear** (`GearRegister` — the "Set-up" card with Racket and Strings lines (its flag `NEXT_PUBLIC_FLAG_GEAR_SETUP` retired 2026-10-14 with the older pick rail plus "Your kit" off-branch), whose "Your fit" and "About this racket" open full pages with a Claude-worded verdict (flags `NEXT_PUBLIC_FLAG_GEAR_PAGES` and `NEXT_PUBLIC_FLAG_FIT_VERDICT` retired 2026-10-19, ON branches kept; "Your fit" carries the one "Clear my fit answers" the privacy policy promises); `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`, which once gated the whole register and six API routes, retired 2026-09-28 with its twelve off-branches; see `components/stats/CLAUDE.md` for the single-owner `useGear` rule the register is built around). `OverviewStrip` sits above the register switch and stays put across all four.
 
-- **Nothing counts sessions you missed.** Stage 8 (2026-08-20) deleted the v1 arrangement outright: `StatsPlaceholder`, `StreakSummaryCard`, `AttendanceCardLive`, `AttendanceSessionStrip`, `GameStatTiles`, `LevelCard`, `DrillsCard`, `GameLoggerCard`/`Sheet`, the admin `SkillsRadar` and `RadarSkeleton` — plus the `recharts` dependency they were the only consumer of. This is a product decision, not deferred work. **`GET /api/stats/attendance` still exists and is legitimate**, but nothing on Stats renders it, and `/api/stats/insight` is no longer given attendance counts or streaks at all (see its `Snapshot` comment) so the AI copy cannot reintroduce the guilt through the greeting. **A background insight request costs nothing for someone who does not read it** (2026-11-05): Home's pre-warm and the Stats tab preloading off screen send `warm=1`, and the route writes a new read only for someone with a `stats_open` in the last 30 days, answering 204 otherwise so `useInsight` asks again once Stats is on screen; an EMPTY read is cached (`InsightDoc.empty`) instead of re-asking the model on every open.
-- **Active-name chain** — real identity (`badminton_identity`) → `badminton_stats_preview_name` → signed-out state. **`lib/useActiveName.ts` is the single owner**; every consumer calls `useActiveName()` and `__tests__/active-name-canary.test.ts` fails the build if the chain is re-derived anywhere else (it had been copy-pasted into five modules, four of which had stopped subscribing to identity changes). **The preview-name step is DORMANT: nothing in the app writes that key** — the picker that did left in Stage 8, so today the chain is effectively identity → signed-out. The mechanism and its tests are kept for the day admin-browses-someone-else's-stats returns; don't document it as a live path, and don't assume a preview name can occur. If it ever returns, the key stays separate from `badminton_identity` and is NEVER written into it — that would mint a fake `deleteToken` and break self-cancel.
-- **"Your skills" is you against yourself; "Where you sit" is you against the club** (Stats canvas, 2026-10-20). No club figure appears in `SkillTrendCard` or `DimensionBars`: the median and the club's middle half per side (`dimensionSpread`, additive in `lib/clubBands.ts`) are drawn only in `WhereYouSitCard`'s By side panel, and only once the comparison is revealed — a dot against the club IS a comparison. The phase names are plain club words (Beginner → Competitive); the stored `Phase` keys did not change. A card switches the Stats register through `useOpenStatsRegister()` (`components/stats/statsTakeover.ts`), as Work on next does to reach Learn.
-- **Club comparison is consent-gated.** `useStatsPrivacy` + `ClubConsentSheet` ask once on first run, and closing the sheet (✕, Escape, swipe, back) saves "Keep it private", so it never returns and the choice lives in Profile → Stats & privacy (Grant, 2026-11-02: it blocked the tab bar); `isComparisonRevealed()` requires BOTH a stored `clubComparison` preference AND a non-null `promptedAt` — the stored preference alone is not consent. Both comparison-dependent cards are keyed on the answer so saying yes remounts them and they re-read the bands endpoint without a reload.
+The rules are in `.claude/rules/stats.md`, which loads when Claude touches the Stats files (`components/stats/`, `components/SkillsTab.tsx`, `app/api/stats/`).
 
 ### Avatars
 
-A member's picture is a RACKET, never an upload: `Member.avatar = { kind: 'racket', racketId }` (`lib/memberAvatar.ts`), drawn as the head of that racket's pre-rendered catalog image (`public/rackets/<id>.webp`, `racketSrc`). Absent = the initial. Chosen in Profile's `AvatarSheet` (my racket / shuffle / initial) and written by `PATCH /api/members/me { avatar }` with the member's own cookie or an admin.
-- **`components/primitives/MemberAvatar.tsx` is the one avatar**, everywhere a name appears; `lib/useMemberAvatars.ts` is the one read (`GET /api/members`, module-cached, looked up only where an avatar renders). Don't hand-roll an initial circle or fetch avatars per card.
-- **"My racket" is copied at save, not followed**, so a roster costs one `members` read and no gear read per name — and a racket becomes a public picture only when its owner picks it, because club gear is otherwise cohort-gated (`CLUB_GEAR_MIN_COHORT`).
-- A racket avatar sits on a ground picked against its OWN frame paint (`racketAvatarGround`: light behind a dark frame, dark behind a light one) — the per-name colours swallowed both. Initials keep the per-name colour.
-- **A roster-sized avatar (≤ `AVATAR_CROP_MAX_PX`, 48) loads the HEAD CROP**, `public/rackets/avatar/<id>.webp` (`racketAvatarSrc`): 128 px, flattened onto that racket's ground, ~3 KB where the list picture is ~18 KB (2026-11-05). Profile's 112 px circle keeps the full picture. Served through `assetUrl()` like the other racket pictures, so they move to Blob Storage with the rest (`scripts/assets/upload.sh` sends all of `rackets/`). `node scripts/make-racket-avatars.mjs` cuts them; the rule for the ground is `racketGround` in `lib/racketLook.ts` (the script imports it), and `__tests__/racket-avatar-images.test.ts` fails on a racket with no avatar or an avatar on the wrong ground.
+The rules are in `.claude/rules/avatars.md`, which loads when Claude touches the avatar files (`components/primitives/MemberAvatar.tsx`, `lib/memberAvatar.ts`, the avatar sheet).
 
 ### Kudos
 
-Positive-only peer recognition (unconditional; `NEXT_PUBLIC_FLAG_KUDOS` retired 2026-09-10, #352). Two
-entry points, one sheet: `GiveKudosCard` on Stats → **Play**, and a per-name
-button on each row of Home's sign-up roster (the opened `WhoElseIsIn` list). Both open `GiveKudosSheet`; passing `recipient`
-fixes the person and hides the picker.
-
-- **Eligibility is anyone you shared a roster with in the last
-  `CO_PLAY_LOOKBACK_SESSIONS` (8) sessions**, not the active one. `lib/
-  kudosEligibility.ts` is the SINGLE owner, shared by the POST that enforces it
-  and `GET /api/kudos/eligible` that lists it — when those were separate, the
-  card built its list one way and the server refused it another. Rebuilt from
-  real feedback: the old rule was "both on the ACTIVE roster", and the owner
-  advances the session minutes after play, so the people you had just played
-  with stopped being eligible almost immediately. Reported as "kudos goes away
-  with the session too fast"; it was actually instantly.
-- **`recentSessionIds` puts the ACTIVE id FIRST.** That is the only way the
-  legacy `'current-session'` id is reachable — it does not match
-  `session-YYYY-MM-DD`, so a prefix filter alone silently excludes the session
-  most people just played. Its `sessions` query is bounded with `ORDER BY ...
-  LIMIT` in SQL, not only by the JS slice: that container is partitioned by
-  `/sessionId`, so an unbounded `SELECT` is a cross-partition scan on every card
-  mount and every send. **The per-session roster reads it leads to run
-  CONCURRENTLY** (2026-10-21), one `@sessionId` query per session merged in
-  session order — never one `ARRAY_CONTAINS` query, which the mock would answer
-  with every row — and the POST path proves by every roster first, reaching
-  for the game logs (again all at once) only when no roster did.
-- **`GiveKudosCard` must never return `null`.** It renders loading / expired /
-  error / honest-empty / ready, always. Returning null when there was nobody to
-  thank is what made the feature unfindable — a player asked "how do I give
-  kudos to other people?" and the owner's own answer was wrong, because nobody
-  could see the rule. **A 401 is NOT "signed out"** (that returns before the
-  fetch): it can only mean a `member_session` expired past its 30-day TTL while
-  `badminton_identity` persisted, so it renders a re-auth line, never the empty
-  state.
-- **`raterName` is a DOCUMENTED EXCEPTION to the strip-canary rule, and only
-  alongside a note.** `raterMemberId` remains strip-only. A bare tag stays
-  anonymous; a NOTE is signed, because "someone noticed" is worth much less
-  than "Lin noticed" and praise nobody can ask about is not much of a gift.
-  `visibleNotes()` is the only path that carries it and drops every kudos
-  without a note, so an unsigned tag can never become attributable by sitting
-  next to one that is. The `KudosNote` type has no `raterMemberId` field at
-  all — it is structurally impossible to leak one through it.
-- **"Your kudos" is a page in Play** (`KudosAllPage`, opened from "All your
-  kudos" on `GiveKudosCard`, shown in place of the register's cards like Your
-  fit). It reads the same `GET /api/kudos`, whose additive `months` field
-  carries a bare tag only as a count in its month — never a date, an order or
-  a name (`kudosByMonth` in `lib/kudos.ts`).
-- **Dedupe is per ISO WEEK** (`isoWeekKey`), not per session. Per-session
-  stopped meaning anything once eligibility left the session behind.
-
-### Equipment Tab
-
-See `components/stats/CLAUDE.md` — loads automatically when working in that directory.
+The rules are in `.claude/rules/kudos.md`, which loads when Claude touches the kudos files (`lib/kudos.ts`, `app/api/kudos/`, the kudos cards and sheet).
 
 ### Push Notifications
 
@@ -229,35 +112,11 @@ A **Capacitor 8 WebView that loads the LIVE URL**, so a web deploy is already a 
 - **`lib/native.ts` `isNative()` is the seam**, and every `@capacitor/*` package is a dynamic `import()` inside an `isNative()` branch (`__tests__/native-imports.test.ts`).
 - **OAuth runs in the SYSTEM browser sheet** — a separate cookie jar, bridged by `lib/authHandoff.ts`.
 
-- **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`
-  answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`,
-  `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path
-  inside `/bpm` — both mechanisms, neither alone. JSON bodies are parsed first;
-  invalid → 404, not a 200 that verifies nothing. The assetlinks SHA is the
-  **Play App Signing** key, not the upload keystore — wrong is silent.
-- **Legal pages** `app/legal/{privacy,terms,support,delete-account}` are async
-  server components (no client state, no fetch, indexable) — the URLs both
-  consoles require and a PIPEDA obligation on their own. Copy is arrays under
-  the `legal` namespace read with `t.raw` (which `check-i18n-keys.mjs` cannot
-  see; `__tests__/legal-pages.test.ts` pins the shape). **`deepMerge` replaces
-  arrays** — it used to spread them into index-keyed objects and the Chinese
-  page would have thrown. The delete-account CTA is `?tab=profile&intent=delete`;
-  `HomeShell` keeps the intent until an identity exists and then opens the
-  existing `DeleteAccountSheet`, so there is still one deletion path.
-- **`?tab=` deep links survive React StrictMode now** — the URL-param effect
-  strips what it reads, so dev's second run found nothing and fell through to
-  `sessionStorage`. A ref guard; production never double-ran.
-- **Safe-area top**: `viewportFit: 'cover'` (without it WKWebView reports 0),
-  `.page-shell-top` on the shell's `<main>`, and `env(safe-area-inset-top)`
-  folded into `.bpm-topbar`, `.bpm-page-header` and the fixed toggles.
-- **`ios/` and `android/` are committed**; the hand edits on Capacitor's
-  templates are pinned by `__tests__/native-shell-projects.test.ts`, because
-  `cap add` would regenerate without them and nothing else would notice.
-  **Firebase is optional at build time** (guarded `FirebaseApp.configure()`,
-  Gradle applies the services plugin only if the JSON exists), so a shell AAB
-  can start the Play closed-testing clock before the Firebase project exists.
-  Never committed: `GoogleService-Info.plist`, `google-services.json`, keystores,
-  `.p8`, profiles.
+- **`.well-known` at the domain root** (universal links, App Links): `proxy.ts` answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`, `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path inside `/bpm` — both mechanisms, neither alone. JSON bodies are parsed first; invalid → 404, not a 200 that verifies nothing. The assetlinks SHA is the **Play App Signing** key, not the upload keystore — wrong is silent.
+- **Legal pages** `app/legal/{privacy,terms,support,delete-account}` are async server components (no client state, no fetch, indexable) — the URLs both consoles require and a PIPEDA obligation on their own. Copy is arrays under the `legal` namespace read with `t.raw` (which `check-i18n-keys.mjs` cannot see; `__tests__/legal-pages.test.ts` pins the shape). **`deepMerge` replaces arrays** — it used to spread them into index-keyed objects and the Chinese page would have thrown. The delete-account CTA is `?tab=profile&intent=delete`; `HomeShell` keeps the intent until an identity exists and then opens the existing `DeleteAccountSheet`, so there is still one deletion path.
+- **`?tab=` deep links survive React StrictMode now** — the URL-param effect strips what it reads, so dev's second run found nothing and fell through to `sessionStorage`. A ref guard; production never double-ran.
+- **Safe-area top**: `viewportFit: 'cover'` (without it WKWebView reports 0), `.page-shell-top` on the shell's `<main>`, and `env(safe-area-inset-top)` folded into `.bpm-topbar`, `.bpm-page-header` and the fixed toggles.
+- **`ios/` and `android/` are committed**; the hand edits on Capacitor's templates are pinned by `__tests__/native-shell-projects.test.ts`, because `cap add` would regenerate without them and nothing else would notice. **Firebase is optional at build time** (guarded `FirebaseApp.configure()`, Gradle applies the services plugin only if the JSON exists), so a shell AAB can start the Play closed-testing clock before the Firebase project exists. Never committed: `GoogleService-Info.plist`, `google-services.json`, keystores, `.p8`, profiles.
 
 ### Design System
 
@@ -297,9 +156,7 @@ The chain is `docs/plans/<slug>.md` → `docs/superpowers/specs/*-design.md` →
 - **`events` is append-only**: one doc per engagement interaction (`EngagementEvent`, `kind` allowlisted in `app/api/events/route.ts`). **Never convert it to an upsert** — the Value-Hub Slice-0 kill-criterion asks whether a member interacted "more than once", which needs the history. The `insights` container is the cautionary example: it upserts, so it can only ever answer "last seen". Writes are identity-bound via `verifyMemberAuth` with no admin-on-behalf branch, so an admin browsing another member's stats can't inflate that member's engagement. Client beacon is `recordEngagement()` in `lib/engagement.ts` — fire-and-forget by design, the one sanctioned exception to the legible-fail rule (nothing the user sees depends on it). Read the criterion via `GET /api/admin/slice0`.
 - **Cosmos `item()` calls**: `container.item(docId, partitionKeyValue)` — the second arg is the partition key VALUE, not the doc ID. The mock store ignores partition keys, so wrong values only break in production. Always use the correct partition key (e.g., `sessionId` for skills/players containers).
 - **New containers** must use `ensureContainer(name, partitionKeyPath)` from `lib/cosmos.ts` on first handler call — real Cosmos doesn't auto-create containers the way the mock does. **It is memoized per process since 2026-09-28** (one `createIfNotExists` round trip per container, a rejected attempt forgotten so the next call retries), so calling it at the top of a handler is free after the first request; the hand-rolled lazy `ready` promises older routes carried were removed on 2026-10-24 (`lib/catalogSeed.ts` keeps one because it memoizes the SEED, not the container, and `lib/events.ts` keeps one behind its test reset). **But the account sits at Cosmos's 25-container cap** (`docs/azure.md` §3; the 28th was refused in production on 2026-10-10, #587): a new doc KIND goes into an existing container, as the string purchases went into `clubSettings` (`docs/plans/string-inventory.md`). `ensureContainer` logs `[ensure-container]` on a refusal.
-- **Bird usages**: `session.birdUsages` is an array of `BirdUsage` objects. Legacy single-object `session.birdUsage` is read-tolerated via `normalizeBirdUsages()` in `lib/birdUsages.ts` but never written. Next admin save promotes legacy docs to array shape.
-- **Shuttle cost model is "pooled" (Model B, 2026-07-10)**: a session logs ONE "tubes used" number at a price-per-tube — no per-batch selection. The write shape is a single entry `{ pooled: true, tubes, pricePerTube? }` that `resolveBirdUsages` (`lib/birdWrite.ts`) snapshots to a `BirdUsage` tagged with the sentinel `purchaseId: POOLED_PURCHASE_ID` (`'pool'`, from `lib/birdUsages.ts`) via `snapshotPooledUsage(tubes, price)`. **Price resolution**: a manual `pricePerTube` (validated [0, 10000]) wins; else the AUTO price = `currentPricePerTube(purchases)` (the latest purchase's `costPerTube` by date, 0 if none). Cost still flows through the frozen `totalBirdCost`, so receipts / settle / history / `sessionCostTotals` are unchanged and purchaseId-agnostic. **Why the `'pool'` sentinel (not a real id)**: `remainingByPurchase` iterates real purchases, so it never attributes a pooled tube to a batch (per-batch remaining stays put), but `totalUsed` / `currentStock` sum every usage's `tubes` so overall stock stays correct; the DELETE referential guard and `AssignUsageSheet` (both match a real purchase id) simply ignore pooled entries. Consumers of the pooled control: `SetupPage` (finalize-cost card), `AdvanceSessionForm` (create-next-session). Both load legacy multi-batch sessions losslessly at a BLENDED price (`loadedCost / loadedTubes`) and flatten to a single pooled entry on save. The per-purchase (non-pooled) path in `resolveBirdUsages` is retained for the retro-assign `AssignUsageSheet` flow.
-- **Birds container holds two doc kinds**: purchases (no `type` / `'purchase'`) and reconciliation adjustments (`type: 'adjustment'`, see `BirdAdjustment`). `GET /api/birds` splits them by `type`, returns `purchases` (purchases only), `adjustments`, `totalAdjustments`, `remainingByPurchase` (per-purchase `tubes − usedAcrossAllSessions`), and `currentStock = totalPurchased + totalAdjustments − totalUsed`. Any new sum over the birds container MUST filter `type !== 'adjustment'` or adjustment docs (which have no `tubes`) corrupt the math. `POST /api/birds/reconcile` takes `{ countedTotal }`, computes the delta against authoritative current stock, and writes one adjustment doc (undo = `DELETE /api/birds` by id). **`remainingByPurchase` is now misleading under the pooled model** (a pooled tube drops total stock but isn't subtracted from any batch, so batches look fuller than they are) — total numbers (`currentStock`, burn, runway) stay correct, but `BirdsPage` deliberately no longer surfaces per-batch "X left" or per-brand "weeks left" (stage 3b slim-down, #234). Brand cards show total "N bought"; the stock caption shows "$X/tube now" (`currentPricePerTube`). Don't re-add per-batch remaining UI without reconciling it against pooled usage first.
+- **Shuttles (birds)**: the cost model, the two doc kinds in `birds` and the bird-usage route are in `.claude/rules/birds.md`, which loads with the bird files (`lib/bird*.ts`, `app/api/birds/`, the admin bird pages).
 - **React `{0 && ...}` renders `0`**: Never use a numeric value as the left side of `&&` in JSX. Use `(value ?? 0) > 0` or `!!value` to get a boolean. This applies to `perPersonCost`, `prevCostPerPerson`, player counts, etc.
 - **Cost inputs use `null` for empty**: `costPerCourt` form state is `number | null`. Empty input = `null`, displayed as placeholder "None". Send `0` to the API when null (API validates `typeof === 'number'`). The `$` prefix appears dynamically when value > 0.
 - **Errors**: API returns `NextResponse.json({ error }, { status })`. Client shows it through `.field-error` (`role="alert"`, see the Design System section); the raw `text-red-400 text-xs` form this sentence used to prescribe has no sites left.
@@ -346,11 +203,7 @@ Gotchas for one part of the app are in that part's rule (they load when Claude t
 - **Catalog seeding REFRESHES, it does not only fill.** `ensureCatalogSeeded` rewrites a row when it is missing OR its seed-owned fields differ — only rows marked `seeded: true`, comparing with SORTED keys (Cosmos keeps no key order). In dev the JSON file IS the catalog, so fill-only seeding passes every local test and skips rows in production (`docs/gotchas-history.md`).
 - **Backticks inside a double-quoted `git commit -m` are command substitution** — a phrase was silently deleted from a commit message that way. Use `git commit -F -` with a **quoted** heredoc (`<<'MSG'`); the quotes stop all expansion. Same family as the heredoc `!` hazard.
 - **A per-task review scoped to its own diff cannot see cross-file breakage** — hence the full gate between tasks (Quick Start); the lint baseline is 0 errors, so a regression there is unambiguous.
-- **`next.config.js` sets `agentRules: false`.** Next 16.3 appends a
-  `<!-- BEGIN:nextjs-agent-rules -->` block to `CLAUDE.md` on every `next dev`
-  / `next build`, and re-adds it if removed, so the file reads as modified
-  forever. This file is hand-authored documentation, not a generated artifact.
-  Flip to `true` (or drop the line) to take the block instead.
+- **`next.config.js` sets `agentRules: false`.** Next 16.3 appends a `<!-- BEGIN:nextjs-agent-rules -->` block to `CLAUDE.md` on every `next dev` / `next build`, and re-adds it if removed, so the file reads as modified forever. This file is hand-authored documentation, not a generated artifact. Flip to `true` (or drop the line) to take the block instead.
 - **`smoke-prod.mjs` proves Cosmos from `GET /api/releases`, not `/api/session`.** It is deliberately signed out, and members-only turns the session read into a 401 — reading `_rid` there would have failed every deploy the day the flag flipped. `releases` is app data, stays public, returns raw documents and 503s rather than lying empty. The session check now accepts exactly two shapes: a 200 carrying a session, or the members-only 401; any other status fails. The page check likewise accepts either HomeShell's nav or SignedOutShell's `data-signed-out-welcome` buttons — with the flag on, the signed-out welcome is the only page it can see.
 - **`.azure/` is gitignored**: Never commit.
 - **Mock store**: Test without DB by omitting `COSMOS_CONNECTION_STRING`. Verify mock query filters match real Cosmos queries.
@@ -372,7 +225,6 @@ Gotchas for one part of the app are in that part's rule (they load when Claude t
 - **`pkill -f "next dev"` exit codes**: a background-task tracker often reports exit 143 (SIGTERM) or 144 — these are *clean kill signals*, not failures. If the curl that follows succeeds, the server was already up and was killed deliberately; ignore the "failed" status from the tracker.
 - **`public/` art is cached for a day** (`next.config.js`: `rackets/`, `brand/`, `icons/` get `max-age=86400, stale-while-revalidate=604800`; Next's own default is `max-age=0`). The names are not hashed, so a file REPLACED under the same name can take a day — up to a week behind the stale window — to reach a phone. Give a redrawn file a new name if it must show at once. `sw.js`, the manifest and `payments/` are deliberately left out.
 - **Announcements are stored as raw markdown text**: the API accepts any string (up to 800 chars) and `HomeTab` / `AdminDashboard` list rendering both route through `renderMarkdown()` from `lib/miniMarkdown.tsx`. Legacy plain-text announcements render identically (no markdown tokens in them). Server does not parse, normalize, or sanitize the string — the parser is JSX-only with no raw-HTML injection API, so XSS cannot originate from this path even with hostile input.
-- **`PATCH /api/session/bird-usage` vs `PUT /api/session`**: `/api/session` PUT replaces the entire active-session doc and only targets the active session. `/api/session/bird-usage` PATCH is additive: it upserts a single purchase's entry in a specific session's `birdUsages` array, by `sessionId`, so admins can retro-assign tubes to archived sessions from the bird inventory page. Posting `tubes: 0` removes the entry (undo). Both paths validate tubes ∈ [0, 100] in 0.25 increments and look up the purchase for authoritative cost snapshotting.
 - **Offline posture is "legible-fail"** (`lib/useOnline.ts`). New network-mutating UI MUST gate on `useOnline()` (disable + the app-wide banner explains why) — never execute-then-break. The admin subtree is wrapped in `<AdminErrorBoundary>` (render-throw + ChunkLoadError net; auto-reloads on reconnect; "Reload now" disabled while offline). Full-reload-while-offline is unsupported by design: the only service worker we ship is push-only and has **no `fetch` handler**, so nothing is ever served from cache. See `docs/plans/offline-legible-fail.md` and the Push Notifications section below.
 - **Unknown ≠ known-false** (the auth twin of the lying-empty-state rule): a failed/pending probe must not render as a confirmed negative. Tri-state it — e.g. HomeShell's `adminKnown` gates the admin-tab bounce so a reload on `?tab=admin` doesn't kick you off before auth resolves.
 
@@ -414,29 +266,8 @@ npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
 ```
 
-**602 test files / ~6,119 tests** (2026-11-05). `__tests__/docs-canary.test.ts` fails the
-build when the file count stated here drifts more than 10% from the tree — the
-previous figure, 279 / 2712, sat a third short for weeks and read as current.
-Covering API routes (admin auth,
-player CRUD + self-pay, account-only signup + hijack guards, members, sessions,
-session costs, birds + pooled bird usage, skills, releases, announcements,
-stats, recovery PIN, push subscribe/unsubscribe, **self-service account deletion
-+ its container-coverage canary**, **native-migration mint/claim + routes**,
-**both OAuth handoff routes**), feature flags and their date shape, i18n parity
-(and `deepMerge`'s array rule), component rendering, the push send library
-(410-deletes vs 5xx-keeps, and the FCM twin), the service-worker
-no-fetch-handler policy, the `.well-known` table, the legal pages' shape, the
-native-import canary, the shell's hand edits, and the reorder arithmetic.
+**602 test files / ~6,119 tests** (2026-11-05). `__tests__/docs-canary.test.ts` fails the build when the file count stated here drifts more than 10% from the tree — the previous figure, 279 / 2712, sat a third short for weeks and read as current. Covering API routes (admin auth, player CRUD + self-pay, account-only signup + hijack guards, members, sessions, session costs, birds + pooled bird usage, skills, releases, announcements, stats, recovery PIN, push subscribe/unsubscribe, **self-service account deletion + its container-coverage canary**, **native-migration mint/claim + routes**, **both OAuth handoff routes**), feature flags and their date shape, i18n parity (and `deepMerge`'s array rule), component rendering, the push send library (410-deletes vs 5xx-keeps, and the FCM twin), the service-worker no-fetch-handler policy, the `.well-known` table, the legal pages' shape, the native-import canary, the shell's hand edits, and the reorder arithmetic.
 
-**Read the COUNT, not the colour.** A DROP in file count means files failed to
-LOAD, which reports as an absence rather than a failure — see the Node floor in
-`.npmrc`. And on a loaded machine (load average >100) vitest workers time out,
-different files fail on each run, and the count sags: that is the box, not the
-code. A normal full run is ~14s; if it takes minutes, stop and re-run rather
-than debugging a moving target.
+**Read the COUNT, not the colour.** A DROP in file count means files failed to LOAD, which reports as an absence rather than a failure — see the Node floor in `.npmrc`. And on a loaded machine (load average >100) vitest workers time out, different files fail on each run, and the count sags: that is the box, not the code. A normal full run is ~14s; if it takes minutes, stop and re-run rather than debugging a moving target.
 
-**A component test that renders a date from a UTC-midnight fixture passes
-`timeZone="UTC"` to `NextIntlClientProvider`.** Without it the date formats in
-the machine's own zone, so west of Greenwich it lands on the previous day:
-`__tests__/components/LevelTrendChart.test.tsx` failed on a Pacific laptop and
-never in CI, which runs in UTC (fixed in #707).
+**A component test that renders a date from a UTC-midnight fixture passes `timeZone="UTC"` to `NextIntlClientProvider`.** Without it the date formats in the machine's own zone, so west of Greenwich it lands on the previous day: `__tests__/components/LevelTrendChart.test.tsx` failed on a Pacific laptop and never in CI, which runs in UTC (fixed in #707).
