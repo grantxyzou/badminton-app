@@ -92,7 +92,7 @@ export function StatsFallback() {
   return (
     <div className="space-y-5 w-full" role="status" aria-label={tLoading('loading')}>
       <PageHeader>{t('heading')}</PageHeader>
-      <p className="fs-md text-gray-400 px-2" style={{ marginTop: 'var(--space-1)' }}>
+      <p className="fs-md text-gray-400" style={{ marginTop: 'var(--space-1)' }}>
         {t('subheadV2')}
       </p>
       {/* 98: the OverviewStrip's OWN loading height (blank captions), which is
