@@ -2620,6 +2620,60 @@ html:root .ink-button {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* Profile's identity card is one button into Edit profile
+   (docs/superpowers/specs/2026-11-09-profile-reorg-design.md §1). */
+.profile-card-button {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-press) var(--ease-glass);
+}
+.profile-card-button:active { transform: scale(0.98); }
+/* A picture to wear on Edit profile. The selected one takes a ring: the one
+   ring the fill-only rule allows, because the picture itself is the fill. */
+.avatar-choice {
+  display: inline-flex;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-press) var(--ease-glass), box-shadow var(--duration-fast) var(--ease-glass);
+}
+.avatar-choice:active { transform: scale(0.94); }
+.avatar-choice[aria-checked='true'] { box-shadow: 0 0 0 3px var(--accent); }
+.avatar-choice:disabled { cursor: default; }
+/* Edit profile's field rows: a small label over its value, the Profile row's
+   padding, so the two pages read as one family. */
+.edit-profile-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: none;
+  font: inherit;
+  color: var(--text-primary);
+  text-align: left;
+}
+button.edit-profile-row { cursor: pointer; }
+.edit-profile-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+.edit-profile-key { font-size: var(--fs-sm); color: var(--text-secondary); }
+.edit-profile-value { font-size: var(--fs-lg); color: var(--text-primary); overflow-wrap: anywhere; }
+.edit-profile-can {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-05);
+  font-size: var(--fs-base);
+  color: var(--text-secondary);
+}
 /* "Your groups": a club's mark. SQUARE, not round — a round initial is a
    person everywhere else in the app, and a club is not one. */
 .group-monogram {

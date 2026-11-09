@@ -494,19 +494,37 @@
       "failed": "没保存成功，再试一次。",
       "theClub": "俱乐部"
     },
-    "avatar": {
-      "title": "我的头像",
+    "editProfile": {
+      "title": "编辑资料",
+      "back": "我的",
+      "open": "编辑资料",
+      "openLabel": "{name}，编辑资料",
+      "pictureGroup": "我的头像",
+      "initial": "名字首字",
       "myRacket": "我的球拍",
-      "shuffle": "换一个",
-      "initial": "首字母",
-      "noRacket": "在「数据 → 装备」里添加球拍，就能用它当头像。",
-      "save": "保存",
-      "signIn": "重新登录后才能更换头像。",
-      "failed": "保存失败，再试一次。",
-      "change": "更换头像"
+      "currentPicture": "现在的头像",
+      "noRacket": "在 数据 → 装备 里添加你的球拍，就能用它做头像。",
+      "saved": "头像已保存",
+      "signIn": "请重新登录后再换头像。",
+      "failed": "头像没保存成功，再试一次。",
+      "thisClub": "你的俱乐部",
+      "displayName": "显示名字",
+      "role": "账户身份",
+      "rank": {
+        "member": "球员",
+        "admin": "管理员",
+        "owner": "组织者"
+      },
+      "can": {
+        "member": ["报名活动", "支付欠款", "申请穿线"],
+        "admin": ["组织活动、开放报名", "记录付款、结算账单", "添加、改名和移除成员"],
+        "owner": ["组织活动、开放报名", "记录付款、结算账单", "添加、改名和移除成员", "授予身份和发放礼品卡"]
+      },
+      "memberSince": "加入时间",
+      "deleteAccount": "删除我的账户",
+      "deleteNote": "会把你从所有俱乐部移除。你的比赛和付款记录会以“前成员”的名义保留在俱乐部记录里。"
     },
     "identity": {
-      "memberSince": "{date} 加入",
       "rankOwner": "组织者",
       "rankAdmin": "管理员"
     },

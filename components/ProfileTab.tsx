@@ -2,7 +2,7 @@
 import { usePageBack } from '@/lib/pageStack';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { sharedFetch } from '@/lib/sharedRead';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
@@ -42,7 +42,7 @@ import GroupsPage from './profile/GroupsPage';
 import SettingsList, { type SettingsRow } from './profile/SettingsList';
 import StatusBanner from './primitives/StatusBanner';
 import MemberAvatar from './primitives/MemberAvatar';
-import AvatarSheet from './profile/AvatarSheet';
+import EditProfilePage from './profile/EditProfilePage';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
 import { useBuildSha } from '@/lib/buildSha';
@@ -147,7 +147,6 @@ export default function ProfileTab({
   // This club's rank (roles v2). `null` = not known yet, or the read failed:
   // the card then falls back to the shell's admin verdict.
   const [rank, setRank] = useState<ProfileRank | null>(null);
-  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [giveOpen, setGiveOpen] = useState(false);
@@ -171,9 +170,11 @@ export default function ProfileTab({
   // pattern (view state + early return + slideInRight + TopBar) is borrowed
   // from AdminDashboard, which is the only place in the app that already does
   // sub-screens.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name'>('root');
+  // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
+  // its Back returns there rather than to the list.
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile'>('root');
   // A sub-screen answers the Android back button (lib/pageStack.ts).
-  usePageBack(view !== 'root', () => setView('root'));
+  usePageBack(view !== 'root', () => setView((v) => (v === 'name' ? 'profile' : 'root')));
   const [methodsOpen, setMethodsOpen] = useState(false);
   // Read once here so the row's summary and the sheet's body agree.
   //
@@ -200,7 +201,6 @@ export default function ProfileTab({
   const tAuth = useTranslations('profile.auth');
   const tNav = useTranslations('nav');
   const tPush = useTranslations('profile.push');
-  const tDelete = useTranslations('profile.deleteAccount');
 
   // A layout effect, not an effect: the check is synchronous, and running it
   // after paint showed the "Add to Home Screen" row for a frame and then
@@ -252,6 +252,9 @@ export default function ProfileTab({
   // signed-out person sees the ordinary sign-in card first, then the sheet.
   useEffect(() => {
     if (!deleteIntent || !identity) return;
+    // Deleting lives on Edit profile now, so the deep link lands there with
+    // the confirmation open.
+    setView('profile');
     setDeleteAccountOpen(true);
     onDeleteIntentConsumed?.();
   }, [deleteIntent, identity, onDeleteIntentConsumed]);
@@ -695,7 +698,37 @@ export default function ProfileTab({
   }
 
   if (view === 'name') {
-    return <NicknamePage currentName={identity.name} clubName={group?.name ?? null} onBack={() => setView('root')} />;
+    return <NicknamePage currentName={identity.name} clubName={group?.name ?? null} onBack={() => setView('profile')} />;
+  }
+
+  if (view === 'profile') {
+    return (
+      <>
+        <EditProfilePage
+          name={identity.name}
+          clubName={group?.name ?? null}
+          rank={rank}
+          isAdmin={isAdmin}
+          avatar={avatar}
+          memberCreatedAt={memberCreatedAt}
+          onAvatarSaved={setAvatar}
+          onEditName={() => setView('name')}
+          onDeleteAccount={() => setDeleteAccountOpen(true)}
+          onBack={() => setView('root')}
+        />
+        <DeleteAccountSheet
+          open={deleteAccountOpen}
+          onClose={() => setDeleteAccountOpen(false)}
+          onDeleted={() => {
+            // The sheet already cleared identity and the server cleared the
+            // cookies; this is the local mirror, same as handleLogout's.
+            setLocalIdentity(null);
+            setPinIsSet(null);
+            setView('root');
+          }}
+        />
+      </>
+    );
   }
 
   // This device: every row here can be absent (push still probing, already
@@ -741,19 +774,11 @@ export default function ProfileTab({
 
       <ProfileIdentityCard
         name={identity.name}
-        memberCreatedAt={memberCreatedAt}
+        clubName={group?.name ?? null}
         isAdmin={isAdmin}
         rank={rank}
         avatar={avatar}
-        onChangeAvatar={() => setAvatarSheetOpen(true)}
-        changeLabel={t('avatar.change')}
-      />
-      <AvatarSheet
-        open={avatarSheetOpen}
-        onClose={() => setAvatarSheetOpen(false)}
-        name={identity.name}
-        current={avatar}
-        onSaved={setAvatar}
+        onOpen={() => setView('profile')}
       />
 
 
@@ -805,14 +830,6 @@ export default function ProfileTab({
       <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
       <SettingsList
         rows={[
-          // What the club calls you (docs/plans/profile-nickname.md): the one
-          // roster name, set by the member. No meta: the name is the identity
-          // card's title right above, and saying it twice reads as two names.
-          {
-            icon: 'person',
-            label: tSettings('clubName'),
-            onClick: () => setView('name'),
-          },
           // "Your groups" leads the list when there is more than one club to be
           // in: it changes what every other screen is about, so it outranks the
           // per-account rows below it. Absent entirely with the flag off, and
@@ -934,28 +951,6 @@ export default function ProfileTab({
         {tSettings('logout')}
       </button>
 
-      {/* Below log out, quiet, and NOT red. Two red controls stacked would make
-          the rarer, heavier one compete with the everyday one, and accent is
-          currency — a permanently loud row you scroll past every visit spends
-          it on something you do at most once. The danger belongs inside the
-          sheet, on the button that actually does it. Still a real, findable
-          control: App Store 5.1.1(v) requires account deletion to be reachable
-          from inside the app, and a reviewer has to be able to find it. */}
-      <button
-        type="button"
-        onClick={() => setDeleteAccountOpen(true)}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 'var(--space-3)',
-          fontSize: 'var(--fs-sm)',
-          color: 'var(--text-muted)',
-          fontFamily: 'inherit',
-        }}
-      >
-        {tDelete('link')}
-      </button>
 
       {/* Which build this phone is running: the deploy's commit, the same id
           the page carries in its `bpm-build` meta tag. A member can read it
@@ -968,16 +963,6 @@ export default function ProfileTab({
       {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
 
 
-      <DeleteAccountSheet
-        open={deleteAccountOpen}
-        onClose={() => setDeleteAccountOpen(false)}
-        onDeleted={() => {
-          // The sheet already cleared identity and the server cleared the
-          // cookies; this is the local mirror, same as handleLogout's.
-          setLocalIdentity(null);
-          setPinIsSet(null);
-        }}
-      />
 
       <RecoveryPinSheet
         open={recoveryPinOpen}
@@ -1038,38 +1023,35 @@ export function profileChip(rank: ProfileRank | null, isAdmin: boolean): 'rankOw
   return null;
 }
 
-function fmtMemberSince(iso: string | null, locale: string): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  try {
-    // The app's own locale (the NEXT_LOCALE cookie), not the browser's, and
-    // Vancouver time like every other date in the app (CLAUDE.md).
-    return d.toLocaleDateString(locale, { month: 'short', year: 'numeric', timeZone: 'America/Vancouver' });
-  } catch {
-    return null;
-  }
-}
-
 interface ProfileIdentityCardProps {
   name: string;
-  memberCreatedAt: string | null;
+  clubName: string | null;
   isAdmin: boolean;
   rank: ProfileRank | null;
   avatar: MemberAvatarValue | null;
-  onChangeAvatar: () => void;
-  changeLabel: string;
+  onOpen: () => void;
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, rank, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
+/**
+ * The person, at the top of Profile: one button into Edit profile
+ * (docs/superpowers/specs/2026-11-09-profile-reorg-design.md §1). The whole
+ * card is the target and a chevron says so, as Cal AI and theScore do; the
+ * picture is changed on that page now, beside the name, not from a sheet off
+ * the avatar. "Member since" moved there too.
+ */
+function ProfileIdentityCard({ name, clubName, isAdmin, rank, avatar, onOpen }: ProfileIdentityCardProps) {
   const tIdentity = useTranslations('profile.identity');
-  const locale = useLocale();
-  const memberSince = fmtMemberSince(memberCreatedAt, locale);
+  const tEdit = useTranslations('profile.editProfile');
   const chip = profileChip(rank, isAdmin);
+  const subtitle = clubName ? `${clubName} · ${tEdit('open')}` : tEdit('open');
+  const label = chip ? `${name}, ${tIdentity(chip)}, ${tEdit('open')}` : tEdit('openLabel', { name });
 
   return (
-    <div
-      className="glass-card"
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={label}
+      className="glass-card profile-card-button"
       style={{
         padding: 'var(--space-5)',
         display: 'flex',
@@ -1077,39 +1059,19 @@ function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, rank, avatar, onC
         gap: 'var(--space-4)',
       }}
     >
-      {/* The "NAME" eyebrow that sat above this is gone: a 46px avatar and the
-          name in display type already say it, and it created a false parallel
-          with ADMIN and ACCOUNT, which are real groupings.
-
-          Neutral rather than per-name colour. `avatarColors` gives Profile a
-          violet circle, which — with the old violet ADMIN pill — was a fourth
-          brand colour on a page whose palette is meant to be green for status
-          and red for log out. Other surfaces keep the coloured avatar: there
-          it distinguishes one player from another, which is the job it was
-          built for. Here there is only ever one person. */}
-      <button
-        type="button"
-        onClick={onChangeAvatar}
-        aria-label={changeLabel}
-        className="member-avatar-button"
-      >
-        <MemberAvatar name={name} avatar={avatar} size={46} tone="neutral" />
-      </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Neutral rather than per-name colour: here there is only ever one
+          person, so the colour that tells players apart has no job. */}
+      <MemberAvatar name={name} avatar={avatar} size={52} tone="neutral" />
+      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
         {/* The name and this club's rank share ONE line, the chip small and
-            centred on it (Grant, 2026-11-04: "smaller beside the name same
-            height"). The name gives way first: it ellipsizes, the chip keeps
-            its size. A fill-only label, not a control (CLAUDE.md, containers). */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
-          {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is
-              a fact about you, not the page's headline. */}
-          <p
+            centred on it (Grant, 2026-11-04). The name gives way first. */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
+          <span
             style={{
               fontFamily: 'var(--font-display, "Space Grotesk")',
               fontSize: 'var(--fs-stat)',
               fontWeight: 600,
               letterSpacing: '-0.015em',
-              margin: '0',
               minWidth: 0,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -1117,9 +1079,9 @@ function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, rank, avatar, onC
             }}
           >
             {name}
-          </p>
+          </span>
           {chip && (
-            // A --fs-2xs pill pads 4/8 (StatusBadge's spec).
+            // A --fs-2xs pill pads 4/8 (StatusBadge's spec). A label, not a control.
             <span
               style={{
                 flex: '0 0 auto',
@@ -1135,14 +1097,23 @@ function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, rank, avatar, onC
               {tIdentity(chip)}
             </span>
           )}
-        </div>
-        {memberSince && (
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 'var(--space-05)' }}>
-            {tIdentity('memberSince', { date: memberSince })}
-          </p>
-        )}
-      </div>
-    </div>
+        </span>
+        <span
+          style={{
+            fontSize: 'var(--fs-base)',
+            color: 'var(--text-secondary)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {subtitle}
+        </span>
+      </span>
+      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-secondary)' }}>
+        chevron_right
+      </span>
+    </button>
   );
 }
 

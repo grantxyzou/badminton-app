@@ -42,7 +42,7 @@ A hand promotion (`PATCH { waitlisted: false }` in `app/api/players/route.ts`) c
 
 - **No change for clubs that collect money.** BPM Core keeps `PaymentsCard` and the Session · Payments toggle as they are.
 - **No money of any kind** on this surface: no amounts, paid marks, covers or receipts. A club that said "money off" must not see a `$`.
-- **Past sessions for a money-off club.** That needs its own way into Past sessions that doesn't go through the Ledger. Open a `later` issue if Ian asks.
+- **Past sessions for a money-off club.** That needs its own way into Past sessions that doesn't go through the Ledger. Parked as a `later` issue (#829), to build only if Ian asks.
 - **Recovery codes and PINs.** The Roster page already carries them, and this list is about the week, not the account.
 
 ## Options
@@ -87,7 +87,7 @@ A new card, rendered only in the money-off branch, directly below `NextSessionCa
 
 ## Questions for Grant
 
-Answered 2026-11-05: B, with "Move to waitlist". Past sessions was not answered and stays a non-goal, as recommended.
+Answered 2026-11-05: B, with "Move to waitlist". Past sessions was not answered and stays a non-goal, as recommended (parked in #829).
 
 <!--
 Everything above is written BEFORE the work and is the gate for starting it.

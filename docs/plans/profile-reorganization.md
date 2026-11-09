@@ -1,7 +1,7 @@
 # Profile, reorganised: you, your club, how you get in, this phone, help
 
 **Track:** onboarding and retention (the door link, `docs/plans/door-link.md`, sends new people to Profile to keep their account and set their name).
-**Status:** intent
+**Status:** in-flight (spec handed off 2026-11-09)
 **Review on:** 2026-11-22 — has Grant picked answers to the three open questions below? If not, build only step 1.
 
 ## Problem
@@ -67,7 +67,20 @@ A player who is not an admin or gifter sees: card, CLUB (1 row), SIGNING IN (1),
 
 ## Steps
 
-1. "Your profile" page from the card: picture and name together (moves "Your name in the club" off the list). No question blocks it.
+1. "Your profile" page from the card: picture and name together (moves "Your name in the club" off the list). No question blocks it. **Built 2026-11-09 as "Edit profile"** (spec §2): picture saves on tap, Delete my account moved onto it, the delete deep link lands there.
 2. SIGNING IN folded to one row (PIN and recovery code inside "How you sign in").
 3. CLUB group (Your clubs, Admin tools, Give a gift card).
 4. THIS PHONE and MONEY, once questions 1 and 2 are answered.
+
+## Decisions (mock-up review, 2026-11-09)
+
+The mock-up was reviewed in comments on Grant's Design canvas; the hand-off spec is `docs/superpowers/specs/2026-11-09-profile-reorg-design.md`. What it settled:
+
+- **Every flow behind a row is a page, not a sheet** (Grant, 2026-11-08). Redeem, Give a gift card and Report a problem move off their sheets.
+- **Delete my account moves into Edit profile**; Profile ends with Log out as a red list row, no chevron.
+- **MONEY is its own group** on Profile: Gift cards & credit, Account balance (the detailed view of Home's card, same data), Give a gift card.
+- **Give a gift card is an organiser's (or gifter's) job only**, never a plain admin's, and a player's payment chart has no gift-card series.
+- **Avatars: the member's own racket, drawn true to its livery, plus six logo-shuttle "birdies"** (Grant: "1, 2 is fine"; "I like my logo icon more … refine but not realistic"; "no more animate birds"). Cartoon, realistic-feather and earned/locked variants were tried and dropped.
+- **The payments chart is one hue** (the app's green, dark → light); multi-hue palettes were rejected.
+- **Help gets guides** with screenshots that must not leak data: taken from the offline test club, cropped to the card.
+- **Report a problem gets tap-to-start prefills**, each tagging the report with a category.
