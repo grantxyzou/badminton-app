@@ -30,7 +30,7 @@ const SNAPSHOT = '.claude/ui-patterns.local.json';
 export const MIN_FILES = 3;
 const SOURCE_DIRS = ['components', 'app'];
 // What an AI reads to learn the UI: CLAUDE.md, DESIGN.md, the path-scoped
-// rules in .claude/rules/ (design detail lives in design-system.md), and any
+// rules in .claude/rules/ (design detail lives in design-system.md and motion.md), and any
 // nested CLAUDE.md. docs/design-system/ is the pristine bundle, never imported
 // and not where conventions are written, so it does not count here.
 const DOC_FILES = ['DESIGN.md', 'CLAUDE.md'];

@@ -99,7 +99,7 @@ Grant, on his phone: "A little slow." The ordering rule was too strict — a car
 | Per-tab chunk fallbacks (`StringingFallback`, `StatsFallback`, `ProfileFallback`, `AdminFallback`) | `components/TabFallbacks.tsx`, wired in `components/HomeShell.tsx` |
 | Splash fade + reduced-motion failsafe | `app/globals.css` — since adopted and extended by the launch screen (#511, `docs/plans/launch-screen.md`) under `html[data-launch]`; the spinner-stop rule left with the spinner |
 | Canaries | `__tests__/components/Reveal.test.tsx`, `__tests__/tab-fallback-canary.test.ts`, `__tests__/design-canary.test.ts`, `__tests__/loading-canary.test.ts` (ratchet — each phase deletes its entries) |
-| The rule | CLAUDE.md → Design System → Motion system → "Loading" |
+| The rule | `.claude/rules/motion.md` → Motion system → "Loading" |
 | Spec | `docs/superpowers/specs/2026-10-03-loading-cascade-design.md` |
 
 ## Review outcome (2026-10-29)
