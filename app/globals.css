@@ -64,6 +64,11 @@
   --duration-sheet: 180ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
+  /* Two named one-offs, off the ladder on purpose: the sign-up icon's pop
+     (celebrate) and the bell ring / launch rise (flourish). A literal ms in a
+     transition or animation fails motion-duration-canary; name it here. */
+  --duration-celebrate: 420ms;
+  --duration-flourish: 700ms;
 
   /* ── Aurora ── */
   --aurora-bg: #100F0F;
@@ -2739,7 +2744,7 @@ html:root .ink-button {
   justify-content: center;
   border-radius: var(--rail-indicator-radius);
   background: transparent;
-  transition: background 150ms var(--ease-glass);
+  transition: background var(--duration-fast) var(--ease-glass);
 }
 
 .rail-icon {
@@ -2782,7 +2787,7 @@ html:root .ink-button {
   transform: translateX(calc(var(--ri, 0) * 100%));
   /* The pill travels A→B on screen (it doesn't enter/exit), so ease-in-out
      reads more natural than the ease-out used for entrances. */
-  transition: transform 200ms var(--ease-in-out);
+  transition: transform var(--duration-sheet) var(--ease-in-out);
 }
 .rail-indicator-pill {
   display: block;
@@ -3312,7 +3317,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 .roster-row--action:active { background: var(--press-bg); }
 .roster-row__more { color: var(--text-muted); }
 .status-celebrate .icon-status {
-  animation: signupIconPop 420ms var(--ease-glass) both;
+  animation: signupIconPop var(--duration-celebrate) var(--ease-glass) both;
 }
 @keyframes signupBannerIn {
   from { opacity: 0; transform: translateY(6px) scale(0.98); }
@@ -3329,7 +3334,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
    line re-keys and ticks — a quick fade + tiny settle confirms the change.
    Purpose = feedback, not decoration. */
 .animate-count-tick {
-  animation: countTick 220ms var(--ease-glass) both;
+  animation: countTick var(--duration-sheet) var(--ease-glass) both;
 }
 @keyframes countTick {
   from { opacity: 0.35; transform: translateY(-2px); }
@@ -3887,7 +3892,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
    from its top, like a bell. The reduced-motion wildcard zeroes it. */
 .notif-toggle .notif-ring {
   transform-origin: 50% 15%;
-  animation: notif-ring 700ms var(--ease-out-quart);
+  animation: notif-ring var(--duration-flourish) var(--ease-out-quart);
 }
 @keyframes notif-ring {
   0%   { transform: rotate(0); }
@@ -4112,7 +4117,7 @@ html:root .glass-card.notice-list { padding: var(--space-2); }
   border-radius: var(--radius-md);
   padding: 18px;
   font-size: 17px;
-  animation: launch-rise 700ms var(--ease-glass) backwards;
+  animation: launch-rise var(--duration-flourish) var(--ease-glass) backwards;
 }
 .launch-btn--primary {
   font-weight: 700;
@@ -4256,7 +4261,7 @@ html[data-launch="loading"] .splash {
 .bottom-sheet-backdrop {
   background: rgba(0, 0, 0, 0.72);
   opacity: 0;
-  transition: opacity 180ms var(--ease-sheet);
+  transition: opacity var(--duration-sheet) var(--ease-sheet);
   pointer-events: none;
 }
 /* While a sheet is opening or open, the page behind it is not clickable: the
@@ -4500,7 +4505,7 @@ html:root[data-tab="admin"] .bottom-sheet {
   font-size: var(--fs-sm);
   white-space: nowrap;
   cursor: pointer;
-  transition: transform 100ms var(--ease-glass);
+  transition: transform var(--duration-press) var(--ease-glass);
 }
 .filter-chip:active { transform: scale(0.97); }
 .filter-chip .material-icons { font-size: var(--icon-sm); }
@@ -4630,7 +4635,7 @@ button.sheet-row { cursor: pointer; }
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  transition: background 120ms var(--ease-glass), border-color 120ms var(--ease-glass), color 120ms var(--ease-glass), transform 80ms var(--ease-glass);
+  transition: background var(--duration-press) var(--ease-glass), border-color var(--duration-press) var(--ease-glass), color var(--duration-press) var(--ease-glass), transform var(--duration-press) var(--ease-glass);
   -webkit-tap-highlight-color: transparent;
 }
 .cc-btn:focus-visible {
@@ -5070,7 +5075,7 @@ html:root[data-theme="light"] {
   flex-direction: column;
   gap: var(--space-2);
   cursor: pointer;
-  transition: background 120ms ease;
+  transition: background var(--duration-press) ease;
   text-align: left;
 }
 .cc-tile:hover {
@@ -5215,7 +5220,7 @@ html:root[data-theme="light"] {
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background var(--duration-press) ease, color var(--duration-press) ease;
 }
 @media (hover: hover) {
   .cc-session-chip:hover { background: rgba(255, 255, 255, 0.07); }
@@ -6102,7 +6107,7 @@ button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offs
   /* `backwards`, not `both`: a `both` fill keeps holding the keyframe's final
      opacity/transform after it ends, and an animation outranks a transition,
      so the exit below could never move the card. */
-  animation: toast-in 200ms var(--ease-out-quart) backwards;
+  animation: toast-in var(--duration-sheet) var(--ease-out-quart) backwards;
   transition:
     opacity var(--duration-fast) var(--ease-glass),
     transform var(--duration-fast) var(--ease-glass);
@@ -6267,9 +6272,9 @@ button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offs
   .top-toast-card,
   .top-toast[data-open='true'] .top-toast-card {
     transform: none;
-    transition: opacity 150ms ease, visibility 0s linear 150ms;
+    transition: opacity var(--duration-fast) ease, visibility 0s linear var(--duration-fast);
   }
-  .top-toast[data-open='true'] .top-toast-card { transition: opacity 150ms ease, visibility 0s; }
+  .top-toast[data-open='true'] .top-toast-card { transition: opacity var(--duration-fast) ease, visibility 0s; }
 }
 
 .toast-dismiss {
@@ -6403,7 +6408,7 @@ html:root .swipe-row {
 }
 
 .swipe-row[data-swiping='release'] .swipe-row__track {
-  transition: transform 180ms var(--ease-out-quart);
+  transition: transform var(--duration-sheet) var(--ease-out-quart);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6724,7 +6729,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   border: 1px solid transparent; /* fill-only, see .fit-tile */
   color: var(--text-secondary);
   cursor: pointer;
-  transition: transform 100ms var(--ease-glass);
+  transition: transform var(--duration-press) var(--ease-glass);
 }
 .tension-field-step--up { background: var(--highlight-green); color: var(--accent); }
 .tension-field-step:active { transform: scale(0.97); }
@@ -6789,7 +6794,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   border-radius: var(--radius-sm);
   background: var(--highlight-green);
   border: 1px solid var(--accent);
-  transition: left 180ms var(--ease-sheet), width 180ms var(--ease-sheet);
+  transition: left var(--duration-sheet) var(--ease-sheet), width var(--duration-sheet) var(--ease-sheet);
 }
 .tension-ruler-you {
   position: absolute;
@@ -6798,7 +6803,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   width: 2px;
   margin-left: -1px;
   background: var(--accent);
-  transition: left 180ms var(--ease-sheet), background-color 180ms var(--ease-sheet);
+  transition: left var(--duration-sheet) var(--ease-sheet), background-color var(--duration-sheet) var(--ease-sheet);
 }
 .tension-ruler-you--suggested { background: repeating-linear-gradient(to bottom, var(--accent) 0 3px, transparent 3px 6px); }
 .tension-ruler-you--warn { background: var(--sev-warn); }
@@ -7474,7 +7479,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
+  transition: transform var(--duration-press) var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-tile:active { transform: scale(0.97); }
 .fit-tile[aria-checked="true"] {
@@ -7586,7 +7591,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   font-size: var(--fs-md);
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
+  transition: transform var(--duration-press) var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-sore-option:active { transform: scale(0.97); }
 /* Amber, because a sore arm is a caution, not a success. */
@@ -7638,7 +7643,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   border-radius: var(--radius-md);
   background: var(--inner-card-bg);
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform var(--duration-press) var(--ease-out-quart);
 }
 .frame-tile:active { transform: scale(0.97); }
 .frame-tile img { width: 36px; height: 78px; object-fit: contain; }
@@ -7694,7 +7699,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform var(--duration-press) var(--ease-out-quart);
 }
 .frame-row-head:active { transform: scale(0.97); }
 .frame-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
@@ -7707,7 +7712,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  transition: grid-template-rows 180ms var(--ease-sheet), opacity 180ms var(--ease-sheet);
+  transition: grid-template-rows var(--duration-sheet) var(--ease-sheet), opacity var(--duration-sheet) var(--ease-sheet);
 }
 .frame-row--open .frame-row-body { grid-template-rows: 1fr; opacity: 1; }
 .frame-row-inner { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-4); }
@@ -7782,7 +7787,7 @@ a.setup-price-row:active { background: var(--press-bg); }
 
 /* A club tally row that opens its racket's page: the row itself is the button. */
 .club-gear-row { display: block; width: 100%; }
-.club-gear-row--link { padding: 0; border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform 100ms var(--ease-out-quart); }
+.club-gear-row--link { padding: 0; border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform var(--duration-press) var(--ease-out-quart); }
 .club-gear-row--link:active { transform: scale(0.98); }
 .club-gear-chevron { font-size: var(--icon-sm); color: var(--text-muted); vertical-align: middle; margin-left: var(--space-1); }
 
@@ -7817,7 +7822,7 @@ button.sheet-row:active,
 button.setup-item,
 .setup-item-hit,
 .setup-fit-row,
-.bpm-row-link { transition: opacity 100ms var(--ease-glass); }
+.bpm-row-link { transition: opacity var(--duration-press) var(--ease-glass); }
 button.setup-item:active,
 .setup-item-hit:active,
 .setup-fit-row:active,
@@ -7981,7 +7986,7 @@ html:root .state-link:active { opacity: 0.6; }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 160ms var(--ease-spring);
+  transition: transform var(--duration-fast) var(--ease-spring);
   --ring-size: 18px;
 }
 /* Crossing the trigger is a moment: the disc swells a little, so letting go now
