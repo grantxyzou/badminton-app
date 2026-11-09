@@ -155,7 +155,7 @@ export default function KudosReceivedCard() {
                      opaque compat token and reads as a white slab inside a
                      translucent card in light mode. */
                   background: 'var(--inner-card-bg)',
-                  border: '1px solid var(--inner-card-border)',
+                  border: '1px solid transparent',
                 }}
               >
                 <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>{n.note}</p>

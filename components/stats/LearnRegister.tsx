@@ -466,7 +466,7 @@ function DrillSheet({
                   letterSpacing: '0.04em',
                   textTransform: 'uppercase',
                   color: SETTING_COLOR[drill.setting],
-                  border: '1px solid var(--inner-card-border)',
+                  border: '1px solid transparent',
                 }}
               >
                 {skillText.label(drill.skillKey)}

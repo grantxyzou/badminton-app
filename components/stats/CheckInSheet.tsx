@@ -213,7 +213,7 @@ export default function CheckInSheet({
               onClick={onClose}
               aria-label={t('assess.close')}
               className="flex items-center justify-center rounded-full"
-              style={{ width: 32, height: 32, background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}
+              style={{ width: 32, height: 32, background: 'var(--inner-card-bg)', border: '1px solid transparent' }}
             >
               <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>close</span>
             </button>
@@ -264,7 +264,7 @@ export default function CheckInSheet({
                   }
                 />
               ) : mirror && mirror.played > 0 ? (
-                <div className="p-4 rounded-xl" style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}>
+                <div className="p-4 rounded-xl" style={{ background: 'var(--inner-card-bg)', border: '1px solid transparent' }}>
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('assess.mirrorTitle')}</p>
                   <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: 'var(--space-2) 0 0', lineHeight: 1.4 }}>
                     {t('assess.mirrorRecord', { won: mirror.won, played: mirror.played })}
@@ -388,7 +388,7 @@ export default function CheckInSheet({
                         padding: 'var(--space-4)',
                         borderRadius: 'var(--radius-lg)',
                         background: 'var(--inner-card-bg)',
-                        border: '1px solid var(--inner-card-border)',
+                        border: '1px solid transparent',
                       }}
                     >
                       <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>{c.label}</span>

@@ -81,7 +81,7 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
               padding: 'var(--space-5)',
               borderRadius: 'var(--radius-lg)',
               background: 'var(--inner-card-bg)',
-              border: '1px solid var(--inner-card-border)',
+              border: '1px solid transparent',
             }}
           >
             <Reassurance icon="check_circle">{t('bands')}</Reassurance>

@@ -27,7 +27,7 @@ const CHIP: React.CSSProperties = {
   padding: 'var(--space-2) var(--space-4)',
   borderRadius: 'var(--radius-sm)',
   background: 'var(--inner-card-bg)',
-  border: '1px solid var(--inner-card-border)',
+  border: '1px solid transparent',
   color: 'var(--text-secondary)',
 };
 
