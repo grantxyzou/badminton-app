@@ -31,6 +31,7 @@ import { POST as ASSESS } from '@/app/api/assessments/route';
 import { POST as PUSH_SUBSCRIBE } from '@/app/api/push/subscribe/route';
 import { PUT as GEAR_PUT } from '@/app/api/equipment/gear/route';
 import { PATCH as ME_PATCH, DELETE as ME_DELETE } from '@/app/api/members/me/route';
+import { POST as NUDGE } from '@/app/api/auth/nudge/route';
 
 /**
  * "Sign out everywhere" reaches every route that acts AS the member
@@ -119,6 +120,9 @@ const CASES: Case[] = [
   // can still set the first PIN, since that response hands back a session.
   { name: 'set a first PIN', call: () => ME_PATCH(req('PATCH', 'members/me', { name: 'Lin', newPin: '4826' })) },
   { name: 'delete the account', call: () => ME_DELETE(req('DELETE', 'members/me', { confirm: true })) },
+  // Reached through callerMemberId, a wrapper the canary did not follow until
+  // 2026-11-09 — it wrote on the Member from a signed-out cookie.
+  { name: 'dismiss the sign-in nudge', call: () => NUDGE(req('POST', 'auth/nudge')) },
 ];
 
 describe('a session minted before "Sign out everywhere" is refused by every write', () => {
@@ -138,6 +142,12 @@ describe('a session minted before "Sign out everywhere" is refused by every writ
     expect(res.status).toBe(401);
     expect(res.headers.get('set-cookie') ?? '').not.toContain('member_session=');
     expect((linMember() as Row & { pinHash?: string }).pinHash).toBeUndefined();
+  });
+
+  it('the refused nudge dismissal writes nothing on the Member', async () => {
+    signOutAt(0);
+    expect((await NUDGE(req('POST', 'auth/nudge'))).status).toBe(401);
+    expect((linMember() as Row & { authNudge?: unknown }).authNudge).toBeUndefined();
   });
 });
 

@@ -25,8 +25,17 @@ import { join, relative, sep } from 'path';
  */
 
 const ROOT = join(__dirname, '..');
-const SIGNATURE_ONLY = /\b(verifyMemberAuth|ownsNameOrAdmin|nameOwnership)\(/;
-const REREADING = /\b(verifyLiveMemberAuth|readLiveMemberSession|requireGroupMember|requireMember|activeMemberFor)\(/;
+/**
+ * The cutoff-blind checks: `verifyMemberAuth` itself and every lib/ helper
+ * built on it. A WRAPPER is blind too, so its callers have to be classified
+ * as well — `auth/nudge` wrote on the Member through `callerMemberId` for a
+ * week after this canary shipped, because only direct callers were scanned
+ * (2026-11-09). The last test below fails on a blind lib/ function that is not
+ * listed here, so a new wrapper cannot hide its callers the same way.
+ */
+const WRAPPERS = ['verifyMemberAuth', 'ownsNameOrAdmin', 'nameOwnership', 'callerMemberId', 'peekMemberSession'];
+const SIGNATURE_ONLY = new RegExp(`\\b(${WRAPPERS.join('|')})\\(`);
+const REREADING = /\b(verifyLiveMemberAuth|readLiveMemberSession|liveCallerMemberId|requireGroupMember|requireMember|activeMemberFor)\(/;
 const TOP_LEVEL = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\*?\s+([A-Za-z0-9_$]+)|(?:const|let)\s+([A-Za-z0-9_$]+))/gm;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -49,7 +58,13 @@ const EXEMPT: Record<string, Exempt> = {
     write: true,
   },
   'lib/auth.ts#callerMemberId': {
-    reason: 'answers what the caller HAS for auth/methods and auth/nudge — reads that drive Profile rows; neither mints, links or writes',
+    reason: 'the definition: what the caller HAS, for auth/methods (a read that drives Profile rows). A write takes liveCallerMemberId',
+  },
+  'lib/auth.ts#peekMemberSession': {
+    reason: 'the definition: an EXPIRED cookie’s identity, for the gear GET’s redaction marker only — never a gate',
+  },
+  'app/api/auth/methods/route.ts#GET': {
+    reason: 'read behind the page gate: which sign-in methods the caller has, for Profile’s rows; it mints, links and writes nothing',
   },
 
   // ── Reads behind requireMember: the gate already re-read the membership
@@ -117,6 +132,8 @@ const REREADS: string[] = [
   'app/api/auth/me/route.ts#GET',
   'app/api/auth/migrate/start/route.ts#POST',
   'app/api/auth/handoff/claim/route.ts#POST',
+  // Writes on the Member (the dismissed upgrade nudge), from either cookie.
+  'app/api/auth/nudge/route.ts#POST',
   'app/api/groups/route.ts#POST',
   'app/api/groups/switch/route.ts#POST',
   'app/api/groups/join/route.ts#POST',
@@ -197,6 +214,27 @@ describe('every caller of a cutoff-blind check is classified', () => {
       const name = key.split('#')[1];
       if (MUTATING.has(name)) expect(entry.write, `${key} is a write: mark it write: true`).toBe(true);
     }
+  });
+
+  it('every blind lib/ helper is a listed WRAPPER, so its callers are classified too', () => {
+    const helpers = blind.filter((key) => key.startsWith('lib/')).map((key) => key.split('#')[1]);
+    const unlisted = helpers.filter((name) => !WRAPPERS.includes(name));
+    expect(
+      unlisted,
+      'A lib/ function calling a cutoff-blind check is blind itself. Add it to WRAPPERS so its callers are scanned, ' +
+        'or have it call verifyLiveMemberAuth / readLiveMemberSession.',
+    ).toEqual([]);
+    for (const name of WRAPPERS) expect(fns.has(`lib/auth.ts#${name}`), `${name} is not in lib/auth.ts — renamed?`).toBe(true);
+  });
+
+  it('an app/ EXEMPT entry is a route handler, never a helper whose callers would go unscanned', () => {
+    // The lib/ half is WRAPPERS above. A helper inside a route file is the same
+    // hazard one level down: exempt it as a "read" and a POST in the same file
+    // that calls it is never classified. Name the handler instead, or have the
+    // helper re-read and list it in REREADS (as authorizeBagWrite is).
+    const HANDLERS = new Set(['GET', 'HEAD', 'OPTIONS', ...MUTATING]);
+    const helpers = Object.keys(EXEMPT).filter((key) => key.startsWith('app/') && !HANDLERS.has(key.split('#')[1]));
+    expect(helpers).toEqual([]);
   });
 
   it('every REREADS function re-reads and none slid back to the signature alone', () => {

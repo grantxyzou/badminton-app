@@ -400,8 +400,10 @@ export function memberSessionIssuedAt(req: NextRequest): number | undefined {
  * the `member_session` if there is one, else the `admin_session` (re-read, so
  * a demoted or removed admin is nobody). `null` is anonymous.
  *
- * For the routes that answer "what does the CALLER have" — `auth/methods`,
- * `auth/nudge` — and must not 401 a stranger. `POST /api/admin` mints ONLY an
+ * For the routes that answer "what does the CALLER have" — `auth/methods` —
+ * and must not 401 a stranger. It reads the member cookie's signature alone,
+ * blind to "Sign out everywhere", so a WRITE (`auth/nudge`) takes
+ * `liveCallerMemberId` below. `POST /api/admin` mints ONLY an
  * `admin_session`, so a phone an admin signed in on at Profile holds no
  * member cookie at all; `auth/methods` read the member cookie alone and
  * answered that phone the anonymous shape (no PIN, no password, nothing
@@ -415,6 +417,28 @@ export async function callerMemberId(req: NextRequest): Promise<string | null> {
   if (member) return member.memberId;
   const admin = await isAdminAuthedWithMember(req);
   return admin.authed ? admin.memberId : null;
+}
+
+/** What `liveCallerMemberId` found. `unknown` is a failed re-read, never
+ *  reported as "nobody" (the auth twin of the lying-empty-state rule). */
+export type LiveCaller = { status: 'live'; memberId: string } | { status: 'none' } | { status: 'unknown' };
+
+/**
+ * `callerMemberId` for a WRITE: the same "either cookie" reading, but the
+ * member cookie through `readLiveMemberSession`, so a session minted before
+ * "Sign out everywhere" is nobody (docs/plans/claim-your-name.md, Decisions).
+ * `callerMemberId` reads the member cookie's signature alone, which is fine
+ * for `auth/methods` (a read behind the page gate) and not for `auth/nudge`,
+ * which writes on the Member. A signed-out member cookie falls through to the
+ * admin cookie, whose own re-read honours the cutoff. A failed re-read is
+ * `unknown`, so the route can answer 503 rather than claim nobody is signed in.
+ */
+export async function liveCallerMemberId(req: NextRequest): Promise<LiveCaller> {
+  const live = await readLiveMemberSession(req);
+  if (live.status === 'live') return { status: 'live', memberId: live.session.memberId };
+  if (live.status === 'unknown') return { status: 'unknown' };
+  const admin = await isAdminAuthedWithMember(req);
+  return admin.authed ? { status: 'live', memberId: admin.memberId } : { status: 'none' };
 }
 
 /**
