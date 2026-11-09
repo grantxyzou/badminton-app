@@ -163,9 +163,11 @@ It lists things that appear in 3+ files and in no doc an AI reads
 Read 2–3 of the files each pattern names, then decide:
 
 - **Document:** the pattern is consistent and intended. Propose one terse
-  line for `.claude/rules/design-system.md`: when to use it and what not to do
-  instead. That file is cut off past 40,000 characters, so check
-  `wc -c .claude/rules/design-system.md` first.
+  line for the rule it belongs in: `.claude/rules/design-system.md`, or
+  `.claude/rules/motion.md` for motion, loading and toasts. Say when to use it
+  and what not to do instead. A rule file is cut off past 40,000 characters and
+  `docs-canary` fails the build there, so check `wc -m` on it first; a file
+  near the line wants a split proposed, not one more line.
 - **Codify:** the same inline style is hand-typed everywhere. Propose a class
   in `globals.css` or a primitive, plus the doc line.
 - **Fix:** the instances disagree, so one of them is drift. That's a UI

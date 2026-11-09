@@ -120,7 +120,7 @@ A **Capacitor 8 WebView that loads the LIVE URL**, so a web deploy is already a 
 
 ### Design System
 
-The full rules (fonts, icons, backgrounds, radii, type and spacing scales, motion, buttons, primitives, the inner-content reference, the ESLint token guardrail) are in `.claude/rules/design-system.md`, which loads when Claude touches `components/`, an `app/` page or `globals.css`. These hold everywhere:
+The full rules (fonts, icons, backgrounds, radii, type and spacing scales, buttons, primitives, the inner-content reference, the ESLint token guardrail) are in `.claude/rules/design-system.md`, and motion, loading and toasts in `.claude/rules/motion.md`; both load when Claude touches `components/`, an `app/` page or `globals.css`. Foldables (`.claude/rules/foldables.md`) and the sign-up shuttle burst (`.claude/rules/shuttle-burst.md`) load only with their own files. These hold everywhere:
 
 - **`app/globals.css` is the single source of truth for tokens.** Never import `docs/design-system/colors_and_type.css`, and never add a `next/font/google` import (`__tests__/design-canary.test.ts`).
 - **A call site never types a raw number** for a font size, radius, spacing or colour; use the `--fs-*`, `--radius-*`, `--space-*` and `--icon-*` tokens. ESLint and the spacing and design canaries enforce it.
