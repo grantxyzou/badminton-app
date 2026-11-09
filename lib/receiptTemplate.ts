@@ -158,7 +158,7 @@ export function renderGroupCanvas(input: ReceiptInput, canvas: HTMLCanvasElement
   // Lead line — "was $X each"
   ctx.fillStyle = '#f3f4f6';
   ctx.font = '600 18px "IBM Plex Sans", system-ui, sans-serif';
-  ctx.fillText('today was', 24, 70);
+  ctx.fillText(leadLine(input.datetime), 24, 70);
 
   // Amount (display font, prominent)
   ctx.fillStyle = '#86efac';
@@ -219,6 +219,19 @@ export function renderGroupCanvas(input: ReceiptInput, canvas: HTMLCanvasElement
   ctx.fillText('Thanks for playing 🏸', 24, H - 24);
 
   return canvas.toDataURL('image/png');
+}
+
+/**
+ * The words above the big amount. "today was" is only true on the night: a
+ * receipt shared from Past sessions, or the morning after, used to tell the
+ * group that last Thursday was today. Any other day names the weekday.
+ */
+export function leadLine(iso: string, now: Date = new Date()): string {
+  if (!iso) return 'it was';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'it was';
+  if (d.toDateString() === now.toDateString()) return 'today was';
+  return `${d.toLocaleDateString(undefined, { weekday: 'long' })} was`;
 }
 
 function wrapLine(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {

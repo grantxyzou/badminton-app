@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### The receipt names the club in its memo, and the right day (2026-11-09)
+
+- **The e-transfer memo on a shared receipt reads "BPM Core Oct 22 - {your name}" again.** It had been "Oct 22 - {your name}": the club's name never reached the receipt, so the memo collapsed to the date.
+- **The receipt image says "Thursday was $18.50 each"** when it is shared on any day but the night itself. It used to say "today was" even for a session shared from Past sessions or the morning after.
+
 ### Money shows its cents properly on the admin screens and receipts (2026-11-09)
 
 - **"$18.5" is now "$18.50" everywhere an admin sees money**: the Payments card (per player, each row, "owed", "covered", "Cover their …"), the cover sheet, the session card's "Sent · …" and "Share again", Past sessions, and the receipt image and text sent to the group. Whole amounts stay whole ("$18"). They all use the one money formatter the member screens already use.

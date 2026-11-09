@@ -9,6 +9,7 @@ import {
   type ReceiptInput,
 } from '@/lib/receiptTemplate';
 import { shareOrSaveImage } from '@/lib/shareImage';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 
 interface ReceiptSheetProps {
   open: boolean;
@@ -19,7 +20,17 @@ interface ReceiptSheetProps {
   initialPlayerName?: string;
 }
 
-export default function ReceiptSheet({ open, onClose, input, error, initialMode = 'group', initialPlayerName }: ReceiptSheetProps) {
+export default function ReceiptSheet({ open, onClose, input: rawInput, error, initialMode = 'group', initialPlayerName }: ReceiptSheetProps) {
+  // The memo's `{club}` needs the club's name, and none of the three callers
+  // (Payments, Past sessions, the console) builds it in: `buildReceiptInput`
+  // works from a session, which carries no name. Filling it here, once, gives
+  // every receipt "BPM Core Oct 22 - Lin" instead of "Oct 22 - Lin".
+  const { group } = useCurrentGroup();
+  const clubName = group?.name;
+  const input = useMemo(
+    () => (rawInput && !rawInput.clubName && clubName ? { ...rawInput, clubName } : rawInput),
+    [rawInput, clubName],
+  );
   const [mode, setMode] = useState<'group' | 'individual'>(initialMode);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(initialPlayerName ?? null);
   const [copied, setCopied] = useState(false);
