@@ -68,7 +68,7 @@ A player who is not an admin or gifter sees: card, CLUB (1 row), SIGNING IN (1),
 ## Steps
 
 1. "Your profile" page from the card: picture and name together (moves "Your name in the club" off the list). No question blocks it. **Built 2026-11-09 as "Edit profile"** (spec §2): picture saves on tap, Delete my account moved onto it, the delete deep link lands there.
-2. SIGNING IN folded to one row (PIN and recovery code inside "How you sign in").
+2. SIGNING IN folded to one row (PIN and recovery code inside "How you sign in"). **Built 2026-11-09** (spec §9): one row opens the page; no new PIN is offered.
 3. CLUB group (Your clubs, Admin tools, Give a gift card).
 4. THIS PHONE and MONEY, once questions 1 and 2 are answered.
 

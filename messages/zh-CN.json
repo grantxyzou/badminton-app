@@ -494,6 +494,10 @@
       "failed": "没保存成功，再试一次。",
       "theClub": "俱乐部"
     },
+    "waysToSignIn": {
+      "back": "我的",
+      "moreGroup": "PIN 和恢复码"
+    },
     "editProfile": {
       "title": "编辑资料",
       "back": "我的",
