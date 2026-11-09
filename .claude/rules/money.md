@@ -12,7 +12,6 @@ paths:
   - "lib/buildReceiptInput.ts"
   - "lib/resettleSession.ts"
   - "lib/stringingBilling.ts"
-  - "lib/giftcard*.ts"
   - "lib/aliases.ts"
   - "app/api/payments/**"
   - "app/api/credit/**"
