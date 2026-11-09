@@ -377,7 +377,7 @@ export default function SessionListCard({ refreshKey = 0, onChanged, run = clubR
         <div>
           <div
             className="flex items-center justify-between gap-3"
-            style={{ paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
+            style={{ paddingTop: 'var(--space-3)' }}
           >
             <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
               {lists.cancelled.length} cancelled

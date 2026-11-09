@@ -526,7 +526,6 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
             className="fs-sm"
             style={{
               paddingTop: 'var(--space-4)',
-              borderTop: '1px solid var(--divider)',
               display: 'flex',
               justifyContent: 'space-between',
               gap: 'var(--space-3)',

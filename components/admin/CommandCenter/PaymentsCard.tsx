@@ -858,7 +858,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         <div>
           <div
             className="flex items-center justify-between"
-            style={{ gap: 'var(--space-3)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
+            style={{ gap: 'var(--space-3)', paddingTop: 'var(--space-3)' }}
           >
             <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
               {[

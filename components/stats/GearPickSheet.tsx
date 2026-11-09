@@ -556,7 +556,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               the frame publishes no ceiling: there is no honest placeholder
               for a number we do not have. */}
           {typeof pick?.tensionLbs === 'number' && (
-            <section style={{ borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-4)' }}>
+            <section style={{ paddingTop: 'var(--space-4)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
                 <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('pickSheetTension')}</span>
                 <span style={{ color: 'var(--text-primary)' }}>
@@ -582,7 +582,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               opening a second sheet over this one. A shortlist a member can
               borrow one of at the club is the point of alternatives. */}
           {others.length > 0 && (
-            <section style={{ borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <section style={{ paddingTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               <span className="fs-2xs" style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
                 {shownAlt ? t('pickSheetBackToPick') : t('pickSheetOrConsider')}
               </span>
@@ -614,7 +614,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               in it. It is what a member checks AFTER deciding, and seven mono
               rows between the name and the reason inverted that. */}
           {specRows.length > 0 && (
-            <section style={{ borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-4)' }}>
+            <section style={{ paddingTop: 'var(--space-4)' }}>
               <button
                 type="button"
                 onClick={() => setSpecsOpen((v) => !v)}

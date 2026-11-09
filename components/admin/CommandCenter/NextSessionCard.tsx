@@ -614,7 +614,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       {((!isSettled && !moneyOff) || onAdvance) && (
         <div
           className="flex justify-center items-center flex-wrap"
-          style={{ gap: 'var(--space-1)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
+          style={{ gap: 'var(--space-1)', paddingTop: 'var(--space-3)' }}
         >
           {!isSettled && !moneyOff && (
             <button
