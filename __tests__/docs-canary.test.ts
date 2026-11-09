@@ -56,7 +56,24 @@ const GOVERNING_DOCS = [
   'docs/review-bot.md',
   'docs/flag-retirements.md',
   'docs/gotchas-history.md',
+  // The path-scoped rules CLAUDE.md's sections moved into (2026-11-08, the root
+  // was over the 150k-character limit). Listed by directory, so a new rule file
+  // is checked the day it is added instead of the day someone remembers.
+  ...readdirSync(join(process.cwd(), '.claude/rules'))
+    .filter((f) => f.endsWith('.md'))
+    .sort()
+    .map((f) => `.claude/rules/${f}`),
 ];
+
+/**
+ * CLAUDE.md plus the rules its sections moved into. A pinned number checks a
+ * sentence wherever the move put it: the escape-hatch count now lives in
+ * `.claude/rules/design-system.md`, and a pin that read the root alone would
+ * fail on a claim that is still true.
+ */
+const CLAUDE_TEXT = ['CLAUDE.md', ...GOVERNING_DOCS.filter((d) => d.startsWith('.claude/rules/'))]
+  .map((d) => readFileSync(join(process.cwd(), d), 'utf8'))
+  .join('\n');
 
 /**
  * Paths named ON PURPOSE while absent. Every entry carries its reason — a bare
@@ -190,7 +207,7 @@ describe('docs canary — every path a governing doc names still resolves', () =
  * within a band, one that moves only by decision is held exactly.
  */
 describe('docs canary — the numbers CLAUDE.md states about the tree', () => {
-  const claude = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8');
+  const claude = CLAUDE_TEXT;
 
   function walk(dir: string, out: string[] = []): string[] {
     for (const entry of readdirSync(dir)) {
@@ -242,7 +259,7 @@ describe('docs canary — the numbers CLAUDE.md states about the tree', () => {
  * plan, a flip described as upcoming after it happened — still needs a reader.
  */
 describe('docs canary — the sentences a regex can hold', () => {
-  const claude = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8');
+  const claude = CLAUDE_TEXT;
   const WORDS: Record<string, number> = {
     one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
   };
