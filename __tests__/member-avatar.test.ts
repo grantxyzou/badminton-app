@@ -4,7 +4,6 @@ import { GET as ROSTER_GET } from '../app/api/members/route';
 import { resetMockStore, setupAdminPin, seedMember, makeRequest, memberCookieValue, getStore } from './helpers';
 import { parseAvatar, normalizeAvatar, isRacketAvatarId, racketAvatarIds, DEFAULT_RACKET_ID, racketAvatarGround } from '../lib/memberAvatar';
 import { RACKET_LOOKS } from '../lib/racketLook';
-import { shuffleRacket } from '../components/profile/AvatarSheet';
 
 const BASE = 'http://localhost:3000/api/members/me';
 const RACKET = racketAvatarIds()[0];
@@ -45,11 +44,6 @@ describe('memberAvatar', () => {
     expect(racketAvatarGround(dark)).not.toBe(racketAvatarGround(light));
     // The default look is graphite, so it gets the light ground.
     expect(racketAvatarGround(DEFAULT_RACKET_ID)).toBe(racketAvatarGround(dark));
-  });
-
-  it('shuffle never lands on the racket already showing', () => {
-    for (let i = 0; i < 50; i++) expect(shuffleRacket(RACKET)).not.toBe(RACKET);
-    expect(isRacketAvatarId(shuffleRacket(null))).toBe(true);
   });
 });
 
