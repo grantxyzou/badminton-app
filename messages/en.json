@@ -432,6 +432,7 @@
     },
     "balance": {
         "guestLine": "{name}, your guest",
+        "details": "See details",
         "groupSessions": "Badminton",
         "groupStringing": "Stringing",
       "title": "Balance",
@@ -745,6 +746,56 @@
       "needYou": "{count} need you",
       "allClear": "All clear"
     },
+    "balance": {
+      "title": "Account balance",
+      "back": "Profile",
+      "youOwe": "You owe · {count, plural, one {# item} other {# items}}",
+      "paidUp": "You’re all paid up",
+      "credit": "Credit",
+      "loadError": "Couldn’t load your balance.",
+      "retry": "Try again",
+      "signInAgain": "Sign in again to see what you owe.",
+      "line": {
+        "session": "{day} session",
+        "guest": "{day} · {name}, your guest",
+        "restring": "{racket} restring",
+        "settled": "Settled {date} · {days, plural, =0 {today} one {# day ago} other {# days ago}}",
+        "settledNoDate": "Settled",
+        "estimate": "Estimate until the bill is settled",
+        "ready": "Ready {date}"
+      },
+      "payWithCredit": "Pay {amount} with credit",
+      "paidWithCredit": "Paid {amount} with credit",
+      "creditError": "Couldn’t use your credit. Try again.",
+      "payByEtransfer": "Pay {amount} by e-transfer",
+      "etransfer": {
+        "title": "Pay by e-transfer",
+        "close": "Close",
+        "body": "Send {amount} by Interac e-transfer to:",
+        "copy": "Copy email",
+        "copied": "Copied",
+        "sent": "I’ve sent it",
+        "sentDone": "Thanks. It’ll be marked paid when the e-transfer arrives.",
+        "sentError": "Couldn’t save that. Try again."
+      },
+      "paidGroup": "What you’ve paid",
+      "chart": {
+        "window": "Last 6 months",
+        "legend": "Series",
+        "loadError": "Couldn’t load what you’ve paid.",
+        "empty": "Nothing paid in the last 6 months.",
+        "nothingThisMonth": "Nothing paid this month.",
+        "series": {
+          "sessions": "Sessions",
+          "stringing": "Stringing",
+          "other": "Other"
+        },
+        "sessionsNights": "Sessions · {count, plural, one {# night} other {# nights}}",
+        "guests": "Guest · {names}",
+        "monthLabel": "{month}: {total} ({parts})",
+        "monthLabelNone": "{month}: nothing paid"
+      }
+    },
     "giftCards": {
       "title": "Gift cards & credit",
       "back": "Profile",
@@ -815,6 +866,8 @@
       "updatePin": "Update PIN",
       "recoveryCode": "Have a recovery code?",
       "giftCards": "Gift cards & credit",
+      "accountBalance": "Account balance",
+      "owedMeta": "{amount} owed",
       "moneyGroup": "Money",
       "giveGift": "Give a gift card",
       "statsPrivacy": "Stats & privacy",

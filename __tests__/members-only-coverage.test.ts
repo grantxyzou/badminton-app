@@ -137,6 +137,8 @@ const ROUTES: Record<string, Entry> = {
   // The home-screen widget's bearer pass (docs/plans/native-widgets.md), re-read against the membership.
   widget: { kind: 'authed', helper: 'requireWidgetMember' },
   credit: { kind: 'authed', helper: 'requireGroupMember' },
+  // A member's own paid history, month by month (Profile → Account balance).
+  'members/me/payments': { kind: 'authed', helper: 'requireGroupMember' },
   // A gifter's own cards (docs/plans/gift-card-ledger.md): the member cookie, then the switch.
   giftcards: { kind: 'authed', helper: 'requireGroupMember' },
   'stringing/jobs': { kind: 'authed', helper: 'verifyMemberAuth' },

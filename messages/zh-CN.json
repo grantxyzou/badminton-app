@@ -432,6 +432,7 @@
     },
     "balance": {
       "guestLine": "{name}（你的朋友）",
+      "details": "查看详情",
       "groupSessions": "羽毛球",
       "groupStringing": "穿线",
       "title": "待付金额",
@@ -745,6 +746,56 @@
       "needYou": "{count} 项待处理",
       "allClear": "没有待办"
     },
+    "balance": {
+      "title": "欠款与付款",
+      "back": "我的",
+      "youOwe": "待付 · {count} 项",
+      "paidUp": "你已全部付清",
+      "credit": "余额",
+      "loadError": "无法加载你的欠款。",
+      "retry": "重试",
+      "signInAgain": "请重新登录查看欠款。",
+      "line": {
+        "session": "{day} 的活动",
+        "guest": "{day} · {name}（你的朋友）",
+        "restring": "{racket} 穿线",
+        "settled": "{date} 已结算 · {days, plural, =0 {今天} other {# 天前}}",
+        "settledNoDate": "已结算",
+        "estimate": "账单结算前为估计金额",
+        "ready": "{date} 完成"
+      },
+      "payWithCredit": "用余额支付 {amount}",
+      "paidWithCredit": "已用余额支付 {amount}",
+      "creditError": "暂时无法使用余额，请重试。",
+      "payByEtransfer": "通过 e-transfer 支付 {amount}",
+      "etransfer": {
+        "title": "通过 e-transfer 支付",
+        "close": "关闭",
+        "body": "请通过 Interac e-transfer 发送 {amount} 至：",
+        "copy": "复制邮箱",
+        "copied": "已复制",
+        "sent": "我已发送",
+        "sentDone": "谢谢。收到 e-transfer 后会标记为已付。",
+        "sentError": "暂时无法保存，请重试。"
+      },
+      "paidGroup": "你的付款",
+      "chart": {
+        "window": "最近 6 个月",
+        "legend": "类别",
+        "loadError": "无法加载你的付款记录。",
+        "empty": "最近 6 个月没有付款。",
+        "nothingThisMonth": "本月没有付款。",
+        "series": {
+          "sessions": "活动",
+          "stringing": "穿线",
+          "other": "其他"
+        },
+        "sessionsNights": "活动 · {count} 次",
+        "guests": "朋友 · {names}",
+        "monthLabel": "{month}：{total}（{parts}）",
+        "monthLabelNone": "{month}：没有付款"
+      }
+    },
     "giftCards": {
       "title": "礼品卡与余额",
       "back": "我的",
@@ -815,6 +866,8 @@
       "updatePin": "修改 PIN",
       "recoveryCode": "有恢复码？",
       "giftCards": "礼品卡与余额",
+      "accountBalance": "欠款与付款",
+      "owedMeta": "欠 {amount}",
       "moneyGroup": "钱款",
       "giveGift": "送出礼品卡",
       "statsPrivacy": "数据与隐私",

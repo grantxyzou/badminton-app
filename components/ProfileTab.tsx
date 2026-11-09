@@ -44,6 +44,8 @@ import WaysToSignInPage from './profile/WaysToSignInPage';
 import GiftCardsPage, { fmtCents } from './profile/GiftCardsPage';
 import GiveGiftPage from './profile/GiveGiftPage';
 import { useCredit } from './profile/useCredit';
+import AccountBalancePage from './profile/AccountBalancePage';
+import { useBalance } from './profile/useBalance';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
 import { useBuildSha } from '@/lib/buildSha';
@@ -171,7 +173,7 @@ export default function ProfileTab({
   // sub-screens.
   // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
   // its Back returns there rather than to the list.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin' | 'gift-cards' | 'give-gift'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance'>('root');
   // A sub-screen answers the Android back button (lib/pageStack.ts).
   usePageBack(view !== 'root', () => setView((v) => (v === 'name' ? 'profile' : 'root')));
   // Read once here so the row's summary and the sheet's body agree.
@@ -186,6 +188,9 @@ export default function ProfileTab({
   // figure and the Gift cards & credit page agree. Flag off, nothing is read.
   const creditOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
   const credit = useCredit(!!identity && creditOn);
+  // What this member owes: the SAME read as Home's balance card (spec §4), so
+  // the MONEY row, the Account balance page and Home cannot disagree.
+  const balanceState = useBalance(identity?.name ?? null);
   const privacyState = useStatsPrivacy(identity?.name ?? null);
   // Called unconditionally, and gated by its own argument, because the two
   // early returns below (anonymous, and the Stats & privacy sub-screen) sit
@@ -247,7 +252,8 @@ export default function ProfileTab({
   const onScreen = useTabActive();
   useEffect(() => {
     if (!identity || !onScreen) return;
-    if (takeProfileView() === 'stats-privacy') setView('stats-privacy');
+    const asked = takeProfileView();
+    if (asked) setView(asked);
   }, [identity, onScreen]);
 
   // Deep link from the public delete-account page. Waits for an identity so a
@@ -740,6 +746,10 @@ export default function ProfileTab({
     return <GiftCardsPage state={credit} onBack={() => setView('root')} />;
   }
 
+  if (view === 'balance') {
+    return <AccountBalancePage balance={balanceState} credit={creditOn ? credit : null} onBack={() => setView('root')} />;
+  }
+
   if (view === 'give-gift') {
     return <GiveGiftPage clubName={group?.name ?? null} onBack={() => setView('root')} />;
   }
@@ -906,27 +916,37 @@ export default function ProfileTab({
         ]}
       />
 
-      {/* MONEY (spec §1.5, build step 4): pages, not the two sheets they
-          replace. The credit figure is absent until it is KNOWN — never a $0
-          off a failed read. Account balance joins this group in step 5. */}
-      {creditOn && (
-        <>
-          <ProfileEyebrow>{tSettings('moneyGroup')}</ProfileEyebrow>
-          <SettingsList
-            rows={[
-              {
+      {/* MONEY (spec §1.5): pages, not sheets. Gift cards & credit while store
+          credit is on; Account balance for everyone (the detailed view of
+          Home's card); Give a gift card for a canGift member. A figure is
+          absent until it is KNOWN — never a $0 off a failed read. */}
+      <ProfileEyebrow>{tSettings('moneyGroup')}</ProfileEyebrow>
+      <SettingsList
+        rows={[
+          ...(creditOn
+            ? [{
                 icon: 'payments',
                 label: tSettings('giftCards'),
                 meta: credit.loadError || credit.balanceCents === null ? undefined : fmtCents(credit.balanceCents),
                 onClick: () => setView('gift-cards'),
-              },
-              // Only for a member an organiser marked `canGift`; the page is the
-              // gifter's half of the organiser's gift-card console.
-              ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift') }] : []),
-            ]}
-          />
-        </>
-      )}
+              }]
+            : []),
+          {
+            icon: 'receipt_long',
+            label: tSettings('accountBalance'),
+            // "{amount} owed" in amber while owing; nothing at $0 or unknown.
+            meta:
+              !balanceState.loadError && balanceState.data && balanceState.data.totalOwed > 0
+                ? tSettings('owedMeta', { amount: fmtCents(Math.round(balanceState.data.totalOwed * 100)) })
+                : undefined,
+            owed: true,
+            onClick: () => setView('balance'),
+          },
+          // Only for a member an organiser marked `canGift`; the page is the
+          // gifter's half of the organiser's gift-card console.
+          ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift') }] : []),
+        ]}
+      />
 
       {/* Four groups, each one question: who am I here (ACCOUNT, above), what
           do others see (PRIVACY), how does this device behave (APP), and where

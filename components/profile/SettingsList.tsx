@@ -19,6 +19,8 @@ export interface SettingsRow {
    * list to become a standalone centred button.
    */
   accent?: boolean;
+  /** Amber meta: an amount OWED (spec §1.5). Never red: owing is not a failure. */
+  owed?: boolean;
 }
 
 export default function SettingsList({ rows }: { rows: SettingsRow[] }) {
@@ -68,7 +70,7 @@ export default function SettingsList({ rows }: { rows: SettingsRow[] }) {
                   className="motion-fade"
                   style={{
                     fontSize: 'var(--fs-base)',
-                    color: row.accent ? 'var(--accent)' : 'var(--text-secondary)',
+                    color: row.owed ? 'var(--accent-amber)' : row.accent ? 'var(--accent)' : 'var(--text-secondary)',
                   }}
                 >
                   {row.meta}
