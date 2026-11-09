@@ -266,7 +266,7 @@ The full rules (fonts, icons, backgrounds, radii, type and spacing scales, motio
 - **`app/globals.css` is the single source of truth for tokens.** Never import `docs/design-system/colors_and_type.css`, and never add a `next/font/google` import (`__tests__/design-canary.test.ts`).
 - **A call site never types a raw number** for a font size, radius, spacing or colour; use the `--fs-*`, `--radius-*`, `--space-*` and `--icon-*` tokens. ESLint and the spacing and design canaries enforce it.
 - **The `html:root` prefix on the field rules is load-bearing specificity** — never unscope it to a bare class.
-- **Containers are fill-only, with no outer stroke**, and a loading card holds its place with a skeleton the size of the card, never `null` or "Loading…".
+- **Containers are fill-only, with no outer stroke** — a card, tile, option row or callout is a tint, and a selected one is a solid tint, never a ring. The few rims kept on purpose (Home's label chips, `.admin-hero`'s edge, the outlined `cc-btn` family, the status pills) are listed in the rule. A loading card holds its place with a skeleton the size of the card, never `null` or "Loading…".
 - **Prefer the primitives** in `components/primitives/` (`CardHeader`, `StatusBadge`, `ListRow`, `ErrorState` / `EmptyState`, `MoneyInput`) and `<BottomSheet>` over hand-rolled layout.
 
 ## Planning Artifacts
