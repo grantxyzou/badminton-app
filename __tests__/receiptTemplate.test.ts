@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { renderGroupText, renderIndividualText, type ReceiptInput } from '@/lib/receiptTemplate';
+import { leadLine, renderGroupText, renderIndividualText, type ReceiptInput } from '@/lib/receiptTemplate';
+
+describe('leadLine', () => {
+  it('says "today was" only on the night, and names the day otherwise', () => {
+    const night = new Date(2026, 9, 22, 21, 0); // Thu Oct 22, 9 PM local
+    expect(leadLine(night.toISOString(), night)).toBe('today was');
+    const nextMorning = new Date(2026, 9, 23, 9, 0);
+    expect(leadLine(night.toISOString(), nextMorning)).toMatch(/^Thursday was$/);
+    expect(leadLine('', nextMorning)).toBe('it was');
+  });
+});
 
 const baseInput: ReceiptInput = {
   datetime: '2026-05-13T20:00:00-04:00',
