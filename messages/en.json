@@ -494,6 +494,10 @@
       "failed": "Couldn't save that. Try again.",
       "theClub": "the club"
     },
+    "waysToSignIn": {
+      "back": "Profile",
+      "moreGroup": "PIN and recovery"
+    },
     "editProfile": {
       "title": "Edit profile",
       "back": "Profile",

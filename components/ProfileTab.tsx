@@ -19,7 +19,6 @@ import ReportProblemSheet from './ReportProblemSheet';
 import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
 import ProviderButtons, { type Provider as AuthProvider } from './auth/ProviderButtons';
-import SignInMethodsSheet from './auth/SignInMethodsSheet';
 import { useSignInMethods, methodsSummary } from './auth/useSignInMethods';
 import EmailSignInForm from './auth/EmailSignInForm';
 import EmailSignUpSheet from './auth/EmailSignUpSheet';
@@ -43,6 +42,7 @@ import SettingsList, { type SettingsRow } from './profile/SettingsList';
 import StatusBanner from './primitives/StatusBanner';
 import MemberAvatar from './primitives/MemberAvatar';
 import EditProfilePage from './profile/EditProfilePage';
+import WaysToSignInPage from './profile/WaysToSignInPage';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
 import { useBuildSha } from '@/lib/buildSha';
@@ -172,10 +172,9 @@ export default function ProfileTab({
   // sub-screens.
   // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
   // its Back returns there rather than to the list.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin'>('root');
   // A sub-screen answers the Android back button (lib/pageStack.ts).
   usePageBack(view !== 'root', () => setView((v) => (v === 'name' ? 'profile' : 'root')));
-  const [methodsOpen, setMethodsOpen] = useState(false);
   // Read once here so the row's summary and the sheet's body agree.
   //
   // Gated on `identity`: the row only exists for a
@@ -697,6 +696,43 @@ export default function ProfileTab({
     return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
   }
 
+  // The PIN and recovery-code sheets open from "How you sign in" and, for a
+  // member who just got in without a PIN, from the root; each view that can
+  // open them renders them (a sub-view's early return unmounts the root).
+  const pinSheets = (
+    <>
+      <RecoveryPinSheet
+        open={recoveryPinOpen}
+        onClose={() => setRecoveryPinOpen(false)}
+        identity={identity}
+        hasPin={pinIsSet === true}
+        authed={pinAuthed}
+        onSaved={(newHasPin) => setPinIsSet(newHasPin)}
+      />
+      <EnterCodeSheet
+        open={enterCodeOpen}
+        onClose={() => setEnterCodeOpen(false)}
+        sessionId={sessionId}
+        onRecovered={handleRecovered}
+      />
+    </>
+  );
+
+  if (view === 'signin') {
+    return (
+      <>
+        <WaysToSignInPage
+          state={methodsState}
+          pinIsSet={pinIsSet}
+          onChangePin={() => setRecoveryPinOpen(true)}
+          onRecoveryCode={() => setEnterCodeOpen(true)}
+          onBack={() => setView('root')}
+        />
+        {pinSheets}
+      </>
+    );
+  }
+
   if (view === 'name') {
     return <NicknamePage currentName={identity.name} clubName={group?.name ?? null} onBack={() => setView('profile')} />;
   }
@@ -842,10 +878,10 @@ export default function ProfileTab({
                 onClick: () => setView('groups'),
               }]
             : []),
-          // Was a permanently-expanded card above this list — its own heading,
-          // a checklist, a bordered provider button and a "Not now", wedged
-          // between two one-line rows. It is a row now. The nudge survives as
-          // `accent`, the same signal the admin row uses for a live count.
+          // One row for getting back in (spec §9, build step 3). It used to be
+          // three — How you sign in, Update PIN, Have a recovery code? — and
+          // the page it opens holds all of it. The nudge survives as `accent`,
+          // the same signal the admin row uses for a live count.
           {
             icon: 'lock',
             label: tAuth('methodsTitle'),
@@ -854,29 +890,7 @@ export default function ProfileTab({
               email: tAuth('methodEmailShort'),
             }),
             accent: methodsState.methods?.nudge === true,
-            onClick: () => setMethodsOpen(true),
-          },
-          // Batch B (expanded): PIN management is now member-scoped via
-          // PATCH /api/members/me — works regardless of whether the user
-          // has a session player. The previous "Sign up for a session
-          // first" gate is no longer needed.
-          {
-            icon: 'key',
-            // pinIsSet === null means we couldn't load status. Show the
-            // generic section title rather than asserting "New PIN" (which
-            // would suggest "you don't have one yet" — false on transient
-            // backend failures).
-            label: pinIsSet === null
-              ? t('pinSectionTitle')
-              : pinIsSet
-              ? tSettings('updatePin')
-              : tSettings('newPin'),
-            onClick: () => setRecoveryPinOpen(true),
-          },
-          {
-            icon: 'help_outline',
-            label: tSettings('recoveryCode'),
-            onClick: () => setEnterCodeOpen(true),
+            onClick: () => setView('signin'),
           },
           // Store credit (docs/plans/payments.md): a gift card becomes credit
           // on the Home balance. Flag-gated; the route 404s with it off.
@@ -964,20 +978,7 @@ export default function ProfileTab({
 
 
 
-      <RecoveryPinSheet
-        open={recoveryPinOpen}
-        onClose={() => setRecoveryPinOpen(false)}
-        identity={identity}
-        hasPin={pinIsSet === true}
-        authed={pinAuthed}
-        onSaved={(newHasPin) => setPinIsSet(newHasPin)}
-      />
-      <EnterCodeSheet
-        open={enterCodeOpen}
-        onClose={() => setEnterCodeOpen(false)}
-        sessionId={sessionId}
-        onRecovered={handleRecovered}
-      />
+      {pinSheets}
 
       <ReleaseNotesSheet
         open={releaseSheetOpen}
@@ -991,11 +992,6 @@ export default function ProfileTab({
         name={identity?.name}
       />
 
-      <SignInMethodsSheet
-        open={methodsOpen}
-        onClose={() => setMethodsOpen(false)}
-        state={methodsState}
-      />
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
     </div>
   );

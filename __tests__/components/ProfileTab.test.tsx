@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import ProfileTab from '../../components/ProfileTab';
 import enMessages from '../../messages/en.json';
@@ -62,12 +62,17 @@ describe('ProfileTab', () => {
     localStorage.setItem('badminton_identity', JSON.stringify({ name, token: 'tok', sessionId: 'session-2026-04-27' }));
   }
 
-  it('shows player profile + PIN row when identity exists and this device is signed in', async () => {
+  it('shows player profile + the PIN row (on "How you sign in") when this device is signed in', async () => {
     rememberName('Michael');
     stubMe({ hasPin: true, authed: true, createdAt: '2026-01-01' });
     renderWith();
     expect(await screen.findByText('Michael')).toBeDefined();
-    expect(screen.getByText(/PIN/i)).toBeDefined();
+    // One row for getting back in; the PIN and recovery code live on its page.
+    expect(screen.queryByText('Update PIN')).toBeNull();
+    expect(screen.queryByText('Have a recovery code?')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /How you sign in/ }));
+    expect(await screen.findByText('Update PIN')).toBeDefined();
+    expect(screen.getByText('Have a recovery code?')).toBeDefined();
     vi.unstubAllGlobals();
   });
 
