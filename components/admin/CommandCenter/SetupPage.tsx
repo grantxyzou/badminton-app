@@ -527,7 +527,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         />
       )}
       {saveError && (
-        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 'var(--space-2) var(--space-1) 0' }}>
+        <p role="alert" className="field-error" style={{ margin: 'var(--space-2) var(--space-1) 0' }}>
           {saveError}
         </p>
       )}

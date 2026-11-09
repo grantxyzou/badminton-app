@@ -172,7 +172,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             </p>
           )}
           {pinError === 'rate_limited' && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-amber)', margin: '0' }}>
+            <p role="alert" className="field-warn" style={{ margin: '0' }}>
               {t('pinRateLimited')}
             </p>
           )}
@@ -182,7 +182,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             </p>
           )}
           {pinError === 'needs_signin' && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-amber)', margin: '0' }}>
+            <p role="alert" className="field-warn" style={{ margin: '0' }}>
               {t('pinNeedsSignIn')}
             </p>
           )}

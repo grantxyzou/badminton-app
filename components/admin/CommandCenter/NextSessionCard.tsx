@@ -664,7 +664,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       )}
 
       {settleError && (
-        <p role="alert" className="fs-sm" style={{ color: 'var(--color-red)' }}>
+        <p role="alert" className="field-error">
           {settleError}
         </p>
       )}

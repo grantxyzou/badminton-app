@@ -226,7 +226,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
               (the loading rule). */}
           {loading && <CardSkeleton height={160} />}
           {error && (
-            <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
               {error}
             </p>
           )}
@@ -322,7 +322,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                 </div>
 
                 {auditError ? (
-                  <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
+                  <p role="alert" className="field-error" style={{ margin: '0' }}>
                     Couldn’t load owed breakdown.
                   </p>
                 ) : !audit ? (

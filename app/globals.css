@@ -1067,11 +1067,19 @@ h1, h2, h3, h4 {
   line-height: var(--lh-snug);
   color: var(--sev-crit-text);
 }
+/* Its amber twin: a refusal that is not the person's fault (try again later,
+   an account already exists, invite only). Same size and rhythm, warn ink. */
+.field-warn {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  color: var(--sev-warn);
+}
 /* Recipe 1 (Appear) on every inline alert — the sanctioned class and the
    hand-styled `<p role="alert">` lines that predate it alike. Every mount
    replays it, which is the point: a retry that fails again should read as a
    second failure, not as nothing. */
 .field-error,
+.field-warn,
 p[role='alert'] {
   animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
 }
@@ -3556,6 +3564,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
      is given back — `!important` on a class outranks the `*` rule. */
   .motion-fade,
   .field-error,
+  .field-warn,
   p[role='alert'] {
     animation: motionFade var(--duration-fast) ease-out backwards !important;
   }

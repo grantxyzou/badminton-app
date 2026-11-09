@@ -961,7 +961,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
             )}
 
             {formError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
                 {formError}
               </p>
             )}
