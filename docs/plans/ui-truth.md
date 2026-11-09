@@ -2,7 +2,7 @@
 
 **Track:** none, and deliberately so: it guards already-shipped work (the design system, `.claude/rules/design-system.md`, and the remediation that tokenised it, `docs/plans/design-audit-remediation.md`) rather than starting anything a member sees.
 **Status:** in-flight (PR #816; written after the first commit, on review of that PR)
-**Review on:** 2026-12-07 — after four weekly runs, what share of `ui-proposal` issues did Grant label `ui-approved`, and did the approved draft PRs merge? Under one in three, or approvals left unmerged, means retire the routine (draft criterion, Grant to confirm).
+**Review on:** 2026-12-07 — of the four weekly runs, how many filed a fix Grant approved that merged and stayed (no revert)? Fewer than two such runs retires the routine; any ui-truth PR that broke production stopped it already (Kill criterion).
 
 ## Problem
 
@@ -21,11 +21,21 @@ wrong". The request for this routine itself is not recorded in his words.
 
 ## Kill criterion
 
-Draft, for Grant to confirm or replace: the routine earns its weekly run only
-if Grant acts on what it files. After four runs (Review on, above), fewer than
-one in three proposals approved, or approved draft PRs left unmerged, means
-the findings are noise or not worth his time — retire the routine and keep
-the pattern miner as a manual tool.
+Grant, 2026-11-09: "make sure its not burning token without getting correct
+fixes and breaking prod prematurely". Two tests, from those two worries:
+
+- **Breaking production — stop at once, don't wait for the review.** If a
+  merged `ui-truth/*` PR is reverted, or a production problem is traced to
+  one, pause the weekly run and tell Grant what got through. The routine
+  cannot ship on its own (it opens DRAFT PRs only; Grant merges; `verify`
+  must pass; deploys are batched three times a day), so one getting through
+  means a guard failed, and that is the thing to look at, not the next run.
+- **Burning tokens — judged at the review.** A *good run* files at least one
+  proposal that Grant approves and whose PR merges and stays. A run that
+  files nothing, or only proposals that are declined or turn out wrong when
+  checked, cost tokens for no fix. Fewer than two good runs out of the first
+  four: retire the scheduled routine and keep `scripts/ui-patterns.mjs` as a
+  tool run by hand.
 
 ## Non-goals
 
