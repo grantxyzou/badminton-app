@@ -119,6 +119,16 @@ describe('ProfileTab — MONEY', () => {
     expect(screen.queryByRole('button', { name: /Gift cards & credit/ })).toBeNull();
   });
 
+  it('Report a problem opens its page, and Back returns to Profile', async () => {
+    mockFetch({ canGift: false });
+    await renderSignedIn();
+    fireEvent.click(screen.getByRole('button', { name: /Report a problem/ }));
+    expect(screen.getByRole('heading', { name: 'Report a problem' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Couldn’t sign up' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    expect(await screen.findByText('Money')).toBeTruthy();
+  });
+
   it('Home’s “See details” lands on Account balance', async () => {
     mockFetch({ canGift: false });
     sessionStorage.setItem('badminton_profile_view', 'balance');

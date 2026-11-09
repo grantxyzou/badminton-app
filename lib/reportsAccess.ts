@@ -60,6 +60,8 @@ export async function groupForReportsKey(provided: string | null): Promise<strin
 export interface FeedbackReportRow {
   createdAt: string;
   message: string;
+  /** The Report a problem chip it started from; null for a report from before chips (2026-11-09). */
+  category: string | null;
   tab: string | null;
   path: string | null;
 }

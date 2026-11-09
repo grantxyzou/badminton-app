@@ -1003,16 +1003,50 @@
     "someoneNew": "新成员"
   },
   "report": {
-    "title": "问题反馈",
-    "help": "哪里不对劲？说说是怎么回事，我来看看。",
+    "title": "报告问题",
+    "back": "我的",
+    "help": "有什么不对劲？告诉我们发生了什么，我们会看一看。",
+    "chipsLabel": "先选一个开头，再补充发生了什么",
+    "chips": {
+      "signup": {
+        "label": "无法报名",
+        "starter": "我尝试报名本周的活动，但是"
+      },
+      "money": {
+        "label": "金额不对",
+        "starter": "我的欠款金额好像不对。显示的是 $，但我以为是 $，因为"
+      },
+      "payment": {
+        "label": "付款没有显示",
+        "starter": "我在 [日期] 发送了 e-transfer，但仍然显示欠款。"
+      },
+      "stringing": {
+        "label": "穿线状态",
+        "starter": "我的球拍穿线状态不对。显示的是 ，但是"
+      },
+      "performance": {
+        "label": "很慢或卡住",
+        "starter": "应用在  页面很慢或卡住了。"
+      },
+      "other": {
+        "label": "其他问题",
+        "starter": ""
+      }
+    },
     "placeholder": "出了什么问题？",
-    "send": "提交反馈",
-    "sending": "提交中…",
-    "success": "已收到，谢谢。我会去看看。",
-    "errorRequired": "请描述发生了什么。",
-    "errorServer": "提交失败，请重试。",
-    "offline": "你已离线，联网后再提交。",
-    "close": "关闭"
+    "counter": "{count}/{max}",
+    "whereNote": "如果可以，请说明是在哪个页面发生的。",
+    "send": "发送报告",
+    "sending": "正在发送…",
+    "success": "谢谢，我们会尽快查看。",
+    "done": "完成",
+    "errorServer": "发送失败，请重试。",
+    "errorRateLimited": "这一小时的报告已经很多了，请稍后再试。",
+    "offline": "你已离线，请连网后再发送。",
+    "replaceTitle": "替换你写的内容？",
+    "replaceBody": "这个开头会替换框里的文字。",
+    "replace": "替换",
+    "keep": "保留我的"
   },
   "install": {
     "title": "把 %APP_SHORT% 添加到主屏幕",

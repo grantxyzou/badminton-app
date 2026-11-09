@@ -44,6 +44,14 @@ describe('POST /api/report — in-app problem reports', () => {
     expect(saved.name).toBeUndefined();
   });
 
+  it('keeps the chip it started from, and only a chip it knows', async () => {
+    expect((await POST(makeRequest('POST', URL, { message: 'My e-transfer is not showing', category: 'payment' }))).status).toBe(201);
+    expect((await POST(makeRequest('POST', URL, { message: 'Made up', category: 'drop-table' }))).status).toBe(201);
+    const [known, unknown] = getStore()['releases'] as Record<string, unknown>[];
+    expect(known.category).toBe('payment');
+    expect(unknown).not.toHaveProperty('category');
+  });
+
   it('succeeds even when email is not configured — store is the source of truth', async () => {
     // No GMAIL_* env in the test environment, so the notifier no-ops. The
     // request must still persist the report and report success — never a
