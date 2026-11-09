@@ -8,7 +8,7 @@ import MemberAvatar from '@/components/primitives/MemberAvatar';
 import { useGear } from '@/components/stats/useGear';
 import { useOnline } from '@/lib/useOnline';
 import { setMemberAvatar } from '@/lib/useMemberAvatars';
-import { DEFAULT_RACKET_ID, isRacketAvatarId, type MemberAvatar as Avatar } from '@/lib/memberAvatar';
+import { BIRDIE_COLOURS, DEFAULT_RACKET_ID, avatarKey, isRacketAvatarId, sameAvatar, type MemberAvatar as Avatar } from '@/lib/memberAvatar';
 import { isRefused } from '@/lib/apiFetch';
 import { rawList } from '@/lib/rawList';
 
@@ -34,17 +34,20 @@ export function avatarChoices(
   myRacketId: string | null,
   labels: { initial: string; myRacket: string; current: string },
 ): Choice[] {
-  const out: Choice[] = [{ key: 'initial', label: labels.initial, avatar: null }];
-  if (myRacketId) out.push({ key: `racket:${myRacketId}`, label: labels.myRacket, avatar: { kind: 'racket', racketId: myRacketId } });
+  const out: Choice[] = [{ key: avatarKey(null), label: labels.initial, avatar: null }];
+  if (myRacketId) {
+    const mine: Avatar = { kind: 'racket', racketId: myRacketId };
+    out.push({ key: avatarKey(mine), label: labels.myRacket, avatar: mine });
+  }
   if (current?.kind === 'racket' && current.racketId !== myRacketId) {
-    out.push({ key: `racket:${current.racketId}`, label: labels.current, avatar: current });
+    out.push({ key: avatarKey(current), label: labels.current, avatar: current });
   }
   return out;
 }
 
-function sameAvatar(a: Avatar | null, b: Avatar | null): boolean {
-  if (a === null || b === null) return a === b;
-  return a.kind === b.kind && a.racketId === b.racketId;
+/** The six logo-shuttle birdies, in the picker's order. */
+export function birdieChoices(label: (colour: string) => string): Choice[] {
+  return BIRDIE_COLOURS.map((colour) => ({ key: `birdie:${colour}`, label: label(colour), avatar: { kind: 'birdie', colour } }));
 }
 
 /** "Nov 2026" in the app's locale and Vancouver time, like every date in the app. */
@@ -101,11 +104,18 @@ export default function EditProfilePage({
   const myRacketId = gear.active
     ? isRacketAvatarId(gear.active.catalogId) ? gear.active.catalogId : DEFAULT_RACKET_ID
     : null;
-  const choices = avatarChoices(avatar, myRacketId, {
-    initial: t('initial'),
-    myRacket: t('myRacket'),
-    current: t('currentPicture'),
-  });
+  const groups = [
+    {
+      key: 'yours',
+      label: t('yours'),
+      choices: avatarChoices(avatar, myRacketId, {
+        initial: t('initial'),
+        myRacket: t('myRacket'),
+        current: t('currentPicture'),
+      }),
+    },
+    { key: 'birdies', label: t('birdies'), choices: birdieChoices((c) => t(`birdie.${c}`)) },
+  ];
 
   async function choose(next: Avatar | null) {
     if (saving || !online || sameAvatar(next, shown)) return;
@@ -147,32 +157,33 @@ export default function EditProfilePage({
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
         {/* Keyed so a new picture fades in rather than swapping in a frame. */}
-        <span key={shown?.racketId ?? 'initial'} className="motion-fade" style={{ display: 'inline-flex' }}>
+        <span key={avatarKey(shown)} className="motion-fade" style={{ display: 'inline-flex' }}>
           <MemberAvatar name={name} avatar={shown} size={112} tone="neutral" />
         </span>
-        <div
-          role="radiogroup"
-          aria-label={t('pictureGroup')}
-          style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'var(--space-4)' }}
-        >
-          {choices.map((c) => {
-            const checked = sameAvatar(c.avatar, shown);
-            return (
-              <button
-                key={c.key}
-                type="button"
-                role="radio"
-                aria-checked={checked}
-                aria-label={c.label}
-                className="avatar-choice"
-                disabled={!online || saving}
-                onClick={() => void choose(c.avatar)}
-              >
-                <MemberAvatar name={name} avatar={c.avatar} size={52} tone="neutral" />
-              </button>
-            );
-          })}
-        </div>
+        {groups.map((g) => (
+          <div key={g.key} className="avatar-group">
+            <p className="avatar-group__label">{g.label}</p>
+            <div role="radiogroup" aria-label={g.label} className="avatar-group__grid">
+              {g.choices.map((c) => {
+                const checked = sameAvatar(c.avatar, shown);
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={checked}
+                    aria-label={c.label}
+                    className="avatar-choice"
+                    disabled={!online || saving}
+                    onClick={() => void choose(c.avatar)}
+                  >
+                    <MemberAvatar name={name} avatar={c.avatar} size={52} tone="neutral" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
         {gear.loaded && !gear.active && (
           <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0', textAlign: 'center' }}>
             {t('noRacket')}

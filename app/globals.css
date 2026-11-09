@@ -2648,6 +2648,11 @@ html:root .ink-button {
 .avatar-choice:active { transform: scale(0.94); }
 .avatar-choice[aria-checked='true'] { box-shadow: 0 0 0 3px var(--accent); }
 .avatar-choice:disabled { cursor: default; }
+/* Edit profile's picture groups ("Yours", "Birdies"): a small label over a
+   wrapping row of 52px circles. */
+.avatar-group { width: 100%; display: flex; flex-direction: column; gap: var(--space-3); }
+.avatar-group__label { margin: 0; padding-left: var(--space-1); font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); }
+.avatar-group__grid { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 /* Edit profile's field rows: a small label over its value, the Profile row's
    padding, so the two pages read as one family. */
 .edit-profile-row {
@@ -2730,6 +2735,17 @@ button.edit-profile-row { cursor: pointer; }
   pointer-events: none;
 }
 .member-avatar__racket[data-loaded='false'] { opacity: 0; }
+/* A birdie (lib/memberAvatar.ts): a square picture that carries its own pale
+   ground, so it fills the circle edge to edge; the circle's radius cuts it. */
+.member-avatar__birdie {
+  transition: opacity var(--duration-fast) var(--ease-glass);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.member-avatar__birdie[data-loaded='false'] { opacity: 0; }
 
 /* ── Bottom nav · Labeled Rail (spec May 2026) ──
    Full-width, edge-attached, theme-independent dark surface. The LIVE

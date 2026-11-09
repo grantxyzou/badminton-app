@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, waitFor } from '@testing-library/react';
 import MemberAvatar from '../../components/primitives/MemberAvatar';
 import { racketAvatarSrc, racketSrc } from '../../lib/racketLook';
-import { racketAvatarIds } from '../../lib/memberAvatar';
+import { birdieSrc, racketAvatarIds } from '../../lib/memberAvatar';
 import { resetMemberAvatars, setMemberAvatar } from '../../lib/useMemberAvatars';
 
 const RACKET = racketAvatarIds()[0];
@@ -26,6 +26,18 @@ describe('MemberAvatar', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
     const { container } = render(<MemberAvatar name="Lin" size={112} avatar={{ kind: 'racket', racketId: RACKET }} />);
     expect(container.querySelector('img')?.getAttribute('src')).toBe(racketSrc(RACKET));
+  });
+
+  it('draws a birdie as its own picture, filling the circle', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const { container } = render(<MemberAvatar name="Lin" avatar={{ kind: 'birdie', colour: 'orange' }} />);
+    const img = container.querySelector('img');
+    expect(img?.getAttribute('src')).toBe(birdieSrc('orange'));
+    expect(img?.className).toBe('member-avatar__birdie');
+    const circle = container.querySelector('.member-avatar') as HTMLElement;
+    expect(circle.dataset.avatar).toBe('birdie');
+    // The picture carries its own ground; no per-name colour behind it.
+    expect(circle.style.background).toBe('');
   });
 
   it('draws the initial otherwise', () => {
