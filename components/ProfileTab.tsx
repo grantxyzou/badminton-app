@@ -6,8 +6,6 @@ import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
-import RedeemGiftSheet from './RedeemGiftSheet';
-import GiveGiftSheet from './GiveGiftSheet';
 import AskAccessSheet from './AskAccessSheet';
 import MigrateSheet from './MigrateSheet';
 import MigrateCodeSheet from './MigrateCodeSheet';
@@ -43,6 +41,9 @@ import StatusBanner from './primitives/StatusBanner';
 import MemberAvatar from './primitives/MemberAvatar';
 import EditProfilePage from './profile/EditProfilePage';
 import WaysToSignInPage from './profile/WaysToSignInPage';
+import GiftCardsPage, { fmtCents } from './profile/GiftCardsPage';
+import GiveGiftPage from './profile/GiveGiftPage';
+import { useCredit } from './profile/useCredit';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
 import { useBuildSha } from '@/lib/buildSha';
@@ -148,8 +149,6 @@ export default function ProfileTab({
   // the card then falls back to the shell's admin verdict.
   const [rank, setRank] = useState<ProfileRank | null>(null);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
-  const [redeemOpen, setRedeemOpen] = useState(false);
-  const [giveOpen, setGiveOpen] = useState(false);
   // Whether this member may give out gift cards (`Member.canGift`), asked of
   // the server once an identity exists; unknown and no both hide the row.
   const [canGift, setCanGift] = useState(false);
@@ -172,7 +171,7 @@ export default function ProfileTab({
   // sub-screens.
   // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
   // its Back returns there rather than to the list.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin' | 'gift-cards' | 'give-gift'>('root');
   // A sub-screen answers the Android back button (lib/pageStack.ts).
   usePageBack(view !== 'root', () => setView((v) => (v === 'name' ? 'profile' : 'root')));
   // Read once here so the row's summary and the sheet's body agree.
@@ -183,6 +182,10 @@ export default function ProfileTab({
   // and a probe would reflow it. Same shape as `useStatsPrivacy` above, which
   // takes null when there is nobody to read for.
   const methodsState = useSignInMethods(!!identity);
+  // Store credit (docs/plans/payments.md): read once here so the MONEY row's
+  // figure and the Gift cards & credit page agree. Flag off, nothing is read.
+  const creditOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
+  const credit = useCredit(!!identity && creditOn);
   const privacyState = useStatsPrivacy(identity?.name ?? null);
   // Called unconditionally, and gated by its own argument, because the two
   // early returns below (anonymous, and the Stats & privacy sub-screen) sit
@@ -733,6 +736,14 @@ export default function ProfileTab({
     );
   }
 
+  if (view === 'gift-cards') {
+    return <GiftCardsPage state={credit} onBack={() => setView('root')} />;
+  }
+
+  if (view === 'give-gift') {
+    return <GiveGiftPage clubName={group?.name ?? null} onBack={() => setView('root')} />;
+  }
+
   if (view === 'name') {
     return <NicknamePage currentName={identity.name} clubName={group?.name ?? null} onBack={() => setView('profile')} />;
   }
@@ -892,18 +903,30 @@ export default function ProfileTab({
             accent: methodsState.methods?.nudge === true,
             onClick: () => setView('signin'),
           },
-          // Store credit (docs/plans/payments.md): a gift card becomes credit
-          // on the Home balance. Flag-gated; the route 404s with it off.
-          ...(isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')
-            ? [{ icon: 'payments', label: tSettings('redeemGift'), onClick: () => setRedeemOpen(true) }]
-            : []),
-          // Only for a member an admin marked `canGift`; the sheet is the
-          // gifter's half of the admin's gift-card console.
-          ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setGiveOpen(true) }] : []),
         ]}
       />
-      <RedeemGiftSheet open={redeemOpen} onClose={() => setRedeemOpen(false)} />
-      <GiveGiftSheet open={giveOpen} onClose={() => setGiveOpen(false)} />
+
+      {/* MONEY (spec §1.5, build step 4): pages, not the two sheets they
+          replace. The credit figure is absent until it is KNOWN — never a $0
+          off a failed read. Account balance joins this group in step 5. */}
+      {creditOn && (
+        <>
+          <ProfileEyebrow>{tSettings('moneyGroup')}</ProfileEyebrow>
+          <SettingsList
+            rows={[
+              {
+                icon: 'payments',
+                label: tSettings('giftCards'),
+                meta: credit.loadError || credit.balanceCents === null ? undefined : fmtCents(credit.balanceCents),
+                onClick: () => setView('gift-cards'),
+              },
+              // Only for a member an organiser marked `canGift`; the page is the
+              // gifter's half of the organiser's gift-card console.
+              ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift') }] : []),
+            ]}
+          />
+        </>
+      )}
 
       {/* Four groups, each one question: who am I here (ACCOUNT, above), what
           do others see (PRIVACY), how does this device behave (APP), and where

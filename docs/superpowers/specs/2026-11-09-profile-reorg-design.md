@@ -162,7 +162,7 @@ Birdie rim colours (the mock's values, to be tokenised as a small data table bes
 2. **REDEEM A GIFT CARD** card: a code field (mono, auto-uppercase, accepts with or without dashes, `autocomplete="one-time-code"` off, `inputmode="text"`) and a full-width `.btn-primary` "Redeem", disabled until the field is non-empty.
    - Success: the field clears, the credit figure updates, and a top toast "Added {amount} to your credit".
    - `gift_not_found` (404) → `.field-error` "That code didn't work. Check it and try again." (one message for unknown, used and malformed: the server answers them alike on purpose).
-   - 429 → "Too many tries. Wait a few minutes."
+   - 429 → "Let’s give it a rest for a bit, then try again." (the voice charter, `__tests__/voice-canary.test.ts`, bans "too many tries")
 3. **HISTORY** card: one row per credit event, newest first: label ("Gift card · From {club}" / "Paid {session}"), date, signed amount (+ in `--accent`, − in `--text-secondary`). Source: `creditLedgerFor` through `GET /api/credit` (never the whole partition, per CLAUDE.md "A LISTED credit history is `creditLedgerFor`").
    - Empty: `EmptyState` "No credit yet. A gift card adds it here."
 
@@ -237,7 +237,7 @@ Birdie rim colours (the mock's values, to be tokenised as a small data table bes
    - "Make another"
    - Leaving the page discards the code: confirm first, with "You haven't copied this code. Leave anyway?".
 3. CARDS YOU GAVE card: a row per card from `GET /api/giftcards`:
-   - "Redeemed by {name}" with "Given {date} · {left} left on it", or "Not redeemed yet" with "Given {date}"
+   - "Redeemed {date}" or "Not redeemed yet", with "Given {date} · …{last four} · {note}". **Built without the name** (2026-11-09): the route never tells a gifter who redeemed a card, by design (`docs/plans/gift-card-ledger.md`, non-goals), and a card has no partial balance to show
    - the amount on the right
    - Empty: `EmptyState` "No cards yet."
 - Errors: 403 → "Only organisers can make gift cards." 429 → rate-limit sentence.

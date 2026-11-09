@@ -90,5 +90,5 @@ the roster sheet and leave the field as harmless data.
 | `GiftCardDoc.redeemedBy`, `giftCardRecords`, `giftHashOf` | `lib/storeCredit.ts` |
 | Admin list with records | `GET /api/admin/giftcards`; `components/admin/CommandCenter/GiftCardsCard.tsx` (tap a card) |
 | The switch | `Member.canGift` (`lib/types.ts`), `PATCH /api/members`, `RosterPage` checkbox |
-| The gifter's surface | `GET`/`POST /api/giftcards`; `components/GiveGiftSheet.tsx`; Profile → "Give a gift card" (`profile.gift.*`, `settings.giveGift`) |
+| The gifter's surface | `GET`/`POST /api/giftcards`; `components/profile/GiveGiftPage.tsx` (a page since 2026-11-09, replacing `GiveGiftSheet`); Profile → MONEY → "Give a gift card" (`profile.giveGift.*`, `settings.giveGift`) |
 | Tests | `__tests__/store-credit.test.ts` (record, legacy card, gifter) |

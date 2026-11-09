@@ -119,7 +119,7 @@ export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refres
   }
 
   const message = minted
-    ? `Here's a ${money(minted.amountCents)} BPM gift card: ${minted.code}\nRedeem it in the app: Profile → Redeem a gift card.`
+    ? `Here's a ${money(minted.amountCents)} BPM gift card: ${minted.code}\nRedeem it in the app: Profile → Gift cards & credit.`
     : '';
 
   async function share() {
