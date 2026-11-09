@@ -106,7 +106,10 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <form
+      onSubmit={(e) => { e.preventDefault(); void submit(); }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
+    >
       <input
         type="text"
         aria-label={t('nameLabel')}
@@ -124,9 +127,8 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
         ariaInvalid={error === 'invalid'}
       />
       <button
-        type="button"
+        type="submit"
         disabled={!canSubmit}
-        onClick={submit}
         className="cc-btn cc-btn-primary cc-btn-lg"
         style={{ marginTop: 'var(--space-1)' }}
       >
@@ -165,6 +167,6 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
           {t('errorNetwork')}
         </p>
       )}
-    </div>
+    </form>
   );
 }
