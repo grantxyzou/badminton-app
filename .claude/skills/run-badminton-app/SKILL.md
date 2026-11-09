@@ -39,8 +39,12 @@ bash .claude/skills/run-badminton-app/smoke.sh
 ```
 
 Boots the dev server on `:3100` in mock mode, then asserts, in order:
-`mock store confirmed` → `POST /api/players -> 201` → `roster contains Viktor`
-→ writes `/tmp/bpm-shots/home.png`. Prints `SMOKE OK` and stops the server.
+`mock store confirmed` → Lin (a plain member, PIN 2468) signs in → `POST /api/players -> 201`
+→ `roster contains Lin` → Grant (the admin, PIN 1130) signs in → `/api/admin/settings`
+answers 200 for Grant and 401 for Lin → writes `/tmp/bpm-shots/welcome.png` (the
+signed-out Welcome page; members only shows nothing else to a signed-out browser).
+Prints `SMOKE OK` and stops the server. It refuses to start if the port is already
+taken, because the checks would then run against that other server.
 
 - `PORT=3200 bash …/smoke.sh` — use another port (3000 is often taken).
 - `KEEP=1 bash …/smoke.sh` — leave the server running for further poking; it
@@ -97,14 +101,19 @@ PORT=3100 npm run dev:next        # all vnext features against the REAL DB in .e
 
 ```bash
 B=http://localhost:3100/bpm
-curl -s "$B/api/session"                              # active session JSON
-curl -s -X POST "$B/api/players" \
-  -H 'Content-Type: application/json' -H 'X-Client-IP: me' \
-  -d '{"name":"Viktor"}'                              # sign up (201)
-curl -s "$B/api/players"                              # roster — Viktor present
+J=$(mktemp)                                           # cookie jar: every club read needs a member
+curl -s -c "$J" -X POST "$B/api/players/recover" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Lin","pin":"2468"}'                     # sign in as Lin
+curl -s -b "$J" "$B/api/session"                      # active session JSON
+curl -s -b "$J" -X POST "$B/api/players" \
+  -H 'Content-Type: application/json' -d '{}'        # sign up (201); the name comes from the account
+curl -s -b "$J" "$B/api/players"                      # roster — Lin present
 ```
 
-`X-Client-IP` gives each caller a distinct rate-limit bucket. Most routes live
+Signed out, every club read answers 401 (rule 13). The dev server ignores
+`X-Client-IP` (only the test suite trusts it), and PIN sign-in allows 5 tries an
+hour per name and address, so a fresh server is the way to reset it. Most routes live
 under `/bpm/api/*`; `?tab=home|stringing|skills|profile|admin` deep-links a tab and `?dev` shows the DevPanel.
 
 ## Screenshot a screen
