@@ -35,8 +35,15 @@ mkdir -p "$dest"
 for f in "$@"; do cp "$f" "$dest/"; done
 
 git -C "$work/shots" add -A
-git -C "$work/shots" commit --quiet -m "ui-truth: $day $slug"
-git -C "$work/shots" push --quiet origin "$BRANCH"
+# Re-publishing the same image for the same day and slug changes nothing, and
+# `git commit` exits 1 on an empty commit, which `set -e` turned into a stop
+# before the URLs below were printed. The images are already up; print them.
+if git -C "$work/shots" diff --cached --quiet; then
+  echo "unchanged — already published" >&2
+else
+  git -C "$work/shots" commit --quiet -m "ui-truth: $day $slug"
+  git -C "$work/shots" push --quiet origin "$BRANCH"
+fi
 
 for f in "$@"; do
   name="$(basename "$f")"

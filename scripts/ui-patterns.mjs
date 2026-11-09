@@ -13,10 +13,13 @@
 //   3. identical className strings (>= 3 classes) repeated in >= MIN_FILES files
 //
 //   node scripts/ui-patterns.mjs            # markdown; marks NEW since last run
-//   node scripts/ui-patterns.mjs --json
+//   node scripts/ui-patterns.mjs --json     # never moves the snapshot
 //   node scripts/ui-patterns.mjs --no-save
 //
-// Read-only. The snapshot lives in .claude/ui-patterns.local.json (gitignored).
+// Reads the source and never edits it. The one file it writes is its own
+// snapshot, .claude/ui-patterns.local.json (gitignored), and only on a
+// markdown run: that report is the one whose 🆕 marks the snapshot feeds, so
+// looking at the JSON must not quietly use up a week's "new".
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -50,14 +53,97 @@ function walk(dir, pred, out = []) {
 
 /** Class names a stylesheet defines (selectors only, not values). */
 export function cssClasses(css) {
-  const noComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const clean = css
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    // A string or a url() is a value, and can hold a `.png` or a `;`.
+    .replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, '""')
+    .replace(/url\([^)]*\)/g, 'url()');
   const names = new Set();
-  // Only text before a `{` is a selector.
-  for (const m of noComments.matchAll(/([^{}]+)\{/g)) {
+  // A selector is the text since the last `{`, `}` or `;` — a declaration
+  // (nesting) or an `@import …;` can sit in front of it.
+  for (const m of clean.matchAll(/([^{};]+)\{/g)) {
+    // An at-rule's prelude is not a selector; the rules inside it still are.
     if (m[1].trim().startsWith('@')) continue;
     for (const c of m[1].matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)) names.add(c[1]);
   }
   return names;
+}
+
+const QUOTES = `'"\``;
+
+/**
+ * Index just past the comment that opens at `i`, or -1 if none does. A
+ * comment has to be skipped as well as a string: "don't" in a `//` line inside
+ * a style object reads as an unclosed string and swallows the rest of the file.
+ */
+function skipComment(src, i) {
+  if (src[i] !== '/') return -1;
+  if (src[i + 1] === '/') {
+    const nl = src.indexOf('\n', i);
+    return nl === -1 ? src.length : nl;
+  }
+  if (src[i + 1] === '*') {
+    const end = src.indexOf('*/', i + 2);
+    return end === -1 ? src.length : end + 2;
+  }
+  return -1;
+}
+
+/** Index just past the string or template literal that opens at `i`. */
+function skipString(src, i) {
+  const q = src[i];
+  for (let j = i + 1; j < src.length; j++) {
+    if (src[j] === '\\') j++;
+    else if (q === '`' && src[j] === '$' && src[j + 1] === '{') j = matchBrace(src, j + 1);
+    else if (src[j] === q) return j + 1;
+  }
+  return src.length;
+}
+
+/** Index of the `}` that closes the `{` at `i`, ignoring braces inside strings. */
+function matchBrace(src, i) {
+  let depth = 0;
+  for (let j = i; j < src.length; j++) {
+    const c = skipComment(src, j);
+    if (c !== -1) j = c - 1;
+    else if (QUOTES.includes(src[j])) j = skipString(src, j) - 1;
+    else if (src[j] === '{') depth++;
+    else if (src[j] === '}' && --depth === 0) return j;
+  }
+  return src.length;
+}
+
+/**
+ * The text of every string literal in a JS expression. A template literal
+ * gives its static text, and the literals inside each `${…}` (nested ones too).
+ */
+function literalTexts(expr, out = []) {
+  for (let i = 0; i < expr.length; i++) {
+    const c = skipComment(expr, i);
+    if (c !== -1) i = c - 1;
+    else if (expr[i] === "'" || expr[i] === '"') {
+      const end = skipString(expr, i);
+      out.push(expr.slice(i + 1, end - 1));
+      i = end - 1;
+    } else if (expr[i] === '`') {
+      let j = i + 1;
+      let text = '';
+      while (j < expr.length && expr[j] !== '`') {
+        if (expr[j] === '\\') {
+          text += expr[j + 1] ?? '';
+          j += 2;
+        } else if (expr[j] === '$' && expr[j + 1] === '{') {
+          const end = matchBrace(expr, j + 1);
+          literalTexts(expr.slice(j + 2, end), out);
+          text += ' ';
+          j = end + 1;
+        } else text += expr[j++];
+      }
+      out.push(text);
+      i = j;
+    }
+  }
+  return out;
 }
 
 /** Every `style={{ ... }}` object body in a source file, brace-balanced. */
@@ -65,17 +151,10 @@ export function styleObjects(src) {
   const out = [];
   let i = 0;
   while ((i = src.indexOf('style={{', i)) !== -1) {
-    let depth = 0;
-    let j = i + 'style={'.length;
-    for (; j < src.length; j++) {
-      if (src[j] === '{') depth++;
-      else if (src[j] === '}') {
-        depth--;
-        if (depth === 0) break;
-      }
-    }
-    out.push(src.slice(i + 'style={{'.length, j));
-    i = j;
+    const open = i + 'style={'.length;
+    const close = matchBrace(src, open);
+    out.push(src.slice(open + 1, close));
+    i = close;
   }
   return out;
 }
@@ -84,10 +163,26 @@ export function styleObjects(src) {
 export function normalizeStyle(body) {
   const parts = [];
   let depth = 0;
+  let quote = null;
   let cur = '';
-  for (const ch of body) {
-    if ('([{'.includes(ch)) depth++;
-    if (')]}'.includes(ch)) depth--;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    // Inside a string a comma or bracket is text: `fontFamily: 'a, b'`.
+    if (quote) {
+      cur += ch;
+      if (ch === '\\') cur += body[++i] ?? '';
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    // A comment is not part of the style (and its "don't" is not a quote).
+    const c = skipComment(body, i);
+    if (c !== -1) {
+      i = c - 1;
+      continue;
+    }
+    if (QUOTES.includes(ch)) quote = ch;
+    else if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) depth--;
     if (ch === ',' && depth === 0) {
       parts.push(cur);
       cur = '';
@@ -120,11 +215,20 @@ export function usedClasses(src) {
   const take = (text) => {
     for (const tok of text.split(/\s+/)) if (/^[a-zA-Z_][\w-]*$/.test(tok)) used.add(tok);
   };
-  for (const m of src.matchAll(/className=(?:"([^"]+)"|'([^']+)'|\{`([^`]+)`\}|\{([^}]+)\})/g)) {
-    if (m[1] ?? m[2]) take(m[1] ?? m[2]);
-    else if (m[3]) take(m[3].replace(/\$\{[^}]*\}/g, ' '));
-    // An expression: only the string literals inside it are class names.
-    else for (const q of m[4].matchAll(/'([^']*)'|"([^"]*)"|`([^`$]*)`/g)) take(q[1] ?? q[2] ?? q[3]);
+  let i = 0;
+  while ((i = src.indexOf('className=', i)) !== -1) {
+    const at = i + 'className='.length;
+    if (src[at] === '"' || src[at] === "'") {
+      const end = skipString(src, at);
+      take(src.slice(at + 1, end - 1));
+      i = end;
+    } else if (src[at] === '{') {
+      // An expression: only the string literals inside it are class names,
+      // including the ones a `${on ? 'a' : 'b'}` inside a template picks.
+      const end = matchBrace(src, at);
+      for (const text of literalTexts(src.slice(at + 1, end))) take(text);
+      i = end;
+    } else i = at;
   }
   return used;
 }
@@ -265,7 +369,7 @@ function main() {
       ].join('\n'),
     );
   }
-  if (!args.has('--no-save')) writeFileSync(SNAPSHOT, JSON.stringify({ at, ...r }, null, 2) + '\n');
+  if (!args.has('--no-save') && !args.has('--json')) writeFileSync(SNAPSHOT, JSON.stringify({ at, ...r }, null, 2) + '\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

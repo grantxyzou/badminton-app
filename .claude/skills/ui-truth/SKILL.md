@@ -29,25 +29,48 @@ A run that finds nothing new files nothing.
 ### 1. Act on approvals first
 
 ```bash
+git fetch origin
 gh issue list --label ui-approved --state open --json number,title,body
 ```
 
-For each one:
-1. Branch `ui-truth/<issue>-<slug>`.
+An approved issue stays open until its PR merges, so the next run sees it
+again. **Skip one that is already being made**, or the next run builds a
+second identical PR:
+
+```bash
+git ls-remote --heads origin "ui-truth/<issue>-*"      # any output: skip it
+gh pr list --state open --search '"Closes #<issue>" in:body' --json number,url   # any result: skip it
+```
+
+For each one not already being made:
+1. Make a worktree from a fresh `origin/main`, never from the branch you are
+   on or the last approval's branch:
+   `git worktree add .claude/worktrees/ui-truth-<issue> origin/main -b ui-truth/<issue>-<slug>`
+   (copy `.env.local` in, and give it a real `node_modules`).
 2. Make **exactly** the proposed change, nothing extra.
 3. Run `npm test && npm run lint && npm run typecheck`.
 4. Screenshot the screen (`verify-ui`).
 5. Open a draft PR with `Closes #<issue>`.
+6. Comment on the issue with the PR link. That comment, the branch and the
+   PR are what tell the next run it's handled.
 
 If the change turns out bigger than proposed, comment on the issue instead.
+
+**Before Step 2, go back to an up-to-date `main` with a clean tree**
+(`git status --porcelain` prints nothing). Step 2 photographs what ships,
+not an approval that hasn't merged.
 
 Close each open `ui-declined` issue with "Won't propose again."
 
 ### 2. Look at what changed
 
 ```bash
-git log --since="7 days ago" --name-only --pretty=format: -- components app/globals.css | sort -u
+git log --since="7 days ago" --name-only --pretty=format: -- components app messages lib | sort -u
 ```
+
+A `messages/*.json` change is new words on a screen. A `lib/` file counts
+only when a screen renders what it returns (a sentence like `courtLine`, a
+class name); skip server-only ones.
 
 Use `verify-ui` (mock store, `playwright-isolated`, 430×932, navigate by
 clicking) on every screen those files render, plus Home. Check both themes.
@@ -73,10 +96,13 @@ wrong: a "different-looking" label can be identical underneath.
 **Side by side — every proposal about something you can SEE carries one.**
 Take the "wrong" shot as it ships. Then make "right" from the first of these
 that exists:
-1. **Preview the fix.** Edit the working tree, let hot reload apply it, and
+1. **Preview the fix.** Only on a clean tree: `git status --porcelain` must
+   print nothing first, because the undo below throws away EVERY uncommitted
+   edit in the file, not only the preview. Edit, let hot reload apply it, and
    take the shot (re-open the sheet if the reload closed it). Then
    `git checkout -- <file>` and confirm `git status` shows the file clean
-   **before anything else**. That edit is a camera, never a commit.
+   **before anything else**. That edit is a camera, never a commit. Never
+   `git stash` around it: the stash is shared with every other session.
 2. Use the same component done right on another screen.
 3. Use the specimen at `/bpm/design/*`.
 
@@ -168,4 +194,7 @@ If the browser was locked or a screen wasn't reached, say so.
 - Don't improve the design. A rule you think is wrong becomes a `UI rule: …`
   proposal.
 - Never touch or import `docs/design-system/`.
-- Never screenshot production. Use the mock store only.
+- Never screenshot production. Use the mock store only. This rule is the ONLY
+  guard: `ui-truth-publish.sh` pushes to a public repo, and a pushed image
+  stays in its history for good. Check every image for real names before
+  publishing.

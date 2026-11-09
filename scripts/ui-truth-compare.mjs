@@ -17,6 +17,7 @@
 // page of the same layout next to --out; open it and screenshot it instead.
 
 import { existsSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export function parseArgs(argv) {
@@ -38,10 +39,12 @@ export function parseArgs(argv) {
 export function parseCrop(value) {
   if (!value) return null;
   const n = String(value).split(',').map((v) => Number(v.trim()));
-  if (n.length !== 4 || n.some((v) => !Number.isFinite(v) || v < 0) || n[2] === 0 || n[3] === 0) {
+  if (n.length !== 4 || n.some((v) => !Number.isFinite(v) || v < 0)) {
     throw new Error(`--crop wants x,y,w,h with w and h > 0, got "${value}"`);
   }
+  // Check after rounding: a width of 0.3 rounds to 0, which sharp refuses.
   const [left, top, width, height] = n.map(Math.round);
+  if (width === 0 || height === 0) throw new Error(`--crop wants x,y,w,h with w and h > 0, got "${value}"`);
   return { left, top, width, height };
 }
 
@@ -81,15 +84,19 @@ async function main() {
   try {
     sharp = (await import('sharp')).default;
   } catch {
+    // The page sits next to --out, not in the working directory, so the
+    // images are linked by absolute file URL or they would not load.
+    const src = (p) => escapeXml(pathToFileURL(resolve(p)).href);
     const html = `<!doctype html><meta charset="utf-8"><body style="background:${PALETTE.bg};color:${PALETTE.text};font:16px system-ui;padding:24px">
 <h2>${escapeXml(title)}</h2><p style="color:${PALETTE.muted}">${escapeXml(rule)}</p>
 <div style="display:flex;gap:24px">
-<figure><figcaption style="color:${PALETTE.wrong};font-weight:700">✗ ${escapeXml(wrongLabel)}</figcaption><img src="${escapeXml(a.wrong)}" style="max-width:430px;outline:3px solid ${PALETTE.wrong}"></figure>
-<figure><figcaption style="color:${PALETTE.right};font-weight:700">✓ ${escapeXml(rightLabel)}</figcaption><img src="${escapeXml(a.right)}" style="max-width:430px;outline:3px solid ${PALETTE.right}"></figure>
+<figure><figcaption style="color:${PALETTE.wrong};font-weight:700">✗ ${escapeXml(wrongLabel)}</figcaption><img src="${src(a.wrong)}" style="max-width:430px;outline:3px solid ${PALETTE.wrong}"></figure>
+<figure><figcaption style="color:${PALETTE.right};font-weight:700">✓ ${escapeXml(rightLabel)}</figcaption><img src="${src(a.right)}" style="max-width:430px;outline:3px solid ${PALETTE.right}"></figure>
 </div></body>`;
     const htmlOut = a.out.replace(/\.png$/, '.html');
     writeFileSync(htmlOut, html);
     console.log(`sharp unavailable — wrote ${htmlOut}; screenshot it to get the PNG.`);
+    if (a.crop) console.log('--crop is NOT applied on this page: crop the screenshot of it by hand.');
     return;
   }
 
