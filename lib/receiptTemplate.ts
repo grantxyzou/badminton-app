@@ -6,6 +6,8 @@
  * of truth; the image renders the same content with design-system fonts.
  */
 
+import { fmtMoney } from './fmt';
+
 export interface ReceiptInput {
   /** Session date — ISO string. */
   datetime: string;
@@ -99,12 +101,12 @@ export function renderGroupText(input: ReceiptInput): string {
   const courtLabel = `${courts} court${courts === 1 ? '' : 's'}`;
   const playerLabel = `${playerNames.length} of us`;
   const lines = [
-    `Badminton on ${fmtDate(datetime)} was $${costPerPerson} each.`,
+    `Badminton on ${fmtDate(datetime)} was ${fmtMoney(costPerPerson)} each.`,
     '',
     `E-transfer me at ${recipient.email}`,
     `Memo: ${memo}`,
     '',
-    `(${courtLabel} · ${playerLabel} · $${totalCost} total)`,
+    `(${courtLabel} · ${playerLabel} · ${fmtMoney(totalCost)} total)`,
   ];
   if (note?.trim()) {
     lines.push('', note.trim());
@@ -117,7 +119,7 @@ export function renderIndividualText(input: IndividualReceiptInput): string {
   const { datetime, costPerPerson, recipient, memoTemplate, playerName, note } = input;
   const memo = fmtMemo(memoTemplate ?? DEFAULT_MEMO, datetime, playerName, input.clubName);
   const lines = [
-    `Hey ${playerName} — badminton on ${fmtDate(datetime)} was $${costPerPerson}.`,
+    `Hey ${playerName} — badminton on ${fmtDate(datetime)} was ${fmtMoney(costPerPerson)}.`,
     '',
     `E-transfer me at ${recipient.email}`,
     `Memo: ${memo}`,
@@ -161,7 +163,7 @@ export function renderGroupCanvas(input: ReceiptInput, canvas: HTMLCanvasElement
   // Amount (display font, prominent)
   ctx.fillStyle = '#86efac';
   ctx.font = '700 56px "Space Grotesk", system-ui, sans-serif';
-  ctx.fillText(`$${input.costPerPerson}`, 24, 130);
+  ctx.fillText(fmtMoney(input.costPerPerson), 24, 130);
   ctx.fillStyle = '#9ca3af';
   ctx.font = '400 14px "IBM Plex Sans", system-ui, sans-serif';
   ctx.fillText('each', 24, 152);
@@ -170,7 +172,7 @@ export function renderGroupCanvas(input: ReceiptInput, canvas: HTMLCanvasElement
   ctx.fillStyle = '#d1d5db';
   ctx.font = '400 13px "IBM Plex Sans", system-ui, sans-serif';
   ctx.fillText(
-    `${input.courts} court${input.courts === 1 ? '' : 's'} · ${input.playerNames.length} of us · $${input.totalCost} total`,
+    `${input.courts} court${input.courts === 1 ? '' : 's'} · ${input.playerNames.length} of us · ${fmtMoney(input.totalCost)} total`,
     24, 184,
   );
 

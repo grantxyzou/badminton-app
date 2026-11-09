@@ -24,6 +24,14 @@ describe('renderGroupText', () => {
     expect(text).toContain('3 courts · 3 of us · $108 total');
   });
 
+  it('writes cents as two places, never "$18.5"', () => {
+    const text = renderGroupText({ ...baseInput, costPerPerson: 18.5, totalCost: 110.5 });
+    expect(text).toMatch(/was \$18\.50 each\./);
+    expect(text).toContain('· $110.50 total');
+    const one = renderIndividualText({ ...baseInput, costPerPerson: 18.5, playerName: 'Mei' });
+    expect(one).toMatch(/was \$18\.50\./);
+  });
+
   it('handles single court pluralization in the parenthetical', () => {
     const text = renderGroupText({ ...baseInput, courts: 1, playerNames: ['Daisy'] });
     expect(text).toContain('1 court ·');

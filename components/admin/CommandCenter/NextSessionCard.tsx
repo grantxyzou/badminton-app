@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { fmtSessionLabel as fmtDate, fmtDeadline, fmtTime } from '@/lib/fmt';
+import { fmtSessionLabel as fmtDate, fmtDeadline, fmtMoney, fmtTime } from '@/lib/fmt';
 import { shareSignup } from '@/lib/signupShare';
 import { shareTextOrCopy } from '@/lib/shareText';
 import { formatRosterText } from '@/lib/rosterText';
@@ -433,9 +433,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         {isSettled && (
           <span
             className="cc-pill cc-pill-purple flex-shrink-0"
-            title={`Bill sent — $${session.settled?.costPerPerson} each`}
+            title={`Bill sent — ${fmtMoney(session.settled?.costPerPerson ?? 0)} each`}
           >
-            Sent · ${session.settled?.costPerPerson}
+            Sent · {fmtMoney(session.settled?.costPerPerson ?? 0)}
           </span>
         )}
       </header>
@@ -561,7 +561,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         {isSettled && onShareCost && !moneyOff ? (
           <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
             <span className="material-icons fs-lg align-middle">share</span>
-            Share again — ${session.settled?.costPerPerson} each
+            Share again — {fmtMoney(session.settled?.costPerPerson ?? 0)} each
           </button>
         ) : null}
         <button
@@ -652,7 +652,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           <span>
             {costChanged ? (
               <>
-                This bill is locked at ${session.settled?.costPerPerson} each. The cost changed since you finalized (${liveTotal.toFixed(2)} now vs ${frozenTotal?.toFixed(2)} when sent) — editing the cost doesn&rsquo;t update a bill that&rsquo;s already out. Tap &ldquo;Edit bill&rdquo; to unfreeze, then Finalize again.
+                This bill is locked at {fmtMoney(session.settled?.costPerPerson ?? 0)} each. The cost changed since you finalized (${liveTotal.toFixed(2)} now vs ${frozenTotal?.toFixed(2)} when sent) — editing the cost doesn&rsquo;t update a bill that&rsquo;s already out. Tap &ldquo;Edit bill&rdquo; to unfreeze, then Finalize again.
               </>
             ) : (
               <>
