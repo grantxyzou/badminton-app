@@ -26,6 +26,18 @@ A run that finds nothing new files nothing.
 
 ## Run
 
+### 0. Stop if a fix of ours broke something
+
+```bash
+git fetch origin
+git log origin/main --since="5 weeks ago" --format='%h %s' | grep -iE '^[0-9a-f]+ revert.*ui-truth:'
+```
+
+Any output, or a production problem Grant has tied to a `ui-truth/*` PR:
+**do nothing else this run.** Report what was reverted and why, and wait for
+Grant. A fix of ours getting through means a guard failed; the next run is not
+the fix (`docs/plans/ui-truth.md`, Kill criterion).
+
 ### 1. Act on approvals first
 
 ```bash
@@ -50,7 +62,8 @@ For each one not already being made:
 2. Make **exactly** the proposed change, nothing extra.
 3. Run `npm test && npm run lint && npm run typecheck`.
 4. Screenshot the screen (`verify-ui`).
-5. Open a draft PR with `Closes #<issue>`.
+5. Open a draft PR titled `ui-truth: <what it fixes>` with `Closes #<issue>`.
+   The title prefix is what Step 0 finds if it is ever reverted.
 6. Comment on the issue with the PR link. That comment, the branch and the
    PR are what tell the next run it's handled.
 
