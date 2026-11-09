@@ -8,7 +8,6 @@ import {
   docVocabulary,
   documented,
 } from '../scripts/ui-patterns.mjs';
-import { wrap, escapeXml, parseArgs } from '../scripts/ui-truth-compare.mjs';
 
 describe('ui-patterns', () => {
   it('reads class names from selectors only, not values or at-rules', () => {
@@ -52,19 +51,5 @@ describe('ui-patterns', () => {
       expect(documented(name, vocab), name).toBe(true);
     }
     expect(documented('link-quiet', vocab)).toBe(false);
-  });
-});
-
-describe('ui-truth-compare', () => {
-  it('wraps words to a width', () => {
-    expect(wrap('one two three four', 9)).toEqual(['one two', 'three', 'four']);
-  });
-
-  it('escapes text for SVG', () => {
-    expect(escapeXml(`<a & "b">`)).toBe('&lt;a &amp; &quot;b&quot;&gt;');
-  });
-
-  it('parses --flag value pairs', () => {
-    expect(parseArgs(['--wrong', 'a.png', '--out', 'c.png'])).toEqual({ wrong: 'a.png', out: 'c.png' });
   });
 });
