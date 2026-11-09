@@ -33,6 +33,7 @@ import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import CourtLine from './home/CourtLine';
 import { courtLine } from '@/lib/clubRun';
+import { requestProfileView } from '@/lib/profileView';
 import { compareBySignup } from '@/lib/capacity';
 import { useClubRun } from '@/lib/useClubRun';
 import PlusOneRow from './home/PlusOneRow';
@@ -1072,7 +1073,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           and most weeks it says $0. */}
       {currentUser && (
         <RevealSlot placeholder={<CardSkeleton height={BALANCE_ROW_HEIGHT} />}>
-          <UnpaidSessionsCard name={currentUser} variant="home" onSignIn={() => onTabChange?.('profile')} />
+          <UnpaidSessionsCard
+            name={currentUser}
+            variant="home"
+            onSignIn={() => onTabChange?.('profile')}
+            onDetails={() => {
+              requestProfileView('balance');
+              onTabChange?.('profile');
+            }}
+          />
         </RevealSlot>
       )}
 

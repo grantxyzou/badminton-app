@@ -256,6 +256,15 @@
      light values are derived from the light families already defined for the
      same hue (--pill-paid, --pill-waitlist, --pill-admin, --banner-red,
      --list-amber). #75. */
+  /* WHAT YOU'VE PAID (Profile → Account balance): one hue, the app's green,
+     a step per series — Sessions, Stringing, Other — darkest at the base on
+     a light surface, brightest at the base on a dark one (Grant chose tonal
+     over multi-hue, 2026-11-09). Each mode's steps were run through the
+     dataviz validator against its own surface: adjacent pairs pass the CVD
+     and normal-vision floors; the breakdown under the chart is its table. */
+  --chart-green-1: #b5ecc8;
+  --chart-green-2: #3cc46c;
+  --chart-green-3: #1f7a45;
   --tone-green-bg: rgba(74, 222, 128, 0.13);
   --tone-green-border: rgba(74, 222, 128, 0.25);
   --tone-green-border-strong: rgba(74, 222, 128, 0.3);
@@ -443,6 +452,9 @@
   --dropdown-bg: rgba(255, 255, 255, 0.97);
   --overlay-bg: rgba(0, 0, 0, 0.3);
 
+  --chart-green-1: #14532d;
+  --chart-green-2: #2fb35f;
+  --chart-green-3: #9fdcb5;
   --tone-green-bg: rgba(22, 163, 74, 0.1);
   --tone-green-border: rgba(22, 163, 74, 0.25);
   --tone-green-border-strong: rgba(22, 163, 74, 0.3);
@@ -2751,6 +2763,86 @@ button.edit-profile-row { cursor: pointer; }
   color: var(--text-primary);
   white-space: nowrap;
 }
+/* Account balance (spec §4). The credit sits beside what you owe as a tinted
+   box: green because credit is yours, never the amber of an amount owed. */
+.balance-credit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-05);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--tone-green-bg);
+  flex-shrink: 0;
+}
+.balance-credit__label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.balance-credit__value { font-family: var(--font-mono); font-size: var(--fs-lg); font-weight: 600; color: var(--accent); }
+.balance-line { display: flex; align-items: center; gap: var(--space-4); }
+.balance-line__icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  color: var(--text-secondary);
+}
+.balance-line__icon .material-icons { font-size: var(--icon-md); }
+.balance-payto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-05);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+}
+.balance-payto__email { font-family: var(--font-mono); font-size: var(--fs-md); color: var(--text-primary); overflow-wrap: anywhere; }
+/* WHAT YOU'VE PAID. Inline SVG (no chart library, as Stats): fills come from
+   classes so `var()` resolves, and the column buttons lie over the drawing so
+   a tap anywhere in a month's column picks it. */
+.pay-chart__svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pay-chart__seg--sessions { fill: var(--chart-green-1); }
+.pay-chart__seg--stringing { fill: var(--chart-green-2); }
+.pay-chart__seg--other { fill: var(--chart-green-3); }
+.pay-chart__col--on { fill: var(--press-bg); }
+.pay-chart__baseline { stroke: var(--border-subtle); stroke-width: 1; }
+.pay-chart__month { fill: var(--text-muted); font-size: var(--fs-sm); font-family: var(--font-sans); }
+.pay-chart__month--on { fill: var(--text-primary); font-weight: 600; }
+.pay-chart__value { fill: var(--text-primary); font-size: var(--fs-sm); font-family: var(--font-mono); font-weight: 600; }
+.pay-chart__hits { position: absolute; inset: 0; display: flex; }
+.pay-chart__hit { flex: 1; min-height: 44px; background: none; border: none; padding: 0; cursor: pointer; border-radius: var(--radius-lg); }
+.pay-chart__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.pay-chart__legend li { display: inline-flex; align-items: center; gap: var(--space-2); }
+.pay-chart__swatch { width: 10px; height: 10px; border-radius: var(--radius-xs); flex-shrink: 0; }
+.pay-chart__swatch--sessions { background: var(--chart-green-1); }
+.pay-chart__swatch--stringing { background: var(--chart-green-2); }
+.pay-chart__swatch--other { background: var(--chart-green-3); }
+.pay-chart__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+}
+.pay-chart__line { display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-md); color: var(--text-primary); }
 /* "Your groups": a club's mark. SQUARE, not round — a round initial is a
    person everywhere else in the app, and a club is not one. */
 .group-monogram {

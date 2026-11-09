@@ -14,13 +14,19 @@ import enMessages from '@/messages/en.json';
 const originalEnv = { ...process.env };
 const originalFetch = global.fetch;
 
-function mockFetch(opts: { canGift: boolean; creditStatus?: number }) {
+function mockFetch(opts: { canGift: boolean; creditStatus?: number; owed?: number }) {
   global.fetch = (async (input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : (input as Request).url;
     if (url.includes('/api/credit')) {
       return opts.creditStatus && opts.creditStatus !== 200
         ? new Response('{}', { status: opts.creditStatus })
         : new Response(JSON.stringify({ balanceCents: 1250, entries: [] }), { status: 200 });
+    }
+    if (url.includes('/api/players/unpaid')) {
+      return new Response(JSON.stringify({ totalOwed: opts.owed ?? 0, sessions: [], stringing: [], payTo: null }), { status: 200 });
+    }
+    if (url.includes('/api/members/me/payments')) {
+      return new Response(JSON.stringify({ months: [] }), { status: 200 });
     }
     if (url.includes('/api/giftcards')) {
       return new Response(JSON.stringify({ canGift: opts.canGift, cards: [] }), { status: 200 });
@@ -32,7 +38,7 @@ function mockFetch(opts: { canGift: boolean; creditStatus?: number }) {
   }) as typeof fetch;
 }
 
-async function renderSignedIn() {
+async function renderSignedIn(waitForList = true) {
   localStorage.setItem('badminton_identity', JSON.stringify({ name: 'Michael', token: 'tok', sessionId: 's' }));
   await act(async () => {
     render(
@@ -41,7 +47,7 @@ async function renderSignedIn() {
       </NextIntlClientProvider>,
     );
   });
-  await screen.findByText('Michael');
+  if (waitForList) await screen.findByText('Michael');
 }
 
 describe('ProfileTab — MONEY', () => {
@@ -87,11 +93,36 @@ describe('ProfileTab — MONEY', () => {
     expect(row.textContent).not.toMatch(/\$/);
   });
 
-  it('the group is absent with store credit off', async () => {
+  it('Account balance carries what is owed, in its own words, and opens its page', async () => {
+    mockFetch({ canGift: false, owed: 22.5 });
+    await renderSignedIn();
+    const row = await screen.findByRole('button', { name: /Account balance.*\$22\.50 owed/ });
+    await act(async () => {
+      fireEvent.click(row);
+    });
+    expect(screen.getByRole('heading', { name: 'Account balance' })).toBeTruthy();
+  });
+
+  it('nothing owed: the row carries no figure', async () => {
+    mockFetch({ canGift: false, owed: 0 });
+    await renderSignedIn();
+    const row = screen.getByRole('button', { name: /Account balance/ });
+    expect(row.textContent).not.toMatch(/\$/);
+  });
+
+  it('with store credit off, Money holds Account balance alone', async () => {
     delete process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
     mockFetch({ canGift: true });
     await renderSignedIn();
-    expect(screen.queryByText('Money')).toBeNull();
+    expect(screen.getByText('Money')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Account balance/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Gift cards & credit/ })).toBeNull();
+  });
+
+  it('Home’s “See details” lands on Account balance', async () => {
+    mockFetch({ canGift: false });
+    sessionStorage.setItem('badminton_profile_view', 'balance');
+    await renderSignedIn(false);
+    expect(await screen.findByRole('heading', { name: 'Account balance' })).toBeTruthy();
   });
 });

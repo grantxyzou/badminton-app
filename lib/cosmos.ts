@@ -542,11 +542,30 @@ function seedDevMetricsHistory(now: Date) {
         removed: w % 3 === 0 && i === 4,
         ...(w % 3 === 0 && i === 4 ? { cancelledBySelf: true } : {}),
         paid: paid && confirmedSlot,
+        // What settle writes on every billed row, paid or not: the frozen
+        // share and when it froze (Profile → Account balance reads both).
+        ...(settledAt && confirmedSlot ? { owedAmount: 10, settledAt } : {}),
         ...(paid && confirmedSlot && i % 2 === 0 && settledAt
           ? { paidAt: new Date(Date.parse(settledAt) + (i % 5) * DAY).toISOString(), paidVia: 'manual' }
           : {}),
       });
     });
+  }
+  // Two of Lin's rackets: one strung and paid for five weeks ago, one ready
+  // and owed now, so Account balance has a stringing line and a second series.
+  mockStore.stringingJobs ??= [];
+  const racket = (id: string, jobNo: string, status: string, at: number, paid: boolean) => ({
+    id, groupId: BPM_GROUP_ID, memberId: 'dev-member-lin', jobNo, memberName: 'Lin',
+    stringerId: null, stringerName: null, status, racketLabel: 'Yonex Astrox 88D Pro', stringLabel: 'Yonex BG80',
+    tensionMains: 25, tensionCrosses: 26, method: '', priceCents: 3200, readyBy: null,
+    acceptedAt: new Date(now.getTime() - at - DAY).toISOString(),
+    paidAt: paid ? new Date(now.getTime() - at).toISOString() : null,
+    createdAt: new Date(now.getTime() - at - 3 * DAY).toISOString(),
+    updatedAt: new Date(now.getTime() - at).toISOString(),
+  });
+  if (!mockStore.stringingJobs.some((j) => j.id === 'dev-job-paid')) {
+    mockStore.stringingJobs.push(racket('dev-job-paid', 'J-0901', 'picked_up', 35 * DAY, true));
+    mockStore.stringingJobs.push(racket('dev-job-ready', 'J-0902', 'ready', 2 * DAY, false));
   }
   // Usage records (docs/plans/usage-metrics.md) for the last 20 days, so the
   // Metrics page's App usage card has something to draw. Regulars open the

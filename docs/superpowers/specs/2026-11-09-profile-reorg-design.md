@@ -210,7 +210,7 @@ Birdie rim colours (the mock's values, to be tokenised as a small data table bes
   **No gift cards**: only an organiser makes them; a player never pays for one. Tokenise the three greens as `--chart-green-1..3` in `globals.css` (light and dark values; dark steps validated against the dark surface with the dataviz validator).
 - Interaction: each month column is a button. Tap selects it: soft background (`--press-bg`), the total appears above the bar, and month label weight 600. The latest month with any payment is selected on open.
 - Breakdown box under the chart (tinted `--bg-surface`): month name and total, then a row per series present: swatch, label ("Sessions · 3 nights", "Stringing", "Guest · Jenny, Sep 18"), amount.
-- "See every payment" link → a plain list page (date, what, how paid, amount). Not in the mock; same rows, no chart.
+- "See every payment" link → a plain list page (date, what, how paid, amount). Not in the mock; same rows, no chart. **Not built in step 5** (the monthly read returns totals, not lines).
 - Empty (no payments in 6 months): the card shows `EmptyState` "Nothing paid in the last 6 months." and no axes.
 - Accessibility: the plot is `role="img"` with an `aria-label` listing every month's total; each column button has `aria-pressed` and a label "October: 59 dollars 50 (Sessions 31.50, Stringing 28)". The breakdown box is the table view the dataviz rules require.
 
@@ -358,7 +358,7 @@ Reduced motion: page slides become the crossfade; fades stay (`.claude/rules/des
 2. **Birdie avatars**: the `Member.avatar` second kind, nine pre-rendered files plus a render script, picker group.
 3. **Ways to sign in** page; fold three rows into one.
 4. **MONEY**: Gift cards & credit page (from `RedeemGiftSheet`), Give a gift card page (from `GiveGiftSheet`, organiser/gifter only).
-5. **Account balance page and the payments chart**: the new read, the chart, "See details" on Home.
+5. **Account balance page and the payments chart**: the new read, the chart, "See details" on Home. **Built 2026-11-09**, with three things left for later: the "See every payment" list page, a session line's player count, and a restring line's string, tension and pick-up day (the balance read carries none of them; adding them is a change to `GET /api/players/unpaid`, not to this page).
 6. **Report a problem page** with prefills (`category` on the report).
 7. **Support page and guides** (`/legal/help`), screenshots from the mock store.
 8. **Header and Settings** once Q1 is answered.
