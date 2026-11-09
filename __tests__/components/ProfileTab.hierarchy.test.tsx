@@ -177,3 +177,56 @@ describe('ProfileTab — hierarchy pass', () => {
     expect(screen.getByRole('button', { name: /Admin tools/ })).toBeDefined();
   });
 });
+
+/**
+ * Edit profile (docs/superpowers/specs/2026-11-09-profile-reorg-design.md §1–2,
+ * build step 1): the card at the top is the way in, and everything about the
+ * person moved onto that page — the picture, the name row and deleting the
+ * account.
+ */
+describe('ProfileTab — the card opens Edit profile', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockAdminFetch();
+  });
+  afterEach(() => {
+    cleanup();
+    global.fetch = originalFetch;
+  });
+
+  it('the card is one button, and the rows that moved are gone from the list', async () => {
+    signedIn();
+    renderWith();
+    const card = await screen.findByRole('button', { name: /Michael.*edit profile/i });
+    expect(card.textContent).toMatch(/Edit profile/);
+    expect(screen.queryByText('Your name in the club')).toBeNull();
+    expect(screen.queryByText('Delete account')).toBeNull();
+    expect(screen.queryByText(/Member since/)).toBeNull();
+  });
+
+  it('opens Edit profile; its name row goes to the name page, whose Back returns to Edit profile', async () => {
+    signedIn();
+    renderWith();
+    const { fireEvent } = await import('@testing-library/react');
+    fireEvent.click(await screen.findByRole('button', { name: /Michael.*edit profile/i }));
+    expect(await screen.findByRole('heading', { name: 'Edit profile' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Delete my account/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Display name/ }));
+    expect(document.querySelector('[data-nickname-page]')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    expect(await screen.findByRole('heading', { name: 'Edit profile' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    expect(await screen.findByRole('button', { name: /Michael.*edit profile/i })).toBeTruthy();
+  });
+
+  it('the delete-account deep link lands on Edit profile with the confirmation open', async () => {
+    signedIn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <ProfileTab {...baseProps} deleteIntent onDeleteIntentConsumed={vi.fn()} />
+      </NextIntlClientProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Edit profile' })).toBeTruthy();
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+  });
+});

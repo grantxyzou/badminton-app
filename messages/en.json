@@ -494,19 +494,37 @@
       "failed": "Couldn't save that. Try again.",
       "theClub": "the club"
     },
-    "avatar": {
-      "title": "Your picture",
+    "editProfile": {
+      "title": "Edit profile",
+      "back": "Profile",
+      "open": "Edit profile",
+      "openLabel": "{name}, edit profile",
+      "pictureGroup": "Your picture",
+      "initial": "Your initial",
       "myRacket": "My racket",
-      "shuffle": "Shuffle",
-      "initial": "My initial",
-      "noRacket": "Add your racket under Stats → Gear to use it here.",
-      "save": "Save",
+      "currentPicture": "Your current picture",
+      "noRacket": "Add your racket under Stats → Gear to wear it here.",
+      "saved": "Picture saved",
       "signIn": "Sign in again to change your picture.",
-      "failed": "Couldn't save that. Give it another go.",
-      "change": "Change your picture"
+      "failed": "Couldn't save your picture. Try again.",
+      "thisClub": "Your club",
+      "displayName": "Display name",
+      "role": "Account role",
+      "rank": {
+        "member": "Player",
+        "admin": "Admin",
+        "owner": "Organiser"
+      },
+      "can": {
+        "member": ["Sign up for sessions", "Pay what you owe", "Ask for a restring"],
+        "admin": ["Run sessions and open sign-ups", "Mark payments and settle the bill", "Add, rename and remove members"],
+        "owner": ["Run sessions and open sign-ups", "Mark payments and settle the bill", "Add, rename and remove members", "Give out ranks and gift cards"]
+      },
+      "memberSince": "Member since",
+      "deleteAccount": "Delete my account",
+      "deleteNote": "Removes you from every club. Your games and payments stay in the club's records under \"Former member\"."
     },
     "identity": {
-      "memberSince": "Member since {date}",
       "rankOwner": "Organiser",
       "rankAdmin": "Admin"
     },
