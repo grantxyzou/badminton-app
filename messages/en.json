@@ -479,6 +479,32 @@
     "profile": "Profile"
   },
   "profile": {
+    "support": {
+      "title": "Support",
+      "back": "Profile",
+      "guidesGroup": "How to use %APP_SHORT%",
+      "questionsGroup": "Common questions",
+      "questions": [
+        {
+          "q": "I can’t sign up this week.",
+          "a": "Sign-ups open when your organiser opens them. If the card says it’s full, join the waitlist: you move up automatically."
+        },
+        {
+          "q": "My payment isn’t showing.",
+          "a": "An e-transfer is marked paid when your organiser receives it. Tap “I’ve sent it” on Home so they know to look."
+        },
+        {
+          "q": "I got a new phone.",
+          "a": "Sign in the way you set up under Profile → How you sign in: Apple, Google, or your email and password."
+        }
+      ],
+      "contactGroup": "Get in touch",
+      "report": "Report a problem",
+      "contact": "Contact the people who run %APP_SHORT%",
+      "legalGroup": "Privacy",
+      "privacy": "Privacy policy",
+      "deleteAccount": "Deleting your account"
+    },
     "nickname": {
       "title": "Your name",
       "back": "Profile",
@@ -877,6 +903,7 @@
       "releaseNotes": "What's new",
       "logout": "Log out",
       "reportProblem": "Report a problem",
+      "support": "Support",
       "notifications": "Notifications",
       "install": "Add to Home Screen",
       "privacyPolicy": "Privacy policy"
@@ -2553,6 +2580,274 @@
     }
   },
   "legal": {
+    "help": {
+      "title": "How to use %APP_SHORT%",
+      "intro": "Short guides to the things people ask about most. Each one takes a couple of minutes.",
+      "breadcrumb": "Support · Guides",
+      "minRead": "{minutes} min read",
+      "stepsLabel": "Step by step",
+      "tipLabel": "Tip",
+      "helpfulQ": "Was this helpful?",
+      "yes": "Yes",
+      "no": "No",
+      "thanks": "Thanks for telling us.",
+      "relatedTitle": "Related",
+      "allGuides": "All guides",
+      "guides": {
+        "signup": {
+          "title": "Signing up for a session",
+          "sub": "Grab a spot, join the waitlist, or cancel",
+          "minutes": "2",
+          "intro": "Each week’s session lives on Home. Sign-ups open when your organiser opens them, and spots go in the order people sign up.",
+          "steps": [
+            {
+              "t": "Open Home",
+              "b": "The Sign up card shows how many spots are left and when sign-up closes.",
+              "img": "signup-card",
+              "alt": "The Sign up card on Home: 12 spots left out of 12, and a green “Sign up for this week” button.",
+              "caption": "The Sign up card, before you sign up."
+            },
+            {
+              "t": "Tap “Sign up for this week”",
+              "b": "The card then says you’re signed up and shows who else is coming.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Full? Join the waitlist",
+              "b": "When a spot frees up, the first person waiting moves in automatically.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Can’t make it?",
+              "b": "Cancel from the same card, so your spot goes to someone who is waiting.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Turn on notifications.",
+          "tip": "You’ll hear the moment sign-ups open, and when a spot opens up for you.",
+          "related": [
+            "paying",
+            "app"
+          ]
+        },
+        "paying": {
+          "title": "Paying what you owe",
+          "sub": "See your balance and settle up",
+          "minutes": "2",
+          "intro": "After each session your organiser settles the bill, which fixes everyone’s share. Your balance on Home shows what you owe, line by line.",
+          "steps": [
+            {
+              "t": "Check your balance",
+              "b": "The Balance card on Home lists each session and any finished restring, with the total.",
+              "img": "balance-card",
+              "alt": "The Balance card on Home: two sessions and one restring, a total, and buttons to pay.",
+              "caption": "The Balance card on Home."
+            },
+            {
+              "t": "Send an e-transfer",
+              "b": "Send the total to the address shown on the card, then tap “I’ve sent it” so your organiser knows to look.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Or pay with credit",
+              "b": "Credit from a gift card pays any settled line it covers in full: Profile → Account balance.",
+              "img": "account-balance",
+              "alt": "Account balance: what you owe, your credit beside it, a line per item and a “Pay with credit” button.",
+              "caption": "Profile → Account balance."
+            },
+            {
+              "t": "See the details",
+              "b": "Account balance also shows how long ago each line was settled and what you’ve paid over the last six months.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Estimates can change.",
+          "tip": "A session that hasn’t been settled yet shows an estimate. It’s fixed once your organiser settles the bill.",
+          "related": [
+            "signup",
+            "stringing"
+          ]
+        },
+        "stringing": {
+          "title": "Getting your racket strung",
+          "sub": "Request a restring and follow it",
+          "minutes": "2",
+          "intro": "When your club’s stringing service is open, the Stringing tab takes your request and shows where your racket is.",
+          "steps": [
+            {
+              "t": "Open Stringing",
+              "b": "Choose “Submit request”. If the service is closed, the card says so.",
+              "img": "stringing-request",
+              "alt": "The Stringing tab with the Submit request section open.",
+              "caption": "Stringing → Submit request."
+            },
+            {
+              "t": "Choose your string and tension",
+              "b": "Pick from the strings on offer and set your tension. “Pricing details” shows what each costs.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Drop off your racket",
+              "b": "Hand it to your stringer. Its card follows it: requested, on the machine, ready.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Pick it up",
+              "b": "When it’s ready, its price joins your balance on Home.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Turn on notifications.",
+          "tip": "You’ll hear when your racket goes on the machine and when it’s ready.",
+          "related": [
+            "paying",
+            "app"
+          ]
+        },
+        "stats": {
+          "title": "Your stats",
+          "sub": "Your level, games and what to work on",
+          "minutes": "2",
+          "intro": "The Stats tab keeps your level, the games you log and the kudos partners give you. Your ratings are yours: nobody else sees them.",
+          "steps": [
+            {
+              "t": "Check in",
+              "b": "Every so often, rate yourself on a few skills. Your level and this week’s focus come from it.",
+              "img": "stats-tiles",
+              "alt": "The top of Stats: three tiles for level, games logged and kudos.",
+              "caption": "The top of the Stats tab."
+            },
+            {
+              "t": "Log a game",
+              "b": "Under Play, “Add a game” records a result, and “Keep score” counts one courtside.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "See where you sit",
+              "b": "If you choose to, Stats shows whether each skill is in the top, middle or bottom third of your club. Bands only, never a number or a name.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Change it any time",
+              "b": "Profile → Stats & privacy turns that comparison on or off.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Little and often.",
+          "tip": "A quick check-in every few sessions keeps your level honest.",
+          "related": [
+            "app",
+            "signup"
+          ]
+        },
+        "app": {
+          "title": "The app and notifications",
+          "sub": "Install %APP_SHORT%, turn on notifications, pick a language",
+          "minutes": "2",
+          "intro": "%APP_SHORT% works in your browser, and it’s at its best on your home screen or installed from the App Store or Google Play.",
+          "steps": [
+            {
+              "t": "Add it to your home screen",
+              "b": "Profile → Add to Home Screen walks you through it for your phone.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Turn on notifications",
+              "b": "Tap the bell at the top of any tab, or Profile → Notifications.",
+              "img": "profile-app",
+              "alt": "The App group on Profile, with the Notifications row.",
+              "caption": "Profile → App."
+            },
+            {
+              "t": "Language and theme",
+              "b": "The two buttons beside the bell switch between English and 中文, and between light and dark.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "How you sign in",
+              "b": "Profile → How you sign in shows your ways back in: Apple, Google, or an email and password.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Something not working?",
+          "tip": "Profile → Report a problem reaches the people who run %APP_SHORT% directly.",
+          "related": [
+            "signup",
+            "stats"
+          ]
+        },
+        "organisers": {
+          "title": "For organisers",
+          "sub": "Run the week: sign-ups, the bill and payments",
+          "minutes": "3",
+          "intro": "Organisers and admins run the club from Admin, which opens from Profile.",
+          "steps": [
+            {
+              "t": "Open Admin",
+              "b": "Profile → Admin tools. The count beside it says how many things need you.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Open sign-ups",
+              "b": "The next session’s card opens and closes sign-ups and shows who’s in and who’s waiting.",
+              "img": "admin-session",
+              "alt": "The next session card in Admin, with the sign-up switch and the player count.",
+              "caption": "Admin → the next session."
+            },
+            {
+              "t": "Finalize the cost",
+              "b": "After the session, “Finalize cost” on the same card fixes everyone’s share. Payments then shows who has paid.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Invite someone new",
+              "b": "The Invite card makes a one-time link or code for each new person.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Covering someone.",
+          "tip": "In Payments you can cover a player’s share, and choose whether the club absorbs it or it’s split among the others.",
+          "related": [
+            "paying",
+            "signup"
+          ]
+        }
+      }
+    },
     "common": {
       "back": "Back to %APP_SHORT%",
       "updated": "Last updated {date}"

@@ -63,7 +63,9 @@ export const GEAR_SURFACE_KINDS = [
   'frame_page_opened', 'frame_section_expanded',
 ] as const;
 /** Written by the server only; `POST /api/events` refuses them. */
-export const SERVER_KINDS = ['pick_served', 'sign_in'] as const;
+export const SERVER_KINDS = ['pick_served', 'sign_in', 'guide_feedback'] as const;
+/** "Was this helpful?" under a guide (spec §8): written by `POST /api/help/feedback`, a plain form post. */
+export const GUIDE_KINDS = ['guide_feedback'] as const;
 
 /**
  * The usage kinds (docs/plans/usage-metrics.md): how often members open the

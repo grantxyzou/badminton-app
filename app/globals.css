@@ -2867,6 +2867,110 @@ button.edit-profile-row { cursor: pointer; }
 .report-chip:active { transform: scale(0.97); }
 .report-chip[aria-pressed='true'] { background: var(--tone-green-bg); color: var(--accent); font-weight: 600; }
 .report-box { width: 100%; resize: vertical; font-family: inherit; font-size: var(--fs-md); }
+/* "How to use BPM" (spec §7–§8): the guide rows (Support page and /legal/help)
+   and the guide page itself. Rows are a card of tappable lines, fill-only. */
+.help-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.help-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  text-decoration: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.help-row:active { background: var(--press-bg); }
+.help-row__icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--tone-green-bg);
+  color: var(--accent);
+}
+.help-row__icon .material-icons { font-size: var(--icon-md); }
+.help-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+.help-row__title { font-size: var(--fs-lg); color: var(--text-primary); }
+.help-row__sub { font-size: var(--fs-sm); color: var(--text-muted); }
+.help-row__chev { font-size: var(--icon-md); color: var(--text-secondary); }
+.help-crumb { font-size: var(--fs-md); color: var(--text-muted); text-decoration: none; }
+.help-eyebrow {
+  margin: var(--space-8) 0 var(--space-4);
+  font-family: var(--font-display, "Space Grotesk");
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.help-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-6); }
+.help-step { display: flex; gap: var(--space-4); align-items: flex-start; }
+.help-step__num {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--tone-green-bg);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.help-step__body { flex: 1; min-width: 0; }
+.help-step__title { margin: 0; font-size: var(--fs-lg); font-weight: 600; color: var(--text-primary); }
+.help-step__text { margin: var(--space-1) 0 0; font-size: var(--fs-md); line-height: var(--lh-normal); color: var(--text-secondary); }
+.help-shot { margin: var(--space-4) 0 0; }
+.help-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+}
+.help-shot figcaption { margin-top: var(--space-2); font-size: var(--fs-sm); color: var(--text-muted); }
+.help-tip {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin-top: var(--space-8);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--tone-green-bg);
+  color: var(--text-primary);
+}
+.help-tip .material-icons { font-size: var(--icon-md); color: var(--accent); }
+.help-tip p { margin: 0; font-size: var(--fs-md); line-height: var(--lh-normal); }
+.help-helpful { margin-top: var(--space-7); }
+.help-helpful__form { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.help-helpful__buttons { display: flex; gap: var(--space-2); }
+.help-pill {
+  min-height: 44px;
+  min-width: 72px;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.help-pill:active { transform: scale(0.97); }
+.help-qa { display: flex; flex-direction: column; gap: var(--space-05); padding: var(--space-4) var(--space-5); }
+.help-qa__q { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
+.help-qa__a { font-size: var(--fs-md); line-height: var(--lh-normal); color: var(--text-secondary); }
 /* "Your groups": a club's mark. SQUARE, not round — a round initial is a
    person everywhere else in the app, and a club is not one. */
 .group-monogram {

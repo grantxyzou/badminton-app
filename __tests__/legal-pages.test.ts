@@ -124,3 +124,56 @@ describe('legal copy — both locales, same shape', () => {
     }
   });
 });
+
+/**
+ * "How to use BPM" (docs/superpowers/specs/2026-11-09-profile-reorg-design.md §7–§8):
+ * the guides' copy is arrays read with `t.raw` like the rest of `legal`, and
+ * each screenshot is a file per locale with its size recorded, taken from the
+ * offline mock store by `scripts/help-screenshots.mjs` (never production).
+ */
+describe('guides — both locales, every screenshot on disk', () => {
+  type GuideStep = { t: string; b: string; img: string; alt: string; caption: string };
+  type GuideCopy = { title: string; sub: string; minutes: string; intro: string; steps: GuideStep[]; tipLead: string; tip: string; related: string[] };
+  type HelpCopy = { guides: Record<string, GuideCopy>; minRead: string };
+  const help = (m: unknown) => (m as { legal: { help: HelpCopy } }).legal.help;
+  const LOCALES = { en: help(en), 'zh-CN': help(zh) };
+
+  it('every guide in lib/helpGuides.ts has its copy, in the same shape in both locales', async () => {
+    const { GUIDES } = await import('@/lib/helpGuides');
+    expect(LOCALES.en.minRead).toContain('{minutes}');
+    for (const g of GUIDES) {
+      const [a, b] = [LOCALES.en.guides[g.key], LOCALES['zh-CN'].guides[g.key]];
+      for (const copy of [a, b]) {
+        for (const k of ['title', 'sub', 'intro', 'tipLead', 'tip'] as const) expect(copy[k].trim().length, `${g.key}.${k}`).toBeGreaterThan(0);
+        expect(Number(copy.minutes)).toBeGreaterThan(0);
+        expect(copy.steps.length, `${g.key}.steps`).toBeGreaterThan(0);
+        for (const s of copy.steps) expect(s.t && s.b, `${g.key} step`).toBeTruthy();
+        for (const r of copy.related) expect(GUIDES.some((x) => x.key === r), `${g.key} related ${r}`).toBe(true);
+      }
+      // The same pictures under the same steps, so the two languages tell one story.
+      expect(b.steps.map((s) => s.img)).toEqual(a.steps.map((s) => s.img));
+    }
+  });
+
+  it('every screenshot a guide names has a file and a size in each locale, alt text and a caption', async () => {
+    const { GUIDES } = await import('@/lib/helpGuides');
+    const { HELP_IMAGES } = await import('@/lib/helpImages');
+    for (const [locale, copy] of Object.entries(LOCALES)) {
+      for (const g of GUIDES) {
+        for (const s of copy.guides[g.key].steps.filter((x) => x.img)) {
+          const file = join(process.cwd(), 'public', 'help', locale, `${s.img}.webp`);
+          expect(statSync(file).size, file).toBeGreaterThan(0);
+          expect(HELP_IMAGES[locale]?.[s.img], `${locale}/${s.img} size`).toBeTruthy();
+          expect(s.alt.trim().length, `${locale}/${s.img} alt`).toBeGreaterThan(0);
+          expect(s.caption.trim().length, `${locale}/${s.img} caption`).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('"Was this helpful?" is a plain form post, so the page needs no script', () => {
+    const src = readFileSync(join(LEGAL_DIR, 'help', '[slug]', 'page.tsx'), 'utf8');
+    expect(src).toMatch(/<form method="post" action=\{`\$\{BASE\}\/api\/help\/feedback`\}/);
+    expect(src).toMatch(/name="answer" value="yes"/);
+  });
+});

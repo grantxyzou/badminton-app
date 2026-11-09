@@ -1031,6 +1031,10 @@ export interface EngagementEvent {
   launchMs?: number;
   /** `app_ready` only — one of APP_STARTS. Additive. */
   start?: string;
+  /** `guide_feedback` only: the guide's slug (`lib/helpGuides.ts`). Additive. */
+  guide?: string;
+  /** `guide_feedback` only: 'yes' or 'no'. Additive. */
+  answer?: string;
 }
 
 /** One source of truth for the kinds is `lib/events.ts`; this union is

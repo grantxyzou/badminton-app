@@ -1,6 +1,6 @@
 'use client';
 import { usePageBack } from '@/lib/pageStack';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { sharedFetch } from '@/lib/sharedRead';
 import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
@@ -41,6 +41,7 @@ import MemberAvatar from './primitives/MemberAvatar';
 import EditProfilePage from './profile/EditProfilePage';
 import WaysToSignInPage from './profile/WaysToSignInPage';
 import ReportProblemPage from './profile/ReportProblemPage';
+import SupportPage from './profile/SupportPage';
 import GiftCardsPage, { fmtCents } from './profile/GiftCardsPage';
 import GiveGiftPage from './profile/GiveGiftPage';
 import { useCredit } from './profile/useCredit';
@@ -49,6 +50,7 @@ import { useBalance } from './profile/useBalance';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
 import { useBuildSha } from '@/lib/buildSha';
+import { onPageScroll, pageScrollTop, scrollPageTo } from '@/lib/pageScroll';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** The deployed commit, baked in at build time (`deploy-next.yml`); `dev` locally. */
@@ -173,9 +175,25 @@ export default function ProfileTab({
   // sub-screens.
   // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
   // its Back returns there rather than to the list.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance' | 'report'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance' | 'report' | 'support'>('root');
   // A sub-screen answers the Android back button (lib/pageStack.ts).
   usePageBack(view !== 'root', () => setView((v) => (v === 'name' ? 'profile' : 'root')));
+  // A page opens at its TOP, and Back returns to the same place in the list.
+  // Before, a row near the foot of Profile (Support, Report a problem)
+  // opened its page half-way down. The BODY is the scroller (lib/pageScroll.ts).
+  // Where the list was is noted while it is on screen, because by the time
+  // the view has changed a shorter page has already clamped it.
+  const listScroll = useRef(0);
+  const shownView = useRef(view);
+  useEffect(() => {
+    if (view !== 'root') return;
+    return onPageScroll(() => { listScroll.current = pageScrollTop(); });
+  }, [view]);
+  useLayoutEffect(() => {
+    if (shownView.current === view) return;
+    shownView.current = view;
+    scrollPageTo(view === 'root' ? listScroll.current : 0);
+  }, [view]);
   // Read once here so the row's summary and the sheet's body agree.
   //
   // Gated on `identity`: the row only exists for a
@@ -410,6 +428,11 @@ export default function ProfileTab({
   // sign-up problem is exactly the report worth catching.
   if (view === 'report') {
     return <ReportProblemPage name={identity?.name} onBack={() => setView('root')} />;
+  }
+
+  // Support (spec §7): the guides, common questions and ways to reach a person.
+  if (view === 'support') {
+    return <SupportPage isAdmin={isAdmin} onReport={() => setView('report')} onBack={() => setView('root')} />;
   }
 
   if (!identity || deviceSignedOut) {
@@ -990,6 +1013,7 @@ export default function ProfileTab({
         rows={[
           { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
           { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setView('report') },
+          { icon: 'help_outline', label: tSettings('support'), onClick: () => setView('support') },
         ]}
       />
 
