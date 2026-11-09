@@ -537,7 +537,7 @@ function Stepper({
         padding: 'var(--space-5) var(--space-4)',
         borderRadius: 'var(--radius-lg)',
         background: 'var(--inner-card-bg)',
-        border: '1px solid var(--inner-card-border)',
+        border: '1px solid transparent',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

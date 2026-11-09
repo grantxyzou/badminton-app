@@ -151,7 +151,7 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
               padding: 'var(--space-4)',
               borderRadius: 'var(--radius-lg)',
               background: 'var(--inner-card-bg)',
-              border: '1px solid var(--inner-card-border)',
+              border: '1px solid transparent',
             }}
           >
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -204,7 +204,7 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                 padding: 'var(--space-4)',
                 borderRadius: 'var(--radius-lg)',
                 background: 'var(--inner-card-bg)',
-                border: '1px solid var(--inner-card-border)',
+                border: '1px solid transparent',
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>

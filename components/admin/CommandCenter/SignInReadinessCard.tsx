@@ -136,7 +136,7 @@ export default function SignInReadinessCard({
                 padding: 'var(--space-1) var(--space-4)',
                 borderRadius: 'var(--radius-pill)',
                 background: 'var(--inner-card-bg)',
-                border: '1px solid var(--inner-card-border)',
+                border: '1px solid transparent',
                 color: 'var(--text-primary)',
                 cursor: onOpenMember ? 'pointer' : 'default',
               }}

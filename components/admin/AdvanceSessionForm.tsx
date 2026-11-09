@@ -450,7 +450,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
           <Label text="Shuttles for this session">
             <div
               className="flex items-center justify-between gap-3 rounded-xl p-3"
-              style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}
+              style={{ background: 'var(--inner-card-bg)', border: '1px solid transparent' }}
             >
               <div className="min-w-0 flex-1">
                 <p className="fs-md font-medium" style={{ color: 'var(--text-primary)' }}>Shuttles used</p>
@@ -464,7 +464,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                   onClick={() => bumpTubes(-0.25)}
                   aria-label="Decrease shuttle tubes"
                   disabled={tubes <= 0}
-                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes <= 0 ? 0.4 : 1 }}
+                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes <= 0 ? 0.4 : 1 }}
                 >
                   −
                 </button>
@@ -476,7 +476,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                   onClick={() => bumpTubes(0.25)}
                   aria-label="Increase shuttle tubes"
                   disabled={tubes >= 100}
-                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes >= 100 ? 0.4 : 1 }}
+                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes >= 100 ? 0.4 : 1 }}
                 >
                   +
                 </button>
@@ -492,14 +492,14 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 onChange={e => setPricePerTube(e.target.value === '' ? 0 : Math.max(0, Math.min(10000, Number(e.target.value))))}
                 placeholder="$ per tube"
                 className="fs-md"
-                style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--inner-card-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)', color: 'var(--text-primary)' }}
+                style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid transparent', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)', color: 'var(--text-primary)' }}
               />
               {autoPrice > 0 && Math.abs(autoPrice - pricePerTube) > 0.005 && (
                 <button
                   type="button"
                   onClick={() => setPricePerTube(autoPrice)}
                   className="text-[11px]"
-                  style={{ padding: 'var(--space-1) var(--space-3)', borderRadius: 'var(--radius-pill)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ padding: 'var(--space-1) var(--space-3)', borderRadius: 'var(--radius-pill)', border: '1px solid transparent', background: 'var(--input-bg)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   Latest ${autoPrice.toFixed(2)}
                 </button>
