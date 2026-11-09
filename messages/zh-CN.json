@@ -499,7 +499,16 @@
       "back": "我的",
       "open": "编辑资料",
       "openLabel": "{name}，编辑资料",
-      "pictureGroup": "我的头像",
+      "yours": "我的",
+      "birdies": "羽毛球",
+      "birdie": {
+        "green": "绿色羽毛球",
+        "yellow": "黄色羽毛球",
+        "pink": "粉色羽毛球",
+        "blue": "蓝色羽毛球",
+        "purple": "紫色羽毛球",
+        "orange": "橙色羽毛球"
+      },
       "initial": "名字首字",
       "myRacket": "我的球拍",
       "currentPicture": "现在的头像",

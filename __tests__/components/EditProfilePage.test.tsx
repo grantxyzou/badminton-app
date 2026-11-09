@@ -80,7 +80,11 @@ describe('EditProfilePage', () => {
   it('shows the picture, the club card and the delete row', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: 'Edit profile' })).toBeTruthy();
-    expect(screen.getByRole('radiogroup', { name: 'Your picture' })).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Yours' })).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Birdies' })).toBeTruthy();
+    expect(screen.getAllByRole('radio', { name: /birdie$/ }).map((r) => r.getAttribute('aria-label'))).toEqual([
+      'Green birdie', 'Yellow birdie', 'Pink birdie', 'Blue birdie', 'Purple birdie', 'Orange birdie',
+    ]);
     expect(screen.getByRole('radio', { name: 'Your initial' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getByRole('radio', { name: 'My racket' }).getAttribute('aria-checked')).toBe('false');
     expect(screen.getByText('BPM Core')).toBeTruthy();
@@ -117,6 +121,20 @@ describe('EditProfilePage', () => {
     expect(props.onAvatarSaved).toHaveBeenCalledWith({ kind: 'racket', racketId: RACKET });
     expect(screen.getByRole('radio', { name: 'My racket' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getByText('Picture saved')).toBeTruthy();
+  });
+
+  it('saves a birdie the same way, and only one picture is ever checked', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const props = renderPage({ avatar: { kind: 'racket', racketId: RACKET } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('radio', { name: 'Blue birdie' }));
+    });
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+    expect(JSON.parse(patch![1].body).avatar).toEqual({ kind: 'birdie', colour: 'blue' });
+    expect(props.onAvatarSaved).toHaveBeenCalledWith({ kind: 'birdie', colour: 'blue' });
+    const checked = screen.getAllByRole('radio').filter((r) => r.getAttribute('aria-checked') === 'true');
+    expect(checked.map((r) => r.getAttribute('aria-label'))).toEqual(['Blue birdie']);
   });
 
   it('puts the old picture back and says so when the save fails', async () => {

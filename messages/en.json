@@ -499,7 +499,16 @@
       "back": "Profile",
       "open": "Edit profile",
       "openLabel": "{name}, edit profile",
-      "pictureGroup": "Your picture",
+      "yours": "Yours",
+      "birdies": "Birdies",
+      "birdie": {
+        "green": "Green birdie",
+        "yellow": "Yellow birdie",
+        "pink": "Pink birdie",
+        "blue": "Blue birdie",
+        "purple": "Purple birdie",
+        "orange": "Orange birdie"
+      },
       "initial": "Your initial",
       "myRacket": "My racket",
       "currentPicture": "Your current picture",
