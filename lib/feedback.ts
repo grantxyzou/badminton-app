@@ -27,6 +27,8 @@ export interface FeedbackDoc {
   name?: string;
   /** Who sent it, when signed in (additive, 2026-11-05) — what deletion finds it by. */
   memberId?: string;
+  /** The Report a problem chip it started from (additive, 2026-11-09; `lib/reportCategories.ts`). */
+  category?: string;
   tab?: string;
   url?: string;
   createdAt: string;
@@ -52,7 +54,7 @@ export async function readFeedbackSince(since: string): Promise<Row[]> {
   await ensureContainer(FEEDBACK_HOME, '/id');
   const { resources } = await getContainer(FEEDBACK_HOME).items
     .query<Row>({
-      query: `SELECT c.id, c.kind, c.createdAt, c.message, c.tab, c.url FROM c WHERE c.kind = '${FEEDBACK_KIND}' AND c.createdAt >= @since`,
+      query: `SELECT c.id, c.kind, c.createdAt, c.message, c.category, c.tab, c.url FROM c WHERE c.kind = '${FEEDBACK_KIND}' AND c.createdAt >= @since`,
       parameters: [{ name: '@since', value: since }],
     })
     .fetchAll();

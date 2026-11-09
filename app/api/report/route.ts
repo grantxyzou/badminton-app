@@ -4,6 +4,7 @@ import { createFeedback } from '@/lib/feedback';
 import { verifyMemberAuth } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { notifyReport } from '@/lib/reportEmail';
+import { isReportCategory } from '@/lib/reportCategories';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,8 @@ export async function POST(req: NextRequest) {
     // Who sent it, when signed in: a deletion request then finds the report
     // by id, not by a typed name another member might share (audit, 2026-11-05).
     ...(reporter ? { memberId: reporter.memberId } : {}),
+    // The chip it started from (spec §6): kept only when it is one we know.
+    ...(isReportCategory(body.category) ? { category: body.category } : {}),
     tab: optionalStr(body.tab, 40),
     url: optionalStr(body.url, 300),
     createdAt: new Date().toISOString(),

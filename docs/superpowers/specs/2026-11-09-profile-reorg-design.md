@@ -264,7 +264,7 @@ Birdie rim colours (the mock's values, to be tokenised as a small data table bes
 
      Tapping a chip when the box already has the user's own text asks first: "Replace what you wrote?"
    - Textarea, 6 rows, max 2000 characters (`MAX_MESSAGE` in `app/api/report/route.ts`); a counter appears from 1800.
-   - Helper line: "The page you were on is sent with it, so there's no need to describe where you were."
+   - Helper line: "The page you were on is sent with it, so there's no need to describe where you were." (Built as "Say which screen it happened on, if you can.": see build step 6.)
    - `.btn-primary` "Send report", disabled while empty.
 - Server: `POST /api/report` gains an optional `category` (allowlisted, additive). The report keeps `url` (path only).
 - Success: page replaced by a confirmation ("Thanks. We'll look at it soon.") and Done.
@@ -359,6 +359,6 @@ Reduced motion: page slides become the crossfade; fades stay (`.claude/rules/des
 3. **Ways to sign in** page; fold three rows into one.
 4. **MONEY**: Gift cards & credit page (from `RedeemGiftSheet`), Give a gift card page (from `GiveGiftSheet`, organiser/gifter only).
 5. **Account balance page and the payments chart**: the new read, the chart, "See details" on Home. **Built 2026-11-09**, with three things left for later: the "See every payment" list page, a session line's player count, and a restring line's string, tension and pick-up day (the balance read carries none of them; adding them is a change to `GET /api/players/unpaid`, not to this page).
-6. **Report a problem page** with prefills (`category` on the report).
+6. **Report a problem page** with prefills (`category` on the report). **Built 2026-11-09.** One change from §6: the helper line under the box reads "Say which screen it happened on, if you can." The report carries the tab the page is on, which is always Profile now that reporting is a Profile page, so "the page you were on is sent with it" would not be true.
 7. **Support page and guides** (`/legal/help`), screenshots from the mock store.
 8. **Header and Settings** once Q1 is answered.

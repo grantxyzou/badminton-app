@@ -13,7 +13,6 @@ import CreateAccountSheet from './CreateAccountSheet';
 import DeleteAccountSheet from '@/components/auth/DeleteAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
-import ReportProblemSheet from './ReportProblemSheet';
 import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
 import ProviderButtons, { type Provider as AuthProvider } from './auth/ProviderButtons';
@@ -41,6 +40,7 @@ import StatusBanner from './primitives/StatusBanner';
 import MemberAvatar from './primitives/MemberAvatar';
 import EditProfilePage from './profile/EditProfilePage';
 import WaysToSignInPage from './profile/WaysToSignInPage';
+import ReportProblemPage from './profile/ReportProblemPage';
 import GiftCardsPage, { fmtCents } from './profile/GiftCardsPage';
 import GiveGiftPage from './profile/GiveGiftPage';
 import { useCredit } from './profile/useCredit';
@@ -173,7 +173,7 @@ export default function ProfileTab({
   // sub-screens.
   // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
   // its Back returns there rather than to the list.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance' | 'report'>('root');
   // A sub-screen answers the Android back button (lib/pageStack.ts).
   usePageBack(view !== 'root', () => setView((v) => (v === 'name' ? 'profile' : 'root')));
   // Read once here so the row's summary and the sheet's body agree.
@@ -197,7 +197,6 @@ export default function ProfileTab({
   // between here and the row that renders the count.
   const showAdminRow = isAdmin;
   const adminSignals = useAdminNeedsYou(showAdminRow);
-  const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
   // Only offer "Add to Home Screen" when NOT already installed. Resolved
   // post-mount (display-mode/navigator.standalone are client-only); defaults
@@ -405,6 +404,12 @@ export default function ProfileTab({
         <ProfileSkeleton title={tNav('profile')} />
       </div>
     );
+  }
+
+  // Report a problem is a page (spec §6), and reachable signed out too: a
+  // sign-up problem is exactly the report worth catching.
+  if (view === 'report') {
+    return <ReportProblemPage name={identity?.name} onBack={() => setView('root')} />;
   }
 
   if (!identity || deviceSignedOut) {
@@ -665,13 +670,12 @@ export default function ProfileTab({
             problem are exactly the reports worth catching. */}
         <button
           type="button"
-          onClick={() => setReportOpen(true)}
+          onClick={() => setView('report')}
           className="btn-ghost"
           style={{ width: '100%', fontSize: 'var(--fs-base)' }}
         >
           {tSettings('reportProblem')}
         </button>
-        <ReportProblemSheet open={reportOpen} onClose={() => setReportOpen(false)} />
       </div>
     );
   }
@@ -985,7 +989,7 @@ export default function ProfileTab({
       <SettingsList
         rows={[
           { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
-          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
+          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setView('report') },
         ]}
       />
 
@@ -1027,12 +1031,6 @@ export default function ProfileTab({
         open={releaseSheetOpen}
         releases={releases}
         onClose={() => setReleaseSheetOpen(false)}
-      />
-
-      <ReportProblemSheet
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        name={identity?.name}
       />
 
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />

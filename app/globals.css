@@ -2843,6 +2843,30 @@ button.edit-profile-row { cursor: pointer; }
   background: var(--inner-card-bg);
 }
 .pay-chart__line { display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-md); color: var(--text-primary); }
+/* Report a problem (spec §6): the starters, a wrapping row of pressable pills.
+   Fill-only like every choice chip; the chosen one is the green tone wash with
+   accent text, never a ring. */
+.report-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.report-chip {
+  min-height: 34px;
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-base);
+  cursor: pointer;
+  position: relative;
+  transition:
+    transform var(--duration-press) var(--ease-out-quart),
+    background var(--duration-fast) ease;
+}
+/* Drawn 34 tall, tapped 44 (the inset tap-area rule). */
+.report-chip::before { content: ''; position: absolute; inset: -5px 0; }
+.report-chip:active { transform: scale(0.97); }
+.report-chip[aria-pressed='true'] { background: var(--tone-green-bg); color: var(--accent); font-weight: 600; }
+.report-box { width: 100%; resize: vertical; font-family: inherit; font-size: var(--fs-md); }
 /* "Your groups": a club's mark. SQUARE, not round — a round initial is a
    person everywhere else in the app, and a club is not one. */
 .group-monogram {

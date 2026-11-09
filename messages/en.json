@@ -1004,15 +1004,49 @@
   },
   "report": {
     "title": "Report a problem",
-    "help": "Something not working? Tell me what happened and I'll take a look.",
+    "back": "Profile",
+    "help": "Something not working? Tell us what happened and we’ll take a look.",
+    "chipsLabel": "Pick one to start, then add what happened",
+    "chips": {
+      "signup": {
+        "label": "Couldn’t sign up",
+        "starter": "I tried to sign up for this week’s session and "
+      },
+      "money": {
+        "label": "Amount looks wrong",
+        "starter": "The amount I owe looks wrong. It shows $ but I expected $ because "
+      },
+      "payment": {
+        "label": "Payment not showing",
+        "starter": "I sent an e-transfer on [date] but it still shows as owing. "
+      },
+      "stringing": {
+        "label": "Stringing status",
+        "starter": "My racket’s stringing status is wrong. It says  but "
+      },
+      "performance": {
+        "label": "Slow or stuck",
+        "starter": "The app was slow or stuck on the  screen. "
+      },
+      "other": {
+        "label": "Something else",
+        "starter": ""
+      }
+    },
     "placeholder": "What went wrong?",
+    "counter": "{count}/{max}",
+    "whereNote": "Say which screen it happened on, if you can.",
     "send": "Send report",
     "sending": "Sending…",
-    "success": "Thanks — got it. I'll look into it.",
-    "errorRequired": "Please describe what happened.",
-    "errorServer": "Couldn't send — please try again.",
-    "offline": "You're offline — reconnect to send.",
-    "close": "Close"
+    "success": "Thanks. We’ll look at it soon.",
+    "done": "Done",
+    "errorServer": "Couldn’t send. Try again.",
+    "errorRateLimited": "That’s a lot of reports for one hour. Try again a little later.",
+    "offline": "You’re offline. Reconnect to send.",
+    "replaceTitle": "Replace what you wrote?",
+    "replaceBody": "This starter takes the place of the words in the box.",
+    "replace": "Replace",
+    "keep": "Keep mine"
   },
   "install": {
     "title": "Add %APP_SHORT% to your home screen",
