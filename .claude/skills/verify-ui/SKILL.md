@@ -58,8 +58,8 @@ Chrome and present the result as verification.
 
 ## Reaching a gated screen
 
-- **Admin**: Profile → sign in as Grant / 1130 → Profile → `Admin tools →`
-- **Player with data**: Profile → sign in as Lin / 2468
+- **Admin**: Log in (the signed-out Welcome screen) as Grant / 1130 → Profile → `Admin tools →`
+- **Player with data**: Log in as Lin / 2468
 - **Flag-gated UI**: already on under `dev:next:mock`
 
 Sign-in is rate-limited **5/hr per (name, IP)** and fails *silently into a
