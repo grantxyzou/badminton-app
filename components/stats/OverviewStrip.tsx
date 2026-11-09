@@ -167,7 +167,8 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
     // A grid, not flex: `flex: 1` on tiles with different padding shares out
     // the space unevenly (the level's wrapper has none, the glass tiles have
     // 16px a side), so "equal" flex tiles measured 102/138/138px.
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)', alignItems: 'stretch' }}>
+    // `data-stats-tiles`: what scripts/help-screenshots.mjs crops to for the Stats guide.
+    <div data-stats-tiles style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)', alignItems: 'stretch' }}>
       {/* Three equal tiles (Grant, 2026-09-14), one material. The level used
           to lead by a filled green slab; in light mode that read as a dark
           block on a pale page ("This colour... it feels odd", 2026-10-29). It

@@ -129,6 +129,15 @@ describe('ProfileTab — MONEY', () => {
     expect(await screen.findByText('Money')).toBeTruthy();
   });
 
+  it('Support opens its page from Help, and Report a problem from there opens the report page', async () => {
+    mockFetch({ canGift: false });
+    await renderSignedIn();
+    fireEvent.click(screen.getByRole('button', { name: /^Support/ }));
+    expect(screen.getByRole('heading', { name: 'Support' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Report a problem/ }));
+    expect(screen.getByRole('heading', { name: 'Report a problem' })).toBeTruthy();
+  });
+
   it('Home’s “See details” lands on Account balance', async () => {
     mockFetch({ canGift: false });
     sessionStorage.setItem('badminton_profile_view', 'balance');
