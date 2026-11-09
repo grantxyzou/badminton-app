@@ -118,12 +118,12 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
               </p>
             )}
             {error === 'required' && (
-              <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)' }}>
+              <p role="alert" className="field-error">
                 {t('errorRequired')}
               </p>
             )}
             {error === 'server' && (
-              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
+              <p role="alert" className="field-warn">
                 {t('errorServer')}
               </p>
             )}

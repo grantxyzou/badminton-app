@@ -97,7 +97,7 @@ export default function BirdReconcileSheet({ open, currentStock, onClose, onSave
             />
           </BirdSheetField>
           {reconcileError && (
-            <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
               {reconcileError}
             </p>
           )}

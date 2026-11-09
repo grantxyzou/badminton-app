@@ -230,7 +230,7 @@ export default function BirdPurchaseSheet({ open, editing, onClose, onSaved, onA
           </BirdSheetField>
 
           {formError && (
-            <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
               {formError}
             </p>
           )}

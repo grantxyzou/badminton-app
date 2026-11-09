@@ -126,22 +126,22 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
               {t('submitCode')}
             </button>
             {error === 'invalid' && (
-              <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)' }}>
+              <p role="alert" className="field-error">
                 {t('errorInvalid')}
               </p>
             )}
             {error === 'rate_limited' && (
-              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
+              <p role="alert" className="field-warn">
                 {t('errorRateLimited')}
               </p>
             )}
             {error === 'admin_logged_in' && (
-              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
+              <p role="alert" className="field-warn">
                 {t('errorAdminLoggedIn')}
               </p>
             )}
             {error === 'server' && (
-              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
+              <p role="alert" className="field-warn">
                 {t('errorNetwork')}
               </p>
             )}

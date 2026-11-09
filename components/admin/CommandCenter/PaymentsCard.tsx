@@ -977,7 +977,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {actionError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
                 {actionError}
               </p>
             )}

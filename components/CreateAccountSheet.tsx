@@ -140,16 +140,16 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
               {submitting ? t('submitting') : t('submit')}
             </button>
             {error === 'pin_problem' && (
-              <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)' }}>{t('errorPinProblem')}</p>
+              <p role="alert" className="field-error">{t('errorPinProblem')}</p>
             )}
             {error === 'try_later' && (
-              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>{t('errorTryLater')}</p>
+              <p role="alert" className="field-warn">{t('errorTryLater')}</p>
             )}
             {error === 'account_exists' && (
-              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>{t('errorAccountExists')}</p>
+              <p role="alert" className="field-warn">{t('errorAccountExists')}</p>
             )}
             {error === 'invite_only' && (
-              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>{t('errorInviteOnly')}</p>
+              <p role="alert" className="field-warn">{t('errorInviteOnly')}</p>
             )}
           </div>
         )}

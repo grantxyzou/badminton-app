@@ -365,7 +365,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           </p>
         )}
         {stockDrift > 0 && (
-          <p role="alert" style={{ fontSize: 'var(--fs-xs)', color: 'var(--amber)', margin: 'var(--space-1) 0 0', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <p role="alert" className="field-warn" style={{ margin: 'var(--space-1) 0 0', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">warning</span>
             Records show {stockDrift} more tube{stockDrift === 1 ? '' : 's'} used than purchased — run a recount to true up.
           </p>
