@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   resetMockStore,
   setupAdminPin,
   seedMember,
+  seedGroup,
+  seedMembership,
   seedTestAdminMember,
   makeRequest,
   makeAdminRequest,
@@ -10,7 +12,7 @@ import {
   getStore,
   ADMIN_MEMBER_ID,
 } from './helpers';
-import { hasSignInMethod, readSignInReadiness } from '@/lib/signInReadiness';
+import { hasSignInMethod, isPinOnly, readSignInReadiness } from '@/lib/signInReadiness';
 import { GET } from '@/app/api/admin/sign-in-readiness/route';
 
 /**
@@ -59,6 +61,62 @@ describe('readSignInReadiness', () => {
   });
 });
 
+describe('isPinOnly (docs/plans/pin-retirement.md, step 1)', () => {
+  it('a PIN and nothing else', () => {
+    expect(isPinOnly({ pinHash: 'x' })).toBe(true);
+    expect(isPinOnly({ pinHash: 'x', linkedProviders: [] })).toBe(true);
+    expect(isPinOnly({ pinHash: 'x', passwordHash: '' })).toBe(true);
+  });
+
+  it('not with a password or a provider beside it, and not with no PIN at all', () => {
+    expect(isPinOnly({ pinHash: 'x', passwordHash: 'y' })).toBe(false);
+    expect(isPinOnly({ pinHash: 'x', linkedProviders: ['apple'] })).toBe(false);
+    expect(isPinOnly({})).toBe(false);
+    // A recovery code clears the PIN to '': that person has NO way in, which
+    // is the locked-out list, not this one.
+    expect(isPinOnly({ pinHash: '' })).toBe(false);
+  });
+});
+
+describe('readSignInReadiness: who has only a PIN', () => {
+  it('groups off: admins first, then members, each alphabetical', async () => {
+    seedMember('Viktor', { pinHash: 'x' });
+    seedMember('Akane', { pinHash: 'x' });
+    seedMember('Taufik', { pinHash: 'x', role: 'admin' });
+    seedMember('Carolina', { pinHash: 'x', linkedProviders: ['google'] }); // moved already
+    seedMember('Kento'); // no way in at all: the other list
+    seedMember('Gone', { pinHash: 'x', active: false }); // off the roster
+
+    const r = await readSignInReadiness('bpm');
+    expect(r.pinOnly).toEqual([{ name: 'Taufik', rank: 'admin' }, { name: 'Akane' }, { name: 'Viktor' }]);
+    expect(r.cannotSignIn).toEqual(['Kento']);
+  });
+
+  describe('groups on', () => {
+    const saved = process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
+    });
+    afterEach(() => {
+      if (saved === undefined) delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+      else process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = saved;
+    });
+
+    it('the rank is THIS club\'s: an organiser reads as one, though the roster calls them admin', async () => {
+      seedGroup('club-x', { ownerMemberId: 'm-chong' });
+      seedMember('Chong Wei', { id: 'm-chong', pinHash: 'x' });
+      seedMember('Lin', { id: 'm-lin', pinHash: 'x', role: 'admin' }); // an admin in ANOTHER club
+      seedMember('Zhang', { id: 'm-zhang', pinHash: 'x' });
+      seedMembership('club-x', 'm-chong', { name: 'Chong Wei', role: 'owner' });
+      seedMembership('club-x', 'm-lin', { name: 'Lin', role: 'member' });
+      seedMembership('club-x', 'm-zhang', { name: 'Zhang', role: 'admin' });
+
+      const r = await readSignInReadiness('club-x');
+      expect(r.pinOnly).toEqual([{ name: 'Chong Wei', rank: 'organiser' }, { name: 'Zhang', rank: 'admin' }, { name: 'Lin' }]);
+    });
+  });
+});
+
 describe('GET /api/admin/sign-in-readiness', () => {
   it('an admin gets the list — names only, no credential material', async () => {
     await seedTestAdminMember();
@@ -67,6 +125,7 @@ describe('GET /api/admin/sign-in-readiness', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.cannotSignIn).toEqual(['Kento']);
+    expect(Array.isArray(body.pinOnly)).toBe(true);
     expect(JSON.stringify(body)).not.toMatch(/pinHash|passwordHash|recoveryCode/);
   });
 
