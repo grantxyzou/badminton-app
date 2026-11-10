@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Each tab comes back where you left it (2026-11-10)
+
+- **Switching tabs keeps each tab's place on the page.** Scroll down Home, look at Stats, come back, and Home is where you left it; Stats opens at its top the first time and returns to its own spot after that. Before, every tab shared one position: Stats opened halfway down because Home had been, and Home came back wherever Stats was. The notifications page also opens at its top and closes back to where the tab was. The memory had never worked, because it watched the window while the page actually scrolls inside the body.
+
 ### The receipt names the club in its memo, and the right day (2026-11-09)
 
 - **The e-transfer memo on a shared receipt reads "BPM Core Oct 22 - {your name}" again.** It had been "Oct 22 - {your name}": the club's name never reached the receipt, so the memo collapsed to the date.
