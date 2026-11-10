@@ -10,6 +10,7 @@ import { isValidLateCancelHours, lateCancelHoursOf } from '@/lib/cancelPolicy';
 import { guestsAllowedOf } from '@/lib/plusOne';
 import { clubRunOf, parseClubRun, withSetting } from '@/lib/clubRun';
 import { recipientOf } from '@/lib/payTo';
+import { isWealthsimpleHandle } from '@/lib/wealthsimple';
 import type { ETransferRecipient } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -19,10 +20,11 @@ const MAX_SKIP_DATES = 100;
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
   if (!value || typeof value !== 'object') return false;
-  const v = value as { name?: unknown; email?: unknown; memo?: unknown };
+  const v = value as { name?: unknown; email?: unknown; memo?: unknown; wealthsimple?: unknown };
   if (typeof v.name !== 'string' || !v.name.trim() || v.name.length > 100) return false;
   if (typeof v.email !== 'string' || !v.email.trim() || v.email.length > 200) return false;
   if (v.memo !== undefined && (typeof v.memo !== 'string' || v.memo.length > 200)) return false;
+  if (v.wealthsimple !== undefined && !isWealthsimpleHandle(v.wealthsimple)) return false;
   return true;
 }
 

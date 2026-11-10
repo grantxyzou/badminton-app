@@ -41,6 +41,24 @@ describe('buildReceiptInput', () => {
     expect(r.error).toBeUndefined();
   });
 
+  it('breakdown (receipt image F4): from the frozen bill, never the live session', () => {
+    // costPerCourt changed to 999 after settle: the line must still read 2 × $22 = $44.
+    const r = buildReceiptInput(settledSession({ costPerCourt: 999 }), [], { ...RECIPIENT, wealthsimple: '$grantxyzou' });
+    expect(r.input!.breakdown).toEqual({ courtTotal: 44, costPerCourt: 22, birdTotal: 0, tubes: 0, splitCount: 4 });
+    expect(r.input!.recipient.wealthsimple).toBe('$grantxyzou');
+  });
+
+  it('breakdown, unsettled: the live split, leaving out a resplit-covered player', () => {
+    const s = settledSession({ settled: undefined, costPerCourt: 30, courts: 2 }); // 60
+    const players = [
+      { name: 'A' }, { name: 'B' }, { name: 'C' },
+      { name: 'Cov', writtenOff: true, coverMode: 'resplit' as const },
+    ];
+    const r = buildReceiptInput(s, players, RECIPIENT);
+    expect(r.input!.breakdown).toMatchObject({ courtTotal: 60, costPerCourt: 30, birdTotal: 0, splitCount: 3 });
+    expect(r.input!.costPerPerson).toBe(20);
+  });
+
   it('unsettled: recomputes totalCost / active players and lists active names', () => {
     const s = settledSession({ settled: undefined, costPerCourt: 20, courts: 2 }); // totalCost 40
     const players = [

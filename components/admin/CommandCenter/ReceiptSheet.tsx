@@ -10,6 +10,7 @@ import {
 } from '@/lib/receiptTemplate';
 import { shareOrSaveImage } from '@/lib/shareImage';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { loadReceiptLogo } from '@/lib/receiptLogo';
 
 interface ReceiptSheetProps {
   open: boolean;
@@ -76,11 +77,12 @@ export default function ReceiptSheet({ open, onClose, input: rawInput, error, in
     if (!canvas || !input || mode !== 'group') return;
     // Immediate draw (system-font fallback if web fonts aren't ready yet).
     setImageDataUrl(renderGroupCanvas(input, canvas));
-    // Best-effort upgrade: redraw with the design fonts once they're ready.
+    // Best-effort upgrade: redraw with the design fonts and the logo once
+    // both have landed.
     const fontsReady = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready
       ?? Promise.resolve();
-    fontsReady.then(() => {
-      if (canvasRef.current === canvas) setImageDataUrl(renderGroupCanvas(input, canvas));
+    Promise.all([fontsReady.catch(() => undefined), loadReceiptLogo()]).then(([, logo]) => {
+      if (canvasRef.current === canvas) setImageDataUrl(renderGroupCanvas(input, canvas, logo));
     }).catch(() => {});
   }, [input, mode]);
 
