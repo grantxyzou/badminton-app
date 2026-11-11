@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Each tab comes back where you left it (2026-11-10)
+
+- **Switching tabs keeps each tab's place on the page.** Scroll down Home, look at Stats, come back, and Home is where you left it; Stats opens at its top the first time and returns to its own spot after that. Before, every tab shared one position: Stats opened halfway down because Home had been, and Home came back wherever Stats was. The notifications page also opens at its top and closes back to where the tab was. The memory had never worked, because it watched the window while the page actually scrolls inside the body.
+
 ### A new receipt image: where the money went, and how to pay (2026-11-10)
 
 - **The receipt image shared to the group chat is redrawn** (design F4, picked on the design canvas). A green band carries the club, the date, the app's logo and the big "$18.50 each". Under it, the sum: "2 courts × $48 · $96", "1 tube of shuttles · $15", "Total $111", "Split 6 ways · $18.50 each". Then a box that says how to pay: "E-transfer to:", the club's Wealthsimple handle when it has one, and "Please include a memo:". It is 3:4, so a chat shows it whole. The list of who played is gone.

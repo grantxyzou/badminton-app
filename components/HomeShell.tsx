@@ -53,6 +53,7 @@ import { appSettled, APP_SHELL_ATTR, TAB_PANEL_ATTR } from '@/lib/appSettled';
 import { warmRememberedPictures } from '@/lib/warmPictures';
 import { noteActive } from '@/lib/quickReturn';
 import { rememberClub } from '@/lib/lastClub';
+import { onPageScroll, pageScrollTop, scrollPageTo } from '@/lib/pageScroll';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
 const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
@@ -541,29 +542,33 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * Each tab keeps its own scroll position, as a phone's tab bar does: the
    * page is one scroller shared by every tab, so without this a tab came back
    * at whatever height the last one was left. Not while a sheet holds the
-   * page (`useBodyScrollLock` pins `<body>`, and the window then reads 0).
+   * page (`useBodyScrollLock` pins `<body>`, and the page then reads 0).
+   *
+   * The BODY is the scroller (`lib/pageScroll.ts`): `window.scrollY` reads 0
+   * however far down the page is, `window.scrollTo` moves nothing, and a body
+   * scroll never reaches a `window` listener. This read and wrote the window
+   * until 2026-11-10, so every tab shared one position and the memory was
+   * never written.
    */
   const scrollByTab = useRef<Partial<Record<Tab, number>>>({});
   const activeTabRef = useRef(activeTab);
   useEffect(() => {
-    const save = () => {
+    return onPageScroll(() => {
       if (document.body.style.position === 'fixed') return;
       if (noticesOpenRef.current) return; // the page's scroll is not the tab's
-      scrollByTab.current[activeTabRef.current] = window.scrollY;
-    };
-    window.addEventListener('scroll', save, { passive: true });
-    return () => window.removeEventListener('scroll', save);
+      scrollByTab.current[activeTabRef.current] = pageScrollTop();
+    });
   }, []);
   useLayoutEffect(() => {
     if (activeTabRef.current === activeTab) return;
     activeTabRef.current = activeTab;
-    window.scrollTo(0, scrollByTab.current[activeTab] ?? 0);
+    scrollPageTo(scrollByTab.current[activeTab] ?? 0);
   }, [activeTab]);
   // The page opens at its top and closes back to where the tab was.
   useLayoutEffect(() => {
     if (noticesOpenRef.current === noticesOpen) return;
     noticesOpenRef.current = noticesOpen;
-    window.scrollTo(0, noticesOpen ? 0 : (scrollByTab.current[activeTabRef.current] ?? 0));
+    scrollPageTo(noticesOpen ? 0 : (scrollByTab.current[activeTabRef.current] ?? 0));
   }, [noticesOpen]);
   const openNotices = useCallback(() => setNoticesOpen(true), []);
   const closeNotices = useCallback(() => setNoticesOpen(false), []);
