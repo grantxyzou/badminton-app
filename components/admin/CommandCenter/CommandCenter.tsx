@@ -23,6 +23,7 @@ import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton, { CONSOLE_HEIGHTS } from '@/components/primitives/CardSkeleton';
 import { sharedFetch } from '@/lib/sharedRead';
 import { useClubRun } from '@/lib/useClubRun';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { CLUB_STYLES } from '@/lib/clubRun';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -60,7 +61,13 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
      and a job two days late showed nowhere on this screen. */
   const [benchCount, setBenchCount] = useState<{ waiting: number; late: number } | null>(null);
   const stringingOn = isFlagOn('NEXT_PUBLIC_FLAG_STRINGING');
-  const giftCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
+  // Gift cards are an ORGANISER's (Grant, 2026-11-10): the route answers an
+  // admin who is not one with organiser_only, so the row waits for the rank
+  // rather than open a screen that refuses every read. Groups off, every admin
+  // is an organiser.
+  const { group: currentGroup } = useCurrentGroup();
+  const giftCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')
+    && (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') || currentGroup?.role === 'owner');
   // How this club runs (lib/clubRun.ts). Money surfaces hide only on a KNOWN
   // "off": while the club is still being read they render as they always did.
   const { run, known: runKnown } = useClubRun();

@@ -153,8 +153,8 @@ export default function ProfileTab({
   // the card then falls back to the shell's admin verdict.
   const [rank, setRank] = useState<ProfileRank | null>(null);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
-  // Whether this member may give out gift cards (`Member.canGift`), asked of
-  // the server once an identity exists; unknown and no both hide the row.
+  // Whether this member may give out gift cards (an organiser of this club),
+  // asked of the server once an identity exists; unknown and no both hide the row.
   const [canGift, setCanGift] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
@@ -284,7 +284,8 @@ export default function ProfileTab({
     onDeleteIntentConsumed?.();
   }, [deleteIntent, identity, onDeleteIntentConsumed]);
 
-  // The gift-card switch (docs/plans/gift-card-ledger.md): the route answers
+  // May this member give gift cards? Only an organiser of this club may
+  // (docs/plans/gift-card-ledger.md, 2026-11-10). The route answers
   // `{ canGift: false }` for everyone else, so a 'no' and a failed read both
   // leave the row hidden — there is nothing to act on either way.
   useEffect(() => {
@@ -945,7 +946,7 @@ export default function ProfileTab({
 
       {/* MONEY (spec §1.5): pages, not sheets. Gift cards & credit while store
           credit is on; Account balance for everyone (the detailed view of
-          Home's card); Give a gift card for a canGift member. A figure is
+          Home's card); Give a gift card for an organiser. A figure is
           absent until it is KNOWN — never a $0 off a failed read. */}
       <ProfileEyebrow>{tSettings('moneyGroup')}</ProfileEyebrow>
       <SettingsList
@@ -969,8 +970,8 @@ export default function ProfileTab({
             owed: true,
             onClick: () => setView('balance'),
           },
-          // Only for a member an organiser marked `canGift`; the page is the
-          // gifter's half of the organiser's gift-card console.
+          // Only for an organiser of this club (the route says so); the same
+          // power as the console's Gift cards, from Profile.
           ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift') }] : []),
         ]}
       />

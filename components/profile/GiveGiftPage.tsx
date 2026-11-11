@@ -35,7 +35,7 @@ interface Props {
 
 /**
  * "Give a gift card" (docs/superpowers/specs/2026-11-09-profile-reorg-design.md §5,
- * build step 4), for a member an organiser marked `canGift` — the route's
+ * build step 4), for an ORGANISER of this club (2026-11-10) — the route's
  * check is the gate and Profile hides the row from everyone else. It replaces
  * `GiveGiftSheet`.
  *

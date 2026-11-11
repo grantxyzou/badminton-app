@@ -107,21 +107,6 @@ describe('a rank is an organiser\'s to hand out', () => {
     const res = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, role: 'owner' }, asAdminOf('bpm')));
     expect(res.status).toBe(400);
   });
-
-  it('the gift-card switch is an organiser\'s too; an admin resending it unchanged passes', async () => {
-    demoteCallerTo('admin');
-    const flip = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, canGift: true }, asAdminOf()));
-    expect(flip.status).toBe(403);
-    expect((await flip.json()).error).toBe('organiser_only');
-    expect(rowOf(lin.id).canGift).toBeUndefined();
-    const same = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, canGift: false, role: 'member' }, asAdminOf()));
-    expect(same.status).toBe(200);
-    demoteCallerTo('admin');
-    rowOf(ADMIN_MEMBER_ID).role = 'owner';
-    const granted = await patchMember(makeRequest('PATCH', 'http://x/api/members', { id: lin.id, canGift: true }, asAdminOf()));
-    expect(granted.status).toBe(200);
-    expect(rowOf(lin.id).canGift).toBe(true);
-  });
 });
 
 describe('nobody removes an organiser', () => {

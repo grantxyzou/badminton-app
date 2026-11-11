@@ -538,25 +538,6 @@ export async function setMembershipRole(
 }
 
 /**
- * Grant or revoke gift-card minting in ONE group. The switch lives on the
- * membership, not the person: a card is the club's liability, and a person can
- * be on two rosters where only one club trusts them with it. Resolves
- * `undefined` when there is no active membership here — a club's admin cannot
- * flip the switch for someone who is not on their roster.
- */
-export async function setMembershipCanGift(
-  groupId: string,
-  memberId: string,
-  canGift: boolean,
-): Promise<Membership | undefined> {
-  await ensureReady();
-  const m = await readMembership(groupId, memberId);
-  if (!m || m.status !== 'active') return undefined;
-  if ((m.canGift === true) === canGift) return m;
-  return groupScope(groupId).replace('memberships', { ...m, canGift }, groupId);
-}
-
-/**
  * Grant or revoke stringing in ONE group (docs/plans/roles-v2.md, PR 2).
  * Per club like `canGift`: Zach strings for BPM, and joining a second club
  * must not put him on its bench. Resolves `undefined` when there is no

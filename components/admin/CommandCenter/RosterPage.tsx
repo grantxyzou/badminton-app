@@ -107,7 +107,6 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
   // answers organiser_only). Unknown is not "not allowed": the server decides.
   const canSignOutRank = !rankKnown || callerOrganiser || formRole === 'member';
   const [formCanString, setFormCanString] = useState(false);
-  const [formCanGift, setFormCanGift] = useState(false);
   const [formActive, setFormActive] = useState(true);
   const [formAlias, setFormAlias] = useState('');
   const [formRegular, setFormRegular] = useState<boolean | null>(null);
@@ -291,7 +290,6 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
     setFormRole(r.member.groupRole ?? (r.member.role === 'admin' ? 'admin' : 'member'));
     setFormActive(r.member.active !== false);
     setFormCanString(r.member.canString === true);
-    setFormCanGift(r.member.canGift === true);
     setFormRegular(regularOf(r.member));
     const alias = aliases.find((a) => a.appName.toLowerCase() === r.member.name.toLowerCase());
     setFormAlias(alias?.etransferName ?? '');
@@ -328,7 +326,6 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
             role: formRole,
             active: formActive,
             canString: formCanString,
-            canGift: formCanGift,
             // Only once someone has been marked: an unmarked person stays unmarked.
             ...(formRegular !== null ? { regular: formRegular } : {}),
           }),
@@ -902,21 +899,6 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                   <span>Can string rackets</span>
                 </label>
 
-                {/* The third switch (docs/plans/gift-card-ledger.md): this
-                    person may mint gift cards from their own Profile — a
-                    raffle, a thank-you — without the console. Every card
-                    records who made it; the admin's list says so. */}
-                {/* Organiser-only (docs/plans/roles-v2.md): a gift card is
-                    money the club owes. An admin sees the switch as it stands. */}
-                <label className="cc-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={formCanGift}
-                    disabled={!callerOrganiser || !rankKnown}
-                    onChange={(e) => setFormCanGift(e.target.checked)}
-                  />
-                  <span>Can give out gift cards{callerOrganiser ? '' : ' (an organiser sets this)'}</span>
-                </label>
 
                 <Field label="Recovery code">
                   <button
