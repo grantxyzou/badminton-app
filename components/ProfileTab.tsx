@@ -29,6 +29,7 @@ import { ProfileSkeleton } from './TabFallbacks';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
 import NicknamePage from './profile/NicknamePage';
+import ContactEmailPage from './profile/ContactEmailPage';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
 import { takeProfileView } from '@/lib/profileView';
 import { useTabActive } from '@/lib/tabActivity';
@@ -149,6 +150,9 @@ export default function ProfileTab({
      device that only remembers a name, and must show neither. */
   const [authKnown, setAuthKnown] = useState(false);
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
+  // The member's contact email (spec Q3). `undefined` until members/me has
+  // answered for its owner: Edit profile shows no value rather than "Add".
+  const [contactEmail, setContactEmail] = useState<string | null | undefined>(undefined);
   const [avatar, setAvatar] = useState<MemberAvatarValue | null>(null);
   // This club's rank (roles v2). `null` = not known yet, or the read failed:
   // the card then falls back to the shell's admin verdict.
@@ -176,9 +180,9 @@ export default function ProfileTab({
   // sub-screens.
   // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
   // its Back returns there rather than to the list.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance' | 'report' | 'support'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'contact-email' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance' | 'report' | 'support'>('root');
   // A sub-screen answers the Android back button (lib/pageStack.ts).
-  usePageBack(view !== 'root', () => setView((v) => (v === 'name' ? 'profile' : 'root')));
+  usePageBack(view !== 'root', () => setView((v) => (v === 'name' || v === 'contact-email' ? 'profile' : 'root')));
   // A page opens at its TOP, and Back returns to the same place in the list.
   // Before, a row near the foot of Profile (Support, Report a problem)
   // opened its page half-way down. The BODY is the scroller (lib/pageScroll.ts).
@@ -328,9 +332,11 @@ export default function ProfileTab({
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();
       })
-      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown; rank?: unknown }) => {
+      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown; rank?: unknown; contactEmail?: unknown }) => {
         if (cancelled) return;
         setPinIsSet(data.hasPin === true);
+        // Only the owner is told it; anyone else's answer is not "none".
+        setContactEmail(data.authed === true ? (typeof data.contactEmail === 'string' ? data.contactEmail : null) : undefined);
         setAvatar(normalizeAvatar(data.avatar));
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
         setRank(readRank(data.rank));
@@ -787,6 +793,18 @@ export default function ProfileTab({
     return <NicknamePage currentName={identity.name} clubName={group?.name ?? null} onBack={() => setView('profile')} />;
   }
 
+  if (view === 'contact-email') {
+    return (
+      <ContactEmailPage
+        name={identity.name}
+        current={contactEmail ?? null}
+        clubName={group?.name ?? null}
+        onSaved={setContactEmail}
+        onBack={() => setView('profile')}
+      />
+    );
+  }
+
   if (view === 'profile') {
     return (
       <>
@@ -797,8 +815,11 @@ export default function ProfileTab({
           isAdmin={isAdmin}
           avatar={avatar}
           memberCreatedAt={memberCreatedAt}
+          signInEmail={methodsState.methods ? methodsState.methods.email ?? null : undefined}
+          contactEmail={contactEmail}
           onAvatarSaved={setAvatar}
           onEditName={() => setView('name')}
+          onEditContactEmail={() => setView('contact-email')}
           onDeleteAccount={() => setDeleteAccountOpen(true)}
           onBack={() => setView('root')}
         />

@@ -33,6 +33,7 @@ function renderPage(extra: Partial<Parameters<typeof EditProfilePage>[0]> = {}) 
     memberCreatedAt: '2026-11-02T20:00:00.000Z',
     onAvatarSaved: vi.fn(),
     onEditName: vi.fn(),
+    onEditContactEmail: vi.fn(),
     onDeleteAccount: vi.fn(),
     onBack: vi.fn(),
     ...extra,
@@ -171,5 +172,24 @@ describe('EditProfilePage', () => {
     expect(props.onEditName).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: /Delete my account/ }));
     expect(props.onDeleteAccount).toHaveBeenCalledOnce();
+  });
+
+  // Spec §2.5, Q3 (Grant, 2026-11-11: "Q3 yes").
+  it('shows the sign-in email read-only and the contact email as a row that opens its page', () => {
+    const props = renderPage({ signInEmail: 'lin@example.com', contactEmail: 'lin.home@example.com' });
+    expect(screen.getByText('Contact information')).toBeTruthy();
+    expect(screen.getByText('lin@example.com')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /lin@example\.com/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Contact email.*lin\.home@example\.com/ }));
+    expect(props.onEditContactEmail).toHaveBeenCalledOnce();
+  });
+
+  it('offers to add one when there is none, and shows no value while it is unknown', () => {
+    renderPage({ contactEmail: null });
+    expect(screen.getByRole('button', { name: /Contact email.*Add an email/ })).toBeTruthy();
+    cleanup();
+    renderPage({ contactEmail: undefined });
+    expect(screen.queryByText('Add an email')).toBeNull();
+    expect(screen.queryByText('Sign-in email')).toBeNull();
   });
 });

@@ -826,6 +826,23 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
               </p>
             </Field>
 
+            {/* The address this person gave the club to reach them (spec Q3,
+                2026-11-11). Theirs to set or clear, from their own Edit
+                profile; shown here read-only, and only to the club's admins. */}
+            {(() => {
+              const contact = editingId ? members.find((m) => m.id === editingId)?.contactEmail : undefined;
+              return contact ? (
+                <Field label="Contact email">
+                  <a href={`mailto:${contact}`} style={{ fontSize: 'var(--fs-md)', color: 'var(--accent)', overflowWrap: 'anywhere' }}>
+                    {contact}
+                  </a>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
+                    Added by them. Only they can change it.
+                  </p>
+                </Field>
+              ) : null;
+            })()}
+
             {editingId && (
               <>
                 {/* The rank. An organiser's is nobody's to change — they step

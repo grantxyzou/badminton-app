@@ -4,7 +4,7 @@ Intent: docs/plans/profile-reorganization.md
 
 **Mock-up:** the "Profile reorganisation mock-up" Design canvas (Grant's, private): https://claude.ai/artifact/McqsPzJuDPWtVdArthhj7X. Every screen below is a board there; press Play to tap through. Where this spec and the mock-up disagree, this spec wins (the mock is a drawing in raw hex; the build uses tokens).
 
-**Date:** 2026-11-09. **Status:** steps 1–8 built (2026-11-11); Q1 answered, Q2 and Q3 open (end of this file). Build order is at the end.
+**Date:** 2026-11-09. **Status:** steps 1–8 built (2026-11-11); Q1 (no) and Q3 (yes, built) answered; Q2 is "not yet" (end of this file). Build order is at the end.
 
 ---
 
@@ -126,8 +126,9 @@ These apply to all nine screens and are not repeated below.
    - *Display name*: value = roster name, chevron → today's `NicknamePage`.
    - *Account role*: value Player / Admin / Organiser, then a short bullet list of what that role can do (`--fs-base`, `--text-secondary`). Strings per rank: Player: Sign up, pay, ask for a restring. Admin: Run sessions and open sign-ups · Mark payments and settle the bill · Add, rename and remove members. Organiser: Admin's list + Give ranks and gift cards.
    - *Member since*: month and year of `Membership.joinedAt` (fallback `Member.createdAt`). Not tappable.
-5. **CONTACT INFORMATION** card (**Q3**):
-   - *Email*: the sign-in email if there is one (not tappable, "Used to sign in"), else "Add an email", chevron → today's add-email-and-password flow (`KeepAccountForm`).
+5. **CONTACT INFORMATION** card (**Q3: yes**, Grant 2026-11-11):
+   - *Sign-in email*: shown only when there is one, not tappable, "Used to sign in".
+   - *Contact email* (`Member.contactEmail`): the value, or "Add an email"; chevron → the **Contact email** page (one field, Save, "Remove this email"). Not a sign-in, never verified. The door's email becomes it once the club approves the ask. Seen by the member and by their club's admins on the Roster sheet; the privacy policy says so.
 6. **Delete my account**: its own card, one row; bin icon and label in `--color-red`, chevron (it opens a confirmation). Under it, `--fs-base` `--text-muted`: "Removes you from every club. Your games and payments stay in the club's records under "Former member"." → today's `DeleteAccountSheet` (a sheet: it is a confirmation).
 
 ### Pictures (assets)
@@ -348,8 +349,8 @@ Reduced motion: page slides become the crossfade; fades stay (`.claude/rules/des
 ## Open questions (Grant)
 
 1. **Q1** Move Language and Appearance from the header into Settings (bell stays in the header)? **No** (Grant, 2026-11-11: "dont move them"). The header keeps all three toggles.
-2. **Q2** Redeem a gift card on Home's balance card too (as a link to §3)?
-3. **Q3** Keep the email typed at the join step as a contact email on Edit profile? It would need a privacy-policy line.
+2. **Q2** Redeem a gift card on Home's balance card too (as a link to §3)? **Not yet** (Grant, 2026-11-11).
+3. **Q3** Keep the email typed at the join step as a contact email on Edit profile? It would need a privacy-policy line. **Yes** (Grant, 2026-11-11). Built the same day: §2.5 above.
 
 ## Build order (one PR each)
 

@@ -20,6 +20,7 @@ import {
 } from '@/lib/auth';
 import { purgeMember, anonymizePlayerRows, anonymizeGameResults, anonymizeFeedback, purgeNamesFor } from '@/lib/memberPurge';
 import { normalizeAvatar, parseAvatar } from '@/lib/memberAvatar';
+import { normalizeContactEmail, parseContactEmail } from '@/lib/contactEmail';
 import {
   normalizeStatsPrivacy,
   parseStatsPrivacyPatch,
@@ -93,19 +94,19 @@ export async function GET(req: NextRequest) {
         : null;
     const probe = selfId
       ? {
-          query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',
+          query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.contactEmail FROM c WHERE c.id = @id AND c.active = true',
           parameters: [{ name: '@id', value: selfId }],
         }
       : groupsOn
       ? groupMemberId
         ? {
-            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',
+            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.contactEmail FROM c WHERE c.id = @id AND c.active = true',
             parameters: [{ name: '@id', value: groupMemberId }],
           }
         : null // not on this group's roster: nobody, without a read
       : {
           query:
-            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.contactEmail FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
           parameters: [{ name: '@name', value: name }],
         };
     const resources = probe ? (await container.items.query(probe).fetchAll()).resources : [];
@@ -183,7 +184,14 @@ export async function GET(req: NextRequest) {
       : membership
         ? membership.role
         : me.role === 'admin' ? 'admin' : 'member';
-    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar, rank });
+    /**
+     * The contact email (spec Q3) is the caller's OWN, and only theirs: an
+     * admin asking about someone else reads it on the roster, which is the
+     * club's view (`GET /api/members`), not here. `null` = none, or not asked
+     * by its owner.
+     */
+    const contactEmail = authed ? normalizeContactEmail(me?.contactEmail) : null;
+    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar, rank, contactEmail });
   } catch (error) {
     // A thrown read is a 503, never a 200 of defaults (the server half of the
     // lying-empty-state rule, `__tests__/read-failed-503.test.ts`). The
@@ -326,6 +334,43 @@ async function handleAvatarPatch(req: NextRequest, name: string, raw: unknown) {
   return NextResponse.json({ success: true, avatar });
 }
 
+/**
+ * Write the member's contact email (spec Q3, `lib/contactEmail.ts`). The
+ * member's OWN cookie only — unlike the picture, an admin does not set
+ * someone's address for them: it is how the club reaches that person, and
+ * only they know it (rule 12: never a name alone). `null` or `''` clears it.
+ * A `replace`, not an `upsert`: an account deleted between the read and the
+ * write stays deleted.
+ */
+async function handleContactEmailPatch(req: NextRequest, name: string, raw: unknown) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`contact-email:${name.toLowerCase()}:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  const contactEmail = parseContactEmail(raw);
+  if (contactEmail === undefined) {
+    return NextResponse.json({ error: 'invalid_email' }, { status: 400 });
+  }
+
+  const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+  if (!memberId) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  const caller = await verifyLiveMemberAuth(req);
+  if (!caller || caller.memberId !== memberId) {
+    return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+  }
+
+  const item = getContainer('members').item(memberId, memberId);
+  const member = (await item.read()).resource;
+  if (!member) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  const { contactEmail: _previous, ...rest } = member;
+  await item.replace(contactEmail ? { ...rest, contactEmail } : rest);
+  return NextResponse.json({ success: true, contactEmail });
+}
+
 export async function PATCH(req: NextRequest) {
   try {
     return await handlePatch(req);
@@ -342,6 +387,7 @@ async function handlePatch(req: NextRequest) {
     newPin?: unknown;
     statsPrivacy?: unknown;
     avatar?: unknown;
+    contactEmail?: unknown;
   };
   try {
     body = await req.json();
@@ -366,6 +412,10 @@ async function handlePatch(req: NextRequest) {
   // The picture: same reason, same place.
   if (body.avatar !== undefined) {
     return handleAvatarPatch(req, name, body.avatar);
+  }
+
+  if (body.contactEmail !== undefined) {
+    return handleContactEmailPatch(req, name, body.contactEmail);
   }
 
   /**
