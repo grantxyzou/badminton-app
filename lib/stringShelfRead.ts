@@ -1,5 +1,5 @@
 import { groupScope } from './groupScope';
-import { labelKey, readStringCatalog, readStringPurchases, stockBand, summarizeStringStock, type StockBand } from './stringStock';
+import { colourStockOf, labelKey, readStringCatalog, readStringPurchases, stockBand, summarizeStringStock, type ColourStock, type StockBand } from './stringStock';
 import { readClubGearDocs } from './clubGearDocs';
 import { tallyClubGear } from './clubGear';
 import type { CatalogItem, StringingJob } from './types';
@@ -15,6 +15,8 @@ const SHELF_TTL_MS = 60_000;
 export interface ShelfExtras {
   stock: Record<string, StockBand>;
   players: Record<string, number>;
+  /** Label → which colours are on the shelf; a missing label has no colour-tagged purchase. */
+  colourStock: Record<string, ColourStock>;
 }
 
 /**
@@ -52,19 +54,23 @@ export async function readShelfExtras(
     readStringPurchases(scope),
     readStringCatalog(),
     // Every job, archived included: a racket strung last winter still used a set.
-    scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt' }),
+    // `stringColor` so a strung job uses up its own colour's pool.
+    scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor' }),
     readClubGearDocs(groupId),
   ]);
 
   const summary = summarizeStringStock({ offered: strings, links, aliases, purchases, jobs, catalog });
   const offeredKeys = new Map(strings.map((l) => [labelKey(l), l]));
   const stock: Record<string, StockBand> = {};
+  const colourStock: Record<string, ColourStock> = {};
   for (const line of summary.lines) {
     // Only offered labels: a line for a string no longer on the list is the
     // admin's bookkeeping, not something a player is choosing between.
     const label = offeredKeys.get(labelKey(line.label));
     const band = stockBand(line);
     if (label && band) stock[label] = band;
+    const colours = colourStockOf(line);
+    if (label && colours) colourStock[label] = colours;
   }
 
   // Matched by label, and for a linked string by the catalog's own name too
@@ -78,7 +84,7 @@ export async function readShelfExtras(
     if (count !== undefined) players[label] = count;
   }
 
-  const value = { stock, players };
+  const value = { stock, players, colourStock };
   if (cacheEnabled()) shelfCache.set(groupId, { at: Date.now(), value });
   return value;
 }

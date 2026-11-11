@@ -7,6 +7,9 @@ import { metresFor, REEL_M, SET_M } from '@/lib/stringStockMath';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
 import DatePicker from '@/components/DatePicker';
 import MoneyInput from '@/components/primitives/MoneyInput';
+import { ColourDot } from '@/components/stringing/StringColours';
+import { stringColours } from '@/lib/stringShelf';
+import { colourIdOf, PALETTE_EN, STRING_PALETTE, type StringColourId } from '@/lib/stringPalette';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -30,8 +33,9 @@ interface Props {
   onClose: () => void;
   /** A save landed; the card refetches. */
   onSaved: () => void;
-  /** The offered strings, with the catalog row for each linked one. */
-  offered: Array<{ label: string; item: CatalogItem | null }>;
+  /** The offered strings, with the catalog row for each linked one and the
+   *  reel colours the stringer set for it (empty when none are said). */
+  offered: Array<{ label: string; item: CatalogItem | null; colours?: StringColourId[] }>;
   /** Preselect a string: the sheet is opened from that string's own sheet. */
   initialLabel?: string;
 }
@@ -55,14 +59,27 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
   const cost: number | '' = costDraft.trim() === '' ? '' : Number.isFinite(Number(costDraft)) ? Number(costDraft) : NaN;
   const [date, setDate] = useState(() => todayIso());
   const [notes, setNotes] = useState('');
+  /** `null` is "Mixed / not sure": the purchase stores no colour. */
+  const [color, setColor] = useState<StringColourId | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const chosen = offered.find((o) => o.label === label) ?? null;
+  /* The colours this reel could be (docs/plans/string-stock-by-colour.md):
+     the stringer's reel colours for the string, else the maker's (single
+     colours only — a two-tone is no palette colour), else the whole palette
+     for a string nothing describes. */
+  const colourChoices: StringColourId[] = (() => {
+    if (chosen?.colours && chosen.colours.length > 0) return chosen.colours;
+    const fromCatalog = stringColours(chosen?.item ?? null).map((c) => colourIdOf(c.name)).filter((id): id is StringColourId => id !== null);
+    return fromCatalog.length > 0 ? STRING_PALETTE.filter((id) => fromCatalog.includes(id)) : [...STRING_PALETTE];
+  })();
   const defaultMetres = (u: StringPurchase['unit']) => metresFor(u, chosen?.item ?? undefined);
 
   function pickLabel(next: string) {
     setLabel(next);
+    // Another string's colours are another list; start again at "Mixed".
+    setColor(null);
     if (!metresTouched) {
       const row = offered.find((o) => o.label === next);
       setMetres(metresFor(unit, row?.item ?? undefined));
@@ -94,6 +111,7 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
           totalCostCents: Math.round(c * 100),
           date,
           ...(notes.trim() ? { notes: notes.trim() } : {}),
+          ...(color ? { color } : {}),
         }),
       });
       if (!res.ok) {
@@ -131,6 +149,31 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
               <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. BG65" maxLength={60} />
             )}
           </Field>
+          <Field label="Colour" group>
+            {/* One pick, as a radio row of the app's chips. "Mixed / not
+                sure" first and the default: a stringer who skips it logs what
+                he always did, and the reel counts in the string's mixed pool. */}
+            <div role="radiogroup" aria-label="Colour" style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-2)' }}>
+              {([null, ...colourChoices] as Array<StringColourId | null>).map((id) => {
+                const on = color === id;
+                return (
+                  <button
+                    key={id ?? 'mixed'}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setColor(id)}
+                    style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'inherit' }}
+                  >
+                    <span className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      {id && <ColourDot id={id} size="sm" />}
+                      {id ? PALETTE_EN[id] : 'Mixed / not sure'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
             <Field label="Bought as" group>
               <div className="segment-control flex">
@@ -163,7 +206,7 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
             <DatePicker value={date} onChange={(d) => setDate(d || todayIso())} placeholder="Date" />
           </div>
           <Field label="Notes (optional)">
-            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={200} placeholder="Where from, colour…" />
+            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={200} placeholder="Where from…" />
           </Field>
           {error && <p className="field-error" role="alert">{error}</p>}
           <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" disabled={saving} onClick={() => void save()}>

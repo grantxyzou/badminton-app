@@ -2111,6 +2111,8 @@
           "priceInvalid": "请输入价格，如 32 或 29.50，或留空。",
           "stock": "库存",
           "stockDetail": "{remaining}/{purchased} 米 · 已用 {used} 套",
+          "byColour": "{colour}：{count, plural, =0 {已用完} other {剩 # 套}}",
+          "mixedPool": "混合 / 不确定：{count, plural, =0 {已用完} other {剩 # 套}}",
           "costPerSet": "每套 {cost}",
           "usedOnly": "已用 {used} 套",
           "logPurchase": "登记购买",

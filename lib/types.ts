@@ -712,6 +712,13 @@ export interface StringPurchase {
   /** YYYY-MM-DD, the admin's date. */
   date: string;
   notes?: string;
+  /**
+   * The reel's colour, a palette id (`lib/stringPalette.ts`). ADDITIVE and
+   * optional: absent is "Mixed / not sure" — every purchase logged before
+   * 2026-11-11 — and counts in the string's mixed pool
+   * (docs/plans/string-stock-by-colour.md).
+   */
+  color?: string;
   createdAt: string;
   createdBy: string;
 }

@@ -19,6 +19,10 @@
  *             floor as `stats/club/gear`.
  *   colours — the colours the club has each string in, as palette ids
  *             (`lib/stringPalette.ts`); missing = not said.
+ *   colourStock — which of a string's colours are on the shelf, from
+ *             colour-tagged purchases: `{ inStock: ids, mixed }`, never a
+ *             count; missing = no tagged purchase
+ *             (docs/plans/string-stock-by-colour.md).
  * PATCH also takes `{ rename: { from, to } }` on its own: one string renamed,
  * with its price, link, colours and old spellings carried across on the
  * STORED doc, and the old name counted as the new one.
@@ -48,7 +52,7 @@ import { forgetShelfExtras, readShelfExtras } from '@/lib/stringShelfRead';
 export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
-const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null, colours: null };
+const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null, colours: null, colourStock: null };
 
 export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
@@ -81,6 +85,7 @@ export async function GET(req: NextRequest) {
     colours: read.colours,
     stock: extras?.stock ?? null,
     players: extras?.players ?? null,
+    colourStock: extras?.colourStock ?? null,
   });
 }
 

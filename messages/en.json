@@ -2123,6 +2123,8 @@
             "priceInvalid": "Enter a price like 32 or 29.50, or leave it empty.",
             "stock": "Stock",
             "stockDetail": "{remaining} of {purchased} m · {used} used",
+            "byColour": "{colour}: {count, plural, =0 {none left} one {# set left} other {# sets left}}",
+            "mixedPool": "Mixed / not sure: {count, plural, =0 {none left} one {# set left} other {# sets left}}",
             "costPerSet": "{cost} a set",
             "usedOnly": "{used} used",
             "logPurchase": "Log a purchase",

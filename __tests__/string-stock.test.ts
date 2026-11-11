@@ -143,7 +143,7 @@ describe('the stock routes', () => {
     expect(saved).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' }, prices: {}, aliases: {}, colours: {} });
     const lin = seedMember('Lin');
     const read = await (await stringsGET(makeRequest('GET', `${BASE}/stringing/strings`, undefined, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }))).json();
-    expect(read).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' }, prices: {}, colours: {}, stock: {}, players: {} });
+    expect(read).toEqual({ strings: ['BG65', 'House string'], links: { BG65: 'string-yx-bg65' }, prices: {}, colours: {}, stock: {}, players: {}, colourStock: {} });
     // An older client sends only the list: the link for the surviving label stays.
     const again = await (await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['BG65'] }))).json();
     expect(again).toEqual({ strings: ['BG65'], links: { BG65: 'string-yx-bg65' }, prices: {}, aliases: {}, colours: {} });
