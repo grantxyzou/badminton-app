@@ -2,7 +2,7 @@
 
 **Track:** ROADMAP North Star pillar 4 — "recommendations strong enough to suggest equipment purchases"; the racket-fit engine's track (`docs/plans/racket-fit-engine.md`), which this extends to the string tension it names.
 **Status:** shipped 2026-10-09
-**Review on:** 2026-11-09 — has Grant, as the club's stringer, confirmed the three draft sample players (`g01`–`g03` in `__tests__/fixtures/fit-golden.json`, `pending: true`) and the swing-based tension numbers they produce? If he rejects the numbers, revert `pairTension` / `recommendTension` to level-and-consistency placement and keep the swing out of tension.
+**Review on:** 2026-12-09 — has Grant, stringing for members, seen the app's tension go the wrong WAY for someone (a slow swing told to go tighter, a fast one looser)? If so, revert `pairTension` / `recommendTension` to level-and-consistency placement and keep the swing out of tension. Off by a pound is not that. (2026-11-11: the three sample players' rackets were rated on 2026-10-09, #585, so none is pending. Asked whether he would string them at the app's numbers — about 20, 25 and 28 lb for doubles — Grant said "no not really. But I can keep an eye on it": not a verdict on direction, so nothing is reverted, and the check moved to real restrings.)
 
 ## Problem
 
@@ -94,7 +94,7 @@ shaft.
   asked what the buying guides say about power for a beginner; they all say
   even balance and a flexible-to-medium shaft, and he rated g01 that way. A
   slow swing's `more_power` no longer steps the balance toward head-heavy.
-  g01 is rated; g02 and g03 are still drafts for him to confirm.
+  g01 is rated; g02 and g03 were rated the same day (#585).
 
 ## Shape
 

@@ -766,7 +766,6 @@
     "adminToolsButton": "Admin tools →",
     "admin": {
       "checkFailed": "Couldn't check",
-      "group": "Admin",
       "console": "Admin tools",
       "needYou": "{count} need you",
       "allClear": "All clear"
@@ -885,8 +884,6 @@
       "clubName": "Your name in the club",
       "helpGroup": "Help",
       "privacyGroup": "Privacy",
-      "title": "Account",
-      "appGroup": "App",
       "newPin": "New PIN",
       "updatePin": "Update PIN",
       "recoveryCode": "Have a recovery code?",
@@ -894,6 +891,8 @@
       "accountBalance": "Account balance",
       "owedMeta": "{amount} owed",
       "moneyGroup": "Money",
+      "clubGroup": "Club",
+      "settingsGroup": "Settings",
       "giveGift": "Give a gift card",
       "statsPrivacy": "Stats & privacy",
       "statsPrivacyOn": "On",
@@ -2778,8 +2777,8 @@
               "t": "Turn on notifications",
               "b": "Tap the bell at the top of any tab, or Profile → Notifications.",
               "img": "profile-app",
-              "alt": "The App group on Profile, with the Notifications row.",
-              "caption": "Profile → App."
+              "alt": "The Settings group on Profile, with the Notifications row.",
+              "caption": "Profile → Settings."
             },
             {
               "t": "Language and theme",

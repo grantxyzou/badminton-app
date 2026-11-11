@@ -62,7 +62,8 @@ describe('CardHeader', () => {
     it('renders the icon at weight 600 so it does not read thin against the label', () => {
       const { container } = render(<CardHeader compact icon="grid_4x4" title="Stringing" />);
       const style = container.querySelector('.material-icons')?.getAttribute('style') ?? '';
-      expect(style).toMatch(/wght'?\s*600/);
+      // jsdom 30 serializes the axis as 'wght' 600 (or bare), jsdom 31 as "wght" 600.
+      expect(style).toMatch(/wght["']?\s*600/);
     });
 
     it('leaves the non-compact icon at the Tier-A heading size', () => {

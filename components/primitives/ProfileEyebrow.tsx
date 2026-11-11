@@ -10,9 +10,10 @@ import type { ReactNode } from 'react';
  * `ProfileTab` renders that screen. Extracting also stops the alternative,
  * which was a near-copy that drifts.
  */
-export default function ProfileEyebrow({ children }: { children: ReactNode }) {
+export default function ProfileEyebrow({ children, id }: { children: ReactNode; /** For `aria-labelledby` on the group it names. */ id?: string }) {
   return (
     <p
+      id={id}
       style={{
         fontFamily: 'var(--font-display, "Space Grotesk")',
         fontSize: 'var(--fs-xs)',

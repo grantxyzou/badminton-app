@@ -33,6 +33,18 @@ function renderPage(doc: PlayerGear | null, frameId = AF79.id) {
   );
 }
 
+
+/** The body is what scrolls in this app (lib/pageScroll.ts); jsdom has no layout, so give it a scrollTop that holds. */
+function bodyScrolledTo(y: number) {
+  let top = y;
+  Object.defineProperty(document.body, 'scrollTop', { configurable: true, get: () => top, set: (v: number) => { top = v; } });
+  return {
+    get top() { return top; },
+    set top(v: number) { top = v; },
+    restore() { delete (document.body as { scrollTop?: number }).scrollTop; },
+  };
+}
+
 describe('FrameDetailPage', () => {
   beforeEach(() => {
     resetCatalogCache();
@@ -47,6 +59,26 @@ describe('FrameDetailPage', () => {
     }) as unknown as typeof fetch);
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it('opens at its top, and so does the next frame opened from it', async () => {
+    // It reached the top only by accident before: it renders short while it
+    // loads and the browser clamped the old position. window.scrollTo moved nothing.
+    const body = bodyScrolledTo(300);
+    try {
+      const { rerender } = renderPage(OWNED);
+      expect(body.top).toBe(0);
+      await screen.findByRole('button', { name: /Tension/ });
+      body.top = 250;
+      rerender(
+        <NextIntlClientProvider locale="en" messages={enMessages}>
+          <FrameDetailPage activeName="Lin" gear={gearOf(OWNED)} frameId={OTHER.id} onBack={() => {}} onOpenFrame={() => {}} onOpenFit={() => {}} onView3d={() => {}} />
+        </NextIntlClientProvider>,
+      );
+      expect(body.top).toBe(0);
+    } finally {
+      body.restore();
+    }
+  });
 
   it('opens one row at a time', async () => {
     renderPage(OWNED);

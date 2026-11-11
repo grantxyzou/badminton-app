@@ -84,3 +84,4 @@ The mock-up was reviewed in comments on Grant's Design canvas; the hand-off spec
 - **The payments chart is one hue** (the app's green, dark → light); multi-hue palettes were rejected.
 - **Help gets guides** with screenshots that must not leak data: taken from the offline test club, cropped to the card.
 - **Report a problem gets tap-to-start prefills**, each tagging the report with a category.
+- **Language and Appearance stay in the header** (Grant, 2026-11-11: "dont move them"), so the Profile list's SETTINGS group holds Notifications, How you sign in and the install rows. The list itself took the spec's groups the same day (build step 8): CLUB, SETTINGS, MONEY, HELP, PRIVACY, then the version and Log out.

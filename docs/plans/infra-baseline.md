@@ -5,8 +5,8 @@ every item makes an already-shipped deployment observable or recoverable
 against rules this repo already holds itself to ("never let a failure look like
 a fact", "a recorded value nobody compares is not a check"). The precedent is
 `docs/plans/ai-governance-and-docs-accuracy.md`.
-**Status:** intent
-**Review on:** 2026-11-07 — have the five portal pages been read into `docs/azure.md` §9, and does at least one alert rule exist on the App Service?
+**Status:** in-flight
+**Review on:** 2026-12-11 — has `bpm-5xx` fired, and was each firing something a player noticed? More than twice a month on nothing means raise the threshold (Kill criterion). (Answered 2026-11-11: four of the five portal pages are read into `docs/azure.md` §9, all but the key-rotation date; the one alert rule that existed was off and watched the deleted app, and is now rule 1 below.)
 
 ## Problem
 
@@ -93,7 +93,7 @@ conditions are about whether they get done and whether they earn their keep:
 | The five portal pages and what to read on each | `docs/azure.md` §9 (table), and the field guide's "judge's checklist" |
 | Container count against the shared-throughput cap of 25 (added 2026-10-09; the code defines 27) | `docs/azure.md` §10, read on the same Cosmos Data Explorer visit |
 | Observed facts, dated | `docs/azure.md` §9, one sub-heading per look |
-| Alert rule 1, errors: App Service metric **Http Server Errors** (5xx), Total > 5 over 5 minutes, email to owner | Azure portal, App Service → Alerts (not in repo; record the rule name in §9). Five, not zero: one 5xx is a single bad request; five in five minutes is a broken screen |
+| Alert rule 1, errors: App Service metric **Http Server Errors** (5xx), Total > 5 over 5 minutes, email to owner — **done 2026-11-11**, rule `bpm-5xx` (`docs/azure.md` §9) | Azure portal, App Service → Alerts (not in repo; record the rule name in §9). Five, not zero: one 5xx is a single bad request; five in five minutes is a broken screen |
 | Alert rule 2, site down: App Service **Health check status** < 100 over 5 minutes (after the health check path below is set), email | same blade |
 | Alert rule 3, database throttling: Cosmos metric **Total Requests**, split by Status Code = 429, Total > 0 over 5 minutes, email | Cosmos → Alerts. A 429 means the account ran out of RU/s; it is the alert that says to raise throughput (free up to 1000 RU/s on this account's tier, `docs/azure.md` §9) |
 | Health check path | `/bpm/api/releases` — public, Cosmos-backed, answers 503 on a read failure rather than lying; set under App Service → Health check |
