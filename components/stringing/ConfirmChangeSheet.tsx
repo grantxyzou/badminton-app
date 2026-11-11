@@ -125,6 +125,8 @@ export default function ConfirmChangeSheet({
             // the diff and buttons it replaces go in the same frame.
             <div className="motion-fade">
             <EmptyState
+              icon="fact_check"
+              title={t('confirm.goneTitle')}
               action={
                 <button type="button" className="cc-btn cc-btn-ghost" onClick={onClose}>
                   {t('confirm.close')}

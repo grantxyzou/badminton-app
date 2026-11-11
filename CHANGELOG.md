@@ -57,6 +57,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **The Stringing sheets keep their main button at the bottom of the screen**: "Next: string tension", "Send the request", "Got it", the accept and decline on a change to confirm, and "Restring with this". The rest of the sheet scrolls above them. The other sheets in the app follow in their own change.
 - **The "request sent" animation can be swiped through**: swipe the picture, or tap a dot, to stop on a step. "Play again" runs it from the start. Its caption and dots are centred.
 - **Cancelling a stringing request now says "A cancellation fee may apply."** It used to say "Nothing is owed yet."
+- **A change that is no longer waiting** shows the empty-state pattern: an icon, "Nothing left to answer", and "The stringer withdrew that change or already applied it."
 
 ### A quieter sign-up card (2026-11-11)
 

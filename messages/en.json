@@ -87,7 +87,8 @@
           "decline": "Keep original",
           "working": "Saving…",
           "error": "That didn't save. Try again.",
-          "gone": "That change is no longer waiting, so there's nothing to answer.",
+          "goneTitle": "Nothing left to answer",
+          "gone": "The stringer withdrew that change or already applied it.",
           "close": "Close"
         },
         "jobsError": "Couldn't load your rackets.",
