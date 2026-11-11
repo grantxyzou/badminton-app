@@ -22,7 +22,7 @@
       "cancelError": "Couldn't cancel that. Try again.",
       "cancelGo": "Cancel request",
       "cancelKeep": "Keep it",
-      "cancelAsk": "Cancel this request? Nothing is owed yet.",
+      "cancelAsk": "Cancel this request? A cancellation fee may apply.",
       "cancelCta": "Cancel request",
       "segReady": "Ready",
       "segBeingStrung": "Being strung",
@@ -57,7 +57,7 @@
         "bench": "Stringing jobs"
       },
       "stringerTitle": "Rackets to string",
-      "seeStrings": "See pricing details",
+      "seeStrings": "See what kind of strings are offered",
       "stringerEmpty": "Nothing assigned to you right now.",
       "stringerSubtitle": "Assigned to you.",
       "stringerFor": "for {name}",
@@ -158,6 +158,8 @@
       "title": "Stringing service",
       "subtitle": "Request and track the progress of your racket here.",
       "soon": "Closed",
+      "closedTitle": "The stringing service is closed for now.",
+      "closedBody": "Please come back tomorrow to submit a request.",
       "shopUnavailable": "Couldn\u2019t check whether the stringing service is open.",
       "offer": {
         "feelWord_5": "Very hard",

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import EmptyState from '@/components/primitives/EmptyState';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import { announceBalanceChanged } from '@/lib/balanceRefresh';
 import { fmtMoney } from '@/lib/fmt';
@@ -177,6 +177,15 @@ export default function ConfirmChangeSheet({
             ))}
           </div>
 
+          </>
+          )}
+        </div>
+      </BottomSheetBody>
+      {/* The answer, pinned to the bottom of the screen while the change above
+          scrolls (Grant, 2026-11-11: every sheet's CTA anchored to the
+          bottom). Gone has nothing left to answer, so no footer. */}
+      {error !== 'gone' && (
+        <BottomSheetFooter>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             <button
               type="button"
@@ -197,10 +206,8 @@ export default function ConfirmChangeSheet({
               {t('confirm.decline')}
             </button>
           </div>
-          </>
-          )}
-        </div>
-      </BottomSheetBody>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

@@ -13,6 +13,21 @@ describe('ErrorState', () => {
     expect(el.textContent).toBe("Couldn't load");
     expect(el.className).toContain('field-error');
   });
+
+  // With a way out it is the standing icon-over-text state, and NEUTRAL: a
+  // server that did not answer is not the person's mistake (Grant,
+  // 2026-11-11, "should not be red"). Red stays on the inline form above.
+  it('with a "Try again", stands as icon over text, not in red', () => {
+    render(<ErrorState message="Couldn't load your rackets." action={<button type="button">Try again</button>} />);
+    const el = screen.getByRole('alert');
+    expect(el.textContent).toBe("Couldn't load your rackets.");
+    expect(el.className).toBe('error-state__message');
+    expect(el.className).not.toContain('field-error');
+    const icon = el.parentElement!.querySelector('.material-icons');
+    expect(icon?.textContent?.trim()).toBe('cloud_off');
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
+  });
 });
 
 describe('EmptyState', () => {

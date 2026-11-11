@@ -47,6 +47,11 @@ export default function StringingStory({ racketId, stringId, stringName, tension
   const [scale, setScale] = useState(0);
   /** Bumped by "Play again" to remount the scene, which restarts every animation. */
   const [run, setRun] = useState(0);
+  /** The step a person swiped or tapped to (0–4), held still; null while it plays. */
+  const [held, setHeld] = useState<number | null>(null);
+  const startedAt = useRef(0);
+  const swipeFrom = useRef<number | null>(null);
+  useEffect(() => { startedAt.current = Date.now(); }, [run]);
 
   useEffect(() => {
     const el = boxRef.current;
@@ -68,9 +73,36 @@ export default function StringingStory({ racketId, stringId, stringName, tension
     t('ready'),
   ];
 
+  /* Swipe or tap a dot to move through the steps (Grant, 2026-11-11, on the
+     design canvas: "make it scrollable"). A held step pauses every animation
+     at that step's moment (`.ss--held`, a negative delay), so the scene,
+     caption and dots all show it; "Play again" lets it run from the start. */
+  const stepNow = () => {
+    if (held !== null) return held;
+    const t = (Date.now() - startedAt.current) / 1000;
+    const i = STEP_AT.findIndex((at, n) => t < (STEP_AT[n + 1] ?? Infinity) && t >= at - 1);
+    return i < 0 ? 0 : i;
+  };
+  const go = (i: number) => setHeld(Math.max(0, Math.min(STEP_AT.length - 1, i)));
+  const swipe = {
+    onPointerDown: (e: React.PointerEvent) => { swipeFrom.current = e.clientX; },
+    onPointerUp: (e: React.PointerEvent) => {
+      const from = swipeFrom.current;
+      swipeFrom.current = null;
+      if (from === null) return;
+      const dx = e.clientX - from;
+      if (Math.abs(dx) < SWIPE_PX) return;
+      go(stepNow() + (dx < 0 ? 1 : -1));
+    },
+    onPointerCancel: () => { swipeFrom.current = null; },
+  };
+
   return (
-    <div className="ss">
-      <div ref={boxRef} className="ss-box" aria-hidden="true" style={{ ['--ss-k' as string]: String(scale) }}>
+    <div
+      className={`ss${held !== null ? ' ss--held' : ''}`}
+      style={held !== null ? { ['--ss-at' as string]: `-${STEP_AT[held]}s` } : undefined}
+    >
+      <div ref={boxRef} className="ss-box" aria-hidden="true" style={{ ['--ss-k' as string]: String(scale) }} {...swipe}>
         <div key={run} className="ss-stage">
           <div className="ss-machine">
             <span className="ss-turntable" />
@@ -124,10 +156,21 @@ export default function StringingStory({ racketId, stringId, stringName, tension
         {steps.map((s, i) => <p key={i} className={`ss-cap ss-cap-${i + 1}`}>{s}</p>)}
       </div>
       <div className="ss-foot">
-        <span key={`dots-${run}`} className="ss-dots" aria-hidden="true">
-          {steps.map((_, i) => <span key={i} className={`ss-dot ss-dot-${i + 1}`} />)}
+        <span key={`dots-${run}`} className="ss-dots">
+          {steps.map((label, i) => (
+            <button
+              key={i}
+              type="button"
+              className="ss-dot-btn"
+              aria-label={label}
+              aria-pressed={held === i}
+              onClick={() => go(i)}
+            >
+              <span className={`ss-dot ss-dot-${i + 1}`} />
+            </button>
+          ))}
         </span>
-        <button type="button" className="link-quiet link-quiet--flush ss-again" onClick={() => setRun((n) => n + 1)}>
+        <button type="button" className="link-quiet link-quiet--flush ss-again" onClick={() => { setHeld(null); setRun((n) => n + 1); }}>
           {t('again')}
         </button>
       </div>
@@ -138,3 +181,8 @@ export default function StringingStory({ racketId, stringId, stringName, tension
 /** The stage's own width; everything inside it is drawn in these units. */
 const STAGE_W = 420;
 const SPARKS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+/** Seconds into the 12 s run where each step reads best: the middle of its
+ *  caption's window in the `ss-cap-*` keyframes, and the last frame for tada. */
+const STEP_AT = [1.2, 3.3, 6.6, 9.2, 11.99] as const;
+/** How far a finger travels before a drag counts as a swipe. */
+const SWIPE_PX = 40;
