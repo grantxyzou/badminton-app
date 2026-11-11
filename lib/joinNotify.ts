@@ -1,5 +1,7 @@
-import { rosterMembers } from '@/lib/roster';
+import { rosterMembers, rosterMemberIds } from '@/lib/roster';
 import { sendPushToMembers } from '@/lib/push';
+import { recordNotices } from '@/lib/notices';
+import { readGroup } from '@/lib/groups';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -26,6 +28,9 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * no business there.
  */
 export async function notifyAdminsOfJoin(groupId: string, joiner: { id: string; name: string }): Promise<void> {
+  // Everyone hears it on the Notifications page too (no push), the same
+  // notice the door approval writes.
+  await noticeClubOfJoin(groupId, joiner);
   try {
     const roster = await rosterMembers(groupId);
     const adminIds = roster
@@ -44,5 +49,35 @@ export async function notifyAdminsOfJoin(groupId: string, joiner: { id: string; 
     });
   } catch (err) {
     console.error('join notice failed:', err);
+  }
+}
+
+/**
+ * "Sandra Lee has joined BPM Core" on EVERY member's Notifications page
+ * (Grant, 2026-11-07: "Anyone should get a notification (not push, just
+ * passive one in the notification center)"). No push: a new name is club
+ * news, not a reason to light up thirty lock screens.
+ *
+ * Called when a person actually becomes a member: an organiser approving
+ * them at the door (`POST /api/admin/access-requests`) and every invite join
+ * (through `notifyAdminsOfJoin`). Not when an imported name is claimed — that
+ * person was already on the list.
+ *
+ * Recipients are the club's ACTIVE roster (`rosterMemberIds`), minus the new
+ * person. Stores the name and the club's name at that moment, nothing else.
+ * Never throws: the join already happened.
+ */
+export async function noticeClubOfJoin(groupId: string, joiner: { id: string; name: string }): Promise<void> {
+  try {
+    const [ids, group] = await Promise.all([rosterMemberIds(groupId), readGroup(groupId).catch(() => null)]);
+    const recipients = [...ids].filter((id) => id !== joiner.id);
+    if (recipients.length === 0) return;
+    await recordNotices(groupId, recipients, {
+      type: 'member_joined',
+      memberName: joiner.name,
+      club: group?.name?.trim() || undefined,
+    });
+  } catch (err) {
+    console.error('join notice (club) failed:', err);
   }
 }

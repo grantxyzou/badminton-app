@@ -14,13 +14,15 @@ import ThemeToggle from '@/components/ThemeToggle';
 import PaneFlip from '@/components/PaneFlip';
 import LanguageToggle from '@/components/LanguageToggle';
 import NotificationsButton from '@/components/NotificationsButton';
-import NotificationsPage, { type NoticeTab } from '@/components/NotificationsPage';
+import type { NoticeTab } from '@/components/NotificationsPage';
+
+type NotificationsPageComponent = typeof import('@/components/NotificationsPage').default;
 import { usePush } from '@/lib/usePush';
 import { isNative } from '@/lib/native';
 import TopToast from '@/components/primitives/TopToast';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import PullToRefresh from '@/components/PullToRefresh';
-import { StringingFallback, StatsFallback, ProfileFallback, AdminFallback } from '@/components/TabFallbacks';
+import { StringingFallback, StatsFallback, ProfileFallback, AdminFallback, NotificationsFallback } from '@/components/TabFallbacks';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -32,7 +34,13 @@ import { consumeRecentExcursion } from '@/lib/excursion';
 import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
 import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
-import { resetSharedReads, sharedFetch } from '@/lib/sharedRead';
+import { resetSharedReads, sharedFetch, watchWrites } from '@/lib/sharedRead';
+
+// Count the page's writes from the first moment, so a read answered a few
+// seconds ago is reused only while nothing has been saved since
+// (lib/sharedRead.ts, `SETTLED_SHARE_MS`). Module level, not an effect: the
+// tabs' own effects run before the shell's, and their reads must be counted.
+if (typeof window !== 'undefined') watchWrites();
 import { useInAppNavigation } from '@/lib/inAppNavigate';
 import { useAppShortcuts } from '@/lib/appShortcuts';
 import { useWidgetBridge } from '@/lib/widgetBridge';
@@ -42,6 +50,10 @@ import { useEverOpened } from '@/lib/useEverOpened';
 import { prewarmInsight } from '@/lib/useInsight';
 import { TabActiveContext } from '@/lib/tabActivity';
 import { appSettled, APP_SHELL_ATTR, TAB_PANEL_ATTR } from '@/lib/appSettled';
+import { warmRememberedPictures } from '@/lib/warmPictures';
+import { noteActive } from '@/lib/quickReturn';
+import { rememberClub } from '@/lib/lastClub';
+import { onPageScroll, pageScrollTop, scrollPageTo } from '@/lib/pageScroll';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
 const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
@@ -149,9 +161,11 @@ interface Props {
    * the flag off, where identity stays a client-side matter as it always was.
    */
   memberName?: string | null;
+  /** The club the session cookie names, as the server read it; keys Home's copy of the week (lib/homeSnapshot.ts). */
+  groupId?: string | null;
 }
 
-export default function HomeShell({ initialAnnouncement, authProviders = [], memberName = null }: Props) {
+export default function HomeShell({ initialAnnouncement, authProviders = [], memberName = null, groupId = null }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   /* The Notifications page (docs/plans/notification-center.md): a full page
      over whichever tab is on screen, opened from the bell or Profile's row.
@@ -240,6 +254,14 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   const [doorsDismissed, setDoorsDismissed] = useState(false);
   const groupsEnabled = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const { group, refresh: refreshGroups } = useCurrentGroup();
+  // The club this phone is signed in to, kept for the day it is signed OUT:
+  // "Ask to be let in" sends it, so the name is looked up on this club's
+  // roster and not BPM's (lib/lastClub.ts). Every switch, join and create
+  // ends in a fresh `group`, so this follows them.
+  const groupIdNow = group?.id;
+  useEffect(() => {
+    if (groupIdNow) rememberClub(groupIdNow);
+  }, [groupIdNow]);
   /**
    * What to say after an auth redirect. One notice at a time: our own redirects
    * only ever carry one result, so last-write-wins is fine and simpler than a
@@ -520,29 +542,33 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * Each tab keeps its own scroll position, as a phone's tab bar does: the
    * page is one scroller shared by every tab, so without this a tab came back
    * at whatever height the last one was left. Not while a sheet holds the
-   * page (`useBodyScrollLock` pins `<body>`, and the window then reads 0).
+   * page (`useBodyScrollLock` pins `<body>`, and the page then reads 0).
+   *
+   * The BODY is the scroller (`lib/pageScroll.ts`): `window.scrollY` reads 0
+   * however far down the page is, `window.scrollTo` moves nothing, and a body
+   * scroll never reaches a `window` listener. This read and wrote the window
+   * until 2026-11-10, so every tab shared one position and the memory was
+   * never written.
    */
   const scrollByTab = useRef<Partial<Record<Tab, number>>>({});
   const activeTabRef = useRef(activeTab);
   useEffect(() => {
-    const save = () => {
+    return onPageScroll(() => {
       if (document.body.style.position === 'fixed') return;
       if (noticesOpenRef.current) return; // the page's scroll is not the tab's
-      scrollByTab.current[activeTabRef.current] = window.scrollY;
-    };
-    window.addEventListener('scroll', save, { passive: true });
-    return () => window.removeEventListener('scroll', save);
+      scrollByTab.current[activeTabRef.current] = pageScrollTop();
+    });
   }, []);
   useLayoutEffect(() => {
     if (activeTabRef.current === activeTab) return;
     activeTabRef.current = activeTab;
-    window.scrollTo(0, scrollByTab.current[activeTab] ?? 0);
+    scrollPageTo(scrollByTab.current[activeTab] ?? 0);
   }, [activeTab]);
   // The page opens at its top and closes back to where the tab was.
   useLayoutEffect(() => {
     if (noticesOpenRef.current === noticesOpen) return;
     noticesOpenRef.current = noticesOpen;
-    window.scrollTo(0, noticesOpen ? 0 : (scrollByTab.current[activeTabRef.current] ?? 0));
+    scrollPageTo(noticesOpen ? 0 : (scrollByTab.current[activeTabRef.current] ?? 0));
   }, [noticesOpen]);
   const openNotices = useCallback(() => setNoticesOpen(true), []);
   const closeNotices = useCallback(() => setNoticesOpen(false), []);
@@ -668,13 +694,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       .then((s: { id?: string; datetime?: string }) => {
         if (!s?.id) return;
         const label = s.datetime
-          ? new Date(s.datetime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+          // The app's language and the club's clock, like every other session
+          // date — not the phone's (audit, 2026-11-05).
+          ? new Date(s.datetime).toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' })
           : '';
         sessionIdRef.current = s.id;
         setProfileSession({ id: s.id, label });
       })
       .catch(() => undefined);
-  }, []);
+  }, [locale]);
 
   // Show admin tab if user has admin role OR already has a valid admin cookie.
   // Re-runs on mount, after any identity change (sign-in / sign-out from any
@@ -695,7 +723,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       (() => {
         const name = getIdentity()?.name ?? null;
         if (!name) return Promise.resolve({ role: 'member' });
-        return fetch(`${BASE}/api/members/me?name=${encodeURIComponent(name)}`)
+        return sharedFetch(`/api/members/me?name=${encodeURIComponent(name)}`)
           // A 401 (no live cookie) or 403 (not this person) IS a verdict —
           // that caller holds no admin role here. Anything else non-ok is
           // not: the body carries no `role` and reading it as "not admin"
@@ -817,6 +845,21 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // App opens and tab views, for Admin → Metrics (docs/plans/usage-metrics.md).
   // Never for a signed-out visitor.
   useUsageBeacons(activeTab, hasIdentity === true);
+  // When the app was last in use on this phone, so coming back within half an
+  // hour skips the launch screen (lib/quickReturn.ts). Noted on opening and
+  // whenever the app goes to the background, where iOS may drop it.
+  useEffect(() => {
+    if (hasIdentity !== true) return;
+    noteActive();
+    const onHidden = () => { if (document.visibilityState === 'hidden') noteActive(); };
+    const onPageHide = () => noteActive();
+    document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [hasIdentity]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-tab', activeTab);
@@ -904,6 +947,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       window.clearInterval(id);
       setPreloaded(true);
       setKept((k) => [...k, ...KEPT_TABS.filter((t) => !k.includes(t))]);
+      // The member's own racket and string pictures, so Equipment draws them
+      // the moment it opens (lib/warmPictures.ts).
+      warmRememberedPictures();
     }, 150);
     return () => window.clearInterval(id);
   }, [preloaded, canPreload]);
@@ -938,6 +984,31 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     };
   }, [preloaded, showAdmin, PreloadedAdminTab]);
   const AdminTabView = PreloadedAdminTab ?? AdminTab;
+
+  // The Notifications page's CODE is not in the first download either (Grant,
+  // 2026-11-06: "Notification should load after, then render the red dot").
+  // The bell reads the list on its own, so the dot never waited for the page;
+  // only the page's code did. It is fetched with the other tabs once the first
+  // screen has settled, so a tap after that opens it at once, and a tap before
+  // it (or with save-data on) shows the page's own first frame while it loads.
+  // Kept and rendered directly, like Admin above, so a tap never suspends.
+  const [NoticesPageView, setNoticesPageView] = useState<NotificationsPageComponent | null>(null);
+  const [noticesChunkFailed, setNoticesChunkFailed] = useState(false);
+  const noticesLoading = useRef(false);
+  const loadNoticesPage = useCallback(() => {
+    if (noticesLoading.current) return;
+    noticesLoading.current = true;
+    setNoticesChunkFailed(false);
+    import('@/components/NotificationsPage')
+      .then((m) => setNoticesPageView(() => m.default))
+      .catch(() => setNoticesChunkFailed(true))
+      .finally(() => {
+        noticesLoading.current = false;
+      });
+  }, []);
+  useEffect(() => {
+    if (!NoticesPageView && (preloaded || noticesOpen)) loadNoticesPage();
+  }, [NoticesPageView, preloaded, noticesOpen, loadNoticesPage]);
 
 
   return (
@@ -1054,15 +1125,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             />
           ) : (
           <>
-          {noticesOpen && (
-            <NotificationsPage
+          {noticesOpen && (NoticesPageView ? (
+            <NoticesPageView
               onBack={closeNotices}
               onNavigate={goFromNotice}
               push={push}
               isAdmin={showAdmin}
               migrateOn={webAppOffer}
             />
-          )}
+          ) : (
+            <NotificationsFallback onBack={closeNotices} failed={noticesChunkFailed} onRetry={loadNoticesPage} />
+          ))}
           {/* Each kept tab is its own panel: hidden, not unmounted, while
               another is on screen (`kept` above). The panel's key is what a
               refresh changes — `refreshNonce` for everything, `tabNonce` for
@@ -1076,8 +1149,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
                 className="motion-fade"
               >
                 <TabActiveContext.Provider value={tab === activeTab && !noticesOpen}>
-                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} deferFetch={!tabResolved} push={push} webApp={webAppOffer} />}
-                  {tab === 'stringing' && <StringingTab isAdmin={showAdmin} view={stringingView} onViewChange={setStringingView} />}
+                  {tab === 'home' && <HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} groupId={groupId} deferFetch={!tabResolved} push={push} webApp={webAppOffer} />}
+                  {tab === 'stringing' && <StringingTab isAdmin={showAdmin} adminSession={adminKnown ? adminCookieLive : null} onAdminSignedIn={refreshAdminAccess} view={stringingView} onViewChange={setStringingView} />}
                   {tab === 'skills' && <SkillsTab onTabChange={setActiveTab} />}
                   {tab === 'profile' && (
                     <ProfileTab
@@ -1116,7 +1189,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           {showAdmin && (activeTab === 'admin' || kept.includes('admin')) && (
             <div key={`admin-${refreshNonce}-${tabNonce.admin ?? 0}`} {...{ [TAB_PANEL_ATTR]: 'admin' }} hidden={activeTab !== 'admin' || noticesOpen} className="motion-fade">
               <TabActiveContext.Provider value={activeTab === 'admin' && !noticesOpen}>
-                <AdminErrorBoundary><AdminTabView onExit={() => setActiveTab('profile')} knownAuthed={adminCookieLive} /></AdminErrorBoundary>
+                <AdminErrorBoundary><AdminTabView onExit={() => setActiveTab('profile')} knownAuthed={adminCookieLive} onSignedIn={refreshAdminAccess} /></AdminErrorBoundary>
               </TabActiveContext.Provider>
             </div>
           )}

@@ -197,7 +197,7 @@ describe('the invite surfaces exist with only one club', () => {
     const invite = await mintInvite('bpm', ADMIN_MEMBER_ID);
     const res = await previewRoute(makeRequest('GET', `${GROUPS}/preview?token=${invite!.token}`));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ name: 'BPM Badminton' });
+    expect(await res.json()).toEqual({ name: 'BPM Badminton', kind: 'invite' });
   });
 });
 

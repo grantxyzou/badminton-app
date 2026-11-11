@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isOperatorAdmin } from '@/lib/operator';
 import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { randomBytes } from 'crypto';
 import {
@@ -32,6 +33,9 @@ export async function GET(req: NextRequest) {
       authed: true,
       memberId: result.memberId,
       name: result.name,
+      // Additive: the console shows the deployment-wide tools (release notes)
+      // only to the operator; the routes refuse everyone else regardless.
+      operator: isOperatorAdmin(result),
     });
   }
   return NextResponse.json({ authed: false });

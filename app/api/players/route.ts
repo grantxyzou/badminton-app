@@ -1,5 +1,5 @@
 import { lateCancelHoursOf, lateCancelVerdict } from '@/lib/cancelPolicy';
-import { readGroup } from '@/lib/groups';
+import { readGroup, readMembership } from '@/lib/groups';
 import { NextRequest, NextResponse } from 'next/server';
 import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
@@ -17,12 +17,13 @@ import { mirrorPaid, mirrorUnpaid, mirrorCover, mirrorUncover, mirrorRowDeleted 
 import type { Player } from '@/lib/types';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, verifyLiveMemberAuth, setMemberCookie, requireMember, requireGroupMember, unauthorized } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
-import { promoteFromWaitlist } from '@/lib/waitlistPromote';
-import { cleanGuestName, guestDisplayName, guestsAllowedOf, isGuestRow } from '@/lib/plusOne';
+import { promoteFromWaitlist, releaseMembersFirst } from '@/lib/waitlistPromote';
+import { membersFirstDue, membersFirstOpen } from '@/lib/membersFirst';
+import { cleanGuestName, guestDisplayName, guestsPerMemberOf, isGuestRow } from '@/lib/plusOne';
 import type { ActiveMember } from '@/lib/auth';
 import type { RecoveryEvent, Session } from '@/lib/types';
 
@@ -47,6 +48,9 @@ async function reconcileCapacity(
   doc: { id: string; timestamp?: string; [k: string]: unknown },
   maxPlayers: number,
   joinWaitlist: boolean,
+  /** What "full" undoes: a NEW row is deleted; a REJOIN is put back as it was
+   *  (its row holds its history and maybe its bill — never deleted). */
+  undo: () => Promise<unknown> = () => scope.remove('players', doc.id, sessionId),
 ): Promise<'kept' | 'waitlisted' | 'full'> {
   const resources = await scope.query<{ id: string; timestamp?: string }>('players', {
     where: ACTIVE_PLAYERS_WHERE,
@@ -58,8 +62,31 @@ async function reconcileCapacity(
     await scope.upsert('players', { ...doc, waitlisted: true });
     return 'waitlisted';
   }
-  await scope.remove('players', doc.id, sessionId);
+  await undo();
   return 'full';
+}
+
+/**
+ * Whether this person takes a free spot while the members-first window is
+ * open (docs/plans/members-first-window.md): only someone the organiser marked
+ * a member. A drop-in, a name nobody marked, and a guest wait.
+ */
+async function isClubMember(groupId: string, memberId: string | undefined): Promise<boolean> {
+  if (!memberId) return false;
+  // Groups off is BPM, which has no window; nothing here is ever asked.
+  if (!groupsOn()) return true;
+  return (await readMembership(groupId, memberId))?.regular === true;
+}
+
+/**
+ * A members-first window that has ended lets its waitlist in BEFORE a write
+ * counts the spots: otherwise the first sign-up after Monday 11:59 PM would
+ * take a free spot ahead of everyone who waited for it. Resolves whether the
+ * waitlist moved, so the caller knows its active count is stale.
+ */
+async function letInIfDue(scope: GroupScope, sessionId: string, session: Session | undefined): Promise<boolean> {
+  if (!membersFirstDue(session, Date.now())) return false;
+  return releaseMembersFirst(scope, sessionId, { session: (session ?? null) as (Session & { id: string }) | null });
 }
 
 /** A host's guests still in this session (docs/plans/plus-one.md). */
@@ -122,23 +149,39 @@ async function softRemoveGuest(
 }
 
 /**
- * ADD A PLUS-ONE (docs/plans/plus-one.md): the signed-in host brings one
- * guest to the ACTIVE session. The guest is a row of their own with
- * `guestOf: host` and no `memberId` — no account, no cookie, no member doc —
- * and goes on the waitlist when the session is full or the host is waiting
- * there themselves. The host must hold a row, and not one held for unpaid
- * sessions: auto-promote skips a held row, so a guest beside a held host would
- * be moved up while the person who brought them waits.
+ * ADD A GUEST (docs/plans/plus-one.md, docs/plans/six-feathers-guests.md): a
+ * host brings up to the club's number of guests (`ClubRun.guests`) to the
+ * ACTIVE session. A guest is a row of their own with `guestOf: host` and no
+ * `memberId` — no account, no cookie, no member doc — named `Jenny (Josh)`,
+ * and goes on the waitlist when the session is full, the host is waiting
+ * there themselves, or the members-first window is open. The host must hold a
+ * row, and not one held for unpaid sessions: auto-promote skips a held row, so
+ * a guest beside a held host would be moved up while the person who brought
+ * them waits.
+ *
+ * The host is the caller, or — for an ORGANISER passing `hostMemberId` — a
+ * member already on this session's list ("Add a guest for Josh", the pilot's
+ * bridge while some members still text the organiser). The organiser's add
+ * skips the sign-up open and deadline gates, as an admin's sign-up does, and
+ * meets every other rule.
+ *
+ * A name already on the club's roster is refused (`guest_on_roster`): that
+ * person signs up themselves, or one person would hold two rows.
  */
-async function addGuest(req: NextRequest, body: { guest?: unknown }, host: ActiveMember | null): Promise<NextResponse> {
-  if (!host) return unauthorized();
+async function addGuest(
+  req: NextRequest,
+  body: { guest?: unknown; hostMemberId?: unknown },
+  who: { admin: boolean; caller: ActiveMember | null },
+): Promise<NextResponse> {
+  const forHost = who.admin && typeof body.hostMemberId === 'string' && body.hostMemberId ? body.hostMemberId : null;
+  if (!forHost && !who.caller) return unauthorized();
   const guestName = cleanGuestName((body.guest as { name?: unknown } | null)?.name);
   if (!guestName) return NextResponse.json({ error: 'invalid_guest_name' }, { status: 400 });
 
   const scope = groupScope(resolveGroupId(req));
   const sessionId = await getActiveSessionId(scope.groupId);
   if (!sessionId) return noActiveSession();
-  const [sessionData, group, rows] = await Promise.all([
+  const [sessionData, group, rows, onRoster] = await Promise.all([
     scope.read<Session>('sessions', sessionId, sessionId),
     readGroup(scope.groupId),
     scope.query<Player>('players', {
@@ -146,33 +189,59 @@ async function addGuest(req: NextRequest, body: { guest?: unknown }, host: Activ
       params: [{ name: '@sessionId', value: sessionId }],
       partitionKey: sessionId,
     }),
+    resolveActiveMemberId(scope.groupId, guestName),
   ]);
-  if (!guestsAllowedOf(group?.settings)) return NextResponse.json({ error: 'guests_off' }, { status: 403 });
-  if (sessionData?.signupOpen === false) return NextResponse.json({ error: 'Sign-ups are not open yet' }, { status: 403 });
-  if (sessionData?.deadline && new Date() > new Date(sessionData.deadline)) {
-    return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
+  const cap = guestsPerMemberOf(group?.settings);
+  if (cap === 0) return NextResponse.json({ error: 'guests_off' }, { status: 403 });
+  if (!forHost) {
+    if (sessionData?.signupOpen === false) return NextResponse.json({ error: 'Sign-ups are not open yet' }, { status: 403 });
+    if (sessionData?.deadline && new Date() > new Date(sessionData.deadline)) {
+      return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
+    }
   }
   // Settle froze the bill on the rows it found; a row added after owes nothing.
   if (sessionData?.settled) return NextResponse.json({ error: 'session_settled' }, { status: 409 });
+  if (onRoster) return NextResponse.json({ error: 'guest_on_roster' }, { status: 409 });
 
-  const live = rows.filter((r) => r.sessionId === sessionId && r.removed !== true);
-  const hostRow = live.find((r) => r.memberId === host.memberId);
+  let current = rows;
+  if (await letInIfDue(scope, sessionId, sessionData)) {
+    current = await scope.query<Player>('players', {
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+      partitionKey: sessionId,
+    });
+  }
+  const live = current.filter((r) => r.sessionId === sessionId && r.removed !== true);
+  const hostId = forHost ?? who.caller!.memberId;
+  const hostRow = live.find((r) => r.memberId === hostId && !isGuestRow(r));
   if (!hostRow) return NextResponse.json({ error: 'host_not_signed_up' }, { status: 409 });
   if (hostRow.heldForUnpaid === true) return NextResponse.json({ error: 'host_held' }, { status: 409 });
-  if (live.some((r) => r.guestOf === host.memberId)) return NextResponse.json({ error: 'guest_exists' }, { status: 409 });
+  const theirs = live.filter((r) => r.guestOf === hostId);
+  if (theirs.length >= cap) return NextResponse.json({ error: 'guest_exists', limit: cap }, { status: 409 });
+  if (theirs.some((r) => (r.guestName ?? '').toLowerCase() === guestName.toLowerCase())) {
+    return NextResponse.json({ error: 'guest_exists', limit: cap }, { status: 409 });
+  }
+  // The roster name the club calls the host: the caller's own, or the row's
+  // for an organiser's add (written at sign-up from the same roster).
+  const hostName = forHost ? hostRow.name : who.caller!.name;
 
   const maxPlayers = sessionData?.maxPlayers ?? defaultMaxPlayers();
-  const startWaitlisted = hostRow.waitlisted === true || live.filter((r) => r.waitlisted !== true).length >= maxPlayers;
+  // A guest is not a member: while only members take a spot, they wait with
+  // the drop-ins (docs/plans/members-first-window.md, Q5).
+  const waitsForMembers = membersFirstOpen(sessionData, Date.now());
+  const startWaitlisted =
+    waitsForMembers || hostRow.waitlisted === true || live.filter((r) => r.waitlisted !== true).length >= maxPlayers;
   const guest = {
     id: randomBytes(12).toString('hex'),
-    name: guestDisplayName(guestName, host.name),
+    name: guestDisplayName(guestName, hostName),
     guestName,
-    guestOf: host.memberId,
+    guestOf: hostId,
     sessionId,
     timestamp: new Date().toISOString(),
     paid: false,
     removed: false,
     waitlisted: startWaitlisted,
+    ...(waitsForMembers ? { waitingForMembers: true } : {}),
   };
   await scope.create('players', guest);
   // The same race close as a sign-up (#79); a guest past the cap waits.
@@ -192,6 +261,14 @@ export async function GET(req: NextRequest) {
       : await getActiveSessionId(resolveGroupId(req));
     if (!sessionId) return noActiveSession();
     const includeRemoved = params.get('all') === 'true' && isAdminAuthed(req);
+    // The roster read is a visit too: a members-first window that has ended
+    // lets its waitlist in before the list is read, so the list shows it.
+    if (!overrideSessionId) {
+      const scope = groupScope(resolveGroupId(req));
+      // Best-effort: a failed session read must not fail the roster.
+      const session = await scope.read<Session>('sessions', sessionId, sessionId).catch(() => undefined);
+      await letInIfDue(scope, sessionId, session);
+    }
     const resources = await groupScope(resolveGroupId(req)).query<Record<string, unknown>>('players', {
       where: includeRemoved
         ? 'c.sessionId = @sessionId'
@@ -265,8 +342,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    // A plus-one is the caller's OWN guest, so even an admin brings one as a member.
-    if (body.guest !== undefined) return await addGuest(req, body, signedIn ?? (await requireGroupMember(req)));
+    // A guest is the caller's own, unless an organiser names the host.
+    if (body.guest !== undefined) {
+      return await addGuest(req, body, { admin, caller: signedIn ?? (await requireGroupMember(req)) });
+    }
     const sessionId = admin && typeof body.sessionId === 'string'
       ? body.sessionId
       : await getActiveSessionId(resolveGroupId(req));
@@ -364,7 +443,7 @@ export async function POST(req: NextRequest) {
        * Reached only when `existingMember` has no `pinHash` — the 409 above
        * owns the other case.
        */
-      const claimAuth = existingMember ? verifyMemberAuth(req) : null;
+      const claimAuth = existingMember ? await verifyLiveMemberAuth(req) : null;
       const ownsExistingMember =
         !!existingMember &&
         !!claimAuth &&
@@ -567,7 +646,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'session_settled' }, { status: 409 });
     }
 
-    const activePlayers = activeRes;
+    let activePlayers = activeRes;
+    if (await letInIfDue(scope, sessionId, sessionData)) {
+      activePlayers = await scope.query<Record<string, unknown>>('players', {
+        where: ACTIVE_PLAYERS_WHERE,
+        params: [{ name: '@sessionId', value: sessionId }],
+        partitionKey: sessionId,
+      });
+    }
     const isFull = activePlayers.length >= maxPlayers;
 
     if (isFull && !joinWaitlist) {
@@ -581,7 +667,13 @@ export async function POST(req: NextRequest) {
       isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && !admin && !!matchedMember
         ? await signupHeldForUnpaid(scope, matchedMember.id)
         : false;
-    const startWaitlisted = (isFull && joinWaitlist) || heldForUnpaid;
+    // Members first (docs/plans/members-first-window.md): while the window is
+    // open, only someone marked a member takes a free spot. Everyone else
+    // waits, flagged so a member's cancel never moves them up early. An admin
+    // adding someone bypasses it, as with the hold.
+    const waitsForMembers =
+      !admin && membersFirstOpen(sessionData, Date.now()) && !(await isClubMember(scope.groupId, matchedMember?.id));
+    const startWaitlisted = (isFull && joinWaitlist) || heldForUnpaid || waitsForMembers;
 
     const deleteToken = randomBytes(16).toString('hex');
 
@@ -606,10 +698,32 @@ export async function POST(req: NextRequest) {
         promotedAt: undefined,
         waitlisted: startWaitlisted,
         heldForUnpaid: heldForUnpaid ? true : undefined,
+        waitingForMembers: waitsForMembers ? true : undefined,
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
         ...(pinHash ? { pinHash } : {}),
       };
       const resource = await scope.upsert('players', restored as typeof restored & { id: string });
+
+      // The same race as a new row (#79): two sign-ups for the last spot can
+      // both pass the check above. A rejoin was never re-counted, so one
+      // racing a new sign-up filled the session past its cap (audit,
+      // 2026-11-05). Past the cap it waits if it asked to, else it goes back
+      // to the cancelled row it was.
+      let restoredWaitlisted = restored.waitlisted;
+      if (!restored.waitlisted) {
+        const outcome = await reconcileCapacity(
+          scope,
+          sessionId,
+          resource as unknown as { id: string; timestamp?: string },
+          maxPlayers,
+          joinWaitlist,
+          () => scope.upsert('players', removedRecord as typeof removedRecord & { id: string }),
+        );
+        if (outcome === 'full') {
+          return NextResponse.json({ error: 'Session is full' }, { status: 409 });
+        }
+        restoredWaitlisted = outcome === 'waitlisted';
+      }
 
       // Update member stats + mirror pinHash for unified admin auth
       if (matchedMember) {
@@ -623,7 +737,10 @@ export async function POST(req: NextRequest) {
 
       // The one-time `deleteToken` is added back on purpose: sign-up is the
       // only response that ever carries it (security rule 1).
-      const out = NextResponse.json({ ...publicPlayer(resource as unknown as Record<string, unknown>), deleteToken }, { status: 201 });
+      const out = NextResponse.json(
+        { ...publicPlayer({ ...(resource as unknown as Record<string, unknown>), waitlisted: restoredWaitlisted }), deleteToken },
+        { status: 201 },
+      );
       if (matchedMember && pinHash && !admin) {
         setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
       }
@@ -639,7 +756,8 @@ export async function POST(req: NextRequest) {
       paid: false,
       removed: false,
       waitlisted: startWaitlisted,
-        heldForUnpaid: heldForUnpaid ? true : undefined,
+      heldForUnpaid: heldForUnpaid ? true : undefined,
+      waitingForMembers: waitsForMembers ? true : undefined,
       ...(matchedMember ? { memberId: matchedMember.id } : {}),
       ...(pinHash ? { pinHash } : {}),
     };
@@ -786,7 +904,7 @@ export async function PATCH(req: NextRequest) {
        * member — plus a verified `currentPin` when a PIN already exists, so a
        * live cookie can't silently lock its owner out of their own account.
        */
-      const caller = isAdmin ? null : verifyMemberAuth(req);
+      const caller = isAdmin ? null : await verifyLiveMemberAuth(req);
       if (!isAdmin && !caller) {
         return NextResponse.json({ error: 'auth_required' }, { status: 401 });
       }
@@ -993,8 +1111,35 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'session_settled' }, { status: 409 });
     }
 
-    // Capacity check when restoring a removed player or promoting a waitlisted player
-    if (body.removed === false || body.waitlisted === false) {
+    // A RESPLIT cover moves everyone else's share (lib/sessionCost.ts). On a
+    // frozen bill that someone has already paid, the re-settle would stamp a
+    // new amount under their `paid: true` — a figure nobody paid, and the
+    // difference never collected (audit, 2026-11-05). Refused before any
+    // write, so the cover and the bill never disagree; covering it yourself
+    // ("absorb") moves nobody and stays open.
+    const wasResplit = existing.writtenOff === true && existing.coverMode === 'resplit';
+    const willResplit = typeof body.writtenOff === 'boolean'
+      ? body.writtenOff === true && updates.coverMode === 'resplit'
+      : wasResplit;
+    if (sessionDoc?.settled && wasResplit !== willResplit) {
+      const billed = await scope.query<{ id: string; paid?: boolean; settledAt?: string }>('players', {
+        where: 'c.sessionId = @sessionId AND IS_DEFINED(c.settledAt)',
+        params: [{ name: '@sessionId', value: sessionId }],
+        partitionKey: sessionId,
+      });
+      if (billed.some((p) => p.id !== id && p.paid === true && typeof p.settledAt === 'string')) {
+        return NextResponse.json({ error: 'paid_would_change' }, { status: 409 });
+      }
+    }
+
+    // Capacity check when restoring a removed player or promoting a waitlisted
+    // player — only when the row comes out of it HOLDING A SPOT. A restore
+    // that lands on the waitlist (the row was waiting when it left, or the
+    // admin sends `waitlisted: true` with it) takes no spot, so a full session
+    // is no reason to refuse it: the waitlist is what a full set of courts
+    // overflows into (docs/plans/money-off-session-list.md).
+    const endsWaitlisted = body.waitlisted === true || (body.waitlisted !== false && existing.waitlisted === true);
+    if ((body.removed === false || body.waitlisted === false) && !endsWaitlisted) {
       const active = await scope.query<{ id: string }>('players', {
         where: ACTIVE_PLAYERS_WHERE,
         params: [{ name: '@sessionId', value: sessionId }],
@@ -1145,7 +1290,10 @@ export async function DELETE(req: NextRequest) {
       if (!host || host.groupId !== scope.groupId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      const [guest] = await guestsOf(scope, sessionId, host.memberId);
+      // One guest by id when the host has several; the only one otherwise
+      // (a phone from before a host could bring two sends no id).
+      const guests = await guestsOf(scope, sessionId, host.memberId);
+      const guest = typeof body.guestId === 'string' ? guests.find((g) => g.id === body.guestId) : guests[0];
       if (!guest) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       const late = await lateOf(guest);
       if (late.late && body.acknowledgeLateFee !== true) {

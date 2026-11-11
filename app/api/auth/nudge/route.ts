@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { callerMemberId } from '@/lib/auth';
+import { liveCallerMemberId } from '@/lib/auth';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -24,9 +24,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Either cookie (see `callerMemberId`): the nudge this dismisses is shown
-  // from `auth/methods`, which answers for the admin cookie too.
-  const memberId = await callerMemberId(req);
-  if (!memberId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  // from `auth/methods`, which answers for the admin cookie too. The LIVE
+  // reading, because this writes on the Member: a phone signed out
+  // everywhere is nobody here (liveCallerMemberId).
+  const caller = await liveCallerMemberId(req);
+  if (caller.status === 'unknown') return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
+  if (caller.status === 'none') return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const memberId = caller.memberId;
 
   try {
     const container = getContainer('members');
@@ -37,7 +41,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
-    await container.items.upsert({
+    // `replace`, never `upsert`: an account deleted between the read and
+    // this write must stay deleted, and a replace of a gone doc throws (503).
+    await container.item(memberId, memberId).replace({
       ...member,
       authNudge: { dismissedAt: new Date().toISOString() },
     });

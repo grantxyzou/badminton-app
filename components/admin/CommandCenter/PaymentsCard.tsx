@@ -10,7 +10,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
 import EmptyState from '@/components/primitives/EmptyState';
 import ActionRow from '@/components/primitives/ActionRow';
-import { fmtSessionLabel } from '@/lib/fmt';
+import { fmtMoney, fmtSessionLabel } from '@/lib/fmt';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import { resettleSession, RESETTLE_FAILED } from '@/lib/resettleSession';
@@ -23,6 +23,7 @@ import StatusBadge from '@/components/primitives/StatusBadge';
 import { sharedFetch } from '@/lib/sharedRead';
 import { sessionDay, sessionMoneyState, SESSION_CALENDAR_LIMIT } from '@/lib/sessionCalendar';
 import SessionDatePicker, { type PickerSession } from './SessionDatePicker';
+import { addPlayerByName, promotePlayer, removePlayer, restorePlayer } from '@/lib/sessionRowActions';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -75,11 +76,6 @@ interface HistoryRow {
 interface HistoryCount {
   unpaid: number;
   players: number;
-}
-
-/** Money for a status line: whole dollars stay whole, cents keep two places. */
-function fmtMoney(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
 interface PaymentsCardProps {
@@ -369,20 +365,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     setAdding(true);
     setAddError('');
     try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setAddError(data.error ?? 'Failed to add.');
+      const result = await addPlayerByName(name);
+      if (!result.ok) {
+        setAddError(result.error);
         return;
       }
       setAddName('');
       if (viewedSessionId) await loadPlayers(viewedSessionId);
-    } catch {
-      setAddError('Network error.');
     } finally {
       setAdding(false);
     }
@@ -392,14 +381,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     if (busyId) return;
     setBusyId(player.id);
     try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: player.id, waitlisted: false }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? 'Failed to promote.');
+      const result = await promotePlayer(player.id);
+      if (!result.ok) {
+        alert(result.error);
         return;
       }
       if (viewedSessionId) await loadPlayers(viewedSessionId);
@@ -412,14 +396,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     if (busyId) return;
     setBusyId(player.id);
     try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: player.id, removed: false, ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? 'Failed to restore.');
+      const result = await restorePlayer(player.id, isCurrentSession ? null : viewedSessionId);
+      if (!result.ok) {
+        alert(result.error);
         return;
       }
       if (viewedSessionId) await loadPlayers(viewedSessionId);
@@ -444,22 +423,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     }
     if (!confirm(`Remove ${actionTarget.name} from this session?`)) return;
     setActionError('');
-    try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: actionTarget.name, ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setActionError(data.error ?? 'Failed to remove.');
-        return;
-      }
-      setActionTarget(null);
-      if (viewedSessionId) await loadPlayers(viewedSessionId);
-    } catch {
-      setActionError('Network error.');
+    const result = await removePlayer(actionTarget.name, isCurrentSession ? null : viewedSessionId);
+    if (!result.ok) {
+      setActionError(result.error);
+      return;
     }
+    setActionTarget(null);
+    if (viewedSessionId) await loadPlayers(viewedSessionId);
   }
 
   async function actionUncover() {
@@ -719,7 +689,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   lineHeight: 1,
                 }}
               >
-                {receiptBuild?.costPerPerson != null ? `$${receiptBuild.costPerPerson}` : '—'}
+                {receiptBuild?.costPerPerson != null ? fmtMoney(receiptBuild.costPerPerson) : '—'}
               </p>
             </div>
             <button
@@ -744,11 +714,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           >
             <span><strong style={{ color: 'var(--text-primary)' }}>{`${paidCount} of ${total}`}</strong> paid</span>
             {stillOwedTotal != null && stillOwedTotal > 0 && (
-              <span style={{ color: 'var(--amber)' }}><strong>{`$${fmtMoney(stillOwedTotal)}`}</strong> owed</span>
+              <span style={{ color: 'var(--amber)' }}><strong>{fmtMoney(stillOwedTotal)}</strong> owed</span>
             )}
             {!!viewedSession.settled?.coveredTotal && (
               <span style={{ color: 'var(--violet)' }} title="What you absorbed by covering players this session">
-                {`$${viewedSession.settled.coveredTotal} covered`}
+                {`${fmtMoney(viewedSession.settled.coveredTotal)} covered`}
               </span>
             )}
           </p>
@@ -793,7 +763,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     style={{ color: 'var(--amber)', fontFamily: 'var(--font-mono), ui-monospace, monospace' }}
                     title="What they owe — frozen when the bill went out."
                   >
-                    ${player.owedAmount}
+                    {fmtMoney(player.owedAmount)}
                   </span>
                 )}
                 <button
@@ -836,7 +806,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   <span className="fs-md truncate" style={{ flex: 1, minWidth: 0 }}>{player.name}</span>
                   {!!viewedSession?.settled && typeof player.owedAmount === 'number' && (
                     <span className="fs-sm" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono), ui-monospace, monospace' }}>
-                      ${player.owedAmount}
+                      {fmtMoney(player.owedAmount)}
                     </span>
                   )}
                   <span className="pay-row-status" style={{ color: covered ? 'var(--violet)' : 'var(--sev-good-text)' }}>
@@ -888,7 +858,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         <div>
           <div
             className="flex items-center justify-between"
-            style={{ gap: 'var(--space-3)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
+            style={{ gap: 'var(--space-3)', paddingTop: 'var(--space-3)' }}
           >
             <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
               {[
@@ -1002,7 +972,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {actionError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
                 {actionError}
               </p>
             )}
@@ -1026,7 +996,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             {actionTarget && canCover(actionTarget) && (
               <ActionRow
                 icon="paid"
-                label={`Cover their $${actionTarget.owedAmount}`}
+                label={`Cover their ${fmtMoney(actionTarget.owedAmount ?? 0)}`}
                 hint="I'll pay for them — choose how to split it"
                 onClick={() => {
                   setCoverMode('cover-only');

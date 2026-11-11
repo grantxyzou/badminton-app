@@ -11,11 +11,86 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** The card with a row of names, measured on the page at 430px (2026-10-21). */
 const READINESS_SKELETON_HEIGHT = 202;
+/** "Only a PIN" with one row of names, measured on the page at 430px (2026-11-10). */
+const PIN_ONLY_SKELETON_HEIGHT = 202;
+
+interface PinOnlyEntry {
+  name: string;
+  rank?: 'organiser' | 'admin';
+}
 
 interface Readiness {
   total: number;
   ready: number;
   cannotSignIn: string[];
+  /** Absent from a server older than docs/plans/pin-retirement.md step 1. */
+  pinOnly?: PinOnlyEntry[];
+}
+
+const RANK_LABEL: Record<NonNullable<PinOnlyEntry['rank']>, string> = { organiser: 'Organiser', admin: 'Admin' };
+
+/** A name that opens the member in the Roster. A name with nowhere to go was
+ *  a list of problems with no fix attached. */
+function NameChip({ name, note, onOpenMember }: { name: string; note?: string; onOpenMember?: (name: string) => void }) {
+  return (
+    <button
+      type="button"
+      className="fs-sm"
+      disabled={!onOpenMember}
+      onClick={() => onOpenMember?.(name)}
+      aria-label={onOpenMember ? `Open ${name} in the roster` : undefined}
+      style={{
+        padding: 'var(--space-1) var(--space-4)',
+        borderRadius: 'var(--radius-pill)',
+        background: 'var(--inner-card-bg)',
+        border: '1px solid transparent',
+        color: 'var(--text-primary)',
+        cursor: onOpenMember ? 'pointer' : 'default',
+      }}
+    >
+      {name}
+      {note ? <span style={{ color: 'var(--text-muted)' }}> · {note}</span> : null}
+    </button>
+  );
+}
+
+const chipList = { margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' } as const;
+
+/**
+ * "Only a PIN" (docs/plans/pin-retirement.md, step 1): members whose ONE way
+ * in is a PIN, so a forgotten one means asking for a recovery code. The page
+ * only — on the console it would be a standing list nobody can clear from
+ * there. Organisers and admins come first (the server sorts them): a
+ * rank-holder on a PIN is the account a recovery code could take over.
+ */
+function PinOnlySection({ data, onOpenMember }: { data: Readiness & { pinOnly: PinOnlyEntry[] }; onOpenMember?: (name: string) => void }) {
+  const title = 'Only a PIN';
+  const count = data.pinOnly.length;
+  return (
+    <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
+      <CardHeader icon="lock" title={title} subtitle="Who can't get back in by themselves if they forget it." />
+      <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>
+        <strong>{count}</strong> of {data.total} members sign in with a PIN only.
+      </p>
+      {count === 0 ? (
+        <EmptyState>Nobody relies on a PIN alone.</EmptyState>
+      ) : (
+        <>
+          <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+            Ask them to add Apple, Google or an email in Profile &rarr; How you sign in. Then a forgotten PIN is
+            something they can fix themselves. Organisers and admins first.
+          </p>
+          <ul style={chipList}>
+            {data.pinOnly.map((entry) => (
+              <li key={entry.name}>
+                <NameChip name={entry.name} note={entry.rank ? RANK_LABEL[entry.rank] : undefined} onOpenMember={onOpenMember} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
 }
 
 /**
@@ -91,7 +166,32 @@ export default function SignInReadinessCard({
       </StateCard>
     );
   }
-  if (!data) return standalone ? <CardSkeleton height={READINESS_SKELETON_HEIGHT} /> : null;
+  if (!data) {
+    if (!standalone) return null;
+    // Both cards hold their place, so the page does not grow when the list lands.
+    return (
+      <>
+        <CardSkeleton height={READINESS_SKELETON_HEIGHT} />
+        <CardSkeleton height={PIN_ONLY_SKELETON_HEIGHT} />
+      </>
+    );
+  }
+  const main = readinessSection(data, standalone, title, onOpenMember);
+  if (!standalone || !Array.isArray(data.pinOnly)) return main;
+  return (
+    <>
+      {main}
+      <PinOnlySection data={{ ...data, pinOnly: data.pinOnly }} onOpenMember={onOpenMember} />
+    </>
+  );
+}
+
+function readinessSection(
+  data: Readiness,
+  standalone: boolean,
+  title: string,
+  onOpenMember?: (name: string) => void,
+) {
   const locked = data.cannotSignIn.length;
   if (locked === 0) {
     if (!standalone) return null;
@@ -121,28 +221,11 @@ export default function SignInReadinessCard({
         &ldquo;I play here already&rdquo; on the Log in page to ask you.
         {onOpenMember ? ' Tap a name to give them a recovery code.' : ''}
       </p>
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+      <ul style={chipList}>
         {data.cannotSignIn.map((name) => (
           <li key={name}>
-            {/* A name with nowhere to go was a list of problems with no
-                fix attached; it opens the member, recovery code inside. */}
-            <button
-              type="button"
-              className="fs-sm"
-              disabled={!onOpenMember}
-              onClick={() => onOpenMember?.(name)}
-              aria-label={onOpenMember ? `Open ${name} in the roster` : undefined}
-              style={{
-                padding: 'var(--space-1) var(--space-4)',
-                borderRadius: 'var(--radius-pill)',
-                background: 'var(--inner-card-bg)',
-                border: '1px solid var(--inner-card-border)',
-                color: 'var(--text-primary)',
-                cursor: onOpenMember ? 'pointer' : 'default',
-              }}
-            >
-              {name}
-            </button>
+            {/* Opens the member, recovery code inside. */}
+            <NameChip name={name} onOpenMember={onOpenMember} />
           </li>
         ))}
       </ul>

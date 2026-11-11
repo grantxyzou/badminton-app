@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// What the widget knows and how it asks for more (docs/plans/native-widgets.md).
 ///
@@ -14,11 +15,22 @@ enum BPMWidgetStore {
     static let undoUntilKey = "widget.undoUntil"
     static let failureKey = "widget.failure"
     static let failureAtKey = "widget.failureAt"
+    /// The device the pass was saved on (`BpmWidgetPlugin.deviceKey`).
+    static let deviceKey = "widget.device"
 
     static var defaults: UserDefaults? { UserDefaults(suiteName: appGroup) }
 
+    /// The pass, only on the phone it was saved on. A backup restored onto
+    /// another phone brings the App Group along; its vendor id differs, so the
+    /// copied pass is ignored and the widget waits for the app to mint its own
+    /// (audit, 2026-11-05). A pass saved before the device was recorded has no
+    /// device and is still read, so nobody's widget goes dark on the update.
     static var token: String? {
         guard let t = defaults?.string(forKey: tokenKey), !t.isEmpty else { return nil }
+        if let saved = defaults?.string(forKey: deviceKey), !saved.isEmpty,
+           saved != UIDevice.current.identifierForVendor?.uuidString {
+            return nil
+        }
         return t
     }
 

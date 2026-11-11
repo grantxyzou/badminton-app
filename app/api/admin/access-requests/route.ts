@@ -31,6 +31,18 @@ import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { resolveGroupId } from '@/lib/groupContext';
 import { rosterMemberIds } from '@/lib/roster';
 import type { Member } from '@/lib/types';
+import { isUnclaimed } from '@/lib/claimLinks';
+import type { StoredAccessRequest } from '@/lib/accessRequest';
+import { approveJoinRequest, declineJoinRequest, pendingJoinRequests } from '@/lib/joinRequests';
+import { readGroup, rosterNameHolder } from '@/lib/groups';
+import { noticeClubOfJoin } from '@/lib/joinNotify';
+
+/**
+ * Whether an ask is THIS club's. A request older than the field carries no
+ * club and stays with whichever club's roster holds the person — the narrowing
+ * that was the whole rule before (docs/plans/claim-your-name.md).
+ */
+const askedIn = (r: StoredAccessRequest, groupId: string): boolean => r.groupId === undefined || r.groupId === groupId;
 
 export const dynamic = 'force-dynamic';
 
@@ -41,9 +53,16 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`access-list:${ip}`, 120, HOUR_MS)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  // Read-only: the cheap sync check (cookie signature + expiry), per the
-  // documented split.
+  // Read-only, but it also answers whether THIS admin is an organiser, which
+  // only the membership can say: through the door link only an organiser lets
+  // anyone in (docs/plans/door-link.md), and the card must not offer an
+  // Approve it will refuse. The sync check stays first, so a stranger costs
+  // no read.
   if (!isAdminAuthed(req)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  const admin = await isAdminAuthedWithMember(req);
+  if (!admin.authed) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -54,7 +73,8 @@ export async function GET(req: NextRequest) {
     // rule as the sign-in readiness list beside it). With one club this is
     // every member; with two, one club's admin would otherwise see — and
     // could approve — the other club's requests by name.
-    const roster = await rosterMemberIds(resolveGroupId(req));
+    const groupId = resolveGroupId(req);
+    const roster = await rosterMemberIds(groupId);
     const { resources } = await getContainer('members')
       .items.query<Member>({
         // Both fields: a doc written before one-per-device still carries the
@@ -71,7 +91,11 @@ export async function GET(req: NextRequest) {
        comparison, not a field the query can express. */
     const waiting = resources
       .filter((m) => roster.has(m.id))
-      .map((m) => ({ m, open: openRequests(m), pending: pendingRequests(m) }))
+      // Only the asks made FOR this club (docs/plans/claim-your-name.md). A
+      // person on two rosters may ask in either; one club's organiser never
+      // sees, or approves, the other's. A request from before the field has
+      // no club and is seen by the roster's (the rule before).
+      .map((m) => ({ m, open: openRequests(m), pending: pendingRequests(m).filter((r) => askedIn(r, groupId)) }))
       .filter(({ pending }) => pending.length > 0)
       .map(({ m, open, pending }) => ({
         memberId: m.id,
@@ -81,10 +105,27 @@ export async function GET(req: NextRequest) {
         // Only a lone request is approvable, so only a lone request has an id
         // to approve by.
         requestId: open.length === 1 ? pending[0].id : null,
+        // What the card says beside the name: asked with the club's claim
+        // link, and nobody has ever signed in under it.
+        viaLink: pending.some((r) => r.via === 'link'),
+        neverSignedIn: isUnclaimed(m),
       }))
       .sort((a, b) => a.at - b.at);
 
-    return NextResponse.json({ requests: waiting });
+    // People asking to JOIN through the door link: on the club, not on a
+    // person. `nameTaken` lets the card say so before anyone taps Approve.
+    const group = await readGroup(groupId);
+    const joins = await Promise.all(
+      pendingJoinRequests(group).map(async (r) => ({
+        joinRequestId: r.id,
+        name: r.name,
+        at: r.expiresAt,
+        nameTaken: (await rosterNameHolder(groupId, r.name)) !== null,
+      })),
+    );
+    joins.sort((a, b) => a.at - b.at);
+
+    return NextResponse.json({ requests: waiting, joins, organiser: admin.organiser });
   } catch (err) {
     console.error('GET /api/admin/access-requests failed:', err);
     return NextResponse.json({ error: 'read_failed' }, { status: 503 });
@@ -104,6 +145,37 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
+
+  // A JOIN through the door link (docs/plans/door-link.md). Organisers only
+  // (Grant, 2026-11-05), in either direction: declining is a decision about
+  // who comes in too.
+  const joinRequestId = body && typeof body.joinRequestId === 'string' ? body.joinRequestId : '';
+  if (joinRequestId) {
+    const decision = body?.decision;
+    if (decision !== 'approve' && decision !== 'decline') {
+      return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+    }
+    if (!admin.organiser) return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+    try {
+      if (decision === 'decline') {
+        return (await declineJoinRequest(admin.groupId, joinRequestId))
+          ? NextResponse.json({ ok: true })
+          : NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
+      const result = await approveJoinRequest(admin.groupId, joinRequestId);
+      if (result.outcome === 'approved') {
+        // The whole club hears it on the Notifications page (no push).
+        await noticeClubOfJoin(admin.groupId, { id: result.memberId, name: result.name });
+        return NextResponse.json({ ok: true });
+      }
+      if (result.outcome === 'name_taken') return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    } catch (err) {
+      console.error('POST /api/admin/access-requests (join) failed:', err);
+      return NextResponse.json({ error: 'write_failed' }, { status: 503 });
+    }
+  }
+
   const memberId = body && typeof body.memberId === 'string' ? body.memberId : '';
   const requestId = body && typeof body.requestId === 'string' ? body.requestId : '';
   const decision = body?.decision;
@@ -122,25 +194,43 @@ export async function POST(req: NextRequest) {
     if (!(await rosterMemberIds(admin.groupId)).has(memberId)) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
-    let refusal: 'not_found' | 'several_requests' | null = null;
+    let refusal: 'not_found' | 'several_requests' | 'organiser_only' | 'already_claimed' | null = null;
 
-    const result = await updateAccessRequests(memberId, (open) => {
+    const result = await updateAccessRequests(memberId, (open, member) => {
       if (decision === 'decline') {
-        // Declining clears every open request for the person. The asking
-        // devices then poll into `none` and are told to try again or find
-        // Grant in person — there is no "you were refused" state, because
-        // there is nothing useful to do with one.
-        if (open.length === 0) { refusal = 'not_found'; return null; }
-        return [];
+        // Declining clears every open request for the person IN THIS CLUB
+        // (another club's asks stand). The asking devices then poll into
+        // `none` and are told to try again or find the organiser in person —
+        // there is no "you were refused" state, because there is nothing
+        // useful to do with one.
+        const mine = open.filter((r) => askedIn(r, admin.groupId));
+        if (mine.length === 0) { refusal = 'not_found'; return null; }
+        return open.filter((r) => !askedIn(r, admin.groupId));
       }
-      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined);
+      // An ask for ANOTHER club is not this organiser's to approve, even for a
+      // person on both rosters: it signs the device in to the club it names.
+      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId));
       if (!target) { refusal = 'not_found'; return null; }
+      // An ask through the club's door link is an organiser's to approve,
+      // whoever it is for (Grant, 2026-11-05: "Organisers only").
+      if (target.via === 'link' && !admin.organiser) { refusal = 'organiser_only'; return null; }
+      // The link admits only an UNCLAIMED name, and that was checked when the
+      // ask was made. If the person has since set a PIN, a password or a
+      // provider, the real owner is in, and approving would hand a stranger's
+      // phone their account (audit, 2026-11-05).
+      if (target.via === 'link' && !isUnclaimed(member)) { refusal = 'already_claimed'; return null; }
       // Re-checked at write time, not trusted from the list the admin saw: a
       // second ask may have landed since.
       if (open.length > 1) { refusal = 'several_requests'; return null; }
       return [{ ...target, approvedAt: Date.now() }];
     });
 
+    if (refusal === 'organiser_only') {
+      return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+    }
+    if (refusal === 'already_claimed') {
+      return NextResponse.json({ error: 'already_claimed' }, { status: 409 });
+    }
     if (refusal === 'several_requests') {
       return NextResponse.json({ error: 'several_requests' }, { status: 409 });
     }

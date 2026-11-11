@@ -288,6 +288,33 @@ don't copy.
   ANY club's admin once groups were on, and its status is deployment-wide
   (every club's counts, and leaks naming two clubs), so `GET` and `POST` are
   operator-only now — an admin of BPM, as `GET /api/reports/feedback` is.
+- **2026-11-04 — "Ask to be let in": the phone remembers its club (Grant
+  chose it over three others).** The asker is signed out, so the ask had no
+  group claim and `resolveGroupId` answered BPM: another club's member was
+  looked up on BPM's roster, never reached their own admins, and a BPM member
+  with the same name took the request. Approval is blind by design, so one tap
+  there would have signed the asker in as that BPM member. While signed in,
+  `HomeShell` keeps the current club's id in `localStorage`
+  (`badminton_last_club`, `lib/lastClub.ts`, kept across sign-out because
+  signed-out is the state it is for). `AskAccessSheet` sends it as `club` on
+  the ask and on every poll, and both routes resolve through
+  `groupIdWithHint` (`lib/groupContext.ts`): a verified cookie claim, else the
+  hint, else BPM. Flag off, it is ignored. With a hint the name is looked up
+  in that club ONLY. It is a hint, not a credential: it chooses which roster
+  a name is read from, the answer is the same 200 either way, and a human in
+  that club still approves. A stranger who sends another club's id gets what
+  naming a BPM member always got them: a request that club's admin can
+  decline. Turned down: **mirror sign-in** (store the ask on every same-named
+  person across clubs; two Lins in two clubs would each be one blind tap from
+  the wrong person), **a club picker** (a public list of club names, a new
+  signed-out surface), and **BPM only with honest copy** (a forgotten PIN in
+  another club would have no in-app way back). **What it leaves:** a phone
+  that has never been signed in still asks BPM. The sheet says so ("Play
+  with a different club? Ask its organiser for a recovery code instead"),
+  because the club's claim link only accepts a name nobody has signed into.
+  A shared phone remembers the club of whoever signed in last, so someone from
+  a different club asking on it reaches nobody and the ask expires. Two-club
+  gate: `__tests__/group-access-requests.test.ts`.
 
 ## Shape
 

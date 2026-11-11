@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
   const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
   if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 });
 
-  if (!ownsNameOrAdmin(req, name)) {
+  if (!(await ownsNameOrAdmin(req, name))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

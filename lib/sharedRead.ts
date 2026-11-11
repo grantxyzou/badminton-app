@@ -23,6 +23,77 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
  */
 const FRESH_MS = 2000;
 
+/**
+ * A LANDED answer reused while nothing has been written since (2026-11-05).
+ *
+ * Opening the app asked the server 35 times, about ten of them twice: Home
+ * read the session, the roster, the release notes and the member, and the
+ * tabs opened behind the launch screen a second later read them again —
+ * after the first answers had landed, so the in-flight share above never saw
+ * them (measured on a production build, 4× slowed CPU, 150 ms round trips).
+ *
+ * The reason there was no tail stands: a refetch right after a write must go
+ * to the server. So the tail is WRITE-AWARE. `watchWrites()` (installed once
+ * by the app shell) counts every non-GET request the page makes; an answer is
+ * reused only within `SETTLED_SHARE_MS` of landing AND only while that count
+ * has not moved since the request STARTED — a sign-up, a payment, a PIN
+ * change, anything, and the next read goes to the server. Without the watch
+ * (a test, a page that never installs it) nothing is reused past the flight.
+ * Only an ok answer is kept; a 4xx or 5xx is never handed to a later caller.
+ */
+const SETTLED_SHARE_MS = 8000;
+
+let writeEpoch = 0;
+let watchedFetch: typeof fetch | null = null;
+
+/**
+ * The usage beacons (`app_open`, `tab_view`, a client error: `POST
+ * /api/events`, lib/engagement.ts) append to a log nothing on screen reads
+ * back, and they fire on every open and tab switch — counted as writes they
+ * voided every reuse the moment the app opened (measured: no duplicate went
+ * away until they were excluded).
+ */
+function isUsageBeacon(input: RequestInfo | URL): boolean {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  return /\/api\/events(?:[?#]|$)/.test(url);
+}
+
+/** Count the page's writes, so a settled answer is never reused across one. Idempotent. */
+export function watchWrites(): void {
+  if (typeof window === 'undefined' || (watchedFetch && window.fetch === watchedFetch)) return;
+  const inner = window.fetch.bind(window);
+  const wrapped: typeof fetch = (input, init) => {
+    const method = (init?.method ?? (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD' && !isUsageBeacon(input)) writeEpoch++;
+    return inner(input, init);
+  };
+  window.fetch = wrapped;
+  watchedFetch = wrapped;
+}
+
+/** A write this module cannot see (a beacon, a form post): drop every settled answer. */
+export function noteWrite(): void {
+  writeEpoch++;
+}
+
+/** The watch is installed and still the page's fetch (a test may have replaced it). */
+function writesWatched(): boolean {
+  return typeof window !== 'undefined' && watchedFetch !== null && window.fetch === watchedFetch;
+}
+
+type Settled = { at: number; epoch: number; promise: Promise<Response> };
+const settled = new Map<string, Settled>();
+
+function takeSettled(path: string): Promise<Response> | null {
+  const hit = settled.get(path);
+  if (!hit) return null;
+  if (!writesWatched() || hit.epoch !== writeEpoch || Date.now() - hit.at >= SETTLED_SHARE_MS) {
+    settled.delete(path);
+    return null;
+  }
+  return hit.promise;
+}
+
 type Entry = { at: number; promise: Promise<unknown> };
 
 const inflight = new Map<string, Entry>();
@@ -64,6 +135,7 @@ export function resetSharedReads(): void {
   inflight.clear();
   inflightFetches.clear();
   primed.clear();
+  settled.clear();
 }
 
 /**
@@ -80,21 +152,27 @@ export function resetSharedReads(): void {
  * clone of the one response, so a 404 is still a 404 to the caller that
  * knows what a 404 means on its screen.
  *
- * NO freshness tail, on purpose. These callers also refetch right after a
- * mutation (a sign-up, a paid toggle, a cover), and even a two-second window
- * could hand the refetch the answer from before the write. Sharing only
- * while the request is open cannot: a refetch that starts after the write
- * finds nothing in flight and goes to the server.
+ * No BLIND freshness tail, on purpose. These callers also refetch right after
+ * a mutation (a sign-up, a paid toggle, a cover), and even a two-second
+ * window could hand the refetch the answer from before the write. The one
+ * tail there is (`SETTLED_SHARE_MS`) is void the moment the page writes
+ * anything, so a refetch after a write always goes to the server.
  */
 export function sharedFetch(path: string): Promise<Response> {
-  let promise = inflightFetches.get(path);
+  let promise = inflightFetches.get(path) ?? takeSettled(path) ?? undefined;
   if (!promise) {
-    promise = takePrimed(path) ?? fetch(`${BASE}${path}`, { cache: 'no-store' });
-    inflightFetches.set(path, promise);
+    const epoch = writeEpoch;
+    const started = takePrimed(path) ?? fetch(`${BASE}${path}`, { cache: 'no-store' });
+    promise = started;
+    inflightFetches.set(path, started);
     const done = () => {
-      if (inflightFetches.get(path) === promise) inflightFetches.delete(path);
+      if (inflightFetches.get(path) === started) inflightFetches.delete(path);
     };
-    promise.then(done, done);
+    started.then((r) => {
+      done();
+      // Kept for a later caller only when ok, and only under the write watch.
+      if (r.ok && typeof r.clone === 'function' && writesWatched()) settled.set(path, { at: Date.now(), epoch, promise: started });
+    }, done);
   }
   // A body reads once; every sharer takes a clone and the original stays
   // unread. (A test double without `clone` is handed back as is.)
@@ -103,14 +181,17 @@ export function sharedFetch(path: string): Promise<Response> {
 
 export function sharedRead<T = unknown>(path: string): Promise<T> {
   const now = Date.now();
-  const hit = inflight.get(path);
-  if (hit && now - hit.at < FRESH_MS) return hit.promise as Promise<T>;
+  const hit = inflight.get(path) as (Entry & { epoch?: number }) | undefined;
+  // The same write-aware tail as `sharedFetch`, beyond the blind two seconds.
+  const fresh = hit && (now - hit.at < FRESH_MS || (writesWatched() && hit.epoch === writeEpoch && now - hit.at < SETTLED_SHARE_MS));
+  if (hit && fresh) return hit.promise as Promise<T>;
+  const epoch = writeEpoch;
 
   const promise = fetch(`${BASE}${path}`, { cache: 'no-store' }).then((r) => {
     if (!r.ok) throw new Error(String(r.status));
     return r.json();
   });
-  inflight.set(path, { at: now, promise });
+  inflight.set(path, { at: now, epoch, promise } as Entry);
   // A failure is never shared past its own settle: the next mount must be able
   // to try again rather than inherit someone else's error.
   promise.catch(() => {

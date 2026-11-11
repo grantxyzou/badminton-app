@@ -39,7 +39,7 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
         padding: 'var(--space-4) var(--space-4)',
         borderRadius: 'var(--radius-lg)',
         background: 'var(--inner-card-bg)',
-        border: '1px solid var(--inner-card-border)',
+        border: '1px solid transparent',
       }}
     >
       <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: ACCENT, marginTop: 'var(--space-hair)', flexShrink: 0 }}>

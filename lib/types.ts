@@ -24,6 +24,9 @@ export interface ETransferRecipient {
   email: string;
   /** Optional default memo template — supports `{date}` and `{name}` placeholders. */
   memo?: string;
+  /** Optional Wealthsimple handle ("$grantxyzou"), a second way to pay, printed
+   *  under the e-transfer address on the shared receipt. Additive (2026-11-10). */
+  wealthsimple?: string;
 }
 
 export interface Session {
@@ -49,6 +52,8 @@ export interface Session {
   /** RESPONSE-ONLY, never stored: `GET /api/session` reports whether the
    *  club lets members bring a guest (docs/plans/plus-one.md). */
   guestsAllowed?: boolean;
+  /** How many guests a member may bring (docs/plans/six-feathers-guests.md); on the session read only. */
+  guestsPerMember?: number;
   /** prev* fields are written together at advance time; they're related
    *  but kept as flat fields rather than nested because existing prod
    *  records already have the flat shape and the schema rule forbids
@@ -79,6 +84,19 @@ export interface Session {
    *  notified for this session" — toggling sign-ups closed and open again does
    *  NOT re-notify. Session-scoped, so the next session starts clean. */
   signupOpenNotifiedAt?: string;
+  /**
+   * The club's members-first rule, copied on by advance
+   * (docs/plans/members-first-window.md). The end is worked out from this and
+   * `datetime` (`membersFirstUntil` in lib/membersFirst.ts), so changing the
+   * club's setting mid-week leaves this week alone. Additive; absent = no window.
+   */
+  membersFirst?: { daysBefore: number; time: string };
+  /**
+   * When the waitlist was let in: by the first visit after the window ended,
+   * or early by an organiser. Present = the window is over and the promotion
+   * has run. Additive.
+   */
+  membersFirstReleasedAt?: string;
 }
 
 export interface SettledSnapshot {
@@ -152,6 +170,13 @@ export interface Player {
    * the row promoted if there is room — when a payment brings them under it.
    */
   heldForUnpaid?: boolean;
+  /**
+   * Waiting for the members-first window to end (docs/plans/members-first-window.md):
+   * a drop-in, an unmarked name or a guest who signed up while only members
+   * could take a spot. Promotion skips the row while the window is open, and
+   * clears the flag when it moves the row up. Additive.
+   */
+  waitingForMembers?: boolean;
   /**
    * When this row last left the waitlist — automatically when a spot opened
    * (`lib/waitlistPromote.ts`), by an admin's tap, or by the paid-hold release
@@ -259,7 +284,7 @@ export interface PaymentAllocation {
  * and the body carries the admin's own name and bank details.
  */
 export interface EtransferPayment {
-  /** `etx:${sha256(messageId)}` — a re-sent email is the same doc. */
+  /** `etx:${sha256(ref or messageId)}`, prefixed `<groupId>:` outside BPM — a re-sent email is the same doc. */
   id: string;
   groupId?: string;
   source: 'etransfer';
@@ -368,6 +393,42 @@ export interface Group {
    * etag condition. `lib/invites.ts` owns the list. Additive: absent means none.
    */
   invites?: PendingInvite[];
+  /**
+   * The club's live CLAIM LINK (docs/plans/claim-your-name.md): the id of its
+   * `claimlink:${sha256(token)}` sibling doc in this container. One per club,
+   * reusable, no expiry; minting a new one replaces this id, which is what
+   * retires the old link. Only the id lives here, never the token, for the
+   * same reason as `invites`. `lib/claimLinks.ts` owns it. Additive.
+   */
+  claimLinkId?: string;
+  /**
+   * People asking to JOIN through the club's door link (docs/plans/door-link.md):
+   * a name not on the roster, waiting for an organiser. They live on the club
+   * because a new person has no Member doc to hold a request. Bounded and
+   * short-lived; `lib/joinRequests.ts` owns them. Additive: absent means none.
+   */
+  joinRequests?: StoredJoinRequest[];
+}
+
+/**
+ * One ask to join through the door link. Device-bound like an access request
+ * (`lib/accessRequest.ts`): only the sha256 of the asking phone's secret is
+ * kept, so approving lets in the phone that asked and nobody else.
+ */
+export interface StoredJoinRequest {
+  /** Random, public-safe handle the organiser approves by. Never the hash. */
+  id: string;
+  /** The name they typed, trimmed. Becomes their roster name on approval. */
+  name: string;
+  /** sha256 of the asking phone's secret. */
+  hash: string;
+  createdAt: string;
+  /** Epoch ms. An hour after asking, the same life as an access request. */
+  expiresAt: number;
+  /** When an organiser approved. Absent = still waiting. */
+  approvedAt?: number;
+  /** The account approval created. Set after `approvedAt`; the phone collects it. */
+  memberId?: string;
 }
 
 /** One live one-time invite, as listed on its `Group`. */
@@ -410,7 +471,8 @@ export interface Membership {
   /**
    * A MEMBER of this club rather than a drop-in (docs/plans/roster-import.md).
    * Set by the roster import or the Roster sheet; the Roster page labels and
-   * filters by it, and "last week's list carries over" will read it. Not the
+   * filters by it (a members-first window would too; carrying last week's
+   * list over was dropped, docs/plans/six-feathers-onboarding.md). Not the
    * Roster page's "Regulars" chip, which counts recent sessions. Additive;
    * absent = not marked either way.
    */
@@ -423,6 +485,17 @@ export interface Membership {
    * nothing revoked. The flag-off copy is `Member.widgetPassNotBefore`.
    */
   widgetPassNotBefore?: string;
+  /**
+   * A member SESSION minted before this instant is refused wherever the
+   * membership is re-read: `activeMemberFor` (the page gate, every
+   * members-only read, sign-up) and `readLiveMemberSession` (every write that
+   * acts as the member) in lib/auth.ts — and so is an `admin_session`, in
+   * `isAdminAuthedWithMember`. Stamped by the Roster sheet's "Sign out
+   * everywhere" and by issuing a recovery code (docs/plans/claim-your-name.md):
+   * how an organiser takes a name back from whoever holds it. Additive; absent
+   * = nothing revoked. The flag-off copy is `Member.sessionsNotBefore`.
+   */
+  sessionsNotBefore?: string;
 }
 
 /**
@@ -504,6 +577,8 @@ export interface Member {
   canString?: boolean;
   /** Flag-off twin of `Membership.widgetPassNotBefore`: widget passes minted before it are refused. */
   widgetPassNotBefore?: string;
+  /** Flag-off twin of `Membership.sessionsNotBefore`: member and admin sessions minted before it are refused. */
+  sessionsNotBefore?: string;
   /**
    * This person may give out gift cards (docs/plans/gift-card-ledger.md).
    * The third independent switch beside `role` and `canString`: a helper who
@@ -546,6 +621,16 @@ export interface Member {
    * show you which address you signed in with.
    */
   email?: string;
+  /**
+   * An address the member's club can reach them at (2026-11-11, spec Q3,
+   * Grant: "yes"). NOT a way to sign in, and never checked: the member types
+   * it (or the door's email is kept after approval) and may change or clear
+   * it. Seen by the member (`GET /api/members/me`, their own) and by the
+   * admins of a club they are on (`GET /api/members`'s admin read). Never in
+   * a member-facing roster row (`rosterPublicRows` projects three fields).
+   * Additive: older code ignores it, and deleting the account deletes the row.
+   */
+  contactEmail?: string;
   /** True only once a mailed verification link has actually been redeemed. */
   emailVerified?: boolean;
   /** scrypt, self-describing format from lib/passwordHash.ts. STRIP-CANARY. */
@@ -754,9 +839,15 @@ export interface GearItem {
   /** String-specific, and only for a HYBRID: the crosses string, when it is a
    *  different string from this item (the mains). Nested rather than a second
    *  string item on purpose: seven readers take "the member's string" as the
-   *  last string in the bag, and a crosses item would become it. Absent means
+   *  active racket's string (`currentString`), and a crosses item would become it. Absent means
    *  one string throughout. See `lib/stringCrosses.ts`. */
   crosses?: StringCrosses;
+  /** String-specific: the bag item id of the racket this string is ON
+   *  (2026-11-05). Each racket keeps its own string and tension, so swapping
+   *  rackets shows the new racket's string, not the last one added. Absent on
+   *  a string written before then: it belongs to the active racket until the
+   *  first swap pins it (`stringOn` / `pinLooseStrings` in `lib/activeRacket.ts`). */
+  racketId?: string;
 }
 
 /** The crosses half of a hybrid stringing. */
@@ -947,6 +1038,16 @@ export interface EngagementEvent {
   where?: string;
   /** `sign_in` only — one of SIGN_IN_VIAS. Additive. */
   via?: string;
+  /** `app_ready` only: milliseconds from the page starting to the first screen filled in. Additive. */
+  ms?: number;
+  /** `app_ready` only: milliseconds to the launch screen leaving. Additive. */
+  launchMs?: number;
+  /** `app_ready` only — one of APP_STARTS. Additive. */
+  start?: string;
+  /** `guide_feedback` only: the guide's slug (`lib/helpGuides.ts`). Additive. */
+  guide?: string;
+  /** `guide_feedback` only: 'yes' or 'no'. Additive. */
+  answer?: string;
 }
 
 /** One source of truth for the kinds is `lib/events.ts`; this union is
@@ -1210,6 +1311,13 @@ export interface PushSubscriptionDoc {
   createdAt: string;
   /** Bumped on re-subscribe. Also the eviction order when a member exceeds the device cap. */
   lastSeenAt: string;
+  /**
+   * The app's language on this device when it subscribed, refreshed when the
+   * member switches language (`PATCH /api/push/subscribe`). A push is written
+   * in it (audit, 2026-11-05). Additive: absent means English, which is what
+   * every push said before.
+   */
+  locale?: 'en' | 'zh-CN';
   lastSuccessAt?: string;
   /** Incremented on transient send failures (429/5xx). A 404/410 deletes the
    *  doc outright instead — that status means the subscription is truly gone. */

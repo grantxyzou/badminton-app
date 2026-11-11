@@ -7,11 +7,13 @@ import LaunchArt from '@/components/launch/LaunchArt';
 import { buttonDelayMs } from '@/lib/launchMotion';
 import TopBar from '@/components/primitives/TopBar';
 import TopToast from '@/components/primitives/TopToast';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import NativeBridge from '@/components/NativeBridge';
 import SignInForm from '@/components/SignInForm';
-import AskAccessSheet from '@/components/AskAccessSheet';
+import AskAccessForm, { type AskApproved } from '@/components/auth/AskAccessForm';
+import KeepAccountPage from '@/components/auth/KeepAccountPage';
 import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
 import EmailSignInForm from '@/components/auth/EmailSignInForm';
 import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
@@ -33,12 +35,14 @@ import {
   clearOnboardingResume,
 } from '@/lib/onboardingResume';
 import { isFlagOn } from '@/lib/flags';
-import { OFFER_PIN_KEY } from '@/lib/offerPin';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** The one key this screen writes in sessionStorage. See `reloadIntoApp`. */
 const RELOAD_MARK = 'badminton_signed_out_reload_at';
+/** The ask card while the link's club is looked up: the door form, measured at
+ *  430 wide on 2026-11-08 (name, email, the junk-mail line and the button). */
+const ASK_CARD_HEIGHT = 284;
 
 // The multi-group doors, split out exactly as HomeShell splits them: a
 // stranger who never taps "Start your own club" never downloads them.
@@ -47,7 +51,7 @@ const JoinGroupPage = dynamic(() => import('./JoinGroupPage'), { ssr: false });
 const GroupsPage = dynamic(() => import('@/components/profile/GroupsPage'), { ssr: false });
 
 /** `create` and `join` are reachable only with multi-group on. */
-type View = 'welcome' | 'login' | 'signup' | 'create' | 'join';
+type View = 'welcome' | 'login' | 'signup' | 'create' | 'join' | 'ask';
 type Invite = { token?: string; code?: string };
 
 /**
@@ -130,6 +134,8 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
     noGroup: false,
   });
   const [initialInvite, setInitialInvite] = useState<Invite | null>(null);
+  /** A club's claim link from `?claim=` (docs/plans/claim-your-name.md). */
+  const [claimToken, setClaimToken] = useState<string | null>(null);
   const consumed = useRef(false);
   /** The view as the identity listener sees it — it must not re-subscribe per view. */
   const viewRef = useRef<View>('welcome');
@@ -226,6 +232,18 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
     if (reset) {
       setResetRequest({ token: reset, email: params.get('email') ?? '' });
       strip('reset', 'email');
+    }
+    // A club's claim link: someone the organiser put on the roster, asking to
+    // be let in under their own name, or a new person asking to join. A live
+    // credential, so stripped like `join`; it opens the club's ask PAGE. A
+    // signed-in member in no club has an account already — nothing to claim.
+    const claim = params.get('claim');
+    if (claim) {
+      if (!noClubMode) {
+        setClaimToken(claim);
+        setView('ask');
+      }
+      strip('claim');
     }
     const join = params.get('join');
     if (join) {
@@ -362,8 +380,26 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             }}
             onJoined={hardReload}
           />
+        ) : view === 'ask' ? (
+          /* Asking to be let in, or to join through the club's link. A page,
+             not a sheet (Grant, 2026-11-08): a real person approves it. */
+          <AskAccessPage
+            claimToken={claimToken}
+            onBack={() => {
+              // Through the link there is no Log in behind the ask; back is
+              // the start. "I play here already" came from Log in.
+              const fromLink = claimToken !== null;
+              setClaimToken(null);
+              setView(fromLink ? 'welcome' : 'login');
+            }}
+          />
         ) : view === 'login' ? (
-          <LogInView authProviders={authProviders} onBack={() => setView('welcome')} onSignUp={() => setView('signup')} />
+          <LogInView
+            authProviders={authProviders}
+            onBack={() => setView('welcome')}
+            onSignUp={() => setView('signup')}
+            onAsk={() => setView('ask')}
+          />
         ) : view === 'signup' ? (
           <SignUpView
             authProviders={authProviders}
@@ -374,6 +410,14 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             }}
             onLogIn={() => setView('login')}
             onCreate={groupsOn ? () => setView('create') : undefined}
+            onDoor={(token) => {
+              // The club's door link on the one-link path: not an invite, so
+              // the ask opens instead of the sign-up form.
+              clearOnboardingResume();
+              setInitialInvite(null);
+              setClaimToken(token);
+              setView('ask');
+            }}
           />
         ) : noClub ? (
           <NoClubView
@@ -562,18 +606,17 @@ function LogInView({
   authProviders,
   onBack,
   onSignUp,
+  onAsk,
 }: {
   authProviders: Provider[];
   onBack: () => void;
   onSignUp: () => void;
+  /** "I play here already": the ask page. */
+  onAsk: () => void;
 }) {
   const t = useTranslations('signedOut');
   const [mode, setMode] = useState<'pin' | 'email'>('pin');
-  const [askOpen, setAskOpen] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
-  // A stale local identity is the one thing worth remembering here: it saves a
-  // returning player typing their own name. Read once, at mount.
-  const [staleName] = useState(() => (typeof window === 'undefined' ? '' : getIdentity()?.name ?? ''));
 
   const signedIn = (result: { name: string; token?: string }) =>
     setIdentity({ name: result.name, sessionId: '', ...(result.token ? { token: result.token } : {}) });
@@ -583,7 +626,6 @@ function LogInView({
       <TopBar title={t('login.title')} onBack={onBack} backLabel={t('back')} />
       <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
         <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('login.body')}</p>
-
         <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
           {authProviders.length > 0 && (
             <>
@@ -608,7 +650,7 @@ function LogInView({
             <button
               type="button"
               className="link-quiet"
-              onClick={() => (mode === 'email' ? setForgotOpen(true) : setAskOpen(true))}
+              onClick={() => (mode === 'email' ? setForgotOpen(true) : onAsk())}
             >
               {mode === 'email' ? t('login.forgotPassword') : t('login.playHereAlready')}
             </button>
@@ -623,28 +665,94 @@ function LogInView({
         </button>
       </div>
 
-      {/* "I play here already": the way back for a regular with no PIN, email or
-          Google — an admin approves, and the sheet signs them in itself. */}
-      <AskAccessSheet
-        open={askOpen}
-        onClose={() => setAskOpen(false)}
-        sessionId=""
-        initialName={staleName}
-        onSignedIn={({ hasPin }) => {
-          setAskOpen(false);
-          // An approval signs them in with no credential. The reload the sign-in
-          // triggers is async, so this lands before the page goes — Home then
-          // opens the PIN sheet instead of letting them leave with nothing.
-          if (!hasPin) {
-            try {
-              window.sessionStorage.setItem(OFFER_PIN_KEY, '1');
-            } catch {
-              /* Home still shows the card */
-            }
-          }
-        }}
-      />
       <ForgotPasswordSheet open={forgotOpen} onClose={() => setForgotOpen(false)} />
+    </div>
+  );
+}
+
+// ── Ask to be let in / ask to join ─────────────────────────────────────────
+
+/**
+ * The ask as a PAGE (Grant, 2026-11-08: "Since there's a real person approval
+ * steps I think they all should be using a page not a sheet"). Two ways here:
+ * the club's link (`?claim=` or `/j/`, a new person joining or an imported
+ * name claiming theirs) and Log in's "I play here already".
+ *
+ * Three steps on one page: the form, the wait (the form shows it), and — once
+ * an organiser lets them in with nothing to sign in WITH — "Keep your
+ * account". The identity is written only when they leave that last step,
+ * because writing it reloads this screen into the app; the session cookie is
+ * already set, so the step's Apple, Google and password all act on the new
+ * account. Someone approved who already has a PIN goes straight in.
+ */
+function AskAccessPage({ claimToken, onBack }: { claimToken: string | null; onBack: () => void }) {
+  const t = useTranslations('signedOut');
+  const tAsk = useTranslations('recovery');
+  const [claim, setClaim] = useState<{ token: string; clubName: string } | null>(null);
+  const [claimDead, setClaimDead] = useState(false);
+  const [approved, setApproved] = useState<AskApproved | null>(null);
+  // A stale local identity saves a returning player typing their own name.
+  // Read once, at mount; not through the link, where the name is a new one.
+  const [staleName] = useState(() => (typeof window === 'undefined' || claimToken ? '' : getIdentity()?.name ?? ''));
+  const claimResolved = useRef(false);
+
+  // The link names a club; the preview says which, and nothing else
+  // (`GET /api/groups/preview?claim=`).
+  useEffect(() => {
+    if (!claimToken || claimResolved.current) return;
+    claimResolved.current = true;
+    void (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/groups/preview?claim=${encodeURIComponent(claimToken)}`, { cache: 'no-store' });
+        if (!res.ok) {
+          setClaimDead(true);
+          return;
+        }
+        const data = (await res.json()) as { name: string };
+        setClaim({ token: claimToken, clubName: data.name });
+      } catch {
+        setClaimDead(true);
+      }
+    })();
+  }, [claimToken]);
+
+  const enter = (name: string) => setIdentity({ name, sessionId: '' });
+
+  if (approved) {
+    return (
+      <KeepAccountPage
+        name={approved.name}
+        initialEmail={approved.email}
+        onDone={() => enter(approved.name)}
+      />
+    );
+  }
+
+  const waitingForClub = claimToken !== null && !claim && !claimDead;
+  const title = claim ? tAsk('claimTitle', { club: claim.clubName }) : claimToken ? tAsk('joinTitle') : tAsk('askTitle');
+
+  return (
+    <div className="animate-slideInRight space-y-5" data-ask-page>
+      <TopBar title={title} onBack={onBack} backLabel={t('back')} />
+      {claimDead ? (
+        /* A link the organiser has since replaced (or never was one): say so,
+           rather than leaving them on a page that ignores the link. */
+        <p className="field-error" role="alert">{t('login.claimLinkDead')}</p>
+      ) : waitingForClub ? (
+        <CardSkeleton height={ASK_CARD_HEIGHT} />
+      ) : (
+        <div className="glass-card p-5">
+          <AskAccessForm
+            initialName={staleName}
+            claim={claim}
+            onApproved={(result) => {
+              // Nothing to sign in with next time: the account step first.
+              if (!result.hasPin) setApproved(result);
+              else enter(result.name);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -657,6 +765,7 @@ function SignUpView({
   onBack,
   onLogIn,
   onCreate,
+  onDoor,
 }: {
   authProviders: Provider[];
   initialInvite: Invite | null;
@@ -664,6 +773,8 @@ function SignUpView({
   onLogIn: () => void;
   /** Multi-group on: "No invite? Start your own club". Absent, the line only explains. */
   onCreate?: () => void;
+  /** The token turned out to be the club's door link (docs/plans/door-link.md). */
+  onDoor?: (token: string) => void;
 }) {
   const t = useTranslations('signedOut');
   const [entry, setEntry] = useState('');
@@ -696,7 +807,11 @@ function SignUpView({
         setError(res.status === 404 ? t('signup.notFound') : t('signup.failed'));
         return;
       }
-      const data = (await res.json()) as { name: string };
+      const data = (await res.json()) as { name: string; kind?: 'invite' | 'door' };
+      if (data.kind === 'door' && invite.token && onDoor) {
+        onDoor(invite.token);
+        return;
+      }
       setFound({ name: data.name, ...invite });
     } catch {
       setError(t('signup.failed'));

@@ -1,12 +1,12 @@
 'use client';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { usePageBack } from '@/lib/pageStack';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { sharedFetch } from '@/lib/sharedRead';
 import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
+import type { ReactNode } from 'react';
 import EnterCodeSheet from './EnterCodeSheet';
-import RedeemGiftSheet from './RedeemGiftSheet';
-import GiveGiftSheet from './GiveGiftSheet';
 import AskAccessSheet from './AskAccessSheet';
 import MigrateSheet from './MigrateSheet';
 import MigrateCodeSheet from './MigrateCodeSheet';
@@ -14,11 +14,9 @@ import CreateAccountSheet from './CreateAccountSheet';
 import DeleteAccountSheet from '@/components/auth/DeleteAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
-import ReportProblemSheet from './ReportProblemSheet';
 import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
 import ProviderButtons, { type Provider as AuthProvider } from './auth/ProviderButtons';
-import SignInMethodsSheet from './auth/SignInMethodsSheet';
 import { useSignInMethods, methodsSummary } from './auth/useSignInMethods';
 import EmailSignInForm from './auth/EmailSignInForm';
 import EmailSignUpSheet from './auth/EmailSignUpSheet';
@@ -30,6 +28,8 @@ import PageHeader from './primitives/PageHeader';
 import { ProfileSkeleton } from './TabFallbacks';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
+import NicknamePage from './profile/NicknamePage';
+import ContactEmailPage from './profile/ContactEmailPage';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
 import { takeProfileView } from '@/lib/profileView';
 import { useTabActive } from '@/lib/tabActivity';
@@ -40,13 +40,22 @@ import GroupsPage from './profile/GroupsPage';
 import SettingsList, { type SettingsRow } from './profile/SettingsList';
 import StatusBanner from './primitives/StatusBanner';
 import MemberAvatar from './primitives/MemberAvatar';
-import AvatarSheet from './profile/AvatarSheet';
+import EditProfilePage from './profile/EditProfilePage';
+import WaysToSignInPage from './profile/WaysToSignInPage';
+import ReportProblemPage from './profile/ReportProblemPage';
+import SupportPage from './profile/SupportPage';
+import GiftCardsPage, { fmtCents } from './profile/GiftCardsPage';
+import GiveGiftPage from './profile/GiveGiftPage';
+import { useCredit } from './profile/useCredit';
+import AccountBalancePage from './profile/AccountBalancePage';
+import { useBalance } from './profile/useBalance';
 import { normalizeAvatar, type MemberAvatar as MemberAvatarValue } from '@/lib/memberAvatar';
 import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
+import { useBuildSha } from '@/lib/buildSha';
+import { onPageScroll, pageScrollTop, scrollPageTo } from '@/lib/pageScroll';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** The deployed commit, baked in at build time (`deploy-next.yml`); `dev` locally. */
-const BUILD_SHA = (process.env.NEXT_PUBLIC_GIT_SHA || 'dev').slice(0, 7);
 
 interface Props {
   sessionId: string;
@@ -105,6 +114,7 @@ export default function ProfileTab({
 }: Props) {
   const t = useTranslations('profile');
   const tGroups = useTranslations('groups');
+  const buildSha = useBuildSha();
   // Multi-group: the switcher's data. Resolves to `group: null` with the flag
   // off (the endpoints 404 by design), so the row simply does not render.
   const { group, groups, loading: groupsLoading, error: groupsError, refresh: refreshGroups } = useCurrentGroup();
@@ -140,13 +150,16 @@ export default function ProfileTab({
      device that only remembers a name, and must show neither. */
   const [authKnown, setAuthKnown] = useState(false);
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
+  // The member's contact email (spec Q3). `undefined` until members/me has
+  // answered for its owner: Edit profile shows no value rather than "Add".
+  const [contactEmail, setContactEmail] = useState<string | null | undefined>(undefined);
   const [avatar, setAvatar] = useState<MemberAvatarValue | null>(null);
-  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
+  // This club's rank (roles v2). `null` = not known yet, or the read failed:
+  // the card then falls back to the shell's admin verdict.
+  const [rank, setRank] = useState<ProfileRank | null>(null);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
-  const [redeemOpen, setRedeemOpen] = useState(false);
-  const [giveOpen, setGiveOpen] = useState(false);
-  // Whether this member may give out gift cards (`Member.canGift`), asked of
-  // the server once an identity exists; unknown and no both hide the row.
+  // Whether this member may give out gift cards (an organiser of this club),
+  // asked of the server once an identity exists; unknown and no both hide the row.
   const [canGift, setCanGift] = useState(false);
   const [askAccessOpen, setAskAccessOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
@@ -165,8 +178,27 @@ export default function ProfileTab({
   // pattern (view state + early return + slideInRight + TopBar) is borrowed
   // from AdminDashboard, which is the only place in the app that already does
   // sub-screens.
-  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups'>('root');
-  const [methodsOpen, setMethodsOpen] = useState(false);
+  // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
+  // its Back returns there rather than to the list.
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'contact-email' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance' | 'report' | 'support'>('root');
+  // A sub-screen answers the Android back button (lib/pageStack.ts).
+  usePageBack(view !== 'root', () => setView((v) => (v === 'name' || v === 'contact-email' ? 'profile' : 'root')));
+  // A page opens at its TOP, and Back returns to the same place in the list.
+  // Before, a row near the foot of Profile (Support, Report a problem)
+  // opened its page half-way down. The BODY is the scroller (lib/pageScroll.ts).
+  // Where the list was is noted while it is on screen, because by the time
+  // the view has changed a shorter page has already clamped it.
+  const listScroll = useRef(0);
+  const shownView = useRef(view);
+  useEffect(() => {
+    if (view !== 'root') return;
+    return onPageScroll(() => { listScroll.current = pageScrollTop(); });
+  }, [view]);
+  useLayoutEffect(() => {
+    if (shownView.current === view) return;
+    shownView.current = view;
+    scrollPageTo(view === 'root' ? listScroll.current : 0);
+  }, [view]);
   // Read once here so the row's summary and the sheet's body agree.
   //
   // Gated on `identity`: the row only exists for a
@@ -175,13 +207,19 @@ export default function ProfileTab({
   // and a probe would reflow it. Same shape as `useStatsPrivacy` above, which
   // takes null when there is nobody to read for.
   const methodsState = useSignInMethods(!!identity);
+  // Store credit (docs/plans/payments.md): read once here so the MONEY row's
+  // figure and the Gift cards & credit page agree. Flag off, nothing is read.
+  const creditOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
+  const credit = useCredit(!!identity && creditOn);
+  // What this member owes: the SAME read as Home's balance card (spec §4), so
+  // the MONEY row, the Account balance page and Home cannot disagree.
+  const balanceState = useBalance(identity?.name ?? null);
   const privacyState = useStatsPrivacy(identity?.name ?? null);
   // Called unconditionally, and gated by its own argument, because the two
   // early returns below (anonymous, and the Stats & privacy sub-screen) sit
   // between here and the row that renders the count.
   const showAdminRow = isAdmin;
   const adminSignals = useAdminNeedsYou(showAdminRow);
-  const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
   // Only offer "Add to Home Screen" when NOT already installed. Resolved
   // post-mount (display-mode/navigator.standalone are client-only); defaults
@@ -192,7 +230,6 @@ export default function ProfileTab({
   const tAuth = useTranslations('profile.auth');
   const tNav = useTranslations('nav');
   const tPush = useTranslations('profile.push');
-  const tDelete = useTranslations('profile.deleteAccount');
 
   // A layout effect, not an effect: the check is synchronous, and running it
   // after paint showed the "Add to Home Screen" row for a frame and then
@@ -208,7 +245,7 @@ export default function ProfileTab({
   useEffect(() => {
     const id = getIdentity();
     setLocalIdentity(id);
-    fetch(`${BASE}/api/releases`, { cache: 'no-store' })
+    sharedFetch('/api/releases')
       .then(async (r) => {
         if (!r.ok) throw new Error(`releases fetch ${r.status}`);
         return r.json();
@@ -237,18 +274,23 @@ export default function ProfileTab({
   const onScreen = useTabActive();
   useEffect(() => {
     if (!identity || !onScreen) return;
-    if (takeProfileView() === 'stats-privacy') setView('stats-privacy');
+    const asked = takeProfileView();
+    if (asked) setView(asked);
   }, [identity, onScreen]);
 
   // Deep link from the public delete-account page. Waits for an identity so a
   // signed-out person sees the ordinary sign-in card first, then the sheet.
   useEffect(() => {
     if (!deleteIntent || !identity) return;
+    // Deleting lives on Edit profile now, so the deep link lands there with
+    // the confirmation open.
+    setView('profile');
     setDeleteAccountOpen(true);
     onDeleteIntentConsumed?.();
   }, [deleteIntent, identity, onDeleteIntentConsumed]);
 
-  // The gift-card switch (docs/plans/gift-card-ledger.md): the route answers
+  // May this member give gift cards? Only an organiser of this club may
+  // (docs/plans/gift-card-ledger.md, 2026-11-10). The route answers
   // `{ canGift: false }` for everyone else, so a 'no' and a failed read both
   // leave the row hidden — there is nothing to act on either way.
   useEffect(() => {
@@ -290,11 +332,14 @@ export default function ProfileTab({
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();
       })
-      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown }) => {
+      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean; avatar?: unknown; rank?: unknown; contactEmail?: unknown }) => {
         if (cancelled) return;
         setPinIsSet(data.hasPin === true);
+        // Only the owner is told it; anyone else's answer is not "none".
+        setContactEmail(data.authed === true ? (typeof data.contactEmail === 'string' ? data.contactEmail : null) : undefined);
         setAvatar(normalizeAvatar(data.avatar));
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
+        setRank(readRank(data.rank));
         // `authed` gates first-PIN set in RecoveryPinSheet; unknown stays null.
         setPinAuthed(typeof data.authed === 'boolean' ? data.authed : null);
         setAuthKnown(true);
@@ -385,6 +430,17 @@ export default function ProfileTab({
         <ProfileSkeleton title={tNav('profile')} />
       </div>
     );
+  }
+
+  // Report a problem is a page (spec §6), and reachable signed out too: a
+  // sign-up problem is exactly the report worth catching.
+  if (view === 'report') {
+    return <ReportProblemPage name={identity?.name} onBack={() => setView('root')} />;
+  }
+
+  // Support (spec §7): the guides, common questions and ways to reach a person.
+  if (view === 'support') {
+    return <SupportPage isAdmin={isAdmin} onReport={() => setView('report')} onBack={() => setView('root')} />;
   }
 
   if (!identity || deviceSignedOut) {
@@ -645,13 +701,12 @@ export default function ProfileTab({
             problem are exactly the reports worth catching. */}
         <button
           type="button"
-          onClick={() => setReportOpen(true)}
+          onClick={() => setView('report')}
           className="btn-ghost"
           style={{ width: '100%', fontSize: 'var(--fs-base)' }}
         >
           {tSettings('reportProblem')}
         </button>
-        <ReportProblemSheet open={reportOpen} onClose={() => setReportOpen(false)} />
       </div>
     );
   }
@@ -685,16 +740,111 @@ export default function ProfileTab({
     return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
   }
 
-  // This device: every row here can be absent (push still probing, already
-  // installed, no migration), so the group hides rather than titling nothing.
-  const appRows: SettingsRow[] = [
-    /* Present from the first frame, with NO status until the probe answers:
-       rendering "Off" before we know would be a confirmed negative from an
-       unknown state (CLAUDE.md, "Unknown ≠ known-false"), and hiding the row
-       instead inserted it later, pushing the rows below it down (loading
-       cascade follow-up). The row is shown for every answer, so it never
-       needed hiding — only its status did. */
-    ...([{
+  // The PIN and recovery-code sheets open from "How you sign in" and, for a
+  // member who just got in without a PIN, from the root; each view that can
+  // open them renders them (a sub-view's early return unmounts the root).
+  const pinSheets = (
+    <>
+      <RecoveryPinSheet
+        open={recoveryPinOpen}
+        onClose={() => setRecoveryPinOpen(false)}
+        identity={identity}
+        hasPin={pinIsSet === true}
+        authed={pinAuthed}
+        onSaved={(newHasPin) => setPinIsSet(newHasPin)}
+      />
+      <EnterCodeSheet
+        open={enterCodeOpen}
+        onClose={() => setEnterCodeOpen(false)}
+        sessionId={sessionId}
+        onRecovered={handleRecovered}
+      />
+    </>
+  );
+
+  if (view === 'signin') {
+    return (
+      <>
+        <WaysToSignInPage
+          state={methodsState}
+          pinIsSet={pinIsSet}
+          onChangePin={() => setRecoveryPinOpen(true)}
+          onRecoveryCode={() => setEnterCodeOpen(true)}
+          onBack={() => setView('root')}
+        />
+        {pinSheets}
+      </>
+    );
+  }
+
+  if (view === 'gift-cards') {
+    return <GiftCardsPage state={credit} onBack={() => setView('root')} />;
+  }
+
+  if (view === 'balance') {
+    return <AccountBalancePage balance={balanceState} credit={creditOn ? credit : null} onBack={() => setView('root')} />;
+  }
+
+  if (view === 'give-gift') {
+    return <GiveGiftPage clubName={group?.name ?? null} onBack={() => setView('root')} />;
+  }
+
+  if (view === 'name') {
+    return <NicknamePage currentName={identity.name} clubName={group?.name ?? null} onBack={() => setView('profile')} />;
+  }
+
+  if (view === 'contact-email') {
+    return (
+      <ContactEmailPage
+        name={identity.name}
+        current={contactEmail ?? null}
+        clubName={group?.name ?? null}
+        onSaved={setContactEmail}
+        onBack={() => setView('profile')}
+      />
+    );
+  }
+
+  if (view === 'profile') {
+    return (
+      <>
+        <EditProfilePage
+          name={identity.name}
+          clubName={group?.name ?? null}
+          rank={rank}
+          isAdmin={isAdmin}
+          avatar={avatar}
+          memberCreatedAt={memberCreatedAt}
+          signInEmail={methodsState.methods ? methodsState.methods.email ?? null : undefined}
+          contactEmail={contactEmail}
+          onAvatarSaved={setAvatar}
+          onEditName={() => setView('name')}
+          onEditContactEmail={() => setView('contact-email')}
+          onDeleteAccount={() => setDeleteAccountOpen(true)}
+          onBack={() => setView('root')}
+        />
+        <DeleteAccountSheet
+          open={deleteAccountOpen}
+          onClose={() => setDeleteAccountOpen(false)}
+          onDeleted={() => {
+            // The sheet already cleared identity and the server cleared the
+            // cookies; this is the local mirror, same as handleLogout's.
+            setLocalIdentity(null);
+            setPinIsSet(null);
+            setView('root');
+          }}
+        />
+      </>
+    );
+  }
+
+  /* Present from the first frame, with NO status until the probe answers:
+     rendering "Off" before we know would be a confirmed negative from an
+     unknown state (CLAUDE.md, "Unknown ≠ known-false"), and hiding the row
+     instead inserted it later, pushing the rows below it down (loading
+     cascade follow-up). The row is shown for every answer, so it never
+     needed hiding — only its status did. */
+  const notificationsRow: SettingsRow = {
           icon: 'notifications',
           label: tSettings('notifications'),
           meta:
@@ -708,7 +858,9 @@ export default function ProfileTab({
                   ? undefined
                   : tPush('metaOff'),
           onClick: () => onOpenNotifications?.(),
-        }]),
+        };
+  // This phone: install and move-to-the-app, each absent when it has no job.
+  const appRows: SettingsRow[] = [
     ...(!installed
       ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
       : []),
@@ -728,249 +880,158 @@ export default function ProfileTab({
 
       <ProfileIdentityCard
         name={identity.name}
-        memberCreatedAt={memberCreatedAt}
+        clubName={group?.name ?? null}
         isAdmin={isAdmin}
+        rank={rank}
         avatar={avatar}
-        onChangeAvatar={() => setAvatarSheetOpen(true)}
-        changeLabel={t('avatar.change')}
-      />
-      <AvatarSheet
-        open={avatarSheetOpen}
-        onClose={() => setAvatarSheetOpen(false)}
-        name={identity.name}
-        current={avatar}
-        onSaved={setAvatar}
+        onOpen={() => setView('profile')}
       />
 
 
-      {/* Always present for a SIGNED-IN member: the upgrade nudge is a variant
-          of this card, not a separate surface, so dismissing the prompt does not
-          take the credential management with it.
-
-          It lived in the anonymous branch until now, which meant the people it
-          exists for never saw it while signed-out visitors got it duplicated
-          beneath the provider buttons. Nothing caught that: the card's own tests
-          render it directly, and ProfileTab's tests render both states without
-          asserting on it. They do now. */}
-      {/* Credential management, so it belongs to ACCOUNT rather than floating
-          between the identity card and admin. */}
-      {showAdminRow && (
-        <>
-          <ProfileEyebrow>{t('admin.group')}</ProfileEyebrow>
-          {/* One row, not a hero. The console had the only glowing border, the
-              largest type in any card and a full-width CTA — on the screen a
-              player opens to change their PIN. The count survives here; the
-              three stat tiles live on admin home, where they can be acted on.
-
-              No count when it is unknown: "0 need you" off a dead fetch is the
-              lying-empty-state pattern, and the row's real job — opening
-              admin — works regardless. A FAILED check says so, muted, rather
-              than leaving the row looking like one that never had a count;
-              still loading shows nothing. */}
+      {/* The list in spec §1's order (build step 8; the header keeps its
+          toggles — Grant, 2026-11-11: "dont move them"): CLUB, SETTINGS,
+          MONEY, HELP, PRIVACY, then the version and Log out. Each group is a
+          <section> named by its eyebrow, so a screen reader can move by group. */}
+      {(group || showAdminRow) && (
+        <ProfileGroup id="profile-group-club" label={tSettings('clubGroup')}>
           <SettingsList
             rows={[
-              {
-                icon: 'admin_panel_settings',
-                label: t('admin.console'),
-                meta: adminSignals.loadError
-                  ? t('admin.checkFailed')
-                  : adminSignals.needsYou === null
-                    ? undefined
-                    : adminSignals.needsYou > 0
-                    ? t('admin.needYou', { count: adminSignals.needsYou })
-                    : t('admin.allClear'),
-                // Accent marks the one live count, never the all-clear.
-                accent: (adminSignals.needsYou ?? 0) > 0,
-                onClick: onAdminTools,
-              },
+              // The club this phone is in now; its page switches, joins or
+              // creates. Absent with groups off (`group` is null).
+              ...(group
+                ? [{ icon: 'groups', label: tGroups('yourGroups'), meta: group.name, onClick: () => setView('groups') }]
+                : []),
+              // Admin tools (admins only). The count survives here; the stat
+              // tiles live on admin home, where they can be acted on. No count
+              // while unknown ("0 need you" off a dead fetch would lie); a
+              // FAILED check says so, muted. Accent marks the one live count,
+              // never the all-clear.
+              ...(showAdminRow
+                ? [{
+                    icon: 'admin_panel_settings',
+                    label: t('admin.console'),
+                    meta: adminSignals.loadError
+                      ? t('admin.checkFailed')
+                      : adminSignals.needsYou === null
+                        ? undefined
+                        : adminSignals.needsYou > 0
+                          ? t('admin.needYou', { count: adminSignals.needsYou })
+                          : t('admin.allClear'),
+                    accent: (adminSignals.needsYou ?? 0) > 0,
+                    onClick: onAdminTools,
+                  }]
+                : []),
             ]}
           />
-        </>
+        </ProfileGroup>
       )}
 
-      <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
-      <SettingsList
-        rows={[
-          // "Your groups" leads the list when there is more than one club to be
-          // in: it changes what every other screen is about, so it outranks the
-          // per-account rows below it. Absent entirely with the flag off, and
-          // absent when signed out — `group` is null in both cases.
-          ...(group
-            ? [{
-                icon: 'groups',
-                label: tGroups('yourGroups'),
-                meta: group.name,
-                onClick: () => setView('groups'),
-              }]
-            : []),
-          // Was a permanently-expanded card above this list — its own heading,
-          // a checklist, a bordered provider button and a "Not now", wedged
-          // between two one-line rows. It is a row now. The nudge survives as
-          // `accent`, the same signal the admin row uses for a live count.
-          {
-            icon: 'lock',
-            label: tAuth('methodsTitle'),
-            meta: methodsSummary(methodsState.methods, {
-              pin: tAuth('methodPin'),
-              email: tAuth('methodEmailShort'),
-            }),
-            accent: methodsState.methods?.nudge === true,
-            onClick: () => setMethodsOpen(true),
-          },
-          // Batch B (expanded): PIN management is now member-scoped via
-          // PATCH /api/members/me — works regardless of whether the user
-          // has a session player. The previous "Sign up for a session
-          // first" gate is no longer needed.
-          {
-            icon: 'key',
-            // pinIsSet === null means we couldn't load status. Show the
-            // generic section title rather than asserting "New PIN" (which
-            // would suggest "you don't have one yet" — false on transient
-            // backend failures).
-            label: pinIsSet === null
-              ? t('pinSectionTitle')
-              : pinIsSet
-              ? tSettings('updatePin')
-              : tSettings('newPin'),
-            onClick: () => setRecoveryPinOpen(true),
-          },
-          {
-            icon: 'help_outline',
-            label: tSettings('recoveryCode'),
-            onClick: () => setEnterCodeOpen(true),
-          },
-          // Store credit (docs/plans/payments.md): a gift card becomes credit
-          // on the Home balance. Flag-gated; the route 404s with it off.
-          ...(isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')
-            ? [{ icon: 'payments', label: tSettings('redeemGift'), onClick: () => setRedeemOpen(true) }]
-            : []),
-          // Only for a member an admin marked `canGift`; the sheet is the
-          // gifter's half of the admin's gift-card console.
-          ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setGiveOpen(true) }] : []),
-        ]}
-      />
-      <RedeemGiftSheet open={redeemOpen} onClose={() => setRedeemOpen(false)} />
-      <GiveGiftSheet open={giveOpen} onClose={() => setGiveOpen(false)} />
+      <ProfileGroup id="profile-group-settings" label={tSettings('settingsGroup')}>
+        <SettingsList
+          rows={[
+            // Notifications, then how you get back in, then this phone's
+            // install and move-to-the-app rows (absent when installed or in
+            // the store app).
+            notificationsRow,
+            // One row for getting back in (spec §9, build step 3); the nudge
+            // survives as `accent`, the same signal the admin row uses.
+            {
+              icon: 'lock',
+              label: tAuth('methodsTitle'),
+              meta: methodsSummary(methodsState.methods, {
+                pin: tAuth('methodPin'),
+                email: tAuth('methodEmailShort'),
+              }),
+              accent: methodsState.methods?.nudge === true,
+              onClick: () => setView('signin'),
+            },
+            ...appRows,
+          ]}
+        />
+      </ProfileGroup>
 
-      {/* Four groups, each one question: who am I here (ACCOUNT, above), what
-          do others see (PRIVACY), how does this device behave (APP), and where
-          do I get help (HELP). "App" used to hold all six — a privacy screen
-          beside a changelog beside the privacy policy (Grant, 2026-09-14:
-          "reorg the items into logical group"). */}
-      <ProfileEyebrow>{tSettings('privacyGroup')}</ProfileEyebrow>
-      <SettingsList
-        rows={[
-          // `meta` shows the state so nobody has to open the row to check it.
-          {
-            icon: 'visibility',
-            label: tSettings('statsPrivacy'),
-            meta: privacyState.privacy
-              ? privacyState.privacy.clubComparison
-                ? tSettings('statsPrivacyOn')
-                : tSettings('statsPrivacyOff')
-              : undefined,
-            onClick: () => setView('stats-privacy'),
-          },
-          // A full navigation, not a sheet: the policy is a public server-
-          // rendered page (also the URL in both store listings), and Apple
-          // 5.1.1(i) wants it reachable from inside the app.
-          { icon: 'shield', label: tSettings('privacyPolicy'), onClick: () => window.location.assign(`${BASE}/legal/privacy`) },
-        ]}
-      />
+      {/* MONEY (spec §1.5): Gift cards & credit while store credit is on;
+          Account balance for everyone (the detailed view of Home's card);
+          Give a gift card for an organiser. A figure is absent until it
+          is KNOWN — never a $0 off a failed read. */}
+      <ProfileGroup id="profile-group-money" label={tSettings('moneyGroup')}>
+        <SettingsList
+          rows={[
+            ...(creditOn
+              ? [{
+                  icon: 'payments',
+                  label: tSettings('giftCards'),
+                  meta: credit.loadError || credit.balanceCents === null ? undefined : fmtCents(credit.balanceCents),
+                  onClick: () => setView('gift-cards'),
+                }]
+              : []),
+            {
+              icon: 'receipt_long',
+              label: tSettings('accountBalance'),
+              // "{amount} owed" in amber while owing; nothing at $0 or unknown.
+              meta:
+                !balanceState.loadError && balanceState.data && balanceState.data.totalOwed > 0
+                  ? tSettings('owedMeta', { amount: fmtCents(Math.round(balanceState.data.totalOwed * 100)) })
+                  : undefined,
+              owed: true,
+              onClick: () => setView('balance'),
+            },
+            // Only for an organiser of this club (the route says so); the same
+            // power as the console's Gift cards, from Profile.
+            ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift') }] : []),
+          ]}
+        />
+      </ProfileGroup>
 
-      {appRows.length > 0 && (
-        <>
-          <ProfileEyebrow>{tSettings('appGroup')}</ProfileEyebrow>
-          <SettingsList rows={appRows} />
-        </>
-      )}
+      <ProfileGroup id="profile-group-help" label={tSettings('helpGroup')}>
+        <SettingsList
+          rows={[
+            { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
+            { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setView('report') },
+            { icon: 'help_outline', label: tSettings('support'), onClick: () => setView('support') },
+          ]}
+        />
+      </ProfileGroup>
 
-      <ProfileEyebrow>{tSettings('helpGroup')}</ProfileEyebrow>
-      <SettingsList
-        rows={[
-          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
-          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
-        ]}
-      />
-
-      {/* Log out stops pretending to navigate. It had a chevron like the rows
-          above it and it was amber, which in this system means full or warning.
-          Separated below the list, centred, no chevron, no card. */}
-      <button
-        type="button"
-        onClick={handleLogout}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 'var(--space-4)',
-          fontSize: 'var(--fs-lg)',
-          color: 'var(--color-red)',
-          fontFamily: 'inherit',
-        }}
-      >
-        {tSettings('logout')}
-      </button>
-
-      {/* Below log out, quiet, and NOT red. Two red controls stacked would make
-          the rarer, heavier one compete with the everyday one, and accent is
-          currency — a permanently loud row you scroll past every visit spends
-          it on something you do at most once. The danger belongs inside the
-          sheet, on the button that actually does it. Still a real, findable
-          control: App Store 5.1.1(v) requires account deletion to be reachable
-          from inside the app, and a reviewer has to be able to find it. */}
-      <button
-        type="button"
-        onClick={() => setDeleteAccountOpen(true)}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 'var(--space-3)',
-          fontSize: 'var(--fs-sm)',
-          color: 'var(--text-muted)',
-          fontFamily: 'inherit',
-        }}
-      >
-        {tDelete('link')}
-      </button>
+      <ProfileGroup id="profile-group-privacy" label={tSettings('privacyGroup')}>
+        <SettingsList
+          rows={[
+            // `meta` shows the state so nobody has to open the row to check it.
+            {
+              icon: 'visibility',
+              label: tSettings('statsPrivacy'),
+              meta: privacyState.privacy
+                ? privacyState.privacy.clubComparison
+                  ? tSettings('statsPrivacyOn')
+                  : tSettings('statsPrivacyOff')
+                : undefined,
+              onClick: () => setView('stats-privacy'),
+            },
+            // A full navigation, not a sheet: the policy is a public server-
+            // rendered page (also the URL in both store listings), and Apple
+            // 5.1.1(i) wants it reachable from inside the app.
+            { icon: 'shield', label: tSettings('privacyPolicy'), onClick: () => window.location.assign(`${BASE}/legal/privacy`) },
+          ]}
+        />
+      </ProfileGroup>
 
       {/* Which build this phone is running: the deploy's commit, the same id
           the page carries in its `bpm-build` meta tag. A member can read it
           off when something looks old, and "what does yours say?" answers
-          whether a fix has reached them. Quiet, last, and not a control. */}
+          whether a fix has reached them. Quiet, and not a control. */}
       <p className="fs-xs text-center" style={{ margin: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-        {tSettings('version', { sha: BUILD_SHA })}
+        {tSettings('version', { sha: buildSha })}
       </p>
+
+      {/* Log out (spec §1.9): its own card, last, one red row with NO chevron —
+          it acts at once (through the confirm), it opens nothing. */}
+      <SettingsList rows={[{ icon: 'logout', label: tSettings('logout'), danger: true, onClick: handleLogout }]} />
 
       {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
 
 
-      <DeleteAccountSheet
-        open={deleteAccountOpen}
-        onClose={() => setDeleteAccountOpen(false)}
-        onDeleted={() => {
-          // The sheet already cleared identity and the server cleared the
-          // cookies; this is the local mirror, same as handleLogout's.
-          setLocalIdentity(null);
-          setPinIsSet(null);
-        }}
-      />
 
-      <RecoveryPinSheet
-        open={recoveryPinOpen}
-        onClose={() => setRecoveryPinOpen(false)}
-        identity={identity}
-        hasPin={pinIsSet === true}
-        authed={pinAuthed}
-        onSaved={(newHasPin) => setPinIsSet(newHasPin)}
-      />
-      <EnterCodeSheet
-        open={enterCodeOpen}
-        onClose={() => setEnterCodeOpen(false)}
-        sessionId={sessionId}
-        onRecovered={handleRecovered}
-      />
+      {pinSheets}
 
       <ReleaseNotesSheet
         open={releaseSheetOpen}
@@ -978,48 +1039,72 @@ export default function ProfileTab({
         onClose={() => setReleaseSheetOpen(false)}
       />
 
-      <ReportProblemSheet
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        name={identity?.name}
-      />
-
-      <SignInMethodsSheet
-        open={methodsOpen}
-        onClose={() => setMethodsOpen(false)}
-        state={methodsState}
-      />
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
     </div>
   );
 }
 
-/* ── Identity card (avatar + name + member-since + Admin pill) ── */
+/** One group on Profile: its eyebrow names the <section> for a screen reader (spec §1). */
+function ProfileGroup({ id, label, children }: { id: string; label: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-4">
+      <ProfileEyebrow id={id}>{label}</ProfileEyebrow>
+      {children}
+    </section>
+  );
+}
 
-function fmtMemberSince(iso: string | null): string | null {
-  if (!iso) return null;
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-  } catch {
-    return null;
-  }
+/* ── Identity card (avatar + name + member-since + this club's rank) ── */
+
+/** This club's rank (docs/plans/roles-v2.md): organiser, admin or player. */
+export type ProfileRank = 'owner' | 'admin' | 'member';
+
+/** Read `GET /api/members/me`'s `rank`; anything else is unknown. */
+export function readRank(value: unknown): ProfileRank | null {
+  return value === 'owner' || value === 'admin' || value === 'member' ? value : null;
+}
+
+/**
+ * The one chip the card shows: Organiser or Admin; a Player has none. The
+ * shell's admin verdict holds the place while the rank is unknown, so an
+ * admin is never shown as nobody. Job badges (Stringer, Gifter) are not
+ * shown here, by decision (Grant, 2026-11-04).
+ */
+export function profileChip(rank: ProfileRank | null, isAdmin: boolean): 'rankOwner' | 'rankAdmin' | null {
+  if (rank === 'owner') return 'rankOwner';
+  if (rank === 'admin' || (rank === null && isAdmin)) return 'rankAdmin';
+  return null;
 }
 
 interface ProfileIdentityCardProps {
   name: string;
-  memberCreatedAt: string | null;
+  clubName: string | null;
   isAdmin: boolean;
+  rank: ProfileRank | null;
   avatar: MemberAvatarValue | null;
-  onChangeAvatar: () => void;
-  changeLabel: string;
+  onOpen: () => void;
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, avatar, onChangeAvatar, changeLabel }: ProfileIdentityCardProps) {
-  const memberSince = fmtMemberSince(memberCreatedAt);
+/**
+ * The person, at the top of Profile: one button into Edit profile
+ * (docs/superpowers/specs/2026-11-09-profile-reorg-design.md §1). The whole
+ * card is the target and a chevron says so, as Cal AI and theScore do; the
+ * picture is changed on that page now, beside the name, not from a sheet off
+ * the avatar. "Member since" moved there too.
+ */
+function ProfileIdentityCard({ name, clubName, isAdmin, rank, avatar, onOpen }: ProfileIdentityCardProps) {
+  const tIdentity = useTranslations('profile.identity');
+  const tEdit = useTranslations('profile.editProfile');
+  const chip = profileChip(rank, isAdmin);
+  const subtitle = clubName ? `${clubName} · ${tEdit('open')}` : tEdit('open');
+  const label = chip ? `${name}, ${tIdentity(chip)}, ${tEdit('open')}` : tEdit('openLabel', { name });
 
   return (
-    <div
-      className="glass-card"
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={label}
+      className="glass-card profile-card-button"
       style={{
         padding: 'var(--space-5)',
         display: 'flex',
@@ -1027,67 +1112,61 @@ function ProfileIdentityCard({ name, memberCreatedAt, isAdmin, avatar, onChangeA
         gap: 'var(--space-4)',
       }}
     >
-      {/* The "NAME" eyebrow that sat above this is gone: a 46px avatar and the
-          name in display type already say it, and it created a false parallel
-          with ADMIN and ACCOUNT, which are real groupings.
-
-          Neutral rather than per-name colour. `avatarColors` gives Profile a
-          violet circle, which — with the old violet ADMIN pill — was a fourth
-          brand colour on a page whose palette is meant to be green for status
-          and red for log out. Other surfaces keep the coloured avatar: there
-          it distinguishes one player from another, which is the job it was
-          built for. Here there is only ever one person. */}
-      <button
-        type="button"
-        onClick={onChangeAvatar}
-        aria-label={changeLabel}
-        className="member-avatar-button"
-      >
-        <MemberAvatar name={name} avatar={avatar} size={46} tone="neutral" />
-      </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is a
-            fact about you, not the page's headline — and it no longer has to
-            out-shout a dollar amount set at the same size beside it. */}
-        <p
+      {/* Neutral rather than per-name colour: here there is only ever one
+          person, so the colour that tells players apart has no job. */}
+      <MemberAvatar name={name} avatar={avatar} size={52} tone="neutral" />
+      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
+        {/* The name and this club's rank share ONE line, the chip small and
+            centred on it (Grant, 2026-11-04). The name gives way first. */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-display, "Space Grotesk")',
+              fontSize: 'var(--fs-stat)',
+              fontWeight: 600,
+              letterSpacing: '-0.015em',
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {name}
+          </span>
+          {chip && (
+            // A --fs-2xs pill pads 4/8 (StatusBadge's spec). A label, not a control.
+            <span
+              style={{
+                flex: '0 0 auto',
+                whiteSpace: 'nowrap',
+                background: 'rgba(var(--glass-tint), 0.09)',
+                color: 'var(--text-secondary)',
+                padding: 'var(--space-1) var(--space-3)',
+                borderRadius: 'var(--radius-pill)',
+                fontSize: 'var(--fs-2xs)',
+                lineHeight: 'var(--lh-tight)',
+              }}
+            >
+              {tIdentity(chip)}
+            </span>
+          )}
+        </span>
+        <span
           style={{
-            fontFamily: 'var(--font-display, "Space Grotesk")',
-            fontSize: 'var(--fs-stat)',
-            fontWeight: 600,
-            letterSpacing: '-0.015em',
-            margin: '0',
+            fontSize: 'var(--fs-base)',
+            color: 'var(--text-secondary)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}
         >
-          {name}
-        </p>
-        {memberSince && (
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 'var(--space-05)' }}>
-            Member since {memberSince}
-          </p>
-        )}
-      </div>
-      {/* Side by side, not stacked: two badges in a column read as a status
-          column with a hierarchy between them. They are peers. */}
-      <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', flexShrink: 0 }}>
-        {isAdmin && (
-          <span
-            style={{
-              whiteSpace: 'nowrap',
-              background: 'rgba(var(--glass-tint), 0.09)',
-              color: 'var(--text-secondary)',
-              padding: 'var(--space-2) var(--space-4)',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: 'var(--fs-sm)',
-            }}
-          >
-            Admin
-          </span>
-        )}
-      </div>
-    </div>
+          {subtitle}
+        </span>
+      </span>
+      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-secondary)' }}>
+        chevron_right
+      </span>
+    </button>
   );
 }
 

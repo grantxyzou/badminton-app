@@ -30,4 +30,35 @@ describe('HomeShell keeps the unopened tabs out of the first payload', () => {
   it('HomeTab stays eager: it carries the server-rendered announcement (the LCP element)', () => {
     expect(source).toMatch(/^import HomeTab from/m);
   });
+
+  // Grant, 2026-11-06: "Notification should load after, then render the red
+  // dot". The bell reads the list itself; only the page's code waited, and it
+  // now loads behind the first screen. A type import is erased and is fine.
+  it('the Notifications page is fetched after, never imported statically', () => {
+    expect(source).not.toMatch(/^import (?!type )[^;]*from '@\/components\/NotificationsPage'/m);
+    expect(source).toMatch(/import\('@\/components\/NotificationsPage'\)/);
+    expect(source).toMatch(/<NotificationsFallback /);
+  });
+});
+
+/**
+ * The page sends ONE shell, so a visitor downloads one (audit, 2026-11-05).
+ * A server component that imports both client shells lists both as client
+ * modules, and every visitor's first load carried the other one: a member paid
+ * for the sign-up forms on every cold start, a stranger for the whole app.
+ */
+describe('app/page.tsx loads each shell in its own chunk', () => {
+  const page = readFileSync(join(process.cwd(), 'app', 'page.tsx'), 'utf8');
+  const shells = readFileSync(join(process.cwd(), 'components', 'PageShells.tsx'), 'utf8');
+
+  it('the page imports neither shell module directly', () => {
+    expect(page).not.toMatch(/^import \w+ from '@\/components\/HomeShell'/m);
+    expect(page).not.toMatch(/^import \w+ from '@\/components\/onboarding\/SignedOutShell'/m);
+    expect(page).toMatch(/from '@\/components\/PageShells'/);
+  });
+
+  it('PageShells makes both dynamic()', () => {
+    expect(shells).toMatch(/export const HomeShell = dynamic\(\(\) => import\('@\/components\/HomeShell'\)\)/);
+    expect(shells).toMatch(/export const SignedOutShell = dynamic\(\(\) => import\('@\/components\/onboarding\/SignedOutShell'\)\)/);
+  });
 });

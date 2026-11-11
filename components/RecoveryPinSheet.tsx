@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
 import PinInput from './PinInput';
 import type { Identity } from '@/lib/identity';
 
@@ -110,15 +110,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
     <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{title}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={tRecovery('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={onClose} label={tRecovery('close')} />
       </BottomSheetHeader>
       <BottomSheetBody>
         {firstSetBlocked ? (
@@ -180,7 +172,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             </p>
           )}
           {pinError === 'rate_limited' && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-amber)', margin: '0' }}>
+            <p role="alert" className="field-warn" style={{ margin: '0' }}>
               {t('pinRateLimited')}
             </p>
           )}
@@ -190,7 +182,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             </p>
           )}
           {pinError === 'needs_signin' && (
-            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-amber)', margin: '0' }}>
+            <p role="alert" className="field-warn" style={{ margin: '0' }}>
               {t('pinNeedsSignIn')}
             </p>
           )}

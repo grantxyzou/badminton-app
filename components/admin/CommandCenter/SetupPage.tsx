@@ -8,6 +8,8 @@ import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } f
 import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/receiptTemplate';
 import { withLocalTz } from '@/lib/fmt';
 import { shareOrSaveImage } from '@/lib/shareImage';
+import { loadReceiptLogo } from '@/lib/receiptLogo';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import type { BirdPurchase, Session } from '@/lib/types';
 import { capacityForCourts, clubRunOf, type ClubRun } from '@/lib/clubRun';
 
@@ -75,7 +77,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   // Live data for the Share preview.
   const [activePlayerNames, setActivePlayerNames] = useState<string[]>([]);
   const activePlayerCount = activePlayerNames.length;
-  const [recipient, setRecipient] = useState<{ name: string; email: string; memo?: string } | null>(null);
+  const [recipient, setRecipient] = useState<{ name: string; email: string; memo?: string; wealthsimple?: string } | null>(null);
+  // The memo's `{club}`, as the Payments receipt fills it (ReceiptSheet).
+  const { group: currentGroup } = useCurrentGroup();
+  const clubName = currentGroup?.name;
 
   // Recent costs for chip suggestions
   const [recentCosts, setRecentCosts] = useState<number[]>([]);
@@ -157,6 +162,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  // Fetch the receipt's logo early, so Share's tap does not wait on it
+  // (iOS refuses a share sheet opened long after the tap).
+  useEffect(() => { void loadReceiptLogo(); }, []);
 
   const birdCost = useMemo(() => Math.round(tubes * pricePerTube * 100) / 100, [tubes, pricePerTube]);
 
@@ -243,10 +251,22 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       courts: courtsVal,
       totalCost,
       playerNames: activePlayerNames,
-      recipient: { name: recipient.name, email: recipient.email },
+      recipient: {
+        name: recipient.name,
+        email: recipient.email,
+        ...(recipient.wealthsimple ? { wealthsimple: recipient.wealthsimple } : {}),
+      },
       memoTemplate: recipient.memo,
+      ...(clubName ? { clubName } : {}),
+      breakdown: {
+        courtTotal: courtCost,
+        ...(costPerCourt ? { costPerCourt } : {}),
+        birdTotal: birdCost,
+        tubes,
+        splitCount: activePlayerCount,
+      },
     };
-  }, [recipient, date, time, perPlayer, courtsVal, totalCost, activePlayerNames]);
+  }, [recipient, date, time, perPlayer, courtsVal, totalCost, activePlayerNames, clubName, courtCost, costPerCourt, birdCost, tubes, activePlayerCount]);
 
   const previewText = receiptInput ? renderGroupText(receiptInput) : '';
 
@@ -270,7 +290,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     // returns '' when it can't get a 2d context — that's a real failure, not
     // something to bail out of silently.
     const canvas = canvasRef.current ?? document.createElement('canvas');
-    if (!renderGroupCanvas(receiptInput, canvas)) {
+    const logo = await loadReceiptLogo();
+    if (!renderGroupCanvas(receiptInput, canvas, logo)) {
       setShareMessage('Couldn’t render the image — try Copy instead.');
       return;
     }
@@ -527,7 +548,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         />
       )}
       {saveError && (
-        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 'var(--space-2) var(--space-1) 0' }}>
+        <p role="alert" className="field-error" style={{ margin: 'var(--space-2) var(--space-1) 0' }}>
           {saveError}
         </p>
       )}

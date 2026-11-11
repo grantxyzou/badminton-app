@@ -25,6 +25,10 @@ export interface FeedbackDoc {
   kind: typeof FEEDBACK_KIND;
   message: string;
   name?: string;
+  /** Who sent it, when signed in (additive, 2026-11-05) — what deletion finds it by. */
+  memberId?: string;
+  /** The Report a problem chip it started from (additive, 2026-11-09; `lib/reportCategories.ts`). */
+  category?: string;
   tab?: string;
   url?: string;
   createdAt: string;
@@ -50,7 +54,7 @@ export async function readFeedbackSince(since: string): Promise<Row[]> {
   await ensureContainer(FEEDBACK_HOME, '/id');
   const { resources } = await getContainer(FEEDBACK_HOME).items
     .query<Row>({
-      query: `SELECT c.id, c.kind, c.createdAt, c.message, c.tab, c.url FROM c WHERE c.kind = '${FEEDBACK_KIND}' AND c.createdAt >= @since`,
+      query: `SELECT c.id, c.kind, c.createdAt, c.message, c.category, c.tab, c.url FROM c WHERE c.kind = '${FEEDBACK_KIND}' AND c.createdAt >= @since`,
       parameters: [{ name: '@since', value: since }],
     })
     .fetchAll();
@@ -65,7 +69,7 @@ export async function readFeedbackSince(since: string): Promise<Row[]> {
  * submitting IP, both personal data; the text is operational and stays.
  * Returns the count rewritten.
  */
-export async function anonymizeFeedbackRows(name: string, tombstone: string): Promise<number> {
+export async function anonymizeFeedbackRows(name: string, tombstone: string, memberId = ''): Promise<number> {
   const lower = name.trim().toLowerCase();
   await ensureContainer(FEEDBACK_HOME, '/id');
   const home = getContainer(FEEDBACK_HOME);
@@ -75,9 +79,12 @@ export async function anonymizeFeedbackRows(name: string, tombstone: string): Pr
       parameters: [{ name: '@name', value: lower }],
     })
     .fetchAll();
+  // A report signed by another member's id is theirs, whatever name it gives
+  // (audit, 2026-11-05); one that names nobody's id goes by the name.
+  const theirs = (r: Row) => !r.memberId || r.memberId === memberId;
   let count = 0;
-  for (const row of (resources ?? []).filter((r) => isFeedback(r) && typeof r.name === 'string' && r.name.trim().toLowerCase() === lower)) {
-    const { ip: _ip, ...rest } = row;
+  for (const row of (resources ?? []).filter((r) => isFeedback(r) && theirs(r) && typeof r.name === 'string' && r.name.trim().toLowerCase() === lower)) {
+    const { ip: _ip, memberId: _m, ...rest } = row;
     await home.items.upsert({ ...rest, name: tombstone });
     count += 1;
   }

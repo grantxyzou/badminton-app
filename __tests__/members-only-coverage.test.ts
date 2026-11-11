@@ -59,6 +59,8 @@ type Entry = { kind: 'gated' } | { kind: 'authed'; helper: string } | { kind: 'p
 const GATED: Entry = { kind: 'gated' };
 const admin = (helper = 'isAdminAuthed'): Entry => ({ kind: 'authed', helper });
 const owner: Entry = { kind: 'authed', helper: 'ownsNameOrAdmin' };
+/** The same gate, called for its answer as well (the caller's own id). */
+const ownerById: Entry = { kind: 'authed', helper: 'nameOwnership' };
 
 const ROUTES: Record<string, Entry> = {
   // ── Club data, members only ──────────────────────────────────────────────
@@ -118,13 +120,14 @@ const ROUTES: Record<string, Entry> = {
   skills: admin(),
   'stringing/stringers': admin(),
   'groups/invite': admin('isAdminAuthedWithMember'),
+  'groups/claim-link': admin('isAdminAuthedWithMember'),
   assessments: owner,
   kudos: owner,
-  'players/unpaid': owner,
+  'players/unpaid': ownerById,
   'stats/attendance': owner,
   'stats/club/bands': owner,
   'stats/drills': owner,
-  'stats/insight': owner,
+  'stats/insight': ownerById,
   'stats/level': owner,
   'stats/partners': owner,
   'kudos/eligible': { kind: 'authed', helper: 'requireGroupMember' },
@@ -134,6 +137,8 @@ const ROUTES: Record<string, Entry> = {
   // The home-screen widget's bearer pass (docs/plans/native-widgets.md), re-read against the membership.
   widget: { kind: 'authed', helper: 'requireWidgetMember' },
   credit: { kind: 'authed', helper: 'requireGroupMember' },
+  // A member's own paid history, month by month (Profile → Account balance).
+  'members/me/payments': { kind: 'authed', helper: 'requireGroupMember' },
   // A gifter's own cards (docs/plans/gift-card-ledger.md): the member cookie, then the switch.
   giftcards: { kind: 'authed', helper: 'requireGroupMember' },
   'stringing/jobs': { kind: 'authed', helper: 'verifyMemberAuth' },
@@ -147,7 +152,7 @@ const ROUTES: Record<string, Entry> = {
   'auth/google/callback': { kind: 'public', reason: 'the OAuth return; it is how a visitor BECOMES signed in' },
   'auth/verify-email': { kind: 'public', reason: 'consumes an emailed token' },
   'auth/complete-signup': { kind: 'public', reason: 'reads only the signed pending-signup cookie' },
-  'groups/preview': { kind: 'public', reason: 'an invite preview: the club NAME for a valid invite, one 404 otherwise' },
+  'groups/preview': { kind: 'public', reason: 'an invite or claim-link preview: the club NAME for a valid one, one 404 otherwise' },
   releases: { kind: 'public', reason: 'app release notes, not club data (global container)' },
   health: { kind: 'public', reason: "App Service's liveness probe: reads nothing, answers ok and the build id" },
   'equipment/catalog': { kind: 'public', reason: 'the global racket/string catalog, not club data' },

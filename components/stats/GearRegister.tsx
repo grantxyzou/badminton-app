@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageBack } from '@/lib/pageStack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -68,6 +69,8 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
   const [pages, setPages] = useState<GearPage[]>([]);
   const page = pages[pages.length - 1] ?? null;
   const popPage = () => setPages((s) => s.slice(0, -1));
+  // The Android back button walks the same stack (lib/pageStack.ts).
+  usePageBack(pages.length > 0, popPage);
   const openFrame = (frameId: string) => setPages((s) => [...s, { kind: 'frame', frameId }]);
   // Back to the fit page already underneath rather than a second copy on top.
   const openFitPage = () => setPages((s) => {
@@ -116,7 +119,7 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
   // describes one visit (a saved row, a half-chosen tension, a pending
   // remove), and a remount is the whole reset.
   const [sheet, setSheet] = useState<
-    | { kind: 'line'; category: SetupCategory; key: number }
+    | { kind: 'line'; category: SetupCategory; spareId?: string; key: number }
     | { kind: 'add'; category: SetupCategory; makeActive: boolean; replacesId?: string; crossesForId?: string; key: number }
     | { kind: 'look'; itemId: string; title: string; key: number }
     | null
@@ -179,8 +182,8 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
         activeName={activeName}
         gear={gear}
         picks={picks}
-        club={club}
         onOpenLine={openLine}
+        onOpenSpare={(spareId) => setSheet((s) => ({ kind: 'line', category: 'racket', spareId, key: (s?.key ?? 0) + 1 }))}
         onShare={() => setShareOpen(true)}
         onOpenFit={openFitPage}
         onAddTension={() => openLine('string')}
@@ -251,6 +254,7 @@ export default function GearRegister({ activeName, onRequestStringing }: GearReg
           open
           onClose={() => setSheet(null)}
           category={sheet.category}
+          spareId={sheet.spareId}
           gear={gear}
           // The two sheets swap, never stack.
           // A racket change keeps the old frame as a visible spare; a string

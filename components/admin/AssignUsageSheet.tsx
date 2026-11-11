@@ -199,7 +199,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
                       minWidth: 44,
                       minHeight: 44,
                       borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--inner-card-border)',
+                      border: '1px solid transparent',
                       background: 'var(--inner-card-bg)',
                       color: 'var(--text-primary)',
                       fontSize: 18,
@@ -228,7 +228,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
                       minWidth: 44,
                       minHeight: 44,
                       borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--inner-card-border)',
+                      border: '1px solid transparent',
                       background: 'var(--inner-card-bg)',
                       color: 'var(--text-primary)',
                       fontSize: 18,
@@ -254,7 +254,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
               minHeight: 44,
               borderRadius: 'var(--radius-md)',
               background: 'var(--inner-card-bg)',
-              border: '1px solid var(--inner-card-border)',
+              border: '1px solid transparent',
               color: 'var(--text-secondary)',
             }}
           >

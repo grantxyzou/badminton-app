@@ -11,6 +11,9 @@ import { stringSpecLine } from '@/lib/gearSetup';
 import { parseShelf, shelfPrice, stringColours, stringTypeOf, typeBand, type Shelf } from '@/lib/stringShelf';
 import type { CatalogItem } from '@/lib/types';
 import StockBadge from './StockBadge';
+import StringPackImage from './StringPackImage';
+import StringingStory from './StringingStory';
+import { stringPackSrc } from '@/lib/stringPackSrc';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -19,6 +22,9 @@ import {
   playerTensionText,
 } from '@/lib/stringing';
 import { usePush } from '@/lib/usePush';
+
+/** The request refusals that have their own sentence under `home.stringing.error`. */
+const KNOWN_REQUEST_ERRORS = new Set(['shop_closed', 'too_many_open', 'invalid_tension', 'invalid_request', 'unauthorized', 'rate_limited']);
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -324,7 +330,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(t(`error.${data.error ?? 'generic'}`));
+        // Only a code with its own sentence; anything else (`not_found`,
+        // `write_failed`, a gate's code) would print the key path on screen.
+        const code = typeof data.error === 'string' && KNOWN_REQUEST_ERRORS.has(data.error) ? data.error : 'generic';
+        setError(t(`error.${code}`));
         setBusy(false);
         return;
       }
@@ -487,7 +496,10 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                     <span className="material-icons icon-lg" aria-hidden="true" style={{ flex: 'none', color: on ? 'var(--accent)' : 'var(--text-muted)' }}>
                       {on ? 'radio_button_checked' : 'radio_button_unchecked'}
                     </span>
-                    {item && (
+                    {/* The packet when the string has one, else the gauge tile it
+                        always had (the gauge is in the line below either way). */}
+                    {item && stringPackSrc(item.id) && <StringPackImage catalogId={item.id} size="row" />}
+                    {item && !stringPackSrc(item.id) && (
                       <span aria-hidden="true" style={{ flex: 'none', width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: typeBand(stringTypeOf(item)), display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {mm !== null ? mm.toFixed(2) : ''}
                       </span>
@@ -626,7 +638,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
         </button>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--inner-card-border)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', paddingTop: 'var(--space-4)' }}>
         <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{summary}</span>
         {summaryPrice && <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryPrice}</span>}
       </div>
@@ -648,6 +660,15 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
    *  opt-in that makes "get notified" true. */
   const sentStep = (
     <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+      {/* Their racket, step by step, in their own racket and string (Stringing
+          canvas, 2026-11-05). A racket typed in has no catalog row and draws
+          the default frame; a string with no packet starts at the machine. */}
+      <StringingStory
+        racketId={kit.find((r) => r.label === racketLabel.trim())?.catalogId ?? null}
+        stringId={pickedItem?.id ?? null}
+        stringName={stringLabel}
+        tension={playerTensionText(mains, finalCrosses)}
+      />
       <p role="status" className="fs-md" style={{ margin: '0', color: 'var(--text-primary)' }}>
         {t('sentBody')}
       </p>

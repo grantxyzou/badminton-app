@@ -48,9 +48,215 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
-### On a foldable, the week is the right-hand page (2026-11-04)
+### "Your fit" opens at its first question (2026-11-11)
 
-On an unfolded phone, this week's session now sits on the right pane — the page that opens, as Grant reads it — with the nudges and your balance on the left. Sheets and notices open in the left half so they never cover the week they came from. Plan: `docs/plans/foldable-layout.md`.
+- **The racket fitting page opens at the top.** Opened from partway down Equipment, it used to show the page from its middle, past the Level and "Mostly you play" questions. A racket's page and the "Keep your account" page now go to the top on purpose too; before, they only got there because they load short for a moment. Same cause as the tab fix: the page scrolls inside the body, and these asked the window to scroll.
+
+### Each tab comes back where you left it (2026-11-10)
+
+- **Switching tabs keeps each tab's place on the page.** Scroll down Home, look at Stats, come back, and Home is where you left it; Stats opens at its top the first time and returns to its own spot after that. Before, every tab shared one position: Stats opened halfway down because Home had been, and Home came back wherever Stats was. The notifications page also opens at its top and closes back to where the tab was. The memory had never worked, because it watched the window while the page actually scrolls inside the body.
+
+### A new receipt image: where the money went, and how to pay (2026-11-10)
+
+- **The receipt image shared to the group chat is redrawn** (design F4, picked on the design canvas). A green band carries the club, the date, the app's logo and the big "$18.50 each". Under it, the sum: "2 courts × $48 · $96", "1 tube of shuttles · $15", "Total $111", "Split 6 ways · $18.50 each". Then a box that says how to pay: "E-transfer to:", the club's Wealthsimple handle when it has one, and "Please include a memo:". It is 3:4, so a chat shows it whole. The list of who played is gone.
+- **A club can add its Wealthsimple handle** ($yourhandle) next to the e-transfer recipient in the admin settings. It is printed on the receipt image and in the copied text ("Or Wealthsimple: $…"). Leave it empty and the receipt shows e-transfer only.
+
+### The receipt names the club in its memo, and the right day (2026-11-09)
+
+- **The e-transfer memo on a shared receipt reads "BPM Core Oct 22 - {your name}" again.** It had been "Oct 22 - {your name}": the club's name never reached the receipt, so the memo collapsed to the date.
+- **The receipt image says "Thursday was $18.50 each"** when it is shared on any day but the night itself. It used to say "today was" even for a session shared from Past sessions or the morning after.
+
+### Money shows its cents properly on the admin screens and receipts (2026-11-09)
+
+- **"$18.5" is now "$18.50" everywhere an admin sees money**: the Payments card (per player, each row, "owed", "covered", "Cover their …"), the cover sheet, the session card's "Sent · …" and "Share again", Past sessions, and the receipt image and text sent to the group. Whole amounts stay whole ("$18"). They all use the one money formatter the member screens already use.
+
+### "Save job" says what it still needs (2026-11-06)
+
+- **Save on a new stringing job is never a greyed-out dead end now.** If something is missing, usually whose racket it is, a line under the button says so, and tapping Save takes you straight to it with the search box ready. Once everything is in, it saves as before.
+
+### Coming back is quicker, and Home shows up at once (2026-11-06)
+
+Following "this app is getting really slow":
+
+- **Coming back to the app skips the opening animation.** If you used the app in the last half hour (iPhones often close it in the background while you're in another app), it opens straight to Home. The first open of the day still plays the shuttle.
+- **Home shows last time's week straight away.** Where, when, who's in and the announcement appear the moment the app opens, slightly dimmed with "Updating…", and the buttons wait a moment until the up-to-date week arrives. What you owe always waits for the up-to-date figures. Signing out clears it from the phone.
+- **The app now notes how long it takes to open on your phone**, so slowness can be measured rather than guessed: a number of milliseconds and the kind of device, never anything on the screen. The privacy policy says so.
+
+### Adding a stringing job works again after the admin sign-in runs out (2026-11-06)
+
+- **"Save job" on the Stringing bench could stay greyed out for good.** When an admin's separate admin sign-in had run out on a phone, the app still showed the bench. But the job list wouldn't load ("Try again"), searching for a player found nobody, and so "Save job" never turned on. The bench now asks for your name and PIN first, just like the Admin page, then opens. Signing in on either one opens both.
+
+### The app opens with a little less to download (2026-11-06)
+
+- **The Notifications page now loads after the app opens**, in the background, so the first screen arrives sooner. The bell's red dot still appears as soon as there's something new: it never waited for the page. A tap that beats the download sees the page's usual loading frame for a moment.
+- **Behind the scenes:** `npm audit` is back to zero. The one warning came from a pattern-matching library inside the code checker, which never ships to anyone; it now uses the fixed version.
+
+### Faster to open, to come back to and to switch tabs (2026-11-05)
+
+Grant: "this app is getting really slow". Measured on a production build played as a mid-range phone on mobile data, then fixed:
+
+- **The app asks the server less when it opens: 27 requests instead of 35.** The tabs that open behind the launch screen used to ask again for what Home had asked a second before. They now reuse that answer, but only while nothing has been saved since, so after a sign-up or a payment the app still checks again.
+- **Racket and string pictures are ready when you get there.** String packets used to wait until you opened their tab before they even started downloading. Your own racket and string pictures are now fetched while the app opens, and phones keep the packet pictures for a day as they already did the rackets. Opening Equipment takes about 0.3 s, and going back to it is instant instead of showing a loading card again.
+- **Updates ship three times a day, not after every change.** Each update restarts the server and made every phone download part of the app again on its next open. Now updates go out off-peak in the morning, early afternoon and late evening, and an update that only changed notes doesn't go out at all. An update that changes no code no longer makes phones download anything. An urgent fix can still go out at once.
+
+### Your racket, step by step (2026-11-05)
+
+Grant: "a step by step animation when user send in an request … Racket goes on to [the] machine > stringing through a racket > off machine > tada", and "when the string package tears open at the top string comes out". After a member sends a stringing request, the screen plays a twelve-second animation in their own racket and string: the string's packet tears open at the top and the string comes out, the bare frame goes onto a stringing machine and the clamps close, it is strung while the machine pulls to the tension they asked for, it comes off and turns upright, and "Ready · Yonex BG80 at 26 lb". A caption under it says each step, and "Play again" replays it. It plays once and stays on the last frame; with reduced motion it shows only that frame. The machine is a generic one with no maker's name. A racket typed in by name draws the default frame, and a string with no packet picture starts at the machine. Every catalog racket now has a picture without strings for this (`public/rackets/bare/`, about 1.2 MB). Plan: `docs/plans/stringing-story.md`.
+
+### Notifications in your language, and the last spot goes to one person (2026-11-05)
+
+- **Notifications now arrive in the language you read the app in.** Switch to 中文 and the next "sign-ups are open" or "you're in from the waitlist" comes in Chinese on that phone. Session times in them are now Vancouver time; one used to say Friday 4 AM for a Thursday 8 PM session.
+- **Rejoining can no longer take a spot that was already gone.** If you cancelled, then rejoined at the same moment someone else signed up for the last spot, you could both get in. Now one of you does and the other is told the session is full.
+- **The language button says what it does**, in both languages, to a screen reader.
+- **Behind the scenes:**
+  - The page only runs scripts the server marked for that one page load, which shuts the usual door for an injected script.
+  - The home page now runs the same first-visit step every other page did (it had been skipped).
+  - What is left from the November audit, and who each item waits on, is in `docs/plans/audit-followups.md`.
+
+### The app's sign-in stays on your phone, and the safety notes are right (2026-11-05)
+
+- **Moving from the web app to the store app now asks first.** The "Move to the app" link used to sign the app in the moment it opened. Someone could send you their own link, and your app would quietly become their account. Now it asks you to confirm, and says who would be signed out.
+- **The home-screen widget's sign-in stays on the phone it was made on.** Restoring a backup onto a new phone no longer brings it along. The widget simply waits until you open the app once. The widget also only ever sends its pass to the app's own website.
+- *Both of these reach phones with the next store build.*
+- **Behind the scenes:**
+  - Next.js 16.4.5.
+  - The iPhone app is pinned to the same Capacitor version as the Android app and the website.
+  - The rollback instructions in the owner's notes did not work as written; they are fixed.
+  - The AI settings table and the store build numbers in the docs are corrected.
+  - The plan to replace Defender's watching with three cheap Azure alerts is written down.
+
+### Easier to read, and kinder to screen readers and to Chinese (2026-11-05)
+
+- **A refused sign-up explains itself in your language.** If a session was full, closed or already settled, the card used to show the server's own words. Sometimes that was an English sentence on the Chinese page, sometimes a code like `session_settled`. It now says what happened, in English or Chinese.
+- **Faint text is easier to read in dark mode.** Hints and captions were too faint over the bright corner of each tab's background. They are a little lighter now and meet the standard contrast for reading.
+- **Screen readers:**
+  - A screen reader now stays inside an open sheet instead of reading the page behind it.
+  - The tab bar, the light/dark switch, pull-to-refresh and loading screens are named in Chinese when the app is in Chinese.
+  - A skill's close button now has a name.
+  - The tension and racket-pick options are announced as choices, not as tabs.
+- **The small round buttons at the top are easier to tap.** They look the same, but each now takes a tap across a full fingertip-sized area.
+- **Keyboard users see where they are.** Every button now shows the same clear green focus ring.
+- **Dates follow the app's language.** The stringing "ready by" date, an invite's expiry and Profile's session date now use the app's language and the club's time zone, not the phone's.
+
+### The app opens with less to download (2026-11-05)
+
+- **Each visitor now downloads only their own screen.** The app and the signed-out welcome screen came in one bundle, so members also downloaded the sign-up forms and newcomers downloaded the whole app. Now each gets only theirs. That is 13% less for a newcomer (254 → 220 KB) and 4% less for a member (254 → 245 KB) before anything appears.
+- **Racket pictures next to names are about 6 times smaller.** A 32 px circle was downloading the whole ~18 KB racket picture to show its head. It now loads a 3 KB crop. Profile's large picture keeps the full one so it stays sharp.
+- **The opening shuttle is 6 KB instead of 44 KB**, and the browser-tab icon is 3 KB instead of 55 KB. They look the same.
+- **The admin screen is 69 KB lighter.** One setting was quietly pulling in server-only code. A check now fails the build if any screen does that again.
+
+### Faster and cheaper behind the scenes (2026-11-05)
+
+- **Opening Home no longer reads every session record the club has ever had.** Looking up what you owe used a database search that couldn't use the index, so it read all of a club's history every time. It now goes straight to the few records that matter.
+- **The AI greeting on Stats is only written for people who read it.** Home used to have it written for every member every week, even people who never open Stats. Now it's written in the background only for members who've opened Stats in the last month; everyone else gets theirs when they open the tab. A greeting with nothing to say is also remembered, so the AI isn't asked again on every visit.
+- **Release notes:** Home and Profile load the newest 30 instead of every one ever written, and the page has a rate limit.
+- **Other loading work:**
+  - The organiser's payments screen loads its data all at once instead of one piece after another.
+  - Looking up a member's name takes one fewer step.
+  - Skill-level and club-rating figures are re-worked out less often. They still refresh the moment someone logs a game or checks in.
+  - Equipment lookups ask only the part of the database they need.
+  - The payments calendar loads only the two details it shows.
+  - The invite QR stops checking whether it's been used after 10 minutes.
+
+### Deleting an account, done properly with more than one club (2026-11-05)
+
+- **Deleting your account no longer touches anyone else's history.** Before, it removed the name "Lin" from records in every club. Another club's Lin could lose her games, her skill ratings and her session records. Now a name is only removed in the clubs where it was yours.
+- **Your spot is freed in every club you'd signed up in**, not just the one you deleted from.
+- **More of your details are removed:**
+  - your name and e-mail as the pay-to on a club you organised
+  - your name on rackets you strung for others
+  - your name on payments waiting for an organiser to check
+  - your name on a join request nobody picked up
+  - your name on problem reports you sent
+- **On a phone, deleting your account also clears the app's icon badge, its long-press shortcuts and its widgets**, the same way signing out does.
+- **The privacy policy now lists** guests, join requests, e-transfer notices, stringing, store credit and in-app notices.
+
+### Money fixes from the November audit (2026-11-05)
+
+- **Covering or removing someone after the bill is done now does what the buttons say.** "Cover & remove" means the club pays their share, and everyone else's amount stays the same. "Remove without covering" means they still owe it. Before, both quietly spread the person's share over everyone else and wiped their own debt.
+- **Splitting a share differently after people have paid is refused.** It would have changed what they owed after they had paid it. You can still cover the share yourself.
+- **Stringing:** accepting a price change now updates the club's money records. A price change proposed before a job was paid can no longer be accepted after it.
+- **The unpaid hold counts sessions.** A member who brought a guest to one unpaid session is no longer held as if they owed for two.
+- **Store credit** can pay a session that still owes after the person was removed from the list.
+- **A member's history** shows a session they played and were later removed from as played, shows "Covered" instead of "Unpaid", and never picks up another person's session by name.
+
+### Two people with the same name (2026-11-05)
+
+When two accounts share a name, a club gives the second one a different name, such as "Lin W". Before this fix the app sometimes went by the account name instead of the club name. Lin W could be refused her own balance and stats, see the other Lin's balance instead, or pay the other Lin's session out of her own credit. The app now goes by the person's account, never by the name, everywhere this mattered. A stringing job can also only be billed to someone in the club.
+
+### Security fixes from the November audit (2026-11-05)
+
+Nine ways in were closed. None is known to have been used.
+
+- An admin can no longer reset the PIN of an organiser or another admin. The reset code clears the PIN, so it was a way to take over a higher rank. Only an organiser can do it now.
+- "Sign out everywhere" in one club now holds when a phone switches into that club, or rejoins it, from another club.
+- Release notes, which every club reads, can only be written by the person who runs the app. Before, the admin of any club could write them, and anyone can create a club. The AI writing helper stays open to club admins, with a daily limit per person.
+- The e-transfer inbox only marks someone paid when the Interac email was sent to the club. A genuine Interac email about a transfer to someone else no longer counts. **The Gmail script needs updating**: paste the new `public/payments/apps-script.gs` and run `install` once. Until then it works as before.
+- Wrong PINs sent all at once now each count toward the lock. Before, they could all slip past it together.
+- A recovery code stops working after 5 wrong tries.
+- A club's join link no longer hands over a name whose owner has signed in since asking.
+- Moving to the store app now re-issues the cancel token for your own spot, never for another person with the same name.
+- An API request whose size it does not declare is refused, so the 256 KB limit can't be avoided.
+
+### The club's door link: one poster for everyone, every join approved by an organiser (2026-11-05)
+
+A club can now hand out one reusable link, on a poster, in a group chat or on an NFC sticker. Opening it shows "Join <club> · Ask to join": someone whose name is already on the roster and unclaimed asks to be let in as themselves, and anyone else asks to join. Only an organiser approves; approving creates the account and the asking phone is signed in. A name a member already holds is refused, so the door never hands a stranger an existing account. The Invite page gains "A poster for everyone", and "New link" retires the old poster and the asks still waiting on it. `docs/plans/door-link.md`.
+
+### Guests the way Six Feathers brings them (2026-11-05)
+
+A club now sets how many guests a member may bring, none, one or two, under How your club runs; "Members first" sets two. A guest is written the club's way, `Jenny (Josh)`, on Home and in Copy list, a guest name already on the roster is refused, and an organiser can add a guest for a member from the session card. Home lists each guest with its own Remove. BPM Core reads exactly as before: one guest, if the club switches guests on. `docs/plans/six-feathers-guests.md`.
+
+### Invite in person: the QR on the Invite page, and a poster to save (2026-11-05)
+
+The Invite page shows the invite as a QR code for the person standing next to you, with the 8-character code under it for a phone that will not scan. When it is used the page says "They're in" and offers Next person, so a used code never stays on screen. "Save as image" draws a poster with the club's name, organisers, when and where it plays, the QR and the code, and says it works once, for one person.
+
+### The share image is a story, drawn like the Equipment card (2026-11-05)
+
+Grant: "This shared card should mirror what the card in app looks like and not truncate", then "Omg it's so busy … Can be vertical ig story size". The picture made by Share on the Equipment card is now a 9:16 story (1080 × 1920). It has your name at the top, your main racket's head large across the middle, then the racket's full name with "Main racket · 4U · even" under it, each string with its packet, "Mains · 0.66mm · repulsion" (or Crosses) and its tension in a pill, and, on the image's bottom edge, how long you've played at the club ("At BPM Core since 2024") with the app's logo in the corner. The words stay clear of the bars story apps draw over the top and bottom. It uses the app's own typefaces. Nothing is cut short: a long racket or string name wraps onto further lines and the racket moves up to make room. Your grip, the restring count, the club tension comparison and "1 of 4 at BPM Core" are left off the picture and stay in "Copy as text". The old flat 3D snapshot of the racket is gone.
+
+### The Equipment card, redrawn (2026-11-05)
+
+The Set-up card on Stats → Equipment now follows design A from the Stats canvas. It is headed "Equipment". Your main racket's head is drawn large and sharp across the right half of the card, from a new close-up picture of every catalog racket (about 40 KB each, and only the main racket's loads). Each item's name starts on the title's edge with its role in the line beneath ("Main racket · 4U · even", "Strings · 0.68mm · repulsion"), and the string's packet starts its line. "Racket and tension fitting" (formerly "Your fit") sits right under them. Below a rule, "Spare rackets" groups each spare and "+ Add a spare racket"; tapping a spare opens its sheet, which shows its string. The card no longer counts how many others play your racket; "What the club plays" still does.
+
+### Each racket keeps its own string (2026-11-05)
+
+On Stats → Equipment, swapping your main racket used to carry the string and its tension onto the new racket. Now each racket keeps its own: swapping in a spare shows that spare's string and tension, or a blank Strings line if it has none, and swapping back brings the first one's back. The same string can be on two rackets at different tensions. A string logged before today stays with the racket that was in play when you first swap. The Set-up card puts the racket and its string together, then a divider and your spares, each saying what it is strung with; tapping a spare opens its own sheet, where you can make it your main racket. The Strings line shows the string's packet with the string drawn in your racket's string colour, and no longer counts how many others use it. The main racket is drawn close up across the right half of the card, with the controls over it in a liquid-glass style. The club tension band, the fit verdict, the racket page and the share card all read the main racket's string. Plan: `docs/plans/string-follows-racket.md`.
+
+### Every string shows its packet (2026-11-05)
+
+The strings on the Stringing tab now have pictures: each string's 10 m retail packet, matched to maker and retailer photos and drawn without the maker's logo. The packet shows on every row of the strings list and in the map view's selected string, beside the name on a string's page, and in the request form's string list in place of the gauge tile. Each picture is about 9 KB, drawn ahead of time; nothing loads on screens that show no strings. A string with no packet keeps what it showed before. Plan: `docs/plans/string-packets.md`.
+
+### A sign-up link the app opens (2026-11-04)
+
+The weekly sign-up link is now `/bpm/s`. In a browser it opens Home; with the store app installed, the app opens it and lands on Home signed in. Shared messages carry the link once instead of twice, and the invite copy leads with the tap.
+
+### Members first: spots kept for members until a set time (2026-11-04)
+
+A club can keep its spots for members until a cutoff before the session (Six Feathers: Monday 11:59 PM), then let the waitlist in, in sign-up order, with the usual push. Until then a sign-up from someone not marked member, and every guest, waits. Nothing runs on a timer: the first visit after the cutoff lets the waitlist in, and the organiser can do it early from the session card. `docs/plans/members-first-window.md`.
+
+### Claim your name, and sign out everywhere (2026-11-04)
+
+Someone an organiser imported onto the roster can ask to be let in through the club's link; the ask names their club, so it reaches that club's organisers and nobody else's. An organiser can also sign a member out everywhere from the Roster sheet, which ends every session that person holds, the admin console's included; issuing a recovery code does the same. A phone that has signed in before remembers its club, so a later "let me in" ask goes to the right club's admins. `docs/plans/claim-your-name.md`.
+
+### Profile shows your rank in this club (2026-11-04)
+
+The Profile card shows a small chip beside your name, Organiser or Admin, for the club you are in; a player has none. It used to say Admin for every admin, organisers included. "Member since" and the chip now read in Chinese for Chinese users.
+
+### Five fixes from a code review (2026-11-04)
+
+Another club's admin could put someone on BPM's stringing bench; that switch now stays with the club that set it. Cancelling a guest could undo an admin's edit made at the same moment; it no longer can. Home's session card no longer fails when the club record cannot be read, only the plus-one row hides. The operator's change log keeps the newest 200 entries. The fifth, a "Get the app" card shown to people already getting notifications, went with the card when Notifications replaced it.
+
+### Notifications, behind a bell (2026-11-04)
+
+A bell beside the language and theme buttons opens a Notifications page, with a red dot when something new arrives. Turning notifications on, and on the web "Get the BPM app on your phone", sit at the top; below is what the club told you: sign-ups open, a spot from the waitlist, racket updates. The Stats privacy question is asked once, and closing it answers "Keep it private".
+
+### How close the waitlist is to another court (2026-11-04)
+
+When sign-ups fill up early, the sign-up card says how many more people would fill another court ("3 more fills a court"), and the admin's session card shows the same. It describes what could happen; booking the court is still the organiser's call.
+
+### Every racket in its real paint (2026-11-04)
+
+The racket pictures on Stats → Equipment, in the 3D viewer and on the share card now show each catalog racket in its real paint, matched to maker and retailer photos. That includes its fades, split halves, crown and throat colours and slashes, the shaft's colour change, the handle and grip, and its head outline. Every one of the 153 catalog rackets has it; 23 are approximate, because only angled photos existed. Four catalog rackets that do not exist (Victor Arrow Speed 88 and NitroLite 80X, Li-Ning Halberd 900 and G-Force Superlite) were deleted from the catalog, in production too, on the next deploy. Every racket, including the default, also got new materials: lacquer over a carbon weave, a ridged octagonal grip, a woven string bed, flush grommets and sharper edges. The list images are the same 240 × 624 pictures they were (2.8 MB for all 154), and nothing extra loads on screens that show no 3D. Logos are left off. Plan: `docs/plans/racket-fidelity.md`.
 
 ### Motion for the fold, and the scoreboard brought in line (2026-11-04)
 
@@ -79,6 +285,10 @@ The first production run of the owned-racket backtest matched shaft flex and wei
 
 The fit engine's gate waited on the owner and the club stringer rating profiles (stuck at three of five) and on two engaged members in a club of thirty. `docs/plans/racket-fit-engine.md` gains three legs that need nobody's time: an **owned-racket backtest** (`GET /api/reports/fit-backtest`, behind the read-only reports key) that hides each member's racket, re-runs the engine and scores the class of the pick against the class of what they hold, totals only; a **property suite** that turns every rule in the engine's own header into a check over every racket in the catalog; and the **manufacturers' second opinion**, four golden cases built from the brands' own series positioning, counted apart from the expert ones. The engine (`fit-4`) passes all of it. The backtest's first read on production is the plan's next review.
 
+### On a foldable, the week is the right-hand page (2026-11-04)
+
+On an unfolded phone, this week's session now sits on the right pane — the page that opens, as Grant reads it — with the nudges and your balance on the left. Sheets and notices open in the left half so they never cover the week they came from. Plan: `docs/plans/foldable-layout.md`.
+
 ### Stringer per club, a named operator with a break-glass override, and staff usage left out (2026-11-03)
 
 The rest of roles v2 (`docs/plans/roles-v2.md`). **Stringer is held per club**: a person who strings for one club is not on another club's bench until that club's admin ticks the box, and any admin may (the organiser rule is for ranks and gift cards); the stringers from before the move stayed on BPM's bench. **The operator is a named list** (`OPERATOR_MEMBER_IDS`), not "any admin of BPM", and holds the one exception to "nobody removes an organiser": `POST /api/operator/membership` sets any rank in any club behind the admin cookie, the list and the migration key, passes a club on when it takes the last organiser, and writes every use down where the operator's status read shows it. **The operator is staff**: their own app opens, tab views and sign-ins no longer count on the Metrics page, so one person checking a payment ten times a day cannot carry a small club's daily-active; an error from their phone is still recorded.
@@ -87,11 +297,35 @@ The rest of roles v2 (`docs/plans/roles-v2.md`). **Stringer is held per club**: 
 
 Any admin could make anyone an admin, and each new admin could make more; a club that two friends run together had no way to say so, because a club held exactly one owner. Now a club may have several organisers, and a rank — admin or organiser — and the gift-card switch are an organiser's alone to hand out; an admin still runs the night and grants Stringer. Nobody removes an organiser, not another organiser and not an admin: they step down themselves from Profile → Your groups, and when the last one steps down or deletes their account the club passes to the longest-serving admin, else the longest-serving player. The privacy policy's "if you're the only organiser, the group closes" now says what the code has done since succession shipped. The reasoning and the three PRs still to come are `docs/plans/roles-v2.md`.
 
+### Import a club's list (2026-10-29)
+
+An admin can paste a list, cells from a spreadsheet or a numbered chat post, or pick a `.csv`, and put the names on the roster, each marked member or drop-in. A preview shows what each line will do before anything is saved, and running the same paste again only adds what is new. `docs/plans/roster-import.md`.
+
+### Bring a guest (2026-10-29)
+
+A club can let members bring a guest. The guest gets a spot of their own, or waits when the session is full, and their share is on the member's balance. A guest leaves with the member who brought them. Off unless the club switches it on. `docs/plans/plus-one.md`.
+
 ### One level everywhere (2026-10-29)
 
 The app showed a member two different levels. Home's "Your level is climbing" card quoted the latest check-in's raw score (Lin: 3.4, "+0.8 since September"), while the Stats LEVEL tile showed the canonical level, the smoothed check-ins blended with logged games (3.1), under a caption that was the raw jump again ("▲ 0.8"), so nothing on screen added up. "Your level over time" plotted the raw scores (2.6 → 3.4). All three now show the canonical level, and every "since …" change is the step between two points of its new trail, the level as of each check-in, which `GET /api/stats/level` returns as an additive `trail` (`docs/plans/one-level.md`). Lin now reads 3.1, "+0.5 since September", on Home, the tile and the chart alike, and the chart's sentence reads its phase off the same 3.1.
 
 The LEVEL tile also lost its filled green slab, which in light mode read as a dark block on a pale page (Grant: "This colour... it feels odd"). It is now the same glass as the Games and Kudos tiles beside it, in both themes, and leads by colour alone: its number and a rise's ▲ are green, the "0.5 since September" words the same grey as the other captions, and a fall's ▼ stays grey.
+
+### How your club runs (2026-10-28)
+
+An organiser picks how the club runs, first come first served like BPM Core, or members first like Six Feathers, and can adjust each rule: players per court, whether the app handles money, and more since. "Copy list" puts the week's list in the club's group chat as text. `docs/plans/six-feathers-onboarding.md`.
+
+### Add to calendar (2026-10-28)
+
+The green sign-up banner's second line repeated the date and place. It is now one button, Add to calendar, which opens the phone's own New Event screen filled in. Nothing is saved until you tap Add.
+
+### A freed spot goes to the first person waiting (2026-10-28)
+
+When someone cancels, an admin removes a player or the player cap goes up, the waitlist moves up in sign-up order and each person promoted gets a push. It stops once the session starts. Someone moved up inside the late-cancel window can give the spot back without it counting as late. The waitlist card says so.
+
+### Stringing, redesigned (2026-10-28)
+
+A player sees the exact price their stringer quoted instead of a $4 band, and the email quotes it too; the push still carries no money. One progress card per racket, a two-step request sheet, and a strings map you can zoom into. `docs/plans/stringing-canvas-redesign.md`.
 
 ### Google and Apple sign-in no longer depend on a deprecated library (2026-10-27)
 

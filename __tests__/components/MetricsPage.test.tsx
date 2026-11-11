@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/react';
+import { render as rtlRender, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/react';
 import MetricsPage from '@/components/admin/MetricsPage';
 import type { ClubMetrics } from '@/lib/metricsMath';
+import { NextIntlClientProvider } from 'next-intl';
+import enMessages from '@/messages/en.json';
+
+// Loading frames and the pull-to-refresh disc carry translated spoken names
+// (`a11y.*`), so they need the provider like every other translated component.
+const render = (ui: React.ReactElement) =>
+  rtlRender(<NextIntlClientProvider locale="en" messages={enMessages}>{ui}</NextIntlClientProvider>);
 
 /**
  * Admin → Metrics. The arithmetic is pinned in metrics-math.test.ts; this
@@ -25,6 +32,7 @@ function mockMetrics(payload: unknown, ok = true) {
 
 const HAPPY: ClubMetrics = {
   clientErrors: { last7d: 0, members7d: 0, byTab: {} },
+  appReady: { opens7d: 0, medianMs: null, slowMs: null, medianLaunchMs: null, byStart: {} },
   generatedAt: '2026-10-07T12:00:00.000Z',
   rosterSize: 40,
   activeMembers: { last4: 23, previous4: 19 },

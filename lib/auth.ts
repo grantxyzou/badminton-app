@@ -24,8 +24,9 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isFlagOn } from '@/lib/flags';
-import { BPM_GROUP_ID } from '@/lib/groupScope';
-import { readMembership, readGroupAdmin } from '@/lib/groups';
+import { BPM_GROUP_ID, groupScope } from '@/lib/groupScope';
+import { readMembership, readGroupAdmin, nameReservationId } from '@/lib/groups';
+import type { NameReservation } from '@/lib/types';
 import type { Member, MembershipRole } from '@/lib/types';
 /** Server-read: while off, every claim reads as BPM and memberships are not consulted. */
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
@@ -338,11 +339,6 @@ export function clearMemberCookie(res: NextResponse): void {
 }
 
 /**
- * Verifies the `member_session` cookie (signature + expiry only — identity
- * proof, NO role/authorization). Returns the bound member identity or null.
- * Never grants admin. Cheap; no Cosmos round-trip.
- */
-/**
  * Who this device WAS signed in as, expiry ignored — signature and shape still
  * verified. For one job only: telling the owner of a doc on a lapsed 30-day
  * `member_session` apart from an anonymous reader, so a redaction marker can
@@ -370,6 +366,15 @@ export function peekMemberSession(req: NextRequest): MemberSession | null {
   return sessionOf(payload);
 }
 
+/**
+ * The `member_session` cookie's signature, audience and expiry — identity
+ * only, no Cosmos read, and so BLIND to "Sign out everywhere"
+ * (`sessionsNotBefore`): a cookie minted before the cutoff passes here for
+ * the rest of its 30 days. A route that WRITES as the member uses
+ * `verifyLiveMemberAuth` (or `requireGroupMember`) instead; this is for reads
+ * already behind a gate, and for hints. The cutoff canary
+ * (`__tests__/member-session-cutoff-coverage.test.ts`) names every caller.
+ */
 export function verifyMemberAuth(req: NextRequest): MemberSession | null {
   const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
   if (!cookie) return null;
@@ -379,12 +384,26 @@ export function verifyMemberAuth(req: NextRequest): MemberSession | null {
 }
 
 /**
+ * When this device's `member_session` was minted (seconds), or undefined.
+ * For a route that hands the session into ANOTHER club than the one the
+ * cookie names: the live check read only the named club's "Sign out
+ * everywhere" cutoff, and the other club's has to be compared too.
+ */
+export function memberSessionIssuedAt(req: NextRequest): number | undefined {
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return undefined;
+  return verifyToken(cookie, 'member')?.iat;
+}
+
+/**
  * The member id of whoever is signed in on this device, from EITHER cookie:
  * the `member_session` if there is one, else the `admin_session` (re-read, so
  * a demoted or removed admin is nobody). `null` is anonymous.
  *
- * For the routes that answer "what does the CALLER have" — `auth/methods`,
- * `auth/nudge` — and must not 401 a stranger. `POST /api/admin` mints ONLY an
+ * For the routes that answer "what does the CALLER have" — `auth/methods` —
+ * and must not 401 a stranger. It reads the member cookie's signature alone,
+ * blind to "Sign out everywhere", so a WRITE (`auth/nudge`) takes
+ * `liveCallerMemberId` below. `POST /api/admin` mints ONLY an
  * `admin_session`, so a phone an admin signed in on at Profile holds no
  * member cookie at all; `auth/methods` read the member cookie alone and
  * answered that phone the anonymous shape (no PIN, no password, nothing
@@ -398,6 +417,28 @@ export async function callerMemberId(req: NextRequest): Promise<string | null> {
   if (member) return member.memberId;
   const admin = await isAdminAuthedWithMember(req);
   return admin.authed ? admin.memberId : null;
+}
+
+/** What `liveCallerMemberId` found. `unknown` is a failed re-read, never
+ *  reported as "nobody" (the auth twin of the lying-empty-state rule). */
+export type LiveCaller = { status: 'live'; memberId: string } | { status: 'none' } | { status: 'unknown' };
+
+/**
+ * `callerMemberId` for a WRITE: the same "either cookie" reading, but the
+ * member cookie through `readLiveMemberSession`, so a session minted before
+ * "Sign out everywhere" is nobody (docs/plans/claim-your-name.md, Decisions).
+ * `callerMemberId` reads the member cookie's signature alone, which is fine
+ * for `auth/methods` (a read behind the page gate) and not for `auth/nudge`,
+ * which writes on the Member. A signed-out member cookie falls through to the
+ * admin cookie, whose own re-read honours the cutoff. A failed re-read is
+ * `unknown`, so the route can answer 503 rather than claim nobody is signed in.
+ */
+export async function liveCallerMemberId(req: NextRequest): Promise<LiveCaller> {
+  const live = await readLiveMemberSession(req);
+  if (live.status === 'live') return { status: 'live', memberId: live.session.memberId };
+  if (live.status === 'unknown') return { status: 'unknown' };
+  const admin = await isAdminAuthedWithMember(req);
+  return admin.authed ? { status: 'live', memberId: admin.memberId } : { status: 'none' };
 }
 
 /**
@@ -487,9 +528,13 @@ export const SESSION_COOKIE_NAMES = { member: MEMBER_COOKIE_NAME, admin: COOKIE_
  * this person, and the role comes from it.
  */
 export async function requireGroupMember(req: NextRequest): Promise<ActiveMember | null> {
-  const session = verifyMemberAuth(req);
-  if (!session) return null;
-  return activeMemberFor(session);
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return null;
+  const payload = verifyToken(cookie, 'member');
+  if (!payload) return null;
+  // `iat` rides alongside, not on the session: it is only for the
+  // "Sign out everywhere" cutoff below.
+  return activeMemberFor(sessionOf(payload), payload.iat);
 }
 
 /** A session re-read against its membership: the roster name and role, and
@@ -501,13 +546,19 @@ export type ActiveMember = MemberSession & { role: MembershipRole; widgetPassNot
  * other way (the widget's bearer pass): is this person still an ACTIVE member
  * of the group the credential names, and under which name and role?
  */
-export async function activeMemberFor(session: MemberSession): Promise<ActiveMember | null> {
+export async function activeMemberFor(
+  session: MemberSession,
+  /** When the credential was minted (seconds), for the sign-out cutoff. The
+   *  widget's pass carries its own on the session it hands in. */
+  iat: number | undefined = (session as MemberSession & { iat?: number }).iat,
+): Promise<ActiveMember | null> {
   try {
     if (!groupsOn()) {
       // Flag off: everyone is in BPM and `Member.role` is the role — the same
       // read `isAdminAuthedWithMember` makes, so a BPM admin is an admin here too.
       const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
       if (!resource || resource.active !== true) return null;
+      if (sessionRevoked(iat, resource.sessionsNotBefore)) return null;
       // The CURRENT name, not the one baked into a cookie that can be 30 days
       // old. A caller that keys anything on this name — the members-only
       // sign-up in `POST /api/players` — would otherwise refuse a renamed
@@ -524,6 +575,7 @@ export async function activeMemberFor(session: MemberSession): Promise<ActiveMem
     }
     const m = await readMembership(session.groupId, session.memberId);
     if (!m || m.status !== 'active') return null;
+    if (sessionRevoked(iat, m.sessionsNotBefore)) return null;
     return {
       memberId: m.memberId,
       name: m.name,
@@ -534,6 +586,80 @@ export async function activeMemberFor(session: MemberSession): Promise<ActiveMem
   } catch {
     return null;
   }
+}
+
+/**
+ * "Sign out everywhere" (docs/plans/claim-your-name.md): a session minted
+ * before the cutoff is refused. Compared in whole seconds, the token's own
+ * unit, exactly as `passRevoked` does for widget passes, so a sign-in in the
+ * same second as the stamp still works. No `iat` (a hand-built session) or an
+ * unparseable cutoff revokes nothing.
+ *
+ * ONLY WHERE THE MEMBERSHIP IS RE-READ: `activeMemberFor` (the page gate,
+ * every members-only read, sign-up, the widget) and `readLiveMemberSession`
+ * (every write that acts as the member, the page's no-club fallback, the OAuth
+ * link) for the member cookie, and `isAdminAuthedWithMember` for the admin
+ * one. A caller of `verifyMemberAuth`'s signature alone does not see it until
+ * the cookie expires; `__tests__/member-session-cutoff-coverage.test.ts` lists
+ * each one with the reason it may.
+ */
+export function sessionRevoked(iatSeconds: number | undefined, notBefore: string | undefined): boolean {
+  if (iatSeconds === undefined || !notBefore) return false;
+  const cutoffMs = Date.parse(notBefore);
+  return Number.isFinite(cutoffMs) && iatSeconds < Math.floor(cutoffMs / 1000);
+}
+
+/** What `readLiveMemberSession` found. `unknown` is a failed re-read — never
+ *  reported as signed out by a caller that can say "unknown". */
+export type LiveMemberSession =
+  | { status: 'live'; session: MemberSession }
+  | { status: 'none' }
+  | { status: 'unknown' };
+
+/**
+ * `verifyMemberAuth` plus the "Sign out everywhere" cutoff, for a route that
+ * acts AS the member without needing an ACTIVE membership in the claimed club
+ * (docs/plans/claim-your-name.md, Decisions). Same identity as the cookie —
+ * its id, name and group claim — and one point read more: the membership the
+ * cookie names (groups on) or the Member (groups off).
+ *
+ * Deliberately NOT `requireGroupMember`: a person half-way through "Create a
+ * club", or removed from the club their cookie names, is signed in and in no
+ * club, and `POST /api/groups`, `join` and `switch` exist for exactly them. So
+ * a missing or removed membership is not a refusal here — only a session
+ * minted before that membership's `sessionsNotBefore` is, whatever its status,
+ * or the club picker would hand a signed-out phone a fresh cookie for the club
+ * that signed it out. Nothing else is decided here: whether the account is
+ * still active is each route's own read, as it was under `verifyMemberAuth`.
+ *
+ * `__tests__/member-session-cutoff-coverage.test.ts` classifies every caller
+ * of the signature-only check against this one.
+ */
+export async function readLiveMemberSession(req: NextRequest): Promise<LiveMemberSession> {
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return { status: 'none' };
+  const payload = verifyToken(cookie, 'member');
+  if (!payload) return { status: 'none' };
+  const session = sessionOf(payload);
+  try {
+    let notBefore: string | undefined;
+    if (groupsOn()) {
+      notBefore = (await readMembership(session.groupId, session.memberId))?.sessionsNotBefore;
+    } else {
+      const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
+      notBefore = resource?.sessionsNotBefore;
+    }
+    return sessionRevoked(payload.iat, notBefore) ? { status: 'none' } : { status: 'live', session };
+  } catch {
+    return { status: 'unknown' };
+  }
+}
+
+/** `readLiveMemberSession` for a caller with no "unknown" to report: a failed
+ *  re-read refuses, as `activeMemberFor` does. */
+export async function verifyLiveMemberAuth(req: NextRequest): Promise<MemberSession | null> {
+  const live = await readLiveMemberSession(req);
+  return live.status === 'live' ? live.session : null;
 }
 
 export type MemberGate =
@@ -578,6 +704,14 @@ export async function requireMember(req: NextRequest): Promise<MemberGate> {
 /**
  * Sync admin check — verifies the cookie's signature, AUDIENCE and expiry only.
  * Does NOT re-check the Member's role. Cheaper, used by read-only routes.
+ *
+ * Blind to "Sign out everywhere" for the same reason it is blind to a
+ * demotion: it reads no doc. That is safe only because nothing that WRITES
+ * trusts it alone — the page gate (`requireMember`) re-reads, so a signed-out
+ * phone never reaches the admin reads, and a hand-replayed cookie reads until
+ * it expires, as a demoted admin's always has. The writes that call it do so
+ * only beside a re-read; `__tests__/member-session-cutoff-coverage.test.ts`
+ * names each one with why.
  *
  * The audience is what makes "signature valid" mean something here: the cookie
  * NAME is chosen by the client, so without `typ` this returned true for any
@@ -634,14 +768,52 @@ function claimsDisagree(req: NextRequest, admin: SessionPayload): boolean {
  * Read-only by contract: uses the cheap sync `isAdminAuthed` (no Cosmos
  * round-trip). Mutating routes must use `isAdminAuthedWithMember` instead.
  *
- * Name comparison is trim + lowercase on BOTH sides. Every current call site
- * already parses `name` with `.trim()`, so this is a no-op for them; it exists
- * so a future caller passing a raw query value can't be silently denied.
+ * Groups off, the name comparison is trim + lowercase on BOTH sides; groups
+ * on, it is the club's reservation for the name (`nameOwnership`, below).
  */
-export function ownsNameOrAdmin(req: NextRequest, name: string): boolean {
+export async function ownsNameOrAdmin(req: NextRequest, name: string): Promise<boolean> {
+  return (await nameOwnership(req, name)).allowed;
+}
+
+/**
+ * `ownsNameOrAdmin` with the answer a route keys its read on: whether the
+ * caller may read `name`, and the caller's own member id when `name` IS them.
+ *
+ * WITH GROUPS ON, A NAME IS NOT A PERSON (audit, 2026-11-05). The cookie
+ * carries the ACCOUNT name; the app asks about the CLUB's name for the person
+ * (`requireGroupMember` hands the shell the roster name). Comparing the two
+ * strings went wrong both ways: an account called "Lin" whose club calls her
+ * "Lin W" (another Lin was there first) was refused her own balance, and
+ * asking about "Lin" read the OTHER Lin's. So with groups on the name is
+ * resolved in the cookie's club — one point read of its reservation, which
+ * exists exactly while the name is held — and compared by member id. Groups
+ * off there is one club and one name per person, and the string compare
+ * stands.
+ */
+export async function nameOwnership(
+  req: NextRequest,
+  name: string,
+): Promise<{ allowed: boolean; selfMemberId: string | null }> {
   const member = verifyMemberAuth(req);
-  const ownsName = member?.name?.trim().toLowerCase() === name.trim().toLowerCase();
-  return ownsName || isAdminAuthed(req);
+  let self: string | null = null;
+  if (member) {
+    const asked = name.trim();
+    if (groupsOn()) {
+      try {
+        const held = await groupScope(member.groupId).read<NameReservation>(
+          'memberships',
+          nameReservationId(member.groupId, asked),
+          member.groupId,
+        );
+        if (held && held.kind === 'name' && held.memberId === member.memberId) self = member.memberId;
+      } catch {
+        self = null; // unknown is not "yours": an admin may still pass below
+      }
+    } else if (member.name?.trim().toLowerCase() === asked.toLowerCase()) {
+      self = member.memberId;
+    }
+  }
+  return { allowed: self !== null || isAdminAuthed(req), selfMemberId: self };
 }
 
 /**
@@ -649,6 +821,15 @@ export function ownsNameOrAdmin(req: NextRequest, name: string): boolean {
  * confirm `role === 'admin' && active === true`. Use in routes that mutate
  * data; protects against role demotion taking effect immediately on the next
  * request rather than on next cookie expiry.
+ *
+ * It also honours "Sign out everywhere" (docs/plans/claim-your-name.md): an
+ * `admin_session` minted before the cutoff is refused, read off the doc this
+ * check already holds — the Member with groups off, the membership
+ * `readGroupAdmin` returns with groups on — so it costs no extra read. Before
+ * it did, signing an admin out everywhere (or issuing them a recovery code)
+ * ended their member cookie and left the admin one working for 30 days, and
+ * `requireMember` and `callerMemberId` fall back to it, so the page gate let
+ * the signed-out phone straight back into the app.
  */
 export async function isAdminAuthedWithMember(
   req: NextRequest,
@@ -666,6 +847,7 @@ export async function isAdminAuthedWithMember(
     if (!groupsOn()) {
       // Flag off: `Member.role` is the source of truth and the claim is ignored.
       if (resource.role !== 'admin') return { authed: false };
+      if (sessionRevoked(payload.iat, resource.sessionsNotBefore)) return { authed: false };
       // Flag off there is no organiser rank (`docs/roles.md`), and every admin
       // keeps the full power the role always had, promotion included.
       return { authed: true, memberId: resource.id, name: resource.name, groupId: BPM_GROUP_ID, organiser: true };
@@ -675,6 +857,9 @@ export async function isAdminAuthedWithMember(
     const groupId = payload.groupId ?? BPM_GROUP_ID;
     const m = await readGroupAdmin(groupId, resource.id);
     if (!m) return { authed: false };
+    // The cutoff lives on the membership in the claimed club, exactly where
+    // `activeMemberFor` reads it for the member cookie.
+    if (sessionRevoked(payload.iat, m.sessionsNotBefore)) return { authed: false };
     // `organiser` is the rank above admin (docs/plans/roles-v2.md): the only
     // one that hands out ranks and the gift-card switch.
     return { authed: true, memberId: resource.id, name: m.name, groupId, organiser: m.role === 'owner' };

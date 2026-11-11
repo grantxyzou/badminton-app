@@ -5,7 +5,9 @@ import { getContainer, getActiveSessionId, ensureContainer, sessionIdFromDate } 
 import { groupScope, groupDocId, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { topPartners } from '@/lib/recommend';
-import { ownsNameOrAdmin, verifyMemberAuth } from '@/lib/auth';
+import { nameOwnership, verifyMemberAuth } from '@/lib/auth';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
+import { isFlagOn } from '@/lib/flags';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import type { CanonicalLevel } from '@/lib/level';
@@ -79,6 +81,10 @@ interface InsightDoc {
   /* `level` sat here until 2026-08-27. Cached docs written before then still
      carry it; nothing reads it, and Cosmos ignores the extra field. */
   trend?: CardInsight | null;
+  /** The generator had nothing to say (both slices null). Cached like an
+   *  answer since 2026-11-05 — it used to be returned uncached, so a member
+   *  with nothing to narrate re-called Claude on every Stats open. Additive. */
+  empty?: boolean;
   generatedAt: string;
   /** `takenAt` of the latest self-assessment baked into this insight. Lets a
    *  fresh check-in invalidate the session cache so the read reflects it.
@@ -203,7 +209,8 @@ export async function GET(req: NextRequest) {
   //      2. A cache miss GENERATES — an unauthenticated caller could spend
   //         Anthropic budget at will. The gate therefore sits above every DB
   //         read and every generation path, not merely above the model call.
-  if (!ownsNameOrAdmin(req, name)) {
+  const ownership = await nameOwnership(req, name);
+  if (!ownership.allowed) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -234,6 +241,13 @@ export async function GET(req: NextRequest) {
   let member: { id: string; name: string } | null = null;
   let lookupFailed = false;
   try {
+    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+      // With groups on a name means someone only inside a club: the scan
+      // below would find another club's Lin (audit, 2026-11-05). The club's
+      // reservation answers it, and the name narrated is the one the club uses.
+      const id = ownership.selfMemberId ?? (await resolveActiveMemberId(scope.groupId, name));
+      if (id) member = { id, name };
+    } else {
     // A member asking about THEMSELVES is read by their cookie's id; the scan
     // below runs only when that read does not find them active under this name
     // (performance audit, 2026-10-19; same rule as lib/memberResolve.ts).
@@ -262,6 +276,7 @@ export async function GET(req: NextRequest) {
           .fetchAll();
     const m = resources[0] as { id?: string; name?: string } | undefined;
     if (m && typeof m.id === 'string' && typeof m.name === 'string') member = { id: m.id, name: m.name };
+    }
   } catch (err) {
     console.error('insight member lookup failed:', err);
     lookupFailed = true;
@@ -310,6 +325,17 @@ export async function GET(req: NextRequest) {
   if (cacheFresh && (existing!.greeting || existing!.trend)) {
     return NextResponse.json({ account: true, greeting: existing!.greeting ?? null, trend: existing!.trend ?? null, generatedAt: existing!.generatedAt, cached: true });
   }
+  if (cacheFresh && existing!.empty === true) return emptyPayload(true);
+
+  // A BACKGROUND request (`warm=1`: Home's pre-warm, or the Stats tab
+  // preloading off screen) writes a new read only for someone who has opened
+  // Stats in the last 30 days (audit, 2026-11-05). Before, every member's
+  // greeting was written by the model every session-cycle whether or not
+  // they ever looked; the rest get theirs when they open Stats, answered 204
+  // here so the client asks again then.
+  if (req.nextUrl.searchParams.get('warm') === '1' && !(await openedStatsRecently(scope, member.id))) {
+    return new NextResponse(null, { status: 204 });
+  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     // No key — serve any stale insight rather than nothing.
@@ -353,7 +379,12 @@ export async function GET(req: NextRequest) {
       if (stale) return stale;
       return aiUnavailable();
     }
-    if (!cards.greeting && !cards.trend) return emptyPayload(true);
+    if (!cards.greeting && !cards.trend) {
+      // Remembered, so the next open does not ask the model again.
+      const blank: InsightDoc = { id: insightId, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: null, trend: null, empty: true, generatedAt: new Date().toISOString(), lastAssessmentAt: latestAssessmentAt, locale };
+      await scope.upsert('insights', blank).catch((err) => console.warn('insight empty cache write failed (non-fatal):', err));
+      return emptyPayload(true);
+    }
 
     const generatedAt = new Date().toISOString();
     const doc: InsightDoc = { id: insightId, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: cards.greeting, trend: cards.trend, generatedAt, lastAssessmentAt: latestAssessmentAt, locale };
@@ -363,6 +394,30 @@ export async function GET(req: NextRequest) {
       console.warn('insight cache write failed (non-fatal):', err);
     }
     return NextResponse.json({ account: true, greeting: cards.greeting, trend: cards.trend, generatedAt, cached: false });
+  }
+}
+
+const WARM_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Has this member opened Stats lately (`stats_open`, one per visit)? A read
+ *  that fails answers yes: a missed saving beats a greeting that never comes. */
+async function openedStatsRecently(scope: GroupScope, memberId: string): Promise<boolean> {
+  try {
+    const since = new Date(Date.now() - WARM_LOOKBACK_MS).toISOString();
+    const rows = await scope.query<{ kind?: string; at?: string; memberId?: string }>('events', {
+      select: 'c.kind, c.at, c.memberId',
+      where: 'c.memberId = @memberId AND c.kind = @kind AND c.at >= @since',
+      params: [
+        { name: '@memberId', value: memberId },
+        { name: '@kind', value: 'stats_open' },
+        { name: '@since', value: since },
+      ],
+      partitionKey: memberId,
+      limit: 1,
+    });
+    return rows.some((r) => r.memberId === memberId && r.kind === 'stats_open' && typeof r.at === 'string' && r.at >= since);
+  } catch {
+    return true;
   }
 }
 
@@ -411,7 +466,10 @@ async function buildSnapshot({
   const [playerHits, sessionHits, partnerHits] = await Promise.all([
     scope.query<{ sessionId?: string }>('players', {
       select: 'c.sessionId',
-      where: 'LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
+      // STRINGEQUALS(…, true), not LOWER(): an index scan that loads only the
+      // matches, where LOWER() loaded every player row the club ever had
+      // (audit, 2026-11-05; learn.microsoft.com/azure/cosmos-db/index-overview).
+      where: 'STRINGEQUALS(c.name, @name, true) AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
       params: [{ name: '@name', value: name }],
     }),
     scope.query<{ id: string; datetime: string | null }>('sessions', {
@@ -469,7 +527,7 @@ async function buildSnapshot({
     try {
       const skillRows = await scope.query<{ scores?: Record<string, number> }>('skills', {
         select: 'c.name, c.scores',
-        where: 'LOWER(c.name) = LOWER(@name)',
+        where: 'STRINGEQUALS(c.name, @name, true)',
         params: [{ name: '@name', value: name }],
       });
       const scores = skillRows[0]?.scores;

@@ -183,3 +183,24 @@ describe('<UnpaidSessionsCard /> states', () => {
     await waitFor(() => expect(fetchSpy.mock.calls.length).toBeGreaterThan(before));
   });
 });
+
+describe('<UnpaidSessionsCard variant="home" onDetails />', () => {
+  it('links to the detailed view (Profile → Account balance)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          totalOwed: 10,
+          sessionCount: 1,
+          mostRecent: null,
+          sessions: [{ sessionId: 's1', date: '2026-06-01T19:00:00-04:00', owedAmount: 10 }],
+        }),
+        { status: 200 },
+      ),
+    );
+    const onDetails = vi.fn();
+    wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={onDetails} />);
+    const link = await screen.findByRole('button', { name: 'See details' });
+    fireEvent.click(link);
+    expect(onDetails).toHaveBeenCalledOnce();
+  });
+});

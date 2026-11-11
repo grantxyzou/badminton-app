@@ -60,6 +60,10 @@ favicon.png
 # Playwright MCP screenshot cache
 .playwright-mcp/
 
+# Vitest report output (e.g. a run with --reporter=json writing
+# .vitest/json/output.json): one run on one machine, regenerated every time
+.vitest/
+
 # Editor preferences (per-machine, not a project requirement)
 .vscode/
 

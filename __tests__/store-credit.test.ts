@@ -217,14 +217,17 @@ describe('gift cards', () => {
     expect(cards[0]).toMatchObject({ redeemedBy: { memberId: lin.id, name: 'Lin' }, usedCents: 0, remainingCents: 1000 });
   });
 
-  it('a member may give out cards only once an admin ticks canGift, and their list shows redeemed-or-not, never who', async () => {
+  it('only an organiser gives from Profile (groups off: an admin), re-read on every call, and the list shows redeemed-or-not, never who', async () => {
     const zach = seedMember('Zach');
     const asZach = { Cookie: `member_session=${memberCookieValue('Zach', zach.id)}` };
-    // Not a gifter: the row is hidden and a mint is refused.
+    // A member: the row is hidden and a mint is refused.
     expect(await (await myCards(makeRequest('GET', `${BASE}/giftcards`, undefined, asZach))).json()).toEqual({ canGift: false, cards: [] });
     expect((await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500 }, asZach))).status).toBe(403);
-    // The roster switch, re-read fresh on every call — no new cookie needed.
+    // The old switch gives nothing (2026-11-10: gift cards are an organiser's).
     expect((await patchMember(makeAdminRequest('PATCH', `${BASE}/members`, { id: zach.id, canGift: true }))).status).toBe(200);
+    expect((await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500 }, asZach))).status).toBe(403);
+    // Made an admin — with groups off, an organiser — he gives at once, no new cookie needed.
+    expect((await patchMember(makeAdminRequest('PATCH', `${BASE}/members`, { id: zach.id, role: 'admin' }))).status).toBe(200);
     const minted = await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500, note: 'Thanks' }, asZach));
     expect(minted.status).toBe(200);
     const { code } = (await minted.json()) as { code: string };
@@ -238,8 +241,8 @@ describe('gift cards', () => {
     // The admin's record says who made it.
     const { cards } = await (await listCards(makeAdminRequest('GET', `${BASE}/admin/giftcards`))).json();
     expect(cards[0].createdBy).toEqual({ memberId: zach.id, name: 'Zach' });
-    // Taking the switch away takes the ability with it, at once.
-    await patchMember(makeAdminRequest('PATCH', `${BASE}/members`, { id: zach.id, canGift: false }));
+    // Taking the rank away takes the ability with it, at once.
+    await patchMember(makeAdminRequest('PATCH', `${BASE}/members`, { id: zach.id, role: 'member' }));
     expect((await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500 }, asZach))).status).toBe(403);
     // Signed out, or the flag off: nothing.
     expect((await myCards(makeRequest('GET', `${BASE}/giftcards`))).status).toBe(401);
@@ -257,6 +260,13 @@ describe('gift cards', () => {
 
 describe('Pay with credit', () => {
   const pay = () => spend(makeRequest('POST', `${BASE}/credit/spend`, {}, asLin()));
+
+  it('pays a line whose row was removed AFTER its bill froze — it still owes it (audit, 2026-11-05)', async () => {
+    Object.assign(row(row1.id), { removed: true, removedAt: '2026-10-03T00:00:00Z' });
+    await giveLin(1200);
+    expect(await (await pay()).json()).toMatchObject({ ok: true, paid: 1, spentCents: 1200, balanceCents: 0 });
+    expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'credit' });
+  });
 
   it('pays the oldest lines the credit covers IN FULL, and nothing partly', async () => {
     await giveLin(2000); // covers $12, not then $15
@@ -451,14 +461,24 @@ describe('a stale spend is reconciled against the ROW, whatever happened to it',
     expect(await balance()).toBe(800);
   });
 
-  it('covered or removed since → refunded', async () => {
+  it('covered, or removed with no bill left on the row, since → refunded', async () => {
     entry('grant:a', 'credit_grant', 3000);
     entry(`spend:${row1.id}:0`, 'credit_spend', -1200, sessionRef(row1.id, 'session-2026-09-24'));
     entry(`spend:${row2.id}:0`, 'credit_spend', -1500, sessionRef(row2.id, 'session-2026-10-01'));
     Object.assign(row(row1.id), { writtenOff: true, coverMode: 'absorb' });
     Object.assign(row(row2.id), { removed: true });
+    delete row(row2.id).settledAt; // its bill was thawed, then it was removed
     expect(await balance()).toBe(3000);
     expect(ledgerIds()).toEqual(expect.arrayContaining([`refund:${row1.id}:0`, `refund:${row2.id}:0`]));
+  });
+
+  it('removed AFTER its bill froze → still owed, so the spend is finished, not refunded (audit, 2026-11-05)', async () => {
+    entry('grant:a', 'credit_grant', 1500);
+    entry(`spend:${row2.id}:0`, 'credit_spend', -1500, sessionRef(row2.id, 'session-2026-10-01'));
+    Object.assign(row(row2.id), { removed: true });
+    expect(await balance()).toBe(0);
+    expect(row(row2.id)).toMatchObject({ paid: true, paidVia: 'credit' });
+    expect(ledgerIds()).not.toContain(`refund:${row2.id}:0`);
   });
 
   // Counts point reads of the row containers, the way the mirror-failure tests spy.

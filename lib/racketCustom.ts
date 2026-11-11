@@ -21,6 +21,12 @@ export type { ItemLook };
 // eslint-disable-next-line no-restricted-syntax -- product paint palettes, not theme colours; they are painted onto the 3D model.
 export const SWATCHES = { frame: ['#212529', '#eeedf0', '#1f3a5a', '#128182', '#b3201f', '#d9e021', '#e86fa6', '#5a3f9c'], string: ['#f2efe6', '#f2d23a', '#1a1a1a', '#3a7cc0', '#c8283c', '#e86fa6'], wrap: ['#e8e8e6', '#1a1a1a', '#d9d9d9', '#2f7bd9', '#c8285a', '#ecc20b'] } as const;
 
+/** A racket strung as it comes: the white every pre-rendered racket picture
+ *  is drawn with (`DEFAULT_STRING` in `lib/racketModel.ts`, and every livery's
+ *  `strings`, all within a shade of it). What a member's string looks like
+ *  until they pick a colour, so the packet beside the racket matches it. */
+export const STOCK_STRING = SWATCHES.string[0];
+
 export const LOOK_PATTERNS = ['shoulder', 'tips', 'chevron', 'crown', 'plain'] as const;
 export const LOOK_SHAPES = ['isometric', 'oval', 'boxy'] as const;
 
@@ -62,10 +68,11 @@ export function hasItemLook(look: ItemLook | null | undefined): look is ItemLook
   return !!look && Object.values(look).some((v) => v !== undefined);
 }
 
-/** What the 3D model paints: the model's look, the member's choices over it. */
-export function modelInputs(base: RacketLook, look: ItemLook | undefined) {
+/** What the 3D model paints: the model's look, the member's choices over it.
+ *  `catalogId` lets the model find the racket's real paint (`lib/racketLivery.ts`). */
+export function modelInputs(base: RacketLook, look: ItemLook | undefined, catalogId?: string | null) {
   return {
-    look: { frame: base.frame, accent: base.accent, grip: base.grip },
+    look: { frame: base.frame, accent: base.accent, grip: base.grip, liveryId: catalogId ?? null },
     tweaks: {
       frame: look?.frame ?? null,
       string: look?.string ?? null,

@@ -28,7 +28,8 @@ not earning its place: remove the button and keep the admin path.
 - A guest has no account, no sign-in, no stats, no kudos, no push. They are a
   seat and a share, nothing more.
 - No more than ONE guest per host per session. "Plus two" can be a later
-  question if anyone asks.
+  question if anyone asks. (Asked: since 2026-11-05 a club may allow two,
+  `docs/plans/six-feathers-guests.md`.)
 - No guest-specific pricing. A guest pays the same share as anyone.
 - No change to how the admin adds a named player today.
 
@@ -127,7 +128,7 @@ Everything below is appended AS the work proceeds.
 | Ledger charge under the host | `lib/ledgerMirror.ts` `memberOf` (the backfill uses the same builders) |
 | Account deletion | `lib/memberPurge.ts` `anonymizePlayerRows` |
 | "Invite to the club" on a guest row | `components/admin/CommandCenter/PaymentsCard.tsx` → `InviteCard` |
-| Club switch | `groups.settings.guestsAllowed`, `lib/groups.ts` `setGuestsAllowed`, `/api/admin/settings`, `components/admin/CommandCenter/GuestsEditor.tsx`; reported to Home on `GET /api/session` |
+| Club switch | `groups.settings.guestsAllowed`, `lib/groups.ts` `setGuestsAllowed`, `/api/admin/settings`; since 2026-11-05 a rule of How your club runs (`ClubRun.guests`, `components/admin/CommandCenter/ClubRunPage.tsx`, docs/plans/six-feathers-guests.md); reported to Home on `GET /api/session` |
 | "Bring a guest" on the sign-up card; roster label | `components/home/PlusOneRow.tsx`, `components/HomeTab.tsx`, `components/home/WhoElseIsIn.tsx` |
 | The guest's line on the balance | `components/UnpaidSessionsCard.tsx` |
 | Mock store `@guestOf` | `lib/cosmos.ts` |

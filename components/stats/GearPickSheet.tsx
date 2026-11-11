@@ -376,13 +376,15 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     <>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('formatLabel')}</p>
-        <div className="segment-control flex" role="tablist" aria-label={t('formatLabel')}>
+        {/* A choice of one, so radios (as FitProfilePage asks it): a tablist
+            promised tab panels that do not exist (audit, 2026-11-05). */}
+        <div className="segment-control flex" role="radiogroup" aria-label={t('formatLabel')}>
           {(['doubles', 'singles', 'both'] as const).map((f) => (
             <button
               key={f}
               type="button"
-              role="tab"
-              aria-selected={playFormat === f}
+              role="radio"
+              aria-checked={playFormat === f}
               disabled={gear.busy}
               className={`flex-1 flex items-center justify-center fs-sm ${playFormat === f ? 'segment-tab-active' : 'segment-tab-inactive'}`}
               onClick={() => setPref({ playFormat: f })}
@@ -395,7 +397,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('budgetLabel')}</p>
-        <div className="segment-control flex" role="tablist" aria-label={t('budgetLabel')}>
+        <div className="segment-control flex" role="radiogroup" aria-label={t('budgetLabel')}>
           {([
             [100, 'budget_100'],
             [200, 'budget_200'],
@@ -405,8 +407,8 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
             <button
               key={key}
               type="button"
-              role="tab"
-              aria-selected={budgetMaxCad === band}
+              role="radio"
+              aria-checked={budgetMaxCad === band}
               disabled={gear.busy}
               className={`flex-1 flex items-center justify-center fs-sm ${budgetMaxCad === band ? 'segment-tab-active' : 'segment-tab-inactive'}`}
               onClick={() => setPref({ budgetMaxCad: band })}
@@ -554,7 +556,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               the frame publishes no ceiling: there is no honest placeholder
               for a number we do not have. */}
           {typeof pick?.tensionLbs === 'number' && (
-            <section style={{ borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-4)' }}>
+            <section style={{ paddingTop: 'var(--space-4)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
                 <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('pickSheetTension')}</span>
                 <span style={{ color: 'var(--text-primary)' }}>
@@ -580,7 +582,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               opening a second sheet over this one. A shortlist a member can
               borrow one of at the club is the point of alternatives. */}
           {others.length > 0 && (
-            <section style={{ borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <section style={{ paddingTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               <span className="fs-2xs" style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
                 {shownAlt ? t('pickSheetBackToPick') : t('pickSheetOrConsider')}
               </span>
@@ -612,7 +614,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               in it. It is what a member checks AFTER deciding, and seven mono
               rows between the name and the reason inverted that. */}
           {specRows.length > 0 && (
-            <section style={{ borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-4)' }}>
+            <section style={{ paddingTop: 'var(--space-4)' }}>
               <button
                 type="button"
                 onClick={() => setSpecsOpen((v) => !v)}

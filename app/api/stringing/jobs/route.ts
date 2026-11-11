@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { ensureContainer } from '@/lib/cosmos';
+import { readMembership } from '@/lib/groups';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { canStringIn } from '@/lib/roster';
@@ -392,6 +393,13 @@ export async function POST(req: NextRequest) {
   try {
     await ensureJobs();
     const scope = groupScope(resolveGroupId(req));
+
+    // The job is billed to this person IN THIS CLUB, so they must be on its
+    // roster (audit, 2026-11-05): any member id was accepted, and an admin of
+    // one club could put a charge on someone who only plays in another.
+    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') && (await readMembership(scope.groupId, memberId))?.status !== 'active') {
+      return NextResponse.json({ error: 'not_on_roster' }, { status: 404 });
+    }
 
     // Job NUMBER only — the id stays random. A sequential id would be
     // enumerable, and this number is printed on a tag anyone can read.

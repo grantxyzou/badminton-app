@@ -2,6 +2,7 @@
 
 import { shareTextOrCopy, type ShareTextOutcome } from '@/lib/shareText';
 import { APP_NAME } from '@/lib/brand';
+import { signupPath } from '@/lib/inviteLink';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -46,7 +47,9 @@ const DEFAULT_CLUB = APP_NAME;
 
 export function buildSignupShare(input: SignupShareInput): { title: string; text: string; url: string } {
   const club = input.groupName?.trim() || DEFAULT_CLUB;
-  const url = typeof window === 'undefined' ? BASE : `${window.location.origin}${BASE}`;
+  // The sign-up link, `/bpm/s` (lib/inviteLink.ts): it opens the app for a
+  // member who has it, already signed in, and the website for everyone else.
+  const url = typeof window === 'undefined' ? signupPath(BASE) : `${window.location.origin}${signupPath(BASE)}`;
 
   let dateLabel = '';
   if (input.datetime) {
@@ -57,10 +60,13 @@ export function buildSignupShare(input: SignupShareInput): { title: string; text
     // rule as `toValidIso` in the session route.
     const when = new Date(input.datetime);
     if (!Number.isNaN(when.getTime())) {
-      dateLabel = ` (${when.toLocaleDateString(undefined, {
+      // English and the club's clock, to match the English sentence around
+      // it — not the admin phone's language or zone (audit, 2026-11-05).
+      dateLabel = ` (${when.toLocaleDateString('en-CA', {
         weekday: 'long',
         month: 'short',
         day: 'numeric',
+        timeZone: 'America/Vancouver',
       })})`;
     }
   }

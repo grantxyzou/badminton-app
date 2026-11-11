@@ -55,11 +55,12 @@ describe('gear — string selection', () => {
 
   // ── The per-category cap ────────────────────────────────────────────────
   it('caps strings, which used to be UNCAPPED because the limit counted rackets', async () => {
-    for (let i = 0; i < 5; i += 1) {
+    // Ten since 2026-11-05: a string is on a racket, so each of ten may carry one.
+    for (let i = 0; i < 10; i += 1) {
       const res = await POST(addAs('Lin', { catalogId: `string-${i}`, category: 'string', label: `S${i}` }));
       expect(res.status).toBe(200);
     }
-    const overflow = await POST(addAs('Lin', { catalogId: 'string-6', category: 'string', label: 'S6' }));
+    const overflow = await POST(addAs('Lin', { catalogId: 'string-11', category: 'string', label: 'S11' }));
     expect(overflow.status).toBe(409);
     expect((await overflow.json()).error).toBe('bag_full');
   });

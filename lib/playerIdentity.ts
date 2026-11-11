@@ -3,6 +3,9 @@ import { groupScope } from './groupScope';
 import type { Alias, Member, Player, Session } from './types';
 import { costSplit, type SplitPlayer } from './sessionCost';
 import { readAliases } from './aliases';
+import { isFlagOn } from './flags';
+import { readMembership } from './groups';
+import { resolveActiveMemberId } from './memberResolve';
 
 /**
  * Shared player-identity resolution + owed classification.
@@ -71,10 +74,18 @@ export async function resolveIdentity(
 ): Promise<ResolvedIdentity> {
   const membersContainer = getContainer('members');
 
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const readMember = async (): Promise<Member | null> => {
-    if (arg.memberId) {
-      const { resource } = await membersContainer.item(arg.memberId, arg.memberId).read<Member>();
+    const byId = async (id: string) => {
+      const { resource } = await membersContainer.item(id, id).read<Member>();
       return resource ?? null;
+    };
+    if (arg.memberId) return byId(arg.memberId);
+    if (arg.name && groupsOn) {
+      // A name means someone only inside a club (audit, 2026-11-05): the scan
+      // below answered with whichever club's Lin came first.
+      const id = await resolveActiveMemberId(groupId, arg.name);
+      return id ? byId(id) : null;
     }
     if (arg.name) {
       // STRINGEQUALS(..., true) = case-insensitive on real Cosmos; the mock store
@@ -92,8 +103,12 @@ export async function resolveIdentity(
   // Independent reads, so one round trip rather than two in a row.
   const [member, aliasRows] = await Promise.all([readMember(), readAliases(groupScope(groupId))]);
 
-  const baseName = (member?.name ?? arg.name ?? '').trim();
+  // With groups on, the rows of THIS club carry the name the club knows the
+  // person by (the roster name), not the account name.
+  const rosterName = groupsOn && member ? (await readMembership(groupId, member.id))?.name : undefined;
+  const baseName = (rosterName ?? member?.name ?? arg.name ?? '').trim();
   const names = baseName ? expandAliasNames(baseName, aliasRows) : new Set<string>();
+  if (arg.name?.trim()) for (const n of expandAliasNames(arg.name, aliasRows)) names.add(n);
 
   return { member, memberId: member?.id ?? null, names };
 }
@@ -107,7 +122,11 @@ export function matchesIdentity(
   // A plus-one's row is its HOST's line (docs/plans/plus-one.md), and ONLY its
   // host's: never matched by name, or a guest called Lin would bill member Lin.
   if (typeof p.guestOf === 'string' && p.guestOf) return !!idy.memberId && p.guestOf === idy.memberId;
-  if (idy.memberId && p.memberId === idy.memberId) return true;
+  // A row that names its member is THAT member's, and nobody else's, whatever
+  // it is called (audit, 2026-11-05): matching it by name put another Lin's
+  // $77 line on this Lin's balance, where "pay with credit" then paid it. The
+  // name covers only legacy rows that never carried an id, and alias names.
+  if (typeof p.memberId === 'string' && p.memberId) return !!idy.memberId && p.memberId === idy.memberId;
   return typeof p.name === 'string' && idy.names.has(p.name.toLowerCase());
 }
 

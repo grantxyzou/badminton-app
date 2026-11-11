@@ -117,11 +117,11 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     expect(await screen.findByText('For doubles · under $200')).toBeTruthy();
     await openPrefs();
 
-    const doubles = await screen.findByRole('tab', { name: 'Doubles' });
-    await waitFor(() => expect(doubles.getAttribute('aria-selected')).toBe('true'));
-    expect(screen.getByRole('tab', { name: 'Singles' }).getAttribute('aria-selected')).toBe('false');
-    expect(screen.getByRole('tab', { name: '$100–200' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tab', { name: 'No limit' }).getAttribute('aria-selected')).toBe('false');
+    const doubles = await screen.findByRole('radio', { name: 'Doubles' });
+    await waitFor(() => expect(doubles.getAttribute('aria-checked')).toBe('true'));
+    expect(screen.getByRole('radio', { name: 'Singles' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('radio', { name: '$100–200' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'No limit' }).getAttribute('aria-checked')).toBe('false');
   });
 
   // No saved preference yet: format defaults to 'both' and budget to no limit,
@@ -132,9 +132,9 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     renderSheet();
     await openPrefs();
 
-    const both = await screen.findByRole('tab', { name: 'Both' });
-    expect(both.getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tab', { name: 'No limit' }).getAttribute('aria-selected')).toBe('true');
+    const both = await screen.findByRole('radio', { name: 'Both' });
+    expect(both.getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'No limit' }).getAttribute('aria-checked')).toBe('true');
   });
 
   it('tapping a format tab PATCHes the preference through the shared owner', async () => {
@@ -142,7 +142,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     renderSheet();
     await openPrefs();
 
-    fireEvent.click(await screen.findByRole('tab', { name: 'Singles' }));
+    fireEvent.click(await screen.findByRole('radio', { name: 'Singles' }));
 
     await waitFor(() => {
       const patch = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'PATCH');
@@ -150,7 +150,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
       expect(JSON.parse(String(patch!.init!.body))).toEqual({ name: 'Lin', playFormat: 'singles' });
     });
     await waitFor(() =>
-      expect(screen.getByRole('tab', { name: 'Singles' }).getAttribute('aria-selected')).toBe('true'),
+      expect(screen.getByRole('radio', { name: 'Singles' }).getAttribute('aria-checked')).toBe('true'),
     );
   });
 
@@ -159,7 +159,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     renderSheet();
     await openPrefs();
 
-    fireEvent.click(await screen.findByRole('tab', { name: '$200–350' }));
+    fireEvent.click(await screen.findByRole('radio', { name: '$200–350' }));
 
     await waitFor(() => {
       const patch = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'PATCH');
@@ -191,10 +191,10 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
       renderSheet();
       await openPrefs();
 
-      expect(await screen.findByRole('tab', { name: 'Both' })).toBeTruthy();
-      expect(screen.getByRole('tab', { name: 'Singles' })).toBeTruthy();
-      expect(screen.getByRole('tab', { name: 'Doubles' })).toBeTruthy();
-      expect(screen.getByRole('tab', { name: 'No limit' })).toBeTruthy();
+      expect(await screen.findByRole('radio', { name: 'Both' })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: 'Singles' })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: 'Doubles' })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: 'No limit' })).toBeTruthy();
     });
   });
 
@@ -213,9 +213,9 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.queryByText('Add to my equipment')).toBeNull();
 
-    const band = screen.getByRole('tab', { name: '$200–350' });
-    await waitFor(() => expect(band.getAttribute('aria-selected')).toBe('true'));
-    expect(screen.getByRole('tab', { name: 'No limit' })).toBeTruthy();
+    const band = screen.getByRole('radio', { name: '$200–350' });
+    await waitFor(() => expect(band.getAttribute('aria-checked')).toBe('true'));
+    expect(screen.getByRole('radio', { name: 'No limit' })).toBeTruthy();
   });
 });
 
@@ -356,15 +356,15 @@ describe('GearPickSheet — preferences are unknown when the gear read fails', (
     mockGearFailure();
     renderSheet();
 
-    const both = await screen.findByRole('tab', { name: 'Both' });
+    const both = await screen.findByRole('radio', { name: 'Both' });
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
 
     // Nothing may claim to be the saved choice.
-    expect(both.getAttribute('aria-selected')).toBe('false');
-    expect(screen.getByRole('tab', { name: 'Singles' }).getAttribute('aria-selected')).toBe('false');
-    expect(screen.getByRole('tab', { name: 'Doubles' }).getAttribute('aria-selected')).toBe('false');
-    expect(screen.getByRole('tab', { name: 'No limit' }).getAttribute('aria-selected')).toBe('false');
-    expect(screen.getByRole('tab', { name: '$100–200' }).getAttribute('aria-selected')).toBe('false');
+    expect(both.getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('radio', { name: 'Singles' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('radio', { name: 'Doubles' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('radio', { name: 'No limit' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('radio', { name: '$100–200' }).getAttribute('aria-checked')).toBe('false');
   });
 
   it('still lights "No limit" when the doc genuinely has no budget', async () => {
@@ -372,9 +372,9 @@ describe('GearPickSheet — preferences are unknown when the gear read fails', (
     renderSheet();
     await openPrefs();
 
-    const none = await screen.findByRole('tab', { name: 'No limit' });
-    await waitFor(() => expect(none.getAttribute('aria-selected')).toBe('true'));
-    expect(screen.getByRole('tab', { name: 'Both' }).getAttribute('aria-selected')).toBe('true');
+    const none = await screen.findByRole('radio', { name: 'No limit' });
+    await waitFor(() => expect(none.getAttribute('aria-checked')).toBe('true'));
+    expect(screen.getByRole('radio', { name: 'Both' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });

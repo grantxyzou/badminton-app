@@ -1,6 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GET as LIST, POST as DECIDE } from '@/app/api/admin/access-requests/route';
 import { issueAccessRequest } from '@/lib/accessRequest';
+import { POST as ASK } from '@/app/api/members/access-request/route';
+import { POST as CLAIM } from '@/app/api/members/access-request/claim/route';
+import { readGroupClaim, verifyMemberAuth } from '@/lib/auth';
 import {
   resetMockStore,
   getStore,
@@ -11,6 +14,7 @@ import {
   setupAdminPin,
   seedTestAdminMember,
   adminCookieValue,
+  memberCookieValue,
   ADMIN_MEMBER_ID,
 } from './helpers';
 import type { Member } from '@/lib/types';
@@ -22,6 +26,11 @@ import type { Member } from '@/lib/types';
  * own roster, or one club's admin would see — and could let in — another
  * club's people by name.
  */
+
+const sendPushToMembers = vi.fn();
+vi.mock('@/lib/push', () => ({
+  sendPushToMembers: (...args: unknown[]) => sendPushToMembers(...args),
+}));
 
 const FLAG = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 const A = 'club-a';
@@ -57,6 +66,7 @@ beforeEach(async () => {
 });
 afterEach(() => {
   delete process.env[FLAG];
+  sendPushToMembers.mockReset();
 });
 
 describe('access requests are the roster’s, not the deployment’s', () => {
@@ -89,5 +99,176 @@ describe('access requests are the roster’s, not the deployment’s', () => {
       memberId: beta.id, requestId: beta.requestId, decision: 'approve',
     }, { Cookie: asB }));
     expect(ok.status).toBe(200);
+  });
+});
+
+/**
+ * A SIGNED-OUT ask names its club through the phone's memory of it
+ * (lib/lastClub.ts; docs/plans/multi-group.md, "Ask to be let in", Grant
+ * 2026-11-04). Without it the name was looked up on BPM's roster: another
+ * club's member never reached their own admins, and a BPM member with the same
+ * name took the request, one blind tap from signing the wrong person in.
+ */
+describe('a signed-out ask carries the club this phone remembers', () => {
+  const BPM = 'bpm';
+
+  /** The same name, two different people: BPM's Lin and Alpha's Lin. */
+  function twoLins(): { bpmLin: string; alphaLin: string } {
+    seedGroup(BPM, { name: 'BPM Core', ownerMemberId: ADMIN_MEMBER_ID });
+    seedMember('Lin', { id: 'm-lin-bpm' });
+    seedMembership(BPM, 'm-lin-bpm', { name: 'Lin' });
+    seedMember('Lin', { id: 'm-lin-alpha' });
+    seedMembership(A, 'm-lin-alpha', { name: 'Lin' });
+    return { bpmLin: 'm-lin-bpm', alphaLin: 'm-lin-alpha' };
+  }
+
+  async function ask(name: string, club?: string): Promise<string> {
+    const res = await ASK(makeRequest('POST', 'http://x/api/members/access-request', club ? { name, club } : { name }));
+    expect(res.status).toBe(200);
+    return (await res.json()).secret;
+  }
+
+  async function poll(name: string, secret: string, club?: string): Promise<Response> {
+    return CLAIM(makeRequest('POST', 'http://x/api/members/access-request/claim', club ? { name, secret, club } : { name, secret }));
+  }
+
+  const requestsOf = (id: string) =>
+    (getStore()['members'] as Member[]).find((m) => m.id === id)!.accessRequests ?? [];
+
+  it("reaches the remembered club's admins and never BPM's", async () => {
+    const { bpmLin, alphaLin } = twoLins();
+    await ask('Lin', A);
+
+    expect(requestsOf(alphaLin)).toHaveLength(1);
+    expect(requestsOf(alphaLin)[0].groupId).toBe(A);
+    expect(requestsOf(bpmLin)).toHaveLength(0);
+
+    expect((await list(adminIn(A))).map((r) => r.memberId)).toEqual([alphaLin]);
+    expect(await list(adminIn(BPM))).toEqual([]);
+  });
+
+  it('a same-named BPM member cannot be approved for it, and the claim signs in to the club that asked', async () => {
+    const { bpmLin, alphaLin } = twoLins();
+    const secret = await ask('Lin', A);
+    const requestId = requestsOf(alphaLin)[0].id!;
+
+    // BPM's admin cannot reach Alpha's Lin, and has nobody of their own to approve.
+    const asBpm = adminIn(BPM);
+    const cross = await DECIDE(makeRequest('POST', 'http://x/api/admin/access-requests', {
+      memberId: alphaLin, requestId, decision: 'approve',
+    }, { Cookie: asBpm }));
+    expect(cross.status).toBe(404);
+    const wrongLin = await DECIDE(makeRequest('POST', 'http://x/api/admin/access-requests', {
+      memberId: bpmLin, requestId, decision: 'approve',
+    }, { Cookie: asBpm }));
+    expect(wrongLin.status).not.toBe(200);
+
+    // Alpha's admin approves; a poll that forgot the club finds nothing on BPM's roster.
+    const ok = await DECIDE(makeRequest('POST', 'http://x/api/admin/access-requests', {
+      memberId: alphaLin, requestId, decision: 'approve',
+    }, { Cookie: adminIn(A) }));
+    expect(ok.status).toBe(200);
+    expect(await (await poll('Lin', secret)).json()).toEqual({ status: 'none' });
+
+    const claimed = await poll('Lin', secret, A);
+    expect(await claimed.json()).toMatchObject({ status: 'approved', name: 'Lin' });
+    const cookie = claimed.headers.get('set-cookie') ?? '';
+    expect(cookie).toContain('member_session=');
+    const token = decodeURIComponent(cookie.split('member_session=')[1].split(';')[0]);
+    expect(readGroupClaim(token)).toBe(A);
+    const session = verifyMemberAuth(makeRequest('GET', 'http://x/api/auth/me', undefined, { Cookie: `member_session=${token}` }));
+    expect(session).toMatchObject({ memberId: alphaLin, groupId: A });
+  });
+
+  it('a phone that remembers nothing still asks BPM, as before', async () => {
+    const { bpmLin, alphaLin } = twoLins();
+    await ask('Lin');
+    expect(requestsOf(bpmLin)).toHaveLength(1);
+    expect(requestsOf(alphaLin)).toHaveLength(0);
+  });
+
+  it('a hint that is not a group id, or names a club without that person, stores nothing', async () => {
+    const { bpmLin, alphaLin } = twoLins();
+    await ask('Lin', B); // Beta has no Lin
+    const odd = await ASK(makeRequest('POST', 'http://x/api/members/access-request', { name: 'Lin', club: 'a:name:lin' }));
+    expect(odd.status).toBe(200);
+    // The odd hint is not a hint, so that ask fell back to BPM, exactly like no hint.
+    expect(requestsOf(alphaLin)).toHaveLength(0);
+    expect(requestsOf(bpmLin)).toHaveLength(1);
+  });
+
+  it('with groups off the hint is ignored', async () => {
+    seedMember('Lin', { id: 'm-lin-alpha' });
+    seedMembership(A, 'm-lin-alpha', { name: 'Lin' });
+    delete process.env[FLAG];
+    await ask('Lin', A);
+    // Flag off every request is BPM's, whatever the body says.
+    expect(requestsOf('m-lin-alpha').map((r) => r.groupId)).toEqual([BPM]);
+  });
+});
+
+/**
+ * Who hears "Someone can't sign in". The request is resolved in ONE club, and
+ * only that club's admins can see or decide it, so only they are pushed. The
+ * push used to read every active `Member` with `role: 'admin'` across the
+ * deployment: with groups on that told another club's admin this person's
+ * name, and missed an organiser whose rank lives on the membership alone.
+ */
+describe('the "can’t sign in" push goes to the asking club’s admins', () => {
+  /** A person on `groupId`'s roster with the given rank. */
+  function staff(name: string, groupId: string, role: 'owner' | 'admin', memberRole: 'admin' | 'member') {
+    const id = `staff-${name.toLowerCase()}-${groupId}`;
+    seedMember(name, { id, role: memberRole });
+    seedMembership(groupId, id, { name, role });
+    return id;
+  }
+
+  function askFrom(name: string, cookie?: string) {
+    return ASK(makeRequest('POST', 'http://x/api/members/access-request', { name }, cookie ? { Cookie: cookie } : {}));
+  }
+
+  function pushedIds(): string[] {
+    expect(sendPushToMembers).toHaveBeenCalledTimes(1);
+    return [...(sendPushToMembers.mock.calls[0][0] as string[])].sort();
+  }
+
+  it('pushes the club’s organiser and admin, never a person-level admin on no roster', async () => {
+    // The seeded test admin carries `Member.role: 'admin'` and sits on NO
+    // roster: the leftover the old deployment-wide query picked up.
+    const organiser = staff('Olive', A, 'owner', 'member');
+    const admin = staff('Ada', A, 'admin', 'member');
+    const otherClub = staff('Bea', B, 'owner', 'admin');
+    asking('Lin', A);
+    // A cookie claiming club A is how this request comes to be resolved
+    // there; a phone with no cookie at all resolves BPM.
+    const lin = askFrom('Lin', `member_session=${memberCookieValue('Olive', organiser, undefined, A)}`);
+    expect((await lin).status).toBe(200);
+    const ids = pushedIds();
+    expect(ids).toEqual([admin, organiser].sort());
+    expect(ids).not.toContain(ADMIN_MEMBER_ID);
+    expect(ids).not.toContain(otherClub);
+  });
+
+  it('a request resolved in the other club pushes that club’s staff and nobody here', async () => {
+    const here = staff('Olive', A, 'owner', 'admin');
+    const there = staff('Bea', B, 'owner', 'member');
+    const asker = asking('Zed', B);
+    const res = await askFrom('Zed', `member_session=${memberCookieValue('Bea', there, undefined, B)}`);
+    expect(res.status).toBe(200);
+    const ids = pushedIds();
+    expect(ids).toEqual([there]);
+    expect(ids).not.toContain(here);
+    expect(ids).not.toContain(asker.id);
+    const payload = sendPushToMembers.mock.calls[0][1] as { body: string; tag: string };
+    expect(payload.body).toBe('Zed is asking to be let in.');
+    expect(payload.tag).toBe(`access-${asker.id}`);
+  });
+
+  it('pushes nobody when the club has no admin, rather than reaching for another club’s', async () => {
+    staff('Bea', B, 'owner', 'admin');
+    const member = asking('Lin', A);
+    const res = await askFrom('Lin', `member_session=${memberCookieValue('Lin', member.id, undefined, A)}`);
+    expect(res.status).toBe(200);
+    expect(sendPushToMembers).not.toHaveBeenCalled();
   });
 });

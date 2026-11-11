@@ -171,3 +171,49 @@ describe('the Bench, for the people who string', () => {
     expect(screen.queryByRole('button', { name: R.bench })).toBeNull();
   });
 });
+
+/**
+ * An admin by ROLE whose admin COOKIE has lapsed (Grant, 2026-11-06: "the add
+ * a job stringing job save button does not work"). The shell still reads them
+ * as an admin, so the bench used to open with every read and save behind it
+ * refused: no job list, nobody in the player search, "Save job" never on.
+ */
+describe('the Bench, for an admin whose admin sign-in has lapsed', () => {
+  it('asks for the PIN first and reads nothing from the bench', async () => {
+    const urls = stubFetch();
+    wrap(<StringingTab isAdmin adminSession={false} view="bench" onViewChange={() => {}} />);
+    expect(await screen.findByText(R.benchSignIn)).toBeDefined();
+    expect(screen.queryByText('J-0042')).toBeNull();
+    expect(screen.queryByRole('button', { name: /add job/i })).toBeNull();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(urls.some((u) => u.includes('/stringing/jobs') && !u.includes('view='))).toBe(false);
+  });
+
+  it('opens the bench once the sign-in lands, and tells the shell', async () => {
+    stubFetch();
+    const onAdminSignedIn = vi.fn();
+    const { rerender } = wrap(
+      <StringingTab isAdmin adminSession={false} onAdminSignedIn={onAdminSignedIn} view="bench" onViewChange={() => {}} />,
+    );
+    fireEvent.change(await screen.findByLabelText(enMessages.pages.admin.nameLabel), { target: { value: 'Grant' } });
+    const pin = screen.getByLabelText(enMessages.pages.admin.pinLabel);
+    fireEvent.change(pin, { target: { value: '1234' } });
+    fireEvent.click(screen.getByRole('button', { name: enMessages.pages.admin.signInButton }));
+    await waitFor(() => expect(onAdminSignedIn).toHaveBeenCalled());
+    // The shell re-checks and hands the live cookie back down.
+    rerender(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <StringingTab isAdmin adminSession onAdminSignedIn={onAdminSignedIn} view="bench" onViewChange={() => {}} />
+      </NextIntlClientProvider>,
+    );
+    expect(await screen.findByText('J-0042')).toBeDefined();
+  });
+
+  it('holds its place while the shell is still asking', async () => {
+    stubFetch();
+    wrap(<StringingTab isAdmin adminSession={null} view="bench" onViewChange={() => {}} />);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByText(R.benchSignIn)).toBeNull();
+    expect(screen.queryByText('J-0042')).toBeNull();
+  });
+});

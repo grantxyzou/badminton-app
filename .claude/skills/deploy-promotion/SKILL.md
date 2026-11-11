@@ -5,7 +5,9 @@ description: Deploy or roll back the BPM badminton app. Use when shipping to pro
 
 # Deploying BPM
 
-**There is one deployment.** `main` auto-deploys to production on every push via
+**There is one deployment.** `main` deploys to production three times a day
+(only when app files changed since the live build) or at once from "Run
+workflow" (since 2026-11-05; a merge is not live until then), via
 `.github/workflows/deploy-next.yml`, which targets the `vnext-badminton-app` Azure
 app service, reachable at **https://bpm.grantzou.com/bpm**.
 
@@ -35,8 +37,9 @@ the repo; the workflow's `APP_ORIGIN` proves only `bpm.grantzou.com`.)
 
 ## Shipping
 
-Merge to `main`. That's it — the push triggers `deploy-next.yml`, which runs typecheck,
-the full test suite and the build before deploying. A failing test cannot reach production.
+Merge to `main`. The next scheduled run of `deploy-next.yml` (three a day) ships it, or
+"Run workflow" ships `main` at once. Either way the run does the typecheck, the full test
+suite and the build before deploying, so a failing test cannot reach production.
 
 There is no promotion step and no tag to cut. `bpm-stable-v*` tags exist in history and
 are a **historical record only**; the last one (`bpm-stable-v1.8`, `b7c77e0`) points at a
@@ -45,16 +48,42 @@ dispatch anything against them.
 
 ## Rolling back
 
-Re-dispatch `deploy-next.yml` at an older commit:
+Redeploy an older commit. **`gh workflow run … --ref <sha>` does not work**: a manual run
+takes a branch or tag NAME, never a commit SHA (this page said otherwise until
+2026-11-05). Two ways that do:
 
-```
-gh workflow run deploy-next.yml --ref <good-sha>
-```
+1. **Re-run the good commit's own deploy** (fastest; GitHub allows a re-run for 30 days).
+   A re-run builds and deploys exactly the commit that run was for:
 
-It has `workflow_dispatch`, so production can be redeployed at any commit. This does not
-depend on the deleted stable service in any way. Deploys run one at a time
+   ```
+   gh run list --workflow=deploy-next.yml --branch main --limit 20
+   ```
+
+   ```
+   gh run rerun <run-id-of-the-good-commit>
+   ```
+
+2. **Older than 30 days**: put the commit on a throwaway branch and start the deploy on it
+   (`workflow_dispatch`; the deploy signs in with a publish profile, not OIDC, so a branch
+   other than `main` is accepted), then delete the branch:
+
+   ```
+   git push origin <good-sha>:refs/heads/rollback-<good-sha>
+   ```
+
+   ```
+   gh workflow run deploy-next.yml --ref rollback-<good-sha>
+   ```
+
+   ```
+   git push origin --delete rollback-<good-sha>
+   ```
+
+Then confirm with `node scripts/smoke-prod.mjs --sha <full good sha>`. This does not depend
+on the deleted stable service in any way. Deploys run one at a time
 (`concurrency: deploy-production`, `cancel-in-progress: false`), so a rollback queues
-behind a deploy already in flight, and the next merge to `main` deploys `main` over it.
+behind a deploy already in flight. The next scheduled run compares `main` with the live
+build and deploys `main` over the rollback, so fix or revert `main` before that run.
 
 For data rollback: Cosmos point-in-time restore. The account is in continuous 7-day
 backup mode† (the cost export of 2026-10-14 carries a `PITR · Cont 7D Bkup` meter for

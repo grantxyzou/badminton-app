@@ -1,6 +1,7 @@
 {
   "home": {
     "weekLoadError": "Couldn't load this week's session.",
+    "updating": "Updating…",
     "retry": "Try again",
       "firstSession": {
       "title": "No session yet",
@@ -13,9 +14,9 @@
         "account": "Your account"
       },
     "signInSetup": {
-      "noneTitle": "Set a PIN so you can get back in",
-      "noneBody": "You're signed in on this phone, but your account has no PIN, password or Google. Without one, you'll need an admin to let you in again next time.",
-      "noneAction": "Set a PIN"
+      "noneTitle": "Keep your account",
+      "noneBody": "You're signed in on this phone, but there's nothing to sign in with next time. Add Apple, Google or an email and password.",
+      "noneAction": "Choose how to sign in"
     },
     "stringing": {
       "cancelError": "Couldn't cancel that. Try again.",
@@ -32,6 +33,16 @@
       "sentLabel": "Stringing",
       "sentBody": "Drop off the racket and get notified of the progress.",
       "sentTitle": "Drop off your racket",
+      "story": {
+        "open": "Opening a fresh set of {string}",
+        "onto": "Onto the stringing machine",
+        "stringing": "Stringing at {tension} lb, mains then crosses",
+        "off": "Off the machine",
+        "ready": "Ready to pick up. We'll let you know.",
+        "pill": "Ready · {string} at {tension} lb",
+        "lb": "{tension} lb",
+        "again": "Play again"
+      },
       "back": "Back",
       "stepOf": "{step} of {total}",
       "tensionHint": "Select the tension or chat with your stringer for recommendations.",
@@ -40,6 +51,7 @@
       "notPriced": "Not priced yet",
       "quoted": "Quoted",
       "registers": {
+        "benchSignIn": "Your admin sign-in has ended on this device. Sign in with your name and PIN to use the bench.",
         "racket": "Submit request",
         "strings": "Pricing details",
         "bench": "Stringing jobs"
@@ -297,6 +309,16 @@
       "nameRequired": "Add your name to sign up",
       "pinHint": "Required. Use this PIN to recover access if you change phones.",
       "genericFailure": "That didn't go through — give it another try.",
+      "errors": {
+        "notOpen": "Sign-ups aren't open yet — check back when the organiser opens them.",
+        "deadlinePassed": "Sign-ups for this session have closed.",
+        "alreadyIn": "You're already on the list for this session.",
+        "full": "The session filled up just now — you can join the waitlist instead.",
+        "settled": "This session's bill has been finalised, so the list can't change.",
+        "noSession": "There's no session to sign up for yet.",
+        "tooMany": "Give it a minute, then try again.",
+        "signedOut": "Your sign-in has expired — sign in again to sign up."
+      },
       "waitlistFailure": "That didn't go through — try the waitlist again.",
       "signingUpAs": "Signing up as {name}",
       "joining": "Joining…",
@@ -351,7 +373,10 @@
       "heldTitle": "Settle up to grab your spot",
       "heldBody": "You owe for a couple of past sessions. You'll move into a spot as soon as your e-transfer lands, if there's still room.",
       "waitlistPositionLabel": "Position #{position} of {total}",
-      "waitlistAutoMove": "You'll be moved up automatically."
+      "waitlistAutoMove": "You'll be moved up automatically.",
+      "membersFirstTitle": "Members get first pick until {when}",
+      "membersFirstBody": "You\u2019re on the waitlist. If a spot is still free then, you\u2019re in.",
+      "membersFirstNote": "Members get first pick until {when}. Anyone else joins the waitlist until then."
     },
     "cost": {
       "label": "Estimated cost",
@@ -386,23 +411,28 @@
     },
     "guest": {
       "bring": "Bring a guest",
+      "bringAnother": "Bring another guest",
       "namePlaceholder": "Their first name",
       "add": "Add",
       "adding": "Adding\u2026",
       "cancel": "Cancel",
       "coming": "{name} is coming with you",
       "waiting": "{name} is on the waitlist",
+      "waitingForMembers": "{name} waits until {when}, when members\u2019 first pick ends",
       "note": "Their share goes on your balance.",
       "remove": "Remove",
       "removeAnyway": "Remove anyway",
       "invalidName": "Use a first name, up to 20 letters.",
       "addFailed": "Couldn\u2019t add your guest. Try again.",
       "removeFailed": "Couldn\u2019t remove your guest. Try again.",
-      "rosterName": "{guest} ({host}\u2019s guest)",
+      "removeNamed": "Remove {name}",
+      "onRoster": "{name} is on the club\u2019s list already \u2014 ask them to sign up themselves.",
+      "rosterName": "{guest} ({host})",
       "cancelNote": "{name} will be taken off too."
     },
     "balance": {
         "guestLine": "{name}, your guest",
+        "details": "See details",
         "groupSessions": "Badminton",
         "groupStringing": "Stringing",
       "title": "Balance",
@@ -449,16 +479,115 @@
     "profile": "Profile"
   },
   "profile": {
-    "avatar": {
-      "title": "Your picture",
-      "myRacket": "My racket",
-      "shuffle": "Shuffle",
-      "initial": "My initial",
-      "noRacket": "Add your racket under Stats → Gear to use it here.",
+    "support": {
+      "title": "Support",
+      "back": "Profile",
+      "guidesGroup": "How to use %APP_SHORT%",
+      "questionsGroup": "Common questions",
+      "questions": [
+        {
+          "q": "I can’t sign up this week.",
+          "a": "Sign-ups open when your organiser opens them. If the card says it’s full, join the waitlist: you move up automatically."
+        },
+        {
+          "q": "My payment isn’t showing.",
+          "a": "An e-transfer is marked paid when your organiser receives it. Tap “I’ve sent it” on Home so they know to look."
+        },
+        {
+          "q": "I got a new phone.",
+          "a": "Sign in the way you set up under Profile → How you sign in: Apple, Google, or your email and password."
+        }
+      ],
+      "contactGroup": "Get in touch",
+      "report": "Report a problem",
+      "contact": "Contact the people who run %APP_SHORT%",
+      "legalGroup": "Privacy",
+      "privacy": "Privacy policy",
+      "deleteAccount": "Deleting your account"
+    },
+    "contactEmail": {
+      "title": "Contact email",
+      "back": "Edit profile",
+      "question": "How can {club} reach you?",
+      "body": "An email your club's organisers can use to reach you, about a session, a payment or the club.",
+      "label": "Email",
+      "note": "Only your club's organisers and admins see it. It isn't used to sign in.",
       "save": "Save",
+      "saving": "Saving…",
+      "remove": "Remove this email",
+      "invalid": "That doesn't look like an email address.",
+      "rateLimited": "That's a few changes already. Try again in an hour.",
+      "signedOut": "Sign in again, then change your email.",
+      "failed": "Couldn't save that. Try again.",
+      "theClub": "your club"
+    },
+    "nickname": {
+      "title": "Your name",
+      "back": "Profile",
+      "question": "What should {club} call you?",
+      "body": "It's the name on the sign-up list, kudos and receipts. Use the one people call you at the court.",
+      "label": "Name",
+      "note": "Only people in {club} see it. Each name is used once in the club.",
+      "save": "Save",
+      "saving": "Saving…",
+      "taken": "Someone in {club} already goes by {name}. Try adding a last initial.",
+      "invalid": "Type a name.",
+      "rateLimited": "That's a few changes already. Try again in an hour.",
+      "signedOut": "Sign in again, then change your name.",
+      "failed": "Couldn't save that. Try again.",
+      "theClub": "the club"
+    },
+    "waysToSignIn": {
+      "back": "Profile",
+      "moreGroup": "PIN and recovery"
+    },
+    "editProfile": {
+      "title": "Edit profile",
+      "back": "Profile",
+      "open": "Edit profile",
+      "openLabel": "{name}, edit profile",
+      "yours": "Yours",
+      "birdies": "Birdies",
+      "birdie": {
+        "green": "Green birdie",
+        "yellow": "Yellow birdie",
+        "pink": "Pink birdie",
+        "blue": "Blue birdie",
+        "purple": "Purple birdie",
+        "orange": "Orange birdie"
+      },
+      "initial": "Your initial",
+      "myRacket": "My racket",
+      "currentPicture": "Your current picture",
+      "noRacket": "Add your racket under Stats → Gear to wear it here.",
+      "saved": "Picture saved",
       "signIn": "Sign in again to change your picture.",
-      "failed": "Couldn't save that. Give it another go.",
-      "change": "Change your picture"
+      "failed": "Couldn't save your picture. Try again.",
+      "thisClub": "Your club",
+      "displayName": "Display name",
+      "role": "Account role",
+      "rank": {
+        "member": "Player",
+        "admin": "Admin",
+        "owner": "Organiser"
+      },
+      "can": {
+        "member": ["Sign up for sessions", "Pay what you owe", "Ask for a restring"],
+        "admin": ["Run sessions and open sign-ups", "Mark payments and settle the bill", "Add, rename and remove members"],
+        "owner": ["Run sessions and open sign-ups", "Mark payments and settle the bill", "Add, rename and remove members", "Give out ranks and gift cards"]
+      },
+      "memberSince": "Member since",
+      "deleteAccount": "Delete my account",
+      "deleteNote": "Removes you from every club. Your games and payments stay in the club's records under \"Former member\".",
+      "contactGroup": "Contact information",
+      "signInEmail": "Sign-in email",
+      "signInEmailNote": "Used to sign in",
+      "contactEmail": "Contact email",
+      "addContactEmail": "Add an email"
+    },
+    "identity": {
+      "rankOwner": "Organiser",
+      "rankAdmin": "Admin"
     },
     "auth": {
       "retry": "Try again",
@@ -659,51 +788,133 @@
     "adminToolsButton": "Admin tools →",
     "admin": {
       "checkFailed": "Couldn't check",
-      "group": "Admin",
       "console": "Admin tools",
       "needYou": "{count} need you",
       "allClear": "All clear"
     },
-    "redeem": {
-      "title": "Redeem a gift card",
-      "help": "Enter the code on your gift card. It becomes credit you can use for sessions.",
-      "placeholder": "XXXX-XXXX",
-      "submit": "Redeem",
-      "success": "{amount} added to your credit.",
-      "notFound": "That code didn\u2019t work. Check it and try again.",
-      "rateLimited": "Let's give it a rest for a bit, then try again.",
-      "error": "Couldn\u2019t redeem right now \u2014 try again.",
-      "close": "Close"
+    "balance": {
+      "title": "Account balance",
+      "back": "Profile",
+      "youOwe": "You owe · {count, plural, one {# item} other {# items}}",
+      "paidUp": "You’re all paid up",
+      "credit": "Credit",
+      "loadError": "Couldn’t load your balance.",
+      "retry": "Try again",
+      "signInAgain": "Sign in again to see what you owe.",
+      "line": {
+        "session": "{day} session",
+        "guest": "{day} · {name}, your guest",
+        "restring": "{racket} restring",
+        "settled": "Settled {date} · {days, plural, =0 {today} one {# day ago} other {# days ago}}",
+        "settledNoDate": "Settled",
+        "estimate": "Estimate until the bill is settled",
+        "ready": "Ready {date}"
+      },
+      "payWithCredit": "Pay {amount} with credit",
+      "paidWithCredit": "Paid {amount} with credit",
+      "creditError": "Couldn’t use your credit. Try again.",
+      "payByEtransfer": "Pay {amount} by e-transfer",
+      "etransfer": {
+        "title": "Pay by e-transfer",
+        "close": "Close",
+        "body": "Send {amount} by Interac e-transfer to:",
+        "copy": "Copy email",
+        "copied": "Copied",
+        "sent": "I’ve sent it",
+        "sentDone": "Thanks. It’ll be marked paid when the e-transfer arrives.",
+        "sentError": "Couldn’t save that. Try again."
+      },
+      "paidGroup": "What you’ve paid",
+      "chart": {
+        "window": "Last 6 months",
+        "legend": "Series",
+        "loadError": "Couldn’t load what you’ve paid.",
+        "empty": "Nothing paid in the last 6 months.",
+        "nothingThisMonth": "Nothing paid this month.",
+        "series": {
+          "sessions": "Sessions",
+          "stringing": "Stringing",
+          "other": "Other"
+        },
+        "sessionsNights": "Sessions · {count, plural, one {# night} other {# nights}}",
+        "guests": "Guest · {names}",
+        "monthLabel": "{month}: {total} ({parts})",
+        "monthLabelNone": "{month}: nothing paid"
+      }
     },
-    "gift": {
+    "giftCards": {
+      "title": "Gift cards & credit",
+      "back": "Profile",
+      "yourCredit": "Your credit",
+      "creditNote": "Credit pays a whole session once its bill is settled.",
+      "loadError": "Couldn’t load your credit. Pull to refresh.",
+      "redeemGroup": "Redeem a gift card",
+      "codeLabel": "Gift card code",
+      "placeholder": "XXXX-XXXX",
+      "redeem": "Redeem",
+      "added": "Added {amount} to your credit",
+      "error": {
+        "notFound": "That code didn’t work. Check it and try again.",
+        "rateLimited": "Let’s give it a rest for a bit, then try again.",
+        "failed": "Couldn’t redeem right now. Try again."
+      },
+      "historyGroup": "History",
+      "empty": "No credit yet. A gift card adds it here.",
+      "history": {
+        "gift": "Gift card",
+        "grant": "Added by the club",
+        "session": "Paid the {date} session",
+        "stringing": "Paid for stringing",
+        "refund": "Returned to your credit",
+        "other": "Credit"
+      }
+    },
+    "giveGift": {
       "title": "Give a gift card",
-      "help": "Make a gift card worth any amount. Whoever you give the code to redeems it in Profile \u2192 Redeem a gift card, and it becomes their credit for sessions and stringing.",
-      "amount": "Amount in dollars",
-      "note": "Note",
-      "notePlaceholder": "Note (raffle, thank-you\u2026)",
-      "create": "Create gift card",
-      "needAmount": "Enter an amount.",
-      "rateLimited": "That\u2019s enough cards for today \u2014 try again tomorrow.",
-      "error": "Couldn\u2019t create a gift card \u2014 try again.",
-      "minted": "{amount} gift card \u2014 copy it now, it won\u2019t be shown again:",
-      "shareText": "Here\u2019s a {amount} %APP% gift card: {code}\nRedeem it in the app: Profile \u2192 Redeem a gift card.",
-      "share": "Share",
-      "copied": "Copied",
+      "back": "Profile",
+      "amountGroup": "Amount",
+      "noteLabel": "Note on the card (optional)",
+      "notePlaceholder": "Raffle, thank-you…",
+      "make": "Make a {amount} gift card",
+      "booksNote": "It’s added to the club’s books as money owed to whoever redeems it.",
+      "error": {
+        "forbidden": "Only organisers can make gift cards.",
+        "rateLimited": "That’s enough cards for today. Try again tomorrow.",
+        "failed": "Couldn’t make a gift card. Try again."
+      },
+      "thisClub": "Club",
+      "mintedTitle": "{club} gift card · {amount}",
+      "codeLabel": "Gift card code",
+      "onceNote": "Works once. Whoever redeems it gets the credit. This is the only time the code is shown, so copy or share it now.",
       "copy": "Copy code",
+      "copied": "Copied",
+      "share": "Share",
+      "another": "Make another",
+      "shareText": "Here’s a {amount} %APP% gift card: {code}\nRedeem it in the app: Profile → Gift cards & credit.",
+      "givenGroup": "Cards you gave",
+      "empty": "No cards yet.",
+      "listError": "Couldn’t load your cards.",
       "redeemed": "Redeemed {date}",
-      "unredeemed": "Made {date}, not redeemed",
-      "listError": "Couldn\u2019t load your cards.",
-      "close": "Close"
+      "notRedeemed": "Not redeemed yet",
+      "given": "Given {date}",
+      "leaveTitle": "Leave without the code?",
+      "leaveBody": "You haven’t copied this code. Leave anyway? It can’t be shown again.",
+      "stay": "Stay",
+      "leave": "Leave anyway"
     },
     "settings": {
+      "clubName": "Your name in the club",
       "helpGroup": "Help",
       "privacyGroup": "Privacy",
-      "title": "Account",
-      "appGroup": "App",
       "newPin": "New PIN",
       "updatePin": "Update PIN",
       "recoveryCode": "Have a recovery code?",
-      "redeemGift": "Redeem a gift card",
+      "giftCards": "Gift cards & credit",
+      "accountBalance": "Account balance",
+      "owedMeta": "{amount} owed",
+      "moneyGroup": "Money",
+      "clubGroup": "Club",
+      "settingsGroup": "Settings",
       "giveGift": "Give a gift card",
       "statsPrivacy": "Stats & privacy",
       "statsPrivacyOn": "On",
@@ -712,6 +923,7 @@
       "releaseNotes": "What's new",
       "logout": "Log out",
       "reportProblem": "Report a problem",
+      "support": "Support",
       "notifications": "Notifications",
       "install": "Add to Home Screen",
       "privacyPolicy": "Privacy policy"
@@ -753,7 +965,12 @@
       "pageNoAppBody": "If the app is installed, go back to the web app and type the six-digit code instead. If it isn't, your account is right here on the web — nothing has changed.",
       "pageNoCode": "There's no code in this link.",
       "pageFailed": "That link didn't work — it may have expired or already been used. Get a fresh one from the web app.",
-      "pageHome": "Back to %APP_SHORT%"
+      "pageHome": "Back to %APP_SHORT%",
+      "pageConfirm": "Finish moving to the app?",
+      "pageConfirmBody": "Only continue if you made this link yourself, on your own phone, in the last few minutes. A link someone else sent you would sign this app in as them.",
+      "pageReplaces": "{name} is signed in here now and will be signed out.",
+      "pageConfirmCta": "Sign me in",
+      "pageCancel": "Not me — go back"
     },
     "deleteAccount": {
       "link": "Delete account",
@@ -826,28 +1043,63 @@
     "announcementTitle": "New announcement",
     "announcementBodyEmpty": "Read it on Home.",
     "settleUpTitle": "Time to settle up",
-    "settleUpBody": "{count, plural, one {You've got a session to settle up.} other {You've got # sessions to settle up.}}"
+    "settleUpBody": "{count, plural, one {You've got a session to settle up.} other {You've got # sessions to settle up.}}",
+    "memberJoinedTitle": "Someone new joined",
+    "memberJoinedBody": "{name} has joined {club}. Say hi at the next session.",
+    "memberJoinedBodyNoClub": "{name} has joined. Say hi at the next session.",
+    "someoneNew": "Someone new"
   },
   "report": {
     "title": "Report a problem",
-    "help": "Something not working? Tell me what happened and I'll take a look.",
+    "back": "Profile",
+    "help": "Something not working? Tell us what happened and we’ll take a look.",
+    "chipsLabel": "Pick one to start, then add what happened",
+    "chips": {
+      "signup": {
+        "label": "Couldn’t sign up",
+        "starter": "I tried to sign up for this week’s session and "
+      },
+      "money": {
+        "label": "Amount looks wrong",
+        "starter": "The amount I owe looks wrong. It shows $ but I expected $ because "
+      },
+      "payment": {
+        "label": "Payment not showing",
+        "starter": "I sent an e-transfer on [date] but it still shows as owing. "
+      },
+      "stringing": {
+        "label": "Stringing status",
+        "starter": "My racket’s stringing status is wrong. It says  but "
+      },
+      "performance": {
+        "label": "Slow or stuck",
+        "starter": "The app was slow or stuck on the  screen. "
+      },
+      "other": {
+        "label": "Something else",
+        "starter": ""
+      }
+    },
     "placeholder": "What went wrong?",
+    "counter": "{count}/{max}",
+    "whereNote": "Say which screen it happened on, if you can.",
     "send": "Send report",
     "sending": "Sending…",
-    "success": "Thanks — got it. I'll look into it.",
-    "errorRequired": "Please describe what happened.",
-    "errorServer": "Couldn't send — please try again.",
-    "offline": "You're offline — reconnect to send.",
-    "close": "Close"
+    "success": "Thanks. We’ll look at it soon.",
+    "done": "Done",
+    "errorServer": "Couldn’t send. Try again.",
+    "errorRateLimited": "That’s a lot of reports for one hour. Try again a little later.",
+    "offline": "You’re offline. Reconnect to send.",
+    "replaceTitle": "Replace what you wrote?",
+    "replaceBody": "This starter takes the place of the words in the box.",
+    "replace": "Replace",
+    "keep": "Keep mine"
   },
   "install": {
     "title": "Add %APP_SHORT% to your home screen",
     "intro": "Save %APP_SHORT% to your home screen and it opens full-screen, like a normal app.",
     "done": "Got it",
     "close": "Close",
-    "bannerTitle": "Add %APP_SHORT% to your home screen",
-    "bannerCta": "Show me how →",
-    "dismiss": "Dismiss",
     "ios": {
       "step1": "Tap the Share button in Safari's toolbar.",
       "step2": "Scroll down and tap \"Add to Home Screen\".",
@@ -1004,15 +1256,21 @@
         "removeRacket": "Delete this racket",
         "removeString": "Delete this string",
         "cancel": "Cancel",
-        "eyebrow": "Set-up",
+        "eyebrow": "Equipment",
         "progress": "{filled} of 2",
         "tapToName": "Tap to name it",
         "mainRacket": "Main racket",
         "spare": "Spare",
         "swapIn": "Swap in",
+        "fitting": "Racket and tension fitting",
+        "spareRackets": "Spare rackets",
+        "spareStrung": "Strung with {string}",
+        "spareStrungLb": "Strung with {string} at {lb} lb",
+        "spareUnstrung": "No string on it yet",
+        "useAsMain": "Make it your main racket",
+        "spareEyebrow": "Spare racket",
         "arriveHint": "Two lines is the whole card. Fill them and the group tally starts working — and we can size your tension to the frame instead of your level.",
         "othersPlay": "{count} others play it",
-        "othersString": "{count, plural, one {# other in this group uses this string} other {# others in this group use this string}}",
         "pairSuggestion": "For this frame we'd pair {string} at {lb} lb",
         "pairSuggestionNoLb": "For this frame we'd pair {string}",
         "addLb": "+ String tension",
@@ -2033,6 +2291,12 @@
         "theySee": "{name} sees",
         "theyFallback": "The player",
         "saving": "Saving…",
+        "missing": {
+          "who": "Pick whose racket it is first, under Whose racket? at the top.",
+          "racket": "Add the racket first.",
+          "string": "Add the string first.",
+          "price": "Fix the price first, or leave it blank."
+        },
         "saveAndTell": "Save job",
         "error": {
           "invalid_date": "Pick a date for when it'll be ready.",
@@ -2060,6 +2324,21 @@
       "close": "Close"
     }
   },
+  "keepAccount": {
+    "title": "Keep your account",
+    "body": "You're in, {name}! Pick how you'll sign in next time, so you never have to ask again.",
+    "bodyNoName": "Pick how you'll sign in next time, so you never have to ask again.",
+    "or": "or use your email",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Done. Next time, log in with {email} and your password.",
+    "savedMailed": "Done. Next time, log in with {email} and your password. We sent a link there to confirm it.",
+    "failed": "Couldn't save that. Try again.",
+    "passwordExists": "This account already has a password. Use Forgot password on the log-in page to change it.",
+    "notNow": "Not now",
+    "done": "Done",
+    "back": "Back"
+  },
   "recovery": {
     "sheetTitle": "Sign in",
     "pinPathTitle": "Use my PIN",
@@ -2068,6 +2347,7 @@
     "askTitle": "Can't sign in?",
     "askIntro": "An admin can let you in from their phone. They'll get a notification \u2014 usually a minute if they're at the session.",
     "askNameLabel": "Your name",
+    "askOtherClub": "Play with a different club? Ask its organiser for a recovery code instead.",
     "askCta": "Ask to be let in",
     "askSending": "Asking\u2026",
     "askWaiting": "Request sent. Keep this open \u2014 you'll be signed in as soon as an admin approves.",
@@ -2076,6 +2356,17 @@
     "askError": "Couldn't send that \u2014 try again.",
     "askRateLimited": "That's a few tries already. Give it an hour, or find an admin in person.",
     "askAgain": "Ask again",
+    "claimTitle": "Join {club}",
+    "joinTitle": "Join",
+    "claimIntro": "Hey, glad you're here! What's your name and email?",
+    "claimNameLabel": "First and last name",
+    "claimNameNeedsLast": "Add your last name too.",
+    "claimEmailLabel": "Email",
+    "claimEmailInvalid": "That email doesn't look right.",
+    "claimEmailNote": "Don't worry, we don't have the bandwidth to send you junk mail.",
+    "claimCta": "Ask to join",
+    "claimWaiting": "Sent! Keep this open. You're in as soon as an organiser says yes.",
+    "claimExpired": "That request expired. Ask again, or find an organiser at the session.",
     "noPinYet": "You haven't set a PIN yet \u2014 that's why this isn't working.",
     "offerPinTitle": "Set a PIN?",
     "offerPinBody": "A PIN lets you sign in yourself next time, without asking.",
@@ -2137,7 +2428,7 @@
     "noClub": {
       "yourClubs": "You're not in a group on this device. Pick one of yours, or start another.",
       "create": "Create a group",
-      "join": "Join with a link or code",
+      "join": "I have an invite",
       "signOut": "Sign out"
     },
     "tagline": "Weekly badminton with your group.",
@@ -2149,6 +2440,7 @@
       "body": "Welcome back. Log in to see this week's session.",
       "or": "or",
       "playHereAlready": "I play here already",
+      "claimLinkDead": "That club link has been replaced. Ask your organiser for the new one.",
       "forgotPassword": "Forgot password?",
       "useEmail": "Use email instead",
       "usePin": "Use name and PIN instead",
@@ -2156,12 +2448,12 @@
     },
     "signup": {
       "title": "Sign up",
-      "body": "%APP_SHORT% is a badminton group management app, currently in testing and invite-only. Paste the link you were sent, or type your code.",
-      "codeLabel": "Invite link or code",
-      "codePlaceholder": "Link or 8-character code",
+      "body": "%APP_SHORT% is a badminton group management app, currently in testing and invite-only. Tap the invite link you were sent and it takes you straight in. Got a code instead? Type it below.",
+      "codeLabel": "Invite code",
+      "codePlaceholder": "8-character code",
       "continue": "Continue",
       "checking": "Checking…",
-      "notFound": "That link or code doesn't work. Ask whoever invited you for a fresh one.",
+      "notFound": "That code doesn't work. Ask whoever invited you for a fresh one.",
       "failed": "Couldn't check that. Try again.",
       "noInvite": "No invite? Ask someone in the group to send you the link.",
       "createInstead": "No invite? Start your own group",
@@ -2176,8 +2468,8 @@
     "lead": "Badminton nights, organised. Start your own group or join one you were invited to.",
     "createDoor": "Create a group",
     "createDoorHint": "You organise. Set the courts, the cost and who's in.",
-    "joinDoor": "Join with a link or code",
-    "joinDoorHint": "Someone sent you an invite.",
+    "joinDoor": "I have an invite",
+    "joinDoorHint": "Tap the link you were sent, or type its code.",
     "existingDoor": "I already have an account",
     "existingDoorHint": "Sign in with your name, email or Google.",
     "create": {
@@ -2214,9 +2506,9 @@
       "crumb": "Get started",
       "backLabel": "Back to the start",
       "title": "Join a group",
-      "subtitle": "Paste the link you were sent, or type the code.",
-      "codeLabel": "Invite link or code",
-      "codePlaceholder": "Link or 8-character code",
+      "subtitle": "Tap the invite link you were sent and it takes you straight in. Got a code instead? Type it below.",
+      "codeLabel": "Invite code",
+      "codePlaceholder": "8-character code",
       "check": "Continue",
       "checking": "Checking…",
       "foundTitle": "Join {name}?",
@@ -2226,7 +2518,7 @@
       "confirm": "Join {name}",
       "joining": "Joining…",
       "joined": "You're in",
-      "notFound": "That link or code doesn't work. Ask whoever invited you for a fresh one.",
+      "notFound": "That code doesn't work. Ask whoever invited you for a fresh one.",
       "nameTaken": "Someone in that group already goes by that name. Pick a different one.",
       "failed": "Couldn't join. Try again."
     }
@@ -2275,19 +2567,314 @@
       "showAria": "Show invite {code}",
       "revoke": "Revoke",
       "revokeFailed": "Couldn't revoke that one. It still works.",
+      "qrHint": "Hand them your phone: their camera opens the invite. It works once.",
+      "qrAria": "QR code for the invite link",
+      "qrUsed": "That invite has been used. They're in.",
+      "qrNext": "Next person",
+      "qrNextFailed": "Couldn't make the next invite. Try again.",
+      "posterSave": "Save as image",
+      "posterFailed": "Couldn't make the image. Try again.",
+      "posterHold": "Press and hold the image to save it.",
+      "posterAlt": "Invite poster with the QR code",
+      "posterEyebrow": "You're invited to",
+      "posterOrganisedBy": "Organised by {names}",
+      "posterWhen": "When",
+      "posterWhere": "Where",
+      "posterCadence": "Every {day} · {time}",
+      "posterScan": "Scan with your phone's camera to join",
+      "posterCode": "Or type this invite code when you sign up",
+      "posterOnce": "Works once, for one person, until {date}",
+      "posterDoorScan": "Scan with your phone's camera to ask to join",
+      "posterDoorLine": "Anyone can ask. An organiser lets each person in.",
+      "doorTitle": "A poster for everyone",
+      "doorSubtitle": "One link for the group chat, a printed poster or a sticker. Each person asks to join, and an organiser lets them in.",
+      "doorSave": "Save poster",
+      "doorManage": "Copy, share or replace the link",
+      "doorMake": "Make the club link",
+      "doorMakeFailed": "Couldn't make the club link. Try again.",
+      "doorLoadFailed": "Couldn't load the club link.",
+      "doorRetry": "Try again",
       "none": "No invites waiting. Create one when someone wants to join.",
       "cancel": "Cancel",
       "loadFailed": "Couldn't load the invites."
     }
   },
   "legal": {
+    "help": {
+      "title": "How to use %APP_SHORT%",
+      "intro": "Short guides to the things people ask about most. Each one takes a couple of minutes.",
+      "breadcrumb": "Support · Guides",
+      "minRead": "{minutes} min read",
+      "stepsLabel": "Step by step",
+      "tipLabel": "Tip",
+      "helpfulQ": "Was this helpful?",
+      "yes": "Yes",
+      "no": "No",
+      "thanks": "Thanks for telling us.",
+      "relatedTitle": "Related",
+      "allGuides": "All guides",
+      "guides": {
+        "signup": {
+          "title": "Signing up for a session",
+          "sub": "Grab a spot, join the waitlist, or cancel",
+          "minutes": "2",
+          "intro": "Each week’s session lives on Home. Sign-ups open when your organiser opens them, and spots go in the order people sign up.",
+          "steps": [
+            {
+              "t": "Open Home",
+              "b": "The Sign up card shows how many spots are left and when sign-up closes.",
+              "img": "signup-card",
+              "alt": "The Sign up card on Home: 12 spots left out of 12, and a green “Sign up for this week” button.",
+              "caption": "The Sign up card, before you sign up."
+            },
+            {
+              "t": "Tap “Sign up for this week”",
+              "b": "The card then says you’re signed up and shows who else is coming.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Full? Join the waitlist",
+              "b": "When a spot frees up, the first person waiting moves in automatically.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Can’t make it?",
+              "b": "Cancel from the same card, so your spot goes to someone who is waiting.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Turn on notifications.",
+          "tip": "You’ll hear the moment sign-ups open, and when a spot opens up for you.",
+          "related": [
+            "paying",
+            "app"
+          ]
+        },
+        "paying": {
+          "title": "Paying what you owe",
+          "sub": "See your balance and settle up",
+          "minutes": "2",
+          "intro": "After each session your organiser settles the bill, which fixes everyone’s share. Your balance on Home shows what you owe, line by line.",
+          "steps": [
+            {
+              "t": "Check your balance",
+              "b": "The Balance card on Home lists each session and any finished restring, with the total.",
+              "img": "balance-card",
+              "alt": "The Balance card on Home: two sessions and one restring, a total, and buttons to pay.",
+              "caption": "The Balance card on Home."
+            },
+            {
+              "t": "Send an e-transfer",
+              "b": "Send the total to the address shown on the card, then tap “I’ve sent it” so your organiser knows to look.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Or pay with credit",
+              "b": "Credit from a gift card pays any settled line it covers in full: Profile → Account balance.",
+              "img": "account-balance",
+              "alt": "Account balance: what you owe, your credit beside it, a line per item and a “Pay with credit” button.",
+              "caption": "Profile → Account balance."
+            },
+            {
+              "t": "See the details",
+              "b": "Account balance also shows how long ago each line was settled and what you’ve paid over the last six months.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Estimates can change.",
+          "tip": "A session that hasn’t been settled yet shows an estimate. It’s fixed once your organiser settles the bill.",
+          "related": [
+            "signup",
+            "stringing"
+          ]
+        },
+        "stringing": {
+          "title": "Getting your racket strung",
+          "sub": "Request a restring and follow it",
+          "minutes": "2",
+          "intro": "When your club’s stringing service is open, the Stringing tab takes your request and shows where your racket is.",
+          "steps": [
+            {
+              "t": "Open Stringing",
+              "b": "Choose “Submit request”. If the service is closed, the card says so.",
+              "img": "stringing-request",
+              "alt": "The Stringing tab with the Submit request section open.",
+              "caption": "Stringing → Submit request."
+            },
+            {
+              "t": "Choose your string and tension",
+              "b": "Pick from the strings on offer and set your tension. “Pricing details” shows what each costs.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Drop off your racket",
+              "b": "Hand it to your stringer. Its card follows it: requested, on the machine, ready.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Pick it up",
+              "b": "When it’s ready, its price joins your balance on Home.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Turn on notifications.",
+          "tip": "You’ll hear when your racket goes on the machine and when it’s ready.",
+          "related": [
+            "paying",
+            "app"
+          ]
+        },
+        "stats": {
+          "title": "Your stats",
+          "sub": "Your level, games and what to work on",
+          "minutes": "2",
+          "intro": "The Stats tab keeps your level, the games you log and the kudos partners give you. Your ratings are yours: nobody else sees them.",
+          "steps": [
+            {
+              "t": "Check in",
+              "b": "Every so often, rate yourself on a few skills. Your level and this week’s focus come from it.",
+              "img": "stats-tiles",
+              "alt": "The top of Stats: three tiles for level, games logged and kudos.",
+              "caption": "The top of the Stats tab."
+            },
+            {
+              "t": "Log a game",
+              "b": "Under Play, “Add a game” records a result, and “Keep score” counts one courtside.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "See where you sit",
+              "b": "If you choose to, Stats shows whether each skill is in the top, middle or bottom third of your club. Bands only, never a number or a name.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Change it any time",
+              "b": "Profile → Stats & privacy turns that comparison on or off.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Little and often.",
+          "tip": "A quick check-in every few sessions keeps your level honest.",
+          "related": [
+            "app",
+            "signup"
+          ]
+        },
+        "app": {
+          "title": "The app and notifications",
+          "sub": "Install %APP_SHORT%, turn on notifications, pick a language",
+          "minutes": "2",
+          "intro": "%APP_SHORT% works in your browser, and it’s at its best on your home screen or installed from the App Store or Google Play.",
+          "steps": [
+            {
+              "t": "Add it to your home screen",
+              "b": "Profile → Add to Home Screen walks you through it for your phone.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Turn on notifications",
+              "b": "Tap the bell at the top of any tab, or Profile → Notifications.",
+              "img": "profile-app",
+              "alt": "The Settings group on Profile, with the Notifications row.",
+              "caption": "Profile → Settings."
+            },
+            {
+              "t": "Language and theme",
+              "b": "The two buttons beside the bell switch between English and 中文, and between light and dark.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "How you sign in",
+              "b": "Profile → How you sign in shows your ways back in: Apple, Google, or an email and password.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Something not working?",
+          "tip": "Profile → Report a problem reaches the people who run %APP_SHORT% directly.",
+          "related": [
+            "signup",
+            "stats"
+          ]
+        },
+        "organisers": {
+          "title": "For organisers",
+          "sub": "Run the week: sign-ups, the bill and payments",
+          "minutes": "3",
+          "intro": "Organisers and admins run the club from Admin, which opens from Profile.",
+          "steps": [
+            {
+              "t": "Open Admin",
+              "b": "Profile → Admin tools. The count beside it says how many things need you.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Open sign-ups",
+              "b": "The next session’s card opens and closes sign-ups and shows who’s in and who’s waiting.",
+              "img": "admin-session",
+              "alt": "The next session card in Admin, with the sign-up switch and the player count.",
+              "caption": "Admin → the next session."
+            },
+            {
+              "t": "Finalize the cost",
+              "b": "After the session, “Finalize cost” on the same card fixes everyone’s share. Payments then shows who has paid.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            },
+            {
+              "t": "Invite someone new",
+              "b": "The Invite card makes a one-time link or code for each new person.",
+              "img": "",
+              "alt": "",
+              "caption": ""
+            }
+          ],
+          "tipLead": "Covering someone.",
+          "tip": "In Payments you can cover a player’s share, and choose whether the club absorbs it or it’s split among the others.",
+          "related": [
+            "paying",
+            "signup"
+          ]
+        }
+      }
+    },
     "common": {
       "back": "Back to %APP_SHORT%",
       "updated": "Last updated {date}"
     },
     "privacy": {
       "title": "Privacy policy",
-      "updated": "25 October 2026",
+      "updated": "11 November 2026",
       "sections": [
         {
           "h": "Who we are",
@@ -2300,13 +2887,19 @@
           "p": [
             "• **Your name** — the one you sign up with. Other members see it on the roster.",
             "• **Your PIN**, if you set one, stored only as a salted hash. If you sign in with Google, Apple, or email, we receive an identifier from that provider, and — only if you allow it during sign-in — your name and email address.",
+            "• **A contact email**, if you add one on Edit profile (or type one when you ask to join a club): an address your club can reach you at. It isn't used to sign in, and you can change or remove it at any time.",
             "• **Session records**: which sessions you signed up for, whether you were on the waitlist, and your share of the court and shuttle cost, including whether it has been marked paid.",
             "• **E-transfer names**: if the name on your e-transfer differs from your sign-up name, the organiser records that pairing so payments can be matched. Only admins see it.",
             "• **Things you add yourself**: skill self-assessments, kudos you give or receive (including notes), games you log, and rackets or strings you save.",
             "• **A push token**, if you turn on notifications, for that device. It identifies the device to Apple, Google, or your browser — not you.",
             "• **A problem report**, only when you tap \"Report a problem\": your message, your name if you add it, the screen you were on, and your internet address (used only to stop the form being flooded).",
-            "• **How you use the app**: when you open it, which tab you look at, and when you sign in, sign up for or cancel a session, give kudos, request stringing, or turn notifications on or off. It's linked to your account, it stays in this app's own database, and the organiser sees it only as group totals (for example, \"18 members opened the app this week\") — never as a list of what one person did. If a screen stops working while you're signed in, we also record that it failed and which tab it was on — never what was on the screen or the details of the error — so a broken screen gets noticed without anyone having to report it. Those are counted the same way.",
-            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear all of it at any time from that page — it's also deleted with your account."
+            "• **How you use the app**: when you open it, which tab you look at, and when you sign in, sign up for or cancel a session, give kudos, request stringing, or turn notifications on or off. It's linked to your account, it stays in this app's own database, and the organiser sees it only as group totals (for example, \"18 members opened the app this week\") — never as a list of what one person did. If a screen stops working while you're signed in, we also record that it failed and which tab it was on — never what was on the screen or the details of the error — so a broken screen gets noticed without anyone having to report it. Each time you open the app we also record how long it took to be ready on your phone (a number of milliseconds, and whether it's a phone, the installed app or a browser), so a slow app gets noticed too. Those are counted the same way.",
+            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear all of it at any time from that page — it's also deleted with your account.",
+            "• **Guests you bring**, if your group allows them: the name you give for your guest, shown on the roster beside yours. Their share of the cost is added to your balance.",
+            "• **A request to join**, if you ask through a group's join link: the name you typed. An organiser sees it, and it is kept for an hour or until they answer.",
+            "• **E-transfer notices**, if your group's organiser turns on automatic payment matching: the organiser's email forwards Interac's notification to the app. We keep the sender's name, the amount, the memo and which sessions it paid — never the email itself. Only admins see it.",
+            "• **Stringing and store credit**: rackets you hand in for stringing, with the string, tension, price and whether it is paid; and any store credit or gift card on your account.",
+            "• **Notices**: a copy of each notification we send you, so you can read it again on the Notifications page."
           ]
         },
         {
@@ -2326,7 +2919,7 @@
           "h": "Who can see what",
           "p": [
             "• **Members of a group** see that group only: names, whether each spot is confirmed or waitlisted, and the per-person cost for a session. If you're in two groups, each sees only its own roster.",
-            "• **Your group's organisers** additionally see payment status and e-transfer names.",
+            "• **Your group's organisers** additionally see payment status, e-transfer names, and your contact email if you've added one.",
             "• A **kudos note** is shown to the person who received it, signed by the giver.",
             "• **The operator** can see all of the above, for every group, when running or fixing the service."
           ]
@@ -2763,5 +3356,58 @@
     "owedUnknown": "Your balance",
     "stringing": "Request stringing",
     "stringingSub": "Book your next restring"
+  },
+  "a11y": {
+    "primaryNav": "Main tabs",
+    "loading": "Loading",
+    "refreshing": "Refreshing",
+    "pullToRefresh": "Pull to refresh",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "related": "Related pages",
+    "switchLanguage": "Switch to {language}",
+    "languageOffline": "Language switches when you’re back online"
+  },
+  "push": {
+    "signupOpen": {
+      "title": "Sign-ups are open",
+      "bodyWhenWhere": "{when} at {where}. Tap to grab a spot.",
+      "bodyWhen": "{when}. Tap to grab a spot.",
+      "body": "Tap to grab a spot before it fills up."
+    },
+    "waitlistIn": {
+      "title": "You're in",
+      "bodyDay": "A spot opened for {day}'s session. If you can't make it, cancel from Home.",
+      "body": "A spot opened and you're off the waitlist. If you can't make it, cancel from Home."
+    },
+    "stringing": {
+      "readyTitle": "Your racket is ready",
+      "strungTitle": "On the machine",
+      "readyBody": "{racket} — ready to pick up.",
+      "strungBodyBy": "{racket} is being strung. Ready by {by}.",
+      "strungBody": "{racket} is being strung.",
+      "yourRacket": "Your racket"
+    },
+    "announcement": {
+      "title": "New announcement",
+      "empty": "Tap to read it in the app."
+    },
+    "pendingEdit": {
+      "title": "A change to confirm",
+      "body": "Something changed on {racket}. Open %APP_SHORT% to have a look.",
+      "yourRacket": "your racket"
+    },
+    "assignment": {
+      "title": "A racket for you to string",
+      "body": "{name}'s {racket} is yours.",
+      "racket": "racket"
+    },
+    "reminder": {
+      "title": "Time to settle up",
+      "bodyMany": "You’ve got a couple of sessions to settle up.",
+      "bodyOne": "You’ve got a session to settle up."
+    }
   }
 }

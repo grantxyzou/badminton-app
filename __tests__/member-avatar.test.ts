@@ -2,9 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GET as ME_GET, PATCH } from '../app/api/members/me/route';
 import { GET as ROSTER_GET } from '../app/api/members/route';
 import { resetMockStore, setupAdminPin, seedMember, makeRequest, memberCookieValue, getStore } from './helpers';
-import { parseAvatar, normalizeAvatar, isRacketAvatarId, racketAvatarIds, DEFAULT_RACKET_ID, racketAvatarGround } from '../lib/memberAvatar';
+import { parseAvatar, normalizeAvatar, isRacketAvatarId, racketAvatarIds, DEFAULT_RACKET_ID, racketAvatarGround, sameAvatar, avatarKey, BIRDIE_COLOURS, birdieSrc } from '../lib/memberAvatar';
 import { RACKET_LOOKS } from '../lib/racketLook';
-import { shuffleRacket } from '../components/profile/AvatarSheet';
 
 const BASE = 'http://localhost:3000/api/members/me';
 const RACKET = racketAvatarIds()[0];
@@ -32,6 +31,28 @@ describe('memberAvatar', () => {
     expect(parseAvatar('racket')).toBeUndefined();
   });
 
+  it('parses a birdie of a known colour, and refuses any other colour', () => {
+    expect(BIRDIE_COLOURS).toEqual(['green', 'yellow', 'pink', 'blue', 'purple', 'orange']);
+    expect(parseAvatar({ kind: 'birdie', colour: 'pink' })).toEqual({ kind: 'birdie', colour: 'pink' });
+    expect(parseAvatar({ kind: 'birdie', colour: 'gold' })).toBeUndefined();
+    expect(parseAvatar({ kind: 'birdie', colour: '../x' })).toBeUndefined();
+    expect(parseAvatar({ kind: 'birdie' })).toBeUndefined();
+    // A birdie never carries a stray field through to the store.
+    expect(parseAvatar({ kind: 'birdie', colour: 'blue', racketId: RACKET })).toEqual({ kind: 'birdie', colour: 'blue' });
+    expect(birdieSrc('blue')).toMatch(/\/brand\/birdies\/blue\.webp$/);
+  });
+
+  it('compares and keys pictures across both kinds', () => {
+    const racket = { kind: 'racket', racketId: RACKET } as const;
+    const birdie = { kind: 'birdie', colour: 'green' } as const;
+    expect(sameAvatar(null, null)).toBe(true);
+    expect(sameAvatar(racket, { ...racket })).toBe(true);
+    expect(sameAvatar(birdie, { kind: 'birdie', colour: 'blue' })).toBe(false);
+    expect(sameAvatar(racket, birdie)).toBe(false);
+    expect(sameAvatar(null, birdie)).toBe(false);
+    expect(new Set([avatarKey(null), avatarKey(racket), avatarKey(birdie)]).size).toBe(3);
+  });
+
   it('reads a stored value that no longer validates as the initial', () => {
     expect(normalizeAvatar({ kind: 'racket', racketId: 'retired-racket' })).toBeNull();
     expect(normalizeAvatar(undefined)).toBeNull();
@@ -45,11 +66,6 @@ describe('memberAvatar', () => {
     expect(racketAvatarGround(dark)).not.toBe(racketAvatarGround(light));
     // The default look is graphite, so it gets the light ground.
     expect(racketAvatarGround(DEFAULT_RACKET_ID)).toBe(racketAvatarGround(dark));
-  });
-
-  it('shuffle never lands on the racket already showing', () => {
-    for (let i = 0; i < 50; i++) expect(shuffleRacket(RACKET)).not.toBe(RACKET);
-    expect(isRacketAvatarId(shuffleRacket(null))).toBe(true);
   });
 });
 
@@ -83,6 +99,16 @@ describe('PATCH /api/members/me — avatar', () => {
     const cleared = await PATCH(asMember('Lin', { name: 'Lin', avatar: null }));
     expect(cleared.status).toBe(200);
     expect(stored('Lin').avatar).toBeUndefined();
+  });
+
+  it('saves a birdie, and refuses a colour that is not one', async () => {
+    seedMember('Lin');
+    const ok = await PATCH(asMember('Lin', { name: 'Lin', avatar: { kind: 'birdie', colour: 'purple' } }));
+    expect(ok.status).toBe(200);
+    expect(stored('Lin').avatar).toEqual({ kind: 'birdie', colour: 'purple' });
+    const bad = await PATCH(asMember('Lin', { name: 'Lin', avatar: { kind: 'birdie', colour: 'rainbow' } }));
+    expect(bad.status).toBe(400);
+    expect(stored('Lin').avatar).toEqual({ kind: 'birdie', colour: 'purple' });
   });
 
   it('refuses a racket that is not in the catalog', async () => {

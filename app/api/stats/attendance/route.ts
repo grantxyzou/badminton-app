@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'name required' }, { status: 400 });
   }
 
-  if (!ownsNameOrAdmin(req, name)) {
+  if (!(await ownsNameOrAdmin(req, name))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

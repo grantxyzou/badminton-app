@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
 /**
- * A CLIENT FILE MUST NOT REACH NODE `crypto` OR THE COSMOS LAYER.
+ * A CLIENT FILE MUST NOT REACH NODE `crypto`, THE COSMOS LAYER OR NEXT'S SERVER.
  *
  * `OfferedStringsCard` ('use client') imported one number, `MAX_OFFERED`, from
  * `lib/stringingStrings.ts`. That file imports `groupScope`, which imports
@@ -21,7 +21,10 @@ import { dirname, join, relative, resolve } from 'node:path';
  */
 const ROOT = process.cwd();
 const SCAN = ['app', 'components', 'lib'];
-const FORBIDDEN_BARE = new Set(['crypto', 'node:crypto', '@azure/cosmos']);
+// `next/server` and `next/headers` too (2026-11-05): `ClubNameEditor` took two
+// numbers from `lib/groupRoutes.ts`, which imports `NextResponse`, and the
+// admin chunk carried ~70 KB of Next's server code for them.
+const FORBIDDEN_BARE = new Set(['crypto', 'node:crypto', '@azure/cosmos', 'next/server', 'next/headers']);
 const FORBIDDEN_FILES = new Set([join(ROOT, 'lib', 'cosmos.ts')]);
 
 function walk(dir: string): string[] {
@@ -94,7 +97,7 @@ describe('client files stay off the server layer', () => {
     expect(clientFiles.length).toBeGreaterThan(50);
   });
 
-  it('no client file reaches crypto, @azure/cosmos or lib/cosmos.ts', () => {
+  it('no client file reaches crypto, @azure/cosmos, next/server or lib/cosmos.ts', () => {
     const parent = new Map<string, string | null>();
     const queue = [...clientFiles];
     for (const f of clientFiles) parent.set(f, null);

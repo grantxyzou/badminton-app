@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyMemberAuth, verifyLiveMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ensurePushContainer, hashEndpoint } from '@/lib/push';
 import { isSafePushEndpoint, MAX_PUSH_ENDPOINT_LEN } from '@/lib/pushEndpoint';
 import type { PushSubscriptionDoc } from '@/lib/types';
+import { resolveLocale } from '@/i18n/request';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,14 @@ function parseCredential(body: unknown): string | null {
 /** Every doc for this member — one partition (`/memberId`), not the whole
  *  container. The mock honours `@memberId` (lib/cosmos.ts); the JS filter is
  *  kept as the re-check every scoped read carries. */
+/**
+ * The language a push to this device is written in: the app's own
+ * (`NEXT_LOCALE`, else the browser's Accept-Language, as the page decides it).
+ */
+function deviceLocale(req: NextRequest): 'en' | 'zh-CN' {
+  return resolveLocale(req.cookies.get('NEXT_LOCALE')?.value, req.headers.get('accept-language') ?? undefined);
+}
+
 async function loadForMember(memberId: string): Promise<PushSubscriptionDoc[]> {
   await ensurePushContainer();
   const { resources } = await getContainer('pushSubscriptions')
@@ -111,8 +120,10 @@ export async function POST(req: NextRequest) {
   // Identity-bound (security rule 12): the owner is the cookie holder, never
   // the body. Member names are enumerable via GET /api/members, so a
   // body-supplied memberId would let anyone register a device against another
-  // member and receive their targeted notifications.
-  const member = verifyMemberAuth(req);
+  // member and receive their targeted notifications. And re-read against
+  // "Sign out everywhere": a phone signed out of the club must not register a
+  // fresh device for that person's pushes.
+  const member = await verifyLiveMemberAuth(req);
   if (!member) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 
   try {
@@ -152,6 +163,7 @@ export async function POST(req: NextRequest) {
         memberName: member.name,
         lastSeenAt: now,
         failureCount: 0,
+        locale: deviceLocale(req),
       });
       return NextResponse.json({ ok: true, refreshed: true });
     }
@@ -166,6 +178,7 @@ export async function POST(req: NextRequest) {
       ua,
       createdAt: now,
       lastSeenAt: now,
+      locale: deviceLocale(req),
     };
     await container.items.create(doc);
 
@@ -229,5 +242,45 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     console.error('DELETE push/subscribe error:', error);
     return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
+  }
+}
+
+/**
+ * The member switched the app's language: write pushes to them in it
+ * (audit, 2026-11-05). Every device of theirs takes it — the switch is about
+ * the person, and a push that arrives in the language they just left is the
+ * bug this fixes. Fire-and-forget from `LanguageToggle`; nothing here is
+ * secret and nothing breaks if it never arrives (the next subscribe stamps it).
+ */
+export async function PATCH(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`push-locale:${ip}`, 30, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  const member = await verifyLiveMemberAuth(req);
+  if (!member) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'invalid_locale' }, { status: 400 });
+  }
+  const raw = (body as { locale?: unknown } | null)?.locale;
+  if (raw !== 'en' && raw !== 'zh-CN') return NextResponse.json({ error: 'invalid_locale' }, { status: 400 });
+
+  try {
+    const mine = await loadForMember(member.memberId);
+    const container = getContainer('pushSubscriptions');
+    let updated = 0;
+    for (const doc of mine) {
+      if (doc.locale === raw) continue;
+      await container.items.upsert({ ...doc, locale: raw });
+      updated += 1;
+    }
+    return NextResponse.json({ ok: true, updated });
+  } catch (err) {
+    console.error('[push] locale update failed:', err);
+    return NextResponse.json({ error: 'write_failed' }, { status: 503 });
   }
 }

@@ -169,3 +169,42 @@ describe('a ready racket is never late (review, 2026-10-28)', () => {
     expect(screen.getByRole('button', { name: 'Open this job · Astrox 88D Pro · J-0001 · for Lin' })).toBeDefined();
   });
 });
+
+/**
+ * Save is never a dead button (Grant, 2026-11-06: "I still can't save this
+ * job" — racket, string and price filled in, the player never picked, in a
+ * card scrolled out of view, and nothing on screen said so).
+ */
+describe('the intake says what is missing instead of greying Save out', () => {
+  it('names the missing player, takes the tap to it, and sends nothing', async () => {
+    const fetchMock = respond([]);
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} recent={[{ id: 'member-lin', name: 'Lin' }]} />);
+    fireEvent.change(screen.getByLabelText(enMessages.admin.stringing.racketPlaceholder), { target: { value: 'Nanoflare 800 Pro' } });
+    fireEvent.change(screen.getByLabelText(enMessages.admin.stringing.stringPlaceholder), { target: { value: 'Exbolt 63' } });
+    const save = screen.getByRole('button', { name: enMessages.admin.stringing.saveAndTell });
+    expect(save.hasAttribute('disabled')).toBe(false);
+    expect(screen.getByText(enMessages.admin.stringing.missing.who)).toBeDefined();
+    fireEvent.click(save);
+    expect(scrolled).toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toBe(enMessages.admin.stringing.missing.who);
+    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST')).toBe(false);
+  });
+
+  it('saves once the player is picked, and the line goes away', async () => {
+    const fetchMock = respond([]);
+    Element.prototype.scrollIntoView = vi.fn();
+    const onCreated = vi.fn();
+    wrap(<StringingIntake onBack={() => {}} onCreated={onCreated} recent={[{ id: 'member-lin', name: 'Lin' }]} />);
+    fireEvent.change(screen.getByLabelText(enMessages.admin.stringing.racketPlaceholder), { target: { value: 'Nanoflare 800 Pro' } });
+    fireEvent.change(screen.getByLabelText(enMessages.admin.stringing.stringPlaceholder), { target: { value: 'Exbolt 63' } });
+    const recent = await screen.findByRole('group', { name: 'Recent' });
+    await waitFor(() => expect(within(recent).queryByRole('button', { name: 'Lin' })).not.toBeNull());
+    fireEvent.click(within(recent).getByRole('button', { name: 'Lin' }));
+    expect(screen.queryByText(enMessages.admin.stringing.missing.who)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: enMessages.admin.stringing.saveAndTell }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST')).toBe(true));
+    await waitFor(() => expect(onCreated).toHaveBeenCalled());
+  });
+});

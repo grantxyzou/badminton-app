@@ -1,8 +1,8 @@
 'use client';
 
 import { avatarColors } from '@/lib/avatar';
-import { racketSrc } from '@/lib/racketLook';
-import { racketAvatarGround, type MemberAvatar as Avatar } from '@/lib/memberAvatar';
+import { AVATAR_CROP_MAX_PX, racketAvatarSrc, racketSrc } from '@/lib/racketLook';
+import { birdieSrc, racketAvatarGround, type MemberAvatar as Avatar } from '@/lib/memberAvatar';
 import { useMemberAvatars } from '@/lib/useMemberAvatars';
 
 interface Props {
@@ -27,27 +27,30 @@ interface Props {
  * The circle beside a member's name, everywhere a name appears.
  *
  * A racket avatar is the head of that racket's catalog image
- * (`public/rackets/<id>.webp`), cropped by `.member-avatar__racket` — no upload,
- * no storage, nothing to moderate. Without one it is the initial it always was.
+ * (`public/rackets/<id>.webp`), cropped by `.member-avatar__racket`; a birdie is
+ * one of the six logo shuttles (`public/brand/birdies/<colour>.webp`). No upload,
+ * no storage, nothing to moderate. Without either it is the initial it always was.
  * Decorative: the name beside it is the accessible label.
  */
 export default function MemberAvatar({ name, avatar: given, size = 32, tone = 'name' }: Props) {
   const avatarFor = useMemberAvatars();
   const avatar = given === undefined ? avatarFor(name) : given;
   const racketId = avatar?.kind === 'racket' ? avatar.racketId : null;
-  const neutral = tone === 'neutral' && !racketId;
+  const birdie = avatar?.kind === 'birdie' ? avatar.colour : null;
+  const neutral = tone === 'neutral' && !racketId && !birdie;
   // A racket sits on a ground chosen against its own frame paint
-  // (`racketAvatarGround`); an initial keeps the per-name colour.
+  // (`racketAvatarGround`); a birdie's picture carries its own ground; an
+  // initial keeps the per-name colour.
   const colours = racketId
     ? { bg: racketAvatarGround(racketId), fg: 'inherit' }
-    : neutral
+    : birdie || neutral
       ? null
       : avatarColors(name);
   return (
     <span
       aria-hidden="true"
       className={`member-avatar${neutral ? ' member-avatar--neutral' : ''}`}
-      data-avatar={racketId ? 'racket' : 'initial'}
+      data-avatar={racketId ? 'racket' : birdie ? 'birdie' : 'initial'}
       style={{
         width: size,
         height: size,
@@ -58,10 +61,12 @@ export default function MemberAvatar({ name, avatar: given, size = 32, tone = 'n
       {racketId ? (
         // eslint-disable-next-line @next/next/no-img-element -- a same-origin static crop; next/image would add a loader round-trip per roster row
         <img
-          // Keyed so a changed racket (AvatarSheet's shuffle) fades in anew.
+          // Keyed so a changed racket fades in anew.
           key={racketId}
           className="member-avatar__racket"
-          src={racketSrc(racketId)}
+          // A roster-sized circle takes the head crop (~6 KB, not ~18 KB);
+          // Profile's large one keeps the full picture so it stays sharp.
+          src={size <= AVATAR_CROP_MAX_PX ? racketAvatarSrc(racketId) : racketSrc(racketId)}
           alt=""
           // Every catalog image is 240×624. The CSS sets the rendered width;
           // these only give a lazy image its ratio before it loads (Chrome
@@ -76,6 +81,22 @@ export default function MemberAvatar({ name, avatar: given, size = 32, tone = 'n
           // onLoad, so the ref checks `complete` at commit — before paint — or
           // a cached avatar would sit invisible forever. A failed load is
           // shown too: the broken state is the honest one.
+          ref={markIfLoaded}
+          onLoad={markLoaded}
+          onError={markLoaded}
+        />
+      ) : birdie ? (
+        // eslint-disable-next-line @next/next/no-img-element -- a same-origin ~3 KB static picture, as the racket crop above
+        <img
+          key={birdie}
+          className="member-avatar__birdie"
+          src={birdieSrc(birdie)}
+          alt=""
+          width={256}
+          height={256}
+          loading="lazy"
+          decoding="async"
+          data-loaded="false"
           ref={markIfLoaded}
           onLoad={markLoaded}
           onError={markLoaded}

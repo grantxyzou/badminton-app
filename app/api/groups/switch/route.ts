@@ -15,7 +15,7 @@
  * quietly land somewhere else.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyMemberAuth, unauthorized } from '@/lib/auth';
+import { verifyLiveMemberAuth, memberSessionIssuedAt, sessionRevoked, unauthorized } from '@/lib/auth';
 import { completeSignIn } from '@/lib/authSession';
 import { getContainer } from '@/lib/cosmos';
 import { readGroup, readMembership } from '@/lib/groups';
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(`groups-switch:${ip}`, 30, 15 * 60 * 1000)) return rateLimited();
   if (!groupsOn()) return featureOff();
 
-  const session = verifyMemberAuth(req);
+  const session = await verifyLiveMemberAuth(req);
   if (!session) return unauthorized();
 
   let body: unknown;
@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
     if (!membership || membership.status !== 'active') {
       return NextResponse.json({ error: 'not_a_member' }, { status: 403 });
     }
+    // "Sign out everywhere" in THAT club must hold here too. The live check
+    // above read the cutoff of the club the cookie names; a phone signed out
+    // of club Y while its cookie still named club X would otherwise switch
+    // straight back into Y with a fresh cookie.
+    if (sessionRevoked(memberSessionIssuedAt(req), membership.sessionsNotBefore)) return unauthorized();
     const group = await readGroup(groupId);
     if (!group || group.closedAt) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 

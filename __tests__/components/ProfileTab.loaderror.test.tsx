@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import ProfileTab from '../../components/ProfileTab';
 import enMessages from '../../messages/en.json';
@@ -52,7 +52,9 @@ describe('ProfileTab — players-fetch failure must not wipe PIN status', () => 
 
     // PIN status must survive: the row reads "Update PIN" (hasPin), NOT the
     // generic "Recovery PIN" fallback that the wiped (null) state produces.
-    expect(screen.getByText(enMessages.profile.settings.updatePin)).toBeTruthy();
+    // It lives on "How you sign in" now (one row on Profile opens it).
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(enMessages.profile.auth.methodsTitle) }));
+    expect(await screen.findByText(enMessages.profile.settings.updatePin)).toBeTruthy();
     expect(screen.queryByText(enMessages.profile.pinSectionTitle)).toBeNull();
   });
 });

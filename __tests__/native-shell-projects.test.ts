@@ -167,7 +167,8 @@ describe('ios/', () => {
     // through as local (security review, 2026-10-24).
     const plugin = read('ios', 'App', 'App', 'BpmWidgetPlugin.swift');
     expect(plugin).not.toContain('hasPrefix("http://localhost")');
-    expect(plugin).toContain('url.host?.lowercased() == "localhost"');
+    expect(plugin).toContain('let host = url.host?.lowercased()');
+    expect(plugin).toContain('return scheme == "http" && host == "localhost"');
   });
 
   /* "Add to calendar" (docs/plans/add-to-calendar.md). The app's floor is
@@ -225,7 +226,7 @@ describe('ios/', () => {
 describe('android/', () => {
   const manifest = read('android', 'app', 'src', 'main', 'AndroidManifest.xml');
 
-  it('registers the bpm:// scheme and the App Link for /bpm/migrate only', () => {
+  it('registers the bpm:// scheme and the App Links for /bpm/migrate, /bpm/j/ and /bpm/s only', () => {
     expect(read('android', 'app', 'src', 'main', 'res', 'values', 'strings.xml')).toContain(
       '<string name="custom_url_scheme">bpm</string>',
     );
@@ -233,7 +234,16 @@ describe('android/', () => {
     const appLink = manifest.match(/<intent-filter android:autoVerify="true">([\s\S]*?)<\/intent-filter>/)![1]!;
     expect(appLink).toContain('android:host="bpm.grantzou.com"');
     expect(appLink).toContain('android:pathPrefix="/bpm/migrate"');
+    expect(appLink).toContain('android:pathPrefix="/bpm/j/"');
+    // EXACT, not a prefix: `/bpm/s` as a prefix would also claim `/bpm/sw.js`.
+    expect(appLink).toContain('android:path="/bpm/s"');
+    expect(appLink).not.toContain('android:pathPrefix="/bpm/s"');
     expect(appLink).toContain('android:scheme="https"');
+    // Narrow on purpose: nothing else, and never a bare /bpm, which would pull
+    // the sign-in finishing pages into the app.
+    const prefixes = [...appLink.matchAll(/android:pathPrefix="([^"]+)"/g)].map((m) => m[1]);
+    expect(prefixes.sort()).toEqual(['/bpm/j/', '/bpm/migrate']);
+    expect(appLink).not.toMatch(/android:path(Prefix|Pattern)?="\/bpm\/?"/);
   });
 
   it('asks for POST_NOTIFICATIONS and refuses cleartext', () => {
@@ -303,5 +313,108 @@ describe('android/', () => {
 
   it('does not commit google-services.json', () => {
     expect(isTracked('android', 'app', 'google-services.json')).toBe(false);
+  });
+});
+
+/**
+ * THE APP'S LINKS ARE ONE LIST, KEPT IN THREE PLACES (docs/superpowers/plans/
+ * 2026-11-04-app-clip.md, Task 1.2): the AASA body the iPhone reads (an Azure
+ * App Setting, whose intended body is `native/apple-app-site-association.example.json`
+ * because the Team ID stays out of git), the Android App Links filter, and the
+ * universal-link branch of `components/NativeBridge.tsx`. A path claimed by
+ * the OS but not handled by the bridge opens the app on a blank tap; one
+ * handled but not claimed never arrives. These pin the three together.
+ */
+describe('the links the app claims', () => {
+  const aasa = JSON.parse(read('native', 'apple-app-site-association.example.json')) as {
+    applinks: { details: Array<{ appIDs: string[]; components: Array<Record<string, string>> }> };
+    webcredentials: { apps: string[] };
+  };
+  const detail = aasa.applinks.details[0]!;
+  const claimed = detail.components.map((c) => c['/']!);
+
+  it('the AASA example is the app, with the Team ID left as a placeholder', () => {
+    expect(detail.appIDs).toEqual(['TEAMID.com.motioncraft.bpm']);
+    expect(aasa.webcredentials.apps).toEqual(['TEAMID.com.motioncraft.bpm']);
+  });
+
+  it('claims the migration link, the one invite link and the sign-up link, and nothing else', () => {
+    expect(claimed.sort()).toEqual(['/bpm/j/*', '/bpm/migrate', '/bpm/migrate?*', '/bpm/s']);
+  });
+
+  it('never claims the sign-in finishing pages, the API or the legal pages', () => {
+    for (const path of claimed) {
+      expect(path).not.toMatch(/^\/bpm\/?(\*|\?\*)?$/);
+      expect(path.startsWith('/bpm/api')).toBe(false);
+      expect(path.startsWith('/bpm/auth')).toBe(false);
+      expect(path.startsWith('/bpm/legal')).toBe(false);
+    }
+  });
+
+  it('the bridge handles every path the OS hands it, through the shared link module', () => {
+    const bridge = read('components', 'NativeBridge.tsx');
+    expect(bridge).toContain('u.pathname === `${BASE}/migrate`');
+    expect(bridge).toContain('tokenFromInvitePath(u.pathname, BASE)');
+    expect(bridge).toContain('isSignupPath(u.pathname, BASE)');
+    expect(bridge).toContain("from '@/lib/inviteLink'");
+    expect(read('lib', 'inviteLink.ts')).toContain("export const INVITE_LINK_SEGMENT = '/j/';");
+  });
+});
+
+/**
+ * The widget's pass is a sixty-day credential (audit, 2026-11-05). Three
+ * things keep it on the phone and the server it was made for, none of which a
+ * build here can compile, so they are pinned as source.
+ */
+describe('the widget pass stays where it was made', () => {
+  const swiftPlugin = read('ios', 'App', 'App', 'BpmWidgetPlugin.swift');
+  const swiftStore = read('ios', 'App', 'BPMWidget', 'BPMWidgetStore.swift');
+  const javaPlugin = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmWidgetPlugin.java');
+  const serverHost = new URL(/url:\s*'([^']+)'/.exec(read('capacitor.config.ts'))![1]).host;
+
+  const swiftHosts = (/allowedHosts: Set<String> = \[([^\]]+)\]/.exec(swiftPlugin)?.[1] ?? '').match(/"([^"]+)"/g)?.map((h) => h.slice(1, -1)) ?? [];
+  const javaHosts = (/ALLOWED_HOSTS = new HashSet<>\(Arrays\.asList\(([^)]+)\)\)/.exec(javaPlugin)?.[1] ?? '').match(/"([^"]+)"/g)?.map((h) => h.slice(1, -1)) ?? [];
+
+  it('is handed only to the app’s own server, the same list on both platforms', () => {
+    expect(swiftHosts.length).toBeGreaterThan(0);
+    expect(swiftHosts).toContain(serverHost);
+    expect(new Set(javaHosts)).toEqual(new Set(swiftHosts));
+    expect(swiftPlugin).toContain('static let allowedHostSuffix = ".motioncraft-bpm.com"');
+    expect(javaPlugin).toContain('static final String ALLOWED_HOST_SUFFIX = ".motioncraft-bpm.com";');
+    // Parsed, never "starts with https://".
+    expect(javaPlugin).not.toContain('startsWith("https://")');
+    expect(javaPlugin).toContain('!isAllowedBaseUrl(baseUrl)');
+    expect(swiftPlugin).not.toMatch(/if scheme == "https" \{ return true \}/);
+  });
+
+  it('Android leaves it out of backups and phone-to-phone transfer', () => {
+    const manifest = read('android', 'app', 'src', 'main', 'AndroidManifest.xml');
+    expect(manifest).toContain('android:fullBackupContent="@xml/backup_rules"');
+    expect(manifest).toContain('android:dataExtractionRules="@xml/data_extraction_rules"');
+    const exclude = '<exclude domain="sharedpref" path="bpm_widget.xml" />';
+    expect(read('android', 'app', 'src', 'main', 'res', 'xml', 'backup_rules.xml')).toContain(exclude);
+    const transfer = read('android', 'app', 'src', 'main', 'res', 'xml', 'data_extraction_rules.xml');
+    expect(transfer.split(exclude).length - 1).toBe(2); // cloud-backup AND device-transfer
+    // The store's file name is the one excluded.
+    expect(read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'BpmWidgetStore.java'))
+      .toContain('private static final String PREFS = "bpm_widget";');
+  });
+
+  it('iOS reads a pass only on the phone it was saved on', () => {
+    expect(swiftPlugin).toContain('static let deviceKey = "widget.device"');
+    expect(swiftStore).toContain('static let deviceKey = "widget.device"');
+    expect(swiftPlugin).toContain('forKey: Self.deviceKey)');
+    expect(swiftStore).toContain('saved != UIDevice.current.identifierForVendor?.uuidString');
+    expect(swiftPlugin).toContain('Self.deviceKey, Self.snapshotKey]'); // cleared on sign-out
+  });
+});
+
+describe('the iOS shell runs the Capacitor the web side was built against', () => {
+  it('pins capacitor-swift-pm to the installed @capacitor/ios version', () => {
+    const installed = JSON.parse(read('node_modules', '@capacitor', 'ios', 'package.json')).version as string;
+    expect(read('ios', 'App', 'CapApp-SPM', 'Package.swift')).toContain(`capacitor-swift-pm.git", exact: "${installed}")`);
+    const resolved = JSON.parse(read('ios', 'App', 'App.xcodeproj', 'project.xcworkspace', 'xcshareddata', 'swiftpm', 'Package.resolved'));
+    const pin = resolved.pins.find((p: { identity: string }) => p.identity === 'capacitor-swift-pm');
+    expect(pin.state.version).toBe(installed);
   });
 });

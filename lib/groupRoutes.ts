@@ -36,10 +36,7 @@ export function cleanString(raw: unknown, min: number, max: number): string | nu
   return trimmed;
 }
 
-export const GROUP_NAME_MIN = 2;
-export const GROUP_NAME_MAX = 40;
-export const ROSTER_NAME_MIN = 1;
-export const ROSTER_NAME_MAX = 40;
+export { GROUP_NAME_MIN, GROUP_NAME_MAX, ROSTER_NAME_MIN, ROSTER_NAME_MAX } from '@/lib/nameLimits';
 
 /**
  * How many groups one person may own. Not a product rule — a blast radius.

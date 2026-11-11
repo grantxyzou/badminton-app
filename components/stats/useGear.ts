@@ -4,6 +4,7 @@ import { isRefused } from '@/lib/apiFetch';
 import { useOnline } from '@/lib/useOnline';
 import { rackets as racketsOf, activeRacket } from '@/lib/activeRacket';
 import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, FitPlayStyle, FitSoreness, FitLevelOption, FeelBalance, RacketFeel, ItemLook, StringCrosses } from '@/lib/types';
+import { rememberBag, rememberedBag } from './gearMemory';
 
 /**
  * Every preference `PATCH /api/equipment/gear` accepts. `null` clears a field
@@ -141,8 +142,10 @@ export function budgetWords(t: (key: string) => string, band: number | null): st
  */
 export function useGear(name: string | null): UseGear {
   const online = useOnline();
-  const [gear, setGear] = useState<PlayerGear | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  // The bag this name last had in this page load draws at once (gearMemory.ts).
+  const { known: remembered, bag: rememberedGear } = rememberedBag(name);
+  const [gear, setGearState] = useState<PlayerGear | null>(rememberedGear);
+  const [loaded, setLoaded] = useState(remembered);
   const [loadError, setLoadError] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -150,10 +153,14 @@ export function useGear(name: string | null): UseGear {
   // Mirrors `gear` for follow-up writes inside one user action. `add` needs the
   // id of the item the POST just created, and that id only exists in the
   // response body — reading it back off `gear` would race the state flush.
-  const gearRef = useRef<PlayerGear | null>(null);
+  const gearRef = useRef<PlayerGear | null>(rememberedGear);
+  const setGear = useCallback((g: PlayerGear | null) => {
+    if (name) rememberBag(name, g);
+    setGearState(g);
+  }, [name]);
   // Mirrors `loaded` for the recovery check in `mutate`, which runs inside a
   // closure that would otherwise read a stale value.
-  const loadedRef = useRef(false);
+  const loadedRef = useRef(remembered);
   const markLoaded = useCallback(() => { loadedRef.current = true; setLoaded(true); }, []);
 
   const reload = useCallback(() => {
@@ -175,7 +182,7 @@ export function useGear(name: string | null): UseGear {
         setForbidden(e?.message === '403');
         markLoaded();
       });
-  }, [name, markLoaded]);
+  }, [name, markLoaded, setGear]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -239,7 +246,7 @@ export function useGear(name: string | null): UseGear {
       // just added. Guarded on the op id so a newer operation owns recovery.
       if (!loadedRef.current && opId === opRef.current) reload();
     }
-  }, [name, reload, markLoaded]);
+  }, [name, reload, markLoaded, setGear]);
 
   /**
    * Add a catalog item to the bag.
@@ -280,6 +287,10 @@ export function useGear(name: string | null): UseGear {
     item: CatalogItem,
     extra?: { tensionLbs?: number; makeActive?: boolean },
   ): Promise<GearResult> => {
+    // A string goes ON a racket: the one in play when it was picked. Named
+    // here rather than left to the route's default, so a swap racing the add
+    // cannot put it on the other frame.
+    const onRacket = (item.category ?? 'racket') === 'string' ? activeRacket(gearRef.current)?.id : undefined;
     const res = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -291,9 +302,15 @@ export function useGear(name: string | null): UseGear {
           catalogId: item.id,
           category: item.category ?? 'racket',
           label: `${item.brand} ${item.model}`,
+          ...(onRacket ? { racketId: onRacket } : null),
         },
       }),
     }));
+    const category = item.category ?? 'racket';
+    const added = res.ok
+      ? gearRef.current?.items.find((i) => i && i.catalogId === item.id && (i.category ?? 'racket') === category
+          && (category !== 'string' || !onRacket || i.racketId === onRacket))
+      : undefined;
     // `makeActive` exists because POST and the UI mean different things by
     // "pick this racket". POST's contract is "append to my bag", and appending
     // must never silently move `activeRacketId` — a spare is not a change of
@@ -319,6 +336,7 @@ export function useGear(name: string | null): UseGear {
         body: JSON.stringify({
           name,
           item: {
+            ...(added ? { id: added.id } : null),
             catalogId: item.id,
             category: item.category ?? 'racket',
             label: `${item.brand} ${item.model}`,
@@ -340,8 +358,6 @@ export function useGear(name: string | null): UseGear {
       if (!withTension.ok) return { ok: false, reason: 'tension_not_saved' };
     }
     if (!res.ok) return res;
-    const category = item.category ?? 'racket';
-    const added = gearRef.current?.items.find((i) => i && i.catalogId === item.id && (i.category ?? 'racket') === category);
     return { ok: true, itemId: added?.id };
   }, [mutate, name]);
 
@@ -404,6 +420,9 @@ export function useGear(name: string | null): UseGear {
       body: JSON.stringify({
         name,
         item: {
+          // The id says WHICH string: the same catalog string can be on two
+          // rackets now, each at its own tension.
+          id: item.id,
           catalogId: item.catalogId,
           category: item.category ?? 'string',
           label: item.label,

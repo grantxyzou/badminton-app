@@ -8,7 +8,8 @@
  * OPERATOR'S club key may read it — BPM's, the club this deployment is run
  * for — and every other club's key gets 403.
  *
- * Each row keeps the message, the tab and the PATH it was sent from, and when.
+ * Each row keeps the message, what it is about (the chip it started from, or
+ * null), the tab and the PATH it was sent from, and when.
  * Dropped: the IP (rate-limiting data, never for reading), the name (a report
  * is about the app, not the person), and the URL's query and fragment, which
  * can carry an invite token or a one-time code.
@@ -43,6 +44,7 @@ export async function GET(req: NextRequest) {
       .map((r) => ({
         createdAt: r.createdAt as string,
         message: r.message as string,
+        category: typeof r.category === 'string' ? r.category : null,
         tab: typeof r.tab === 'string' ? r.tab : null,
         path: pathOnly(r.url),
       }));

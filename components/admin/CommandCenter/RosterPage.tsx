@@ -9,6 +9,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import RosterImportSheet from './RosterImportSheet';
+import ClaimLinkSheet from './ClaimLinkSheet';
 import SettingsList from '@/components/profile/SettingsList';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { fmtShortDate } from '@/lib/fmt';
@@ -102,12 +103,18 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const rankKnown = !groupsOn || !groupLoading;
   const callerOrganiser = !groupsOn || currentGroup?.role === 'owner';
+  // "Sign out everywhere" on a rank-holder is an organiser's (the server
+  // answers organiser_only). Unknown is not "not allowed": the server decides.
+  const canSignOutRank = !rankKnown || callerOrganiser || formRole === 'member';
   const [formCanString, setFormCanString] = useState(false);
-  const [formCanGift, setFormCanGift] = useState(false);
   const [formActive, setFormActive] = useState(true);
   const [formAlias, setFormAlias] = useState('');
   const [formRegular, setFormRegular] = useState<boolean | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [claimLinkOpen, setClaimLinkOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  /** `true` once "Sign out everywhere" landed for the person in the sheet. */
+  const [signedOut, setSignedOut] = useState(false);
   const [savingForm, setSavingForm] = useState(false);
   const [deletingForm, setDeletingForm] = useState(false);
   const [formError, setFormError] = useState('');
@@ -278,11 +285,11 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
 
   function openEditSheet(r: RowData) {
     setEditingId(r.member.id);
+    setSignedOut(false);
     setFormName(r.member.name);
     setFormRole(r.member.groupRole ?? (r.member.role === 'admin' ? 'admin' : 'member'));
     setFormActive(r.member.active !== false);
     setFormCanString(r.member.canString === true);
-    setFormCanGift(r.member.canGift === true);
     setFormRegular(regularOf(r.member));
     const alias = aliases.find((a) => a.appName.toLowerCase() === r.member.name.toLowerCase());
     setFormAlias(alias?.etransferName ?? '');
@@ -319,7 +326,6 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
             role: formRole,
             active: formActive,
             canString: formCanString,
-            canGift: formCanGift,
             // Only once someone has been marked: an unmarked person stays unmarked.
             ...(formRegular !== null ? { regular: formRegular } : {}),
           }),
@@ -396,6 +402,33 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
       setFormError('Network error.');
     } finally {
       setSavingForm(false);
+    }
+  }
+
+  async function handleSignOutEverywhere() {
+    if (!editingId) return;
+    setSigningOut(true);
+    setFormError('');
+    try {
+      const res = await fetch(`${BASE}/api/members`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, signOutEverywhere: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(
+          data.error === 'organiser_only'
+            ? 'Only an organiser can sign out an admin or organiser.'
+            : 'Couldn’t sign them out. Try again.',
+        );
+        return;
+      }
+      setSignedOut(true);
+    } catch {
+      setFormError('Network error.');
+    } finally {
+      setSigningOut(false);
     }
   }
 
@@ -498,7 +531,13 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
       {/* Bring a whole list in at once (docs/plans/roster-import.md). A way to
           another sheet is a settings row, as everywhere in admin. */}
       <div style={{ marginBottom: 'var(--space-4)' }}>
-        <SettingsList rows={[{ icon: 'group_add', label: 'Import a list', meta: 'Paste or CSV', onClick: () => setImportOpen(true) }]} />
+        <SettingsList
+          rows={[
+            { icon: 'group_add', label: 'Import a list', meta: 'Paste or CSV', onClick: () => setImportOpen(true) },
+            // How the people on that list get in (docs/plans/claim-your-name.md).
+            { icon: 'link', label: 'Club link', meta: 'For claiming a name', onClick: () => setClaimLinkOpen(true) },
+          ]}
+        />
       </div>
 
       {/* Search */}
@@ -787,6 +826,23 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
               </p>
             </Field>
 
+            {/* The address this person gave the club to reach them (spec Q3,
+                2026-11-11). Theirs to set or clear, from their own Edit
+                profile; shown here read-only, and only to the club's admins. */}
+            {(() => {
+              const contact = editingId ? members.find((m) => m.id === editingId)?.contactEmail : undefined;
+              return contact ? (
+                <Field label="Contact email">
+                  <a href={`mailto:${contact}`} style={{ fontSize: 'var(--fs-md)', color: 'var(--accent)', overflowWrap: 'anywhere' }}>
+                    {contact}
+                  </a>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
+                    Added by them. Only they can change it.
+                  </p>
+                </Field>
+              ) : null;
+            })()}
+
             {editingId && (
               <>
                 {/* The rank. An organiser's is nobody's to change — they step
@@ -860,21 +916,6 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                   <span>Can string rackets</span>
                 </label>
 
-                {/* The third switch (docs/plans/gift-card-ledger.md): this
-                    person may mint gift cards from their own Profile — a
-                    raffle, a thank-you — without the console. Every card
-                    records who made it; the admin's list says so. */}
-                {/* Organiser-only (docs/plans/roles-v2.md): a gift card is
-                    money the club owes. An admin sees the switch as it stands. */}
-                <label className="cc-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={formCanGift}
-                    disabled={!callerOrganiser || !rankKnown}
-                    onChange={(e) => setFormCanGift(e.target.checked)}
-                  />
-                  <span>Can give out gift cards{callerOrganiser ? '' : ' (an organiser sets this)'}</span>
-                </label>
 
                 <Field label="Recovery code">
                   <button
@@ -889,13 +930,37 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
                     For a player who forgot their PIN. Give them the code — they enter it under
                     Profile → &ldquo;Have a recovery code?&rdquo; to set a new PIN. No signup needed.
+                    Issuing one also signs them out of every device.
+                  </p>
+                </Field>
+
+                {/* Taking a name back (docs/plans/claim-your-name.md): a claim
+                    let in for the wrong person, or a phone that walked off.
+                    Every sign-in under this name in this club stops working —
+                    the admin console's too, so a rank-holder is an
+                    organiser's to sign out (the server says organiser_only). */}
+                <Field label="Signed-in devices">
+                  <button
+                    type="button"
+                    onClick={handleSignOutEverywhere}
+                    disabled={savingForm || deletingForm || signingOut || signedOut || !canSignOutRank}
+                    className="cc-btn cc-btn-secondary"
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    <span key={String(signedOut)} className={signedOut ? 'motion-fade' : undefined}>
+                      {signingOut ? 'Signing out…' : signedOut ? 'Signed out ✓' : 'Sign out everywhere'}
+                    </span>
+                  </button>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
+                    Ends every sign-in under this name here, on every phone. They sign in again with their PIN, or a
+                    recovery code.{canSignOutRank ? '' : ' An organiser signs out an admin or organiser.'}
                   </p>
                 </Field>
               </>
             )}
 
             {formError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
                 {formError}
               </p>
             )}
@@ -935,7 +1000,16 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
         </BottomSheetBody>
       </BottomSheet>
 
-      <RosterImportSheet open={importOpen} onClose={() => setImportOpen(false)} onImported={() => void load()} />
+      <RosterImportSheet
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => void load()}
+        onShareClaimLink={() => {
+          setImportOpen(false);
+          setClaimLinkOpen(true);
+        }}
+      />
+      <ClaimLinkSheet open={claimLinkOpen} onClose={() => setClaimLinkOpen(false)} clubName={currentGroup?.name} />
 
       <ResetAccessSheet
         open={resetSheet.open}

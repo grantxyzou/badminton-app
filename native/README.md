@@ -59,7 +59,15 @@ no cleartext), `MainActivity.java` (notification channel), `strings.xml`.
    **App Signing** SHA-256 into the Azure App Setting `ANDROID_ASSET_LINKS`.
    The upload key's fingerprint is the wrong one — App Links then silently
    never verify.
-4. **AASA**: Azure App Setting `APPLE_APP_SITE_ASSOCIATION` with the Team ID.
+4. **AASA**: Azure App Setting `APPLE_APP_SITE_ASSOCIATION` is
+   `native/apple-app-site-association.example.json` with `TEAMID` replaced by
+   the Team ID, on one line. That file is the body; the Team ID stays out of
+   git. Its paths must match the Android App Links filter and the universal
+   link branch of `components/NativeBridge.tsx`, which
+   `__tests__/native-shell-projects.test.ts` checks. iOS reads it through
+   Apple's CDN when the app is installed or updated and periodically after
+   that, so a change reaches installed phones with no store build, though not
+   instantly; reinstalling the app picks it up at once.
    `curl -sI https://bpm.grantzou.com/.well-known/apple-app-site-association`
    must be 200 `application/json` with no `location`.
 5. **The widget extension (iOS, once)** — `docs/plans/native-widgets.md`. Its

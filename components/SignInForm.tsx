@@ -106,7 +106,10 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <form
+      onSubmit={(e) => { e.preventDefault(); void submit(); }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
+    >
       <input
         type="text"
         aria-label={t('nameLabel')}
@@ -124,9 +127,8 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
         ariaInvalid={error === 'invalid'}
       />
       <button
-        type="button"
+        type="submit"
         disabled={!canSubmit}
-        onClick={submit}
         className="cc-btn cc-btn-primary cc-btn-lg"
         style={{ marginTop: 'var(--space-1)' }}
       >
@@ -146,25 +148,25 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
         </p>
       )}
       {error === 'invalid' && !knownNoPin && (
-        <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)', margin: '0' }}>
+        <p role="alert" className="field-error" style={{ margin: '0' }}>
           {t('errorInvalid')}
         </p>
       )}
       {error === 'rate_limited' && (
-        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: '0' }}>
+        <p role="alert" className="field-warn" style={{ margin: '0' }}>
           {t('errorRateLimited')}
         </p>
       )}
       {error === 'admin_logged_in' && (
-        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: '0' }}>
+        <p role="alert" className="field-warn" style={{ margin: '0' }}>
           {t('errorAdminLoggedIn')}
         </p>
       )}
       {error === 'network' && (
-        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: '0' }}>
+        <p role="alert" className="field-warn" style={{ margin: '0' }}>
           {t('errorNetwork')}
         </p>
       )}
-    </div>
+    </form>
   );
 }

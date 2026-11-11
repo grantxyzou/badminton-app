@@ -19,6 +19,8 @@
  * settings that have shipped. The plan lists the ones still to come.
  */
 
+import { DEFAULT_MEMBERS_FIRST, isMembersFirst, sameMembersFirst, type MembersFirst } from './membersFirst';
+
 export type ClubStyle = 'first_come' | 'members_first' | 'custom';
 
 /** `'off'`: the organiser keeps the money outside the app — no bill, no "unpaid". */
@@ -29,28 +31,60 @@ export interface ClubRun {
   /** Spots per court; the session's cap is courts × this. `null` = the cap is typed by hand. */
   playersPerCourt: number | null;
   money: ClubMoney;
+  /**
+   * Members get first pick until this long before each session; then the
+   * waitlist moves up (lib/membersFirst.ts). `null` = no window, the first
+   * come, first served rule.
+   */
+  membersFirst: MembersFirst | null;
+  /**
+   * How many guests a member may bring to a session (docs/plans/plus-one.md,
+   * docs/plans/six-feathers-guests.md). `0` = no guests. Replaces the
+   * `guestsAllowed` switch, which still answers for a club that never set it
+   * (on = 1) and is still written beside it for rollback.
+   */
+  guests: GuestCap;
+}
+
+export type GuestCap = 0 | 1 | 2;
+export const GUESTS_MAX: GuestCap = 2;
+
+export function isGuestCap(v: unknown): v is GuestCap {
+  return v === 0 || v === 1 || v === 2;
 }
 
 /** The settings a style writes. `custom` has none: it is what any hand edit becomes. */
 type ClubRunValues = Omit<ClubRun, 'style'>;
 
-export const CLUB_STYLES: Record<Exclude<ClubStyle, 'custom'>, { label: string; summary: string; values: ClubRunValues }> = {
+/**
+ * A style's values. `guests: null` means the style leaves guests to the club:
+ * "First come, first served" says nothing about them, so choosing it keeps
+ * whatever the club has, and any number reads as that style.
+ */
+type StyleValues = Omit<ClubRunValues, 'guests'> & { guests: GuestCap | null };
+
+export const CLUB_STYLES: Record<Exclude<ClubStyle, 'custom'>, { label: string; summary: string; values: StyleValues }> = {
   first_come: {
     label: 'First come, first served',
     summary: 'Everyone signs up each week; the court cost is split between the players.',
-    values: { playersPerCourt: null, money: 'split' },
+    values: { playersPerCourt: null, money: 'split', membersFirst: null, guests: null },
   },
   members_first: {
     label: 'Members first',
-    summary: 'A regular list of members, 8 to a court; the organiser collects the money outside the app.',
-    values: { playersPerCourt: 8, money: 'off' },
+    summary: 'Members get first pick each week, 8 to a court, and can bring friends; the organiser collects the money outside the app.',
+    values: { playersPerCourt: 8, money: 'off', membersFirst: DEFAULT_MEMBERS_FIRST, guests: 2 },
   },
 };
 
 export const PLAYERS_PER_COURT_MIN = 2;
 export const PLAYERS_PER_COURT_MAX = 12;
 
-const DEFAULT_RUN: ClubRun = { style: 'first_come', ...CLUB_STYLES.first_come.values };
+const DEFAULT_RUN: ClubRun = { style: 'first_come', ...CLUB_STYLES.first_come.values, membersFirst: null, guests: 0 };
+
+/** The old switch's answer, for a club whose `run` never named a number of guests. */
+function legacyGuests(settings: { guestsAllowed?: unknown } | null | undefined): GuestCap {
+  return settings?.guestsAllowed === true ? 1 : 0;
+}
 
 function isPlayersPerCourt(v: unknown): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v >= PLAYERS_PER_COURT_MIN && v <= PLAYERS_PER_COURT_MAX;
@@ -66,9 +100,9 @@ function isPlayersPerCourt(v: unknown): v is number {
  * club, or one with no style, falls back to how BPM runs. A stored value is
  * always kept over the style's.
  */
-export function clubRunOf(settings: { run?: unknown } | null | undefined): ClubRun {
+export function clubRunOf(settings: { run?: unknown; guestsAllowed?: unknown } | null | undefined): ClubRun {
   const raw = settings?.run;
-  if (!raw || typeof raw !== 'object') return { ...DEFAULT_RUN };
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_RUN, guests: legacyGuests(settings) };
   const r = raw as Partial<Record<keyof ClubRun, unknown>>;
   const style: ClubStyle =
     r.style === 'first_come' || r.style === 'members_first' || r.style === 'custom' ? r.style : DEFAULT_RUN.style;
@@ -78,12 +112,21 @@ export function clubRunOf(settings: { run?: unknown } | null | undefined): ClubR
     playersPerCourt:
       r.playersPerCourt === null ? null : isPlayersPerCourt(r.playersPerCourt) ? r.playersPerCourt : base.playersPerCourt,
     money: r.money === 'off' || r.money === 'split' ? r.money : base.money,
+    membersFirst:
+      r.membersFirst === null ? null : isMembersFirst(r.membersFirst) ? { ...r.membersFirst } : base.membersFirst && { ...base.membersFirst },
+    guests: isGuestCap(r.guests) ? r.guests : base.guests ?? legacyGuests(settings),
   };
 }
 
 /** Start from a style: its values, in full. */
-export function applyStyle(style: Exclude<ClubStyle, 'custom'>): ClubRun {
-  return { style, ...CLUB_STYLES[style].values };
+export function applyStyle(style: Exclude<ClubStyle, 'custom'>, current?: Pick<ClubRun, 'guests'>): ClubRun {
+  const values = CLUB_STYLES[style].values;
+  return {
+    style,
+    ...values,
+    membersFirst: values.membersFirst && { ...values.membersFirst },
+    guests: values.guests ?? current?.guests ?? 0,
+  };
 }
 
 /**
@@ -92,33 +135,64 @@ export function applyStyle(style: Exclude<ClubStyle, 'custom'>): ClubRun {
  * changing it back reads as "Members first" again.
  */
 export function withSetting<K extends keyof ClubRunValues>(run: ClubRun, key: K, value: ClubRunValues[K]): ClubRun {
-  const values: ClubRunValues = { playersPerCourt: run.playersPerCourt, money: run.money, [key]: value };
+  const values: ClubRunValues = {
+    playersPerCourt: run.playersPerCourt,
+    money: run.money,
+    membersFirst: run.membersFirst,
+    guests: run.guests,
+    [key]: value,
+  };
   return { style: styleOf(values), ...values };
 }
 
 /** The style whose values these are, or `custom`. */
 export function styleOf(values: ClubRunValues): ClubStyle {
   for (const [name, preset] of Object.entries(CLUB_STYLES) as [Exclude<ClubStyle, 'custom'>, (typeof CLUB_STYLES)[keyof typeof CLUB_STYLES]][]) {
-    if (preset.values.playersPerCourt === values.playersPerCourt && preset.values.money === values.money) return name;
+    if (
+      preset.values.playersPerCourt === values.playersPerCourt &&
+      preset.values.money === values.money &&
+      sameMembersFirst(preset.values.membersFirst, values.membersFirst) &&
+      (preset.values.guests === null || preset.values.guests === values.guests)
+    ) {
+      return name;
+    }
   }
   return 'custom';
 }
 
 /**
- * What the admin settings route will store, or `null` to refuse. The whole
+ * What the admin settings route will store, or `null` to refuse. `current` is
+ * the club's stored window and guest number, each kept when the request does
+ * not name it. The whole
  * object, every field valid — a partial write is refused rather than merged,
  * so a stored `run` is always complete. The STYLE is never taken from the
  * request: it is worked out from the values (`styleOf`), so a stored "Members
  * first" always means the values are that style's.
  */
-export function parseClubRun(value: unknown): ClubRun | null {
+export function parseClubRun(
+  value: unknown,
+  current: { membersFirst?: MembersFirst | null; guests?: GuestCap } = {},
+): ClubRun | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
-  const known = new Set(['style', 'playersPerCourt', 'money']);
+  const known = new Set(['style', 'playersPerCourt', 'money', 'membersFirst', 'guests']);
   if (Object.keys(v).some((k) => !known.has(k))) return null;
   if (!(v.playersPerCourt === null || isPlayersPerCourt(v.playersPerCourt))) return null;
   if (!(v.money === 'split' || v.money === 'off')) return null;
-  const values: ClubRunValues = { playersPerCourt: v.playersPerCourt, money: v.money };
+  // ABSENT keeps the stored window (`current`): a phone still running the
+  // screen from before the setting must not switch a club's window off by
+  // saving its money switch. `null` is the explicit "no window".
+  const membersFirst = v.membersFirst === undefined ? current.membersFirst ?? null : v.membersFirst;
+  if (membersFirst !== null && !isMembersFirst(membersFirst)) return null;
+  // The same for guests: absent keeps what the club has.
+  const guests = v.guests === undefined ? current.guests ?? 0 : v.guests;
+  if (!isGuestCap(guests)) return null;
+  const values: ClubRunValues = {
+    playersPerCourt: v.playersPerCourt,
+    money: v.money,
+    membersFirst: membersFirst === null ? null : { daysBefore: membersFirst.daysBefore, time: membersFirst.time },
+    guests,
+  };
   return { style: styleOf(values), ...values };
 }
 

@@ -48,7 +48,7 @@ export default function RacketLookSheet({ open, onClose, gear, item, title }: Ra
   const typed = !item.catalogId;
 
   const base = racketLook(item.catalogId);
-  const inputs = useMemo(() => modelInputs(base, look), [base, look]);
+  const inputs = useMemo(() => modelInputs(base, look, item.catalogId), [base, look, item.catalogId]);
 
   async function done() {
     if (sameLook(look, item.look ?? {})) { onClose(); return; }

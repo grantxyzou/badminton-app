@@ -13,14 +13,24 @@
  * sign-up duplicate check, the self-cancel lookup, older code after a
  * rollback), and a guest called Lin must never be taken for member Lin.
  */
+import { clubRunOf, type GuestCap } from './clubRun';
 import type { GroupSettings, Player } from './types';
 
 /** A first name, not a full one: the display form carries the host's name too. */
 export const GUEST_NAME_MAX = 20;
 
-/** Whether the club lets members bring a guest. Absent = off. */
-export function guestsAllowedOf(settings: Pick<GroupSettings, 'guestsAllowed'> | null | undefined): boolean {
-  return settings?.guestsAllowed === true;
+/**
+ * How many guests a member may bring to a session: the club's `run.guests`
+ * (lib/clubRun.ts), or the old `guestsAllowed` switch (on = 1) for a club that
+ * never set it. Absent = 0.
+ */
+export function guestsPerMemberOf(settings: Pick<GroupSettings, 'guestsAllowed' | 'run'> | null | undefined): GuestCap {
+  return clubRunOf(settings).guests;
+}
+
+/** Whether the club lets members bring guests at all. */
+export function guestsAllowedOf(settings: Pick<GroupSettings, 'guestsAllowed' | 'run'> | null | undefined): boolean {
+  return guestsPerMemberOf(settings) > 0;
 }
 
 /** A trimmed guest name with single spaces, or `null` when it is not one. */
@@ -34,9 +44,14 @@ export function cleanGuestName(raw: unknown): string | null {
   return name;
 }
 
-/** The row's `name`. English, like every name stored on a row. */
+/**
+ * The row's `name`: `Jenny (Josh)`, the way a club's own list writes a guest
+ * (docs/plans/six-feathers-guests.md). Rows written before 2026-11-05 carry
+ * `Jenny (Josh's guest)`; nothing reads the name to find a guest
+ * (`isGuestRow`, `matchesIdentity` key on `guestOf`), so both stand.
+ */
 export function guestDisplayName(guestName: string, hostName: string): string {
-  return `${guestName} (${hostName}'s guest)`;
+  return `${guestName} (${hostName})`;
 }
 
 export function isGuestRow(p: Pick<Player, 'guestOf'>): boolean {

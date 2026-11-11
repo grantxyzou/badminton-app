@@ -53,6 +53,12 @@ export function isOperatorId(memberId: string): boolean {
   return operatorMemberIds().has(memberId);
 }
 
+/** The rule over an admin check that already PASSED — no read of its own,
+ *  so `GET /api/admin` can tell the console without a second round trip. */
+export function isOperatorAdmin(auth: { memberId: string; groupId: string }): boolean {
+  return operatorListConfigured() ? isOperatorId(auth.memberId) : auth.groupId === BPM_GROUP_ID;
+}
+
 export type OperatorCheck =
   | { ok: true; memberId: string; name: string; groupId: string }
   | { ok: false; reason: 'unauthorized' | 'operator_only' };
@@ -64,8 +70,7 @@ export type OperatorCheck =
 export async function isOperator(req: NextRequest): Promise<OperatorCheck> {
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return { ok: false, reason: 'unauthorized' };
-  const listed = operatorListConfigured() ? isOperatorId(auth.memberId) : auth.groupId === BPM_GROUP_ID;
-  if (!listed) return { ok: false, reason: 'operator_only' };
+  if (!isOperatorAdmin(auth)) return { ok: false, reason: 'operator_only' };
   return { ok: true, memberId: auth.memberId, name: auth.name, groupId: auth.groupId };
 }
 

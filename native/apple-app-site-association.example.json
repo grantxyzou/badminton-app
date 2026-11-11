@@ -1,0 +1,34 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "TEAMID.com.motioncraft.bpm"
+        ],
+        "components": [
+          {
+            "/": "/bpm/migrate",
+            "comment": "the PWA-to-app migration link"
+          },
+          {
+            "/": "/bpm/migrate?*",
+            "comment": "same, with the code"
+          },
+          {
+            "/": "/bpm/j/*",
+            "comment": "the one invite link, lib/inviteLink.ts"
+          },
+          {
+            "/": "/bpm/s",
+            "comment": "the weekly sign-up link, lib/inviteLink.ts"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "TEAMID.com.motioncraft.bpm"
+    ]
+  }
+}

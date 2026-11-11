@@ -23,7 +23,8 @@
  */
 import { groupScope, type GroupScope } from './groupScope';
 import { computeOwedForRoster, type RosterOwed, type UnpaidSession } from './owedBalance';
-import { sendPushToMembers, type PushPayload } from './push';
+import { sendPushToMembers, type PushLocale, type PushPayload } from './push';
+import { buildReminderPayload } from './pushMessages';
 import { recordNotices } from './notices';
 import type { Player } from './types';
 
@@ -60,14 +61,10 @@ export function reminderDue(
   return true;
 }
 
-export function reminderPayload(lineCount: number): PushPayload {
-  return {
-    title: 'Time to settle up',
-    // English only: the push has no locale to decide from (CLAUDE.md, Push).
-    body: lineCount > 1 ? 'You’ve got a couple of sessions to settle up.' : 'You’ve got a session to settle up.',
-    url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/?tab=home`,
-    tag: 'settle-up',
-  };
+export function reminderPayload(lineCount: number, locale: PushLocale = 'en'): PushPayload {
+  // In the reader's language since 2026-11-05: the words live in
+  // `messages/*.json` → `push.reminder`, beside every other push.
+  return buildReminderPayload(lineCount, locale);
 }
 
 export interface DueReminder {
@@ -123,7 +120,7 @@ export async function runReminders(groupId: string, now: number = Date.now()): P
     if (stamped === 0) continue;
     // A count, never an amount: the page follows the push's lock-screen rule.
     await recordNotices(groupId, [d.memberId], { type: 'settle_up', count: stamped });
-    const result = await sendPushToMembers([d.memberId], reminderPayload(stamped));
+    const result = await sendPushToMembers([d.memberId], (locale) => reminderPayload(stamped, locale));
     sent += result.sent;
   }
   return { reminded: due.length, sent };

@@ -8,8 +8,9 @@ import { readGroup, renameGroup, setGuestsAllowed, setLateCancelHours, updateGro
 import { cleanString, GROUP_NAME_MIN, GROUP_NAME_MAX } from '@/lib/groupRoutes';
 import { isValidLateCancelHours, lateCancelHoursOf } from '@/lib/cancelPolicy';
 import { guestsAllowedOf } from '@/lib/plusOne';
-import { clubRunOf, parseClubRun } from '@/lib/clubRun';
+import { clubRunOf, parseClubRun, withSetting } from '@/lib/clubRun';
 import { recipientOf } from '@/lib/payTo';
+import { isWealthsimpleHandle } from '@/lib/wealthsimple';
 import type { ETransferRecipient } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -19,10 +20,11 @@ const MAX_SKIP_DATES = 100;
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
   if (!value || typeof value !== 'object') return false;
-  const v = value as { name?: unknown; email?: unknown; memo?: unknown };
+  const v = value as { name?: unknown; email?: unknown; memo?: unknown; wealthsimple?: unknown };
   if (typeof v.name !== 'string' || !v.name.trim() || v.name.length > 100) return false;
   if (typeof v.email !== 'string' || !v.email.trim() || v.email.length > 200) return false;
   if (v.memo !== undefined && (typeof v.memo !== 'string' || v.memo.length > 200)) return false;
+  if (v.wealthsimple !== undefined && !isWealthsimpleHandle(v.wealthsimple)) return false;
   return true;
 }
 
@@ -131,7 +133,9 @@ export async function PATCH(req: NextRequest) {
     // record ONLY, so a save with no record would be a 200 that stored
     // nothing. Refuse it up front, before anything else in the body is written.
     const groupId = resolveGroupId(req);
-    if ((body.lateCancelHours !== undefined || body.guestsAllowed !== undefined || groupName !== undefined || run) && !(await readGroup(groupId))) {
+    const touchesGroup = body.lateCancelHours !== undefined || body.guestsAllowed !== undefined || groupName !== undefined || run;
+    const group = touchesGroup ? await readGroup(groupId) : undefined;
+    if (touchesGroup && !group) {
       return NextResponse.json({ error: 'no_group' }, { status: 409 });
     }
     const container = getContainer('members');
@@ -157,11 +161,26 @@ export async function PATCH(req: NextRequest) {
     if (body.lateCancelHours !== undefined) {
       await setLateCancelHours(groupId, body.lateCancelHours as number | null);
     }
-    if (typeof body.guestsAllowed === 'boolean') {
+    if (typeof body.guestsAllowed === 'boolean' && !run) {
+      // The old Guests switch (a screen from before guests joined "How your
+      // club runs"). A club with a stored `run` keeps its guest number there,
+      // so the switch moves that number too, or it would change nothing.
       await setGuestsAllowed(groupId, body.guestsAllowed);
+      if (group?.settings?.run) {
+        const current = clubRunOf(group.settings);
+        const guests = body.guestsAllowed ? (current.guests > 0 ? current.guests : 1) : 0;
+        await updateGroupSettings(groupId, { run: withSetting(current, 'guests', guests) });
+      }
     }
     if (run) {
-      await updateGroupSettings(groupId, { run });
+      // Parsed again against the stored window and guest number, which a
+      // request without them keeps (lib/clubRun.ts `parseClubRun`).
+      const current = clubRunOf(group?.settings);
+      const stored = parseClubRun(body.run, { membersFirst: current.membersFirst, guests: current.guests }) ?? run;
+      await updateGroupSettings(groupId, { run: stored });
+      // The old switch is written beside it, so a rollback still sees guests
+      // on or off the way the club left them.
+      await setGuestsAllowed(groupId, stored.guests > 0);
     }
     // The club's name lives on the group record ONLY — it has no Member-doc
     // copy, because a club is not a person's setting.

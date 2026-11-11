@@ -16,6 +16,19 @@ interface Waiting {
   count: number;
   /** Set only when `count` is 1 — the one request that can be approved. */
   requestId: string | null;
+  /** Asked through the club's claim link (docs/plans/claim-your-name.md). */
+  viaLink?: boolean;
+  /** Nobody has ever signed in under this name: no PIN, password or Google. */
+  neverSignedIn?: boolean;
+}
+
+/** Someone asking to JOIN through the club's door link (docs/plans/door-link.md). */
+interface Joining {
+  joinRequestId: string;
+  name: string;
+  at: number;
+  /** Someone on the roster, a removed member included, already holds the name. */
+  nameTaken: boolean;
 }
 
 /**
@@ -30,10 +43,18 @@ interface Waiting {
  * card that is normally empty — but it renders its ERROR loudly, because "we
  * could not ask" and "nobody is waiting" look identical and only one of them
  * means someone is locked out.
+ *
+ * It also lists people asking to JOIN through the club's door link
+ * (docs/plans/door-link.md). Anything that came through that link is an
+ * ORGANISER's to let in (Grant, 2026-11-05), so an admin who is not one sees
+ * those rows with "Waiting for an organiser" and no buttons: the server
+ * refuses them too.
  */
 export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: number }) {
   const online = useOnline();
   const [waiting, setWaiting] = useState<Waiting[] | null>(null);
+  const [joining, setJoining] = useState<Joining[]>([]);
+  const [organiser, setOrganiser] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -44,6 +65,8 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
       if (!res.ok) throw new Error(`access requests ${res.status}`);
       const body = await res.json();
       setWaiting(Array.isArray(body.requests) ? body.requests : []);
+      setJoining(Array.isArray(body.joins) ? body.joins : []);
+      setOrganiser(body.organiser === true);
     } catch {
       setWaiting(null);
       setLoadError(true);
@@ -72,6 +95,25 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
     }
   }
 
+  async function decideJoin(r: Joining, decision: 'approve' | 'decline') {
+    if (busy || !online) return;
+    setBusy(r.joinRequestId);
+    try {
+      const res = await fetch(`${BASE}/api/admin/access-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ joinRequestId: r.joinRequestId, decision }),
+      });
+      // 409: the name was taken since the list loaded. Reloading says so.
+      if (!res.ok && res.status !== 409) throw new Error(`decide join ${res.status}`);
+      await load();
+    } catch {
+      setLoadError(true);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   // The console's RevealSlot holds this place; with nobody waiting it closes.
   useRevealReady(waiting !== null || loadError);
 
@@ -89,18 +131,69 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
     );
   }
   // Empty is the normal state and deserves no card at all.
-  if (!waiting || waiting.length === 0) return null;
+  if (!waiting || (waiting.length === 0 && joining.length === 0)) return null;
 
   return (
     <section className="glass-card p-5 space-y-3" aria-label="Sign-in requests">
       <CardHeader
         icon="how_to_reg"
         title="Sign-in requests"
-        subtitle="They can't sign in and asked to be let in."
+        subtitle={joining.length > 0 ? 'They asked to join, or to be let back in.' : "They can't sign in and asked to be let in."}
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        {joining.map((r) => (
+          <div
+            key={r.joinRequestId}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-3)',
+              padding: 'var(--space-4)',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--inner-card-bg)',
+              border: '1px solid transparent',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span className="fs-md" style={{ display: 'block', fontWeight: 600 }}>
+                {r.name}
+              </span>
+              <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
+                {!organiser
+                  ? 'Asking to join · waiting for an organiser'
+                  : r.nameTaken
+                    ? 'Asking to join, but someone in the club already has that name. Ignore it and ask them to try again with another, like adding an initial.'
+                    : 'Asking to join with the club link. Let in someone you know asked.'}
+              </span>
+            </div>
+            {organiser && (
+              <>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-ghost"
+                  disabled={busy !== null || !online}
+                  onClick={() => void decideJoin(r, 'decline')}
+                >
+                  Ignore
+                </button>
+                {!r.nameTaken && (
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-primary"
+                    disabled={busy !== null || !online}
+                    onClick={() => void decideJoin(r, 'approve')}
+                  >
+                    {busy === r.joinRequestId ? 'Letting in…' : 'Let them in'}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        ))}
         {waiting.map((r) => {
           const several = r.count > 1 || !r.requestId;
+          // Through the door link only an organiser lets anyone in.
+          const organisersOnly = !organiser && r.viaLink === true;
           return (
             <div
               key={r.memberId}
@@ -111,16 +204,30 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                 padding: 'var(--space-4)',
                 borderRadius: 'var(--radius-lg)',
                 background: 'var(--inner-card-bg)',
-                border: '1px solid var(--inner-card-border)',
+                border: '1px solid transparent',
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span className="fs-md" style={{ display: 'block', fontWeight: 600 }}>
                   {r.name}
                 </span>
-                {several && (
+                {organisersOnly ? (
+                  <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
+                    With the club link · waiting for an organiser
+                  </span>
+                ) : several ? (
                   <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
                     {r.count} devices asked. Clear them, then have {r.name} ask again with you there.
+                  </span>
+                ) : (r.viaLink || r.neverSignedIn) && (
+                  /* What the organiser is approving: a name from the club link
+                     that nobody has signed in under. Let in someone you know
+                     asked — the link is in the whole chat. */
+                  <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
+                    {[r.viaLink ? 'With the club link' : null, r.neverSignedIn ? 'never signed in' : null]
+                      .filter(Boolean)
+                      .join(' · ')
+                      .replace(/^./, (c) => c.toUpperCase())}
                   </span>
                 )}
               </div>
@@ -131,7 +238,7 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   else; that is what makes one tap safe. It is also why two
                   requests get no approve button: they cannot be told apart, so
                   either tap could let in the wrong one. */}
-              {several ? (
+              {organisersOnly ? null : several ? (
                 <button
                   type="button"
                   className="cc-btn cc-btn-secondary"

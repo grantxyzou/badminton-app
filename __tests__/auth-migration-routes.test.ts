@@ -143,6 +143,26 @@ describe('POST /api/auth/migrate/claim', () => {
     expect(cookies).toContain('NEXT_LOCALE=zh-CN');
   });
 
+  it("never re-mints the token on ANOTHER person's row that shares the name (audit, 2026-11-05)", async () => {
+    const id = seedMember('Lin');
+    const other = await seedPlayer('Lin');
+    (other as Record<string, unknown>).memberId = 'someone-else';
+    const minted = await (await start('Lin', id)).json();
+    const body = await (await claim({ link: minted.linkCode })).json();
+    expect(body.deleteToken).toBeNull();
+    expect(players().find((p) => p.name === 'Lin')!.deleteToken).toBe('old-token');
+  });
+
+  it("re-mints on the person's own row, found by member id", async () => {
+    const id = seedMember('Lin');
+    const own = await seedPlayer('Lin');
+    (own as Record<string, unknown>).memberId = id;
+    const minted = await (await start('Lin', id)).json();
+    const body = await (await claim({ link: minted.linkCode })).json();
+    expect(body.deleteToken).toMatch(/^[0-9a-f]{32}$/);
+    expect(players().find((p) => p.name === 'Lin')!.deleteToken).toBe(body.deleteToken);
+  });
+
   it('claims by short code with a null deleteToken when the member is not registered', async () => {
     const id = seedMember('Lin');
     const minted = await (await start('Lin', id)).json();

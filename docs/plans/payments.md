@@ -4,7 +4,7 @@
 notifications the admin already receives. Phase 3 (cards) WOULD be "payments processing", a locked
 ROADMAP non-goal, and needs that block changed on purpose before it starts.
 **Status:** in-flight
-**Review on:** 2026-11-07 — of the e-transfers received since the flag went on, what share auto-matched, and is the "Needs a look" queue staying short?
+**Review on:** 2026-12-09 — of the e-transfers received since the flag went on, what share auto-matched, and is the "Needs a look" queue staying short? (2026-11-11: Grant was "not sure" — the answer is a count, not a memory, so this review reads it from the inbox or the `payments` container rather than asking.)
 
 ## Problem
 
@@ -32,6 +32,8 @@ fix before anything in Phase 2 starts.
 - Reading Gmail from the server. The admin's own Google account does the reading.
 
 ## Decisions
+
+- **2026-11-05 — A no-script way in is planned** (`docs/plans/payments-forwarding.md`): the organiser forwards Interac's emails to a per-club address the app receives, in place of pasting the Gmail script. It waits on one real forwarded email passing DKIM.
 
 - **2026-10-07 — Phase 2 started before the 2026-11-07 gate, by Grant's decision** ("then why not just do
   phase 2?" after asking where the cost of everything is tracked). Scope chosen: **stages 1–3** — mirror,

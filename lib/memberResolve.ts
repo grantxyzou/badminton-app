@@ -83,13 +83,18 @@ const synthetic = (trimmed: string): MemberSubject => ({
 async function lookupIdInGroup(groupId: string, name: string): Promise<string | null> {
   const held = await groupScope(groupId).read<NameReservation>('memberships', nameReservationId(groupId, name), groupId);
   if (!held || held.kind !== 'name') return null;
-  const m = await readMembership(groupId, held.memberId);
-  if (!m || m.status !== 'active') return null;
+  // The membership and the person are both keyed by the id the reservation
+  // names, so they are read together (audit, 2026-11-05: three round trips in
+  // a row on every name lookup became two).
+  const [m, person] = await Promise.all([
+    readMembership(groupId, held.memberId),
+    getContainer('members').item(held.memberId, held.memberId).read<{ active?: boolean }>(),
+  ]);
+  if (!m || m.status !== 'active' || m.memberId !== held.memberId) return null;
   // ACTIVE-ONLY holds for the person too: a soft-deleted Member (`active:
   // false`) must not resolve through a membership nobody updated, exactly as
   // the flag-off scan filters `c.active = true`.
-  const { resource } = await getContainer('members').item(m.memberId, m.memberId).read<{ active?: boolean }>();
-  return resource?.active === true ? m.memberId : null;
+  return person.resource?.active === true ? m.memberId : null;
 }
 
 /**

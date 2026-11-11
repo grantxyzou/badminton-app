@@ -76,6 +76,11 @@ interface Props {
    * nothing and keeps the sentence alone.
    */
   onSignIn?: () => void;
+  /**
+   * Home only: "See details" opens Profile → Account balance, the detailed
+   * view of this card from the same read (spec §4).
+   */
+  onDetails?: () => void;
 }
 
 /**
@@ -87,7 +92,7 @@ interface Props {
  * never a silent "you owe nothing". On `home`, a brief pre-load gap is
  * preferred over flashing "paid up" before the first response.
  */
-export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn }: Props) {
+export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn, onDetails }: Props) {
   const t = useTranslations('profile.unpaid');
   const tBal = useTranslations('home.balance');
   const tPay = useTranslations('home.payment');
@@ -458,6 +463,11 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
           )}
         </>
       )
+    )}
+    {onDetails && !forbidden && !loadError && (
+      <button type="button" className="link-quiet link-quiet--flush" style={{ alignSelf: 'flex-start' }} onClick={onDetails}>
+        {tBal('details')}
+      </button>
     )}
     </>
   );

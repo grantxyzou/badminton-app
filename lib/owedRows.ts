@@ -53,19 +53,29 @@ export async function loadOwedInputs(
   // run at once. Legacy rows carry a name and no memberId; alias-linked names
   // are a different name on the same person. `names` is already lowercased.
   const names = [...identity.names];
-  const [byMemberId, byName, byGuestOf] = await Promise.all([
+  const [byMemberId, byNames, byGuestOf] = await Promise.all([
     identity.memberId
       ? scope.query<Player>('players', {
           where: 'c.memberId = @memberId',
           params: [{ name: '@memberId', value: identity.memberId }],
         })
       : Promise.resolve([] as Player[]),
-    names.length > 0
-      ? scope.query<Player>('players', {
-          where: 'ARRAY_CONTAINS(@names, LOWER(c.name))',
-          params: [{ name: '@names', value: names }],
-        })
-      : Promise.resolve([] as Player[]),
+    // ONE QUERY PER NAME, case-insensitive STRINGEQUALS, and only rows that
+    // name nobody (audit, 2026-11-05). `ARRAY_CONTAINS(@names, LOWER(c.name))`
+    // was a FULL SCAN — `LOWER` cannot use the index, so Cosmos loaded every
+    // player row the club ever had, on every Home open, to find a handful of
+    // legacy rows. STRINGEQUALS(…, true) is an index scan that loads only the
+    // matches (learn.microsoft.com/azure/cosmos-db/index-overview#index-usage),
+    // and a row carrying a member id is never matched by name anyway
+    // (`matchesIdentity`). `@name` is also the parameter the mock filters on.
+    Promise.all(
+      names.map((name) =>
+        scope.query<Player>('players', {
+          where: "STRINGEQUALS(c.name, @name, true) AND (NOT IS_DEFINED(c.memberId) OR IS_NULL(c.memberId) OR c.memberId = '')",
+          params: [{ name: '@name', value: name }],
+        }),
+      ),
+    ),
     // The guests this person brought: their shares are this person's lines
     // (docs/plans/plus-one.md). A third query, for the same no-`OR` reason.
     identity.memberId
@@ -76,7 +86,7 @@ export async function loadOwedInputs(
       : Promise.resolve([] as Player[]),
   ]);
   keep(byMemberId);
-  keep(byName);
+  for (const rows of byNames) keep(rows);
   keep(byGuestOf);
   const players = [...byId.values()];
 

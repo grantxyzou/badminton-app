@@ -6,7 +6,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
 import { isRefused } from '@/lib/apiFetch';
 import { useOnline } from '@/lib/useOnline';
-import { GROUP_NAME_MAX, GROUP_NAME_MIN } from '@/lib/groupRoutes';
+import { GROUP_NAME_MAX, GROUP_NAME_MIN } from '@/lib/nameLimits';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 

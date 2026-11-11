@@ -10,6 +10,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import {
   verifyMemberAuth,
+  verifyLiveMemberAuth,
   isAdminAuthed,
   isAdminAuthedWithMember,
   setMemberCookie,
@@ -17,13 +18,9 @@ import {
   clearAdminCookie,
   requireMember,
 } from '@/lib/auth';
-import {
-  purgeMember,
-  anonymizePlayerRows,
-  anonymizeGameResults,
-  anonymizeFeedback,
-} from '@/lib/memberPurge';
+import { purgeMember, anonymizePlayerRows, anonymizeGameResults, anonymizeFeedback, purgeNamesFor } from '@/lib/memberPurge';
 import { normalizeAvatar, parseAvatar } from '@/lib/memberAvatar';
+import { normalizeContactEmail, parseContactEmail } from '@/lib/contactEmail';
 import {
   normalizeStatsPrivacy,
   parseStatsPrivacyPatch,
@@ -97,19 +94,19 @@ export async function GET(req: NextRequest) {
         : null;
     const probe = selfId
       ? {
-          query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',
+          query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.contactEmail FROM c WHERE c.id = @id AND c.active = true',
           parameters: [{ name: '@id', value: selfId }],
         }
       : groupsOn
       ? groupMemberId
         ? {
-            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',
+            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.contactEmail FROM c WHERE c.id = @id AND c.active = true',
             parameters: [{ name: '@id', value: groupMemberId }],
           }
         : null // not on this group's roster: nobody, without a read
       : {
           query:
-            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar, c.contactEmail FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
           parameters: [{ name: '@name', value: name }],
         };
     const resources = probe ? (await container.items.query(probe).fetchAll()).resources : [];
@@ -163,8 +160,9 @@ export async function GET(req: NextRequest) {
      * Read-only route, so the cheap sync admin check (rule 3).
      */
     const privileged = authed || isAdminAuthed(req);
-    const groupRole =
-      privileged && groupMemberId ? (await readMembership(groupId, groupMemberId))?.role : undefined;
+    const membership =
+      privileged && groupMemberId ? await readMembership(groupId, groupMemberId) : undefined;
+    const groupRole = membership?.role;
     const role = !privileged
       ? 'member'
       : groupRole
@@ -175,7 +173,25 @@ export async function GET(req: NextRequest) {
     const statsPrivacy = privileged ? normalizeStatsPrivacy(me?.statsPrivacy) : null;
     // Not privileged: the roster already shows it beside the same name.
     const avatar = normalizeAvatar(me?.avatar);
-    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar });
+    /**
+     * THE PROFILE CARD'S RANK (docs/plans/roles-v2.md). `role` above collapses
+     * an organiser to `admin` for the flag-off readers; `rank` keeps it, from
+     * THIS club's membership (the Member's role with groups off).
+     * Privileged-only, like `role`; `null` reads as unknown, never as Player.
+     */
+    const rank = !privileged || !me
+      ? null
+      : membership
+        ? membership.role
+        : me.role === 'admin' ? 'admin' : 'member';
+    /**
+     * The contact email (spec Q3) is the caller's OWN, and only theirs: an
+     * admin asking about someone else reads it on the roster, which is the
+     * club's view (`GET /api/members`), not here. `null` = none, or not asked
+     * by its owner.
+     */
+    const contactEmail = authed ? normalizeContactEmail(me?.contactEmail) : null;
+    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar, rank, contactEmail });
   } catch (error) {
     // A thrown read is a 503, never a 200 of defaults (the server half of the
     // lying-empty-state rule, `__tests__/read-failed-503.test.ts`). The
@@ -260,7 +276,7 @@ async function handleStatsPrivacyPatch(req: NextRequest, name: string, raw: unkn
   // own display name happens to equal a target's roster name in the claimed
   // group write that target's privacy setting. The id the route already
   // resolved is the thing that identifies a person.
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   const isSelf = !!caller && caller.memberId === memberId;
   if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -303,7 +319,7 @@ async function handleAvatarPatch(req: NextRequest, name: string, raw: unknown) {
   if (!memberId) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   const isSelf = !!caller && caller.memberId === memberId;
   if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -316,6 +332,43 @@ async function handleAvatarPatch(req: NextRequest, name: string, raw: unknown) {
   const { avatar: _previous, ...rest } = member;
   await membersContainer.items.upsert(avatar ? { ...rest, avatar } : rest);
   return NextResponse.json({ success: true, avatar });
+}
+
+/**
+ * Write the member's contact email (spec Q3, `lib/contactEmail.ts`). The
+ * member's OWN cookie only — unlike the picture, an admin does not set
+ * someone's address for them: it is how the club reaches that person, and
+ * only they know it (rule 12: never a name alone). `null` or `''` clears it.
+ * A `replace`, not an `upsert`: an account deleted between the read and the
+ * write stays deleted.
+ */
+async function handleContactEmailPatch(req: NextRequest, name: string, raw: unknown) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`contact-email:${name.toLowerCase()}:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  const contactEmail = parseContactEmail(raw);
+  if (contactEmail === undefined) {
+    return NextResponse.json({ error: 'invalid_email' }, { status: 400 });
+  }
+
+  const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+  if (!memberId) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  const caller = await verifyLiveMemberAuth(req);
+  if (!caller || caller.memberId !== memberId) {
+    return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+  }
+
+  const item = getContainer('members').item(memberId, memberId);
+  const member = (await item.read()).resource;
+  if (!member) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  const { contactEmail: _previous, ...rest } = member;
+  await item.replace(contactEmail ? { ...rest, contactEmail } : rest);
+  return NextResponse.json({ success: true, contactEmail });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -334,6 +387,7 @@ async function handlePatch(req: NextRequest) {
     newPin?: unknown;
     statsPrivacy?: unknown;
     avatar?: unknown;
+    contactEmail?: unknown;
   };
   try {
     body = await req.json();
@@ -358,6 +412,10 @@ async function handlePatch(req: NextRequest) {
   // The picture: same reason, same place.
   if (body.avatar !== undefined) {
     return handleAvatarPatch(req, name, body.avatar);
+  }
+
+  if (body.contactEmail !== undefined) {
+    return handleContactEmailPatch(req, name, body.contactEmail);
   }
 
   /**
@@ -462,7 +520,7 @@ async function handlePatch(req: NextRequest) {
   // first PIN — which the response then hands back a session for. The id is
   // already in hand from the resolve above, so the correct check is free.
   if (!hadPin) {
-    const caller = verifyMemberAuth(req);
+    const caller = await verifyLiveMemberAuth(req);
     const isSelf = !!caller && caller.memberId === memberId;
     if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
       return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -545,7 +603,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
 
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   if (!caller) {
     return NextResponse.json({ error: 'Sign in on this device first' }, { status: 401 });
   }
@@ -570,14 +628,23 @@ export async function DELETE(req: NextRequest) {
     }
     const name = String(member.name ?? caller.name);
 
+    // The names they went by, club by club, read BEFORE the purge deletes the
+    // memberships: a name is matched only in the club where it was theirs.
+    const names = await purgeNamesFor(caller.memberId, name);
+    // And every one of those clubs' active session: the seat they hold is
+    // freed in each, not only in the club this request came from.
+    const active = new Map<string, string | null>();
+    for (const groupId of new Set([...names.keys(), resolveGroupId(req)])) {
+      active.set(groupId, await getActiveSessionId(groupId));
+    }
+
     // Shared history first: if a later step fails, the rows that OTHER members
     // depend on have already been made safe, and the owned rows can be retried.
-    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
-    const players = await anonymizePlayerRows(caller.memberId, name, activeSessionId);
-    const games = await anonymizeGameResults(name);
-    const reports = await anonymizeFeedback(name);
+    const players = await anonymizePlayerRows(caller.memberId, names, active);
+    const games = await anonymizeGameResults(names);
+    const reports = await anonymizeFeedback(names, caller.memberId);
 
-    const summary = await purgeMember(caller.memberId, name);
+    const summary = await purgeMember(caller.memberId, names);
 
     /* BEST-EFFORT, NOT TRANSACTIONAL — and deliberately not resumable.
        Cosmos has no cross-container transaction, so a container that fails

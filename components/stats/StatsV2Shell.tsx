@@ -81,7 +81,7 @@ export default function StatsV2Shell({
           `position: sticky` un-sticks. Subhead is pinned tight to the title
           with an inline marginTop that beats the space-y-5 gap. */}
       {!takeover && <PageHeader>{t('heading')}</PageHeader>}
-      <p className="fs-md text-gray-400 px-2" style={{ marginTop: 'var(--space-1)' }} hidden={takeover}>
+      <p className="fs-md text-gray-400" style={{ marginTop: 'var(--space-1)' }} hidden={takeover}>
         {t('subheadV2')}
       </p>
 

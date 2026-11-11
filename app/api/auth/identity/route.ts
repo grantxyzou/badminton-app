@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyLiveMemberAuth } from '@/lib/auth';
 import { listIdentitiesForMember, releaseIdentityDoc } from '@/lib/authIdentity';
 import { revokeAppleIdentity } from '@/lib/appleRevoke';
 import type { Member } from '@/lib/types';
@@ -34,7 +34,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  const auth = verifyMemberAuth(req);
+  const auth = await verifyLiveMemberAuth(req);
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   let body: { provider?: unknown };

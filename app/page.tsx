@@ -1,5 +1,6 @@
-import HomeShell from '@/components/HomeShell';
-import SignedOutShell from '@/components/onboarding/SignedOutShell';
+// Each shell is its own chunk (components/PageShells.tsx): a visitor downloads
+// only the one this page decides to send them.
+import { HomeShell, SignedOutShell } from '@/components/PageShells';
 import { OnlineProvider } from '@/lib/useOnline';
 import { headers } from 'next/headers';
 import { NextRequest } from 'next/server';
@@ -77,7 +78,7 @@ export default async function Page() {
   const initialAnnouncement = (await readActiveAnnouncements(groupId))[0] ?? null;
   return (
     <OnlineProvider>
-      <HomeShell initialAnnouncement={initialAnnouncement} authProviders={authProviders} memberName={memberName} />
+      <HomeShell initialAnnouncement={initialAnnouncement} authProviders={authProviders} memberName={memberName} groupId={groupId} />
     </OnlineProvider>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations, useFormatter } from 'next-intl';
+import { signupErrorKey } from '@/lib/signupError';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useReportFetchFailure } from '@/lib/useOnline';
@@ -10,6 +11,7 @@ import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { APP_NAME } from '@/lib/brand';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
+import { membersFirstOpen, membersFirstUntil } from '@/lib/membersFirst';
 import { defaultMaxPlayers } from '@/lib/defaults';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Tab } from '@/components/HomeShell';
@@ -23,15 +25,16 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import WaitlistPingSheet, { waitlistPingKind, type WaitlistPingKind } from '@/components/home/WaitlistPingSheet';
 import MigrateSheet from '@/components/MigrateSheet';
 import type { UsePushResult } from '@/lib/usePush';
-import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
-import { OFFER_PIN_KEY } from '@/lib/offerPin';
+import { usePageBack } from '@/lib/pageStack';
 import { useTabReturn } from '@/lib/tabActivity';
 import WhoElseIsIn from './home/WhoElseIsIn';
 import CourtLine from './home/CourtLine';
 import { courtLine } from '@/lib/clubRun';
+import { requestProfileView } from '@/lib/profileView';
+import { compareBySignup } from '@/lib/capacity';
 import { useClubRun } from '@/lib/useClubRun';
 import PlusOneRow from './home/PlusOneRow';
 import { canViewTransition, withViewTransition } from '@/lib/viewTransition';
@@ -43,6 +46,8 @@ import { primeFetch, sharedFetch } from '@/lib/sharedRead';
 import { primeMemberAvatars } from '@/lib/useMemberAvatars';
 import { useEverOpened } from '@/lib/useEverOpened';
 import { addSessionToCalendar, canAddToCalendar } from '@/lib/addToCalendar';
+import { homeSnapshotKey, readHomeSnapshot, saveHomeSnapshot } from '@/lib/homeSnapshot';
+import { scrollPageTo } from '@/lib/pageScroll';
 
 // HomeTab itself stays eager (it carries the LCP announcement), but the
 // sheets it can open do not need to: each is behind a tap or a one-shot
@@ -51,7 +56,7 @@ import { addSessionToCalendar, canAddToCalendar } from '@/lib/addToCalendar';
 // chunk is fetched on first open and never for a visitor who never taps.
 const GiveKudosSheet = dynamic(() => import('@/components/stats/GiveKudosSheet'), { ssr: false });
 const ReleaseNotesSheet = dynamic(() => import('./ReleaseNotesSheet'), { ssr: false });
-const RecoveryPinSheet = dynamic(() => import('./RecoveryPinSheet'), { ssr: false });
+const KeepAccountPage = dynamic(() => import('./auth/KeepAccountPage'), { ssr: false });
 
 /** The Home balance row (UnpaidSessionsCard, collapsed), measured at 400px. */
 const BALANCE_ROW_HEIGHT = 50;
@@ -59,6 +64,8 @@ const BALANCE_ROW_HEIGHT = 50;
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
+/** When a members-first window ends: "Mon 11:59 PM" — a day this week, so no date. */
+const WINDOW_END = { weekday: 'short', hour: 'numeric', minute: '2-digit' } as const;
 const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 interface HomeTabProps {
@@ -88,6 +95,8 @@ interface HomeTabProps {
    * the card then names the local identity, and offers no form without one.
    */
   memberName?: string | null;
+  /** The club the session names; keys the copy of last time's week (lib/homeSnapshot.ts). */
+  groupId?: string | null;
   /**
    * HomeShell has not decided the starting tab yet (it restores the last tab
    * after mount). Home holds its fetches until it has, so a restore to another
@@ -104,7 +113,7 @@ interface HomeTabProps {
   webApp?: boolean;
 }
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, deferFetch = false, push, webApp = false }: HomeTabProps) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null, groupId = null, deferFetch = false, push, webApp = false }: HomeTabProps) {
   const t = useTranslations('home');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   /**
@@ -140,6 +149,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const weekLoadedRef = useRef(false);
+  /**
+   * The week on screen is last time's copy (lib/homeSnapshot.ts), not yet the
+   * server's answer: drawn at once, dimmed with "Updating…", its actions held
+   * until the real week lands a moment later.
+   */
+  const [fromCopy, setFromCopy] = useState(false);
+  const snapshotKey = homeSnapshotKey(groupId, memberName);
   /* The week could not be read — distinct from a club that has no week yet
      (`sessionMissing`, a 404). Before this, every failure was a console.error
      and Home rendered "—" tiles and "12 of 12 spots left" for a session that
@@ -183,8 +199,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const releaseEver = useEverOpened(releaseSheetOpen);
   /* The first-PIN sheet, for a member signed in with nothing to sign in with
      next time (the card below, or straight after an admin let them in). */
-  const [setPinOpen, setSetPinOpen] = useState(false);
-  const [recoveredName, setRecoveredName] = useState('');
+  // "Keep your account" (docs/plans/door-link.md): Apple, Google, or an email
+  // and password, for a member signed in with nothing to sign in WITH. A PAGE
+  // in place of Home, not a sheet (Grant, 2026-11-08), so Back steps out of it.
+  const [keepOpen, setKeepOpen] = useState(false);
+  usePageBack(keepOpen, () => setKeepOpen(false));
   /**
    * Does the verified member have any way to sign in again —
    * a PIN, a password or a linked provider? Tri-state: `null` is unknown and
@@ -206,7 +225,17 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // that fails still sets weekLoadError below, which replaces the week with
     // the error, so stale data never stands in for a failure.
     if (!weekLoadedRef.current) {
-      setLoading(true);
+      // Last time's week, at once, while the real one loads behind it.
+      const copy = readHomeSnapshot(snapshotKey);
+      if (copy) {
+        setSession(copy.session);
+        setPlayers(copy.players);
+        setAnnouncement(copy.announcement);
+        setFromCopy(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
       // The balance and skill cards mount only once the week below has
       // landed; start their reads NOW, beside it, so they are not a second
       // wave behind it (lib/sharedRead.ts `primeFetch`). First load only — a
@@ -225,23 +254,30 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       // each while it is in flight (lib/sharedRead.ts).
       const [sRes, pRes, aRes, mRes, rRes] = await Promise.all([
         sharedFetch('/api/session'),
-        fetch(`${BASE}/api/players`, { cache: 'no-store' }),
+        sharedFetch('/api/players'),
         fetch(`${BASE}/api/announcements`, { cache: 'no-store' }),
         sharedFetch('/api/members').catch(() => null),
-        fetch(`${BASE}/api/releases`, { cache: 'no-store' }).catch(() => null),
+        sharedFetch('/api/releases').catch(() => null),
       ]);
       // The players list is half of the sign-up card (spots left, are you
       // in), so it failing is the week failing too.
       if (sRes.status === 404) setSessionMissing(true);
       else if (!sRes.ok || !pRes.ok) setWeekLoadError(true);
       weekLoadedRef.current = sRes.ok && pRes.ok;
-      if (sRes.ok) {
-        setSession(await sRes.json() as Session);
-      }
-      if (pRes.ok) setPlayers(await pRes.json());
+      const freshSession = sRes.ok ? await sRes.json() as Session : null;
+      const freshPlayers: Player[] | null = pRes.ok ? await pRes.json() : null;
+      if (freshSession) setSession(freshSession);
+      if (freshPlayers) setPlayers(freshPlayers);
+      let freshAnnouncement: Announcement | null | undefined;
       if (aRes.ok) {
         const list: Announcement[] = await aRes.json();
-        setAnnouncement(list.length > 0 ? list[0] : null);
+        freshAnnouncement = list.length > 0 ? list[0] : null;
+        setAnnouncement(freshAnnouncement);
+      }
+      // Keep this week for the next open's instant draw (never money: the
+      // balance is not in it).
+      if (freshSession && freshPlayers) {
+        saveHomeSnapshot(snapshotKey, { session: freshSession, players: freshPlayers, announcement: freshAnnouncement ?? null });
       }
       if (mRes?.ok) {
         // The roster's avatars come from this read; the store used to fetch
@@ -256,8 +292,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       reportFetchFailure();
     } finally {
       setLoading(false);
+      // Answered either way: the server's week, or the error in its place.
+      setFromCopy(false);
     }
-  }, [reportFetchFailure, memberName]);
+  }, [reportFetchFailure, memberName, snapshotKey]);
 
   useEffect(() => {
     // The server-verified member IS the user, and the state above was
@@ -287,7 +325,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${BASE}/api/auth/methods`, { cache: 'no-store' });
+        const res = await sharedFetch('/api/auth/methods');
         if (res.ok) {
           const m = (await res.json()) as { hasPin?: boolean; hasPassword?: boolean; linked?: string[] };
           if (cancelled) return;
@@ -295,7 +333,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           setHasCredential(has);
           return;
         }
-        const me = await fetch(`${BASE}/api/members/me?name=${encodeURIComponent(memberName)}`, { cache: 'no-store' });
+        const me = await sharedFetch(`/api/members/me?name=${encodeURIComponent(memberName)}`);
         if (!me.ok || cancelled) return;
         const d = (await me.json()) as { hasPin?: boolean; createdAt?: string | null };
         if (typeof d.createdAt === 'string' && !cancelled) setHasCredential(d.hasPin === true);
@@ -309,23 +347,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       cancelled = true;
     };
   }, [memberName]);
-
-  // Straight after an admin let this member in, open the PIN sheet rather than
-  // only showing the card: the approval is the moment they are thinking about
-  // how they got in. SignedOutShell leaves the one-shot marker before reloading.
-  useEffect(() => {
-    if (!memberName || hasCredential !== false) return;
-    let offer = false;
-    try {
-      offer = window.sessionStorage.getItem(OFFER_PIN_KEY) === '1';
-      window.sessionStorage.removeItem(OFFER_PIN_KEY);
-    } catch {
-      /* storage unavailable — the card still shows */
-    }
-    if (!offer) return;
-    setRecoveredName(memberName);
-    setSetPinOpen(true);
-  }, [memberName, hasCredential]);
 
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
@@ -343,12 +364,18 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     ? waitlistPlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase() && p.heldForUnpaid === true)
     : false;
 
-  // A plus-one (docs/plans/plus-one.md): the viewer's own row, and the guest
+  // Guests (docs/plans/plus-one.md): the viewer's own row, and the guests
   // it brought. A guest row carries `guestOf`, never the viewer's name.
   const myRow = currentUser
     ? players.find((p) => !p.guestOf && p.name.toLowerCase() === currentUser.toLowerCase())
     : undefined;
-  const myGuest = myRow?.memberId ? players.find((p) => p.guestOf === myRow.memberId) ?? null : null;
+  const myGuests = myRow?.memberId ? players.filter((p) => p.guestOf === myRow.memberId).sort(compareBySignup) : [];
+
+  // Members first (docs/plans/members-first-window.md): while it runs, only
+  // members take a spot; a drop-in, an unmarked name or a guest waits for it.
+  const windowEndIso = membersFirstOpen(session, new Date().getTime()) ? membersFirstUntil(session) : null;
+  const windowEnd = windowEndIso ? format.dateTime(new Date(windowEndIso), WINDOW_END) : null;
+  const waitingForMembers = !!windowEnd && myRow?.waitlisted === true && myRow.waitingForMembers === true;
   // The roster shows a guest by their own name and their host's, in the reader's language.
   const hostNameOf = (memberId: string) => players.find((p) => !p.guestOf && p.memberId === memberId)?.name;
   const rosterLabel = (p: Player) => {
@@ -370,9 +397,18 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // Only before play starts, and only on a KNOWN club run: an unknown one could
   // count a court wrong.
   const hasStarted = session?.datetime ? new Date() >= new Date(session.datetime) : false;
-  const courtInfo = clubRunKnown && !hasStarted ? courtLine(session, clubRun, players) : null;
+  // "Filled up early?" is only true of a full session: during a members-first
+  // window people wait with spots still free, so the line waits until it fills.
+  const courtInfo =
+    clubRunKnown && !hasStarted && !(windowEndIso && activePlayers.length < spotsTotal)
+      ? courtLine(session, clubRun, players)
+      : null;
   // The server holds every rule; this only decides whether to OFFER it.
-  const canAddGuest = session?.guestsAllowed === true && !isDeadlinePast && !isSignupClosed && !session.settled;
+  // A phone the server has not told the number yet reads the old switch as one.
+  const guestCap = typeof session?.guestsPerMember === 'number' ? session.guestsPerMember : session?.guestsAllowed === true ? 1 : 0;
+  const canAddGuest = guestCap > myGuests.length && !isDeadlinePast && !isSignupClosed && !session?.settled;
+  // "Their share goes on your balance" is only true where the club collects in the app.
+  const showGuestShare = clubRunKnown && clubRun.money !== 'off';
 
   const isDeadlineApproaching = session?.deadline
     ? (() => { const diff = new Date(session.deadline).getTime() - Date.now(); return diff > 0 && diff <= 24 * 60 * 60 * 1000; })()
@@ -460,7 +496,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
    * confirms. A failure keeps the sheet open and says so.
    */
   async function handleCancel(acknowledgeLateFee = false) {
-    if (!currentUser || !online) return;
+    // Never act on last time's copy of the week (lib/homeSnapshot.ts).
+    if (!currentUser || !online || fromCopy) return;
     const id = getIdentity();
     try {
       const res = await fetch(`${BASE}/api/players`, {
@@ -524,7 +561,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         if (data.error === 'invite_list_not_found') {
           setError(t('signup.inviteError', { name: trimmed }));
         } else {
-          setError(data.error ?? (waitlist ? t('signup.waitlistFailure') : t('signup.genericFailure')));
+          // Never the server's own words: some refusals are English sentences
+          // and some are codes (`lib/signupError.ts`).
+          const key = signupErrorKey(res.status, data.error);
+          setError(key ? t(`signup.errors.${key}`) : waitlist ? t('signup.waitlistFailure') : t('signup.genericFailure'));
         }
         if (res.status === 409) void loadData();
         return;
@@ -540,6 +580,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    if (fromCopy) return;
     // Fetch the haptics code while the server works, so the tap is ready the
     // instant the shuttles launch (see applySignup). A no-op off the shell.
     primeHaptics();
@@ -548,6 +589,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   async function handleJoinWaitlist(e: React.FormEvent) {
     e.preventDefault();
+    if (fromCopy) return;
     await performSignup(true);
   }
 
@@ -586,6 +628,20 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const mapsUrl = session?.locationAddress
     ? `https://maps.google.com/?q=${encodeURIComponent(session.locationAddress)}`
     : null;
+
+  // The page stands in for Home while it is open: everything Home holds stays
+  // in this component's state, so closing it shows the week as it was.
+  if (keepOpen && memberName) {
+    const close = () => setKeepOpen(false);
+    return (
+      <KeepAccountPage
+        onBack={close}
+        onDone={close}
+        /* A password now exists; the "no way back in" card has nothing left to say. */
+        onSaved={() => setHasCredential(true)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -647,9 +703,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       >
       {!loading && (
       <div className="bpm-home-stack">
-      {/* One-time nudge to install to the home screen (mobile browser only). */}
-      <InstallBanner />
-
       {/* A CLUB WITH NO SESSION YET.
           `GET /api/session` answers 404 for a group with no pointer, which is
           every club on the day it is created. Rendering the ordinary week
@@ -693,7 +746,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         </section>
       ) : (
-      <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')}>
+      <section className={`bpm-home-group bpm-home-week${fromCopy ? ' is-updating' : ''}`} aria-label={t('groups.session')} aria-busy={fromCopy || undefined}>
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}
@@ -746,6 +799,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {/* Sign-Up Card — the submit button / payment action / "I paid" button
           sit in the thumb zone for one-handed use. */}
       <div className="glass-card p-5 vt-signup-card">
+        {/* Last time's week is on screen: say so, and hold its buttons until
+            the server's answer lands (lib/homeSnapshot.ts, `.is-updating`). */}
+        {fromCopy && <span className="home-updating-tag motion-fade" role="status">{t('updating')}</span>}
         {isSessionFinished ? (
           /* ── State: Session finished ── */
           <div className="space-y-4">
@@ -793,7 +849,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             </div>
             {isFull && courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
-            <PlusOneRow guest={myGuest} canAdd={canAddGuest} online={online} onChanged={() => void loadData()} />
+            <PlusOneRow
+              guests={myGuests}
+              canAdd={canAddGuest}
+              online={online}
+              onChanged={() => void loadData()}
+              windowEnd={windowEnd}
+              showShare={showGuestShare}
+            />
             <button
               type="button"
               className="link-quiet"
@@ -819,11 +882,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             <StatusBanner
               tone="warn"
               icon="schedule"
-              title={heldForUnpaid ? tStates('heldTitle') : tStates('waitlistTitle')}
+              title={
+                heldForUnpaid
+                  ? tStates('heldTitle')
+                  : waitingForMembers
+                    ? tStates('membersFirstTitle', { when: windowEnd ?? '' })
+                    : tStates('waitlistTitle')
+              }
               body={
                 heldForUnpaid
                   ? tStates('heldBody')
-                  : (
+                  : waitingForMembers
+                    ? tStates('membersFirstBody')
+                    : (
                     <>
                       {`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
                       <br />
@@ -840,7 +911,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             )}
             {courtInfo && <CourtLine line={courtInfo} />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
-            <PlusOneRow guest={myGuest} canAdd={canAddGuest && !heldForUnpaid} online={online} onChanged={() => void loadData()} />
+            <PlusOneRow
+              guests={myGuests}
+              canAdd={canAddGuest && !heldForUnpaid}
+              online={online}
+              onChanged={() => void loadData()}
+              windowEnd={windowEnd}
+              showShare={showGuestShare}
+            />
             <button
               type="button"
               className="link-quiet"
@@ -933,6 +1011,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}
                 </p>
               )}
+              {windowEnd && (
+                <p className="text-center fs-sm motion-fade" style={{ color: 'var(--text-muted)' }}>
+                  {tStates('membersFirstNote', { when: windowEnd })}
+                </p>
+              )}
             </form>
             )}
           </div>
@@ -957,7 +1040,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
       <section className="bpm-home-group vt-home-account" aria-label={t('groups.account')}>
       {/* Signed in, but nothing to sign in WITH next time — the state an
-          admin-approved access request leaves. One tap to a PIN. */}
+          approval leaves. One tap to "Keep your account". */}
       {memberName && (
       <RevealSlot ready={credentialChecked} empty={!needsCredential} placeholder={null}>
       {needsCredential && (
@@ -973,8 +1056,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 className="link-quiet"
                 style={{ paddingInline: 0, fontWeight: 600 }}
                 onClick={() => {
-                  setRecoveredName(memberName ?? '');
-                  setSetPinOpen(true);
+                  setKeepOpen(true);
+                  // The BODY scrolls (lib/pageScroll.ts); window.scrollTo moved nothing.
+                  scrollPageTo(0);
                 }}
               >
                 {t('signInSetup.noneAction')}
@@ -991,7 +1075,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           and most weeks it says $0. */}
       {currentUser && (
         <RevealSlot placeholder={<CardSkeleton height={BALANCE_ROW_HEIGHT} />}>
-          <UnpaidSessionsCard name={currentUser} variant="home" onSignIn={() => onTabChange?.('profile')} />
+          <UnpaidSessionsCard
+            name={currentUser}
+            variant="home"
+            onSignIn={() => onTabChange?.('profile')}
+            onDetails={() => {
+              requestProfileView('balance');
+              onTabChange?.('profile');
+            }}
+          />
         </RevealSlot>
       )}
 
@@ -1028,7 +1120,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             <div key="cancel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <p className="fs-base m-0" style={{ color: 'var(--text-secondary)' }}>
                 {isWaitlisted ? tPlayers('leaveSheetBody') : tPlayers('cancelSheetBody')}
-                {myGuest && ` ${tGuest('cancelNote', { name: myGuest.guestName ?? myGuest.name })}`}
+                {myGuests.length > 0 &&
+                  ` ${tGuest('cancelNote', { name: format.list(myGuests.map((g) => g.guestName ?? g.name), { type: 'conjunction' }) })}`}
               </p>
               {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
@@ -1069,26 +1162,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         <GiveKudosSheet open={kudosFor !== null} onClose={() => setKudosFor(null)} recipient={kudosFor} />
       )}
 
-      {/* Only mounted once we have a name — `identity` is required, and a
-          sheet that cannot say who it is setting a PIN for should not exist. */}
-      {recoveredName !== '' && (
-      <RecoveryPinSheet
-        open={setPinOpen}
-        onClose={() => setSetPinOpen(false)}
-        identity={{ name: recoveredName, sessionId: session?.id ?? '' }}
-        /* Always the two-field first-set shape: it opens only when the
-           account has no PIN. */
-        hasPin={false}
-        /* Signed in with a live member_session, so the first-set guard is
-           satisfied — `true`, not the tri-state unknown. */
-        authed
-        onSaved={() => {
-          setSetPinOpen(false);
-          // A PIN now exists; the "no way back in" card has nothing left to say.
-          if (memberName) setHasCredential(true);
-        }}
-      />
-      )}
       </div>
       )}
       </RevealSlot>

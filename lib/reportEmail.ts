@@ -16,6 +16,7 @@ import { gmailTransport } from './mailTransport';
 export interface ReportNotification {
   message: string;
   name?: string;
+  category?: string;
   tab?: string;
   url?: string;
   createdAt: string;
@@ -34,6 +35,7 @@ export async function notifyReport(report: ReportNotification): Promise<{ sent: 
     '',
     '— context —',
     `from: ${report.name || '(anonymous)'}`,
+    report.category ? `about: ${report.category}` : null,
     report.tab ? `tab: ${report.tab}` : null,
     report.url ? `url: ${report.url}` : null,
     `at: ${report.createdAt}`,

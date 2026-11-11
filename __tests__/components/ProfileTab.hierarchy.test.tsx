@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import ProfileTab from '../../components/ProfileTab';
 import enMessages from '../../messages/en.json';
@@ -76,7 +76,9 @@ describe('ProfileTab — hierarchy pass', () => {
   });
 
   // #3 — money leaves Profile entirely. Home's balance card owns it, so a
-  // figure appearing here again means the two surfaces can disagree.
+  // figure appearing here again means the two surfaces can disagree. (The
+  // MONEY group's credit figure is a different number, shown only with store
+  // credit on — ProfileTab.money.test.tsx; this runs with it off.)
   it('shows no money at all when signed in', async () => {
     signedIn();
     renderWith();
@@ -97,34 +99,51 @@ describe('ProfileTab — hierarchy pass', () => {
     expect(screen.queryByText(enMessages.profile.playerName)).toBeNull();
   });
 
-  // #4 — seven rows in three groups, and "Admin access" is cut because it and
-  // the console row were two doors to one place.
-  it('groups settings under ACCOUNT, PRIVACY, APP and HELP, with no Admin access row', async () => {
+  // #4, then spec §1 (build step 8, 2026-11-11): CLUB, SETTINGS, MONEY,
+  // HELP, PRIVACY, each a <section> named by its eyebrow, in that order. The
+  // header keeps its toggles (Grant: "dont move them"). "Admin access" stays
+  // cut: it and the console row were two doors to one place.
+  it('groups the list as CLUB, SETTINGS, MONEY, HELP, PRIVACY, each a named section', async () => {
     signedIn();
     renderWith({ isAdmin: true });
     await screen.findByText('Michael');
     const s = enMessages.profile.settings;
-    for (const eyebrow of [s.title, s.privacyGroup, s.appGroup, s.helpGroup]) {
-      expect(screen.getByText(eyebrow)).toBeDefined();
-    }
-    // Rows that answer the same question share one list (2026-09-14 regroup).
+    const sections = screen.getAllByRole('region');
+    expect(sections.map((r) => r.getAttribute('aria-labelledby'))).toEqual([
+      'profile-group-club', 'profile-group-settings', 'profile-group-money', 'profile-group-help', 'profile-group-privacy',
+    ]);
+    expect(sections.map((r) => within(r).getByText(/./, { selector: 'p' }).textContent)).toEqual([
+      s.clubGroup, s.settingsGroup, s.moneyGroup, s.helpGroup, s.privacyGroup,
+    ]);
+    // Admin tools is a CLUB job now; Notifications and How you sign in are SETTINGS.
+    expect(within(sections[0]).getByRole('button', { name: /Admin tools/ })).toBeTruthy();
+    expect(within(sections[1]).getByRole('button', { name: /Notifications/ })).toBeTruthy();
+    expect(within(sections[1]).getByRole('button', { name: /How you sign in/ })).toBeTruthy();
     const listOf = (label: string) => screen.getByText(label).closest('ul');
     expect(listOf(s.statsPrivacy)).toBe(listOf(s.privacyPolicy));
     expect(listOf(s.releaseNotes)).toBe(listOf(s.reportProblem));
-    expect(listOf(s.statsPrivacy)).not.toBe(listOf(s.releaseNotes));
     expect(screen.queryByText(/Admin access/i)).toBeNull();
   });
 
-  // #5 — log out stops pretending to navigate: out of the list, no chevron.
-  it('renders Log out as a standalone control with no chevron', async () => {
+  it('a player sees no CLUB group when there is no club to show and no admin row', async () => {
     signedIn();
-    const { container } = renderWith();
+    renderWith();
+    await screen.findByText('Michael');
+    expect(screen.queryByText(enMessages.profile.settings.clubGroup)).toBeNull();
+  });
+
+  // #5, then spec §1.9: Log out acts at once, so no chevron; its own card,
+  // after every group and the version line.
+  it('renders Log out last, in its own card, red, with no chevron', async () => {
+    signedIn();
+    renderWith();
     await screen.findByText('Michael');
     const logout = screen.getByRole('button', { name: enMessages.profile.settings.logout });
-    expect(logout.querySelector('.material-icons')).toBeNull();
-    // and it is not one of the settings-list rows
-    expect(logout.closest('ul')).toBeNull();
-    expect(container.querySelector('ul')).not.toBeNull();
+    expect(logout.textContent).not.toMatch(/chevron_right/);
+    expect(logout.closest('section')).toBeNull();
+    expect(logout.closest('ul')!.querySelectorAll('li')).toHaveLength(1);
+    const version = screen.getByText('Version dev');
+    expect(version.compareDocumentPosition(logout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   // Which build the phone is running, so "has the fix reached you?" has an answer.
@@ -175,5 +194,58 @@ describe('ProfileTab — hierarchy pass', () => {
     expect(screen.getByText("Couldn't check")).toBeDefined();
     // The row still works — the count is decoration, opening admin is the job.
     expect(screen.getByRole('button', { name: /Admin tools/ })).toBeDefined();
+  });
+});
+
+/**
+ * Edit profile (docs/superpowers/specs/2026-11-09-profile-reorg-design.md §1–2,
+ * build step 1): the card at the top is the way in, and everything about the
+ * person moved onto that page — the picture, the name row and deleting the
+ * account.
+ */
+describe('ProfileTab — the card opens Edit profile', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockAdminFetch();
+  });
+  afterEach(() => {
+    cleanup();
+    global.fetch = originalFetch;
+  });
+
+  it('the card is one button, and the rows that moved are gone from the list', async () => {
+    signedIn();
+    renderWith();
+    const card = await screen.findByRole('button', { name: /Michael.*edit profile/i });
+    expect(card.textContent).toMatch(/Edit profile/);
+    expect(screen.queryByText('Your name in the club')).toBeNull();
+    expect(screen.queryByText('Delete account')).toBeNull();
+    expect(screen.queryByText(/Member since/)).toBeNull();
+  });
+
+  it('opens Edit profile; its name row goes to the name page, whose Back returns to Edit profile', async () => {
+    signedIn();
+    renderWith();
+    const { fireEvent } = await import('@testing-library/react');
+    fireEvent.click(await screen.findByRole('button', { name: /Michael.*edit profile/i }));
+    expect(await screen.findByRole('heading', { name: 'Edit profile' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Delete my account/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Display name/ }));
+    expect(document.querySelector('[data-nickname-page]')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    expect(await screen.findByRole('heading', { name: 'Edit profile' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    expect(await screen.findByRole('button', { name: /Michael.*edit profile/i })).toBeTruthy();
+  });
+
+  it('the delete-account deep link lands on Edit profile with the confirmation open', async () => {
+    signedIn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <ProfileTab {...baseProps} deleteIntent onDeleteIntentConsumed={vi.fn()} />
+      </NextIntlClientProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Edit profile' })).toBeTruthy();
+    expect(await screen.findByRole('dialog')).toBeTruthy();
   });
 });

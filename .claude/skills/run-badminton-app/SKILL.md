@@ -12,12 +12,11 @@ is unset — no database, no prod data. The driver is
 API sign-up, and screenshots Home. `curl` is the reliable way to drive/observe
 the data layer; headless Chrome captures the UI.
 
-All paths below are relative to the repo root (`<unit>/`). Verified on macOS,
-Node 20.19, Chrome 14x headless.
+All paths below are relative to the repo root (`<unit>/`).
 
 ## Prerequisites
 
-- **Node 20+** and npm (`node -v` → v20.19.6 here).
+- **Node 22.22.2+** and npm (`package.json` `engines`; `.npmrc` sets `engine-strict`, so an older Node refuses to install).
 - A Chromium-family browser for screenshots — already present on macOS at
   `/Applications/Google Chrome.app/...`; on Linux install one:
   `sudo apt-get install -y chromium-browser` (the driver auto-detects it).
@@ -40,8 +39,12 @@ bash .claude/skills/run-badminton-app/smoke.sh
 ```
 
 Boots the dev server on `:3100` in mock mode, then asserts, in order:
-`mock store confirmed` → `POST /api/players -> 201` → `roster contains Viktor`
-→ writes `/tmp/bpm-shots/home.png`. Prints `SMOKE OK` and stops the server.
+`mock store confirmed` → Lin (a plain member, PIN 2468) signs in → `POST /api/players -> 201`
+→ `roster contains Lin` → Grant (the admin, PIN 1130) signs in → `/api/admin/settings`
+answers 200 for Grant and 401 for Lin → writes `/tmp/bpm-shots/welcome.png` (the
+signed-out Welcome page; members only shows nothing else to a signed-out browser).
+Prints `SMOKE OK` and stops the server. It refuses to start if the port is already
+taken, because the checks would then run against that other server.
 
 - `PORT=3200 bash …/smoke.sh` — use another port (3000 is often taken).
 - `KEEP=1 bash …/smoke.sh` — leave the server running for further poking; it
@@ -63,12 +66,11 @@ App at **http://localhost:3100/bpm**. The seed creates a signup-open session
 (Fri Jun 5, 11820 Horseshoe Way), 6 invite-list members (Lin has PIN 2468),
 a racket catalog, and skill snapshots — all in memory.
 
-⚠️ **This command sets NO feature flags**, so flag-gated UI (Command Center,
-Ledger, Nav Rail, Settle, Value Hub, the Skill-assessment spine, Kudos, Insight
-Cards) is **dark** — the app looks "behind" bpm-next even though the code is
-identical. To match bpm-next, use the next-mode launch below instead.
+⚠️ **This command sets NO feature flags**, so whatever is still flag-gated
+(`lib/flags.ts`) is dark and the app looks behind production. To match
+production, use the next-mode launch below instead.
 
-## Run as bpm-next (all flags on)
+## Run as production (all flags on)
 
 Production builds with `NEXT_PUBLIC_ENV=stable` (no preview banner) and every
 `NEXT_PUBLIC_FLAG_*` that `deploy-next.yml` sets; `dev:next` matches both.
@@ -99,41 +101,39 @@ PORT=3100 npm run dev:next        # all vnext features against the REAL DB in .e
 
 ```bash
 B=http://localhost:3100/bpm
-curl -s "$B/api/session"                              # active session JSON
-curl -s -X POST "$B/api/players" \
-  -H 'Content-Type: application/json' -H 'X-Client-IP: me' \
-  -d '{"name":"Viktor"}'                              # sign up (201)
-curl -s "$B/api/players"                              # roster — Viktor present
+J=$(mktemp)                                           # cookie jar: every club read needs a member
+curl -s -c "$J" -X POST "$B/api/players/recover" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Lin","pin":"2468"}'                     # sign in as Lin
+curl -s -b "$J" "$B/api/session"                      # active session JSON
+curl -s -b "$J" -X POST "$B/api/players" \
+  -H 'Content-Type: application/json' -d '{}'        # sign up (201); the name comes from the account
+curl -s -b "$J" "$B/api/players"                      # roster — Lin present
 ```
 
-`X-Client-IP` gives each caller a distinct rate-limit bucket. Most routes live
-under `/bpm/api/*`; deep-link UI tabs with `?tab=players|stats|admin` and `?dev`.
+Signed out, every club read answers 401 (rule 13). The dev server ignores
+`X-Client-IP` (only the test suite trusts it), and PIN sign-in allows 5 tries an
+hour per name and address, so a fresh server is the way to reset it. Most routes live
+under `/bpm/api/*`; `?tab=home|stringing|skills|profile|admin` deep-links a tab and `?dev` shows the DevPanel.
 
-## Screenshot a tab (headless Chrome)
+## Screenshot a screen
 
-```bash
-CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-"$CHROME" --headless=new --disable-gpu --hide-scrollbars \
-  --window-size=440,900 --virtual-time-budget=10000 \
-  --screenshot=/tmp/bpm-shots/home.png "http://localhost:3100/bpm"
-```
-
-Reliable for Home and layout/styling. For **data-heavy tabs** (Sign-Ups, Stats)
-headless `--virtual-time-budget` intermittently cuts off fetches and shows the
-offline banner — verify that data with `curl`, or use a real-browser driver
-(Playwright / the playwright MCP, which waits for network-idle) for a clean shot.
+Use the `verify-ui` skill (Playwright, navigating by clicking). A headless
+Chrome shot of a `?tab=` URL or one using `--virtual-time-budget` is refused by
+`block-tab-screenshot.mjs`, because both produce a plausible picture of the
+wrong screen.
 
 ## Test
 
 ```bash
-npm test          # vitest — 752 tests, mock store, no DB
+npm test          # vitest, mock store, no DB
 ```
 
 ## Gotchas
 
 - **`NEXT_PUBLIC_BASE_PATH=/bpm` is mandatory and easy to miss.** `next.config.js`
-  sets `basePath: '/bpm'` (server side) but does **not** export the env var, and
-  `.env.local.example` omits it. Without it the client bundle fetches `/api/*`
+  sets `basePath: '/bpm'` (server side) but does **not** export the env var (a
+  copied `.env.local.example` sets it). Without it the client bundle fetches `/api/*`
   with no prefix → 404 → the whole app shows **"You're offline / Couldn't load"**
   even though the server is fine. This is the #1 way the app looks broken when it
   isn't. The dev log shows the tell: `GET /api/players 404` (no `/bpm`).
@@ -155,4 +155,3 @@ npm test          # vitest — 752 tests, mock store, no DB
 | Every tab shows "You're offline / Couldn't load" | `NEXT_PUBLIC_BASE_PATH=/bpm` not set. Add the prefix to the launch command. |
 | Driver prints `FAIL: not in mock mode` | A `COSMOS_CONNECTION_STRING` is set (shell or `.env.local`). Unset it / move `.env.local` aside to force the mock store. |
 | `npm run dev` exits immediately / `EADDRINUSE` | Port taken. `PORT=3200 bash …/smoke.sh` or `--port 3200`. |
-| `next build` fails fetching Google Fonts | Needs network at build time (self-hosted fonts still ping Google in build). Not a code error. |

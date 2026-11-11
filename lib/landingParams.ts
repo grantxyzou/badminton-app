@@ -9,7 +9,7 @@
  * `__tests__/landing-params-canary.test.ts` classifies every parameter either
  * shell reads as a landing or not, so one added there cannot be missed here.
  */
-export const LANDING_PARAMS = ['authError', 'verified', 'signedIn', 'authFlow', 'reset', 'join', 'native'] as const;
+export const LANDING_PARAMS = ['authError', 'verified', 'signedIn', 'authFlow', 'reset', 'join', 'claim', 'native'] as const;
 
 /**
  * Read by a shell, and NOT a landing: a deep link into a tab is still a launch,

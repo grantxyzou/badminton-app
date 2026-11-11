@@ -88,7 +88,11 @@ function loadingCopy(): string[] {
   const out: string[] = [];
   (function visit(node: unknown, path: string) {
     if (typeof node === 'string') {
-      if (/^Loading\b/i.test(node)) out.push(path);
+      // `a11y.*` is never drawn: it is the spoken NAME of a skeleton region
+      // (`role="status"`), which a screen reader needs while the skeleton is
+      // on screen (audit, 2026-11-05). The rule is about what sighted readers
+      // see in a skeleton's place.
+      if (/^Loading\b/i.test(node) && !path.startsWith('a11y.')) out.push(path);
     } else if (node && typeof node === 'object') {
       for (const [k, v] of Object.entries(node)) visit(v, path ? `${path}.${k}` : k);
     }

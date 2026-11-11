@@ -51,12 +51,11 @@ export interface NotifyOutcome {
  * upstream of the email arm and must not be able to cost it.
  */
 async function pushToPlayer(notice: PlayerNotice, memberId: string): Promise<number> {
-  const payload = buildStringingPayload(notice);
-  if (!payload) return 0;
+  if (!buildStringingPayload(notice)) return 0;
   try {
     // To this member's devices ONLY. A broadcast here would tell the whole club
-    // about one person's racket.
-    const { sent } = await sendPushToMembers([memberId], payload);
+    // about one person's racket. In each device's language.
+    const { sent } = await sendPushToMembers([memberId], (locale) => buildStringingPayload(notice, locale)!);
     return sent;
   } catch (err) {
     console.error('[stringing] push failed (the bench is unaffected):', err);
@@ -142,14 +141,13 @@ export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutc
  */
 export async function notifyPlayerOfPendingEdit(job: StringingJob): Promise<NotifyOutcome> {
   try {
-    const payload = buildPendingEditPayload(job);
     await recordNotices(job.groupId ?? BPM_GROUP_ID, [job.memberId], {
       type: 'stringing_change',
       racketLabel: job.racketLabel ?? undefined,
     });
     // To this member's devices ONLY. A broadcast here would tell the whole club
     // about one person's racket.
-    const { sent } = await sendPushToMembers([job.memberId], payload);
+    const { sent } = await sendPushToMembers([job.memberId], (locale) => buildPendingEditPayload(job, locale));
     return { attempted: true, emailSent: false, pushSent: sent };
   } catch (err) {
     console.error('stringing pending-edit notify failed:', err);

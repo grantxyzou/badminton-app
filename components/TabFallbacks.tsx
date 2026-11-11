@@ -3,6 +3,9 @@
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
 import CardSkeleton, { AdminTabSkeleton } from '@/components/primitives/CardSkeleton';
+import TopBar from '@/components/primitives/TopBar';
+import ErrorState from '@/components/primitives/ErrorState';
+import { useOnline } from '@/lib/useOnline';
 
 /**
  * What a lazy tab shows while its JavaScript chunk downloads (`HomeShell`'s
@@ -40,9 +43,10 @@ export const STRINGING_HEIGHTS = {
 /** StringingTab: header, the register switch (32px), then the Racket
  *  register's service card. */
 export function StringingFallback() {
+  const tLoading = useTranslations('a11y');
   const tNav = useTranslations('nav');
   return (
-    <div className="space-y-5 w-full" role="status" aria-label="Loading">
+    <div className="space-y-5 w-full" role="status" aria-label={tLoading('loading')}>
       <PageHeader>{tNav('stringing')}</PageHeader>
       <div className="segment-control w-full" style={{ height: 32 }} aria-hidden="true" />
       <div>
@@ -83,11 +87,12 @@ export const STATS_HEIGHTS = {
  * arriving moved the page.
  */
 export function StatsFallback() {
+  const tLoading = useTranslations('a11y');
   const t = useTranslations('stats');
   return (
-    <div className="space-y-5 w-full" role="status" aria-label="Loading">
+    <div className="space-y-5 w-full" role="status" aria-label={tLoading('loading')}>
       <PageHeader>{t('heading')}</PageHeader>
-      <p className="fs-md text-gray-400 px-2" style={{ marginTop: 'var(--space-1)' }}>
+      <p className="fs-md text-gray-400" style={{ marginTop: 'var(--space-1)' }}>
         {t('subheadV2')}
       </p>
       {/* 98: the OverviewStrip's OWN loading height (blank captions), which is
@@ -116,13 +121,14 @@ export function StatsFallback() {
  * nothing on the page it stood in for.
  */
 export function ProfileSkeleton({ title }: { title: string }) {
+  const tLoading = useTranslations('a11y');
   const label = (
     <div style={{ height: 22, display: 'flex', alignItems: 'center' }} aria-hidden="true">
       <div className="shimmer-line rounded-lg" style={{ height: 10, width: '30%' }} />
     </div>
   );
   return (
-    <div className="flex flex-col gap-4" role="status" aria-label="Loading">
+    <div className="flex flex-col gap-4" role="status" aria-label={tLoading('loading')}>
       <PageHeader>{title}</PageHeader>
       <CardSkeleton height={84} />
       {label}
@@ -148,9 +154,10 @@ export function ProfileFallback() {
  * It is on screen only while the admin chunk downloads.
  */
 export function AdminFallback() {
+  const tLoading = useTranslations('a11y');
   const pageT = useTranslations('pages.admin');
   return (
-    <div className="space-y-5" role="status" aria-label="Loading">
+    <div className="space-y-5" role="status" aria-label={tLoading('loading')}>
       <div className="bpm-topbar">
         <span className="bpm-topbar__back" aria-hidden="true">
           <span className="material-icons" aria-hidden="true">chevron_left</span>
@@ -160,6 +167,43 @@ export function AdminFallback() {
         </div>
       </div>
       <AdminTabSkeleton />
+    </div>
+  );
+}
+
+/** The Notifications page's list skeleton: one card holding two rows at 375px
+ *  (2026-11-04: 222px). Read by the page and by its fallback below. */
+export const NOTICES_LIST_H = 222;
+
+/**
+ * The Notifications page while its code downloads. The page is not in the
+ * first download (2026-11-06, Grant: "Notification should load after"): the
+ * bell reads the list itself for its red dot, and `HomeShell` fetches the
+ * page's code in the background with the other tabs, so this shows only for a
+ * tap that beats that download, or on a phone that asked to save data. It is
+ * the page's own first frame: its top bar, then the "Recent" skeleton.
+ */
+export function NotificationsFallback({ onBack, failed, onRetry }: { onBack: () => void; failed: boolean; onRetry: () => void }) {
+  const tn = useTranslations('notifications');
+  const online = useOnline();
+  return (
+    <div className="animate-slideInRight space-y-5">
+      <TopBar title={tn('title')} onBack={onBack} backLabel={tn('back')} />
+      <section className="space-y-3">
+        <p className="section-label-muted">{tn('recent')}</p>
+        {failed ? (
+          <ErrorState
+            message={tn('loadError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" disabled={!online} onClick={onRetry}>
+                {tn('retry')}
+              </button>
+            }
+          />
+        ) : (
+          <CardSkeleton height={NOTICES_LIST_H} />
+        )}
+      </section>
     </div>
   );
 }

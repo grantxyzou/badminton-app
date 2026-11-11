@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import Switch from '@/components/primitives/Switch';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from '../BottomSheet';
 import RacketThumb from './RacketThumb';
 import TensionField, { ratedRange } from './TensionField';
 import { useClubTension } from './useClubTension';
@@ -19,6 +19,7 @@ import { isOffered } from '@/lib/catalogOffer';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { blankStringPairing, racketRowSpec, racketSpecLine, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
 import { hasFeel } from '@/lib/racketFeel';
+import { activeRacket, stringsOn } from '@/lib/activeRacket';
 import { recordEngagement } from '@/lib/engagement';
 import type { CatalogItem, GearItem, RacketFeel } from '@/lib/types';
 import { priceCadPoint } from '@/lib/catalogPrice';
@@ -120,8 +121,12 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
    *  way out of the panel, like the tension. */
   const [feel, setFeel] = useState<RacketFeel>({});
 
+  // Strings are the ones on the racket in play: the same string on a spare is
+  // that racket's, and picking it here puts a second set on this one.
   const items = useMemo(
-    () => (gear.gear?.items ?? []).filter((i): i is GearItem => !!i && !i.retiredAt && (i.category ?? 'racket') === category),
+    () => category === 'string'
+      ? stringsOn(gear.gear ?? null, activeRacket(gear.gear ?? null))
+      : (gear.gear?.items ?? []).filter((i): i is GearItem => !!i && !i.retiredAt && (i.category ?? 'racket') === category),
     [gear.gear, category],
   );
   // Crosses mode: the mains string the crosses go with. A crosses string is a
@@ -407,15 +412,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
         <span className="fs-stat" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.015em' }}>
           {heading}
         </span>
-        <button
-          type="button"
-          onClick={() => { void finish(); }}
-          aria-label={tRecovery('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={() => { void finish(); }} label={tRecovery('close')} />
       </BottomSheetHeader>
 
       {showControls && !saved && (

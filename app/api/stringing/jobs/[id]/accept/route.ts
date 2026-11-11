@@ -20,10 +20,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyLiveMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { toPlayerJob } from '../../route';
+import { mirrorStringingChanged } from '@/lib/ledgerMirror';
 import type { StringingJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   if (!caller) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -85,7 +86,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       }
       if (pending.tensionMains !== undefined) next.tensionMains = pending.tensionMains;
       if (pending.tensionCrosses !== undefined) next.tensionCrosses = pending.tensionCrosses;
-      if (pending.priceCents !== undefined) next.priceCents = pending.priceCents;
+      if (pending.priceCents !== undefined && pending.priceCents !== job.priceCents) {
+        // The PATCH refuses to re-price a PAID job (`job_paid`); a proposal
+        // made before the payment must not slip the same change in by being
+        // accepted after it (audit, 2026-11-05).
+        if (job.paidAt) return NextResponse.json({ error: 'job_paid' }, { status: 409 });
+        next.priceCents = pending.priceCents;
+      }
       // The field that has existed since Stage 1 with nothing ever writing it.
       next.acceptedAt = now;
       next.pendingEditDeclinedAt = null;
@@ -109,6 +116,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
     // Through `toPlayerJob`, like every other player-facing response: the
     // strip cannot be forgotten at a call site.
+    // The ledger mirror, as every other job write calls it: an accepted
+    // re-price moves the charge (audit, 2026-11-05 — this route wrote the job
+    // and left the ledger at the old price, so the reconcile flagged it).
+    await mirrorStringingChanged(scope, job, next);
     return NextResponse.json({ job: toPlayerJob(next) });
   } catch (err) {
     console.error(`POST /api/stringing/jobs/${id}/accept failed:`, err);

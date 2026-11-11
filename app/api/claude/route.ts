@@ -22,7 +22,16 @@ export async function POST(req: NextRequest) {
   // an admin they are unauthorized. Accepted rather than fixed here, because
   // `lib/auth.ts` sits on 31 routes and is the wrong place to add a failure mode for
   // one caller's benefit.
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
+  // A PERSON's daily allowance, on top of the per-IP minute above. With groups
+  // on, anyone can create a club and come away an admin of it, so "admin" is
+  // not a budget boundary; a rotated address resets the IP limit, a member id
+  // does not. 30 a day is far past what polishing announcements needs
+  // (audit, 2026-11-05).
+  if (!checkRateLimit(`claude-member:${auth.memberId}`, 30, 24 * 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Daily AI limit reached. Try again tomorrow.' }, { status: 429 });
+  }
 
   // Parsed OUTSIDE the AI try/catch on purpose: a malformed body is a 400 from
   // this route, and folding it into the catch below would have described a bad

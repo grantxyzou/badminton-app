@@ -90,7 +90,7 @@ describe('plus-one: adding a guest', () => {
     expect(g.guestOf).toBe(HOST);
     expect(g.memberId).toBeUndefined();
     expect(g.guestName).toBe('Alex');
-    expect(g.name).toBe("Alex (Lin's guest)");
+    expect(g.name).toBe('Alex (Lin)');
     expect(g.waitlisted).toBe(false);
     expect(g.deleteToken).toBeUndefined();
   });

@@ -25,7 +25,7 @@
  * the answer is exactly what it was before this file: pass or signed-out.
  */
 import type { NextRequest } from 'next/server';
-import { requireMember, verifyMemberAuth } from '@/lib/auth';
+import { requireMember, verifyLiveMemberAuth } from '@/lib/auth';
 import { getContainer } from '@/lib/cosmos';
 import { isFlagOn } from '@/lib/flags';
 import { listMembershipsForMember, readGroup } from '@/lib/groups';
@@ -51,9 +51,12 @@ export async function decidePage(req: NextRequest): Promise<PageOutcome> {
   if (gate.ok) return { kind: 'app', memberName: gate.member?.name ?? null };
   if (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) return SIGNED_OUT;
 
-  // Signature and expiry only — the membership read the gate made is the one
-  // that refused, so this is "who does the cookie say?", not "who is allowed?".
-  const session = verifyMemberAuth(req);
+  // "Who does the cookie say?", not "who is allowed?" — the membership read the
+  // gate made is the one that refused. But never a session "Sign out
+  // everywhere" cut off (docs/plans/claim-your-name.md): this screen lists the
+  // person's clubs, and switching to one mints a fresh cookie, so a phone
+  // signed out of a club would have been one tap from back in.
+  const session = await verifyLiveMemberAuth(req);
   if (!session) return SIGNED_OUT;
 
   try {

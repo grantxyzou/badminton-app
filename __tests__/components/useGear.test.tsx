@@ -513,3 +513,29 @@ describe('useGear — a refused read is not a failed one', () => {
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('true|true|false|true'));
   });
 });
+
+// Grant, 2026-11-05: "this app is getting really slow". The register switch
+// remounts the Gear register on every visit to Equipment, so the card started
+// from a skeleton and a round trip each time. It now draws the bag it last
+// had in this page load at once, and still re-reads behind it.
+describe('useGear — reopening Equipment', () => {
+  it('draws the last bag at once on a remount, then refreshes it from the server', async () => {
+    let gets = 0;
+    const racket = { id: 'r1', catalogId: ASTROX.id, category: 'racket' as const, label: 'Yonex Astrox 100ZZ' };
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      if (!String(input).includes('/api/equipment/gear')) return Promise.reject(new Error(`Unmocked fetch: ${String(input)}`));
+      gets += 1;
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ gear: gearDoc([racket], 'r1') }) } as Response);
+    }) as unknown as typeof fetch);
+
+    const first = render(<Probe />);
+    await waitFor(() => expect(screen.getByTestId('bag').textContent).toBe('Yonex Astrox 100ZZ'));
+    first.unmount();
+
+    render(<Probe />);
+    // No skeleton: the bag is there on the first render of the remount.
+    expect(screen.getByTestId('loaded').textContent).toBe('true');
+    expect(screen.getByTestId('bag').textContent).toBe('Yonex Astrox 100ZZ');
+    await waitFor(() => expect(gets).toBe(2));
+  });
+});

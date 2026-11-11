@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { membersFirstDue } from '@/lib/membersFirst';
+import { releaseMembersFirst } from '@/lib/waitlistPromote';
 import { recordNotices } from '@/lib/notices';
 import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
@@ -11,15 +13,17 @@ import { buildSignupOpenPayload } from '@/lib/pushMessages';
 import { defaultMaxPlayers } from '@/lib/defaults';
 import { promoteFromWaitlist } from '@/lib/waitlistPromote';
 import { readGroup } from '@/lib/groups';
-import { guestsAllowedOf } from '@/lib/plusOne';
-import type { BirdUsage, ETransferRecipient } from '@/lib/types';
+import { guestsPerMemberOf } from '@/lib/plusOne';
+import { isWealthsimpleHandle } from '@/lib/wealthsimple';
+import type { BirdUsage, ETransferRecipient, Session } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
   if (!value || typeof value !== 'object') return false;
-  const v = value as { name?: unknown; email?: unknown; memo?: unknown };
+  const v = value as { name?: unknown; email?: unknown; memo?: unknown; wealthsimple?: unknown };
   if (typeof v.name !== 'string' || !v.name.trim() || v.name.length > 100) return false;
   if (typeof v.email !== 'string' || !v.email.trim() || v.email.length > 200) return false;
   if (v.memo !== undefined && (typeof v.memo !== 'string' || v.memo.length > 200)) return false;
+  if (v.wealthsimple !== undefined && !isWealthsimpleHandle(v.wealthsimple)) return false;
   return true;
 }
 
@@ -70,8 +74,22 @@ export async function GET(req: NextRequest) {
         return undefined;
       }),
     ]);
-    const session = stored ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
-    const out = { ...(isAdminAuthed(req) ? session : stripForPublic(session)), guestsAllowed: guestsAllowedOf(group?.settings) };
+    // Members first (docs/plans/members-first-window.md): the first visit
+    // after the window ends lets the waitlist in — nothing runs on a timer.
+    let current = stored;
+    const windowed = stored as (SessionDoc & Session) | undefined;
+    if (membersFirstDue(windowed, Date.now()) && (await releaseMembersFirst(scope, sessionId, { session: windowed ?? null }))) {
+      current = (await scope.read<SessionDoc>('sessions', sessionId, sessionId)) ?? stored;
+    }
+    const session = current ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
+    // How many guests a member may bring (docs/plans/six-feathers-guests.md);
+    // `guestsAllowed` stays for a phone from before the number.
+    const guestsPerMember = guestsPerMemberOf(group?.settings);
+    const out = {
+      ...(isAdminAuthed(req) ? session : stripForPublic(session)),
+      guestsAllowed: guestsPerMember > 0,
+      guestsPerMember,
+    };
     return NextResponse.json(out);
   } catch (error) {
     // A failed read is a 503, never a default session with a 200. The client's
@@ -255,7 +273,7 @@ export async function PUT(req: NextRequest) {
         });
         await sendPushToMembers(
           [...recipients],
-          buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0]),
+          (locale) => buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0], locale),
         );
       } catch (err) {
         console.error('[session] signup-open push failed (session still saved):', err);

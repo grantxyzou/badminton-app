@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { readStored, useClientSubscription } from '@/lib/useClientValue';
 
@@ -52,13 +53,14 @@ function subscribe(onChange: () => void): () => void {
 }
 
 export default function ThemeToggle() {
+  const t = useTranslations('a11y');
   const stored = useClientSubscription(subscribe, read, 'dark');
   /* The in-page override, and it is load-bearing in exactly one case: private
      mode, where `localStorage.setItem` throws and `read()` therefore keeps
      answering the SYSTEM value. Without it the store never moves, so the icon
      never flips and `next` is recomputed from the same stale value every tap —
      the toggle sets the attribute once and can never set it back. Same shape
-     as `InstallBanner` in this directory (and, until 2026-10-14, `SkillDiscoveryCard`): the stored
+     as `InstallBanner` (until 2026-11-07) and `SkillDiscoveryCard` (until 2026-10-14) were: the stored
      answer is the durable one, the local one covers the write that failed. */
   const [override, setOverride] = useState<Theme | null>(null);
   const theme = override ?? stored;
@@ -85,12 +87,13 @@ export default function ThemeToggle() {
     listeners.forEach((l) => l());
   }
 
+  const label = t(theme === 'dark' ? 'switchToLight' : 'switchToDark');
   return (
     <button
       className="theme-toggle"
       onClick={toggle}
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      aria-label={label}
+      title={label}
     >
       <span className="material-icons">
         {theme === 'dark' ? 'light_mode' : 'dark_mode'}

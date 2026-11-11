@@ -1,4 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const sendPushToMembers = vi.fn();
+vi.mock('@/lib/push', () => ({
+  sendPushToMembers: (...args: unknown[]) => sendPushToMembers(...args),
+}));
 import { POST as REQUEST } from '../app/api/members/access-request/route';
 import { POST as CLAIM } from '../app/api/members/access-request/claim/route';
 import { GET as LIST, POST as DECIDE } from '../app/api/admin/access-requests/route';
@@ -319,20 +324,22 @@ describe('the claim route does not say whether a name exists', () => {
   });
 });
 
-describe('the push goes to admins only', () => {
-  it('does not treat every active member as an admin under the mock store', async () => {
-    // The query binds no parameters, so the mock ignores `c.role = 'admin'`
-    // entirely and hands back every active row. Without a JS re-filter, one
-    // person's lockout would be announced to the whole club.
+describe('the push goes to the club’s admins only', () => {
+  it('pushes the admins and never the rest of the club, with groups off', async () => {
+    // With groups off the roster is a members scan the mock store answers
+    // with every active row, so the admin filter is all that keeps one
+    // person's lockout from reaching the whole club.
     seedMember('Lin');
     seedMember('Viktor');
+    sendPushToMembers.mockReset();
     const res = await REQUEST(req({ name: 'Lin' }));
     expect(res.status).toBe(200);
-    // The route must not throw or fan out; the assertion that matters is that
-    // the filter exists at all, pinned in source next to the hazard it guards.
-    const src = await import('node:fs').then((fs) =>
-      fs.readFileSync('app/api/members/access-request/route.ts', 'utf8'),
-    );
-    expect(src).toMatch(/filter\(\(a\) => a\.role === 'admin'/);
+    expect(sendPushToMembers).toHaveBeenCalledTimes(1);
+    const ids = sendPushToMembers.mock.calls[0][0] as string[];
+    const admins = (getStore()['members'] as Member[]).filter((m) => m.role === 'admin').map((m) => m.id);
+    expect(ids.length).toBeGreaterThan(0);
+    expect([...ids].sort()).toEqual([...admins].sort());
+    expect(ids).not.toContain(stored('Lin').id);
+    expect(ids).not.toContain(stored('Viktor').id);
   });
 });

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { isPreviewEnv } from '@/lib/flags';
+import { useBuildSha } from '@/lib/buildSha';
 import { useFocusTrap } from './BottomSheet/useFocusTrap';
 
 const BANNER_HEIGHT = 28;
@@ -34,9 +35,10 @@ export default function PreviewBanner() {
     return () => window.removeEventListener('keydown', onEsc);
   }, [pickerOpen]);
 
-  if (!show) return null;
+  // The deployed build, read from the page at run time (lib/buildSha.ts).
+  const sha = useBuildSha() || 'dev';
 
-  const sha = (process.env.NEXT_PUBLIC_GIT_SHA ?? 'dev').slice(0, 7);
+  if (!show) return null;
 
   function issueUrl(template: 'bug.yml' | 'feature.yml') {
     const url = typeof window !== 'undefined' ? window.location.href : '';

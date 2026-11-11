@@ -252,7 +252,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
                 borderRadius: 'var(--radius-pill)',
                 fontSize: 'var(--fs-2xs)',
                 padding: 'var(--space-1) var(--space-3)',
-                border: '1px solid var(--inner-card-border)',
+                border: '1px solid transparent',
                 color: 'var(--text-muted)',
                 fontWeight: 600,
                 letterSpacing: '0.04em',

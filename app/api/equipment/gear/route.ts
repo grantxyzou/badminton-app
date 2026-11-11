@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { verifyMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
-import { rackets } from '@/lib/activeRacket';
+import { verifyMemberAuth, verifyLiveMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
+import { rackets, activeRacket, pinLooseStrings } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, FIT_PLAY_STYLES, FIT_SORENESS, FIT_LEVEL_OPTIONS, FEEL_BALANCES, type PlayerGear, type GearItem, type EquipmentCategory, type RacketFeel } from '@/lib/types';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
@@ -23,8 +23,28 @@ const MAX_RACKETS = 10;
  * add one; now that strings are selectable it is a real hole.
  *
  * Five for consumables: a player keeps a couple of string types, not ten.
+ * Strings take the racket cap since 2026-11-05: a string is ON a racket
+ * (`GearItem.racketId`), so each racket in the bag may carry its own.
  */
-const MAX_PER_CATEGORY: Partial<Record<EquipmentCategory, number>> = { racket: MAX_RACKETS };
+const MAX_PER_CATEGORY: Partial<Record<EquipmentCategory, number>> = { racket: MAX_RACKETS, string: MAX_RACKETS };
+
+/**
+ * The racket a string goes on: the one the caller named, when it is in the
+ * bag, else the racket in play. Undefined when the bag holds no racket — the
+ * string then belongs to whichever racket is added first (`stringOn`).
+ */
+function racketForString(items: GearItem[], named: unknown, gear: PlayerGear | null): string | undefined {
+  const ids = new Set(rackets({ ...(gear as PlayerGear), items }).map((r) => r.id));
+  if (typeof named === 'string' && ids.has(named)) return named;
+  return activeRacket(gear)?.id;
+}
+
+/** Which racket a string in the bag is on, reading an unlinked (legacy) string
+ *  as the active racket's — `stringOn`'s rule, for dedupe and matching. */
+function racketOfString(item: GearItem, gear: PlayerGear | null): string | undefined {
+  const ids = new Set(rackets(gear).map((r) => r.id));
+  return item.racketId && ids.has(item.racketId) ? item.racketId : activeRacket(gear)?.id;
+}
 const DEFAULT_CATEGORY_CAP = 5;
 
 function capFor(category: EquipmentCategory): number {
@@ -73,7 +93,7 @@ async function authorizeBagWrite(req: NextRequest, name: string, bucket: 'bag' |
   }
   const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
   if (!memberId) return { error: NextResponse.json({ error: 'member_not_found' }, { status: 404 }) };
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   if (caller?.memberId !== memberId && !(await isAdminAuthedWithMember(req)).authed) {
     return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) };
   }
@@ -116,6 +136,14 @@ async function writeGearDoc(memberId: string, prior: StoredGear | undefined, nex
     shoesMileageSessions: prior?.shoesMileageSessions,
     updatedAt: new Date().toISOString(),
   };
+  // The string follows its racket (2026-11-05). When the racket in play
+  // changes — a swap, a "Change" that adds and activates, a PUT of a racket —
+  // a string that names no racket was on the OLD one, so it is written down
+  // there before the pointer moves; otherwise it would read as the new
+  // racket's, tension and all. One rule here, so no verb can forget it.
+  const before = activeRacket((prior as PlayerGear | undefined) ?? null);
+  const after = activeRacket(doc);
+  if (before && after && before.id !== after.id) doc.items = pinLooseStrings(doc.items, before);
   // Guarded against the etag we read. Every verb here is a read-modify-write
   // of the WHOLE document, so two overlapping writers each computed their
   // `items` from the same snapshot and the slower one clobbered the faster:
@@ -316,8 +344,12 @@ export async function POST(req: NextRequest) {
       // checking free text only against free text let "Li-Ning Aeronaut 9000"
       // sit in a real member's bag beside the catalog Aeronaut 9000.
       const incomingKey = label.trim().toLowerCase();
+      // A string is a duplicate only on the SAME racket: two rackets may both
+      // be strung with BG65, each at its own tension.
+      const stringRacket = body.item.category === 'string' ? racketForString(existing, body.item.racketId, prior ?? null) : undefined;
       const isDuplicate = catalogId
-        ? existing.some((i) => i.catalogId === catalogId)
+        ? existing.some((i) => i.catalogId === catalogId
+            && (body.item.category !== 'string' || i.category !== 'string' || racketOfString(i, prior ?? null) === stringRacket))
         : existing.some((i) =>
             i.label.trim().toLowerCase() === incomingKey
             && (!i.catalogId || (i.category ?? 'racket') === body.item.category));
@@ -371,6 +403,7 @@ export async function POST(req: NextRequest) {
         label,
         acquiredAt: body.item.acquiredAt,
         notes: typeof body.item.notes === 'string' ? body.item.notes.slice(0, 200) : undefined,
+        ...(stringRacket ? { racketId: stringRacket } : null),
       };
 
       const items = [...existing, incoming];
@@ -598,7 +631,10 @@ export async function DELETE(req: NextRequest) {
         return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
       }
 
-      const items = existing.filter((i) => i.id !== itemId);
+      // A racket leaves with the string on it; a string names its racket
+      // (`racketId`), and one naming a racket that is gone would hold a slot
+      // in the string cap with nothing on screen to remove it from.
+      const items = existing.filter((i) => i.id !== itemId && !(i.category === 'string' && i.racketId === itemId));
       // Removing the active racket must leave a coherent pointer, never one
       // aimed at a deleted item. Uses the shared helper so a legacy item with
       // no `category` is still a candidate to inherit the pointer.
@@ -643,7 +679,7 @@ export async function PUT(req: NextRequest) {
     // member_session cookie minted at sign-up — no PIN required) or an admin
     // may write it. Closes the name-keyed impersonation hole while keeping the
     // "same trust as anon sign-up" bar the feature was designed around.
-    const caller = verifyMemberAuth(req);
+    const caller = await verifyLiveMemberAuth(req);
     const isOwner = caller?.memberId === memberId;
     if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -665,9 +701,23 @@ export async function PUT(req: NextRequest) {
       // a match (by catalogId, or by normalized label when catalogId is
       // absent) UPDATES that item in place instead of appending a duplicate or
       // 409ing, so re-saving the same racket twice is a no-op on bag shape.
-      const matchIndex = catalogId
-        ? existing.findIndex((i) => i.catalogId === catalogId)
-        : existing.findIndex((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
+      // By the item's own id first: since a string is ON a racket, the same
+      // catalog string can be on two rackets, and only the id says which one
+      // is being re-tensioned. A caller that sends no id (an older client)
+      // gets the one on the racket in play, then the first.
+      const byId = typeof body.item.id === 'string'
+        ? existing.findIndex((i) => i.id === body.item.id && (i.category ?? 'racket') === body.item.category)
+        : -1;
+      const playing = activeRacket(prior ?? null)?.id;
+      const sameCatalog = (i: GearItem) => i.catalogId === catalogId;
+      const onPlaying = catalogId && body.item.category === 'string'
+        ? existing.findIndex((i) => sameCatalog(i) && i.category === 'string' && racketOfString(i, prior ?? null) === playing)
+        : -1;
+      const matchIndex = byId >= 0 ? byId
+        : onPlaying >= 0 ? onPlaying
+          : catalogId
+            ? existing.findIndex(sameCatalog)
+            : existing.findIndex((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
 
       const incoming: GearItem = {
         id: matchIndex >= 0 ? existing[matchIndex].id
@@ -685,6 +735,12 @@ export async function PUT(req: NextRequest) {
         ...(matchIndex >= 0 && existing[matchIndex].feel ? { feel: existing[matchIndex].feel } : null),
         ...(matchIndex >= 0 && existing[matchIndex].look ? { look: existing[matchIndex].look } : null),
         ...(matchIndex >= 0 && existing[matchIndex].crosses ? { crosses: existing[matchIndex].crosses } : null),
+        // The racket a string is on is not the caller's to move here.
+        ...(body.item.category === 'string'
+          ? (matchIndex >= 0
+            ? (existing[matchIndex].racketId ? { racketId: existing[matchIndex].racketId } : null)
+            : (() => { const r = racketForString(existing, body.item.racketId, prior ?? null); return r ? { racketId: r } : null; })())
+          : null),
       };
 
       // A string's tension moving is the one history this doc keeps: the item

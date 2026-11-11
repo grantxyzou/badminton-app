@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { verifyMemberAuth, isAdminAuthedWithMember, ownsNameOrAdmin } from '@/lib/auth';
+import { verifyMemberAuth, verifyLiveMemberAuth, isAdminAuthedWithMember, ownsNameOrAdmin } from '@/lib/auth';
 import { SKILLS, scoreAssessment, placePhase, type Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     // here too, and the client can route the user to sign in again rather
     // than showing a generic save error.
     if (subject.isMember) {
-      const caller = verifyMemberAuth(req);
+      const caller = await verifyLiveMemberAuth(req);
       const isSelf = !!caller && caller.memberId === subject.memberId;
       if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
         return NextResponse.json({ error: 'needs_signin' }, { status: 401 });
@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`assessments-read:${ip}`, 30, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!ownsNameOrAdmin(req, name)) {
+  if (!(await ownsNameOrAdmin(req, name))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

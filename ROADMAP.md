@@ -37,7 +37,7 @@
 
 ## Deployment
 
-**One deployment, trunk-based.** Every push to `main` deploys to production via `deploy-next.yml`. The second app service (`bpm-stable` / `badminton-app`) and its B1 plan were **deleted 2026-08-25**; `deploy-stable.yml` went with them. There is no promotion step, no soak period, and no stable tag to cut — feature flags now gate unfinished work *inside* the one deployment, and their `plannedRemoval` dates are the only thing keeping them from becoming permanent.
+**One deployment, trunk-based.** `main` deploys to production via `deploy-next.yml` three times a day when app files changed, or at once on demand (grouped since 2026-11-05). The second app service (`bpm-stable` / `badminton-app`) and its B1 plan were **deleted 2026-08-25**; `deploy-stable.yml` went with them. There is no promotion step, no soak period, and no stable tag to cut — feature flags now gate unfinished work *inside* the one deployment, and their `plannedRemoval` dates are the only thing keeping them from becoming permanent.
 
 - **Rollback** = re-dispatch `deploy-next.yml` at an older SHA. Runbook: the `deploy-promotion` skill.
 - **Schema rule** is still additive-and-optional only — a rollback runs older code against the same live database.
@@ -82,7 +82,7 @@ As of **v1.7 every feature flag was on for everyone** (the two deployments reach
   - *Now measurable:* `POST /api/events` writes append-only, identity-bound `EngagementEvent` docs (`events`, PK `/memberId`). **Read the gate with `GET /api/admin/slice0`** — it reports both halves against their 40% / 30% thresholds, plus racket-saves as a secondary signal, with attendance as the denominator. It returns `verdict: null` rather than a confident "kill" on an empty cohort.
   - Tracks 1–4 (#102–#105) stay blocked until that readout says otherwise.
 - **Offline backlog** (deferred, tracked) — per-card `loadError` pills for remaining CommandCenter cards (#98); PWA only if "loads while offline" becomes a real requirement (#99).
-- **P1.5/A2 — identity recovery bridge** — still pending. Plan `docs/superpowers/plans/2026-04-27-a2-identity-recovery.md`.
+- **P1.5/A2 — identity recovery bridge** — still pending. Plan `docs/superpowers/plans/2026-04-27-a2-identity-recovery.md`. Next step: retire PIN sign-in for existing members, `docs/plans/pin-retirement.md` (2026-11-09).
 - **Stage-2 — multi-group** — **chosen 2026-09-07, Phase 0 landed.** Several clubs in the one deployment so strangers who install the store app have somewhere to go; the memo `docs/saas-productization-findings.md` remains the longer-range SaaS framing (billing etc. stay non-goals). Intent, kill criterion and decisions in `docs/plans/multi-group.md`; phases in `docs/superpowers/plans/2026-09-07-multi-group.md`. Sequenced AFTER the Stats racket-fit rebuild for Phase 1 onward.
 
 ## 5. Prioritized punch list

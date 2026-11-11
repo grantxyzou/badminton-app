@@ -156,12 +156,21 @@ export interface RosterOwed {
  * a member's line here IS the line Home shows them.
  */
 export async function computeOwedForRoster(scope: GroupScope, now: number = Date.now()): Promise<RosterOwed[]> {
-  const activeSessionId = (await getActiveSessionId(scope.groupId)) ?? '';
-  const roster = await rosterMembers(scope.groupId);
-  const aliasRows = await readAliases(scope);
-  const allPlayers = (await scope.query<Player>('players')).filter((p) => p && typeof p.id === 'string');
+  // Independent reads, so all at once (audit, 2026-11-05): they ran one after
+  // another, five round trips in a row on every Command Center open.
+  const stringingOn = isFlagOn('NEXT_PUBLIC_FLAG_STRINGING');
+  const [pointer, roster, aliasRows, playerRows, sessionRows, jobRows] = await Promise.all([
+    getActiveSessionId(scope.groupId),
+    rosterMembers(scope.groupId),
+    readAliases(scope),
+    scope.query<Player>('players'),
+    scope.query<Session>('sessions'),
+    stringingOn ? scope.query<StringingJob>('stringingJobs') : Promise.resolve([] as StringingJob[]),
+  ]);
+  const activeSessionId = pointer ?? '';
+  const allPlayers = playerRows.filter((p) => p && typeof p.id === 'string');
   const sessionById = new Map<string, Session>();
-  for (const s of await scope.query<Session>('sessions')) if (s && typeof s.id === 'string') sessionById.set(s.id, s);
+  for (const s of sessionRows) if (s && typeof s.id === 'string') sessionById.set(s.id, s);
 
   // Every row of each unsettled session, for `costSplit` (which drops the
   // removed and waitlisted itself and honours a resplit cover).
@@ -173,11 +182,9 @@ export async function computeOwedForRoster(scope: GroupScope, now: number = Date
   }
 
   const jobsByMember = new Map<string, StringingJob[]>();
-  if (isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
-    for (const j of await scope.query<StringingJob>('stringingJobs')) {
-      if (!j || typeof j.memberId !== 'string') continue;
-      jobsByMember.set(j.memberId, [...(jobsByMember.get(j.memberId) ?? []), j]);
-    }
+  for (const j of jobRows) {
+    if (!j || typeof j.memberId !== 'string') continue;
+    jobsByMember.set(j.memberId, [...(jobsByMember.get(j.memberId) ?? []), j]);
   }
 
   const out: RosterOwed[] = [];

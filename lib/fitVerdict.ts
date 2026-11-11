@@ -1,11 +1,11 @@
 import { courtSideOf, sideFormat } from './courtSide';
-import { activeRacket } from './activeRacket';
+import { activeRacket, currentString } from './activeRacket';
 import { effectiveArmComfort, fitAnswers, levelOptionValue } from './fitProfile';
 import { BALANCE_AXIS, goalDelta, comfortTensionDeltaLb, sideBalance } from './racketFit';
 import type { PlayerProfile } from './racketProfile';
 import { pairTension } from './stringPair';
 import { MAX_LB, MIN_LB, ratedRange, recommendTension, type PlayFormat } from './tension';
-import type { CatalogItem, GearItem, PlayerGear } from './types';
+import type { CatalogItem, PlayerGear } from './types';
 
 /**
  * THE FIT VERDICT'S FACTS AND STATE — the one place the judgement lives.
@@ -92,11 +92,6 @@ function text(row: CatalogItem | null, key: string): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
 }
 
-function newestString(gear: PlayerGear | null): GearItem | null {
-  let latest: GearItem | null = null;
-  for (const i of gear?.items ?? []) if (i && !i.retiredAt && i.category === 'string') latest = i;
-  return latest;
-}
 
 /** A one-pound-wide range from a target, kept inside the window. */
 function rangeAround(target: number, [lo, hi]: [number, number]): [number, number] {
@@ -131,7 +126,7 @@ export function computeFitFacts(input: FitFactsInput): FitFacts {
         weightClass: text(frameRow, 'weight') ?? feel?.weight ?? null,
       }
       : null;
-  const string = prospective ? null : newestString(gear);
+  const string = prospective ? null : currentString(gear);
   const currentTensionLbs = typeof string?.tensionLbs === 'number' ? string.tensionLbs : null;
   const goal = gear?.fitGoal ?? null;
 

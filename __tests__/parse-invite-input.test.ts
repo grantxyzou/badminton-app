@@ -14,6 +14,18 @@ describe('parseInviteInput', () => {
     expect(parseInviteInput(`https://bpm.grantzou.com/bpm/?join=${TOKEN}&tab=home`, ORIGIN)).toEqual({ token: TOKEN });
   });
 
+  it('reads the one link, /bpm/j/<token>, as its token', () => {
+    expect(parseInviteInput(`https://bpm.grantzou.com/bpm/j/${TOKEN}`, ORIGIN)).toEqual({ token: TOKEN });
+    expect(parseInviteInput(`https://bpm.grantzou.com/bpm/j/${TOKEN}/`, ORIGIN)).toEqual({ token: TOKEN });
+    expect(parseInviteInput(`/bpm/j/${TOKEN}`, ORIGIN)).toEqual({ token: TOKEN });
+    // Copied off another host the app is served on, still the same invite.
+    expect(parseInviteInput(`https://vnext-badminton-app.azurewebsites.net/bpm/j/${TOKEN.toUpperCase()}`, ORIGIN)).toEqual({ token: TOKEN });
+  });
+
+  it('a /j/ link whose last segment is not a token falls through to a code', () => {
+    expect(parseInviteInput('https://bpm.grantzou.com/bpm/j/nope', ORIGIN)).toEqual({ code: 'https://bpm.grantzou.com/bpm/j/nope' });
+  });
+
   it('reads a bare `?join=` fragment against the given origin', () => {
     expect(parseInviteInput(`/bpm?join=${TOKEN}`, ORIGIN)).toEqual({ token: TOKEN });
     expect(parseInviteInput(`?join=${TOKEN}`, ORIGIN)).toEqual({ token: TOKEN });

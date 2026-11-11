@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS, ERROR_WHERES, USAGE_CLIENT_KINDS } from '@/lib/events';
+import { writeEvent, isClientKind, isCheckInSource, isStatsOpenSource, CLIENT_PAYLOAD, USAGE_PLATFORMS, USAGE_TABS, ERROR_WHERES, USAGE_CLIENT_KINDS, APP_STARTS, MAX_TIMING_MS } from '@/lib/events';
 import { skipsUsageRecord } from '@/lib/operator';
 
 const isUsageClientKind = (kind: string): boolean => (USAGE_CLIENT_KINDS as readonly string[]).includes(kind);
 import { resolveGroupId } from '@/lib/groupContext';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyLiveMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { EngagementEvent } from '@/lib/types';
 
@@ -27,7 +27,11 @@ const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T =>
  * the feedback loop's denominator) is not a client kind at all, so it is
  * refused as unknown.
  */
-type Payload = Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform' | 'where'>;
+type Payload = Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source' | 'tab' | 'platform' | 'where' | 'ms' | 'launchMs' | 'start'>;
+
+/** A whole number of milliseconds a load can plausibly take, or nothing. */
+const timing = (v: unknown): number | undefined =>
+  typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= MAX_TIMING_MS ? Math.round(v) : undefined;
 
 function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unknown>): Payload {
   const out: Payload = {};
@@ -44,6 +48,9 @@ function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unkn
     if (field === 'tab' && oneOf(USAGE_TABS, body.tab)) out.tab = body.tab;
     if (field === 'where' && oneOf(ERROR_WHERES, body.where)) out.where = body.where;
     if (field === 'platform' && oneOf(USAGE_PLATFORMS, body.platform)) out.platform = body.platform;
+    if (field === 'ms' && timing(body.ms) !== undefined) out.ms = timing(body.ms);
+    if (field === 'launchMs' && timing(body.launchMs) !== undefined) out.launchMs = timing(body.launchMs);
+    if (field === 'start' && oneOf(APP_STARTS, body.start)) out.start = body.start;
   }
   return out;
 }
@@ -77,7 +84,7 @@ export async function POST(req: NextRequest) {
   // to `badminton_stats_preview_name` — see SkillsTab's `resolveActiveName`)
   // hold no cookie, so their taps are correctly uncounted; the client treats
   // the 401 as a no-op.
-  const caller = verifyMemberAuth(req);
+  const caller = await verifyLiveMemberAuth(req);
   if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!checkRateLimit(`events-member:${caller.memberId}`, RATE_MAX_MEMBER, RATE_WINDOW_MS)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });

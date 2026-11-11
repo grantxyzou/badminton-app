@@ -237,7 +237,7 @@ function ReminderRow({ reminders, onDone }: { reminders: Inbox['reminders']; onD
 
   const who = wouldRemind.length === 0 ? 'nobody' : wouldRemind.join(', ');
   return (
-    <div className="flex flex-col gap-2" style={{ borderTop: '1px solid var(--inner-card-border)', paddingTop: 'var(--space-4)' }}>
+    <div className="flex flex-col gap-2" style={{ paddingTop: 'var(--space-4)' }}>
       <p className="section-label-muted" style={{ margin: 0 }}>
         Reminders · {on ? 'on' : 'off'}
       </p>
@@ -302,7 +302,7 @@ function ReconcileRow({ reconcile, onDone }: { reconcile: NonNullable<Inbox['rec
       : `${mismatches}${truncated ? '+' : ''} ${mismatches === 1 ? 'line doesn’t' : 'lines don’t'} match · ${ago(lastAt)}`;
 
   return (
-    <div className="flex flex-col gap-2" style={{ borderTop: '1px solid var(--inner-card-border)', paddingTop: 'var(--space-4)' }}>
+    <div className="flex flex-col gap-2" style={{ paddingTop: 'var(--space-4)' }}>
       <p className="section-label-muted" style={{ margin: 0 }}>
         Ledger check · {status}
       </p>
@@ -364,7 +364,7 @@ function HoldRow({ hold, onDone }: { hold: Inbox['hold']; onDone: () => void }) 
 
   const who = hold.names.length === 0 ? 'nobody' : hold.names.join(', ');
   return (
-    <div className="flex flex-col gap-2" style={{ borderTop: '1px solid var(--inner-card-border)', paddingTop: 'var(--space-4)' }}>
+    <div className="flex flex-col gap-2" style={{ paddingTop: 'var(--space-4)' }}>
       <p className="section-label-muted" style={{ margin: 0 }}>
         Unpaid hold · {on ? 'on' : 'off'}
       </p>

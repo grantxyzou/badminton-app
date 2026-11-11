@@ -13,11 +13,7 @@ Read every relevant TypeScript file in the codebase, identify all errors and iss
 
 ## Phase 1: Full Codebase Audit
 
-1. Read ALL TypeScript files in the project systematically:
-   - `app/` — all route handlers (`route.ts`) and pages (`page.tsx`, `layout.tsx`)
-   - `components/` — every `.tsx` file
-   - `lib/` — every `.ts` utility file
-   - `next.config.js` / `tsconfig.json` — check for config issues
+1. Run `npm run typecheck` and `npm run lint` first, and read the files they name (the tree has several hundred TypeScript files; the checkers say where to look). Check `next.config.js` / `tsconfig.json` when an error points at config.
 
 2. For each file, identify:
    - **TypeScript type errors** — mismatched types, missing properties, wrong return types, `any` used unsafely
@@ -52,9 +48,9 @@ For each issue found:
 - This project uses Next.js App Router — route handlers use `NextRequest` and return `NextResponse`
 - Cosmos DB queries return `any` — add type assertions when accessing results
 - The `Player` interface is defined in `lib/types.ts` — use it, don't redefine inline
-- `SESSION_ID` is exported from `lib/cosmos.ts`
+- The active session comes from `getActiveSessionId(groupId)` in `lib/cosmos.ts` (it can return `null`); `SESSION_ID` there is the legacy `'current-session'` id, kept for old data — never use it to fix an error
 - Auth helpers are in `lib/auth.ts`
-- Use `fmtDate` from `lib/formatters.ts` for date formatting
+- Date and money formatting lives in `lib/fmt.ts` (`fmtShortDate`, `fmtFullDate`, `fmtTime`, `fmtMoney`, …)
 - CSS classes `.section-label`, `.list-header-green`, `.list-header-amber` are defined in `globals.css`
 
 ## Phase 3: Build Verification

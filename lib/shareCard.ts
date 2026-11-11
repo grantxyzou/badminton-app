@@ -1,7 +1,7 @@
-import { activeRacket } from './activeRacket';
+import { activeRacket, currentString } from './activeRacket';
 import { CLUB_GEAR_MIN_COHORT, type ClubGearEntry } from './clubGear';
 import type { ClubTensionBand } from './clubTension';
-import type { CatalogItem, GearItem, PlayerGear } from './types';
+import type { CatalogItem, PlayerGear } from './types';
 
 /**
  * "Answer 'what are you playing?'" — the share card's facts (design
@@ -20,7 +20,7 @@ export interface ShareCard {
   /** The year the member joined the club, or null. */
   sinceYear: number | null;
   clubName: string | null;
-  racket: { name: string; brand: string | null; weight: string | null; balance: string | null } | null;
+  racket: { name: string; brand: string | null; weight: string | null; balance: string | null; label?: string } | null;
   /** Restrings logged on the racket in play, and the date of the first. */
   restrings: { count: number; since: string } | null;
   /** Whole pounds above (+) or below (−) the club's average for this frame. */
@@ -32,6 +32,17 @@ export interface ShareCard {
   grip: string | null;
   /** How many club members play this frame, the member included — "1 of N". */
   clubCount: number | null;
+  /** The strings as the Equipment card lists them (2026-11-05, the image
+   *  mirrors the card): one row, or mains then crosses, each with its catalog
+   *  id (its packet and spec), the bag's full name and its own tension. */
+  strings?: ShareString[];
+}
+
+export interface ShareString {
+  role: 'mains' | 'crosses' | null;
+  catalogId: string | null;
+  label: string;
+  tensionLbs: number | null;
 }
 
 export interface ShareCardInput {
@@ -51,16 +62,11 @@ function text(item: CatalogItem | null, key: string): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
 }
 
-function newestString(gear: PlayerGear | null): GearItem | null {
-  let latest: GearItem | null = null;
-  for (const i of gear?.items ?? []) if (i && !i.retiredAt && i.category === 'string') latest = i;
-  return latest;
-}
 
 export function buildShareCard(input: ShareCardInput): ShareCard {
   const { gear, racketRow, band } = input;
   const racket = activeRacket(gear);
-  const string = newestString(gear);
+  const string = currentString(gear);
   const tensionLbs = typeof string?.tensionLbs === 'number' ? string.tensionLbs : null;
 
   const log = racket ? (gear?.stringLog ?? []).filter((e) => e.racketItemId === racket.id) : [];
@@ -88,6 +94,7 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
         brand: racketRow?.brand ?? null,
         weight: text(racketRow, 'weight'),
         balance: text(racketRow, 'balance'),
+        label: racket.label,
       }
       : null,
     restrings,
@@ -99,6 +106,14 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
       : null,
     grip: typeof gear?.fitGrip === 'string' ? gear.fitGrip : null,
     clubCount,
+    strings: string
+      ? [
+        { role: string.crosses ? 'mains' : null, catalogId: string.catalogId, label: string.label, tensionLbs },
+        ...(string.crosses
+          ? [{ role: 'crosses' as const, catalogId: string.crosses.catalogId, label: string.crosses.label, tensionLbs: typeof string.crosses.tensionLbs === 'number' ? string.crosses.tensionLbs : null }]
+          : []),
+      ]
+      : [],
   };
 }
 

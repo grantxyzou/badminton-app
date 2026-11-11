@@ -31,7 +31,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer, getContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import { defaultMaxPlayers } from './defaults';
-import type { Group, GroupSettings, Membership, MembershipRole, NameReservation } from './types';
+import type { Group, GroupSettings, Membership, MembershipRole, NameReservation, StoredJoinRequest } from './types';
 
 // ---------------------------------------------------------------------------
 // Provisioning — both are new containers, so a route must ensure them before
@@ -219,6 +219,20 @@ async function mutateGroup(groupId: string, mutate: (group: Group) => Group): Pr
  */
 export async function updateGroupSettings(groupId: string, patch: Partial<GroupSettings>): Promise<Group | undefined> {
   return mutateGroup(groupId, (group) => ({ ...group, settings: { ...group.settings, ...patch } }));
+}
+
+/**
+ * Take the club's pay-to (`settings.eTransferRecipient`) off it: the name and
+ * e-mail of the person who set it, which a deletion of that person's account
+ * must not leave showing to members as where to send money (audit,
+ * 2026-11-05). The next organiser sets their own.
+ */
+export async function clearGroupPayTo(groupId: string): Promise<Group | undefined> {
+  return mutateGroup(groupId, (group) => {
+    if (!group.settings?.eTransferRecipient) return group;
+    const { eTransferRecipient: _gone, ...settings } = group.settings;
+    return { ...group, settings: settings as Group['settings'] };
+  });
 }
 
 /**
@@ -524,25 +538,6 @@ export async function setMembershipRole(
 }
 
 /**
- * Grant or revoke gift-card minting in ONE group. The switch lives on the
- * membership, not the person: a card is the club's liability, and a person can
- * be on two rosters where only one club trusts them with it. Resolves
- * `undefined` when there is no active membership here — a club's admin cannot
- * flip the switch for someone who is not on their roster.
- */
-export async function setMembershipCanGift(
-  groupId: string,
-  memberId: string,
-  canGift: boolean,
-): Promise<Membership | undefined> {
-  await ensureReady();
-  const m = await readMembership(groupId, memberId);
-  if (!m || m.status !== 'active') return undefined;
-  if ((m.canGift === true) === canGift) return m;
-  return groupScope(groupId).replace('memberships', { ...m, canGift }, groupId);
-}
-
-/**
  * Grant or revoke stringing in ONE group (docs/plans/roles-v2.md, PR 2).
  * Per club like `canGift`: Zach strings for BPM, and joining a second club
  * must not put him on its bench. Resolves `undefined` when there is no
@@ -593,6 +588,63 @@ export async function revokeWidgetPasses(
   const m = await readMembership(groupId, memberId);
   if (!m) return undefined;
   return groupScope(groupId).replace('memberships', { ...m, widgetPassNotBefore: at }, groupId);
+}
+
+/**
+ * "Sign out everywhere" for one person IN ONE GROUP
+ * (docs/plans/claim-your-name.md): every member session and widget pass
+ * minted before now stops working wherever the membership is re-read. How an
+ * organiser takes a name back from whoever holds it — a claim approved for the
+ * wrong person, or a phone that walked off. Resolves `undefined` when there is
+ * no membership here.
+ */
+export async function signOutEverywhereIn(
+  groupId: string,
+  memberId: string,
+  at: string = new Date().toISOString(),
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m) return undefined;
+  return groupScope(groupId).replace('memberships', { ...m, sessionsNotBefore: at, widgetPassNotBefore: at }, groupId);
+}
+
+/**
+ * Point the club at its live claim link (lib/claimLinks.ts), retiring
+ * whichever one it named before. Under the group's etag, like every other
+ * group write. Resolves `undefined` when the group record is missing.
+ */
+export async function setClaimLinkId(groupId: string, claimLinkId: string): Promise<Group | undefined> {
+  // A new door link cancels the asks made with the old one, joins included
+  // (docs/plans/door-link.md): an old poster must not leave people waiting.
+  return mutateGroup(groupId, (group) => {
+    const { joinRequests: _dropped, ...rest } = group;
+    return { ...rest, claimLinkId };
+  });
+}
+
+/**
+ * Rewrite the club's join requests (lib/joinRequests.ts) under the group's
+ * etag. `update` returns the new list, or `null` to write nothing; the result
+ * is the group as written, or `undefined` when nothing was (no group, or the
+ * update declined).
+ */
+export async function updateJoinRequests(
+  groupId: string,
+  update: (open: StoredJoinRequest[], group: Group) => StoredJoinRequest[] | null,
+): Promise<Group | undefined> {
+  // Declining throws out of the mutate so nothing is written at all.
+  const DECLINED = Symbol('declined');
+  try {
+    return await mutateGroup(groupId, (group) => {
+      const next = update(group.joinRequests ?? [], group);
+      if (next === null) throw DECLINED;
+      return { ...group, joinRequests: next };
+    });
+  } catch (err) {
+    if (err === DECLINED) return undefined;
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

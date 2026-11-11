@@ -107,7 +107,8 @@ describe('Home sign-up card, members only', () => {
 /**
  * 2026-09-13 flow audit, finding 1: an admin-approved access request signs a
  * member in with a 30-day session and NO credential. Home must say so and hand
- * them a PIN, or they are locked out again when the session lapses.
+ * them a way back in ("Keep your account": Apple, Google, or an email and
+ * password since 2026-11-07), or they are locked out again when it lapses.
  */
 describe('signed in with nothing to sign in with next time', () => {
   function methods(m: Record<string, unknown>) {
@@ -123,16 +124,16 @@ describe('signed in with nothing to sign in with next time', () => {
 
   afterEach(() => sessionStorage.clear());
 
-  it('shows "Set a PIN" when the account has no PIN, password or provider', async () => {
+  it('shows "Keep your account" when the account has no PIN, password or provider', async () => {
     methods({ hasPin: false, hasPassword: false, linked: [] });
     renderHome('Kento');
-    expect(await screen.findByText('Set a PIN so you can get back in')).toBeDefined();
+    expect(await screen.findByText('Keep your account')).toBeDefined();
     // The banner sits in a RevealSlot whose wrapper is `hidden` until its
     // stagger turn (components/primitives/Reveal.tsx). `findByText` ignores
     // `hidden`; role queries skip hidden elements, so the button must be
     // awaited too, or a methods probe landing after the 100 ms grace fails
     // this line on a slow runner (#540).
-    expect(await screen.findByRole('button', { name: 'Set a PIN' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Choose how to sign in' })).toBeDefined();
   });
 
   it.each([
@@ -144,22 +145,26 @@ describe('signed in with nothing to sign in with next time', () => {
     renderHome('Lin');
     await screen.findByText('Signing up as Lin');
     await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByText('Set a PIN so you can get back in')).toBeNull();
+    expect(screen.queryByText('Keep your account')).toBeNull();
   });
 
-  it('opens the PIN sheet by itself right after an approval, and uses the marker once', async () => {
-    sessionStorage.setItem('badminton_offer_pin', '1');
+  it('opens "Keep your account" as a page in place of Home, and Back returns to the week', async () => {
     methods({ hasPin: false, hasPassword: false, linked: [] });
     renderHome('Kento');
-    await screen.findByText('Set a PIN so you can get back in');
-    await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
-    expect(sessionStorage.getItem('badminton_offer_pin')).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: 'Choose how to sign in' }));
+    // A page, not a sheet (Grant, 2026-11-08), and never a PIN.
+    await waitFor(() => expect(screen.getByLabelText('Password')).toBeDefined());
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText('Signing up as Kento')).toBeNull();
+    expect(screen.queryByLabelText(/PIN/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('Signing up as Kento')).toBeDefined();
   });
 
-  it('does not open the sheet without the marker', async () => {
+  it('does not open the page by itself', async () => {
     methods({ hasPin: false, hasPassword: false, linked: [] });
     renderHome('Kento');
-    await screen.findByText('Set a PIN so you can get back in');
+    await screen.findByRole('button', { name: 'Choose how to sign in' });
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

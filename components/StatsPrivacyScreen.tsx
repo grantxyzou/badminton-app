@@ -127,7 +127,7 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
               padding: 'var(--space-4)',
               borderRadius: 'var(--radius-lg)',
               background: 'var(--inner-card-bg)',
-              border: '1px solid var(--inner-card-border)',
+              border: '1px solid transparent',
             }}
           >
             <span
@@ -175,7 +175,7 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
           padding: 'var(--space-5)',
           borderRadius: 'var(--radius-lg)',
           background: 'var(--inner-card-bg)',
-          border: '1px solid var(--inner-card-border)',
+          border: '1px solid transparent',
         }}
       >
         <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.55, color: 'var(--text-secondary)' }}>

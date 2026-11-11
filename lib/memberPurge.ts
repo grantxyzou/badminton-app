@@ -29,7 +29,9 @@
  */
 import { ensureContainer, getContainer } from './cosmos';
 import { pkFieldOf, type ContainerName } from './containers';
-import { listMembershipsForMember, reassignOwnership } from './groups';
+import { listMembershipsForMember, reassignOwnership, clearGroupPayTo, updateJoinRequests } from './groups';
+import { isFlagOn } from './flags';
+import { BPM_GROUP_ID } from './groupScope';
 import { listIdentitiesForMember } from './authIdentity';
 import { revokeAppleIdentity } from './appleRevoke';
 import { accountOf } from './storeCredit';
@@ -38,6 +40,7 @@ import type { LedgerEntry } from './types';
 import { anonymizeFeedbackRows } from './feedback';
 import { ALIAS_KIND } from './aliases';
 import { invalidateLatestRatings } from './latestRatings';
+import { invalidateGroupCalibration } from './levelStore';
 
 /** What an anonymized row says instead of a name. */
 export const TOMBSTONE_NAME = 'Former member';
@@ -183,20 +186,63 @@ const sameName = (row: Record<string, unknown>, lower: string) =>
   typeof row.name === 'string' && row.name.trim().toLowerCase() === lower;
 
 /**
+ * THE NAMES A PERSON WENT BY, CLUB BY CLUB (audit, 2026-11-05): group id →
+ * lowercased name. A row is matched BY NAME only inside a club where that name
+ * was theirs — with groups on, "Lin" in another club is somebody else, and the
+ * purge used to anonymize (and, for `skills`, DELETE) that somebody's rows.
+ * With groups on it is each membership's roster name, removed ones included
+ * (the name they played under is still theirs); off, it is BPM and the
+ * account name. Read BEFORE `purgeMember`, which deletes the memberships.
+ */
+export type PurgeNames = Map<string, string>;
+
+export async function purgeNamesFor(memberId: string, accountName: string): Promise<PurgeNames> {
+  const account = accountName.trim().toLowerCase();
+  if (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) return new Map([[BPM_GROUP_ID, account]]);
+  const names: PurgeNames = new Map();
+  for (const m of await listMembershipsForMember(memberId)) {
+    const n = typeof m.name === 'string' ? m.name.trim().toLowerCase() : '';
+    if (n) names.set(m.groupId, n);
+  }
+  return names;
+}
+
+/** A row's club: its stamp, or BPM for a row from before the stamp existed. */
+const groupOfRow = (row: Record<string, unknown>) => (typeof row.groupId === 'string' ? row.groupId : BPM_GROUP_ID);
+
+/** Does this row carry the person's name IN ITS OWN CLUB? */
+const namedHere = (row: Record<string, unknown>, names: PurgeNames, field = 'name') => {
+  const mine = names.get(groupOfRow(row));
+  const v = row[field];
+  return !!mine && typeof v === 'string' && v.trim().toLowerCase() === mine;
+};
+
+const asNames = async (memberId: string, names: string | PurgeNames): Promise<PurgeNames> =>
+  typeof names === 'string' ? purgeNamesFor(memberId, names) : names;
+
+/**
  * Delete every row a member owns, then anonymize the shared rows that name
  * them, then delete the member document itself.
  *
  * Never throws: it is called from a route that has already decided the account
  * is going away, and a container that fails should not strand the rest.
  */
-export async function purgeMember(memberId: string, name: string): Promise<PurgeSummary> {
+export async function purgeMember(memberId: string, nameOrNames: string | PurgeNames): Promise<PurgeSummary> {
   // The ledger's sentinel partitions (`~club`, `~anon`, `~unlinked`) are the
   // club's, not a person's. A real member id is 24 hex and cannot start with
   // `~`; refusing here is the belt to that brace, because a purge of `~club`
   // would delete every court cost the club ever recorded.
   if (isSentinelLedgerId(memberId)) throw new Error(`purgeMember: ${memberId} is not a member`);
   const summary: PurgeSummary = { deleted: 0, anonymized: 0, groupsReassigned: 0, groupsClosed: 0, failed: [] };
-  const lowerName = name.trim().toLowerCase();
+  let names: PurgeNames = new Map();
+  try {
+    names = await asNames(memberId, nameOrNames);
+  } catch (err) {
+    // Without the names nothing is matched by name, which only ever leaves a
+    // legacy row behind — never touches somebody else's.
+    console.error('[purge] names failed:', err);
+    summary.failed.push('memberships:names');
+  }
 
   // Ownership FIRST: the loop below deletes their memberships, and a group
   // whose owner row is gone has nobody `reassignOwnership` can read. Per
@@ -213,6 +259,16 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
   }
   for (const m of owned) {
     if (m.role !== 'owner') continue;
+    // The club's pay-to was the organiser's own name and e-mail; a deletion
+    // request takes it off the club, and the next organiser sets theirs
+    // (audit, 2026-11-05: it stayed, and kept being shown to members as
+    // where to send money).
+    try {
+      await clearGroupPayTo(m.groupId);
+    } catch (err) {
+      console.error(`[purge] pay-to of ${m.groupId} failed:`, err);
+      summary.failed.push(`groups:payTo:${m.groupId}`);
+    }
     try {
       const r = await reassignOwnership(m.groupId, memberId);
       if (r.outcome === 'reassigned') summary.groupsReassigned += 1;
@@ -243,18 +299,29 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
   for (const t of OWNED) {
     try {
       const byName = t.by === 'name';
-      const where = byName
-        ? t.ci
-          ? 'LOWER(c.name) = @name'
-          : 'c.name = @name'
-        : `c.${t.by} = @${t.by}`;
-      const value = byName ? lowerName : memberId;
-      const rows = await queryAll(
-        t.container,
-        where,
-        [{ name: byName ? '@name' : `@${t.by}`, value }],
-        (row) => (byName ? sameName(row, lowerName) : row[t.by] === memberId),
-      );
+      let rows: Record<string, unknown>[];
+      if (byName) {
+        // One query per name they used, each row kept only in the club where
+        // the name was theirs (`namedHere`).
+        rows = [];
+        for (const lower of new Set(names.values())) {
+          rows.push(
+            ...(await queryAll(
+              t.container,
+              t.ci ? 'LOWER(c.name) = @name' : 'c.name = @name',
+              [{ name: '@name', value: lower }],
+              (row) => sameName(row, lower) && namedHere(row, names),
+            )),
+          );
+        }
+      } else {
+        rows = await queryAll(
+          t.container,
+          `c.${t.by} = @${t.by}`,
+          [{ name: `@${t.by}`, value: memberId }],
+          (row) => row[t.by] === memberId,
+        );
+      }
       for (const row of rows) {
         if (t.container === 'memberships' && heldBack.has(String(row.groupId))) continue;
         await getContainer(t.container)
@@ -276,7 +343,7 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
   // would outlive a deletion request, and a later member taking that name
   // would inherit it.
   try {
-    summary.deleted += await purgeAliasRows(memberId, lowerName);
+    summary.deleted += await purgeAliasRows(memberId, names);
   } catch (err) {
     console.error('[purge] aliases failed:', err);
     summary.failed.push('clubSettings:alias');
@@ -310,6 +377,27 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
       [{ name: '@memberId', value: memberId }],
       (row) => row.memberId === memberId,
     );
+    // A payment still waiting for a person (review, ignored) carries a
+    // SUGGESTION naming them: that goes (audit, 2026-11-05). The sender name
+    // goes too when it is one of the names they used; otherwise it may be
+    // somebody else who paid, and the admin still needs it to decide.
+    const theirNames = new Set(names.values());
+    const suggested = await queryAll('payments', "c.status != 'matched'", [], (row) =>
+      row.status !== 'matched' &&
+      row.memberId !== memberId &&
+      Array.isArray(row.suggestions) &&
+      (row.suggestions as Array<Record<string, unknown>>).some((x) => x && x.memberId === memberId),
+    );
+    for (const row of suggested) {
+      const kept = (row.suggestions as Array<Record<string, unknown>>).filter((x) => !x || x.memberId !== memberId);
+      const sender = typeof row.senderName === 'string' ? row.senderName.trim().toLowerCase() : '';
+      await getContainer('payments').items.upsert({
+        ...row,
+        suggestions: kept,
+        ...(theirNames.has(sender) ? { senderName: TOMBSTONE_NAME, memo: null, subject: '' } : {}),
+      });
+      summary.anonymized += 1;
+    }
     for (const row of paid) {
       const { suggestions: _s, ...rest } = row as Record<string, unknown>;
       await getContainer('payments').items.upsert({
@@ -325,6 +413,40 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
   } catch (err) {
     console.error('[purge] payments failed:', err);
     summary.failed.push('payments');
+  }
+
+  // Jobs they STRUNG for other people: the job is the player's, and stays;
+  // the stringer's name on it goes (audit, 2026-11-05).
+  try {
+    const strung = await queryAll(
+      'stringingJobs',
+      'c.stringerId = @stringerId',
+      [{ name: '@stringerId', value: memberId }],
+      (row) => row.stringerId === memberId && row.memberId !== memberId,
+    );
+    for (const row of strung) {
+      await getContainer('stringingJobs').items.upsert({ ...row, stringerId: TOMBSTONE_MEMBER_ID, stringerName: TOMBSTONE_NAME });
+      summary.anonymized += 1;
+    }
+  } catch (err) {
+    console.error('[purge] stringingJobs (strung) failed:', err);
+    summary.failed.push('stringingJobs:stringer');
+  }
+
+  // A door-link request an organiser approved FOR them and nobody collected
+  // still holds their name on the club, as do expired asks nobody has pushed
+  // out; drop both from every club they were in (audit, 2026-11-05).
+  for (const groupId of new Set([...names.keys(), ...owned.map((m) => m.groupId)])) {
+    try {
+      const now = Date.now();
+      await updateJoinRequests(groupId, (open) => {
+        const kept = open.filter((r) => r.memberId !== memberId && typeof r.expiresAt === 'number' && now <= r.expiresAt);
+        return kept.length === open.length ? null : kept;
+      });
+    } catch (err) {
+      console.error(`[purge] join requests of ${groupId} failed:`, err);
+      summary.failed.push(`groups:joinRequests:${groupId}`);
+    }
   }
 
   // Kudos they GAVE: the recipient earned those, so the row stays and only the
@@ -354,6 +476,8 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
   // (lib/latestRatings.ts); a deleted person's ratings leave it now, not when
   // it next expires.
   invalidateLatestRatings();
+  // And the level fold, which read their games and check-ins.
+  invalidateGroupCalibration();
   return summary;
 }
 
@@ -373,12 +497,19 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
  */
 export async function anonymizePlayerRows(
   memberId: string,
-  name: string,
-  /** `null` when the group has no session: every row is then history, and anonymized. */
-  activeSessionId: string | null,
+  nameOrNames: string | PurgeNames,
+  /**
+   * The ACTIVE session of each club (`null`: the club has none, so every row
+   * is history). A bare id is the old one-club form — BPM's. Per club since
+   * 2026-11-05: deleting an account freed the seat only in the club the
+   * request was made from, and kept it held everywhere else.
+   */
+  active: string | null | Map<string, string | null>,
 ): Promise<{ removed: number; anonymized: number }> {
-  const lowerName = name.trim().toLowerCase();
-  /* TWO QUERIES, NOT ONE `OR`. Rows written before the memberId migration
+  const names = await asNames(memberId, nameOrNames);
+  const activeOf = (row: Record<string, unknown>) =>
+    active instanceof Map ? active.get(groupOfRow(row)) ?? null : active;
+  /* SEPARATE QUERIES, NOT ONE `OR`. Rows written before the memberId migration
      carry only a name, and rows written since carry both — so both are needed.
      They are kept separate because the mock store applies one filter per
      parameter NAME and would AND them, silently dropping every legacy row,
@@ -390,12 +521,19 @@ export async function anonymizePlayerRows(
     [{ name: '@memberId', value: memberId }],
     (row) => row.memberId === memberId,
   );
-  const byName = await queryAll(
-    'players',
-    'LOWER(c.name) = @name',
-    [{ name: '@name', value: lowerName }],
-    (row) => sameName(row, lowerName),
-  );
+  // By name: ONLY a legacy row that names nobody, in a club where the name was
+  // theirs. A row carrying another member's id, or another club's Lin, is not.
+  const byName: Record<string, unknown>[] = [];
+  for (const lower of new Set(names.values())) {
+    byName.push(
+      ...(await queryAll(
+        'players',
+        'LOWER(c.name) = @name',
+        [{ name: '@name', value: lower }],
+        (row) => sameName(row, lower) && !row.memberId && !row.guestOf && namedHere(row, names),
+      )),
+    );
+  }
   // The guests they brought (docs/plans/plus-one.md): a guest row names its
   // host in `guestOf` and in its display name, so it is anonymized with them.
   const byGuestOf = await queryAll(
@@ -424,7 +562,7 @@ export async function anonymizePlayerRows(
       ...rest
     } = row as Record<string, unknown>;
 
-    if (row.sessionId === activeSessionId) {
+    if (row.sessionId === activeOf(row)) {
       await getContainer('players').items.upsert({
         ...rest,
         name: TOMBSTONE_NAME,
@@ -445,31 +583,29 @@ export async function anonymizePlayerRows(
  * wherever it appears; never delete the row, or three other people lose a match
  * from their record.
  */
-export async function anonymizeGameResults(name: string): Promise<number> {
-  const lowerName = name.trim().toLowerCase();
-  const matches = (list: unknown): string[] =>
-    Array.isArray(list)
-      ? (list as string[]).map((n) =>
-          typeof n === 'string' && n.trim().toLowerCase() === lowerName ? TOMBSTONE_NAME : n,
-        )
-      : [];
+export async function anonymizeGameResults(nameOrNames: string | PurgeNames, memberId = ''): Promise<number> {
+  const names = typeof nameOrNames === 'string' ? await asNames(memberId, nameOrNames) : nameOrNames;
+  // Only in a club where the name was theirs: another club's Lin keeps her
+  // record (audit, 2026-11-05).
+  const theirs = (row: Record<string, unknown>, n: unknown) => {
+    const mine = names.get(groupOfRow(row));
+    return !!mine && typeof n === 'string' && n.trim().toLowerCase() === mine;
+  };
+  const rewrite = (row: Record<string, unknown>, list: unknown): string[] =>
+    Array.isArray(list) ? (list as string[]).map((n) => (theirs(row, n) ? TOMBSTONE_NAME : n)) : [];
 
   // No memberId on these rows, so there is nothing to filter on server-side:
   // read and rewrite the ones that name this player.
   const namesThisPlayer = (row: Record<string, unknown>) =>
-    [...(Array.isArray(row.teamA) ? row.teamA : []), ...(Array.isArray(row.teamB) ? row.teamB : [])]
-      .some((n) => typeof n === 'string' && n.trim().toLowerCase() === lowerName) ||
-    (typeof row.loggedBy === 'string' && row.loggedBy.trim().toLowerCase() === lowerName);
+    [...(Array.isArray(row.teamA) ? row.teamA : []), ...(Array.isArray(row.teamB) ? row.teamB : [])].some((n) => theirs(row, n)) ||
+    theirs(row, row.loggedBy);
 
   const rows = await queryAll('gameResults', 'IS_DEFINED(c.sessionId)', [], namesThisPlayer);
   let n = 0;
   for (const row of rows) {
-    const teamA = matches(row.teamA);
-    const teamB = matches(row.teamB);
-    const loggedBy =
-      typeof row.loggedBy === 'string' && row.loggedBy.trim().toLowerCase() === lowerName
-        ? TOMBSTONE_NAME
-        : row.loggedBy;
+    const teamA = rewrite(row, row.teamA);
+    const teamB = rewrite(row, row.teamB);
+    const loggedBy = theirs(row, row.loggedBy) ? TOMBSTONE_NAME : row.loggedBy;
     const changed =
       JSON.stringify(teamA) !== JSON.stringify(row.teamA) ||
       JSON.stringify(teamB) !== JSON.stringify(row.teamB) ||
@@ -523,8 +659,14 @@ export async function relocateLedger(memberId: string): Promise<{ deleted: numbe
  * Problem reports carry an optional reporter name AND the submitting IP. Both
  * are personal data; the report text is operational and stays (lib/feedback.ts).
  */
-export async function anonymizeFeedback(name: string): Promise<number> {
-  return anonymizeFeedbackRows(name, TOMBSTONE_NAME);
+export async function anonymizeFeedback(nameOrNames: string | PurgeNames, memberId = ''): Promise<number> {
+  // Reports are the deployment's, not a club's: a report signed by this
+  // member's id is theirs, and one from before reports carried an id is
+  // matched by any name they used.
+  const names = typeof nameOrNames === 'string' ? new Set([nameOrNames.trim().toLowerCase()]) : new Set(nameOrNames.values());
+  let n = 0;
+  for (const name of names) n += await anonymizeFeedbackRows(name, TOMBSTONE_NAME, memberId);
+  return n;
 }
 
 /**
@@ -534,7 +676,8 @@ export async function anonymizeFeedback(name: string): Promise<number> {
  * name the mock store filters on; the kind is re-checked in JS because it
  * does not.
  */
-export async function purgeAliasRows(memberId: string, lowerName: string): Promise<number> {
+export async function purgeAliasRows(memberId: string, nameOrNames: string | PurgeNames): Promise<number> {
+  const names = await asNames(memberId, nameOrNames);
   const isAlias = (row: Record<string, unknown>) => row.kind === ALIAS_KIND;
   const mine = await queryAll(
     'clubSettings',
@@ -542,12 +685,19 @@ export async function purgeAliasRows(memberId: string, lowerName: string): Promi
     [{ name: '@memberId', value: memberId }],
     (row) => isAlias(row) && row.memberId === memberId,
   );
-  const unowned = await queryAll(
-    'clubSettings',
-    `c.kind = '${ALIAS_KIND}' AND NOT IS_DEFINED(c.memberId) AND LOWER(c.appName) = @appName`,
-    [{ name: '@appName', value: lowerName }],
-    (row) => isAlias(row) && !row.memberId && typeof row.appName === 'string' && row.appName.trim().toLowerCase() === lowerName,
-  );
+  // Rows naming nobody, matched by app name only in a club where that name was
+  // theirs (aliases are per club: another club's "Lin" alias is not).
+  const unowned: Record<string, unknown>[] = [];
+  for (const lower of new Set(names.values())) {
+    unowned.push(
+      ...(await queryAll(
+        'clubSettings',
+        `c.kind = '${ALIAS_KIND}' AND NOT IS_DEFINED(c.memberId) AND LOWER(c.appName) = @appName`,
+        [{ name: '@appName', value: lower }],
+        (row) => isAlias(row) && !row.memberId && namedHere(row, names, 'appName'),
+      )),
+    );
+  }
   const ids = new Set([...mine, ...unowned].map((row) => String(row.id)));
   for (const id of ids) await getContainer('clubSettings').item(id, id).delete();
   return ids.size;

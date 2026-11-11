@@ -24,7 +24,7 @@ Grant asked for the racket catalog to be checked against real listings and for t
 
 `lib/catalogOffer.ts` `isOffered()` drops these rows from both recommenders and from every "Add a racket" list. Each row stays in place, so a bag that points at one still shows its name and specs. The flag records its reason:
 
-- **`not_a_model`:** NitroLite 80X, Halberd 900, G-Force Superlite.
+- **`not_a_model`:** NitroLite 80X, Halberd 900, G-Force Superlite. **Deleted outright on 2026-11-04**, with Arrow Speed 88 (`not_found` since 2026-10-20), by `REMOVED_CATALOG_IDS` in `lib/catalogSeed.ts` (`docs/plans/racket-fidelity.md`).
 - **`duplicate`:** AxForce 90 Dragon (the Dragon Max is the real row).
 - **`discontinued`:** plain Nanoflare 700, Air Force 79. These did exist, so the reason says so.
 

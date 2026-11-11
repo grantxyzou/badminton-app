@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
 import PinInput from './PinInput';
 import { setIdentity } from '@/lib/identity';
 import { useOnline } from '@/lib/useOnline';
@@ -60,15 +60,7 @@ export default function MigrateCodeSheet({ open, onClose }: Props) {
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('claimTitle')}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('claimTitle')}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('close')}
-          className="sheet-close-btn"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
+        <SheetCloseButton onClose={onClose} label={t('close')} />
       </BottomSheetHeader>
       <BottomSheetBody>
         {success ? (

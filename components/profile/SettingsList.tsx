@@ -19,6 +19,13 @@ export interface SettingsRow {
    * list to become a standalone centred button.
    */
   accent?: boolean;
+  /** Amber meta: an amount OWED (spec §1.5). Never red: owing is not a failure. */
+  owed?: boolean;
+  /**
+   * Log out (spec §1.9): the icon and label in red and NO chevron, because
+   * the row acts at once rather than opening anything.
+   */
+  danger?: boolean;
 }
 
 export default function SettingsList({ rows }: { rows: SettingsRow[] }) {
@@ -44,7 +51,7 @@ export default function SettingsList({ rows }: { rows: SettingsRow[] }) {
                 padding: 'var(--space-4) var(--space-5)',
                 border: 'none',
                 cursor: 'pointer',
-                color: 'var(--text-primary)',
+                color: row.danger ? 'var(--color-red)' : 'var(--text-primary)',
                 fontSize: 'var(--fs-lg)',
                 textAlign: 'left',
               }}
@@ -54,7 +61,7 @@ export default function SettingsList({ rows }: { rows: SettingsRow[] }) {
                 aria-hidden="true"
                 style={{
                   fontSize: 'var(--fs-stat)',
-                  color: row.accent ? 'var(--accent)' : 'var(--text-secondary)',
+                  color: row.danger ? 'var(--color-red)' : row.accent ? 'var(--accent)' : 'var(--text-secondary)',
                 }}
               >
                 {row.icon}
@@ -68,19 +75,21 @@ export default function SettingsList({ rows }: { rows: SettingsRow[] }) {
                   className="motion-fade"
                   style={{
                     fontSize: 'var(--fs-base)',
-                    color: row.accent ? 'var(--accent)' : 'var(--text-secondary)',
+                    color: row.owed ? 'var(--accent-amber)' : row.accent ? 'var(--accent)' : 'var(--text-secondary)',
                   }}
                 >
                   {row.meta}
                 </span>
               )}
-              <span
-                className="material-icons"
-                aria-hidden="true"
-                style={{ fontSize: 'var(--icon-md)', color: 'var(--text-secondary)' }}
-              >
-                chevron_right
-              </span>
+              {!row.danger && (
+                <span
+                  className="material-icons"
+                  aria-hidden="true"
+                  style={{ fontSize: 'var(--icon-md)', color: 'var(--text-secondary)' }}
+                >
+                  chevron_right
+                </span>
+              )}
             </button>
           </li>
         ))}

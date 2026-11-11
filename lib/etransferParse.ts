@@ -32,6 +32,15 @@ export interface RawInteracEmail {
   date: string;
   /** The TOPMOST `Authentication-Results` header, verbatim. Absent = unauthenticated. */
   authResults?: string;
+  /**
+   * The To header, and the Gmail address the script runs in. A DKIM pass
+   * proves Interac wrote the email, not that it was sent to THIS club: a
+   * member could re-deliver, headers intact, the notice of a transfer they
+   * made to someone else. Absent from a script older than 2026-11-05, which
+   * is then trusted as before.
+   */
+  to?: string;
+  owner?: string;
 }
 
 export interface ParsedEtransfer {

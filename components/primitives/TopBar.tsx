@@ -39,7 +39,10 @@ export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back'
   useEffect(() => {
     if (!onBack) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onBack();
+      // An open sheet answers Escape first (BottomSheet listens on document,
+      // which hears it before window) and marks it handled: Escape closes the
+      // sheet, never the sheet AND the page under it.
+      if (e.key === 'Escape' && !e.defaultPrevented) onBack();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

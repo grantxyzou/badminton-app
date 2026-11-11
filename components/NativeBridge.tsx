@@ -2,10 +2,12 @@
 import { useEffect, useRef } from 'react';
 import { hasNativePlugin, isNative } from '@/lib/native';
 import { closeTopSheet } from '@/lib/sheetStack';
+import { goBackInPage } from '@/lib/pageStack';
 import { rememberReturnCode } from '@/lib/handoffClient';
 import { routeInApp } from '@/lib/inAppNavigate';
 import { openShortcut } from '@/lib/appShortcuts';
 import { widgetOpenTarget, syncWidgetPass } from '@/lib/widgetBridge';
+import { invitePath, isSignupPath, signupLanding, tokenFromInvitePath } from '@/lib/inviteLink';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const HOST = 'bpm.grantzou.com';
@@ -154,10 +156,30 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
               }
               return;
             }
-            // Universal / App Link. Only our host and only the migrate path —
-            // a link to anything else is not an instruction.
-            if (u.host === HOST && u.pathname === `${BASE}/migrate`) {
+            // Universal / App Link. Only our host, and only the paths the app
+            // claims (the AASA and the Android filter name the same three):
+            // the migration link, the one invite link and the sign-up link. A
+            // link to anything else is not an instruction.
+            if (u.host !== HOST) return;
+            if (u.pathname === `${BASE}/migrate`) {
               window.location.assign(`${BASE}/migrate${u.search}`);
+              resume();
+              return;
+            }
+            // `/bpm/j/<token>` (lib/inviteLink.ts). Opened in place; the
+            // server's redirect takes it to the `?join=` page, exactly as on
+            // the website, so the app meets every invite rule the web does.
+            const invite = tokenFromInvitePath(u.pathname, BASE);
+            if (invite) {
+              window.location.assign(invitePath(invite, BASE));
+              resume();
+              return;
+            }
+            // `/bpm/s`, the weekly sign-up link: Home, in place when the app is
+            // already on its root, by a load otherwise.
+            if (isSignupPath(u.pathname, BASE)) {
+              const target = signupLanding(BASE);
+              if (!routeInApp(target)) window.location.assign(target);
               resume();
             }
           }),
@@ -176,16 +198,21 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
       /* THE BACK-BUTTON POLICY (Android). Reviewers test it; a surprise exit
          reads as a crash. In order:
            1. an open sheet closes;
-           2. any tab other than Home goes Home (the tab is not in the URL, so
+           2. a page open inside the tab goes back one page — an admin page,
+              a Profile sub-screen, a Stats page (lib/pageStack.ts;
+              docs/plans/back-navigation.md). Before this it skipped them all
+              and went Home;
+           3. any tab other than Home goes Home (the tab is not in the URL, so
               history cannot do this for us);
-           3. real history goes back;
-           4. from Home with nothing to go back to, the app exits.
+           4. real history goes back;
+           5. from Home with nothing to go back to, the app exits.
          Proposed default — the alternative is exiting immediately from Home.
          Grant's call; change step 2 if it feels wrong on a Pixel. */
       if (App) {
         handles.push(
           await App.addListener('backButton', ({ canGoBack }) => {
             if (closeTopSheet()) return;
+            if (goBackInPage()) return;
             if (tabRef.current !== 'home') {
               goHomeRef.current();
               return;

@@ -70,7 +70,10 @@ const nextConfig = {
       // for anyone whose copy is past a day (stale-while-revalidate serves the
       // old one once and fetches the new one behind it). sw.js, the manifest,
       // payments/ and the changelog stay uncached on purpose.
-      ...['/rackets/:path*', '/brand/:path*', '/icons/:path*'].map((source) => ({
+      // `strings/` (the packet pictures) joined on 2026-11-05: it was left out
+      // when the packets shipped, so every packet on the Stringing tab and the
+      // Equipment card waited on a round trip before it could draw.
+      ...['/rackets/:path*', '/strings/:path*', '/brand/:path*', '/icons/:path*'].map((source) => ({
         source,
         headers: [
           {
@@ -90,30 +93,9 @@ const nextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=31536000; includeSubDomains',
           },
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              process.env.NODE_ENV === 'development'
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-                : "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "font-src 'self'",
-              "img-src 'self' data:",
-              "connect-src 'self'",
-              // The four the 2026-09-28 audit found missing. `frame-ancestors`
-              // is the CSP form of the X-Frame-Options DENY above (XFO is
-              // ignored by a browser that honours this); `base-uri` stops an
-              // injected <base> from redirecting every relative URL;
-              // `object-src` shuts the plugin door; `form-action` keeps a form
-              // from posting off-origin. Apple's form_post lands ON this origin
-              // from Apple's page, which Apple's CSP governs, not this one.
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "object-src 'none'",
-              "form-action 'self'",
-            ].join('; '),
-          },
+          // The Content-Security-Policy is set per request by `proxy.ts`
+          // (`lib/csp.ts`), with a nonce for each page — a static header
+          // here could only say 'unsafe-inline' (audit, 2026-11-05).
         ],
       },
     ];

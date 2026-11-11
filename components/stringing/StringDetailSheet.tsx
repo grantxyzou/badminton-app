@@ -13,6 +13,7 @@ import { CLUB_GEAR_MIN_COHORT } from '@/lib/clubGear';
 import type { StringColourId } from '@/lib/stringPalette';
 import { ColourList } from './StringColours';
 import RatingMeters, { ratingSourceKey, type MeterRow } from './RatingMeters';
+import StringPackImage from './StringPackImage';
 import { stringColours, stringTypeOf, typeBand, stockColour, type StockBand } from '@/lib/stringShelf';
 import type { CatalogItem, StringFit } from '@/lib/types';
 
@@ -26,7 +27,7 @@ const CHIP: React.CSSProperties = {
   padding: 'var(--space-2) var(--space-4)',
   borderRadius: 'var(--radius-sm)',
   background: 'var(--inner-card-bg)',
-  border: '1px solid var(--inner-card-border)',
+  border: '1px solid transparent',
   color: 'var(--text-secondary)',
 };
 
@@ -150,7 +151,10 @@ export default function StringDetailSheet({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
             <div style={{ borderRadius: 'var(--radius-xl)', padding: 'var(--space-5)', background: typeBand(type), display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                <span className="bpm-h3" style={{ minWidth: 0 }}>{item.brand} {item.model}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', minWidth: 0 }}>
+                  <StringPackImage catalogId={item.id} size="hero" />
+                  <span className="bpm-h3" style={{ minWidth: 0 }}>{item.brand} {item.model}</span>
+                </span>
                 {band && (
                   <span className="fs-xs" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', height: 'var(--space-7)', padding: '0 var(--space-4)', borderRadius: 'var(--radius-pill)', background: 'color-mix(in srgb, var(--page-bg) 35%, transparent)', color: 'var(--text-secondary)', lineHeight: 1 }}>
                     <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: stockColour(band) }} />
@@ -326,7 +330,7 @@ function FitCard({ fit }: { fit: StringFit }) {
         <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{fit.reason}</p>
       )}
       {checks.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--inner-card-border)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', paddingTop: 'var(--space-4)' }}>
           {checks.map((c) => (
             <div key={c.key} className="fs-base" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
               <span

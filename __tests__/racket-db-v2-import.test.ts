@@ -18,8 +18,9 @@ const items = (catalog as unknown as { items: CatalogItem[] }).items.filter(
 describe('v2 racket import', () => {
   it('merges by prefixed id rather than duplicating', () => {
     // 71 after the v2 import; 157 after the catalog check of 2026-09-14 added
-    // 86 current (2024–2026) models through this importer.
-    expect(items).toHaveLength(157);
+    // 86 current (2024–2026) models through this importer; 153 after four
+    // rackets that do not exist were deleted (2026-11-04, docs/plans/racket-fidelity.md).
+    expect(items).toHaveLength(153);
     const ids = items.map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const raw of source as RacketDatabaseV2Record[]) {

@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { fmtSessionLabel as fmtDate, fmtDeadline, fmtTime } from '@/lib/fmt';
+import { fmtSessionLabel as fmtDate, fmtDeadline, fmtMoney, fmtTime } from '@/lib/fmt';
 import { shareSignup } from '@/lib/signupShare';
 import { shareTextOrCopy } from '@/lib/shareText';
 import { formatRosterText } from '@/lib/rosterText';
+import { signupPath } from '@/lib/inviteLink';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { useClubRun } from '@/lib/useClubRun';
 import { courtLine } from '@/lib/clubRun';
+import { membersFirstOpen, membersFirstUntil } from '@/lib/membersFirst';
+import { useOnline } from '@/lib/useOnline';
+import AddGuestSheet, { type GuestHost } from './AddGuestSheet';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -33,6 +37,8 @@ interface Session {
   birdUsage?: BirdUsage;
   birdUsages?: BirdUsage[];
   settled?: SettledSnapshot;
+  membersFirst?: { daysBefore: number; time: string };
+  membersFirstReleasedAt?: string;
 }
 
 interface Player {
@@ -42,6 +48,10 @@ interface Player {
   removed?: boolean;
   waitlisted?: boolean;
   heldForUnpaid?: boolean;
+  waitingForMembers?: boolean;
+  memberId?: string;
+  guestOf?: string;
+  guestName?: string;
 }
 
 interface NextSessionCardProps {
@@ -96,6 +106,14 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const { run, known: runKnown } = useClubRun();
   const moneyOff = runKnown && run.money === 'off';
   const [togglingSignup, setTogglingSignup] = useState(false);
+  // "Let the waitlist in now" (docs/plans/members-first-window.md): a tap,
+  // then a confirm, as retiring the club link is.
+  const [confirmingLetIn, setConfirmingLetIn] = useState(false);
+  const [lettingIn, setLettingIn] = useState(false);
+  const [letInError, setLetInError] = useState('');
+  const online = useOnline();
+  // "Add a guest" for a member (docs/plans/six-feathers-guests.md, Q4).
+  const [addingGuest, setAddingGuest] = useState(false);
 
   // Build a ready-to-paste sign-up invite and share it (native share sheet on
   // mobile, clipboard fallback elsewhere). Lets the admin blast "sign-up is
@@ -124,7 +142,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // stays the broadcast and the app stays the one list.
   const shareList = useCallback(async () => {
     if (typeof window === 'undefined' || !session) return;
-    const link = `${window.location.origin}${BASE}`;
+    // The sign-up link (lib/inviteLink.ts), so a member tapping it in the chat
+    // lands in the app on this week's session.
+    const link = `${window.location.origin}${signupPath(BASE)}`;
     const outcome = await shareTextOrCopy({
       title: group?.name ?? 'Sign-up list',
       text: formatRosterText({
@@ -329,7 +349,10 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const cap = session.maxPlayers ?? 0;
   // How close the waitlist is to another court (docs/plans/waitlist-court-line.md).
   // The admin is the one who books it; null when a court can't be worked out.
-  const courtInfo = runKnown ? courtLine(session, run, players) : null;
+  // During a members-first window people wait with spots free, and a court's
+  // worth of them is not a reason to book another until the session fills.
+  const windowRunning = membersFirstOpen(session, new Date().getTime());
+  const courtInfo = runKnown && !(windowRunning && activeCount < cap) ? courtLine(session, run, players) : null;
   const capacityPct = cap > 0 ? Math.min(100, Math.round((activeCount / cap) * 100)) : 0;
   const countdown = fmtCountdown(session.deadline);
   const open = session.signupOpen === true;
@@ -356,6 +379,34 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const costChanged =
     isSettled && typeof frozenTotal === 'number' && Math.abs(liveTotal - frozenTotal) > 0.01;
   const staleBill = rosterChanged || costChanged;
+  // Members first: only while it is still running. Once it ends the next
+  // visit lets the waitlist in on its own, and the card goes back to normal.
+  const windowEnd = windowRunning ? membersFirstUntil(session) : null;
+  // Who can bring a guest: members on this week's list, in or waiting, not
+  // held for unpaid sessions. Offered only on a known club run with guests on.
+  const guestCap = runKnown ? run.guests : 0;
+  const live = players.filter((p) => !p.removed);
+  const guestHosts: GuestHost[] = live
+    .filter((p) => !p.guestOf && typeof p.memberId === 'string' && p.memberId && !p.heldForUnpaid)
+    .map((p) => ({ memberId: p.memberId!, name: p.name, guests: live.filter((g) => g.guestOf === p.memberId).length }));
+  const canAddGuest = guestCap > 0 && !isSettled && guestHosts.some((h) => h.guests < guestCap);
+  const waitingForWindow = players.filter((p) => !p.removed && p.waitlisted && p.waitingForMembers).length;
+
+  async function letWaitlistIn() {
+    setLettingIn(true);
+    setLetInError('');
+    try {
+      const res = await fetch(`${BASE}/api/session/members-first`, { method: 'POST' });
+      if (!res.ok) { setLetInError('Couldn’t let the waitlist in. Try again.'); return; }
+      setConfirmingLetIn(false);
+      await load();
+      onChanged?.();
+    } catch {
+      setLetInError('Couldn’t let the waitlist in. Try again.');
+    } finally {
+      setLettingIn(false);
+    }
+  }
 
   return (
     <section className="glass-card p-4 space-y-3 motion-fade" aria-label="Next session">
@@ -382,9 +433,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         {isSettled && (
           <span
             className="cc-pill cc-pill-purple flex-shrink-0"
-            title={`Bill sent — $${session.settled?.costPerPerson} each`}
+            title={`Bill sent — ${fmtMoney(session.settled?.costPerPerson ?? 0)} each`}
           >
-            Sent · ${session.settled?.costPerPerson}
+            Sent · {fmtMoney(session.settled?.costPerPerson ?? 0)}
           </span>
         )}
       </header>
@@ -455,13 +506,62 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         <Switch checked={open} onChange={() => void toggleSignup()} ariaLabel="Sign-ups open" disabled={togglingSignup} />
       </div>
 
+      {windowEnd && (
+        <div className="cc-mini-card flex flex-col gap-3 motion-fade" style={{ padding: 'var(--space-3) var(--space-4)' }}>
+          <div>
+            <p className="fs-md" style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Members first until {fmtDate(windowEnd)} · {fmtTime(windowEnd)}
+            </p>
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              {waitingForWindow === 0
+                ? 'Nobody is waiting for it yet. After it, the waitlist moves up in sign-up order.'
+                : waitingForWindow === 1
+                  ? '1 person is waiting for it. After it, the waitlist moves up in sign-up order.'
+                  : `${waitingForWindow} people are waiting for it. After it, the waitlist moves up in sign-up order.`}
+            </p>
+          </div>
+          {!confirmingLetIn ? (
+            <button
+              type="button"
+              className="cc-btn cc-btn-ghost"
+              onClick={() => { setLetInError(''); setConfirmingLetIn(true); }}
+              disabled={!online}
+            >
+              Let the waitlist in now
+            </button>
+          ) : (
+            /* Two choices side by side, as in the bench's confirmations. */
+            <div className="motion-fade flex flex-col gap-3">
+              <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                Members lose first pick for this session: the waitlist moves up now, and anyone who signs up after gets a spot while there’s room.
+              </p>
+              <div className="flex gap-3">
+                <button type="button" className="cc-btn cc-btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmingLetIn(false)}>
+                  Not yet
+                </button>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={() => void letWaitlistIn()}
+                  disabled={lettingIn || !online}
+                >
+                  {lettingIn ? 'Letting in…' : 'Let them in'}
+                </button>
+              </div>
+            </div>
+          )}
+          {letInError && <p className="field-error" role="alert">{letInError}</p>}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2">
         {/* Post-settle: re-share the frozen bill. Settling itself lives in the
             footer "Finalize cost" action, beside Advance. */}
         {isSettled && onShareCost && !moneyOff ? (
           <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
             <span className="material-icons fs-lg align-middle">share</span>
-            Share again — ${session.settled?.costPerPerson} each
+            Share again — {fmtMoney(session.settled?.costPerPerson ?? 0)} each
           </button>
         ) : null}
         <button
@@ -487,6 +587,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             Edit details
           </button>
         )}
+        {canAddGuest && (
+          <button type="button" onClick={() => setAddingGuest(true)} className="cc-btn cc-btn-secondary" disabled={!online}>
+            <span className="material-icons fs-lg align-middle">person_add</span>
+            Add a guest
+          </button>
+        )}
         {isSettled && !moneyOff && (
           <button
             type="button"
@@ -508,7 +614,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       {((!isSettled && !moneyOff) || onAdvance) && (
         <div
           className="flex justify-center items-center flex-wrap"
-          style={{ gap: 'var(--space-1)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--divider)' }}
+          style={{ gap: 'var(--space-1)', paddingTop: 'var(--space-3)' }}
         >
           {!isSettled && !moneyOff && (
             <button
@@ -546,7 +652,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           <span>
             {costChanged ? (
               <>
-                This bill is locked at ${session.settled?.costPerPerson} each. The cost changed since you finalized (${liveTotal.toFixed(2)} now vs ${frozenTotal?.toFixed(2)} when sent) — editing the cost doesn&rsquo;t update a bill that&rsquo;s already out. Tap &ldquo;Edit bill&rdquo; to unfreeze, then Finalize again.
+                This bill is locked at {fmtMoney(session.settled?.costPerPerson ?? 0)} each. The cost changed since you finalized (${liveTotal.toFixed(2)} now vs ${frozenTotal?.toFixed(2)} when sent) — editing the cost doesn&rsquo;t update a bill that&rsquo;s already out. Tap &ldquo;Edit bill&rdquo; to unfreeze, then Finalize again.
               </>
             ) : (
               <>
@@ -558,12 +664,20 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       )}
 
       {settleError && (
-        <p role="alert" className="fs-sm" style={{ color: 'var(--color-red)' }}>
+        <p role="alert" className="field-error">
           {settleError}
         </p>
       )}
 
       {/* Advance confirm — a bottom sheet (was an inline two-step confirm). */}
+      <AddGuestSheet
+        open={addingGuest}
+        onClose={() => setAddingGuest(false)}
+        hosts={guestHosts}
+        cap={guestCap}
+        onAdded={() => { void load(); onChanged?.(); }}
+      />
+
       {onAdvance && (
         <BottomSheet
           open={confirmingAdvance}

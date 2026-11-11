@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The default keyboard focus ring (audit, 2026-11-05). Only 17 controls had
+   their own :focus-visible rule; everything else got the browser's, which in
+   Safari is a dark blue that all but vanishes on the dark glass. `:where()`
+   keeps this at the specificity of the bare pseudo-class, so every control's
+   own rule still wins. The accent passes 3:1 against both grounds. */
+@layer base {
+  :where(a, button, summary, [role="button"], [role="radio"], [role="tab"], [role="switch"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════
    Theme System — CSS custom properties for dark/light mode
    ══════════════════════════════════════════════════════════ */
@@ -16,9 +28,13 @@
   /* Dark-mode contrast: bumped from 0.6 / 0.35 because the original values
      fell below AA on `.glass-card` regions where the aurora gradient blooms
      through the translucent surface. Light mode untouched (already
-     well-contrasted on cream). */
+     well-contrasted on cream).
+     Muted 0.55 -> 0.62 on 2026-11-05 (audit): the fields shipped after the
+     0.55 bump, and muted text straight on a field's lit corner measured
+     3.9:1 (Home, Stringing), under AA's 4.5. At 0.62 the worst tab reads
+     4.5 bare and 5.1 on a card, and it stays a step below secondary (0.7). */
   --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-muted: rgba(255, 255, 255, 0.55);
+  --text-muted: rgba(255, 255, 255, 0.62);
   --accent: #4ade80;
   --accent-dark: #16a34a;
   --accent-amber: #fbbf24;
@@ -48,6 +64,11 @@
   --duration-sheet: 180ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
+  /* Two named one-offs, off the ladder on purpose: the sign-up icon's pop
+     (celebrate) and the bell ring / launch rise (flourish). A literal ms in a
+     transition or animation fails motion-duration-canary; name it here. */
+  --duration-celebrate: 420ms;
+  --duration-flourish: 700ms;
 
   /* ── Aurora ── */
   --aurora-bg: #100F0F;
@@ -235,6 +256,15 @@
      light values are derived from the light families already defined for the
      same hue (--pill-paid, --pill-waitlist, --pill-admin, --banner-red,
      --list-amber). #75. */
+  /* WHAT YOU'VE PAID (Profile → Account balance): one hue, the app's green,
+     a step per series — Sessions, Stringing, Other — darkest at the base on
+     a light surface, brightest at the base on a dark one (Grant chose tonal
+     over multi-hue, 2026-11-09). Each mode's steps were run through the
+     dataviz validator against its own surface: adjacent pairs pass the CVD
+     and normal-vision floors; the breakdown under the chart is its table. */
+  --chart-green-1: #b5ecc8;
+  --chart-green-2: #3cc46c;
+  --chart-green-3: #1f7a45;
   --tone-green-bg: rgba(74, 222, 128, 0.13);
   --tone-green-border: rgba(74, 222, 128, 0.25);
   --tone-green-border-strong: rgba(74, 222, 128, 0.3);
@@ -422,6 +452,9 @@
   --dropdown-bg: rgba(255, 255, 255, 0.97);
   --overlay-bg: rgba(0, 0, 0, 0.3);
 
+  --chart-green-1: #14532d;
+  --chart-green-2: #2fb35f;
+  --chart-green-3: #9fdcb5;
   --tone-green-bg: rgba(22, 163, 74, 0.1);
   --tone-green-border: rgba(22, 163, 74, 0.25);
   --tone-green-border-strong: rgba(22, 163, 74, 0.3);
@@ -1051,11 +1084,19 @@ h1, h2, h3, h4 {
   line-height: var(--lh-snug);
   color: var(--sev-crit-text);
 }
+/* Its amber twin: a refusal that is not the person's fault (try again later,
+   an account already exists, invite only). Same size and rhythm, warn ink. */
+.field-warn {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  color: var(--sev-warn);
+}
 /* Recipe 1 (Appear) on every inline alert — the sanctioned class and the
    hand-styled `<p role="alert">` lines that predate it alike. Every mount
    replays it, which is the point: a retry that fails again should read as a
    second failure, not as nothing. */
 .field-error,
+.field-warn,
 p[role='alert'] {
   animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
 }
@@ -2604,6 +2645,332 @@ html:root .ink-button {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* Profile's identity card is one button into Edit profile
+   (docs/superpowers/specs/2026-11-09-profile-reorg-design.md §1). */
+.profile-card-button {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-press) var(--ease-glass);
+}
+.profile-card-button:active { transform: scale(0.98); }
+/* A picture to wear on Edit profile. The selected one takes a ring: the one
+   ring the fill-only rule allows, because the picture itself is the fill. */
+.avatar-choice {
+  display: inline-flex;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-press) var(--ease-glass), box-shadow var(--duration-fast) var(--ease-glass);
+}
+.avatar-choice:active { transform: scale(0.94); }
+.avatar-choice[aria-checked='true'] { box-shadow: 0 0 0 3px var(--accent); }
+.avatar-choice:disabled { cursor: default; }
+/* Edit profile's picture groups ("Yours", "Birdies"): a small label over a
+   wrapping row of 52px circles. */
+.avatar-group { width: 100%; display: flex; flex-direction: column; gap: var(--space-3); }
+.avatar-group__label { margin: 0; padding-left: var(--space-1); font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); }
+.avatar-group__grid { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+/* Edit profile's field rows: a small label over its value, the Profile row's
+   padding, so the two pages read as one family. */
+.edit-profile-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: none;
+  font: inherit;
+  color: var(--text-primary);
+  text-align: left;
+}
+button.edit-profile-row { cursor: pointer; }
+.edit-profile-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+.edit-profile-key { font-size: var(--fs-sm); color: var(--text-secondary); }
+.edit-profile-value { font-size: var(--fs-lg); color: var(--text-primary); overflow-wrap: anywhere; }
+.edit-profile-can {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-05);
+  font-size: var(--fs-base);
+  color: var(--text-secondary);
+}
+/* The money pages (spec §3 and §5): Gift cards & credit, Give a gift card.
+   A code is data, so it is mono, letter-spaced and upper case wherever it is
+   typed or shown. */
+.gift-code-input {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gift-code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+/* $10 / $25 / $50. A pressable choice chip is fill-only; the chosen one is the
+   green tone wash with accent text (the selected-chip rule), never a ring. */
+.amount-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+.amount-chip {
+  min-height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
+  cursor: pointer;
+  transition:
+    transform var(--duration-press) var(--ease-out-quart),
+    background var(--duration-fast) ease;
+}
+.amount-chip:active { transform: scale(0.97); }
+.amount-chip[aria-checked='true'] {
+  background: var(--tone-green-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+/* One line of money: what it was over when, the amount at the right. */
+.money-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+.money-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+.money-row__title { font-size: var(--fs-md); color: var(--text-primary); overflow-wrap: anywhere; }
+.money-row__sub { font-size: var(--fs-sm); color: var(--text-muted); overflow-wrap: anywhere; }
+.money-row__amount {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+/* Account balance (spec §4). The credit sits beside what you owe as a tinted
+   box: green because credit is yours, never the amber of an amount owed. */
+.balance-credit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-05);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--tone-green-bg);
+  flex-shrink: 0;
+}
+.balance-credit__label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.balance-credit__value { font-family: var(--font-mono); font-size: var(--fs-lg); font-weight: 600; color: var(--accent); }
+.balance-line { display: flex; align-items: center; gap: var(--space-4); }
+.balance-line__icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  color: var(--text-secondary);
+}
+.balance-line__icon .material-icons { font-size: var(--icon-md); }
+.balance-payto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-05);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+}
+.balance-payto__email { font-family: var(--font-mono); font-size: var(--fs-md); color: var(--text-primary); overflow-wrap: anywhere; }
+/* WHAT YOU'VE PAID. Inline SVG (no chart library, as Stats): fills come from
+   classes so `var()` resolves, and the column buttons lie over the drawing so
+   a tap anywhere in a month's column picks it. */
+.pay-chart__svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pay-chart__seg--sessions { fill: var(--chart-green-1); }
+.pay-chart__seg--stringing { fill: var(--chart-green-2); }
+.pay-chart__seg--other { fill: var(--chart-green-3); }
+.pay-chart__col--on { fill: var(--press-bg); }
+.pay-chart__baseline { stroke: var(--border-subtle); stroke-width: 1; }
+.pay-chart__month { fill: var(--text-muted); font-size: var(--fs-sm); font-family: var(--font-sans); }
+.pay-chart__month--on { fill: var(--text-primary); font-weight: 600; }
+.pay-chart__value { fill: var(--text-primary); font-size: var(--fs-sm); font-family: var(--font-mono); font-weight: 600; }
+.pay-chart__hits { position: absolute; inset: 0; display: flex; }
+.pay-chart__hit { flex: 1; min-height: 44px; background: none; border: none; padding: 0; cursor: pointer; border-radius: var(--radius-lg); }
+.pay-chart__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.pay-chart__legend li { display: inline-flex; align-items: center; gap: var(--space-2); }
+.pay-chart__swatch { width: 10px; height: 10px; border-radius: var(--radius-xs); flex-shrink: 0; }
+.pay-chart__swatch--sessions { background: var(--chart-green-1); }
+.pay-chart__swatch--stringing { background: var(--chart-green-2); }
+.pay-chart__swatch--other { background: var(--chart-green-3); }
+.pay-chart__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+}
+.pay-chart__line { display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-md); color: var(--text-primary); }
+/* Report a problem (spec §6): the starters, a wrapping row of pressable pills.
+   Fill-only like every choice chip; the chosen one is the green tone wash with
+   accent text, never a ring. */
+.report-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.report-chip {
+  min-height: 34px;
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-base);
+  cursor: pointer;
+  position: relative;
+  transition:
+    transform var(--duration-press) var(--ease-out-quart),
+    background var(--duration-fast) ease;
+}
+/* Drawn 34 tall, tapped 44 (the inset tap-area rule). */
+.report-chip::before { content: ''; position: absolute; inset: -5px 0; }
+.report-chip:active { transform: scale(0.97); }
+.report-chip[aria-pressed='true'] { background: var(--tone-green-bg); color: var(--accent); font-weight: 600; }
+.report-box { width: 100%; resize: vertical; font-family: inherit; font-size: var(--fs-md); }
+/* "How to use BPM" (spec §7–§8): the guide rows (Support page and /legal/help)
+   and the guide page itself. Rows are a card of tappable lines, fill-only. */
+.help-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.help-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  text-decoration: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.help-row:active { background: var(--press-bg); }
+.help-row__icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--tone-green-bg);
+  color: var(--accent);
+}
+.help-row__icon .material-icons { font-size: var(--icon-md); }
+.help-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+.help-row__title { font-size: var(--fs-lg); color: var(--text-primary); }
+.help-row__sub { font-size: var(--fs-sm); color: var(--text-muted); }
+.help-row__chev { font-size: var(--icon-md); color: var(--text-secondary); }
+.help-crumb { font-size: var(--fs-md); color: var(--text-muted); text-decoration: none; }
+.help-eyebrow {
+  margin: var(--space-8) 0 var(--space-4);
+  font-family: var(--font-display, "Space Grotesk");
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.help-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-6); }
+.help-step { display: flex; gap: var(--space-4); align-items: flex-start; }
+.help-step__num {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--tone-green-bg);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.help-step__body { flex: 1; min-width: 0; }
+.help-step__title { margin: 0; font-size: var(--fs-lg); font-weight: 600; color: var(--text-primary); }
+.help-step__text { margin: var(--space-1) 0 0; font-size: var(--fs-md); line-height: var(--lh-normal); color: var(--text-secondary); }
+.help-shot { margin: var(--space-4) 0 0; }
+.help-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+}
+.help-shot figcaption { margin-top: var(--space-2); font-size: var(--fs-sm); color: var(--text-muted); }
+.help-tip {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin-top: var(--space-8);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--tone-green-bg);
+  color: var(--text-primary);
+}
+.help-tip .material-icons { font-size: var(--icon-md); color: var(--accent); }
+.help-tip p { margin: 0; font-size: var(--fs-md); line-height: var(--lh-normal); }
+.help-helpful { margin-top: var(--space-7); }
+.help-helpful__form { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.help-helpful__buttons { display: flex; gap: var(--space-2); }
+.help-pill {
+  min-height: 44px;
+  min-width: 72px;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.help-pill:active { transform: scale(0.97); }
+.help-qa { display: flex; flex-direction: column; gap: var(--space-05); padding: var(--space-4) var(--space-5); }
+.help-qa__q { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
+.help-qa__a { font-size: var(--fs-md); line-height: var(--lh-normal); color: var(--text-secondary); }
 /* "Your groups": a club's mark. SQUARE, not round — a round initial is a
    person everywhere else in the app, and a club is not one. */
 .group-monogram {
@@ -2660,6 +3027,17 @@ html:root .ink-button {
   pointer-events: none;
 }
 .member-avatar__racket[data-loaded='false'] { opacity: 0; }
+/* A birdie (lib/memberAvatar.ts): a square picture that carries its own pale
+   ground, so it fills the circle edge to edge; the circle's radius cuts it. */
+.member-avatar__birdie {
+  transition: opacity var(--duration-fast) var(--ease-glass);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.member-avatar__birdie[data-loaded='false'] { opacity: 0; }
 
 /* ── Bottom nav · Labeled Rail (spec May 2026) ──
    Full-width, edge-attached, theme-independent dark surface. The LIVE
@@ -2723,7 +3101,7 @@ html:root .ink-button {
   justify-content: center;
   border-radius: var(--rail-indicator-radius);
   background: transparent;
-  transition: background 150ms var(--ease-glass);
+  transition: background var(--duration-fast) var(--ease-glass);
 }
 
 .rail-icon {
@@ -2766,7 +3144,7 @@ html:root .ink-button {
   transform: translateX(calc(var(--ri, 0) * 100%));
   /* The pill travels A→B on screen (it doesn't enter/exit), so ease-in-out
      reads more natural than the ease-out used for entrances. */
-  transition: transform 200ms var(--ease-in-out);
+  transition: transform var(--duration-sheet) var(--ease-in-out);
 }
 .rail-indicator-pill {
   display: block;
@@ -3126,6 +3504,24 @@ textarea {
    Weekly path, so no overshoot: ease-out-quart, no bounce. */
 html.vt-signup .vt-signup-confirm { view-transition-name: signup-confirm; }
 html.vt-signup .vt-signup-card { view-transition-name: signup-card; }
+
+/* Last time's week, drawn at once while the real one loads (lib/homeSnapshot.ts):
+   a little dimmer, a quiet "Updating…" in the sign-up card's corner, and its
+   buttons and links held until the server's answer replaces it. The tag is
+   placed over the card, so its arrival and departure move nothing. */
+.vt-signup-card { position: relative; }
+.bpm-home-week.is-updating { opacity: 0.72; transition: opacity var(--duration-fast) var(--ease-out-quart); }
+.bpm-home-week.is-updating button,
+.bpm-home-week.is-updating a { pointer-events: none; }
+.home-updating-tag {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
 html.vt-signup .vt-home-account { view-transition-name: home-account; }
 /* The shuttle burst is deliberately NOT part of this transition. It is fired
    from `withViewTransition`'s onFinished, after the morph has landed. Two
@@ -3264,8 +3660,21 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 }
 .roster-row__kudos:active { transform: scale(0.94); }
 .roster-waitlist-label { margin: var(--space-3) 0 var(--space-1) var(--space-3); }
+/* The organiser's copy of the list (SessionListCard, money-off clubs): the
+   same row as Home's, pressable as a whole to open its actions. A list row
+   flashes --press-bg under a finger (the Press recipe). */
+.roster-row--action {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-press) ease-out;
+}
+.roster-row--action:active { background: var(--press-bg); }
+.roster-row__more { color: var(--text-muted); }
 .status-celebrate .icon-status {
-  animation: signupIconPop 420ms var(--ease-glass) both;
+  animation: signupIconPop var(--duration-celebrate) var(--ease-glass) both;
 }
 @keyframes signupBannerIn {
   from { opacity: 0; transform: translateY(6px) scale(0.98); }
@@ -3282,7 +3691,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
    line re-keys and ticks — a quick fade + tiny settle confirms the change.
    Purpose = feedback, not decoration. */
 .animate-count-tick {
-  animation: countTick 220ms var(--ease-glass) both;
+  animation: countTick var(--duration-sheet) var(--ease-glass) both;
 }
 @keyframes countTick {
   from { opacity: 0.35; transform: translateY(-2px); }
@@ -3439,6 +3848,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
      is given back — `!important` on a class outranks the `*` rule. */
   .motion-fade,
   .field-error,
+  .field-warn,
   p[role='alert'] {
     animation: motionFade var(--duration-fast) ease-out backwards !important;
   }
@@ -3765,6 +4175,18 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   box-shadow: var(--glass-shadow);
 }
 
+/* The TAP target is 44×44 (Apple's minimum) while the drawn circle stays 36:
+   the row's centres sit 44px apart, so the targets meet and never overlap
+   (audit, 2026-11-05). Fixed elements are already containing blocks. */
+.theme-toggle::before,
+.lang-toggle::before,
+.notif-toggle::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+}
+
 /* Plus the side inset: a phone held sideways, and iPhone Duo, whose camera
    and system controls sit on the right edge. Portrait phones report 0, so
    nothing moves there (docs/plans/foldable-layout.md). */
@@ -3828,7 +4250,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
    from its top, like a bell. The reduced-motion wildcard zeroes it. */
 .notif-toggle .notif-ring {
   transform-origin: 50% 15%;
-  animation: notif-ring 700ms var(--ease-out-quart);
+  animation: notif-ring var(--duration-flourish) var(--ease-out-quart);
 }
 @keyframes notif-ring {
   0%   { transform: rotate(0); }
@@ -4053,7 +4475,7 @@ html:root .glass-card.notice-list { padding: var(--space-2); }
   border-radius: var(--radius-md);
   padding: 18px;
   font-size: 17px;
-  animation: launch-rise 700ms var(--ease-glass) backwards;
+  animation: launch-rise var(--duration-flourish) var(--ease-glass) backwards;
 }
 .launch-btn--primary {
   font-weight: 700;
@@ -4197,7 +4619,7 @@ html[data-launch="loading"] .splash {
 .bottom-sheet-backdrop {
   background: rgba(0, 0, 0, 0.72);
   opacity: 0;
-  transition: opacity 180ms var(--ease-sheet);
+  transition: opacity var(--duration-sheet) var(--ease-sheet);
   pointer-events: none;
 }
 /* While a sheet is opening or open, the page behind it is not clickable: the
@@ -4441,7 +4863,7 @@ html:root[data-tab="admin"] .bottom-sheet {
   font-size: var(--fs-sm);
   white-space: nowrap;
   cursor: pointer;
-  transition: transform 100ms var(--ease-glass);
+  transition: transform var(--duration-press) var(--ease-glass);
 }
 .filter-chip:active { transform: scale(0.97); }
 .filter-chip .material-icons { font-size: var(--icon-sm); }
@@ -4571,7 +4993,7 @@ button.sheet-row { cursor: pointer; }
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  transition: background 120ms var(--ease-glass), border-color 120ms var(--ease-glass), color 120ms var(--ease-glass), transform 80ms var(--ease-glass);
+  transition: background var(--duration-press) var(--ease-glass), border-color var(--duration-press) var(--ease-glass), color var(--duration-press) var(--ease-glass), transform var(--duration-press) var(--ease-glass);
   -webkit-tap-highlight-color: transparent;
 }
 .cc-btn:focus-visible {
@@ -5011,7 +5433,7 @@ html:root[data-theme="light"] {
   flex-direction: column;
   gap: var(--space-2);
   cursor: pointer;
-  transition: background 120ms ease;
+  transition: background var(--duration-press) ease;
   text-align: left;
 }
 .cc-tile:hover {
@@ -5156,7 +5578,7 @@ html:root[data-theme="light"] {
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background var(--duration-press) ease, color var(--duration-press) ease;
 }
 @media (hover: hover) {
   .cc-session-chip:hover { background: rgba(255, 255, 255, 0.07); }
@@ -5738,6 +6160,37 @@ html:root[data-theme="light"] {
   gap: var(--home-stack-gap);
 }
 
+/* ── Invite QR (Command Center → Invite someone → Show as QR) ──
+   A one-time invite drawn as a QR code on the organiser's screen and read by
+   another phone's camera. Dark squares on a LIGHT ground in both themes: a
+   camera reads dark-on-light reliably, and a code drawn light-on-dark in dark
+   mode is the classic one that will not scan. The ground is a square of its
+   own, so the code never sits on the field behind the sheet. The quiet zone is
+   in the drawing (lib/qr.ts), not padding, so it scales with the code. */
+:root {
+  --qr-ink: #111111;
+  --qr-ground: #ffffff;
+}
+.invite-qr {
+  display: block;
+  width: min(72vw, 280px);
+  height: auto;
+  margin-inline: auto;
+  background: var(--qr-ground);
+  border-radius: var(--radius-lg);
+  shape-rendering: crispEdges;
+}
+.invite-qr path {
+  fill: var(--qr-ink);
+}
+/* "Save as image" on iOS with no file share: the poster itself, to press and hold. */
+.invite-poster-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+}
+
 /* ── Foldables: two panes on a big touch screen ──
    docs/plans/foldable-layout.md, after Apple's "Designing for iPhone Duo"
    (2026-09-09). On ONE phone-sized screen nothing here applies: the page is
@@ -6012,7 +6465,7 @@ button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offs
   /* `backwards`, not `both`: a `both` fill keeps holding the keyframe's final
      opacity/transform after it ends, and an animation outranks a transition,
      so the exit below could never move the card. */
-  animation: toast-in 200ms var(--ease-out-quart) backwards;
+  animation: toast-in var(--duration-sheet) var(--ease-out-quart) backwards;
   transition:
     opacity var(--duration-fast) var(--ease-glass),
     transform var(--duration-fast) var(--ease-glass);
@@ -6108,6 +6561,13 @@ button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offs
   color: var(--toast-muted);
 }
 
+/* The toast's ✕ draws 36 but takes a 44×44 tap (::before), like the
+   top-right toggles. */
+.top-toast-close::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
 .top-toast-close {
   position: relative;
   flex-shrink: 0;
@@ -6170,9 +6630,9 @@ button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offs
   .top-toast-card,
   .top-toast[data-open='true'] .top-toast-card {
     transform: none;
-    transition: opacity 150ms ease, visibility 0s linear 150ms;
+    transition: opacity var(--duration-fast) ease, visibility 0s linear var(--duration-fast);
   }
-  .top-toast[data-open='true'] .top-toast-card { transition: opacity 150ms ease, visibility 0s; }
+  .top-toast[data-open='true'] .top-toast-card { transition: opacity var(--duration-fast) ease, visibility 0s; }
 }
 
 .toast-dismiss {
@@ -6306,7 +6766,7 @@ html:root .swipe-row {
 }
 
 .swipe-row[data-swiping='release'] .swipe-row__track {
-  transition: transform 180ms var(--ease-out-quart);
+  transition: transform var(--duration-sheet) var(--ease-out-quart);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6335,34 +6795,36 @@ html:root .swipe-row {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.setup-lines { display: flex; flex-direction: column; gap: var(--space-4); }
-.setup-line {
+/* The Set-up card, design A (2026-11-05, the Stats canvas): every item's
+   name on the title's left edge, its role leading the sub-line; the main
+   racket's head close up across the right half; the fitting door in the main
+   area; the spares as one group below a rule. */
+.setup-main { display: flex; flex-direction: column; gap: var(--space-4); }
+.setup-item {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-3);
   width: 100%;
-  padding: 0 0 var(--space-4);
-  /* Lines are set apart by space, not a hairline (fill-only / no hard
-     dividers, 2026-11-04). The dashed underline of an EMPTY slot below
-     stays: it marks an absence, not a row boundary. */
+  padding: 0;
   border: none;
   background: transparent;
   text-align: left;
   font: inherit;
   color: inherit;
 }
-button.setup-line { cursor: pointer; }
-button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
-.setup-line:last-child { padding-bottom: 0; }
-.setup-line--blank { border-bottom: 1px dashed var(--divider-dashed); }
-.setup-line--blank:last-child { border-bottom: 1px dashed var(--divider-dashed); padding-bottom: var(--space-4); }
-/* The tappable part of a line that ALSO holds its own control (the empty
-   tension slot): buttons cannot nest, so the line is a div and this is the
-   button inside it, carrying the line's layout but none of its border. */
-.setup-line-hit {
+button.setup-item { cursor: pointer; }
+button.setup-item:disabled { opacity: 0.5; pointer-events: none; }
+/* An empty item keeps the dashed underline: it marks an absence. */
+.setup-item--blank { padding-bottom: var(--space-3); border-bottom: 1px dashed var(--divider-dashed); }
+.setup-item--pair { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+.setup-item-row { display: flex; align-items: center; gap: var(--space-3); }
+.setup-item-body { flex: 1; min-width: 0; }
+/* The tappable part of an item that ALSO holds its own control (the empty
+   tension slot): buttons cannot nest. */
+.setup-item-hit {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-3);
   flex: 1;
   min-width: 0;
   padding: 0;
@@ -6373,18 +6835,127 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
   color: inherit;
   cursor: pointer;
 }
-.setup-line-hit:disabled { opacity: 0.5; pointer-events: none; }
-.setup-line-label {
-  /* Wide enough for "Main racket" on one line (2026-10-19). */
-  width: 88px;
-  flex: 0 0 auto;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+.setup-item-hit:disabled { opacity: 0.5; pointer-events: none; }
+/* "Racket and tension fitting": a filled accent row, the one door the card
+   leads with after the set-up itself. */
+.setup-fit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  /* Frosted like the glass controls: the racket's head can reach behind it. */
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: blur(10px) saturate(1.6);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+  text-align: left;
+  cursor: pointer;
 }
-.setup-line-body { flex: 1; min-width: 0; }
+/* The spares: one group below one rule, a row per spare and the add row. */
+.setup-spares {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--divider-dashed);
+}
+.setup-spare-rows { display: flex; flex-direction: column; gap: var(--space-05); border-radius: var(--radius-lg); overflow: hidden; }
+.setup-spare-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  background: var(--inner-card-bg);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.setup-spare-row:disabled { opacity: 0.5; pointer-events: none; }
+.setup-spare-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setup-spare-row--add { justify-content: flex-start; color: var(--accent); }
+/* The main racket's head close up (2026-11-05, design A): its own large
+   render (`racketHeadSrc`), sharp, tilted in from the right edge across the
+   card's right half and clipped by the card, faded into the card along its
+   left side so the names over it stay clean. Behind everything on the card. */
+.setup-card { position: relative; overflow: hidden; isolation: isolate; }
+.setup-card > :not(.setup-corner) { position: relative; z-index: 1; }
+/* The card frosts its ground from a layer BEHIND its content, not from the
+   card itself: Chromium draws no backdrop blur inside an element that has one
+   of its own (dark mode's `brightness()` in the token made it plain), so the
+   glass controls over the racket showed the strings sharp through them. Same
+   token, same look; the controls now frost the racket. */
+html:root .glass-card.setup-card { -webkit-backdrop-filter: none; backdrop-filter: none; }
+html:root .glass-card.setup-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+}
+.setup-corner {
+  position: absolute;
+  top: -24px;
+  right: -78px;
+  width: 270px;
+  pointer-events: none;
+  z-index: 0;
+  transform: rotate(-14deg);
+  transform-origin: 50% 30%;
+  /* A long fade: a long racket name (Astrox 99 Pro 3rd Gen) reaches under
+     the head on a 375 px phone, and the strings behind it stay faint there. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, rgba(0, 0, 0, 0.35) 70px, black 150px);
+  mask-image: linear-gradient(to right, transparent 0, rgba(0, 0, 0, 0.35) 70px, black 150px);
+}
+.setup-corner img { display: block; width: 100%; height: auto; }
+/* Liquid glass (2026-11-05, Grant: "for UI thats on top of the racket, apply
+   apple liquid glass refraction effect"): the controls over the racket are a
+   lens, not a tint. Frosted and saturated everywhere, lit along the top-left
+   edge and shaded along the bottom-right, and where the browser can draw an
+   SVG filter in `backdrop-filter` (Chromium, `.setup-card--refract`) the
+   racket behind is bent through it. Fill only, no rim (2026-11-04 rule): the
+   edge is light, not a stroke. Only inside the Set-up card. */
+.setup-card .setup-glass {
+  background: rgba(var(--glass-tint), 0.12);
+  -webkit-backdrop-filter: blur(10px) saturate(1.8);
+  backdrop-filter: blur(10px) saturate(1.8);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.55),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 14px rgba(255, 255, 255, 0.1),
+    0 4px 14px rgba(0, 0, 0, 0.14);
+  border-color: transparent;
+}
+.setup-card--refract .setup-glass {
+  backdrop-filter: url(#setup-refract) blur(5px) saturate(1.8);
+}
+.setup-card .setup-tension.setup-glass { padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); }
+.setup-card .setup-chip-dashed.setup-glass { border: 1px dashed var(--divider-dashed); }
+.setup-card .setup-glass-pill { display: inline-flex; border-radius: var(--radius-pill); }
+.setup-card .setup-glass-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+}
+.setup-glass-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .setup-line-value {
   display: block;
   font-size: var(--fs-lg);
@@ -6394,7 +6965,7 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.setup-line--blank .setup-line-value { font-weight: 400; color: var(--text-muted); }
+.setup-item--blank .setup-line-value { font-weight: 400; color: var(--text-muted); }
 .setup-line-sub {
   display: block;
   margin-top: var(--space-05);
@@ -6402,26 +6973,6 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
   color: var(--text-muted);
 }
 .setup-line-sub--accent { color: var(--accent); }
-.setup-line-spare { font-size: var(--fs-md); font-weight: 400; color: var(--text-secondary); }
-/* The Set-up card's footer: "Add a spare racket" and "Your fit", two optional
-   extras at the same quiet weight, one at each end. */
-.setup-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
-.setup-footer-link { display: inline-flex; align-items: center; gap: var(--space-05); color: var(--text-secondary); }
-/* A hybrid on the Strings line: mains over crosses, each row its own role,
-   name and figure. The role is the label column's type at body size, so the
-   two names still start on one vertical. */
-.setup-line-pair { display: flex; flex-direction: column; gap: var(--space-2); }
-.setup-line-pair-row { display: flex; align-items: baseline; gap: var(--space-3); min-width: 0; }
-.setup-line-pair-row .setup-line-value { flex: 1; min-width: 0; }
-.setup-line-role {
-  width: 52px;
-  flex: 0 0 auto;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
 .setup-tension { display: inline-flex; align-items: baseline; gap: var(--space-05); }
 .setup-tension-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 700; color: var(--text-primary); }
 .setup-tension-unit { font-size: var(--fs-xs); color: var(--text-secondary); }
@@ -6536,7 +7087,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   border: 1px solid transparent; /* fill-only, see .fit-tile */
   color: var(--text-secondary);
   cursor: pointer;
-  transition: transform 100ms var(--ease-glass);
+  transition: transform var(--duration-press) var(--ease-glass);
 }
 .tension-field-step--up { background: var(--highlight-green); color: var(--accent); }
 .tension-field-step:active { transform: scale(0.97); }
@@ -6601,7 +7152,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   border-radius: var(--radius-sm);
   background: var(--highlight-green);
   border: 1px solid var(--accent);
-  transition: left 180ms var(--ease-sheet), width 180ms var(--ease-sheet);
+  transition: left var(--duration-sheet) var(--ease-sheet), width var(--duration-sheet) var(--ease-sheet);
 }
 .tension-ruler-you {
   position: absolute;
@@ -6610,7 +7161,7 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   width: 2px;
   margin-left: -1px;
   background: var(--accent);
-  transition: left 180ms var(--ease-sheet), background-color 180ms var(--ease-sheet);
+  transition: left var(--duration-sheet) var(--ease-sheet), background-color var(--duration-sheet) var(--ease-sheet);
 }
 .tension-ruler-you--suggested { background: repeating-linear-gradient(to bottom, var(--accent) 0 3px, transparent 3px 6px); }
 .tension-ruler-you--warn { background: var(--sev-warn); }
@@ -6732,16 +7283,150 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 .setup-feel-chip:disabled { opacity: 0.5; pointer-events: none; }
 
 /* The shared set-up image, shown as the exported PNG so it is exactly what
-   leaves (and so iOS can press-and-hold to save it). */
+   leaves (and so iOS can press-and-hold to save it).
+   It is a 9:16 story, so it is sized by HEIGHT, centred, leaving the sheet's
+   buttons on screen. */
 .setup-share-preview {
   display: block;
-  width: 100%;
-  height: auto;
+  height: min(58dvh, 560px);
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 9 / 16;
+  margin-inline: auto;
   border-radius: var(--radius-xl);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
-/* Before the canvas lands: the card's night ground at its usual proportions. */
-.setup-share-preview--pending { aspect-ratio: 360 / 300; background: var(--bpm-night); }
+/* Before the canvas lands: the story's night ground at its own proportions. */
+.setup-share-preview--pending { background: var(--bpm-night); }
+
+/* ── "Your racket, step by step" (StringingStory) ──
+   The stringing animation on the "Request sent" screen. Drawn on a fixed
+   420 × 490 stage, scaled to the sheet by --ss-k (set from the box's width),
+   so the picture's geometry stays in the stage's own units. Twelve seconds,
+   played ONCE: every keyframe ends on the last frame with fill-mode both, so
+   the reduced-motion rule above (0.01 ms, one iteration) lands straight on it.
+   It is a dark scene in both themes, like the share image: the racket and
+   packet renders are lit for a dark ground. */
+.ss { display: flex; flex-direction: column; gap: var(--space-3); }
+.ss-box {
+  --ss-amber: var(--color-amber);
+  --ss-thread: #f2efe6;
+  --ss-steel-1: #3c3c44;
+  --ss-steel-2: #1f1f24;
+  --ss-steel-3: #34343a;
+  --ss-steel-4: #222226;
+  --ss-steel-5: #6b6b75;
+  --ss-steel-6: #8a8a94;
+  --ss-shadow: rgba(0, 0, 0, 0.5);
+  position: relative;
+  width: 100%;
+  aspect-ratio: 420 / 490;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: radial-gradient(80% 70% at 30% 0%, rgba(245, 158, 11, 0.16), transparent 70%), var(--bpm-night);
+}
+.ss-stage { position: absolute; left: 0; top: 0; width: 420px; height: 490px; transform-origin: 0 0; transform: scale(var(--ss-k, 0)); }
+.ss-stage > *, .ss-machine > *, .ss-head > * { position: absolute; display: block; }
+
+/* 1. The packet: its top tears away and the string comes out. */
+.ss-pack { left: 155px; top: 100px; width: 110px; height: 154px; }
+.ss-pack-body { clip-path: inset(17% 0 0 0); animation: ss-pack-body 12s both; }
+.ss-pack-top { clip-path: polygon(0 0, 100% 0, 100% 15%, 88% 18%, 74% 15%, 60% 18%, 46% 15%, 32% 18%, 18% 15%, 0 18%); animation: ss-pack-top 12s both; }
+.ss-out-line { left: 150px; top: -10px; }
+.ss-out { fill: none; stroke: var(--ss-thread); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 320; animation: ss-out 12s both; }
+
+/* 2–4. The machine, seen from above: a turntable under the head, mounting
+   posts, two clamps and the tension head. No maker's name or logo. */
+.ss-machine { left: 20px; top: 202px; width: 380px; height: 170px; animation: ss-machine 12s both; }
+.ss-turntable { left: 28px; top: 23px; width: 124px; height: 124px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, var(--ss-steel-1), var(--ss-steel-2)); box-shadow: 0 10px 28px var(--ss-shadow); }
+.ss-rail { left: 0; top: 72px; width: 380px; height: 26px; border-radius: 13px; background: linear-gradient(180deg, var(--ss-steel-3), var(--ss-steel-4)); box-shadow: 0 8px 24px var(--ss-shadow); }
+.ss-post { width: 12px; height: 16px; border-radius: 4px; background: var(--ss-steel-5); }
+.ss-post-1 { left: 84px; top: 14px; }
+.ss-post-2 { left: 84px; top: 140px; }
+.ss-post-3 { left: 0; top: 77px; }
+.ss-post-4 { left: 172px; top: 77px; }
+.ss-clamp { width: 22px; height: 12px; border-radius: 3px; background: var(--ss-steel-6); }
+.ss-clamp-l { left: 52px; top: 30px; animation: ss-clamp-l 12s both; }
+.ss-clamp-r { left: 108px; top: 128px; animation: ss-clamp-r 12s both; }
+.ss-head { left: 300px; top: 116px; width: 76px; height: 44px; border-radius: 10px; background: linear-gradient(180deg, var(--ss-steel-1), var(--ss-steel-4)); box-shadow: 0 6px 16px var(--ss-shadow); }
+.ss-head-track, .ss-head-pull { left: 12px; top: 9px; width: 52px; height: 6px; border-radius: 3px; }
+.ss-head-track { background: rgba(255, 255, 255, 0.12); }
+.ss-head-pull { background: var(--ss-amber); transform-origin: left center; animation: ss-pull 0.55s ease-in-out 22 alternate both; }
+.ss-head-lb { left: 0; top: 20px; width: 76px; text-align: center; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: #ffffff; }
+.ss-feed-line { left: 140px; top: 96px; }
+.ss-feed { fill: none; stroke: var(--ss-thread); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 6 10; animation: ss-feed 0.5s linear 24 both; }
+
+/* 2–5. The racket: the bare frame, with the strung picture revealed across it. */
+.ss-racket { left: 141px; top: 107px; width: 138px; height: 360px; transform-origin: 50% 50%; animation: ss-racket 12s both; }
+.ss-racket-img { position: absolute; left: 0; top: 0; width: 138px; height: 360px; }
+.ss-strung { animation: ss-strung 12s both; }
+
+/* 5. Tada. */
+.ss-burst { left: 210px; top: 250px; width: 0; height: 0; }
+.ss-spark { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: var(--ss-amber); opacity: 0; animation: ss-spark 12s both; }
+.ss-spark-2, .ss-spark-5, .ss-spark-8 { background: var(--accent); }
+.ss-spark-3, .ss-spark-6 { background: var(--ss-thread); }
+.ss-spark-1 { --dx: -110px; --dy: -90px; }
+.ss-spark-2 { --dx: 110px; --dy: -90px; }
+.ss-spark-3 { --dx: -130px; --dy: 20px; }
+.ss-spark-4 { --dx: 130px; --dy: 20px; }
+.ss-spark-5 { --dx: -70px; --dy: -150px; }
+.ss-spark-6 { --dx: 70px; --dy: -150px; }
+.ss-spark-7 { --dx: -100px; --dy: 120px; }
+.ss-spark-8 { --dx: 100px; --dy: 120px; }
+.ss-done {
+  left: 0; right: 0; top: 432px; margin-inline: auto; width: max-content; max-width: 380px;
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 100px;
+  background: rgba(74, 222, 128, 0.16); color: #4ade80; font-size: 14px; font-weight: 600;
+  animation: ss-done 12s both;
+}
+
+/* The captions under the stage, one at a time, and the step dots. */
+.ss-captions { display: grid; }
+.ss-cap { grid-area: 1 / 1; margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); opacity: 0; }
+.ss-cap-1 { animation: ss-cap-1 12s both; }
+.ss-cap-2 { animation: ss-cap-2 12s both; }
+.ss-cap-3 { animation: ss-cap-3 12s both; }
+.ss-cap-4 { animation: ss-cap-4 12s both; }
+.ss-cap-5 { animation: ss-cap-5 12s both; }
+.ss-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ss-dots { display: flex; align-items: center; gap: var(--space-2); }
+.ss-dot { display: block; height: 6px; width: 6px; border-radius: 3px; background: var(--text-muted); opacity: 0.5; }
+.ss-dot-1 { animation: ss-dot-1 12s both; }
+.ss-dot-2 { animation: ss-dot-2 12s both; }
+.ss-dot-3 { animation: ss-dot-3 12s both; }
+.ss-dot-4 { animation: ss-dot-4 12s both; }
+.ss-dot-5 { animation: ss-dot-5 12s both; }
+
+@keyframes ss-pack-body { 0% { opacity: 0; transform: none; } 3%, 20% { opacity: 1; transform: none; } 30%, 68% { opacity: 1; transform: translate(-128px, -82px) scale(0.5); } 76%, 100% { opacity: 0; transform: translate(-128px, -82px) scale(0.5); } }
+@keyframes ss-pack-top { 0% { opacity: 0; transform: none; } 3%, 6% { opacity: 1; transform: none; } 12%, 100% { opacity: 0; transform: translate(34px, -56px) rotate(28deg); } }
+@keyframes ss-out { 0%, 8% { stroke-dashoffset: 320; opacity: 1; } 19% { stroke-dashoffset: 0; opacity: 1; } 24%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes ss-machine { 0%, 19% { opacity: 0; transform: translateY(12px); } 25%, 71% { opacity: 1; transform: none; } 78%, 100% { opacity: 0; transform: translateY(12px); } }
+@keyframes ss-pull { from { transform: scaleX(0.55); } to { transform: scaleX(1); } }
+@keyframes ss-feed { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+@keyframes ss-racket {
+  0%, 21% { opacity: 0; transform: translateY(300px) rotate(-90deg); }
+  33%, 71% { opacity: 1; transform: translateY(0) rotate(-90deg); }
+  76% { opacity: 1; transform: translateY(-26px) rotate(-90deg) scale(1.04); }
+  84%, 100% { opacity: 1; transform: translateY(-34px) rotate(0deg) scale(0.86); }
+}
+@keyframes ss-strung { 0%, 36% { clip-path: inset(0 100% 0 0); } 68%, 100% { clip-path: inset(0 0 0 0); } }
+@keyframes ss-clamp-l { 0%, 31% { transform: translateX(-14px); } 34%, 70% { transform: none; } 73%, 100% { transform: translateX(-14px); } }
+@keyframes ss-clamp-r { 0%, 31% { transform: translateX(14px); } 34%, 70% { transform: none; } 73%, 100% { transform: translateX(14px); } }
+@keyframes ss-spark { 0%, 84% { opacity: 0; transform: translate(0, 0) scale(0.2); } 86% { opacity: 1; transform: translate(0, 0) scale(1); } 92%, 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.6); } }
+@keyframes ss-done { 0%, 85% { opacity: 0; transform: translateY(10px); } 89%, 100% { opacity: 1; transform: none; } }
+@keyframes ss-cap-1 { 0% { opacity: 0; } 2%, 18% { opacity: 1; } 21%, 100% { opacity: 0; } }
+@keyframes ss-cap-2 { 0%, 19% { opacity: 0; } 22%, 33% { opacity: 1; } 36%, 100% { opacity: 0; } }
+@keyframes ss-cap-3 { 0%, 34% { opacity: 0; } 37%, 68% { opacity: 1; } 71%, 100% { opacity: 0; } }
+@keyframes ss-cap-4 { 0%, 69% { opacity: 0; } 72%, 82% { opacity: 1; } 85%, 100% { opacity: 0; } }
+@keyframes ss-cap-5 { 0%, 83% { opacity: 0; } 86%, 100% { opacity: 1; } }
+@keyframes ss-dot-1 { 0%, 19% { background: var(--color-amber); width: 18px; opacity: 1; } 21%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
+@keyframes ss-dot-2 { 0%, 19% { background: var(--text-muted); width: 6px; opacity: 0.5; } 21%, 34% { background: var(--color-amber); width: 18px; opacity: 1; } 36%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
+@keyframes ss-dot-3 { 0%, 34% { background: var(--text-muted); width: 6px; opacity: 0.5; } 36%, 69% { background: var(--color-amber); width: 18px; opacity: 1; } 71%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
+@keyframes ss-dot-4 { 0%, 69% { background: var(--text-muted); width: 6px; opacity: 0.5; } 71%, 83% { background: var(--color-amber); width: 18px; opacity: 1; } 85%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
+@keyframes ss-dot-5 { 0%, 83% { background: var(--text-muted); width: 6px; opacity: 0.5; } 85%, 100% { background: var(--color-amber); width: 18px; opacity: 1; } }
+/* Reduced motion lands on the last frame at once, so replaying shows nothing new. */
+@media (prefers-reduced-motion: reduce) { .ss-again { display: none; } }
 
 /* "Racket to try next": the whole frame, large, beside the pick. */
 button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
@@ -6759,6 +7444,13 @@ button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); 
 }
 button.setup-next-row { cursor: pointer; }
 .setup-next-img { flex: 0 0 auto; width: 54px; height: 156px; object-fit: contain; }
+/* A string's retail packet (docs/plans/string-packets.md): a pre-rendered
+   240×336 image, shown at two sizes. The packet carries its own shadow. */
+.string-pack-img { flex: 0 0 auto; object-fit: contain; }
+.string-pack-row { width: 40px; height: 56px; }
+.string-pack-hero { width: 80px; height: 112px; }
+/* On the Equipment card's Strings line, under its label. */
+.string-pack-line { width: 32px; height: 45px; }
 .setup-next-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 /* The name is the door to the pick's detail; the chevron rides on it. */
 .setup-next-name {
@@ -7145,7 +7837,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
+  transition: transform var(--duration-press) var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-tile:active { transform: scale(0.97); }
 .fit-tile[aria-checked="true"] {
@@ -7257,7 +7949,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   font-size: var(--fs-md);
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
+  transition: transform var(--duration-press) var(--ease-out-quart), background var(--duration-fast) var(--ease-glass);
 }
 .fit-sore-option:active { transform: scale(0.97); }
 /* Amber, because a sore arm is a caution, not a success. */
@@ -7309,7 +8001,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   border-radius: var(--radius-md);
   background: var(--inner-card-bg);
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform var(--duration-press) var(--ease-out-quart);
 }
 .frame-tile:active { transform: scale(0.97); }
 .frame-tile img { width: 36px; height: 78px; object-fit: contain; }
@@ -7365,7 +8057,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform 100ms var(--ease-out-quart);
+  transition: transform var(--duration-press) var(--ease-out-quart);
 }
 .frame-row-head:active { transform: scale(0.97); }
 .frame-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
@@ -7378,7 +8070,7 @@ a.setup-price-row:active { background: var(--press-bg); }
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  transition: grid-template-rows 180ms var(--ease-sheet), opacity 180ms var(--ease-sheet);
+  transition: grid-template-rows var(--duration-sheet) var(--ease-sheet), opacity var(--duration-sheet) var(--ease-sheet);
 }
 .frame-row--open .frame-row-body { grid-template-rows: 1fr; opacity: 1; }
 .frame-row-inner { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-4); }
@@ -7453,7 +8145,7 @@ a.setup-price-row:active { background: var(--press-bg); }
 
 /* A club tally row that opens its racket's page: the row itself is the button. */
 .club-gear-row { display: block; width: 100%; }
-.club-gear-row--link { padding: 0; border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform 100ms var(--ease-out-quart); }
+.club-gear-row--link { padding: 0; border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform var(--duration-press) var(--ease-out-quart); }
 .club-gear-row--link:active { transform: scale(0.98); }
 .club-gear-chevron { font-size: var(--icon-sm); color: var(--text-muted); vertical-align: middle; margin-left: var(--space-1); }
 
@@ -7474,19 +8166,24 @@ a.setup-price-row:active { background: var(--press-bg); }
 button.sheet-row,
 .cc-mini-card,
 .cc-session-chip,
-button.setup-line,
-.setup-line-hit,
+button.setup-item,
+.setup-item-hit,
+.setup-spare-row,
+.setup-fit-row,
 .bpm-row-link,
 .rail-tab {
   -webkit-tap-highlight-color: transparent;
 }
 button.sheet-row:active,
-.cc-session-chip:active { background: var(--press-bg); }
-button.setup-line,
-.setup-line-hit,
-.bpm-row-link { transition: opacity 100ms var(--ease-glass); }
-button.setup-line:active,
-.setup-line-hit:active,
+.cc-session-chip:active,
+.setup-spare-row:active { background: var(--press-bg); }
+button.setup-item,
+.setup-item-hit,
+.setup-fit-row,
+.bpm-row-link { transition: opacity var(--duration-press) var(--ease-glass); }
+button.setup-item:active,
+.setup-item-hit:active,
+.setup-fit-row:active,
 .bpm-row-link:active { opacity: 0.6; }
 /* ONE transition list for the rail tab. This used to be a second `.rail-tab`
    rule declaring only `transform`, which — same specificity, later in the
@@ -7586,8 +8283,10 @@ html:root .state-link:active { opacity: 0.6; }
   .btn-primary,
   .btn-ghost,
   .sheet-row,
-  button.setup-line,
-  .setup-line-hit,
+  button.setup-item,
+  .setup-item-hit,
+  .setup-spare-row,
+  .setup-fit-row,
   .filter-chip,
   .cc-session-chip { min-height: 44px; }
 
@@ -7645,7 +8344,7 @@ html:root .state-link:active { opacity: 0.6; }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 160ms var(--ease-spring);
+  transition: transform var(--duration-fast) var(--ease-spring);
   --ring-size: 18px;
 }
 /* Crossing the trigger is a moment: the disc swells a little, so letting go now

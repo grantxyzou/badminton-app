@@ -28,7 +28,7 @@ import { mintInvite } from '@/lib/invites';
 import { GET as settingsGet, PATCH as settingsPatch } from '@/app/api/admin/settings/route';
 
 /** A club that has never chosen how it runs reads as BPM runs (lib/clubRun.ts). */
-const BPM_RUN = { style: 'first_come', playersPerCourt: null, money: 'split' };
+const BPM_RUN = { style: 'first_come', playersPerCourt: null, money: 'split', membersFirst: null, guests: 0 };
 
 /**
  * PHASE 2, PR 3: a NAME means something only inside a group.

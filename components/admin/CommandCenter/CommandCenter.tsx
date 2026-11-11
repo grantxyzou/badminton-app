@@ -9,6 +9,7 @@ import { isFlagOn } from '@/lib/flags';
 import AccessRequestsCard from './AccessRequestsCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
+import SessionListCard from './SessionListCard';
 import NeedsYouCard from './NeedsYouCard';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import SettingsList, { type SettingsRow } from '@/components/profile/SettingsList';
@@ -22,6 +23,7 @@ import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton, { CONSOLE_HEIGHTS } from '@/components/primitives/CardSkeleton';
 import { sharedFetch } from '@/lib/sharedRead';
 import { useClubRun } from '@/lib/useClubRun';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { CLUB_STYLES } from '@/lib/clubRun';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -59,12 +61,30 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
      and a job two days late showed nowhere on this screen. */
   const [benchCount, setBenchCount] = useState<{ waiting: number; late: number } | null>(null);
   const stringingOn = isFlagOn('NEXT_PUBLIC_FLAG_STRINGING');
-  const giftCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
+  // Gift cards are an ORGANISER's (Grant, 2026-11-10): the route answers an
+  // admin who is not one with organiser_only, so the row waits for the rank
+  // rather than open a screen that refuses every read. Groups off, every admin
+  // is an organiser.
+  const { group: currentGroup } = useCurrentGroup();
+  const giftCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')
+    && (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') || currentGroup?.role === 'owner');
   // How this club runs (lib/clubRun.ts). Money surfaces hide only on a KNOWN
   // "off": while the club is still being read they render as they always did.
   const { run, known: runKnown } = useClubRun();
   const moneyOff = runKnown && run.money === 'off';
   const styleLabel = run.style === 'custom' ? 'Custom' : CLUB_STYLES[run.style].label;
+  // Release notes are the deployment's, written by the operator alone (the
+  // route refuses anyone else). Hidden until the answer says so: a row that
+  // opens a screen whose every save is refused is worse than no row.
+  const [operator, setOperator] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    sharedFetch('/api/admin')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { operator?: boolean } | null) => { if (!cancelled) setOperator(d?.operator === true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   useEffect(() => {
     if (!stringingOn) return;
     let cancelled = false;
@@ -242,7 +262,8 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
         { icon: 'groups', label: 'Club name', onClick: () => setView('club-name') },
         { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
         { icon: 'schedule', label: 'Late cancellations', onClick: () => setView('late-cancel') },
-        { icon: 'person_add', label: 'Guests', onClick: () => setView('guests') },
+        // Guests are a rule of How your club runs (docs/plans/six-feathers-guests.md).
+        { icon: 'person_add', label: 'Guests', onClick: () => setView('club-run') },
       ],
     },
     {
@@ -250,7 +271,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       rows: [
         // Club totals: who plays, how fast sessions fill, who comes back.
         { icon: 'bar_chart', label: 'Metrics', onClick: () => setView('metrics') },
-        { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
+        ...(operator ? [{ icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') }] : []),
         // Rackets members typed in by name: the models the catalog is missing.
         { icon: 'sports_tennis', label: 'Missing from the catalog', onClick: () => setView('catalog-gaps') },
       ],
@@ -331,7 +352,10 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
           2026-11-04: "to save vertical space"; a side-scrolling rail was
           tried first and stood as tall as the taller card). Both stay
           mounted, so switching reads nothing; the one not showing is
-          `hidden`. With money off there is no toggle, only the session. */}
+          `hidden`. With money off there is no toggle: the session, then the
+          week's list without money (SessionListCard,
+          docs/plans/money-off-session-list.md), because Payments was the
+          only admin list of who signed up. */}
       <div className="cc-week-head">
         <ProfileEyebrow>This week</ProfileEyebrow>
         {!moneyOff && (
@@ -362,6 +386,11 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       />
       </RevealSlot>
       </div>
+      {moneyOff && (
+        <RevealSlot canBeEmpty placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.sessionList} />}>
+          <SessionListCard refreshKey={composedRefresh} run={run} onChanged={() => setLocalRefresh((n) => n + 1)} />
+        </RevealSlot>
+      )}
       {!moneyOff && (
         <div hidden={weekView !== 'payments'}>
         <RevealSlot placeholder={<CardSkeleton height={CONSOLE_HEIGHTS.payments} />}>

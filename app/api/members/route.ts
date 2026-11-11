@@ -12,13 +12,14 @@ import {
   removeFromRoster,
   addMembership,
   setMembershipRole,
-  setMembershipCanGift,
   setMembershipCanString,
   setMembershipRegular,
+  signOutEverywhereIn,
   readMembership,
   RosterNameTakenError,
 } from '@/lib/groups';
 import { normalizeAvatar } from '@/lib/memberAvatar';
+import { carryRosterRename } from '@/lib/rosterRename';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -149,6 +150,22 @@ export async function PATCH(req: NextRequest) {
     if (groupsOn() && !membership) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
+    // "Sign out everywhere" ends an ADMIN cookie too (`isAdminAuthedWithMember`),
+    // so on someone who holds a rank it is a move against that rank: an admin
+    // could otherwise sign an organiser — or a fellow admin — out of the
+    // console as often as they liked. Ranks are an organiser's business
+    // (docs/plans/roles-v2.md), so this is too; an admin may still sign out a
+    // member, or themselves. Checked before any write in this handler, so a
+    // refused body changes nothing. Flag off every admin is an organiser.
+    if (
+      body.signOutEverywhere === true &&
+      !auth.organiser &&
+      id !== auth.memberId &&
+      membership?.status === 'active' &&
+      (membership.role === 'owner' || membership.role === 'admin')
+    ) {
+      return organiserOnly();
+    }
 
     const container = getContainer('members');
     const { resource: existing } = await container.item(id, id).read();
@@ -194,7 +211,10 @@ export async function PATCH(req: NextRequest) {
         const holder = await rosterNameHolder(groupId, nextName);
         if (holder && holder !== id) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
         try {
+          const before = (await readMembership(groupId, id))?.name;
           await renameRosterMember(groupId, id, nextName);
+          // This week's sign-up rows and the e-transfer aliases follow the name.
+          if (before && before !== nextName) await carryRosterRename(groupId, id, before, nextName);
         } catch (err) {
           if (err instanceof RosterNameTakenError) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
           throw err;
@@ -212,6 +232,7 @@ export async function PATCH(req: NextRequest) {
         if (clash.length > 0) {
           return NextResponse.json({ error: 'name_taken' }, { status: 409 });
         }
+        await carryRosterRename(BPM_GROUP_ID, id, String(existing.name ?? ''), nextName);
       }
       if (memberCopy) updates.name = nextName;
     }
@@ -245,8 +266,8 @@ export async function PATCH(req: NextRequest) {
       // The Member copy knows two roles: an organiser is an admin there.
       if (memberCopy) updates.role = role === 'member' ? 'member' : 'admin';
     }
-    // Orthogonal to `role` on purpose — see Member.canString. Per club like
-    // `canGift` since roles v2 PR 2 (the MEMBERSHIP is what the bench reads);
+    // Orthogonal to `role` on purpose — see Member.canString. Per club since
+    // roles v2 PR 2 (the MEMBERSHIP is what the bench reads);
     // an admin grants it, no organiser needed. The Member copy is the flag-off
     // value and BPM's rollback copy — and BPM still READS it for a membership
     // that never set its own (`canStringOf`), so only BPM's admin may write it:
@@ -257,24 +278,10 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
     }
-    // The third switch: may give out gift cards (docs/plans/gift-card-ledger.md).
-    // With groups on it is the MEMBERSHIP's — a card is this club's liability,
-    // and the person may be on another roster where nobody granted it. The
-    // Member field is still written: it is the flag-off value and the rollback
-    // copy. Someone not on this roster is a 404, not a silent no-op.
-    // Gift cards are money the club owes, so the switch is an ORGANISER's to
-    // flip (docs/plans/roles-v2.md); an admin resending it unchanged passes.
-    if (typeof body.canGift === 'boolean') {
-      if (body.canGift !== (groupsOn() ? membership?.canGift === true : existing.canGift === true) && !auth.organiser) {
-        return organiserOnly();
-      }
-      // The Member copy is BPM's rollback value: another club's grant must not
-      // become a BPM permission the day the flag comes off.
-      if (memberCopy) updates.canGift = body.canGift;
-      if (groupsOn() && !(await setMembershipCanGift(auth.groupId, id, body.canGift))) {
-        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
-      }
-    }
+    // `canGift` is no longer written (Grant, 2026-11-10: "gift card should be
+    // organizer feature only"). Giving a card is an organiser's, by rank, not a
+    // switch on someone else, so a body still carrying it is ignored. The
+    // stored fields stay — the schema is additive — and nothing reads them.
 
     // Member or drop-in, IN THIS CLUB (docs/plans/roster-import.md). Only the
     // membership carries it — there is no flag-off copy, so with groups off
@@ -282,6 +289,24 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.regular === 'boolean' && groupsOn()) {
       if (!(await setMembershipRegular(auth.groupId, id, body.regular))) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
+
+    // "Sign out everywhere" (docs/plans/claim-your-name.md): every session and
+    // widget pass this person holds IN THIS CLUB stops working wherever the
+    // membership is re-read. How an organiser takes a name back — a claim
+    // approved for the wrong person, a phone that walked off. The Member copy
+    // is the flag-off value and rollback copy, written on the same rule as
+    // `role` (only BPM's admin, or with groups off). It ends their admin cookie
+    // as well, which is why a rank-holder is an organiser's to sign out (above).
+    if (body.signOutEverywhere === true) {
+      const at = new Date().toISOString();
+      if (groupsOn() && !(await signOutEverywhereIn(auth.groupId, id, at))) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+      if (memberCopy) {
+        updates.sessionsNotBefore = at;
+        updates.widgetPassNotBefore = at;
       }
     }
 
