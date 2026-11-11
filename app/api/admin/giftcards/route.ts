@@ -6,6 +6,12 @@
  *          `lib/creditAttribution.ts`). Never the code itself: only its hash
  *          is stored.
  *   POST { amountCents, note } — mint one. The code is in THIS response only.
+ *
+ * Both are an ORGANISER's (Grant, 2026-11-10: "gift card should be organizer
+ * feature only"): a card is money the club owes, the rank above admin is the
+ * one that hands out money-shaped powers (docs/roles.md), and the records name
+ * who redeemed what. An admin who is not an organiser gets 403 organiser_only.
+ * With groups off every admin is an organiser.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
@@ -19,6 +25,7 @@ import type { Member } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 const off = () => NextResponse.json({ error: 'not_found' }, { status: 404 });
+const organiserOnly = () => NextResponse.json({ error: 'organiser_only' }, { status: 403 });
 
 /** Display names for a few member ids; an id with no Member (deleted) stays unnamed. */
 async function namesOf(ids: Iterable<string>): Promise<Map<string, string>> {
@@ -40,7 +47,9 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`admin-giftcards:${getClientIp(req)}`, 60, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const admin = await isAdminAuthedWithMember(req);
+  if (!admin.authed) return unauthorized();
+  if (!admin.organiser) return organiserOnly();
   try {
     const records = await giftCardRecords(resolveGroupId(req));
     const names = await namesOf(records.flatMap((r) => [r.createdBy, ...(r.redeemedBy ? [r.redeemedBy] : [])]));
@@ -68,6 +77,7 @@ export async function POST(req: NextRequest) {
   }
   const admin = await isAdminAuthedWithMember(req);
   if (!admin.authed) return unauthorized();
+  if (!admin.organiser) return organiserOnly();
   let body: Record<string, unknown>;
   try {
     body = await req.json();

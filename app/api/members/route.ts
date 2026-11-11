@@ -12,7 +12,6 @@ import {
   removeFromRoster,
   addMembership,
   setMembershipRole,
-  setMembershipCanGift,
   setMembershipCanString,
   setMembershipRegular,
   signOutEverywhereIn,
@@ -267,8 +266,8 @@ export async function PATCH(req: NextRequest) {
       // The Member copy knows two roles: an organiser is an admin there.
       if (memberCopy) updates.role = role === 'member' ? 'member' : 'admin';
     }
-    // Orthogonal to `role` on purpose — see Member.canString. Per club like
-    // `canGift` since roles v2 PR 2 (the MEMBERSHIP is what the bench reads);
+    // Orthogonal to `role` on purpose — see Member.canString. Per club since
+    // roles v2 PR 2 (the MEMBERSHIP is what the bench reads);
     // an admin grants it, no organiser needed. The Member copy is the flag-off
     // value and BPM's rollback copy — and BPM still READS it for a membership
     // that never set its own (`canStringOf`), so only BPM's admin may write it:
@@ -279,24 +278,10 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
     }
-    // The third switch: may give out gift cards (docs/plans/gift-card-ledger.md).
-    // With groups on it is the MEMBERSHIP's — a card is this club's liability,
-    // and the person may be on another roster where nobody granted it. The
-    // Member field is still written: it is the flag-off value and the rollback
-    // copy. Someone not on this roster is a 404, not a silent no-op.
-    // Gift cards are money the club owes, so the switch is an ORGANISER's to
-    // flip (docs/plans/roles-v2.md); an admin resending it unchanged passes.
-    if (typeof body.canGift === 'boolean') {
-      if (body.canGift !== (groupsOn() ? membership?.canGift === true : existing.canGift === true) && !auth.organiser) {
-        return organiserOnly();
-      }
-      // The Member copy is BPM's rollback value: another club's grant must not
-      // become a BPM permission the day the flag comes off.
-      if (memberCopy) updates.canGift = body.canGift;
-      if (groupsOn() && !(await setMembershipCanGift(auth.groupId, id, body.canGift))) {
-        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
-      }
-    }
+    // `canGift` is no longer written (Grant, 2026-11-10: "gift card should be
+    // organizer feature only"). Giving a card is an organiser's, by rank, not a
+    // switch on someone else, so a body still carrying it is ignored. The
+    // stored fields stay — the schema is additive — and nothing reads them.
 
     // Member or drop-in, IN THIS CLUB (docs/plans/roster-import.md). Only the
     // membership carries it — there is no flag-off copy, so with groups off
