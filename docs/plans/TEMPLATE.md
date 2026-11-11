@@ -1,6 +1,6 @@
 # <Title>
 
-**Track:** <the ROADMAP track or critical-path step this serves — "none" means drift; open a `later` issue instead of starting>
+**Track:** <the ROADMAP track or critical-path step this serves — "none" means drift; open an issue titled `later: …` with the `later` label instead of starting>
 **Status:** intent
 **Review on:** <YYYY-MM-DD — the question, on ONE line; it is printed back to you verbatim>
 
