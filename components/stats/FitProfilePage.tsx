@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import TopBar from '@/components/primitives/TopBar';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -13,6 +13,7 @@ import { feelAnchors } from '@/lib/racketFeel';
 import { racketSrc } from '@/lib/racketLook';
 import { FIT_GOALS, FIT_LEVEL_OPTIONS, type FeelBalance, type FitPlayStyle, type PlayerGear } from '@/lib/types';
 import type { FitFacts } from '@/lib/fitVerdict';
+import { scrollPageTo } from '@/lib/pageScroll';
 import type { UseGear, GearPrefs } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
 import { useFitVerdict, type FitVerdictData } from './useFitVerdict';
@@ -87,8 +88,12 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
   const [failed, setFailed] = useState<{ prefs: GearPrefs; message: string } | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
+  // The page opens at its TOP. The BODY is the scroller (lib/pageScroll.ts),
+  // so `window.scrollTo` moved nothing and the page opened wherever the
+  // register had been scrolled to, past its first questions. Before paint, so
+  // the old position never shows for a frame.
+  useLayoutEffect(() => { scrollPageTo(0); }, []);
   useEffect(() => {
-    window.scrollTo?.(0, 0);
     void recordEngagement('fit_profile_opened');
   }, []);
 

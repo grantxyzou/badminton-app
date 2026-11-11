@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import TopBar from '@/components/primitives/TopBar';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -18,6 +18,7 @@ import { useClubTension } from './useClubTension';
 import { useFitVerdict } from './useFitVerdict';
 import { useClubHoleCount } from './useClubHoleCount';
 import { grommetHoles } from '@/lib/stringPatterns';
+import { scrollPageTo } from '@/lib/pageScroll';
 import { useStatsTakeover } from './statsTakeover';
 
 export interface FrameDetailPageProps {
@@ -64,9 +65,12 @@ export default function FrameDetailPage({ activeName, gear, frameId, onBack, onO
   const close = useMemo(() => (row ? closeToFrame(row, rackets.items) : []), [row, rackets.items]);
   const [open, setOpen] = useState<Section | null>(null);
 
+  // Keyed by the register per frame, so a new frame is a fresh page: nothing
+  // to reset here but the scroll. The BODY is the scroller (lib/pageScroll.ts):
+  // `window.scrollTo` moved nothing, and the page reached its top only because
+  // it renders short while it loads and the browser clamped the old position.
+  useLayoutEffect(() => { scrollPageTo(0); }, [frameId]);
   useEffect(() => {
-    // Keyed by the register per frame, so a new frame is a fresh page: nothing to reset here.
-    window.scrollTo?.(0, 0);
     void recordEngagement('frame_page_opened', { catalogId: frameId });
   }, [frameId]);
 

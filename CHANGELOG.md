@@ -48,6 +48,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### "Your fit" opens at its first question (2026-11-11)
+
+- **The racket fitting page opens at the top.** Opened from partway down Equipment, it used to show the page from its middle, past the Level and "Mostly you play" questions. A racket's page and the "Keep your account" page now go to the top on purpose too; before, they only got there because they load short for a moment. Same cause as the tab fix: the page scrolls inside the body, and these asked the window to scroll.
+
 ### Each tab comes back where you left it (2026-11-10)
 
 - **Switching tabs keeps each tab's place on the page.** Scroll down Home, look at Stats, come back, and Home is where you left it; Stats opens at its top the first time and returns to its own spot after that. Before, every tab shared one position: Stats opened halfway down because Home had been, and Home came back wherever Stats was. The notifications page also opens at its top and closes back to where the tab was. The memory had never worked, because it watched the window while the page actually scrolls inside the body.
