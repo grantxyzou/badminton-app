@@ -177,6 +177,32 @@ Grant: "do step 3".
   and an 884×1000 Fold propped like a laptop (board above, 24px fold empty).
   The values the component set are in the plan's PR.
 
+### The week moves to the right page (same day, after #782)
+
+Grant: "The width on the left is too narrow? And content on left right now
+should be on the right. fact check me" — then "I would want it on the right
+cuz thats the elevation opening up more like a page".
+
+- **Fact-checked first, measured on the merged code.** The two panes were
+  always EQUAL (356/356 on a Duo open sideways, 402/402 on a Fold's inner
+  screen, 470/470 on a tablet); "the left is too narrow" was really "both
+  are 356 on the Duo sideways", narrower than the Duo's own closed screen,
+  because the side tab bar's 80px is mirrored as padding on the left to keep
+  the gap on the hinge. The date tile wraps there. Left as is: reclaiming
+  the mirrored space would widen only whichever pane is away from the tab
+  bar, which is now the secondary one, and an off-centre gap would leave the
+  fold.
+- **Primary on the right, by Grant's reading of a foldable as a book**: the
+  right page is the one that opens. Apple's Mail example puts the primary
+  list on the LEFT; that is a convention, not a rule, and a club organiser's
+  reading of his own phone wins. So the week takes the right pane and the
+  nudges and your account the left; the loading frame draws on the right.
+- **Sheets and toasts move to the LEFT half** as a consequence: they are
+  raised from the week, and opening in the right half would have covered it.
+  The secondary page is where a sheet belongs — the message beside the list,
+  with the pages swapped. The sheet starts at the shell's own side padding
+  and its half-width cap already ends it at the gap.
+
 ### Design-system pass and motion (same day, after merge)
 
 Grant: "can you review with design system and also appli motion to it".
