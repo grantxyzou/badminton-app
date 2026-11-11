@@ -10,8 +10,9 @@ import Collapse from '@/components/primitives/Collapse';
 const MAX_FACES = 5;
 
 /**
- * "Sindhu, Kento and 3 others are in", under the sign-up count. Tap it and the
- * roster opens in place.
+ * "[faces] others have signed up", under the sign-up count. Tap it and the
+ * roster opens in place. The faces carry who; the words read "Sindhu and 3
+ * others have signed up" only to a screen reader, which cannot see faces.
  *
  * SINCE 2026-09-16 THIS IS THE SIGN-UP LIST. The Sign-Ups tab left the nav
  * (Stringing took its slot), so the opened list carries what that tab did:
@@ -69,6 +70,11 @@ export default function WhoElseIsIn({
         : t('othersInMany', { a, count: others.length - 1 });
   const faces = others.slice(0, MAX_FACES);
   const hidden = others.length - faces.length;
+  // The faces name the people and the words only finish the sentence:
+  // "[A T G S K +7] others have signed up" (Grant, 2026-11-11, on the design
+  // canvas). The faces are hidden from a screen reader, so the button keeps
+  // the whole sentence, names and all, as its accessible name.
+  const shown = hidden > 0 ? t('othersInStackMore', { count: hidden }) : t('othersInStack', { count: faces.length });
 
   const row = (n: string, position: number, tone: 'green' | 'amber', kudos: boolean) => (
     <li key={n} className={`roster-row${isMe(n) ? ` player-highlight-${tone}` : ''}`}>
@@ -95,6 +101,7 @@ export default function WhoElseIsIn({
         className="who-else-in"
         aria-expanded={open}
         aria-controls={listId}
+        aria-label={label}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="avatar-stack" aria-hidden="true">
@@ -109,7 +116,7 @@ export default function WhoElseIsIn({
           ))}
           {hidden > 0 && <span className="avatar-stack__more">+{hidden}</span>}
         </span>
-        <span className="who-else-in__label">{label}</span>
+        <span className="who-else-in__label">{shown}</span>
         <span className="material-icons icon-sm motion-chevron" aria-hidden="true">
           expand_more
         </span>

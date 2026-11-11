@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A quieter sign-up card (2026-11-11)
+
+- **The faces say who has signed up.** The line under the count reads "[faces] +7 others have signed up" instead of "Anders and 11 others have signed up". A screen reader still hears the names.
+- **"Signing up as Lin" is gone** from the open and full cards: the button is always for your own account.
+- **On a full session, the line about another court sits under "Join the waitlist"** and says the idea without numbers: "Another court can be added when enough people are on the waitlist." The waitlist card says the same. The admin's Next session card keeps the counted version.
+- **On the waitlist, the banner says "Waitlisted as Lin. You'll be moved up automatically."** The position is already the big number above it. If this phone could get a ping and doesn't yet, "Turn on notifications" sits right there and opens the same ask a waitlist join shows.
+- **"Add to calendar" ends the "you have signed up" line** instead of taking a line of its own, and only "Cancel my spot" is underlined in "Can't make it? Cancel my spot".
+
 ### "Your fit" opens at its first question (2026-11-11)
 
 - **The racket fitting page opens at the top.** Opened from partway down Equipment, it used to show the page from its middle, past the Level and "Mostly you play" questions. A racket's page and the "Keep your account" page now go to the top on purpose too; before, they only got there because they load short for a moment. Same cause as the tab fix: the page scrolls inside the body, and these asked the window to scroll.

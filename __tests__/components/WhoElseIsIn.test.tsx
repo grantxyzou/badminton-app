@@ -21,19 +21,36 @@ describe('WhoElseIsIn', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('names one person', () => {
+  // The faces carry who (Grant, 2026-11-11): the words only finish the
+  // sentence, and the whole sentence, names and all, is the button's name.
+  it('names one person to a screen reader; on screen the face does', () => {
     renderRow(['Viktor'], 'Lin');
-    expect(screen.getByText('Viktor has signed up')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Viktor has signed up' })).toBeDefined();
+    expect(screen.getByText('has signed up')).toBeDefined();
   });
 
   it('names two, newest first', () => {
     renderRow(['Viktor', 'Akane'], null);
-    expect(screen.getByText('Akane and Viktor have signed up')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Akane and Viktor have signed up' })).toBeDefined();
+    expect(screen.getByText('have signed up')).toBeDefined();
   });
 
   it('names the newest and counts the rest, leaving the viewer out', () => {
     renderRow(['Viktor', 'Akane', 'Lin', 'Kento', 'Sindhu'], 'Lin');
-    expect(screen.getByText('Sindhu and 3 others have signed up')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Sindhu and 3 others have signed up' })).toBeDefined();
+  });
+
+  it('past five faces, the words follow the count chip: "+3 others have signed up"', () => {
+    renderRow(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], null);
+    expect(screen.getByText('+3')).toBeDefined();
+    expect(screen.getByText('others have signed up')).toBeDefined();
+    expect(screen.queryByText(/^H and/)).toBeNull();
+  });
+
+  it('one past the faces is "+1 other has signed up"', () => {
+    renderRow(['A', 'B', 'C', 'D', 'E', 'F'], null);
+    expect(screen.getByText('+1')).toBeDefined();
+    expect(screen.getByText('other has signed up')).toBeDefined();
   });
 
   it('shows at most five faces, then a count of the rest', () => {

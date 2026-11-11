@@ -79,12 +79,12 @@ afterEach(() => {
 describe('signing up', () => {
   it('says who else is in before you tap, newest first', async () => {
     renderHome();
-    expect(await screen.findByText('Kento and 2 others have signed up')).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Kento and 2 others have signed up' })).toBeDefined();
   });
 
   it('confirms with Add to calendar, without dropping Home into the skeleton', async () => {
     renderHome();
-    await screen.findByText('Signing up as Lin');
+    await screen.findByRole('button', { name: /Sign up for this week/i });
     fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
 
     expect(await screen.findByText('Lin, you have signed up for this week!')).toBeDefined();
@@ -93,7 +93,7 @@ describe('signing up', () => {
     expect(screen.getByRole('button', { name: /Add to calendar/ })).toBeDefined();
     expect(screen.queryByText(/ at Test Gym$/)).toBeNull();
     // Lin is not in their own "who else" line.
-    expect(screen.getByText('Kento and 2 others have signed up')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Kento and 2 others have signed up' })).toBeDefined();
     // All of that landed while the background refresh is still in flight
     // (reads hang after the POST), and Home never dropped into the skeleton.
     expect(fetchMock.mock.calls.filter(([u, i]) => String(u).endsWith('/api/players') && !(i as RequestInit)?.method).length).toBeGreaterThanOrEqual(2);
@@ -103,7 +103,7 @@ describe('signing up', () => {
   it('states the open spots in words, never as a slash that reads like "12 of 12 taken"', async () => {
     roster = [];
     renderHome();
-    await screen.findByText('Signing up as Lin');
+    await screen.findByRole('button', { name: /Sign up for this week/i });
     // An EMPTY session: twelve open, said as such.
     expect(document.querySelector('.bpm-count')?.textContent?.trim()).toBe('12');
     expect(screen.getByText('spots left out of 12')).toBeDefined();
@@ -113,14 +113,14 @@ describe('signing up', () => {
   it('says "spot", not "spots", when one is left', async () => {
     roster = Array.from({ length: 11 }, (_, i) => ({ id: `p${i}`, name: `Player ${i}`, waitlisted: false }));
     renderHome();
-    await screen.findByText('Signing up as Lin');
+    await screen.findByRole('button', { name: /Sign up for this week/i });
     expect(document.querySelector('.bpm-count')?.textContent?.trim()).toBe('1');
     expect(screen.getByText('spot left out of 12')).toBeDefined();
   });
 
   it('keeps the same wording once you are in', async () => {
     renderHome();
-    await screen.findByText('Signing up as Lin');
+    await screen.findByRole('button', { name: /Sign up for this week/i });
     fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
     await screen.findByText('Lin, you have signed up for this week!');
     expect(screen.getByText('8 spots left out of 12')).toBeDefined();
@@ -128,7 +128,7 @@ describe('signing up', () => {
 
   it('never carries the delete token into the roster it renders', async () => {
     renderHome();
-    await screen.findByText('Signing up as Lin');
+    await screen.findByRole('button', { name: /Sign up for this week/i });
     fireEvent.click(screen.getByRole('button', { name: /Sign up for this week/i }));
     await screen.findByText('Lin, you have signed up for this week!');
     expect(document.body.innerHTML).not.toContain('t'.repeat(32));
