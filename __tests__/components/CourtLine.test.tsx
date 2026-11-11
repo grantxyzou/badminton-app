@@ -5,29 +5,18 @@ import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
 import CourtLine from '../../components/home/CourtLine';
 
-function renderLine(waiting: number, more: number, perCourt = 6) {
-  return render(
-    <NextIntlClientProvider locale="en" messages={enMessages}>
-      <CourtLine line={{ perCourt, waiting, more }} />
-    </NextIntlClientProvider>,
-  );
-}
-
 describe('CourtLine (docs/plans/waitlist-court-line.md)', () => {
   afterEach(() => cleanup());
 
-  it('with nobody waiting, says how many would make a court', () => {
-    renderLine(0, 6);
-    expect(screen.getByText('Filled up early? Another court can be added once 6 are on the waitlist.')).toBeTruthy();
-  });
-
-  it('with some waiting, says how many more', () => {
-    renderLine(3, 3);
-    expect(screen.getByText('Filled up early? Another court can be added: 3 on the waitlist, 3 more would fill one.')).toBeTruthy();
-  });
-
-  it("with enough waiting, says it is a court's worth", () => {
-    renderLine(7, 0);
-    expect(screen.getByText("Filled up early? 7 on the waitlist is a court's worth, so another court can be added.")).toBeTruthy();
+  // The idea, not the count (Grant, 2026-11-11): the counted wording is the
+  // admin's, on the Next session card.
+  it('says a court can be added, with no numbers in it', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <CourtLine />
+      </NextIntlClientProvider>,
+    );
+    const line = screen.getByText('Another court can be added when enough people are on the waitlist.');
+    expect(line.textContent).not.toMatch(/\d/);
   });
 });

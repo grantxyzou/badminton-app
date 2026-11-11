@@ -376,6 +376,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const windowEndIso = membersFirstOpen(session, new Date().getTime()) ? membersFirstUntil(session) : null;
   const windowEnd = windowEndIso ? format.dateTime(new Date(windowEndIso), WINDOW_END) : null;
   const waitingForMembers = !!windowEnd && myRow?.waitlisted === true && myRow.waitingForMembers === true;
+  // The waitlist banner's "Turn on notifications": the same ask a waitlist
+  // join earns, offered again for as long as this phone could still take it.
+  const waitlistPing = push ? waitlistPingKind(push.state, webApp) : null;
   // The roster shows a guest by their own name and their host's, in the reader's language.
   const hostNameOf = (memberId: string) => players.find((p) => !p.guestOf && p.memberId === memberId)?.name;
   const rosterLabel = (p: Player) => {
@@ -593,13 +596,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     await performSignup(true);
   }
 
-  /* Who is signing up — the account, never a typed name. */
-  const signingUpAs = (
-    <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-      {t('signup.signingUpAs', { name: signupName ?? '' })}
-    </p>
-  );
-
   /* "Add to calendar" in place of the when-and-where line, which repeated
      the tiles right above the card (docs/plans/add-to-calendar.md). Known
      only after mount: whether the store app's binary carries the plugin is a
@@ -609,7 +605,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const addToCalendar = calendarOk && session?.datetime ? (
     <button
       type="button"
-      className="state-link state-link--quiet"
+      className="state-link state-link--aside"
       onClick={() => { void addSessionToCalendar(session, t('signup.calendarFallbackTitle')).catch(() => {}); }}
     >
       {t('signup.addToCalendar')}
@@ -842,12 +838,18 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <StatusBanner
                 tone="success"
                 icon="check_circle"
-                title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
-                body={addToCalendar}
+                /* "Add to calendar" ends the title's line rather than taking a
+                   line of its own (Grant, 2026-11-11, on the design canvas). */
+                title={
+                  <>
+                    {currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
+                    {addToCalendar && <>{' '}{addToCalendar}</>}
+                  </>
+                }
                 celebrate={signupEntrance === 'pop'}
               />
             </div>
-            {isFull && courtInfo && <CourtLine line={courtInfo} />}
+            {isFull && courtInfo && <CourtLine />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
             <PlusOneRow
               guests={myGuests}
@@ -857,15 +859,20 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               windowEnd={windowEnd}
               showShare={showGuestShare}
             />
-            <button
-              type="button"
-              className="link-quiet"
-              style={{ display: 'flex', marginInline: 'auto' }}
-              onClick={() => { setCancelError(''); setLateCancelHours(null); setConfirmingCancel(true); }}
-              disabled={!online}
-            >
+            {/* Only "Cancel my spot" is the link; the question stays plain
+                text (Grant, 2026-11-11, on the design canvas). */}
+            <p className="fs-sm m-0" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
               {t('signup.cantMakeIt')}
-            </button>
+              <button
+                type="button"
+                className="link-quiet"
+                style={{ paddingInline: 'var(--space-2)' }}
+                onClick={() => { setCancelError(''); setLateCancelHours(null); setConfirmingCancel(true); }}
+                disabled={!online}
+              >
+                {t('signup.cancelMySpot')}
+              </button>
+            </p>
           </div>
         ) : isWaitlisted ? (
           /* ── State 2: On waitlist ── */
@@ -895,10 +902,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   : waitingForMembers
                     ? tStates('membersFirstBody')
                     : (
+                    /* The position is the big number above; the banner says
+                       who and what happens, and offers the ping when this
+                       phone could get one (Grant, 2026-11-11). */
                     <>
-                      {`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
-                      <br />
-                      {tStates('waitlistAutoMove')}
+                      {`${t('signup.waitlistedAs', { name: currentUser ?? '' })} ${tStates('waitlistAutoMove')}`}
+                      {waitlistPing && (
+                        <>
+                          {' '}
+                          <button type="button" className="state-link state-link--quiet" onClick={() => setPingAsk(waitlistPing)}>
+                            {tPing('turnOn')}
+                          </button>
+                        </>
+                      )}
                     </>
                   )
               }
@@ -909,7 +925,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 {tPing('willPing')}
               </p>
             )}
-            {courtInfo && <CourtLine line={courtInfo} />}
+            {courtInfo && <CourtLine />}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             <PlusOneRow
               guests={myGuests}
@@ -937,11 +953,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
-            {courtInfo && <CourtLine line={courtInfo} />}
+            {/* No "Signing up as …" here or on the open card (Grant,
+                2026-11-11, on the design canvas): the button is always for
+                your own account. */}
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             {signupName && (
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
-              {signingUpAs}
               {error && <p id="signup-error" role="alert" className="field-error">{error}</p>}
               <button
                 type="submit"
@@ -952,6 +969,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               </button>
             </form>
             )}
+            {/* Under the button, as a footnote to it (Grant, 2026-11-11):
+                the idea that a court can be added, not the count. */}
+            {courtInfo && <CourtLine />}
           </div>
         ) : (
           /* ── State 4: Open — normal sign-up ── */
@@ -983,7 +1003,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} guests={guestLabels} />
             {signupName && (
             <form onSubmit={handleSignUp} className="space-y-3">
-              {signingUpAs}
               {error && <p id="signup-error" role="alert" className="field-error">{error}</p>}
               <button
                 ref={submitRef}
