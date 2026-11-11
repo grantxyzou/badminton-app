@@ -24,6 +24,9 @@ export interface ETransferRecipient {
   email: string;
   /** Optional default memo template — supports `{date}` and `{name}` placeholders. */
   memo?: string;
+  /** Optional Wealthsimple handle ("$grantxyzou"), a second way to pay, printed
+   *  under the e-transfer address on the shared receipt. Additive (2026-11-10). */
+  wealthsimple?: string;
 }
 
 export interface Session {

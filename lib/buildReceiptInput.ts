@@ -1,6 +1,7 @@
 import type { ETransferRecipient, Session } from './types';
 import type { ReceiptInput } from './receiptTemplate';
 import { costSplit, type SplitPlayer } from './sessionCost';
+import { normalizeBirdUsages, totalTubes } from './birdUsages';
 
 export interface ReceiptBuild {
   /** Per-person amount whenever it is computable (snapshot or recompute),
@@ -37,11 +38,19 @@ export function buildReceiptInput(
   let costPerPerson: number;
   let totalCost: number;
   let playerNames: string[];
+  let courtTotal: number;
+  let birdTotal: number;
+  let splitCount: number;
 
   if (session.settled) {
     costPerPerson = session.settled.costPerPerson;
     totalCost = session.settled.totalCost;
     playerNames = session.settled.playerNames;
+    courtTotal = session.settled.courtTotal ?? 0;
+    birdTotal = session.settled.birdTotal ?? 0;
+    // The frozen denominator; a snapshot that predates it is worked back out.
+    splitCount = session.settled.playerCount
+      ?? (costPerPerson > 0 ? Math.round(totalCost / costPerPerson) : 0);
   } else {
     const split = costSplit(session, players);
     if (split.costPerPerson <= 0) {
@@ -50,6 +59,9 @@ export function buildReceiptInput(
     totalCost = split.totalCost;
     costPerPerson = split.costPerPerson;
     playerNames = split.active.map((p) => p.name);
+    courtTotal = split.courtTotal;
+    birdTotal = split.birdTotal;
+    splitCount = split.denominator;
   }
 
   // Cost is known from here. A receipt additionally needs someone to pay.
@@ -65,8 +77,24 @@ export function buildReceiptInput(
       courts: session.courts ?? 0,
       totalCost,
       playerNames,
-      recipient: { name: recipient.name, email: recipient.email },
+      recipient: {
+        name: recipient.name,
+        email: recipient.email,
+        ...(recipient.wealthsimple ? { wealthsimple: recipient.wealthsimple } : {}),
+      },
       ...(recipient.memo ? { memoTemplate: recipient.memo } : {}),
+      breakdown: {
+        courtTotal,
+        // Worked out from the (possibly frozen) court total, never read live
+        // off the session: an edit after settle must not make the line's
+        // "2 × $X" disagree with the amount beside it.
+        ...((session.courts ?? 0) > 0 && courtTotal > 0
+          ? { costPerCourt: Math.round((courtTotal / (session.courts ?? 1)) * 100) / 100 }
+          : {}),
+        birdTotal,
+        tubes: totalTubes(normalizeBirdUsages(session)),
+        splitCount,
+      },
     },
   };
 }

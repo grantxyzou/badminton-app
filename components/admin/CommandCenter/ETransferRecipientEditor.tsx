@@ -5,6 +5,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import EmptyState from '@/components/primitives/EmptyState';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { isRefused } from '@/lib/apiFetch';
+import { normalizeWealthsimpleHandle } from '@/lib/wealthsimple';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -12,6 +13,8 @@ interface Recipient {
   name: string;
   email: string;
   memo?: string;
+  /** "$handle" — a second way to pay, printed under the e-transfer address. */
+  wealthsimple?: string;
 }
 
 /** Mirrors `lib/receiptTemplate.ts`: `{club}` is the club's own name, filled in on the receipt. */
@@ -31,6 +34,7 @@ export default function ETransferRecipientEditor() {
   const [draftName, setDraftName] = useState('');
   const [draftEmail, setDraftEmail] = useState('');
   const [draftMemo, setDraftMemo] = useState('');
+  const [draftWs, setDraftWs] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -62,6 +66,7 @@ export default function ETransferRecipientEditor() {
     setDraftName(recipient?.name ?? '');
     setDraftEmail(recipient?.email ?? '');
     setDraftMemo(recipient?.memo ?? DEFAULT_MEMO);
+    setDraftWs(recipient?.wealthsimple ?? '');
     setError('');
     setEditing(true);
   }
@@ -79,6 +84,11 @@ export default function ETransferRecipientEditor() {
       setError('Valid email is required.');
       return;
     }
+    const wealthsimple = draftWs.trim() ? normalizeWealthsimpleHandle(draftWs) : null;
+    if (draftWs.trim() && !wealthsimple) {
+      setError('A Wealthsimple handle is letters, numbers, dots, dashes or underscores, like $grantxyzou.');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -88,6 +98,7 @@ export default function ETransferRecipientEditor() {
           name,
           email,
           ...(memo ? { memo } : {}),
+          ...(wealthsimple ? { wealthsimple } : {}),
         },
       };
       const res = await fetch(`${BASE}/api/admin/settings`, {
@@ -163,6 +174,12 @@ export default function ETransferRecipientEditor() {
                 <span className="text-gray-400 fs-sm">Memo </span>
                 <span className="font-mono fs-sm">{recipient.memo ?? DEFAULT_MEMO}</span>
               </p>
+              {recipient.wealthsimple && (
+                <p>
+                  <span className="text-gray-400 fs-sm">Wealthsimple </span>
+                  <span className="font-mono fs-sm">{recipient.wealthsimple}</span>
+                </p>
+              )}
             </div>
           ) : (
             <p className="fs-md text-gray-400">
@@ -215,6 +232,22 @@ export default function ETransferRecipientEditor() {
             />
             <p className="fs-sm text-gray-500 mt-1">
               Use <code>{'{club}'}</code> for the club&apos;s name, <code>{'{date}'}</code> for the session date and <code>{'{name}'}</code> for the player name.
+            </p>
+          </Field>
+          <Field label="Wealthsimple handle (optional)">
+            <input
+              type="text"
+              value={draftWs}
+              onChange={(e) => setDraftWs(e.target.value)}
+              maxLength={31}
+              placeholder="$yourhandle"
+              autoCapitalize="none"
+              autoCorrect="off"
+              className="w-full fs-md rounded-lg p-2 font-mono"
+              style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
+            />
+            <p className="fs-sm text-gray-500 mt-1">
+              A second way to pay, shown under the e-transfer address on the receipt. Leave it empty to show e-transfer only.
             </p>
           </Field>
 
