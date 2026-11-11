@@ -1,10 +1,9 @@
 # Roles and what each can do
 
 There are three kinds of people in the app, and they are not a ladder.
-**Admin** and **stringer** are separate switches on the same account, and
-since 2026-10-09 so is **gifter** (`Member.canGift`, "Can give out gift
-cards" on the roster sheet). A member can be any of them, all of them, or
-none.
+**Admin** and **stringer** are separate switches on the same account. A
+member can be either, both, or neither. (A third switch, **gifter**, ran
+from 2026-10-09 to 2026-11-10; giving gift cards is an organiser's now, below.)
 
 | | Player (member) | Stringer | Admin |
 |---|---|---|---|
@@ -15,7 +14,7 @@ none.
 | See the roster, announcements, costs | Yes (members-only: signed in) | Yes | Yes, including removed rows and `recoveryEvents` |
 | Pay | Self-report "I paid" on their own row | Same | Mark anyone paid, cover (absorb / resplit), settle |
 | Stringing | Request a job, accept/decline a price change, see their own job and what they owe | See **only jobs assigned to them**, with no prices; move a job's **status** along | The whole bench: claim, assign (only to a `canString` member), price, propose, mark paid, archive |
-| Gift cards | Redeem one into their own credit | — (a stringer is not a gifter) | Mint from the console; every card's record: who made it, who redeemed it, when, how much is used and left. A member with `canGift` mints from Profile → "Give a gift card" (10 a day), sees their own cards redeemed-or-not and never who. |
+| Gift cards | Redeem one into their own credit | — | An **organiser** only (2026-11-10; with groups off, every admin): mint from the console or Profile → "Give a gift card" (10 a day there), and read every card's record: who made it, who redeemed it, when, how much is used and left. An admin who is not an organiser gets `organiser_only`. |
 | Sessions, birds, settings, members | — | — | Everything under `/api/admin/*`, `session/*`, `birds*`, `members` writes |
 
 ## Player
@@ -86,8 +85,9 @@ v2 (`docs/plans/roles-v2.md`, 2026-11-03):
 - **A club may have several organisers.** `Group.ownerMemberId` names one of
   them (the founder, until they go) and always an ACTIVE one — succession
   repoints it.
-- **Only an organiser hands out a rank** — admin or organiser — and the
-  gift-card switch. `isAdminAuthedWithMember` answers `organiser`; both role
+- **Only an organiser hands out a rank** — admin or organiser — and only an
+  organiser gives gift cards (2026-11-10; the `canGift` switch that let an
+  organiser hand that to a helper is retired, and nothing reads it). `isAdminAuthedWithMember` answers `organiser`; both role
   routes (`PATCH /api/members`, `PATCH /api/groups/members/[id]`) answer
   `organiser_only` to an admin changing either. An admin runs the night and
   grants Stringer.
