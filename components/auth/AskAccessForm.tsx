@@ -84,7 +84,8 @@ export default function AskAccessForm({
   const online = useOnline();
   const [name, setName] = useState(initialName);
   // Only the door asks for an email (Grant, 2026-11-07). It never leaves this
-  // phone with the ask: it waits here for the account step after approval.
+  // phone with the ask: it waits here until approval, then becomes the
+  // contact email and pre-fills the account step.
   const [email, setEmail] = useState('');
   // Show the field rules only once the person has tried to send.
   const [tried, setTried] = useState(false);
@@ -147,7 +148,22 @@ export default function AskAccessForm({
         stop();
         secret.current = null;
         setPhase('approved');
-        onApproved({ name: body.name, hasPin: body.hasPin === true, ...(claim && email.trim() ? { email: email.trim() } : {}) });
+        const doorEmail = claim && email.trim() ? email.trim() : '';
+        // The door's email becomes the new member's CONTACT email (spec Q3,
+        // Grant 2026-11-11: "Q3 yes"). Sent only now, once the club has let
+        // them in and this phone holds their session — never with the ask,
+        // which an organiser reads before anyone has said yes. Awaited so it
+        // lands before the next step can reload the page; a failure costs
+        // nothing but the convenience (they can add it on Edit profile, and
+        // the account step below is still pre-filled with it).
+        if (doorEmail) {
+          await fetch(`${BASE}/api/members/me`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: body.name, contactEmail: doorEmail }),
+          }).catch(() => undefined);
+        }
+        onApproved({ name: body.name, hasPin: body.hasPin === true, ...(doorEmail ? { email: doorEmail } : {}) });
       } else if (body.status === 'none') {
         // Expired, or Grant declined. One answer, because there is nothing
         // useful to do differently with the two.

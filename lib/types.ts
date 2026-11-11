@@ -621,6 +621,16 @@ export interface Member {
    * show you which address you signed in with.
    */
   email?: string;
+  /**
+   * An address the member's club can reach them at (2026-11-11, spec Q3,
+   * Grant: "yes"). NOT a way to sign in, and never checked: the member types
+   * it (or the door's email is kept after approval) and may change or clear
+   * it. Seen by the member (`GET /api/members/me`, their own) and by the
+   * admins of a club they are on (`GET /api/members`'s admin read). Never in
+   * a member-facing roster row (`rosterPublicRows` projects three fields).
+   * Additive: older code ignores it, and deleting the account deletes the row.
+   */
+  contactEmail?: string;
   /** True only once a mailed verification link has actually been redeemed. */
   emailVerified?: boolean;
   /** scrypt, self-describing format from lib/passwordHash.ts. STRIP-CANARY. */

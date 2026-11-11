@@ -505,6 +505,22 @@
       "privacy": "Privacy policy",
       "deleteAccount": "Deleting your account"
     },
+    "contactEmail": {
+      "title": "Contact email",
+      "back": "Edit profile",
+      "question": "How can {club} reach you?",
+      "body": "An email your club's organisers can use to reach you, about a session, a payment or the club.",
+      "label": "Email",
+      "note": "Only your club's organisers and admins see it. It isn't used to sign in.",
+      "save": "Save",
+      "saving": "Saving…",
+      "remove": "Remove this email",
+      "invalid": "That doesn't look like an email address.",
+      "rateLimited": "That's a few changes already. Try again in an hour.",
+      "signedOut": "Sign in again, then change your email.",
+      "failed": "Couldn't save that. Try again.",
+      "theClub": "your club"
+    },
     "nickname": {
       "title": "Your name",
       "back": "Profile",
@@ -562,7 +578,12 @@
       },
       "memberSince": "Member since",
       "deleteAccount": "Delete my account",
-      "deleteNote": "Removes you from every club. Your games and payments stay in the club's records under \"Former member\"."
+      "deleteNote": "Removes you from every club. Your games and payments stay in the club's records under \"Former member\".",
+      "contactGroup": "Contact information",
+      "signInEmail": "Sign-in email",
+      "signInEmailNote": "Used to sign in",
+      "contactEmail": "Contact email",
+      "addContactEmail": "Add an email"
     },
     "identity": {
       "rankOwner": "Organiser",
@@ -2853,7 +2874,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "updated": "6 November 2026",
+      "updated": "11 November 2026",
       "sections": [
         {
           "h": "Who we are",
@@ -2866,6 +2887,7 @@
           "p": [
             "• **Your name** — the one you sign up with. Other members see it on the roster.",
             "• **Your PIN**, if you set one, stored only as a salted hash. If you sign in with Google, Apple, or email, we receive an identifier from that provider, and — only if you allow it during sign-in — your name and email address.",
+            "• **A contact email**, if you add one on Edit profile (or type one when you ask to join a club): an address your club can reach you at. It isn't used to sign in, and you can change or remove it at any time.",
             "• **Session records**: which sessions you signed up for, whether you were on the waitlist, and your share of the court and shuttle cost, including whether it has been marked paid.",
             "• **E-transfer names**: if the name on your e-transfer differs from your sign-up name, the organiser records that pairing so payments can be matched. Only admins see it.",
             "• **Things you add yourself**: skill self-assessments, kudos you give or receive (including notes), games you log, and rackets or strings you save.",
@@ -2897,7 +2919,7 @@
           "h": "Who can see what",
           "p": [
             "• **Members of a group** see that group only: names, whether each spot is confirmed or waitlisted, and the per-person cost for a session. If you're in two groups, each sees only its own roster.",
-            "• **Your group's organisers** additionally see payment status and e-transfer names.",
+            "• **Your group's organisers** additionally see payment status, e-transfer names, and your contact email if you've added one.",
             "• A **kudos note** is shown to the person who received it, signed by the giver.",
             "• **The operator** can see all of the above, for every group, when running or fixing the service."
           ]

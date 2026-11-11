@@ -72,8 +72,13 @@ interface Props {
   isAdmin: boolean;
   avatar: Avatar | null;
   memberCreatedAt: string | null;
+  /** The address the member signs in with, when they have one; `undefined` while unknown. */
+  signInEmail?: string | null;
+  /** Their contact email (spec Q3); `undefined` while unknown. */
+  contactEmail?: string | null;
   onAvatarSaved: (avatar: Avatar | null) => void;
   onEditName: () => void;
+  onEditContactEmail: () => void;
   onDeleteAccount: () => void;
   onBack: () => void;
 }
@@ -90,7 +95,7 @@ interface Props {
  * move at once, and a failed save puts them back with a message.
  */
 export default function EditProfilePage({
-  name, clubName, rank, isAdmin, avatar, memberCreatedAt, onAvatarSaved, onEditName, onDeleteAccount, onBack,
+  name, clubName, rank, isAdmin, avatar, memberCreatedAt, signInEmail, contactEmail, onAvatarSaved, onEditName, onEditContactEmail, onDeleteAccount, onBack,
 }: Props) {
   const t = useTranslations('profile.editProfile');
   const locale = useLocale();
@@ -231,6 +236,39 @@ export default function EditProfilePage({
               </span>
             </li>
           )}
+        </ul>
+      </div>
+
+      {/* CONTACT INFORMATION (spec §2.5, Q3 — Grant, 2026-11-11: "yes"). The
+          sign-in address is shown, never edited here (it is changed where
+          you sign in); the contact address is the club's way to reach you,
+          and the row opens its page. While the probe has not answered, the
+          contact row shows no value rather than "Add". */}
+      <ProfileEyebrow>{t('contactGroup')}</ProfileEyebrow>
+      <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
+        <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
+          {signInEmail && (
+            <li className="edit-profile-row">
+              <span className="edit-profile-field">
+                <span className="edit-profile-key">{t('signInEmail')}</span>
+                <span className="edit-profile-value">{signInEmail}</span>
+                <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('signInEmailNote')}</span>
+              </span>
+            </li>
+          )}
+          <li style={signInEmail ? { borderTop: '1px solid var(--divider)' } : undefined}>
+            <button type="button" className="settings-row edit-profile-row" onClick={onEditContactEmail} data-contact-email-row>
+              <span className="edit-profile-field">
+                <span className="edit-profile-key">{t('contactEmail')}</span>
+                <span className="edit-profile-value">
+                  {contactEmail === undefined ? '' : contactEmail ?? t('addContactEmail')}
+                </span>
+              </span>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-secondary)' }}>
+                chevron_right
+              </span>
+            </button>
+          </li>
         </ul>
       </div>
 
