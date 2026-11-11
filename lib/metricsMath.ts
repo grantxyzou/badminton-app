@@ -53,8 +53,18 @@ export interface MetricsInput {
   roster: MetricsRosterEntry[];
   /** `raterMemberId` + `createdAt` of each kudos given in the group. */
   kudos: Array<{ raterMemberId: string; createdAt: string }>;
-  /** `memberId` + `createdAt` of each stringing job in the group. */
-  stringingJobs: Array<{ memberId: string; createdAt: string }>;
+  /** Each stringing job in the group made in the last 28 days. The extra
+   *  fields feed `stringingRequests`; a job without them still counts toward
+   *  `stringingRequesters28d`. */
+  stringingJobs: Array<{
+    memberId: string;
+    createdAt: string;
+    readyBy?: string | null;
+    claimedAt?: string;
+    history?: Array<{ status: string; at: string; by: string | null }>;
+  }>;
+  /** The payments inbox's newest rows (`payments`, bounded), for `paymentsInbox`. */
+  etransfers?: Array<{ status: string; matchedBy?: string; receivedAt: string }>;
   /** `memberId` of each push subscription doc (any device). */
   pushSubscriptions: Array<{ memberId: string }>;
   /**
@@ -139,6 +149,46 @@ export interface ClubMetrics {
   clientErrors: ClientErrorMetrics;
   /** How long opening the app took on roster members' phones in the last 7 days. */
   appReady: AppReadyMetrics;
+  /** Player-made stringing requests, last 28 days (docs/plans/stringing-audit-fixes.md's review). */
+  stringingRequests: StringingRequestMetrics;
+  /** The e-transfer inbox (docs/plans/payments.md's review). */
+  paymentsInbox: PaymentsInboxMetrics;
+}
+
+/**
+ * Stringing requests a PLAYER made (the job's first history entry is
+ * `requested`, by the player it belongs to), from roster members, in the last
+ * 28 days. A request is ANSWERED at the first of: a stringer claiming it
+ * (`claimedAt`, stamped since 2026-11-11), or it moving off `requested` on the
+ * bench. Jobs claimed before `claimedAt` existed, and still `requested`, read
+ * as unanswered — an undercount, never an overcount.
+ */
+export interface StringingRequestMetrics {
+  requests28d: number;
+  answeredWithin24h: number;
+  /** answeredWithin24h / requests28d; null with no requests. */
+  answeredWithin24hRate: number | null;
+  /** Requests in the window nobody has answered yet. */
+  unanswered: number;
+  /** Requests that carry a ready-by date. */
+  withReadyBy: number;
+}
+
+/**
+ * The e-transfer inbox, from its newest rows (the same bounded read the admin
+ * card counts from). `waiting` is the "Needs a look" list. Rates are null when
+ * nothing arrived in the window, never 0.
+ */
+export interface PaymentsInboxMetrics {
+  received28d: number;
+  autoMatched28d: number;
+  adminMatched28d: number;
+  ignored28d: number;
+  /** autoMatched28d / received28d; null when nothing arrived. */
+  autoMatchRate: number | null;
+  waiting: number;
+  /** Days the oldest waiting payment has waited; null when none wait. */
+  oldestWaitingDays: number | null;
 }
 
 /**
@@ -422,6 +472,71 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
     usage,
     clientErrors: computeClientErrors(input.errorEvents ?? [], rosterIds, input.now),
     appReady: computeAppReady(input.timingEvents ?? [], rosterIds, input.now),
+    stringingRequests: computeStringingRequests(input.stringingJobs, rosterIds, now),
+    paymentsInbox: computePaymentsInbox(input.etransfers ?? [], now),
+  };
+}
+
+/** When a player's request was first answered: claimed, or moved off `requested`. */
+function answeredAt(job: MetricsInput['stringingJobs'][number]): number | null {
+  const times: number[] = [];
+  const claimed = ms(job.claimedAt);
+  if (claimed !== null) times.push(claimed);
+  const moved = (job.history ?? []).find((h) => h.status !== 'requested');
+  const movedAt = ms(moved?.at);
+  if (movedAt !== null) times.push(movedAt);
+  return times.length ? Math.min(...times) : null;
+}
+
+export function computeStringingRequests(
+  jobs: MetricsInput['stringingJobs'],
+  rosterIds: Set<string>,
+  now: number,
+): StringingRequestMetrics {
+  const requests = jobs.filter((j) => {
+    const t = ms(j.createdAt);
+    const first = j.history?.[0];
+    return (
+      t !== null && t <= now && now - t <= 28 * DAY &&
+      rosterIds.has(j.memberId) &&
+      first?.status === 'requested' && first.by === j.memberId
+    );
+  });
+  let answeredWithin24h = 0;
+  let unanswered = 0;
+  for (const j of requests) {
+    const at = answeredAt(j);
+    if (at === null) unanswered += 1;
+    else if (at - (ms(j.createdAt) as number) <= DAY) answeredWithin24h += 1;
+  }
+  return {
+    requests28d: requests.length,
+    answeredWithin24h,
+    answeredWithin24hRate: ratio(answeredWithin24h, requests.length),
+    unanswered,
+    withReadyBy: requests.filter((j) => typeof j.readyBy === 'string' && j.readyBy.length > 0).length,
+  };
+}
+
+export function computePaymentsInbox(rows: NonNullable<MetricsInput['etransfers']>, now: number): PaymentsInboxMetrics {
+  const window = rows.filter((p) => {
+    const t = ms(p.receivedAt);
+    return t !== null && t <= now && now - t <= 28 * DAY;
+  });
+  const autoMatched28d = window.filter((p) => p.status === 'matched' && p.matchedBy === 'auto').length;
+  const waitingRows = rows.filter((p) => p.status === 'review');
+  const oldest = waitingRows.reduce<number | null>((min, p) => {
+    const t = ms(p.receivedAt);
+    return t === null ? min : min === null ? t : Math.min(min, t);
+  }, null);
+  return {
+    received28d: window.length,
+    autoMatched28d,
+    adminMatched28d: window.filter((p) => p.status === 'matched' && p.matchedBy !== 'auto').length,
+    ignored28d: window.filter((p) => p.status === 'ignored').length,
+    autoMatchRate: ratio(autoMatched28d, window.length),
+    waiting: waitingRows.length,
+    oldestWaitingDays: oldest === null ? null : Math.max(0, Math.floor((now - oldest) / DAY)),
   };
 }
 
