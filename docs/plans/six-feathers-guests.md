@@ -1,7 +1,7 @@
 # Guests the way Six Feathers brings them
 
 **Track:** multi-group critical path — "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups). Step F of `docs/plans/six-feathers-onboarding.md`, the last rule from the club's chat that the app does not yet match.
-**Status:** in-flight — built in #795
+**Status:** shipped 2026-11-05 (#795)
 **Review on:** 2026-12-09 — after Six Feathers' first two Saturdays: did any guest reach the list through the app, and did the organiser add or fix one by hand in the chat?
 
 ## Problem
@@ -44,7 +44,7 @@ Grant, 2026-11-05: "Yes to all four" (the recommended answer to each question be
 - **Q1, a club setting of 1 or 2 guests.** `ClubRun.guests` (`0 | 1 | 2`, `lib/clubRun.ts`). "Members first" presets 2. "First come, first served" says nothing about guests (its preset is `null`), so choosing it keeps the club's number and any number still reads as that style. A club whose `run` never named a number reads the old `guestsAllowed` switch (on = 1), so BPM Core is unchanged; every save of the run writes the switch beside it for rollback, and the old Guests screen's switch, if a phone still sends it, moves the number too.
 - **Q2, `Jenny (Josh)` everywhere.** New rows store that name (`guestDisplayName`). Home's roster and Copy list build it from `guestName` and the host's row, so rows written before as `Jenny (Josh's guest)` read the new way too. A copied list pasted into the roster import skips the guests.
 - **Q3, guests are a rule of How your club runs**, and "Members first" turns them on. The separate Guests page is gone; the Command Center's Guests row opens How your club runs.
-- **Q4, an organiser adds a guest for a member** from "Add a guest" on the session card: a sheet to pick a member on this week's list and type the name (`hostMemberId` on the same `POST /api/players`). It skips the sign-ups-open and deadline gates, as an admin's sign-up does, and meets every other rule. It lives on the session card because a club with money off has no other list of the week's sign-ups (the Payments card is hidden); a money-free session list for those organisers is a separate suggestion.
+- **Q4, an organiser adds a guest for a member** from "Add a guest" on the session card: a sheet to pick a member on this week's list and type the name (`hostMemberId` on the same `POST /api/players`). It skips the sign-ups-open and deadline gates, as an admin's sign-up does, and meets every other rule. It lives on the session card because a club with money off has no other list of the week's sign-ups (the Payments card is hidden). That money-free session list (`SessionListCard`, `docs/plans/money-off-session-list.md`) shipped later the same day in #796.
 - **A name already on the club's roster is refused** (`guest_on_roster`), in that club only. **So is the same guest name twice for one member.**
 - **A member removes one guest at a time** (`DELETE { guest: true, guestId }`); a phone from before sends no id and removes the only one, as it always did.
 - **"Their share goes on your balance" shows only where the club collects money in the app.** Six Feathers keeps its money outside it.
