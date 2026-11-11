@@ -4,7 +4,7 @@
 notifications the admin already receives. Phase 3 (cards) WOULD be "payments processing", a locked
 ROADMAP non-goal, and needs that block changed on purpose before it starts.
 **Status:** in-flight
-**Review on:** 2026-11-07 — of the e-transfers received since the flag went on, what share auto-matched, and is the "Needs a look" queue staying short?
+**Review on:** 2026-12-09 — of the e-transfers received since the flag went on, what share auto-matched, and is the "Needs a look" queue staying short? (2026-11-11: Grant was "not sure" — the answer is a count, not a memory, so this review reads it from the inbox or the `payments` container rather than asking.)
 
 ## Problem
 

@@ -54,7 +54,7 @@ this and is kept as a record.
 | Startup | `node server.js` from the standalone bundle |
 | Base path | `/bpm` (`basePath` in `next.config.js`; `NEXT_PUBLIC_BASE_PATH` must match) |
 | Production URL | `https://bpm.grantzou.com/bpm` (`APP_ORIGIN` in the workflow) |
-| Custom domain + certificate † | bound in the portal; expiry not recorded here |
+| Custom domain + certificate | `bpm.grantzou.com` (and `next.grantzou.com`) bound with SNI; the certificate, issued by GeoTrust (DigiCert), expires **2027-02-18** (read 2026-11-10, §9) |
 | Health check † | path `/bpm/api/health` (`app/api/health/route.ts`: liveness only, reads nothing), load-balancing threshold 10 minutes. With one instance Azure never removes it; after an hour of failed probes it replaces it. Not `/api/releases`: that reads Cosmos, and a database blip would recycle a healthy server |
 
 ### Build output
@@ -213,7 +213,7 @@ Firewall edits take up to 15 minutes to reach the data plane.
 | Database name | `badminton` (env var `COSMOS_DB_NAME`) |
 | Throughput | **400 RU/s, on the FREE TIER** (read in the portal 2026-10-15, §9): the `badminton` database holds 400 RU/s shared, the minimum for a shared database, and the account's free tier covers the first 1000 RU/s and 25 GB, so the Cosmos bill is **$0** and was $0 even while `aliases` carried its own 400 RU/s on top (800 total, read 2026-10-14). The fold's win was the two shared slots and the cap headroom, not money — the earlier claim that the dedicated container doubled the bill was wrong, corrected the day the free-tier banner was read. Free headroom now: one more dedicated 400 RU/s container (800 ≤ 1000) costs nothing; a second would bill the 200 RU/s over. **The shared database was at Microsoft's 25-container cap.** The code defined 27 on the day of the reading; in the portal 26 of them sit on the shared throughput and `aliases` is the one dedicated container — created by hand with its own throughput, which is why it does not count against the shared cap. Past 25, a new container can only be added with its own dedicated throughput (another 400 RU/s minimum — free while the account total stays under the free tier's 1000). **2026-10-10: the first create past the cap was refused in production** — the string inventory shipped with a 28th container, `stringStock`, and its admin card failed to load the day it deployed; the portal shows no `stringStock` row, which confirms the refusal. The fix moved those rows into `clubSettings` (`CLAUDE.md`, Cosmos DB convention: a new doc KIND goes into an existing container). **The fold shipped** (`docs/plans/container-fold.md`): `aliases` into `clubSettings`, `feedback` into `releases`, `authmigration` into `authhandoff`. The copy ran in production on 2026-10-15 (14 aliases, 4 reports, zero remaining), the code defines 24, and Grant deleted the three old containers the same day: the database reads 400 RU/s with 23 shared containers, two slots free (§9) |
 | Backup mode | **Continuous, 7-day** — the cost export of 2026-10-14 carries a `PITR · Cont 7D Bkup Continuous Backup` meter for `cosmos-bd` (at $0, inside the free tier). Point-in-time restore to any moment in the last week; a restore has still never been exercised |
-| Access † | Primary/secondary keys via connection string; no RBAC role assignments, no managed identity |
+| Access † | Primary/secondary keys via connection string; no RBAC role assignments. The App Service has a system-assigned identity (on, read 2026-11-10) that nothing uses yet: Cosmos is still reached by key |
 
 ### Containers
 
@@ -541,7 +541,19 @@ line on the subscription and belongs to another project.
 Consequence: §2's networking section rewritten — it had said no narrowing was
 ever done, which the five client IPs and the VNet rule contradicted.
 
-### 2026-10-07 — not yet observed
+### 2026-11-10 / 11 — `az` CLI reads, and the alert rule (Claude, Grant's go-ahead)
+
+| What | Observed |
+|---|---|
+| Partition keys of the five hand-made containers | `sessions`, `players`, `announcements` → `/sessionId`; `members`, `birds` → `/id`. All five match `CLAUDE.md` (`az cosmosdb sql container show`) |
+| Cosmos backup | `backupPolicy.type` **Continuous** — agrees with the 2026-10-14 cost export |
+| Custom domains | `bpm.grantzou.com` and `next.grantzou.com`, both `SniEnabled`. `bpm` presents a GeoTrust TLS RSA CA G1 certificate, notAfter **2027-02-18**; `next`'s expires 2027-02-16 |
+| App Service identity | `SystemAssigned` |
+| Alert rules, before | ONE: `bpm-5xx`, **disabled**, scoped to `badminton-app` — the app service deleted 2026-08-25. Production had no working alert |
+| Alert rules, after (2026-11-11) | `bpm-5xx` rewritten in place: scope `vnext-badminton-app`, `Http5xx` Total **> 5** over 5 minutes, evaluated every 5, severity 2, enabled, action group `bpm-alerts` (email to the owner). The old rule's threshold was `> 0`; five is `docs/plans/infra-baseline.md`'s number, because one 5xx is a single bad request |
+| Still unread | when the Cosmos keys were last regenerated |
+
+### 2026-10-07 — not yet observed (superseded: every row but the keys was read on 2026-11-10 above)
 
 | Page | What to read | Observed |
 |---|---|---|
@@ -589,8 +601,9 @@ unknown.
 2. **Backup — answered 2026-10-14 by the cost export:** continuous, 7-day
    point-in-time restore (§3). A restore has still never been tried; that is
    the drill left.
-3. **Alerts.** App Service → Alerts: at least one rule on HTTP 5xx. There are
-   none known today.
+3. **Alerts — one rule since 2026-11-11:** `bpm-5xx` (§9). Until that day the
+   only rule was switched off and watched the deleted `badminton-app`, so
+   production had none.
 
 **After the flip — one week of watching:** the `[group-leak]` log line (the
 flip's own gate) and Cosmos 429s (Cosmos → Metrics → Total Requests, split by
