@@ -36,6 +36,18 @@ function renderPage(doc: PlayerGear, setPrefs = vi.fn(async (_p: GearPrefs) => (
   return setPrefs;
 }
 
+
+/** The body is what scrolls in this app (lib/pageScroll.ts); jsdom has no layout, so give it a scrollTop that holds. */
+function bodyScrolledTo(y: number) {
+  let top = y;
+  Object.defineProperty(document.body, 'scrollTop', { configurable: true, get: () => top, set: (v: number) => { top = v; } });
+  return {
+    get top() { return top; },
+    set top(v: number) { top = v; },
+    restore() { delete (document.body as { scrollTop?: number }).scrollTop; },
+  };
+}
+
 describe('FitProfilePage — the questions as the Stats canvas put them (2026-10-19)', () => {
   beforeEach(() => {
     window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
@@ -45,6 +57,19 @@ describe('FitProfilePage — the questions as the Stats canvas put them (2026-10
     } as Response)) as unknown as typeof fetch);
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it('opens at its top: the body, which is what scrolls, goes back to 0', async () => {
+    // Opened from halfway down the register, it showed the page from its
+    // middle, past the first questions: window.scrollTo moves nothing here.
+    const body = bodyScrolledTo(500);
+    try {
+      renderPage(base);
+      expect(body.top).toBe(0);
+      expect(await screen.findByText("How's your clear?")).toBeTruthy();
+    } finally {
+      body.restore();
+    }
+  });
 
   it('asks how hard you hit, by where your clear lands, and still stores slow / medium / fast', async () => {
     const setPrefs = renderPage(base);

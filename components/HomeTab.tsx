@@ -47,6 +47,7 @@ import { primeMemberAvatars } from '@/lib/useMemberAvatars';
 import { useEverOpened } from '@/lib/useEverOpened';
 import { addSessionToCalendar, canAddToCalendar } from '@/lib/addToCalendar';
 import { homeSnapshotKey, readHomeSnapshot, saveHomeSnapshot } from '@/lib/homeSnapshot';
+import { scrollPageTo } from '@/lib/pageScroll';
 
 // HomeTab itself stays eager (it carries the LCP announcement), but the
 // sheets it can open do not need to: each is behind a tap or a one-shot
@@ -1056,7 +1057,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 style={{ paddingInline: 0, fontWeight: 600 }}
                 onClick={() => {
                   setKeepOpen(true);
-                  window.scrollTo(0, 0);
+                  // The BODY scrolls (lib/pageScroll.ts); window.scrollTo moved nothing.
+                  scrollPageTo(0);
                 }}
               >
                 {t('signInSetup.noneAction')}
