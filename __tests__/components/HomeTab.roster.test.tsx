@@ -110,16 +110,16 @@ describe('the sign-up card as the sign-up list', () => {
     renderHome();
     // Await the ROLE, not the text: findByText also matches a RevealSlot that
     // is still hidden, and a role query made before it reveals finds nothing.
-    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cantMakeIt }));
+    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cancelMySpot }));
     expect(await screen.findByText(enMessages.players.cancelSheetBody)).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Yes$/ })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === 'DELETE')).toBe(true),
     );
     // Back to the sign-up form, still identified: cancelling is not signing out.
-    expect(await screen.findByText('Signing up as Grant')).toBeDefined();
+    expect(await screen.findByRole('button', { name: /Sign up for this week/i })).toBeDefined();
     const id = JSON.parse(localStorage.getItem('badminton_identity') ?? '{}');
     expect(id.name).toBe('Grant');
     expect(id.token).toBe('');
@@ -129,7 +129,7 @@ describe('the sign-up card as the sign-up list', () => {
     renderHome();
     // Await the ROLE, not the text: findByText also matches a RevealSlot that
     // is still hidden, and a role query made before it reveals finds nothing.
-    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cantMakeIt }));
+    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cancelMySpot }));
     fireEvent.click(await screen.findByRole('button', { name: enMessages.players.sheetKeep }));
     expect(fetchMock.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === 'DELETE')).toBe(false);
   });

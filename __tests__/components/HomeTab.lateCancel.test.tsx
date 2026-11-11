@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
 import HomeTab from '@/components/HomeTab';
@@ -78,14 +78,14 @@ afterEach(() => {
 
 async function openCancelSheet() {
   renderHome();
-  fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cantMakeIt }));
+  fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cancelMySpot }));
   expect(await screen.findByText(enMessages.players.cancelSheetBody)).toBeDefined();
 }
 
 describe('cancel sheet — late cancellation', () => {
   it('turns into the fee warning when the server says the cancel is late, and keeps the spot', async () => {
     await openCancelSheet();
-    fireEvent.click(screen.getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
 
     expect(await screen.findByText('The session starts in less than 48 hours')).toBeDefined();
     expect(screen.getByText(enMessages.players.lateCancelBody)).toBeDefined();
@@ -97,21 +97,21 @@ describe('cancel sheet — late cancellation', () => {
 
   it('"Cancel anyway" resends with the acknowledgement and the spot is released', async () => {
     await openCancelSheet();
-    fireEvent.click(screen.getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
     fireEvent.click(await screen.findByRole('button', { name: enMessages.players.lateCancelConfirm }));
 
     await waitFor(() => expect(deleteBodies()).toHaveLength(2));
     expect(deleteBodies()[1]).toEqual({ name: 'Grant', deleteToken: 'tok', acknowledgeLateFee: true });
-    expect(await screen.findByText('Signing up as Grant')).toBeDefined();
+    expect(await screen.findByRole('button', { name: /Sign up for this week/i })).toBeDefined();
   });
 
   it('closing the sheet forgets the warning: reopened, it asks the plain question again', async () => {
     await openCancelSheet();
-    fireEvent.click(screen.getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
     await screen.findByText('The session starts in less than 48 hours');
     fireEvent.click(screen.getByRole('button', { name: enMessages.players.sheetKeep }));
 
-    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cantMakeIt }));
+    fireEvent.click(await screen.findByRole('button', { name: enMessages.home.signup.cancelMySpot }));
     expect(await screen.findByText(enMessages.players.cancelSheetBody)).toBeDefined();
     expect(screen.queryByText('The session starts in less than 48 hours')).toBeNull();
   });
@@ -119,7 +119,7 @@ describe('cancel sheet — late cancellation', () => {
   it('a 409 that is not the late-fee answer is still a failure', async () => {
     deleteAnswer = () => ok({ error: 'something_else' }, 409);
     await openCancelSheet();
-    fireEvent.click(screen.getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: enMessages.players.cancelSheetConfirm }));
 
     expect(await screen.findByText(enMessages.players.cancelFailure)).toBeDefined();
     expect(screen.queryByText('The session starts in less than 48 hours')).toBeNull();

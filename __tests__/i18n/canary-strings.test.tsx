@@ -9,7 +9,7 @@ const CANARY_KEYS = [
   'home.signup.button',
   'home.signup.waitlist',
   'home.signup.full',
-  'home.signup.confirmed',
+  'home.signup.cancelMySpot',
   'home.cost.label',
   'home.cost.emphasis',
   'home.session.date',

@@ -34,6 +34,7 @@ Courts and the player cap are separate fields on a session (`Session.courts`, `S
 - **No admin push** when the waitlist reaches a court's worth, for now. Revisit only if the line goes unseen.
 - **Confirmed players see it too, once the session is full** (2026-11-04, while building it). "Everyone" includes the people already in, who are the ones who might bring a friend. The line shows in the signed-up state only when the session is full, and in the full and waitlist states always, until play starts.
 - **Hidden until the club's settings are known** (the `useClubRun()` rule): an unknown setting could count a court wrong.
+- **Members see the idea, not the count** (Grant, 2026-11-11, editing the full and waitlist cards on the design canvas): "Another court can be added when enough people are on the waitlist." On the full card it sits under "Join the waitlist" as a footnote to it. The counted wording ("1 on the waitlist, 3 more would fill one") stays on the admin's Next session card, where someone can act on it. `courtLine` still decides WHETHER the member line shows (a known court size, before play), so a club with no court size says nothing.
 
 ## Shape
 
@@ -41,5 +42,5 @@ Courts and the player cap are separate fields on a session (`Session.courts`, `S
 |---|---|
 | Players per court, and the line's numbers (pure, tested in `__tests__/club-run.test.ts`) | `playersPerCourtFor` and `courtLine` in `lib/clubRun.ts` |
 | Admin line | `components/admin/CommandCenter/NextSessionCard.tsx` |
-| Member line | `components/home/CourtLine.tsx`, placed in `components/HomeTab.tsx` (signed-up when full, full, and waitlist states) |
+| Member line | `components/home/CourtLine.tsx` (one sentence, no numbers), placed in `components/HomeTab.tsx` (signed-up when full, full under the button, and waitlist states) |
 | Copy | `messages/en.json`, `messages/zh-CN.json` (member line; admin screens are English-only by decision) |

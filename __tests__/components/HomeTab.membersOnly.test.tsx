@@ -62,38 +62,37 @@ afterEach(() => {
 });
 
 describe('Home sign-up card, members only', () => {
-  it('says who is signing up, with no name field to type into', async () => {
+  it('offers a one-tap sign-up, with no name field to type into', async () => {
     renderHome('Lin');
-    expect(await screen.findByText('Signing up as Lin')).toBeDefined();
+    expect(await screen.findByRole('button', { name: /Sign up for this week/i })).toBeDefined();
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByLabelText('Your name')).toBeNull();
   });
 
   it('never probes members/me — there is nothing to find out about a name that is locked', async () => {
     renderHome('Lin');
-    await screen.findByText('Signing up as Lin');
+    await screen.findByRole('button', { name: /Sign up for this week/i });
     await new Promise((r) => setTimeout(r, 700)); // past the probe's 500ms debounce
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/members/me'))).toBe(false);
   });
 
-  it('with no verified name, names the local identity — still no field to type into', async () => {
+  it('with no verified name, signs up as the local identity — still no field to type into', async () => {
     localStorage.setItem('badminton_identity', JSON.stringify({ name: 'Kento', sessionId: session.id }));
     renderHome(null);
-    expect(await screen.findByText('Signing up as Kento')).toBeDefined();
+    expect(await screen.findByRole('button', { name: /Sign up for this week/i })).toBeDefined();
     expect(screen.queryByRole('combobox')).toBeNull();
   });
 
   it('with no name at all, offers no sign-up form rather than an anonymous one', async () => {
     renderHome(null);
     await screen.findByText(/spots? left/i);
-    expect(screen.queryByText(/Signing up as/)).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByRole('button', { name: /Sign up for this week/i })).toBeNull();
   });
 
   it('signs up with one tap', async () => {
     renderHome('Lin');
-    await screen.findByText('Signing up as Lin');
+    await screen.findByRole('button', { name: /Sign up for this week/i });
     // Role queries skip the RevealSlot's `hidden` wrapper; the text query above
     // does not, so await the button too (same race as #540).
     fireEvent.click(await screen.findByRole('button', { name: /Sign up for this week/i }));
@@ -143,7 +142,7 @@ describe('signed in with nothing to sign in with next time', () => {
   ])('shows nothing for a member with %s', async (_label, m) => {
     methods(m);
     renderHome('Lin');
-    await screen.findByText('Signing up as Lin');
+    await screen.findByRole('button', { name: /Sign up for this week/i });
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.queryByText('Keep your account')).toBeNull();
   });
@@ -155,10 +154,10 @@ describe('signed in with nothing to sign in with next time', () => {
     // A page, not a sheet (Grant, 2026-11-08), and never a PIN.
     await waitFor(() => expect(screen.getByLabelText('Password')).toBeDefined());
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByText('Signing up as Kento')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Sign up for this week/i })).toBeNull();
     expect(screen.queryByLabelText(/PIN/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(await screen.findByText('Signing up as Kento')).toBeDefined();
+    expect(await screen.findByRole('button', { name: /Sign up for this week/i })).toBeDefined();
   });
 
   it('does not open the page by itself', async () => {
