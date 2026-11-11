@@ -1,47 +1,41 @@
 /**
- * Gift cards, for a member with `canGift` (docs/plans/gift-card-ledger.md).
+ * Gift cards from Profile → "Give a gift card", for an ORGANISER of this club
+ * (docs/plans/gift-card-ledger.md; Grant, 2026-11-10: "gift card should be
+ * organizer feature only").
  *
  *   GET  — `{ canGift }`, plus the caller's own cards (amount, note, last
  *          four, redeemed or not — never who redeemed it; that is the
- *          admin's record) when they may give them out.
+ *          console's record) when they may give them out.
  *   POST { amountCents, note } — mint one. The code is in THIS response only.
  *
- * The switch is re-read on every call, like `canString`: a cookie that was
- * minted while the switch was on does not keep it. With groups on it is read
- * from THIS club's membership, not the Member — see `canGift` below. Admins
- * mint from the console (`/api/admin/giftcards`); this surface is for the
- * helper who is not one.
+ * The rank is re-read on every call (`requireGroupMember` reads the
+ * membership), so an organiser who steps down stops at once. It replaced the
+ * `canGift` switch, which let an organiser hand minting to a helper; the
+ * response keeps the `canGift` name so an older Profile still reads it.
+ * The console mints through `/api/admin/giftcards`, organiser-only too.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireGroupMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
-import { getContainer } from '@/lib/cosmos';
-import { readMembership } from '@/lib/groups';
 import { CreditError, listGiftCards, mintGiftCard } from '@/lib/storeCredit';
-import type { Member } from '@/lib/types';
+import type { MembershipRole } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 const off = () => NextResponse.json({ error: 'not_found' }, { status: 404 });
 
 /**
- * Fresh, never from the cookie: the roster switch is the authority.
- *
- * With groups on, the switch is the one on THIS club's membership. A card is
- * the club's liability, and a person can be on two rosters: a helper one club
- * trusts with gift cards would otherwise mint against the other club they
- * happen to belong to, because nothing on the Member says WHICH club granted
- * it. Flag off, the Member's switch as it always was.
+ * An organiser of the club the cookie names. The role is the one
+ * `requireGroupMember` just re-read from THIS club's membership (a card is
+ * this club's liability; an organiser of another club is nobody here). With
+ * groups off there is no organiser rank, and every admin is one
+ * (`docs/roles.md`), as `isAdminAuthedWithMember` answers.
  */
-async function canGift(req: NextRequest, memberId: string): Promise<boolean> {
-  if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
-    const m = await readMembership(resolveGroupId(req), memberId);
-    return m?.status === 'active' && m.canGift === true;
-  }
-  const { resource } = await getContainer('members').item(memberId, memberId).read<Member>();
-  return resource?.active === true && resource.canGift === true;
+function canGift(role: MembershipRole): boolean {
+  if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) return role === 'owner';
+  return role === 'admin' || role === 'owner';
 }
 
 export async function GET(req: NextRequest) {
@@ -52,7 +46,7 @@ export async function GET(req: NextRequest) {
   const me = await requireGroupMember(req);
   if (!me) return unauthorized();
   try {
-    if (!(await canGift(req, me.memberId))) return NextResponse.json({ canGift: false, cards: [] });
+    if (!canGift(me.role)) return NextResponse.json({ canGift: false, cards: [] });
     const cards = (await listGiftCards(resolveGroupId(req))).filter((c) => c.createdBy === me.memberId);
     return NextResponse.json({
       canGift: true,
@@ -71,9 +65,9 @@ export async function POST(req: NextRequest) {
   }
   const me = await requireGroupMember(req);
   if (!me) return unauthorized();
-  if (!(await canGift(req, me.memberId))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  // A gifter is not an admin: a per-person ceiling on top of the per-IP one,
-  // because every card is club liability the moment it is redeemed.
+  if (!canGift(me.role)) return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+  // A per-person ceiling on top of the per-IP one, because every card is club
+  // liability the moment it is redeemed.
   if (!checkRateLimit(`giftcards-mint:member:${me.memberId}`, 10, 24 * 60 * 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }

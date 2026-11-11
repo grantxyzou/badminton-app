@@ -37,7 +37,7 @@ This file is loaded in full every session and must stay under 150k characters (C
 
 The full rules are in `.claude/rules/multi-group.md`, which loads when Claude touches `app/api/`, `lib/`, `proxy.ts` or a group test. These hold for every server edit:
 
-- **ONE ACCOUNT, MANY GROUPS**: `Member` is the person; a `Membership` carries the per-group role, roster name and per-club trust (`canGift`, `role`, `active`). Flag `NEXT_PUBLIC_FLAG_MULTI_GROUP`, ON in production since 2026-10-22; `'false'` is the whole rollback.
+- **ONE ACCOUNT, MANY GROUPS**: `Member` is the person; a `Membership` carries the per-group role, roster name and per-club trust (`canString`, `role`, `active`). Flag `NEXT_PUBLIC_FLAG_MULTI_GROUP`, ON in production since 2026-10-22; `'false'` is the whole rollback.
 - **`groupScope(groupId)` is the only way a route reads or writes a GROUP_SCOPED container**, with the group from `resolveGroupId(req)`. `__tests__/group-scope-coverage.test.ts` fails the build on a raw `getContainer` outside its allowlist.
 - **`groupId` is an additive optional FIELD, never a partition key, and BPM's ids are never rewritten**; only a new group gets a `${groupId}:` prefix via `groupDocId()`.
 - **Use `replace` for a read-modify-write, never `upsert`.** It is etag-conditional: `undefined` means gone OR changed under you, so re-read and decide.
