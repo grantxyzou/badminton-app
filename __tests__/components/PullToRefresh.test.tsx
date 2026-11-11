@@ -57,7 +57,8 @@ describe('PullToRefresh', () => {
     const { onRefresh, wrap } = mount();
     await pull(120);
     expect(onRefresh).not.toHaveBeenCalled();
-    expect(wrap.style.transform).toBe('translate3d(0, 0px, 0)');
+    // jsdom 31 writes the unitless zeros as 0px; either form is the resting position.
+    expect(wrap.style.transform).toMatch(/^translate3d\(0(px)?, 0px, 0(px)?\)$/);
   });
 
   it('follows the finger without animating, and marks the moment it arms', () => {
