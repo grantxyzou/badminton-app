@@ -4,7 +4,7 @@ Intent: docs/plans/profile-reorganization.md
 
 **Mock-up:** the "Profile reorganisation mock-up" Design canvas (Grant's, private): https://claude.ai/artifact/McqsPzJuDPWtVdArthhj7X. Every screen below is a board there; press Play to tap through. Where this spec and the mock-up disagree, this spec wins (the mock is a drawing in raw hex; the build uses tokens).
 
-**Date:** 2026-11-09. **Status:** ready to build, with three open questions marked **Q1–Q3** (end of this file). Build order is at the end.
+**Date:** 2026-11-09. **Status:** steps 1–8 built (2026-11-11); Q1 answered, Q2 and Q3 open (end of this file). Build order is at the end.
 
 ---
 
@@ -50,7 +50,7 @@ These apply to all nine screens and are not repeated below.
 
 ### Layout (top to bottom)
 
-1. **Header row**: "Profile" (`.bpm-h1`) left; the toggles right. Today: bell, language, theme. **Q1**: bell only, with Language and Appearance moved into Settings.
+1. **Header row**: "Profile" (`.bpm-h1`) left; the toggles right: bell, language, theme, as today. **Q1 answered no** (Grant, 2026-11-11: "dont move them").
 2. **Identity card**: one `.glass-card`, whole card is a button.
    - Avatar 52 px (`MemberAvatar`, size 52), `--space-4` gap.
    - Name (display face, `--fs-stat`), then the rank chip beside it (Organiser / Admin; none for a player), as today.
@@ -61,7 +61,6 @@ These apply to all nine screens and are not repeated below.
    - *Admin* (admin only): `admin_panel_settings`, meta = live count "{n} need you" in accent (or "All clear", or "Couldn't check" muted), chevron → Admin tab. Same signals as today's row (`useAdminNeedsYou`).
 4. **SETTINGS**
    - *Notifications*: bell icon, meta On/Off, → today's push settings.
-   - *Language*, *Appearance*: **only if Q1 = yes**. Meta = current value.
    - *Ways to sign in*: lock icon, meta = summary ("PIN", "Google · Email"), accent when the server sets `nudge`. → **Ways to sign in** page (today's `SignInMethodsSheet` content as a page, also holding "Use a recovery code" and, while PINs last, "Change PIN"). Replaces the three rows How you sign in / Update PIN / Have a recovery code.
    - *Get the BPM app*: phone icon → today's install / move-to-app flow (`InstallSheet`). Hidden in the store app (`isNative()`).
 5. **MONEY**
@@ -348,7 +347,7 @@ Reduced motion: page slides become the crossfade; fades stay (`.claude/rules/des
 
 ## Open questions (Grant)
 
-1. **Q1** Move Language and Appearance from the header into Settings (bell stays in the header)?
+1. **Q1** Move Language and Appearance from the header into Settings (bell stays in the header)? **No** (Grant, 2026-11-11: "dont move them"). The header keeps all three toggles.
 2. **Q2** Redeem a gift card on Home's balance card too (as a link to §3)?
 3. **Q3** Keep the email typed at the join step as a contact email on Edit profile? It would need a privacy-policy line.
 
@@ -361,4 +360,4 @@ Reduced motion: page slides become the crossfade; fades stay (`.claude/rules/des
 5. **Account balance page and the payments chart**: the new read, the chart, "See details" on Home. **Built 2026-11-09**, with three things left for later: the "See every payment" list page, a session line's player count, and a restring line's string, tension and pick-up day (the balance read carries none of them; adding them is a change to `GET /api/players/unpaid`, not to this page).
 6. **Report a problem page** with prefills (`category` on the report). **Built 2026-11-09.** One change from §6: the helper line under the box reads "Say which screen it happened on, if you can." The report carries the tab the page is on, which is always Profile now that reporting is a Profile page, so "the page you were on is sent with it" would not be true.
 7. **Support page and guides** (`/legal/help`), screenshots from the mock store. **Built 2026-11-09**, with three differences from §7–§8: "Email the operator" is "Contact the people who run BPM" and opens `/legal/support`, which shows the address (`SUPPORT_EMAIL` is server configuration, never in the app's bundle); the tip carries the `bolt` glyph, not a lightbulb (the icon font is a fixed subset, and adding a glyph means rebuilding it); and "Was this helpful?" is a plain form post (`POST /api/help/feedback`, a 303 back to the guide), because a `/legal` page renders from HTML alone. A signed-out reader's answer is thanked and not recorded (`events` is per member). Screenshots are in English and Chinese, one per step that shows a screen.
-8. **Header and Settings** once Q1 is answered.
+8. **The Profile list in §1's groups**: CLUB, SETTINGS, MONEY, HELP, PRIVACY, then the version line and Log out in its own card, red, with no chevron. **Built 2026-11-11.** The header is unchanged (Q1 is no). Each group is a `<section>` named by its eyebrow. CLUB is left out altogether for a player with no club to show, rather than showing an empty label; a member with no club does not reach Profile at all (the page gate shows the no-club screen).

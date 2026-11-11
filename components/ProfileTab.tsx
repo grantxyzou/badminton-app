@@ -5,6 +5,7 @@ import { sharedFetch } from '@/lib/sharedRead';
 import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
+import type { ReactNode } from 'react';
 import EnterCodeSheet from './EnterCodeSheet';
 import AskAccessSheet from './AskAccessSheet';
 import MigrateSheet from './MigrateSheet';
@@ -815,16 +816,13 @@ export default function ProfileTab({
     );
   }
 
-  // This device: every row here can be absent (push still probing, already
-  // installed, no migration), so the group hides rather than titling nothing.
-  const appRows: SettingsRow[] = [
-    /* Present from the first frame, with NO status until the probe answers:
-       rendering "Off" before we know would be a confirmed negative from an
-       unknown state (CLAUDE.md, "Unknown ≠ known-false"), and hiding the row
-       instead inserted it later, pushing the rows below it down (loading
-       cascade follow-up). The row is shown for every answer, so it never
-       needed hiding — only its status did. */
-    ...([{
+  /* Present from the first frame, with NO status until the probe answers:
+     rendering "Off" before we know would be a confirmed negative from an
+     unknown state (CLAUDE.md, "Unknown ≠ known-false"), and hiding the row
+     instead inserted it later, pushing the rows below it down (loading
+     cascade follow-up). The row is shown for every answer, so it never
+     needed hiding — only its status did. */
+  const notificationsRow: SettingsRow = {
           icon: 'notifications',
           label: tSettings('notifications'),
           meta:
@@ -838,7 +836,9 @@ export default function ProfileTab({
                   ? undefined
                   : tPush('metaOff'),
           onClick: () => onOpenNotifications?.(),
-        }]),
+        };
+  // This phone: install and move-to-the-app, each absent when it has no job.
+  const appRows: SettingsRow[] = [
     ...(!installed
       ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
       : []),
@@ -866,184 +866,144 @@ export default function ProfileTab({
       />
 
 
-      {/* Always present for a SIGNED-IN member: the upgrade nudge is a variant
-          of this card, not a separate surface, so dismissing the prompt does not
-          take the credential management with it.
-
-          It lived in the anonymous branch until now, which meant the people it
-          exists for never saw it while signed-out visitors got it duplicated
-          beneath the provider buttons. Nothing caught that: the card's own tests
-          render it directly, and ProfileTab's tests render both states without
-          asserting on it. They do now. */}
-      {/* Credential management, so it belongs to ACCOUNT rather than floating
-          between the identity card and admin. */}
-      {showAdminRow && (
-        <>
-          <ProfileEyebrow>{t('admin.group')}</ProfileEyebrow>
-          {/* One row, not a hero. The console had the only glowing border, the
-              largest type in any card and a full-width CTA — on the screen a
-              player opens to change their PIN. The count survives here; the
-              three stat tiles live on admin home, where they can be acted on.
-
-              No count when it is unknown: "0 need you" off a dead fetch is the
-              lying-empty-state pattern, and the row's real job — opening
-              admin — works regardless. A FAILED check says so, muted, rather
-              than leaving the row looking like one that never had a count;
-              still loading shows nothing. */}
+      {/* The list in spec §1's order (build step 8; the header keeps its
+          toggles — Grant, 2026-11-11: "dont move them"): CLUB, SETTINGS,
+          MONEY, HELP, PRIVACY, then the version and Log out. Each group is a
+          <section> named by its eyebrow, so a screen reader can move by group. */}
+      {(group || showAdminRow) && (
+        <ProfileGroup id="profile-group-club" label={tSettings('clubGroup')}>
           <SettingsList
             rows={[
-              {
-                icon: 'admin_panel_settings',
-                label: t('admin.console'),
-                meta: adminSignals.loadError
-                  ? t('admin.checkFailed')
-                  : adminSignals.needsYou === null
-                    ? undefined
-                    : adminSignals.needsYou > 0
-                    ? t('admin.needYou', { count: adminSignals.needsYou })
-                    : t('admin.allClear'),
-                // Accent marks the one live count, never the all-clear.
-                accent: (adminSignals.needsYou ?? 0) > 0,
-                onClick: onAdminTools,
-              },
+              // The club this phone is in now; its page switches, joins or
+              // creates. Absent with groups off (`group` is null).
+              ...(group
+                ? [{ icon: 'groups', label: tGroups('yourGroups'), meta: group.name, onClick: () => setView('groups') }]
+                : []),
+              // Admin tools (admins only). The count survives here; the stat
+              // tiles live on admin home, where they can be acted on. No count
+              // while unknown ("0 need you" off a dead fetch would lie); a
+              // FAILED check says so, muted. Accent marks the one live count,
+              // never the all-clear.
+              ...(showAdminRow
+                ? [{
+                    icon: 'admin_panel_settings',
+                    label: t('admin.console'),
+                    meta: adminSignals.loadError
+                      ? t('admin.checkFailed')
+                      : adminSignals.needsYou === null
+                        ? undefined
+                        : adminSignals.needsYou > 0
+                          ? t('admin.needYou', { count: adminSignals.needsYou })
+                          : t('admin.allClear'),
+                    accent: (adminSignals.needsYou ?? 0) > 0,
+                    onClick: onAdminTools,
+                  }]
+                : []),
             ]}
           />
-        </>
+        </ProfileGroup>
       )}
 
-      <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
-      <SettingsList
-        rows={[
-          // "Your groups" leads the list when there is more than one club to be
-          // in: it changes what every other screen is about, so it outranks the
-          // per-account rows below it. Absent entirely with the flag off, and
-          // absent when signed out — `group` is null in both cases.
-          ...(group
-            ? [{
-                icon: 'groups',
-                label: tGroups('yourGroups'),
-                meta: group.name,
-                onClick: () => setView('groups'),
-              }]
-            : []),
-          // One row for getting back in (spec §9, build step 3). It used to be
-          // three — How you sign in, Update PIN, Have a recovery code? — and
-          // the page it opens holds all of it. The nudge survives as `accent`,
-          // the same signal the admin row uses for a live count.
-          {
-            icon: 'lock',
-            label: tAuth('methodsTitle'),
-            meta: methodsSummary(methodsState.methods, {
-              pin: tAuth('methodPin'),
-              email: tAuth('methodEmailShort'),
-            }),
-            accent: methodsState.methods?.nudge === true,
-            onClick: () => setView('signin'),
-          },
-        ]}
-      />
+      <ProfileGroup id="profile-group-settings" label={tSettings('settingsGroup')}>
+        <SettingsList
+          rows={[
+            // Notifications, then how you get back in, then this phone's
+            // install and move-to-the-app rows (absent when installed or in
+            // the store app).
+            notificationsRow,
+            // One row for getting back in (spec §9, build step 3); the nudge
+            // survives as `accent`, the same signal the admin row uses.
+            {
+              icon: 'lock',
+              label: tAuth('methodsTitle'),
+              meta: methodsSummary(methodsState.methods, {
+                pin: tAuth('methodPin'),
+                email: tAuth('methodEmailShort'),
+              }),
+              accent: methodsState.methods?.nudge === true,
+              onClick: () => setView('signin'),
+            },
+            ...appRows,
+          ]}
+        />
+      </ProfileGroup>
 
-      {/* MONEY (spec §1.5): pages, not sheets. Gift cards & credit while store
-          credit is on; Account balance for everyone (the detailed view of
-          Home's card); Give a gift card for a canGift member. A figure is
-          absent until it is KNOWN — never a $0 off a failed read. */}
-      <ProfileEyebrow>{tSettings('moneyGroup')}</ProfileEyebrow>
-      <SettingsList
-        rows={[
-          ...(creditOn
-            ? [{
-                icon: 'payments',
-                label: tSettings('giftCards'),
-                meta: credit.loadError || credit.balanceCents === null ? undefined : fmtCents(credit.balanceCents),
-                onClick: () => setView('gift-cards'),
-              }]
-            : []),
-          {
-            icon: 'receipt_long',
-            label: tSettings('accountBalance'),
-            // "{amount} owed" in amber while owing; nothing at $0 or unknown.
-            meta:
-              !balanceState.loadError && balanceState.data && balanceState.data.totalOwed > 0
-                ? tSettings('owedMeta', { amount: fmtCents(Math.round(balanceState.data.totalOwed * 100)) })
+      {/* MONEY (spec §1.5): Gift cards & credit while store credit is on;
+          Account balance for everyone (the detailed view of Home's card);
+          Give a gift card for a canGift member. A figure is absent until it
+          is KNOWN — never a $0 off a failed read. */}
+      <ProfileGroup id="profile-group-money" label={tSettings('moneyGroup')}>
+        <SettingsList
+          rows={[
+            ...(creditOn
+              ? [{
+                  icon: 'payments',
+                  label: tSettings('giftCards'),
+                  meta: credit.loadError || credit.balanceCents === null ? undefined : fmtCents(credit.balanceCents),
+                  onClick: () => setView('gift-cards'),
+                }]
+              : []),
+            {
+              icon: 'receipt_long',
+              label: tSettings('accountBalance'),
+              // "{amount} owed" in amber while owing; nothing at $0 or unknown.
+              meta:
+                !balanceState.loadError && balanceState.data && balanceState.data.totalOwed > 0
+                  ? tSettings('owedMeta', { amount: fmtCents(Math.round(balanceState.data.totalOwed * 100)) })
+                  : undefined,
+              owed: true,
+              onClick: () => setView('balance'),
+            },
+            // Only for a member an organiser marked `canGift`; the page is the
+            // gifter's half of the organiser's gift-card console.
+            ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift') }] : []),
+          ]}
+        />
+      </ProfileGroup>
+
+      <ProfileGroup id="profile-group-help" label={tSettings('helpGroup')}>
+        <SettingsList
+          rows={[
+            { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
+            { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setView('report') },
+            { icon: 'help_outline', label: tSettings('support'), onClick: () => setView('support') },
+          ]}
+        />
+      </ProfileGroup>
+
+      <ProfileGroup id="profile-group-privacy" label={tSettings('privacyGroup')}>
+        <SettingsList
+          rows={[
+            // `meta` shows the state so nobody has to open the row to check it.
+            {
+              icon: 'visibility',
+              label: tSettings('statsPrivacy'),
+              meta: privacyState.privacy
+                ? privacyState.privacy.clubComparison
+                  ? tSettings('statsPrivacyOn')
+                  : tSettings('statsPrivacyOff')
                 : undefined,
-            owed: true,
-            onClick: () => setView('balance'),
-          },
-          // Only for a member an organiser marked `canGift`; the page is the
-          // gifter's half of the organiser's gift-card console.
-          ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift') }] : []),
-        ]}
-      />
-
-      {/* Four groups, each one question: who am I here (ACCOUNT, above), what
-          do others see (PRIVACY), how does this device behave (APP), and where
-          do I get help (HELP). "App" used to hold all six — a privacy screen
-          beside a changelog beside the privacy policy (Grant, 2026-09-14:
-          "reorg the items into logical group"). */}
-      <ProfileEyebrow>{tSettings('privacyGroup')}</ProfileEyebrow>
-      <SettingsList
-        rows={[
-          // `meta` shows the state so nobody has to open the row to check it.
-          {
-            icon: 'visibility',
-            label: tSettings('statsPrivacy'),
-            meta: privacyState.privacy
-              ? privacyState.privacy.clubComparison
-                ? tSettings('statsPrivacyOn')
-                : tSettings('statsPrivacyOff')
-              : undefined,
-            onClick: () => setView('stats-privacy'),
-          },
-          // A full navigation, not a sheet: the policy is a public server-
-          // rendered page (also the URL in both store listings), and Apple
-          // 5.1.1(i) wants it reachable from inside the app.
-          { icon: 'shield', label: tSettings('privacyPolicy'), onClick: () => window.location.assign(`${BASE}/legal/privacy`) },
-        ]}
-      />
-
-      {appRows.length > 0 && (
-        <>
-          <ProfileEyebrow>{tSettings('appGroup')}</ProfileEyebrow>
-          <SettingsList rows={appRows} />
-        </>
-      )}
-
-      <ProfileEyebrow>{tSettings('helpGroup')}</ProfileEyebrow>
-      <SettingsList
-        rows={[
-          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
-          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setView('report') },
-          { icon: 'help_outline', label: tSettings('support'), onClick: () => setView('support') },
-        ]}
-      />
-
-      {/* Log out stops pretending to navigate. It had a chevron like the rows
-          above it and it was amber, which in this system means full or warning.
-          Separated below the list, centred, no chevron, no card. */}
-      <button
-        type="button"
-        onClick={handleLogout}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 'var(--space-4)',
-          fontSize: 'var(--fs-lg)',
-          color: 'var(--color-red)',
-          fontFamily: 'inherit',
-        }}
-      >
-        {tSettings('logout')}
-      </button>
-
+              onClick: () => setView('stats-privacy'),
+            },
+            // A full navigation, not a sheet: the policy is a public server-
+            // rendered page (also the URL in both store listings), and Apple
+            // 5.1.1(i) wants it reachable from inside the app.
+            { icon: 'shield', label: tSettings('privacyPolicy'), onClick: () => window.location.assign(`${BASE}/legal/privacy`) },
+          ]}
+        />
+      </ProfileGroup>
 
       {/* Which build this phone is running: the deploy's commit, the same id
           the page carries in its `bpm-build` meta tag. A member can read it
           off when something looks old, and "what does yours say?" answers
-          whether a fix has reached them. Quiet, last, and not a control. */}
+          whether a fix has reached them. Quiet, and not a control. */}
       <p className="fs-xs text-center" style={{ margin: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
         {tSettings('version', { sha: buildSha })}
       </p>
+
+      {/* Log out (spec §1.9): its own card, last, one red row with NO chevron —
+          it acts at once (through the confirm), it opens nothing. */}
+      <SettingsList rows={[{ icon: 'logout', label: tSettings('logout'), danger: true, onClick: handleLogout }]} />
 
       {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
 
@@ -1059,6 +1019,16 @@ export default function ProfileTab({
 
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
     </div>
+  );
+}
+
+/** One group on Profile: its eyebrow names the <section> for a screen reader (spec §1). */
+function ProfileGroup({ id, label, children }: { id: string; label: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-4">
+      <ProfileEyebrow id={id}>{label}</ProfileEyebrow>
+      {children}
+    </section>
   );
 }
 

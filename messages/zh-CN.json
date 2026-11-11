@@ -767,7 +767,6 @@
     "adminToolsButton": "管理员工具 →",
     "admin": {
       "checkFailed": "检查失败",
-      "group": "管理",
       "console": "管理员工具",
       "needYou": "{count} 项待处理",
       "allClear": "没有待办"
@@ -886,8 +885,6 @@
       "clubName": "你在俱乐部的名字",
       "helpGroup": "帮助",
       "privacyGroup": "隐私",
-      "title": "账号",
-      "appGroup": "应用",
       "newPin": "设置 PIN",
       "updatePin": "修改 PIN",
       "recoveryCode": "有恢复码？",
@@ -895,6 +892,8 @@
       "accountBalance": "欠款与付款",
       "owedMeta": "欠 {amount}",
       "moneyGroup": "钱款",
+      "clubGroup": "俱乐部",
+      "settingsGroup": "设置",
       "giveGift": "送出礼品卡",
       "statsPrivacy": "数据与隐私",
       "statsPrivacyOn": "已开启",
@@ -2767,8 +2766,8 @@
               "t": "打开通知",
               "b": "点任意页面顶部的铃铛，或我的 → 通知。",
               "img": "profile-app",
-              "alt": "我的页面里的应用分组，包含通知一行。",
-              "caption": "我的 → 应用。"
+              "alt": "我的页面里的设置分组，包含通知一行。",
+              "caption": "我的 → 设置。"
             },
             {
               "t": "语言和主题",

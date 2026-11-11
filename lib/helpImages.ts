@@ -28,7 +28,7 @@ export const HELP_IMAGES: Record<string, Record<string, { w: number; h: number }
     },
     "profile-app": {
       "w": 716,
-      "h": 196
+      "h": 294
     },
     "account-balance": {
       "w": 716,
@@ -58,7 +58,7 @@ export const HELP_IMAGES: Record<string, Record<string, { w: number; h: number }
     },
     "profile-app": {
       "w": 716,
-      "h": 196
+      "h": 294
     },
     "account-balance": {
       "w": 716,
