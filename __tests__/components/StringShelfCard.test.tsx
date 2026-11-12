@@ -470,7 +470,8 @@ describe('the reel-colour picker: the maker\'s, two-colour sets, your own (2026-
     const sections = screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'));
     expect(sections).toEqual(['Yonex makes BG80 in', 'Two-colour sets', 'Other colours']);
     expect(within(maker).getAllByRole('checkbox').map((b) => b.getAttribute('aria-label'))).toEqual(['White', 'Blue', 'Yellow']);
-    expect((maker as HTMLElement).style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))');
+    // jsdom versions differ on whether a unitless 0 reads back as `0px`.
+    expect((maker as HTMLElement).style.gridTemplateColumns).toMatch(/^repeat\(3, minmax\(0(px)?, 1fr\)\)$/);
     const other = screen.getByRole('group', { name: 'Other colours' });
     const otherNames = within(other).getAllByRole('checkbox').map((b) => b.getAttribute('aria-label'));
     // The maker's are not repeated, and the long name fits a tile's one line.

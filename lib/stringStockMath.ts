@@ -213,7 +213,10 @@ export function summarizeStringStock(input: {
     const pool = poolsOf(lineKey);
     const setsLeft = (metres: number, used: number) => Math.floor(Math.max(0, metres - used * line.setMetres) / line.setMetres);
     const tagged = [...pool.colourMetres.keys()];
-    const order = [...STRING_PALETTE.filter((c) => pool.colourMetres.has(c)), ...tagged.filter((c) => !isStringColourId(c))];
+    // Palette colours in palette order, then sets and club colours sorted by id
+    // (combo:… before custom:…), so the order never depends on which of two
+    // purchases logged in the same millisecond was read first.
+    const order = [...STRING_PALETTE.filter((c) => pool.colourMetres.has(c)), ...tagged.filter((c) => !isStringColourId(c)).sort()];
     const byColour: StringColourStock[] = order.map((color) => {
       const purchasedMetres = pool.colourMetres.get(color) ?? 0;
       const usedSets = pool.colourUsed.get(color) ?? 0;
