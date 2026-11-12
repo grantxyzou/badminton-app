@@ -13,7 +13,7 @@ from 2026-10-09 to 2026-11-10; giving gift cards is an organiser's now, below.)
 | Cancel a spot | Their own | Their own | Anyone's, plus purge / clear all |
 | See the roster, announcements, costs | Yes (members-only: signed in) | Yes | Yes, including removed rows and `recoveryEvents` |
 | Pay | Self-report "I paid" on their own row | Same | Mark anyone paid, cover (absorb / resplit), settle |
-| Stringing | Request a job, accept/decline a price change, see their own job and what they owe | See jobs assigned to them **and requests nobody has taken**, with no prices; **take** an untaken request for themselves; move their job's **status** along; nudged about a request still waiting after 48 hours | The whole bench: claim, assign (only to a `canString` member), price, propose, mark paid, archive |
+| Stringing | Request a job, accept/decline a price change, see their own job and what they owe | See jobs assigned to them **and requests nobody has taken**, with no prices; **take** an untaken request for themselves; move their job's **status** along; nudged about a request still waiting after 48 hours; **rename a shelf string and set its reel colours** (2026-11-12) | The whole bench: claim, assign (only to a `canString` member), price, propose, mark paid, archive |
 | Gift cards | Redeem one into their own credit | — | An **organiser** only (2026-11-10; with groups off, every admin): mint from the console or Profile → "Give a gift card" (10 a day there), and read every card's record: who made it, who redeemed it, when, how much is used and left. An admin who is not an organiser gets `organiser_only`. |
 | Sessions, birds, settings, members | — | — | Everything under `/api/admin/*`, `session/*`, `birds*`, `members` writes |
 
@@ -62,7 +62,17 @@ organiser rule is for ranks and gift cards. A BPM row never set reads
   days, pushes every stringer and organiser of the club (or only its stringer,
   once someone has it). The hourly tick sends it
   (`docs/plans/stringing-request-nudge.md`).
-- UI: `components/stringing/StringerJobsCard.tsx`.
+- `PATCH /api/stringing/strings` from a stringer accepts **only**
+  `{ rename: { from, to } }` or `{ colours: { <label>: ids } }`, one per
+  request, applied to the stored shelf (`docs/plans/stringer-shelf-edits.md`;
+  Grant: "open up reel and string name, colour for stringers"). The list,
+  prices, catalog links, aliases, purchases and stock stay an admin's; any
+  other key is `403 forbidden_field`, and the answer carries the list and its
+  colours only.
+- UI: `components/stringing/StringerJobsCard.tsx` and
+  `components/stringing/StringerShelfCard.tsx` (the strings, each opening a
+  sheet with Name and Colours on the reel), both on the stringer's "Stringing
+  jobs" page.
 - Being a stringer grants **no** admin capability. Being an admin does not make
   you a stringer either: assigning a job re-checks `canString` on the assignee
   (`400 not_a_stringer`).

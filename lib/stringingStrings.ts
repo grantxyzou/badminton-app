@@ -152,6 +152,31 @@ export function normaliseColours(value: unknown, strings: readonly string[]): Re
   return out;
 }
 
+/**
+ * Some strings' reel colours set on the STORED map
+ * (docs/plans/stringer-shelf-edits.md): each label in `value` that is on the
+ * list takes the cleaned list it was sent (an empty one clears it); every other
+ * string keeps what it had. `null` when `value` is not a map — the caller
+ * answers 400. Applied to the stored doc so a phone holding an old copy of the
+ * shelf never writes that copy back.
+ */
+export function mergeColours(
+  stored: Readonly<Record<string, StringColourId[]>>,
+  value: unknown,
+  strings: readonly string[],
+): Record<string, StringColourId[]> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const known = new Set(strings);
+  const out: Record<string, StringColourId[]> = { ...stored };
+  for (const [label, list] of Object.entries(value as Record<string, unknown>)) {
+    if (!known.has(label)) continue;
+    const clean = normaliseColourList(list);
+    if (clean.length > 0) out[label] = clean;
+    else delete out[label];
+  }
+  return normaliseColours(out, strings);
+}
+
 export type RenameError = 'invalid_name' | 'not_offered' | 'name_taken';
 
 /**

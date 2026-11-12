@@ -68,6 +68,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Stringers name the strings and set their reel colours (2026-11-12)
+
+Grant: "open up reel and string name, colour for stringers" (`docs/plans/stringer-shelf-edits.md`).
+
+- **A stringer who isn't an admin now has a "Strings on the shelf" card** on their Stringing jobs page, under their queue. Each string shows its reel colours; tapping one opens a sheet to rename it and pick the colours on the reel, with one Save at the bottom. Members asking for a restring are offered exactly those colours.
+- **Nothing else opens up.** Prices, adding or removing strings, catalog links, purchases and stock stay with an admin on the bench. The server refuses any other change from a stringer.
+
 ### A stringing request nobody takes now nudges the stringers (2026-11-12)
 
 - **After 48 hours, and again at 3 days**, a stringing request still waiting sends a notification. If nobody has taken it, the club's stringers and organisers get it. If a stringer has it, only that stringer does. "Wei's Astrox 88D Pro has waited 2 days for a stringer." No price, no string spec.

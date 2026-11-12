@@ -25,13 +25,21 @@
  *             (docs/plans/string-stock-by-colour.md).
  * PATCH also takes `{ rename: { from, to } }` on its own: one string renamed,
  * with its price, link, colours and old spellings carried across on the
- * STORED doc, and the old name counted as the new one.
+ * STORED doc, and the old name counted as the new one. And `{ colours:
+ * { <label>: ids } }` on its own: those strings' reel colours, merged into the
+ * stored map.
+ *
+ * A STRINGER who is not an admin may send those two and nothing else
+ * (docs/plans/stringer-shelf-edits.md; Grant, 2026-11-12: "open up reel and
+ * string name, colour for stringers"). Any other key is a 403, never quietly
+ * dropped, and the answer carries the list and the colours only.
  * A throttled or failed read answers every field `null`: unknown, not empty.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthedWithMember, requireMember } from '@/lib/auth';
+import { isAdminAuthedWithMember, requireMember, verifyLiveMemberAuth } from '@/lib/auth';
+import { canStringIn } from '@/lib/roster';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ensureClubSettings } from '@/lib/stringingShop';
@@ -42,6 +50,7 @@ import {
   normalisePrices,
   normaliseAliases,
   normaliseColours,
+  mergeColours,
   renameOffered,
   stringsDocId,
   type OfferedStringsDoc,
@@ -98,12 +107,31 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
   const admin = await isAdminAuthedWithMember(req);
+  // Null for an admin. A stringer in THIS club (`canStringIn`), re-read on a
+  // live cookie so "Sign out everywhere" and a revoked switch both stop it.
+  let stringerId: string | null = null;
   if (!admin.authed) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    const session = await verifyLiveMemberAuth(req);
+    const strings = session ? await canStringIn(resolveGroupId(req), session.memberId).catch(() => false) : false;
+    if (!session || !strings) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    stringerId = session.memberId;
   }
+  const actorId = admin.authed ? admin.memberId : stringerId;
 
   const body = await req.json().catch(() => null);
-  if (body && typeof body === 'object' && 'rename' in body) return rename(req, body.rename, admin.memberId);
+  if (stringerId) {
+    // The name and the reel, one at a time; never the list, a price, a link or an alias.
+    const keys = body && typeof body === 'object' && !Array.isArray(body) ? Object.keys(body) : [];
+    if (keys.length !== 1 || (keys[0] !== 'rename' && keys[0] !== 'colours')) {
+      return NextResponse.json({ error: 'forbidden_field' }, { status: 403 });
+    }
+  }
+  if (body && typeof body === 'object' && 'rename' in body) return rename(req, body.rename, actorId, stringerId !== null);
+  if (body && typeof body === 'object' && 'colours' in body && !('strings' in body)) {
+    return setColours(req, body.colours, actorId, stringerId !== null);
+  }
   const strings = normaliseOfferedStrings(body?.strings);
   if (strings === null) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
@@ -135,7 +163,7 @@ export async function PATCH(req: NextRequest) {
       aliases,
       colours,
       updatedAt: new Date().toISOString(),
-      updatedBy: admin.memberId,
+      updatedBy: actorId,
     };
     // Upsert, like the shop sign. The maps are merged ABOVE, from the stored
     // doc, for any the caller did not send — which is why the bench sends only
@@ -155,8 +183,37 @@ export async function PATCH(req: NextRequest) {
 
 const RENAME_STATUS = { invalid_name: 400, not_offered: 404, name_taken: 409 } as const;
 
-/** One string renamed on the stored doc (rate limit and admin check already passed). */
-async function rename(req: NextRequest, op: unknown, memberId: string | null) {
+/** What a stringer is told back: the list and its reel colours, nothing of the admin's. */
+function answer(read: { strings: string[]; links: Record<string, string>; prices: Record<string, number | null>; aliases: Record<string, string>; colours: Record<string, string[]> }, stringer: boolean) {
+  return NextResponse.json(
+    stringer
+      ? { strings: read.strings, colours: read.colours }
+      : { strings: read.strings, links: read.links, prices: read.prices, aliases: read.aliases, colours: read.colours },
+  );
+}
+
+/** Some strings' reel colours, merged into the stored doc (rate limit and auth already passed). */
+async function setColours(req: NextRequest, value: unknown, memberId: string | null, stringer: boolean) {
+  try {
+    await ensureClubSettings();
+    const groupId = resolveGroupId(req);
+    const prior = await readOfferedStringsWithLinks(groupId);
+    if (!prior) return NextResponse.json({ error: 'write_failed' }, { status: 503 });
+    const colours = mergeColours(prior.colours, value, prior.strings);
+    if (!colours) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+    const next = { ...prior, colours };
+    const doc: OfferedStringsDoc = { id: stringsDocId(groupId), ...next, updatedAt: new Date().toISOString(), updatedBy: memberId };
+    await groupScope(groupId).upsert('clubSettings', doc);
+    forgetShelfExtras(groupId);
+    return answer(next, stringer);
+  } catch (err) {
+    console.error('PATCH /api/stringing/strings colours failed:', err);
+    return NextResponse.json({ error: 'write_failed' }, { status: 503 });
+  }
+}
+
+/** One string renamed on the stored doc (rate limit and auth already passed). */
+async function rename(req: NextRequest, op: unknown, memberId: string | null, stringer: boolean) {
   const from = (op as { from?: unknown } | null)?.from;
   const to = (op as { to?: unknown } | null)?.to;
   try {
@@ -175,7 +232,7 @@ async function rename(req: NextRequest, op: unknown, memberId: string | null) {
     };
     await groupScope(groupId).upsert('clubSettings', doc);
     forgetShelfExtras(groupId);
-    return NextResponse.json({ strings: next.strings, links: next.links, prices: next.prices, aliases: next.aliases, colours: next.colours });
+    return answer(next, stringer);
   } catch (err) {
     console.error('PATCH /api/stringing/strings rename failed:', err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });
