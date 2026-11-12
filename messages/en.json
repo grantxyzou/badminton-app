@@ -53,7 +53,7 @@
       "registers": {
         "benchSignIn": "Your admin sign-in has ended on this device. Sign in with your name and PIN to use the bench.",
         "racket": "Submit request",
-        "strings": "Pricing details",
+        "strings": "Strings we offer",
         "bench": "Stringing jobs"
       },
       "stringerTitle": "Rackets to string",
@@ -160,7 +160,7 @@
       "subtitle": "Request and track the progress of your racket here.",
       "soon": "Closed",
       "closedTitle": "The stringing service is closed for now.",
-      "closedBody": "Please come back tomorrow to submit a request.",
+      "closedBody": "Please check back soon to submit a request.",
       "shopUnavailable": "Couldn\u2019t check whether the stringing service is open.",
       "offer": {
         "feelWord_5": "Very hard",
@@ -2715,7 +2715,7 @@
             },
             {
               "t": "Choose your string and tension",
-              "b": "Pick from the strings on offer and set your tension. “Pricing details” shows what each costs.",
+              "b": "Pick from the strings on offer and set your tension. “Strings we offer” shows what each costs.",
               "img": "",
               "alt": "",
               "caption": ""

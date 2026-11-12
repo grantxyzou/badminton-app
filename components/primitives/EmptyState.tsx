@@ -52,7 +52,7 @@ export interface EmptyStateProps {
   /**
    * Standing layout only: one line in primary ink above the muted copy, for a
    * state that is the whole card ("The stringing service is closed for now."
-   * over "Please come back tomorrow…"). The same size and ink as a standing
+   * over "Please check back soon…"). The same size and ink as a standing
    * `<ErrorState>`'s message, so the two states read as one pattern.
    */
   title?: ReactNode;

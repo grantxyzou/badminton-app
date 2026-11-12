@@ -58,7 +58,7 @@ describe('closed is said plainly', () => {
     mockApi(false);
     wrap();
     expect(await screen.findByText('The stringing service is closed for now.')).toBeDefined();
-    expect(screen.getByText('Please come back tomorrow to submit a request.')).toBeDefined();
+    expect(screen.getByText('Please check back soon to submit a request.')).toBeDefined();
     expect(screen.queryByText(/Request and track/)).toBeNull();
   });
 

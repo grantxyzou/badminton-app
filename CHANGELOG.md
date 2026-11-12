@@ -51,9 +51,9 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 ### Calmer error cards, and a friendlier Stringing tab (2026-11-11)
 
 - **"Couldn't load… / Try again" is no longer red.** A card that couldn't reach the server now shows a cloud icon over the message in normal text, with "Try again" under it, laid out like the app's other empty states. The server not answering isn't the person's mistake. Red is kept for things they need to fix, like a wrong PIN or a form error.
-- **A closed stringing service says so in words**: a moon icon, "The stringing service is closed for now." and "Please come back tomorrow to submit a request." The "Request and track…" line is gone from the closed and couldn't-check cards.
+- **A closed stringing service says so in words**: a moon icon, "The stringing service is closed for now." and "Please check back soon to submit a request." The "Request and track…" line is gone from the closed and couldn't-check cards.
 - **"Submit a request" is the app's main button**, filled green with a + icon, like Home's "Sign up for this week".
-- **"See pricing details" is now "See what kind of strings are offered".**
+- **"See pricing details" is now "See what kind of strings are offered"**, and the tab it opens is renamed from "Pricing details" to "Strings we offer".
 - **The Stringing sheets keep their main button at the bottom of the screen**: "Next: string tension", "Send the request", "Got it", the accept and decline on a change to confirm, and "Restring with this". The rest of the sheet scrolls above them. The other sheets in the app follow in their own change.
 - **The "request sent" animation can be swiped through**: swipe the picture, or tap a dot, to stop on a step. "Play again" runs it from the start. Its caption and dots are centred.
 - **Cancelling a stringing request now says "A cancellation fee may apply."** It used to say "Nothing is owed yet."
