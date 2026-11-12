@@ -88,6 +88,23 @@ describe('the bench on two pages', () => {
     expect(onTakeover).not.toHaveBeenCalledWith(true);
   });
 
+  it("opens the bench's own pages (Add job, the archive) on the right page too", async () => {
+    respond([base, akane]);
+    const slot = document.body.appendChild(document.createElement('div'));
+    const onTakeover = renderBench(slot);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add job' }));
+    await waitFor(() => expect(within(slot).getByRole('heading', { name: 'New job' })).toBeDefined());
+    expect(screen.getByRole('region', { name: 'Stringing jobs' })).toBeDefined();
+    // No job card reads as open while the right page holds something else.
+    expect(document.querySelector('.bpm-job-card--open')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Archived/ }));
+    await waitFor(() => expect(within(slot).getByRole('heading', { name: 'Archived' })).toBeDefined());
+    // Tapping a job closes whatever was open and shows that job.
+    fireEvent.click(screen.getByRole('button', { name: /Open this job · Arcsaber 11 Pro/ }));
+    await waitFor(() => expect(within(slot).getByRole('heading', { name: 'Akane' })).toBeDefined());
+    expect(onTakeover).not.toHaveBeenCalledWith(true);
+  });
+
   it('on one screen a tap is still the job page, in place of the bench', async () => {
     respond([base, akane]);
     const onTakeover = renderBench(null);

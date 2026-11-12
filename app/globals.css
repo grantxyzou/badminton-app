@@ -2689,6 +2689,22 @@ html:root .ink-button {
   transition: transform var(--duration-press) var(--ease-glass);
 }
 .profile-card-button:active { transform: scale(0.98); }
+/* The card whose page (Edit profile) is open on a foldable's right page:
+   the accent's tint laid over the card's own material — a fill, never a ring
+   — as an open settings row and the open bench job are. Never on one screen. */
+.profile-card-button--open {
+  position: relative;
+}
+.profile-card-button--open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--tone-green-bg);
+  pointer-events: none;
+  /* The tint arrives as the rows' does (they transition their background). */
+  animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
+}
 /* A picture to wear on Edit profile. The selected one takes a ring: the one
    ring the fill-only rule allows, because the picture itself is the fill. */
 .avatar-choice {
@@ -3857,6 +3873,21 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
 }
 
+/* PAGE OPEN — a foldable's right page taking a new page
+   (docs/plans/foldable-layout.md, "Motion for the two pages"). The page
+   arrives from the fold, the spine of the book: a short glide away from the
+   gap (--space-5) under a fade, at --duration-normal, the reflow's own
+   duration. Only ever rendered in two-page mode, so one screen never sees
+   it. Reduced motion keeps the fade and drops the glide (below). The
+   transform ends at none, so nothing fixed inside is caught once it lands. */
+@keyframes panePageOpen {
+  from { opacity: 0; transform: translateX(calc(-1 * var(--space-5))); }
+  to   { opacity: 1; transform: none; }
+}
+.pane-page-open {
+  animation: panePageOpen var(--duration-normal) var(--ease-out-quart) backwards;
+}
+
 .motion-collapse {
   display: grid;
   grid-template-rows: 0fr;
@@ -3920,6 +3951,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   /* The wildcard above zeroes every animation. A fade is not movement, so it
      is given back — `!important` on a class outranks the `*` rule. */
   .motion-fade,
+  .pane-page-open,
   .field-error,
   .field-warn,
   p[role='alert'] {
@@ -5352,7 +5384,10 @@ html:root .bpm-field-filled textarea:focus {
   padding: var(--space-5);
   border-radius: var(--radius-xl);
   background: var(--inner-card-bg);
-  transition: transform var(--duration-press) var(--ease-out-quart);
+  /* The tint follows the job open on a foldable's right page (--open). */
+  transition:
+    transform var(--duration-press) var(--ease-out-quart),
+    background-color var(--duration-fast) var(--ease-glass);
 }
 .bpm-job-card:has(> button:first-child:active) {
   transform: scale(0.98);
@@ -8526,9 +8561,10 @@ button.pill-unpaid:active { transform: scale(0.97); }
 .settings-row {
   background: transparent;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--duration-press) var(--ease-glass);
+  transition: background-color var(--duration-fast) var(--ease-glass);
 }
 .settings-row:active { background: var(--press-bg); }
+.settings-row--open { background: var(--tone-green-bg); }
 button.sheet-row { transition: background-color var(--duration-press) var(--ease-glass), opacity var(--duration-fast) var(--ease-glass); }
 
 .link-quiet,
@@ -8916,6 +8952,40 @@ html[data-pane-flip='b'] [data-app-shell] {
   /* Holding nothing it takes no room, and no gap under the register. */
   .stringing-shell > .stringing-aside:not(:has(> * > :not([hidden]))) {
     display: none;
+  }
+  /* Profile, the same list-detail: the title and the list on the LEFT page;
+     the screen a row opens on the RIGHT, Edit profile before any tap — a
+     phone's Settings opening on your account. The shell is a grid only when
+     ProfileTab renders the right page (`.profile-shell`, signed in, two
+     pages); the right page starts on the list's first row. */
+  main[data-page-shell]:has(> [data-tab-panel='profile']:not([hidden]) .profile-shell) {
+    max-width: var(--panes-max-w);
+  }
+  .profile-shell {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    column-gap: var(--fold-gap);
+    align-items: start;
+  }
+  .profile-shell > * {
+    grid-column: 1;
+  }
+  .profile-shell > .profile-detail {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  /* Admin, the same list-detail: the console on the LEFT page, the page a row
+     opens on the RIGHT — Roster before any tap. Both pages start at the top,
+     each under its own top bar. `.admin-shell` is rendered only on two pages. */
+  main[data-page-shell]:has(> [data-tab-panel='admin']:not([hidden]) .admin-shell) {
+    max-width: var(--panes-max-w);
+  }
+  .admin-shell {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--fold-gap);
+    align-items: start;
   }
   /* RIGHT pane: the week, alone — the page that opens (Grant, 2026-11-04:
      "I would want it on the right cuz that's the elevation opening up more

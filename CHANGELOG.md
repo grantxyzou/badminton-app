@@ -8,6 +8,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Every tab on a foldable uses both halves, with motion (2026-11-12)
+
+- **Profile on an open Z Fold or Duo**: your list on the left, the page a row opens on the right — Edit profile is open before you tap anything. The open row is marked in green. Sheets (notifications, install) still open in the left half.
+- **Admin**: the console on the left, the page you open on the right, with Roster open by default. Opening another row swaps the right half.
+- **The stringing bench's own pages** — Add job, Archived, the set-up page, an archived job — and a player's "A change to confirm" now open on the right half beside the list instead of covering both halves.
+- **A page on the right has no Back button**: the list it came from is right beside it. A page opened from it (your name, from Edit profile) still has one.
+- **Motion**: a page on the right slides in from the fold as it fades in, and the right half scrolls into view when a row far down the list opens it. With reduced motion it only fades.
+- **A phone is unchanged.**
+
 ## Stringing on a foldable: the list on the left, what you tap on the right (2026-11-12)
 
 - **On an open Galaxy Z Fold or iPhone Duo, Stringing uses both halves of the screen.** The title, the switch and the list keep the left half; what you tap opens on the right half beside it, where on a phone it covers the list. Nothing crosses the fold.

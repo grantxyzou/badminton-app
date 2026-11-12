@@ -7,6 +7,8 @@ import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib
 import type { Release } from '@/lib/types';
 import type { ReactNode } from 'react';
 import EnterCodeSheet from './EnterCodeSheet';
+import { PaneDetail, usePaneDetailReveal } from '@/components/primitives/PaneDetail';
+import { usePaneMode } from '@/lib/paneMode';
 import AskAccessSheet from './AskAccessSheet';
 import MigrateSheet from './MigrateSheet';
 import MigrateCodeSheet from './MigrateCodeSheet';
@@ -181,6 +183,9 @@ export default function ProfileTab({
   // 'profile' is Edit profile, opened from the card; 'name' opens from it, so
   // its Back returns there rather than to the list.
   const [view, setView] = useState<'root' | 'stats-privacy' | 'groups' | 'name' | 'contact-email' | 'profile' | 'signin' | 'gift-cards' | 'give-gift' | 'balance' | 'report' | 'support'>('root');
+  // Two pages on an open foldable (lib/paneMode.ts); false on one screen.
+  const pane = usePaneMode();
+  const detailRef = useRef<HTMLDivElement>(null);
   // A sub-screen answers the Android back button (lib/pageStack.ts).
   usePageBack(view !== 'root', () => setView((v) => (v === 'name' || v === 'contact-email' ? 'profile' : 'root')));
   // A page opens at its TOP, and Back returns to the same place in the list.
@@ -197,8 +202,11 @@ export default function ProfileTab({
   useLayoutEffect(() => {
     if (shownView.current === view) return;
     shownView.current = view;
+    // Two pages: the list stays where it is; the right page comes into view
+    // (usePaneDetailReveal, below) instead.
+    if (pane) return;
     scrollPageTo(view === 'root' ? listScroll.current : 0);
-  }, [view]);
+  }, [view, pane]);
   // Read once here so the row's summary and the sheet's body agree.
   //
   // Gated on `identity`: the row only exists for a
@@ -421,6 +429,17 @@ export default function ProfileTab({
   // screen, told whose name this is. KNOWN false only — `null` is unknown —
   // and never for an admin, whose sign-in mints only the admin cookie.
   const deviceSignedOut = !!identity && authKnown && pinAuthed === false && !isAdmin;
+  /* A foldable's two pages (docs/plans/foldable-layout.md): the list on the
+     left, the screen a row opens on the right — Edit profile before any tap.
+     Signed in only; the sign-in screen keeps its one column. */
+  const twoPages = pane && !!identity && !deviceSignedOut && (authKnown || isAdmin);
+  // What the right page shows: the opened screen, or Edit profile before any
+  // tap — the card at the top of the list, as a phone's Settings opens on
+  // your account.
+  const detailView: typeof view = view === 'root' ? 'profile' : view;
+  const isOpen = (v: typeof view) =>
+    twoPages && (detailView === v || (v === 'profile' && (detailView === 'name' || detailView === 'contact-email')));
+  usePaneDetailReveal(detailRef, twoPages ? detailView : null);
 
   if (identity === undefined || (identity && !authKnown && !isAdmin)) {
     // The same frame the chunk fallback showed (TabFallbacks), shaped like the
@@ -434,12 +453,12 @@ export default function ProfileTab({
 
   // Report a problem is a page (spec §6), and reachable signed out too: a
   // sign-up problem is exactly the report worth catching.
-  if (view === 'report') {
+  if (view === 'report' && !twoPages) {
     return <ReportProblemPage name={identity?.name} onBack={() => setView('root')} />;
   }
 
   // Support (spec §7): the guides, common questions and ways to reach a person.
-  if (view === 'support') {
+  if (view === 'support' && !twoPages) {
     return <SupportPage isAdmin={isAdmin} onReport={() => setView('report')} onBack={() => setView('root')} />;
   }
 
@@ -711,35 +730,6 @@ export default function ProfileTab({
     );
   }
 
-  // Sub-screen. Early return so the root Profile tree unmounts entirely and
-  // TopBar's `position: sticky` resolves against the tall scroll root rather
-  // than a short wrapper (see AdminBackHeader's note).
-  if (view === 'groups' && group) {
-    return (
-      <GroupsPage
-        onBack={() => setView('root')}
-        groups={groups}
-        loading={groupsLoading}
-        loadError={groupsError}
-        onRetry={() => void refreshGroups()}
-        // A switch re-mints both cookies, so every tab has to refetch; this
-        // page cannot do that itself, HomeShell owns the nonce. It also bumps
-        // `refreshNonce`, which remounts ProfileTab and returns `view` to
-        // 'root' for free — no explicit reset on the success path.
-        onSwitched={() => onGroupSwitched?.()}
-        // NOT resetting the view first: backing out of the onboarding page
-        // returns HERE, which is where they came from. `setOnboarding(null)`
-        // does not bump the nonce, so this component keeps its view.
-        onJoinAnother={() => onJoinGroup?.()}
-        onCreateAnother={() => onCreateGroup?.()}
-      />
-    );
-  }
-
-  if (view === 'stats-privacy') {
-    return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
-  }
-
   // The PIN and recovery-code sheets open from "How you sign in" and, for a
   // member who just got in without a PIN, from the root; each view that can
   // open them renders them (a sub-view's early return unmounts the root).
@@ -762,7 +752,46 @@ export default function ProfileTab({
     </>
   );
 
-  if (view === 'signin') {
+  // Sub-screen. Early return so the root Profile tree unmounts entirely and
+  // TopBar's `position: sticky` resolves against the tall scroll root rather
+  // than a short wrapper (see AdminBackHeader's note).
+  // On a foldable's two pages the same screens open on the RIGHT page beside
+  // the list instead (below), so this is a function of the view.
+  const subScreen = (v: typeof view): ReactNode => {
+  if (v === 'report') {
+    return <ReportProblemPage name={identity?.name} onBack={() => setView('root')} />;
+  }
+  if (v === 'support') {
+    return <SupportPage isAdmin={isAdmin} onReport={() => setView('report')} onBack={() => setView('root')} />;
+  }
+
+  if (v === 'groups' && group) {
+    return (
+      <GroupsPage
+        onBack={() => setView('root')}
+        groups={groups}
+        loading={groupsLoading}
+        loadError={groupsError}
+        onRetry={() => void refreshGroups()}
+        // A switch re-mints both cookies, so every tab has to refetch; this
+        // page cannot do that itself, HomeShell owns the nonce. It also bumps
+        // `refreshNonce`, which remounts ProfileTab and returns `view` to
+        // 'root' for free — no explicit reset on the success path.
+        onSwitched={() => onGroupSwitched?.()}
+        // NOT resetting the view first: backing out of the onboarding page
+        // returns HERE, which is where they came from. `setOnboarding(null)`
+        // does not bump the nonce, so this component keeps its view.
+        onJoinAnother={() => onJoinGroup?.()}
+        onCreateAnother={() => onCreateGroup?.()}
+      />
+    );
+  }
+
+  if (v === 'stats-privacy') {
+    return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
+  }
+
+  if (v === 'signin') {
     return (
       <>
         <WaysToSignInPage
@@ -777,23 +806,23 @@ export default function ProfileTab({
     );
   }
 
-  if (view === 'gift-cards') {
+  if (v === 'gift-cards') {
     return <GiftCardsPage state={credit} onBack={() => setView('root')} />;
   }
 
-  if (view === 'balance') {
+  if (v === 'balance') {
     return <AccountBalancePage balance={balanceState} credit={creditOn ? credit : null} onBack={() => setView('root')} />;
   }
 
-  if (view === 'give-gift') {
+  if (v === 'give-gift') {
     return <GiveGiftPage clubName={group?.name ?? null} onBack={() => setView('root')} />;
   }
 
-  if (view === 'name') {
+  if (v === 'name') {
     return <NicknamePage currentName={identity.name} clubName={group?.name ?? null} onBack={() => setView('profile')} />;
   }
 
-  if (view === 'contact-email') {
+  if (v === 'contact-email') {
     return (
       <ContactEmailPage
         name={identity.name}
@@ -805,7 +834,7 @@ export default function ProfileTab({
     );
   }
 
-  if (view === 'profile') {
+  if (v === 'profile') {
     return (
       <>
         <EditProfilePage
@@ -836,6 +865,12 @@ export default function ProfileTab({
         />
       </>
     );
+  }
+  return null;
+  };
+  if (!twoPages) {
+    const sub = subScreen(view);
+    if (sub) return sub;
   }
 
   /* Present from the first frame, with NO status until the probe answers:
@@ -875,10 +910,15 @@ export default function ProfileTab({
     // Keyed per branch: the loading, signed-out and signed-in roots sit in the
     // same position, so without a key React reuses the node and the fade
     // never replays — the skeleton was simply swapped for the page in a frame.
-    <div key="profile-member" className="motion-fade flex flex-col gap-4">
+    <div key="profile-member" className={twoPages ? 'motion-fade flex flex-col gap-4 profile-shell' : 'motion-fade flex flex-col gap-4'}>
       <PageHeader>{tNav('profile')}</PageHeader>
 
+      {/* Two pages: the list is one child of the shell (its own column of the
+          same gap), the opened screen another. One screen: the same children
+          straight in the shell, exactly as before. */}
+      <PaneList on={twoPages}>
       <ProfileIdentityCard
+        open={isOpen('profile')}
         name={identity.name}
         clubName={group?.name ?? null}
         isAdmin={isAdmin}
@@ -899,7 +939,7 @@ export default function ProfileTab({
               // The club this phone is in now; its page switches, joins or
               // creates. Absent with groups off (`group` is null).
               ...(group
-                ? [{ icon: 'groups', label: tGroups('yourGroups'), meta: group.name, onClick: () => setView('groups') }]
+                ? [{ icon: 'groups', label: tGroups('yourGroups'), meta: group.name, onClick: () => setView('groups'), selected: isOpen('groups') }]
                 : []),
               // Admin tools (admins only). The count survives here; the stat
               // tiles live on admin home, where they can be acted on. No count
@@ -944,6 +984,7 @@ export default function ProfileTab({
               }),
               accent: methodsState.methods?.nudge === true,
               onClick: () => setView('signin'),
+              selected: isOpen('signin'),
             },
             ...appRows,
           ]}
@@ -963,6 +1004,7 @@ export default function ProfileTab({
                   label: tSettings('giftCards'),
                   meta: credit.loadError || credit.balanceCents === null ? undefined : fmtCents(credit.balanceCents),
                   onClick: () => setView('gift-cards'),
+                  selected: isOpen('gift-cards'),
                 }]
               : []),
             {
@@ -975,10 +1017,11 @@ export default function ProfileTab({
                   : undefined,
               owed: true,
               onClick: () => setView('balance'),
+              selected: isOpen('balance'),
             },
             // Only for an organiser of this club (the route says so); the same
             // power as the console's Gift cards, from Profile.
-            ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift') }] : []),
+            ...(canGift ? [{ icon: 'volunteer_activism', label: tSettings('giveGift'), onClick: () => setView('give-gift'), selected: isOpen('give-gift') }] : []),
           ]}
         />
       </ProfileGroup>
@@ -987,8 +1030,8 @@ export default function ProfileTab({
         <SettingsList
           rows={[
             { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
-            { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setView('report') },
-            { icon: 'help_outline', label: tSettings('support'), onClick: () => setView('support') },
+            { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setView('report'), selected: isOpen('report') },
+            { icon: 'help_outline', label: tSettings('support'), onClick: () => setView('support'), selected: isOpen('support') },
           ]}
         />
       </ProfileGroup>
@@ -1006,6 +1049,7 @@ export default function ProfileTab({
                   : tSettings('statsPrivacyOff')
                 : undefined,
               onClick: () => setView('stats-privacy'),
+              selected: isOpen('stats-privacy'),
             },
             // A full navigation, not a sheet: the policy is a public server-
             // rendered page (also the URL in both store listings), and Apple
@@ -1040,8 +1084,24 @@ export default function ProfileTab({
       />
 
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
+      </PaneList>
+
+      {twoPages && (
+        <div ref={detailRef} className="profile-detail">
+          {/* Your name and contact email open FROM Edit profile, so they keep
+              their Back to it; every other page has its list beside it. */}
+          <PaneDetail nested={detailView === 'name' || detailView === 'contact-email'}>
+            <div key={detailView} className="pane-page-open">{subScreen(detailView)}</div>
+          </PaneDetail>
+        </div>
+      )}
     </div>
   );
+}
+
+/** The list's own column on two pages; its children straight through on one. */
+function PaneList({ on, children }: { on: boolean; children: ReactNode }) {
+  return on ? <div className="flex flex-col gap-4 profile-list">{children}</div> : <>{children}</>;
 }
 
 /** One group on Profile: its eyebrow names the <section> for a screen reader (spec §1). */
@@ -1083,6 +1143,8 @@ interface ProfileIdentityCardProps {
   rank: ProfileRank | null;
   avatar: MemberAvatarValue | null;
   onOpen: () => void;
+  /** Edit profile is open on a foldable's right page beside this card. */
+  open?: boolean;
 }
 
 /**
@@ -1092,7 +1154,7 @@ interface ProfileIdentityCardProps {
  * picture is changed on that page now, beside the name, not from a sheet off
  * the avatar. "Member since" moved there too.
  */
-function ProfileIdentityCard({ name, clubName, isAdmin, rank, avatar, onOpen }: ProfileIdentityCardProps) {
+function ProfileIdentityCard({ name, clubName, isAdmin, rank, avatar, onOpen, open = false }: ProfileIdentityCardProps) {
   const tIdentity = useTranslations('profile.identity');
   const tEdit = useTranslations('profile.editProfile');
   const chip = profileChip(rank, isAdmin);
@@ -1104,7 +1166,8 @@ function ProfileIdentityCard({ name, clubName, isAdmin, rank, avatar, onOpen }: 
       type="button"
       onClick={onOpen}
       aria-label={label}
-      className="glass-card profile-card-button"
+      aria-current={open ? 'page' : undefined}
+      className={open ? 'glass-card profile-card-button profile-card-button--open' : 'glass-card profile-card-button'}
       style={{
         padding: 'var(--space-5)',
         display: 'flex',

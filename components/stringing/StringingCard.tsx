@@ -17,6 +17,7 @@ import { useActiveName } from '@/lib/useActiveName';
 import ConfirmChangePage from './ConfirmChangePage';
 import StringsWeOfferCard from './StringsWeOfferCard';
 import { StringingAside, useStringingAside } from './StringingAside';
+import { PaneDetail } from '@/components/primitives/PaneDetail';
 import RacketProgressCard from './RacketProgressCard';
 import type { PlayerStringingJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
@@ -96,8 +97,9 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
   // or unmount (a group switch remounts the tab with the page still up).
   const reviewing = confirmingJob !== null;
   useEffect(() => {
-    onTakeover?.(reviewing);
-  }, [reviewing, onTakeover]);
+    // On a foldable the page opens on the right page; the tab is not taken over.
+    onTakeover?.(reviewing && !aside);
+  }, [reviewing, aside, onTakeover]);
   useEffect(() => () => onTakeover?.(false), [onTakeover]);
   /* Why the racket list is absent, when it is. `refused` is a device with no
      session for this name (the server answers 401/403) — not a failure, and
@@ -273,7 +275,7 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
   /* "A change to confirm" is a PAGE in place of the cards (Grant, 2026-11-12:
      "i think it should be its own page"). The request sheet is not mounted
      under it: nothing on the page opens it. */
-  if (confirmingJob) {
+  if (confirmingJob && !aside) {
     return (
       <ConfirmChangePage
         job={confirmingJob}
@@ -362,7 +364,18 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
       {/* The right page: the rackets in, else (once the read has answered
           with none) the strings on offer, else its place while it reads. */}
       {aside && (
-        openJobs.length > 0 ? (
+        confirmingJob ? (
+          <StringingAside id={`confirm-${confirmingJob.id}`}>
+            {/* Opened from a racket's card, so its Back returns to the rackets. */}
+            <PaneDetail nested>
+              <ConfirmChangePage
+                job={confirmingJob}
+                onBack={() => setConfirmingJob(null)}
+                onAnswered={loadJobs}
+              />
+            </PaneDetail>
+          </StringingAside>
+        ) : openJobs.length > 0 ? (
           <StringingAside id="rackets">
             <div className="flex flex-col gap-3">{racketCards}</div>
           </StringingAside>
