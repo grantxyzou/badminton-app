@@ -101,7 +101,8 @@ export async function POST(req: NextRequest) {
   // dropped rather than failing a restring over a detail the stringer
   // confirms at hand-over anyway. Kept apart from `stringLabel` so stock
   // still matches the job to its reel by label.
-  const stringColor = label(body.stringColor, 30);
+  // 64: a two-colour set of two of the club's own colours is "<30> / <30>".
+  const stringColor = label(body.stringColor, 64);
 
   const now = new Date().toISOString();
   try {

@@ -8,6 +8,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: two-colour sets, your own colours, and a tidier colour picker (2026-11-12)
+
+- **A reel can be a two-colour set** (Grant: "two colour combo like aerobites"). "Red / White" means red mains and white crosses; the mains are always named first. A set is shown as a swatch split down the middle with a small M and C, and is counted in stock like any single colour: buy a reel of "Red / White", string a racket in it, and that set's count goes down.
+- **An admin can add the club's own colour** (Grant: "custom picker for future"). "Custom colour" asks for a name and a colour (a quick pick, the hue strip, or a hex like #14B8A6). It is saved with the club's strings, so another string can use it too. Players see its swatch and the name you gave it.
+- **The colour picker is tidier.** "Colours on the reel" lists what the maker makes the string in first ("Yonex makes BG80 in"), then "Two-colour sets" (the maker's, such as Aerobite's, and the club's) with "New combo", then "Other colours" with "Custom colour". The tiles are three across, and long names are shortened to fit ("Fl. yellow"). A stringer who isn't an admin gets the same picker and can make a new set, but can't add a club colour.
+- **A player's request offers the sets and the club's colours** and sends the colour's English name ("Red / White", or "Teal") to the bench.
+- **Catalog colours corrected against retailer listings**: Aerobite is red mains with white crosses ("Red/White"), Aerobite Boost is yellow mains with grey crosses ("Yellow/Grey", not white/yellow), and BG80 no longer lists red.
+
 ## Stringing on a foldable: the list on the left, what you tap on the right (2026-11-12)
 
 - **On an open Galaxy Z Fold or iPhone Duo, Stringing uses both halves of the screen.** The title, the switch and the list keep the left half; what you tap opens on the right half beside it, where on a phone it covers the list. Nothing crosses the fold.

@@ -123,6 +123,23 @@ describe('ensureCatalogSeeded', () => {
     expect((upserts[0] as { attributes: Record<string, unknown> }).attributes).toEqual(first.attributes);
   });
 
+  // The 2026-11-12 colour fixes (Aerobite "Red/White" mains first, Aerobite
+  // Boost "Yellow/Grey", BG80 without red) reach a production row seeded with
+  // the old colours: `colors` is an attribute, and attributes are seed-owned.
+  it('refreshes the strings whose colours were corrected', async () => {
+    const seedItems = (await import('../scripts/data/equipment-catalog.json')).default.items as Array<Record<string, unknown>>;
+    const OLD: Record<string, string> = { Aerobite: 'White/Red', 'Aerobite Boost': 'White/Yellow', BG80: 'White; Blue; Yellow; Red' };
+    existingRows = seedItems.map((i) => {
+      const old = i.category === 'string' ? OLD[i.model as string] : undefined;
+      return old ? { ...i, seeded: true, attributes: { ...(i.attributes as object), colors: old } } : { ...i };
+    });
+    const { ensureCatalogSeeded } = await freshModule();
+    await ensureCatalogSeeded();
+    const refreshed = upserts as Array<{ model: string; attributes: { colors: string } }>;
+    const byModel = Object.fromEntries(refreshed.map((u) => [u.model, u.attributes.colors]));
+    expect(byModel).toEqual({ Aerobite: 'Red/White', 'Aerobite Boost': 'Yellow/Grey', BG80: 'White; Blue; Yellow' });
+  });
+
   // Key order is not guaranteed by Cosmos. A naive JSON.stringify comparison
   // would call every row stale and rewrite the whole catalog on every cold
   // start — expensive and invisible.

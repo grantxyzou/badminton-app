@@ -54,6 +54,27 @@ describe('equipment catalog data', () => {
     expect(strings.some((i) => (i as unknown as { attributes: Record<string, unknown> }).attributes.stringType === 'Hybrid')).toBe(false);
   });
 
+  /* Colours checked against retailer listings, 2026-11-12. A two-tone is
+     written MAINS FIRST ("Red/White" = red mains, white crosses), which is how
+     `colourIdOf` reads it into one set (`combo:red+white`), never two colours.
+     Aerobite: red 0.67 mm textured mains, white 0.61 mm crosses (Tennisnuts,
+     W&D Strings, MKSG). Aerobite Boost: yellow mains, grey crosses (Racquet
+     Guys US and Canada, Skylarsun). BG80: no retailer lists a red one. Both
+     source files carry the same, so a re-import cannot undo it. */
+  it('carries the retailer-checked colours, mains first for a two-tone', async () => {
+    const source = (await import('../scripts/data/badminton_string_database.json')).default as unknown as Array<Record<string, unknown>>;
+    const strings = items.filter((i) => i.category === 'string');
+    const coloursOf = (model: string) => (strings.find((i) => i.model === model) as unknown as { attributes: Record<string, unknown> }).attributes.colors;
+    const sourceOf = (model: string) => source.find((r) => r.model === model && r.brand === 'Yonex')?.colors;
+    expect(coloursOf('Aerobite')).toBe('Red/White');
+    expect(coloursOf('Aerobite Boost')).toBe('Yellow/Grey');
+    expect(coloursOf('BG80')).toBe('White; Blue; Yellow');
+    for (const model of ['Aerobite', 'Aerobite Boost', 'BG80']) expect(sourceOf(model), model).toBe(coloursOf(model));
+    const { colourIdOf } = await import('../lib/stringPalette');
+    expect(colourIdOf(coloursOf('Aerobite') as string)).toBe('combo:red+white');
+    expect(colourIdOf(coloursOf('Aerobite Boost') as string)).toBe('combo:yellow+grey');
+  });
+
   it('never carries the source partitionKey field', () => {
     for (const item of items) {
       expect(item).not.toHaveProperty('partitionKey');

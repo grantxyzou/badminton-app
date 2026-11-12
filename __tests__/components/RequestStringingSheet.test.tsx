@@ -547,6 +547,61 @@ describe('the string list as a shelf', () => {
     expect(sentBody(fetchMock)).toBeNull();
   });
 
+  /* Two-colour sets and the club's own colours (2026-11-12, Grant: "two
+     colour combo like aerobites, and custom picker for future"). */
+  it('offers a two-colour set split down the middle and sends "Red / White", mains first', async () => {
+    const fetchMock = mockApi(['BG65'], {
+      ...SHELF,
+      colours: { BG65: ['white', 'combo:red+white', 'custom:14b8a6'] },
+      customColours: [{ id: 'custom:14b8a6', name: 'Teal', hex: '#14b8a6' }],
+    }, [BG65]);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /BG65/ }));
+    expect(await coloursOffered()).toEqual(['White', 'Red / White', 'Teal']);
+    const set = screen.getByRole('radio', { name: 'Red / White' });
+    const swatch = set.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(swatch.style.background).toContain('linear-gradient');
+    fireEvent.click(set);
+    toTension();
+    expect(screen.getByText('BG65 · Red / White · 26 lb')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
+    expect(sentBody(fetchMock)).toMatchObject({ stringLabel: 'BG65', stringColor: 'Red / White' });
+  });
+
+  it('a maker\'s two-tone is its set ("Red/White" is red mains) when the stringer has said nothing', async () => {
+    const AEROBITE = { id: 'string-yx-aerobite', category: 'string', brand: 'Yonex', model: 'Aerobite', attributes: { colors: 'Red/White' } };
+    const fetchMock = mockApi(['Aerobite'], { links: { Aerobite: AEROBITE.id } }, [AEROBITE]);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /Aerobite/ }));
+    // One colour: nothing asked, and the set is sent by its English name.
+    expect(screen.queryByRole('radiogroup', { name: 'Available colours' })).toBeNull();
+    toTension();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
+    expect(sentBody(fetchMock)).toMatchObject({ stringColor: 'Red / White' });
+  });
+
+  it('builds a set\'s name from the translated parts, and shows a club colour as typed', async () => {
+    const zh = (await import('../../messages/zh-CN.json')).default;
+    mockApi(['BG65'], {
+      ...SHELF,
+      colours: { BG65: ['combo:red+white', 'custom:14b8a6'] },
+      customColours: [{ id: 'custom:14b8a6', name: 'Teal', hex: '#14b8a6' }],
+    }, [BG65]);
+    render(
+      <NextIntlClientProvider locale="zh-CN" messages={zh}>
+        <RequestStringingSheet open onClose={() => {}} onRequested={() => {}} gear={null} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole('radio', { name: /BG65/ }));
+    const { red, white } = zh.home.stringing.offer.colourName;
+    expect(await screen.findByRole('radio', { name: `${red} / ${white}` })).toBeDefined();
+    expect(screen.getByRole('radio', { name: 'Teal' })).toBeDefined();
+  });
+
   it('sends no colour for a string the catalog does not know', async () => {
     const fetchMock = mockApi(['House'], {}, []);
     wrap();

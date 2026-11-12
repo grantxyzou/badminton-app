@@ -333,7 +333,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
           <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)', minWidth: 0 }}>
             <span className="fs-lg" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)' }}>{e.label}</span>
             {/* The colours on the reel, when the stringer has said. */}
-            <ColourDots ids={shelf?.colours[e.label] ?? []} />
+            <ColourDots ids={shelf?.colours[e.label] ?? []} customs={shelf?.customColours} />
           </span>
           {price && <span className="fs-lg" style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-primary)' }}>{price}</span>}
         </span>
