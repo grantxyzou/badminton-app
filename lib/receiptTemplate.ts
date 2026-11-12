@@ -6,7 +6,7 @@
  * of truth; the image renders the same content with design-system fonts.
  */
 
-import { fmtMoney } from './fmt';
+import { CLUB_TIME_ZONE, fmtMoney } from './fmt';
 
 export interface ReceiptBreakdown {
   /** What the courts cost in all, and the price of one when known. */
@@ -58,14 +58,9 @@ export interface IndividualReceiptInput extends ReceiptInput {
   playerName: string;
 }
 
-/**
- * The club's clock. A session date reads in Vancouver time whatever zone the
- * phone is in (CLAUDE.md, "Session times display in Vancouver time"): without
- * it a Thursday 7 PM session formatted on a UTC device read "Fri, Nov 20",
- * on the receipt AND in the memo people type into their e-transfer.
- */
-const CLUB_TIME_ZONE = 'America/Vancouver';
-
+// The date reads on the club's clock (`CLUB_TIME_ZONE`), on the receipt AND
+// in the memo people type into their e-transfer: on a UTC device a Thursday
+// 7 PM session read "Fri, Nov 20" until 2026-11-12.
 function fmtDate(iso: string): string {
   if (!iso) return '';
   try {

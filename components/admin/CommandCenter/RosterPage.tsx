@@ -35,7 +35,7 @@ interface RowData {
   member: Member;
   presence: Array<1 | null>;     // length-8 sparkline, 1 = attended that session
   recentCount: number;            // sum of presence
-  lastSession: string | null;     // YYYY-MM-DD of most recent session attended
+  lastSession: string | null;     // ISO datetime of the most recent session attended
   /** `new`: no recent sessions yet, but joined inside the grace window (lib/dormant.ts) — shown under All, never counted dormant. */
   status: 'regular' | 'casual' | 'dormant' | 'new';
   hasAlias: boolean;

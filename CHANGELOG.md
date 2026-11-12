@@ -8,9 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
-## The receipt's date is the club's date (2026-11-12)
+## Receipts and the admin console read dates on the club's clock (2026-11-12)
 
 - **A receipt read the session's date in the phone's own time zone**, so a Thursday 7 PM session showed as "Fri, Nov 20" on a phone or browser set to UTC, on the receipt image, both receipt texts and the e-transfer memo. It now reads in Vancouver time like every other session date in the app. The payments inbox matches a memo by the name after the dash, so a memo's date was never part of matching.
+- **The admin console's dates and times do too**: the next-session card, Payments, the Ledger, Past sessions, Roster, a player's profile and the club-run page all format through the same helpers, which now read in Vancouver time on any phone.
+- **A shuttle purchase showed the day before on a Pacific phone**: its date is a plain calendar day, which a phone read as midnight in London, still the previous evening in Vancouver. It now shows the day that was entered, on every phone.
 
 ## Admin pages and sheets checked against Apple's guidance (2026-11-12)
 
