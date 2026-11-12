@@ -1092,6 +1092,9 @@ export interface StringingJob {
    *  has said they will string it. */
   stringerId: string | null;
   stringerName: string | null;
+  /** When a stringer first took the job (claimed or was assigned), ISO.
+   *  Additive since 2026-11-11; absent on older jobs and on any never taken. */
+  claimedAt?: string;
   status: StringingStatus;
   racketLabel: string;
   stringLabel: string;

@@ -301,6 +301,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       }
     }
 
+    // The first time anybody takes the job, by claiming it or being assigned
+    // it: when a request was ANSWERED, which the club report reads
+    // (`stringingRequests` in lib/metricsMath.ts). Kept on a reassign or an
+    // unassign, so it stays "first taken", never "last touched". Additive.
+    if (!job.claimedAt && !job.stringerId && next.stringerId) next.claimedAt = now;
+
     if (body.archived !== undefined) {
       // Boolean in, timestamp out — same shape as `paid` above, and the
       // re-archive of an already-archived job keeps the original stamp so

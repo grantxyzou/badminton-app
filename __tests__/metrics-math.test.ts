@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeClubMetrics, median, type MetricsInput, type MetricsPlayer } from '@/lib/metricsMath';
+import { computeClubMetrics, computePaymentsInbox, computeStringingRequests, median, type MetricsInput, type MetricsPlayer } from '@/lib/metricsMath';
 
 /**
  * The club metrics are arithmetic an admin makes decisions from, so each
@@ -325,5 +325,89 @@ describe('computeClubMetrics — app usage', () => {
     const m = computeClubMetrics(base({ roster, usageEvents: [{ memberId: 'a', kind: 'app_open', at: daysAgo(3) }] }));
     expect(m.usage.avgDailyActive).not.toBeNull();
     expect(m.usage.stickiness).toBeNull();
+  });
+});
+
+describe('stringingRequests (docs/plans/stringing-audit-fixes.md review)', () => {
+  const now = NOW.getTime();
+  const roster = new Set(['lin', 'kento']);
+  const req = (memberId: string, createdDaysAgo: number, over: Record<string, unknown> = {}) => ({
+    memberId,
+    createdAt: daysAgo(createdDaysAgo),
+    readyBy: null as string | null,
+    history: [{ status: 'requested', at: daysAgo(createdDaysAgo), by: memberId }],
+    ...over,
+  });
+
+  it('counts player requests in 28 days, answered within 24h by a claim or a move, and the ready-by dates', () => {
+    const m = computeStringingRequests(
+      [
+        // claimed 2 hours after asking
+        req('lin', 5, { claimedAt: new Date(NOW.getTime() - 5 * DAY + 2 * 3_600_000).toISOString() }),
+        // moved to received 30 hours later, with a ready-by date
+        req('kento', 10, {
+          readyBy: '2026-10-01',
+          history: [
+            { status: 'requested', at: daysAgo(10), by: 'kento' },
+            { status: 'received', at: new Date(NOW.getTime() - 10 * DAY + 30 * 3_600_000).toISOString(), by: 'admin' },
+          ],
+        }),
+        // never answered
+        req('lin', 1),
+        // the stringer logged this one: not a player request
+        req('lin', 3, { history: [{ status: 'received', at: daysAgo(3), by: 'admin' }] }),
+        // too old, and not on the roster
+        req('lin', 40),
+        req('stranger', 2),
+      ],
+      roster,
+      now,
+    );
+    expect(m).toEqual({ requests28d: 3, answeredWithin24h: 1, answeredWithin24hRate: 1 / 3, unanswered: 1, withReadyBy: 1 });
+  });
+
+  it('no requests is a null rate, never 0%', () => {
+    expect(computeStringingRequests([], roster, now).answeredWithin24hRate).toBeNull();
+  });
+});
+
+describe('paymentsInbox (docs/plans/payments.md review)', () => {
+  const now = NOW.getTime();
+  it('splits the 28 days by who matched, and counts what waits and for how long', () => {
+    const m = computePaymentsInbox(
+      [
+        { status: 'matched', matchedBy: 'auto', receivedAt: daysAgo(1) },
+        { status: 'matched', matchedBy: 'auto', receivedAt: daysAgo(3) },
+        { status: 'matched', matchedBy: 'admin-1', receivedAt: daysAgo(4) },
+        { status: 'ignored', receivedAt: daysAgo(6) },
+        { status: 'review', receivedAt: daysAgo(9) },
+        { status: 'review', receivedAt: daysAgo(40) }, // waits, but outside the window
+        { status: 'matched', matchedBy: 'auto', receivedAt: daysAgo(50) },
+      ],
+      now,
+    );
+    expect(m).toEqual({
+      received28d: 5,
+      autoMatched28d: 2,
+      adminMatched28d: 1,
+      ignored28d: 1,
+      autoMatchRate: 2 / 5,
+      waiting: 2,
+      oldestWaitingDays: 40,
+    });
+  });
+
+  it('an empty inbox has null rates and no oldest wait', () => {
+    const m = computePaymentsInbox([], now);
+    expect(m.autoMatchRate).toBeNull();
+    expect(m.oldestWaitingDays).toBeNull();
+    expect(m.waiting).toBe(0);
+  });
+
+  it('computeClubMetrics carries both blocks, and no name or amount', () => {
+    const out = computeClubMetrics(base({ etransfers: [{ status: 'review', receivedAt: daysAgo(2) }] }));
+    expect(out.paymentsInbox.waiting).toBe(1);
+    expect(out.stringingRequests.requests28d).toBe(0);
+    expect(Object.keys(out.paymentsInbox)).not.toContain('senderName');
   });
 });

@@ -55,6 +55,23 @@ describe('GET /api/admin/metrics', () => {
     expect(JSON.stringify(body)).not.toMatch(/\bLin\b|Viktor/);
   });
 
+  it('reads the e-transfer inbox and the stringing requests through to the report (no sender, no amount)', async () => {
+    const { GET } = await import('@/app/api/admin/metrics/route');
+    const lin = seedMember('Lin');
+    seedDoc('payments', { id: 'etx:a', source: 'etransfer', status: 'matched', matchedBy: 'auto', receivedAt: ago(2), senderName: 'LIN Q', amountCents: 1500, allocations: [], subject: 's', authenticated: true, createdAt: ago(2) });
+    seedDoc('payments', { id: 'etx:b', source: 'etransfer', status: 'review', receivedAt: ago(5), senderName: 'SOMEONE', amountCents: 999, allocations: [], subject: 's', authenticated: false, createdAt: ago(5) });
+    seedDoc('stringingJobs', {
+      id: 'job-1', memberId: lin.id, createdAt: ago(3), readyBy: '2026-12-01', stringerId: null,
+      history: [{ status: 'requested', at: ago(3), by: lin.id }],
+      claimedAt: new Date(Date.now() - 3 * DAY + 3_600_000).toISOString(),
+    });
+
+    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    expect(body.paymentsInbox).toMatchObject({ received28d: 2, autoMatched28d: 1, waiting: 1, oldestWaitingDays: 5 });
+    expect(body.stringingRequests).toMatchObject({ requests28d: 1, answeredWithin24h: 1, withReadyBy: 1 });
+    expect(JSON.stringify(body)).not.toMatch(/LIN Q|SOMEONE|1500|999/);
+  });
+
   it('does not count another club', async () => {
     const { GET } = await import('@/app/api/admin/metrics/route');
     seedSession('session-2026-10-01', { datetime: ago(6), maxPlayers: 4 });

@@ -33,6 +33,10 @@ function mockMetrics(payload: unknown, ok = true) {
 const HAPPY: ClubMetrics = {
   clientErrors: { last7d: 0, members7d: 0, byTab: {} },
   appReady: { opens7d: 0, medianMs: null, slowMs: null, medianLaunchMs: null, byStart: {} },
+  stringingRequests: { requests28d: 0, answeredWithin24h: 0, answeredWithin24hRate: null, unanswered: 0, withReadyBy: 0 },
+  paymentsInbox: {
+    received28d: 0, autoMatched28d: 0, adminMatched28d: 0, ignored28d: 0, autoMatchRate: null, waiting: 0, oldestWaitingDays: null,
+  },
   generatedAt: '2026-10-07T12:00:00.000Z',
   rosterSize: 40,
   activeMembers: { last4: 23, previous4: 19 },

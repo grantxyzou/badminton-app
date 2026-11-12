@@ -127,3 +127,30 @@ describe('a stringer hears when a job is assigned to them', () => {
     expect(sendPushToMembers).not.toHaveBeenCalled();
   });
 });
+
+describe('claimedAt: when a request was first taken (the club report reads it)', () => {
+  const written = async (res: Response) => ((await res.json()) as { job: StringingJob }).job;
+
+  it('a self-claim of an unclaimed job stamps it', async () => {
+    const job = await seedJob({ status: 'requested' });
+    const out = await written(await patch(job, { claim: true }));
+    expect(typeof out.claimedAt).toBe('string');
+  });
+
+  it('an assignment stamps it too, and a reassign or unassign keeps the FIRST time', async () => {
+    const job = await seedJob({ status: 'requested' });
+    const first = (await written(await patch(job, { stringerId: 'm-zach' }))).claimedAt;
+    expect(typeof first).toBe('string');
+    const stored = () => (getStore()['stringingJobs'] as StringingJob[]).find((j) => j.id === job.id)!;
+    await patch(stored(), { stringerId: null });
+    expect(stored().claimedAt).toBe(first);
+    await patch(stored(), { claim: true });
+    expect(stored().claimedAt).toBe(first);
+  });
+
+  it('a job that already had a stringer is not stamped by a re-save', async () => {
+    const job = await seedJob({ stringerId: 'm-zach', stringerName: 'Zach' });
+    const out = await written(await patch(job, { stringerId: 'm-zach' }));
+    expect(out.claimedAt).toBeUndefined();
+  });
+});

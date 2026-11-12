@@ -99,6 +99,7 @@ fix before anything in Phase 2 starts.
   it" does not count, so a slow match never holds the people who paid. A payment releases the hold and
   promotes them only into a spot no earlier waitlister is waiting for. Reminders (push, no amount on the
   lock screen) are Phase 1b — see the Roadmap.
+- **2026-11-11: the review's numbers are in the club report** (Grant: "add the missing numbers to the report"). `paymentsInbox` on `GET /api/reports/metrics` (and the admin Metrics read): e-transfers received in the last 28 days, split auto-matched / matched by an admin / ignored, the auto-match share, and how many wait in "Needs a look" and for how long. Counted from the same newest-200 read the admin card uses, status and dates only — no sender, amount or memo leaves `lib/metrics.ts`.
 
 ## What a real notification settled (2026-10-03)
 
