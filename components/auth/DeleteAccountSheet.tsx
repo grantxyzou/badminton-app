@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import { clearIdentity } from '@/lib/identity';
 import { clearDeviceTraces } from '@/lib/clearDeviceTraces';
@@ -103,7 +103,12 @@ export default function DeleteAccountSheet({
               {t('debtWarning')}
             </p>
           </div>
-
+        </div>
+      </BottomSheetBody>
+      {/* The answer, pinned to the bottom of the screen, with the error about
+          it just above. */}
+      <BottomSheetFooter>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {error && (
             <p className="field-error" role="alert">
               {t('error')}
@@ -114,7 +119,6 @@ export default function DeleteAccountSheet({
               {t('offlineHint')}
             </p>
           )}
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {/* Named for what it does. "Yes" under "Delete your account?" reads
                 as "yes, cancel the deletion" to about half of people. */}
@@ -136,7 +140,7 @@ export default function DeleteAccountSheet({
             </button>
           </div>
         </div>
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

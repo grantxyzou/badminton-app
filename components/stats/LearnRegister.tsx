@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
-import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '../BottomSheet';
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '../BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import type { UseCheckIn } from './useCheckIn';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
@@ -480,18 +480,22 @@ function DrillSheet({
             </div>
             <p style={{ margin: '0', fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>{skillText.drillDescription(drill)}</p>
             <p style={{ margin: '0', fontSize: 'var(--fs-sm)', fontStyle: 'italic', color: 'var(--text-muted)' }}>{skillText.drillReason(drill)}</p>
-            <button
-              type="button"
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ width: '100%' }}
-              disabled={!online}
-              onClick={() => onToggle(drill)}
-            >
-              {done ? t('undo') : t('markDone')}
-            </button>
           </div>
         )}
       </BottomSheetBody>
+      {drill && (
+        <BottomSheetFooter>
+          <button
+            type="button"
+            className="cc-btn cc-btn-primary cc-btn-lg"
+            style={{ width: '100%' }}
+            disabled={!online}
+            onClick={() => onToggle(drill)}
+          >
+            {done ? t('undo') : t('markDone')}
+          </button>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

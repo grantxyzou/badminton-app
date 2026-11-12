@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { setIdentity } from '@/lib/identity';
 import { PASSWORD_MIN_LENGTH, isCommonPassword } from '@/lib/passwordRules';
 
@@ -60,6 +60,7 @@ export default function ResetPasswordSheet({
   const tooShort = password.length > 0 && password.length < PASSWORD_MIN_LENGTH;
   const tooCommon = password.length >= PASSWORD_MIN_LENGTH && isCommonPassword(password);
   const mismatch = confirm.length > 0 && password !== confirm;
+  const formId = useId();
   const canSubmit =
     !busy && password.length >= PASSWORD_MIN_LENGTH && !tooCommon && password === confirm;
 
@@ -103,17 +104,9 @@ export default function ResetPasswordSheet({
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('resetExpired')}
             </p>
-            <button
-              type="button"
-              onClick={onNeedNewLink}
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ width: '100%' }}
-            >
-              {t('resetGetNewLink')}
-            </button>
           </div>
         ) : (
-          <form onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <form id={formId} onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('resetBody')}
             </p>
@@ -145,18 +138,37 @@ export default function ResetPasswordSheet({
             {tooShort && <p className="field-error">{t('passwordTooShort')}</p>}
             {tooCommon && <p className="field-error">{t('passwordTooCommon')}</p>}
             {mismatch && <p className="field-error">{t('passwordMismatch')}</p>}
+          </form>
+        )}
+      </BottomSheetBody>
+      {/* Each state's finishing button, pinned to the bottom of the screen with
+          the error about it just above; `form={formId}` keeps Enter in a field
+          submitting. The field checks stay beside their fields. */}
+      <BottomSheetFooter>
+        {expired ? (
+          <button
+            type="button"
+            onClick={onNeedNewLink}
+            className="cc-btn cc-btn-primary cc-btn-lg"
+            style={{ width: '100%' }}
+          >
+            {t('resetGetNewLink')}
+          </button>
+        ) : (
+          <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
             {error && <p className="field-error">{error}</p>}
             <button
               type="submit"
+              form={formId}
               disabled={!canSubmit}
               className="cc-btn cc-btn-primary cc-btn-lg"
               style={{ width: '100%' }}
             >
               {busy ? t('resetSaving') : t('resetCta')}
             </button>
-          </form>
+          </div>
         )}
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetBody, SheetCloseButton } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 
 /**
@@ -87,6 +87,15 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
             <Reassurance icon="check_circle">{t('bands')}</Reassurance>
             <Reassurance icon="lock">{t('private')}</Reassurance>
           </div>
+        </div>
+      </BottomSheetBody>
+      <BottomSheetFooter>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          {!online && (
+            <p style={{ margin: '0', textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+              {t('offline')}
+            </p>
+          )}
 
           <button
             type="button"
@@ -107,17 +116,11 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
             {t('no')}
           </button>
 
-          {!online && (
-            <p style={{ margin: '0', textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-              {t('offline')}
-            </p>
-          )}
-
           <p style={{ margin: '0', textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
             {t('changeLater')}
           </p>
         </div>
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

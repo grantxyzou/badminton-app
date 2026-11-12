@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import type { BirdPurchase, Session } from '@/lib/types';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
@@ -242,9 +242,12 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
           </div>
         )}
 
-        {error && <p className="field-error mt-2" role="alert">{error}</p>}
+      </BottomSheetBody>
 
-        <div className="flex gap-2 mt-4">
+      <BottomSheetFooter className="flex flex-col gap-3">
+        {error && <p className="field-error" role="alert">{error}</p>}
+
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={onClose}
@@ -270,7 +273,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
             {saving ? 'Saving…' : !online ? 'Offline' : 'Save'}
           </button>
         </div>
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

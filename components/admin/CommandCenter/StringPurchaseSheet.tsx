@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { todayIso } from '@/lib/stringingDue';
 import { metresFor, REEL_M, SET_M } from '@/lib/stringStockMath';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
@@ -208,12 +208,14 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
           <Field label="Notes (optional)">
             <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={200} placeholder="Where from…" />
           </Field>
-          {error && <p className="field-error" role="alert">{error}</p>}
-          <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" disabled={saving} onClick={() => void save()}>
-            {saving ? 'Saving…' : 'Log purchase'}
-          </button>
         </div>
       </BottomSheetBody>
+      <BottomSheetFooter className="flex flex-col gap-3">
+        {error && <p className="field-error" role="alert">{error}</p>}
+        <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" disabled={saving} onClick={() => void save()}>
+          {saving ? 'Saving…' : 'Log purchase'}
+        </button>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

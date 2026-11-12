@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from './BottomSheet';
 import PinInput from './PinInput';
 import { setIdentity } from '@/lib/identity';
 
@@ -108,15 +108,14 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
               label={t('codeLabel')}
               ariaInvalid={error === 'invalid'}
             />
-            <button
-              type="button"
-              disabled={submitting || !name.trim() || code.length !== 6}
-              onClick={submit}
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ marginTop: 'var(--space-1)' }}
-            >
-              {t('submitCode')}
-            </button>
+          </div>
+        )}
+      </BottomSheetBody>
+      {/* The action, pinned to the bottom of the screen, with the error about
+          it just above. The welcome line has nothing left to answer. */}
+      {!success && (
+        <BottomSheetFooter>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {error === 'invalid' && (
               <p role="alert" className="field-error">
                 {t('errorInvalid')}
@@ -137,9 +136,18 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
                 {t('errorNetwork')}
               </p>
             )}
+            <button
+              type="button"
+              disabled={submitting || !name.trim() || code.length !== 6}
+              onClick={submit}
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              style={{ marginTop: 'var(--space-1)' }}
+            >
+              {t('submitCode')}
+            </button>
           </div>
-        )}
-      </BottomSheetBody>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

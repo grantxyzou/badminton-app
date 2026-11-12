@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from './BottomSheet';
 import PinInput from './PinInput';
 import { setIdentity } from '@/lib/identity';
 import { useOnline } from '@/lib/useOnline';
@@ -95,6 +95,18 @@ export default function MigrateCodeSheet({ open, onClose }: Props) {
               label={t('codeLabel')}
               ariaInvalid={error === 'invalid'}
             />
+          </div>
+        )}
+      </BottomSheetBody>
+      {/* The action, pinned to the bottom of the screen, with the error about
+          it just above. The welcome line has nothing left to answer. */}
+      {!success && (
+        <BottomSheetFooter>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {!online && <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>}
+            {error === 'invalid' && <p role="alert" className="field-error">{t('errorInvalid')}</p>}
+            {error === 'rate_limited' && <p role="alert" className="field-error">{t('errorRateLimited')}</p>}
+            {error === 'server' && <p role="alert" className="field-error">{t('errorServer')}</p>}
             <button
               type="button"
               disabled={submitting || !online || !name.trim() || code.length !== 6}
@@ -104,13 +116,9 @@ export default function MigrateCodeSheet({ open, onClose }: Props) {
             >
               {t('submit')}
             </button>
-            {!online && <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>}
-            {error === 'invalid' && <p role="alert" className="field-error">{t('errorInvalid')}</p>}
-            {error === 'rate_limited' && <p role="alert" className="field-error">{t('errorRateLimited')}</p>}
-            {error === 'server' && <p role="alert" className="field-error">{t('errorServer')}</p>}
           </div>
-        )}
-      </BottomSheetBody>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

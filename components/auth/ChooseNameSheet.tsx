@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { setIdentity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -74,6 +74,9 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
   const [useCode, setUseCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The name and claim steps are never on screen together, so their forms
+  // share one id; the pinned submit button points at whichever is mounted.
+  const formId = useId();
 
   // Apple sends a name on the FIRST authorization only, and the callback parks
   // it in a signed HttpOnly cookie this component cannot read. Asking the
@@ -221,19 +224,9 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('pendingExpired')}
             </p>
-            {/* A way OUT. The old copy said "tap the button again" while the
-                sheet contained no such button — a dead end. */}
-            <button
-              type="button"
-              onClick={onClose}
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ width: '100%' }}
-            >
-              {t('pendingExpiredCta')}
-            </button>
           </div>
         ) : claiming ? (
-          <form key="claim" className="motion-fade" onSubmit={submitClaim} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <form key="claim" id={formId} className="motion-fade" onSubmit={submitClaim} style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('claimBody', { name: name.trim() })}
             </p>
@@ -255,15 +248,6 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
               placeholder={useCode ? t('claimCodeLabel') : t('claimPinLabel')}
               style={{ WebkitTextSecurity: 'disc' } as React.CSSProperties}
             />
-            {error && <p className="field-error">{error}</p>}
-            <button
-              type="submit"
-              disabled={busy || secret.length < digits}
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ width: '100%' }}
-            >
-              {busy ? t('claimChecking') : t('claimCta')}
-            </button>
             <button
               type="button"
               onClick={() => {
@@ -290,7 +274,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
             </button>
           </form>
         ) : (
-          <form key="name" onSubmit={submitName} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <form key="name" id={formId} onSubmit={submitName} style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('chooseNameBody')}
             </p>
@@ -307,18 +291,51 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
               aria-label={t('chooseNamePlaceholder')}
               autoComplete="nickname"
             />
-            {error && <p className="field-error">{error}</p>}
-            <button
-              type="submit"
-              disabled={busy || !name.trim()}
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ width: '100%' }}
-            >
-              {busy ? t('chooseNameSaving') : t('chooseNameCta')}
-            </button>
           </form>
         )}
       </BottomSheetBody>
+      {/* Each step's finishing button, pinned to the bottom of the screen with
+          the error about it just above. The forms stay in the body around their
+          fields, so Enter in a field still submits through `form={formId}`. */}
+      <BottomSheetFooter>
+        {expired ? (
+          // A way OUT. The old copy said "tap the button again" while the
+          // sheet contained no such button — a dead end.
+          <button
+            type="button"
+            onClick={onClose}
+            className="cc-btn cc-btn-primary cc-btn-lg"
+            style={{ width: '100%' }}
+          >
+            {t('pendingExpiredCta')}
+          </button>
+        ) : (
+          <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+            {error && <p className="field-error">{error}</p>}
+            {claiming ? (
+              <button
+                type="submit"
+                form={formId}
+                disabled={busy || secret.length < digits}
+                className="cc-btn cc-btn-primary cc-btn-lg"
+                style={{ width: '100%' }}
+              >
+                {busy ? t('claimChecking') : t('claimCta')}
+              </button>
+            ) : (
+              <button
+                type="submit"
+                form={formId}
+                disabled={busy || !name.trim()}
+                className="cc-btn cc-btn-primary cc-btn-lg"
+                style={{ width: '100%' }}
+              >
+                {busy ? t('chooseNameSaving') : t('chooseNameCta')}
+              </button>
+            )}
+          </div>
+        )}
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

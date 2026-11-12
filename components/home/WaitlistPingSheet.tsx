@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import type { UsePushResult } from '@/lib/usePush';
 import type { WaitlistPingKind } from '@/lib/waitlistPing';
@@ -46,6 +46,12 @@ export default function WaitlistPingSheet({ kind, onClose, onGetApp, push }: Pro
           <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>
             {kind === 'app' ? t('appBody') : t('enableBody')}
           </p>
+        </div>
+      </BottomSheetBody>
+      {/* The answer, pinned to the bottom of the screen, with what the last
+          tap did just above it. */}
+      <BottomSheetFooter>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {kind === 'enable' && push.state.status === 'denied' && (
             // The prompt was answered "no" just now: say what is left, plainly.
             <p className="fs-base m-0" role="status" style={{ color: 'var(--text-secondary)' }}>{tp('blocked')}</p>
@@ -76,7 +82,7 @@ export default function WaitlistPingSheet({ kind, onClose, onGetApp, push }: Pro
             </button>
           </div>
         </div>
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

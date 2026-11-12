@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import BirdSheetField from './BirdSheetField';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -96,32 +96,34 @@ export default function BirdReconcileSheet({ open, currentStock, onClose, onSave
               maxLength={200}
             />
           </BirdSheetField>
-          {reconcileError && (
-            <p role="alert" className="field-error" style={{ margin: '0' }}>
-              {reconcileError}
-            </p>
-          )}
-          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              className="cc-btn cc-btn-ghost"
-              disabled={reconcileSaving}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleReconcile}
-              className="cc-btn cc-btn-primary"
-              disabled={reconcileSaving}
-              style={{ minWidth: 100 }}
-            >
-              {reconcileSaving ? 'Saving…' : 'Reconcile'}
-            </button>
-          </div>
         </div>
       </BottomSheetBody>
+      <BottomSheetFooter className="flex flex-col gap-3">
+        {reconcileError && (
+          <p role="alert" className="field-error" style={{ margin: '0' }}>
+            {reconcileError}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="cc-btn cc-btn-ghost"
+            disabled={reconcileSaving}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleReconcile}
+            className="cc-btn cc-btn-primary"
+            disabled={reconcileSaving}
+            style={{ minWidth: 100 }}
+          >
+            {reconcileSaving ? 'Saving…' : 'Reconcile'}
+          </button>
+        </div>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

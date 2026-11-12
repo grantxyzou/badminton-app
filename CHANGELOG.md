@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Every sheet keeps its main button in reach (2026-11-12)
+
+- A sheet's finishing button (Save, Send, Next, Done, a Keep / Delete pair) now stays pinned to the bottom of the screen while the content above it scrolls, across sign-in and account, the admin console, Profile and Stats. Stringing moved first. An error about that action shows just above the button, and a form still submits on Enter.
+- The pinned area keeps clear of the iPhone's home indicator.
+- A new build check fails any sheet that puts its primary button back inside the scrolling content; two sheets are exempt with their reasons (the cover choice, and the roster's selected toggles).
+
 ## A string's page reads top to bottom (2026-11-12)
 
 - The header of a string's page puts the packet on the left and, beside it, the string's name as the largest line, with the stock pill on the same row and what the string is for underneath. That sentence used to appear a second time under the card; it shows once now.

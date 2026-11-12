@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from './BottomSheet';
 import PinInput from './PinInput';
 import type { Identity } from '@/lib/identity';
 
@@ -118,9 +118,6 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             <p role="alert" style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: '0', lineHeight: 1.5 }}>
               {t('pinNeedsSignIn')}
             </p>
-            <button type="button" className="cc-btn cc-btn-secondary cc-btn-lg" onClick={onClose}>
-              {tRecovery('close')}
-            </button>
           </div>
         ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -156,55 +153,69 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
               label={tPin('confirmLabel')}
             />
           </div>
-          {pinError === 'too_common' && (
-            <p role="alert" className="field-error" style={{ margin: '0' }}>
-              {t('pinTooCommon')}
-            </p>
-          )}
-          {pinError === 'invalid' && (
-            <p role="alert" className="field-error" style={{ margin: '0' }}>
-              {t('pinInvalid')}
-            </p>
-          )}
-          {pinError === 'wrong_current' && (
-            <p role="alert" className="field-error" style={{ margin: '0' }}>
-              {t('pinWrongCurrent')}
-            </p>
-          )}
-          {pinError === 'rate_limited' && (
-            <p role="alert" className="field-warn" style={{ margin: '0' }}>
-              {t('pinRateLimited')}
-            </p>
-          )}
-          {pinError === 'failed' && (
-            <p role="alert" className="field-error" style={{ margin: '0' }}>
-              {t('pinUpdateFailed')}
-            </p>
-          )}
-          {pinError === 'needs_signin' && (
-            <p role="alert" className="field-warn" style={{ margin: '0' }}>
-              {t('pinNeedsSignIn')}
-            </p>
-          )}
-          {/* Only once the confirmation is complete. Judged on every digit it
-              said "don't match" after the first keystroke and moved the Save
-              button with each one after. */}
-          {confirmPin.length === 4 && newPin !== confirmPin && (
-            <p role="alert" className="field-error" style={{ margin: '0' }}>
-              {tPin('mismatch')}
-            </p>
-          )}
-          <button
-            type="button"
-            className="cc-btn cc-btn-primary cc-btn-lg"
-            disabled={!canSubmit}
-            onClick={() => savePin(newPin)}
-          >
-            {submitLabel}
-          </button>
         </div>
         )}
       </BottomSheetBody>
+      {/* The action, pinned to the bottom of the screen, with the error about
+          it just above. */}
+      <BottomSheetFooter>
+        {firstSetBlocked ? (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <button type="button" className="cc-btn cc-btn-secondary cc-btn-lg" onClick={onClose}>
+              {tRecovery('close')}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {pinError === 'too_common' && (
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
+                {t('pinTooCommon')}
+              </p>
+            )}
+            {pinError === 'invalid' && (
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
+                {t('pinInvalid')}
+              </p>
+            )}
+            {pinError === 'wrong_current' && (
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
+                {t('pinWrongCurrent')}
+              </p>
+            )}
+            {pinError === 'rate_limited' && (
+              <p role="alert" className="field-warn" style={{ margin: '0' }}>
+                {t('pinRateLimited')}
+              </p>
+            )}
+            {pinError === 'failed' && (
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
+                {t('pinUpdateFailed')}
+              </p>
+            )}
+            {pinError === 'needs_signin' && (
+              <p role="alert" className="field-warn" style={{ margin: '0' }}>
+                {t('pinNeedsSignIn')}
+              </p>
+            )}
+            {/* Only once the confirmation is complete. Judged on every digit it
+                said "don't match" after the first keystroke and moved the Save
+                button with each one after. */}
+            {confirmPin.length === 4 && newPin !== confirmPin && (
+              <p role="alert" className="field-error" style={{ margin: '0' }}>
+                {tPin('mismatch')}
+              </p>
+            )}
+            <button
+              type="button"
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              disabled={!canSubmit}
+              onClick={() => savePin(newPin)}
+            >
+              {submitLabel}
+            </button>
+          </div>
+        )}
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

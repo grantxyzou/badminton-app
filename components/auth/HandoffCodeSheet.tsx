@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import PinInput from '@/components/PinInput';
 import { useOnline } from '@/lib/useOnline';
 import type { HandoffCollect } from '@/lib/useHandoffCollect';
@@ -49,9 +49,6 @@ export default function HandoffCodeSheet({ prompt, submitCode, dismiss }: Handof
             <p className="fs-md" style={{ color: 'var(--text-primary)', margin: '0', lineHeight: 'var(--lh-normal)' }}>
               {t('handoffEnterExpired')}
             </p>
-            <button type="button" onClick={dismiss} className="cc-btn cc-btn-secondary cc-btn-lg">
-              {t('handoffEnterClose')}
-            </button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -66,6 +63,24 @@ export default function HandoffCodeSheet({ prompt, submitCode, dismiss }: Handof
               autoFocus
               ariaInvalid={!!prompt?.wrong}
             />
+          </div>
+        )}
+      </BottomSheetBody>
+      {/* The answer, pinned to the bottom of the screen with the error about it
+          just above. */}
+      <BottomSheetFooter>
+        {prompt?.expired ? (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <button type="button" onClick={dismiss} className="cc-btn cc-btn-secondary cc-btn-lg">
+              {t('handoffEnterClose')}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {prompt?.wrong && <p role="alert" className="field-error">{t('handoffEnterWrong')}</p>}
+            {prompt?.retry && <p role="alert" className="field-error">{t('handoffEnterRetry')}</p>}
+            {prompt?.throttled && <p role="alert" className="field-error">{t('handoffEnterThrottled')}</p>}
+            {!online && <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>}
             <button
               type="button"
               disabled={submitting || !online || code.length !== 6}
@@ -74,16 +89,12 @@ export default function HandoffCodeSheet({ prompt, submitCode, dismiss }: Handof
             >
               {t('handoffEnterSubmit')}
             </button>
-            {prompt?.wrong && <p role="alert" className="field-error">{t('handoffEnterWrong')}</p>}
-            {prompt?.retry && <p role="alert" className="field-error">{t('handoffEnterRetry')}</p>}
-            {prompt?.throttled && <p role="alert" className="field-error">{t('handoffEnterThrottled')}</p>}
-            {!online && <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>}
             <button type="button" onClick={dismiss} className="cc-btn cc-btn-ghost">
               {t('handoffEnterCancel')}
             </button>
           </div>
         )}
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

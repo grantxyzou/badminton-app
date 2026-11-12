@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from '@/components/BottomSheet';
 
 interface Props {
   open: boolean;
@@ -56,16 +56,18 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
           <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: 'var(--space-6)' }}>
             {t('expiresIn', { time: `${mm}:${ss}` })}
           </p>
-          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-            <button type="button" onClick={copy} className="btn-ghost" style={{ flex: 1 }}>
-              {t('copy')}
-            </button>
-            <button type="button" onClick={onClose} className="cc-btn cc-btn-primary" style={{ flex: 1 }}>
-              {t('done')}
-            </button>
-          </div>
         </div>
       </BottomSheetBody>
+      <BottomSheetFooter>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <button type="button" onClick={copy} className="btn-ghost" style={{ flex: 1 }}>
+            {t('copy')}
+          </button>
+          <button type="button" onClick={onClose} className="cc-btn cc-btn-primary" style={{ flex: 1 }}>
+            {t('done')}
+          </button>
+        </div>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

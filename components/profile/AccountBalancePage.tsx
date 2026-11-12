@@ -7,7 +7,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
-import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '@/components/BottomSheet';
 import { announceBalanceChanged } from '@/lib/balanceRefresh';
 import { isFlagOn } from '@/lib/flags';
 import { showTopToast } from '@/lib/topToast';
@@ -205,6 +205,13 @@ export default function AccountBalancePage({ balance, credit, onBack }: Props) {
                 <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{payTo.name}</span>
                 <span className="balance-payto__email">{payTo.email}</span>
               </div>
+            </div>
+          )}
+        </BottomSheetBody>
+        {payTo && (
+          <BottomSheetFooter>
+            <div className="flex flex-col gap-4">
+              {sent === 'error' && <p className="field-error" role="alert" style={{ margin: '0' }}>{t('etransfer.sentError')}</p>}
               <button
                 type="button"
                 className="btn-primary"
@@ -222,10 +229,9 @@ export default function AccountBalancePage({ balance, credit, onBack }: Props) {
                     {t('etransfer.sent')}
                   </button>
                 ))}
-              {sent === 'error' && <p className="field-error" role="alert" style={{ margin: '0' }}>{t('etransfer.sentError')}</p>}
             </div>
-          )}
-        </BottomSheetBody>
+          </BottomSheetFooter>
+        )}
       </BottomSheet>
     </div>
   );

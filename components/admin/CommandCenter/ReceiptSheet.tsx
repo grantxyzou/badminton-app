@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useMemo, useCallback } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import {
   renderGroupText,
   renderIndividualText,
@@ -266,37 +266,40 @@ export default function ReceiptSheet({ open, onClose, input: rawInput, error, in
                   {text || (mode === 'individual' ? 'Pick a player to render.' : '')}
                 </pre>
               </div>
-
-              {actionError && (
-                <p role="alert" className="field-error" style={{ margin: '0' }}>
-                  {actionError}
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={copyText}
-                  disabled={!text}
-                  className="cc-btn cc-btn-secondary"
-                >
-                  {copied ? 'Copied ✓' : 'Copy text'}
-                </button>
-                {mode === 'group' && (
-                  <button
-                    type="button"
-                    onClick={shareImage}
-                    disabled={!imageDataUrl}
-                    className="cc-btn cc-btn-primary"
-                    style={{ minWidth: 140 }}
-                  >
-                    Share image
-                  </button>
-                )}
-              </div>
             </>
           )}
         </div>
       </BottomSheetBody>
+      {input && (
+        <BottomSheetFooter className="flex flex-col gap-3">
+          {actionError && (
+            <p role="alert" className="field-error" style={{ margin: '0' }}>
+              {actionError}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={copyText}
+              disabled={!text}
+              className="cc-btn cc-btn-secondary"
+            >
+              {copied ? 'Copied ✓' : 'Copy text'}
+            </button>
+            {mode === 'group' && (
+              <button
+                type="button"
+                onClick={shareImage}
+                disabled={!imageDataUrl}
+                className="cc-btn cc-btn-primary"
+                style={{ minWidth: 140 }}
+              >
+                Share image
+              </button>
+            )}
+          </div>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

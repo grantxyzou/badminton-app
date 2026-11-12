@@ -6,7 +6,7 @@ import { useTabActive } from '@/lib/tabActivity';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import RosterImportSheet from './RosterImportSheet';
 import ClaimLinkSheet from './ClaimLinkSheet';
@@ -958,7 +958,10 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                 </Field>
               </>
             )}
-
+          </div>
+        </BottomSheetBody>
+        <BottomSheetFooter>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {formError && (
               <p role="alert" className="field-error" style={{ margin: '0' }}>
                 {formError}
@@ -997,7 +1000,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
               </button>
             </div>
           </div>
-        </BottomSheetBody>
+        </BottomSheetFooter>
       </BottomSheet>
 
       <RosterImportSheet
