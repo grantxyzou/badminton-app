@@ -68,10 +68,10 @@ describe('ProfileTab — MONEY', () => {
     mockFetch({ canGift: false });
     await renderSignedIn();
     expect(screen.getByText('Money')).toBeTruthy();
-    const row = await screen.findByRole('button', { name: /Gift cards & credit.*\$12\.50/ });
-    expect(screen.queryByRole('button', { name: /Give a gift card/ })).toBeNull();
+    const row = await screen.findByRole('button', { name: /^Credit\b.*\$12\.50/ });
+    expect(screen.queryByRole('button', { name: /Give credit/ })).toBeNull();
     fireEvent.click(row);
-    expect(await screen.findByRole('heading', { name: 'Gift cards & credit' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Credit' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     expect(await screen.findByText('Money')).toBeTruthy();
   });
@@ -79,17 +79,17 @@ describe('ProfileTab — MONEY', () => {
   it('a gifter also gets Give a gift card, which opens its page', async () => {
     mockFetch({ canGift: true });
     await renderSignedIn();
-    const give = await screen.findByRole('button', { name: /Give a gift card/ });
+    const give = await screen.findByRole('button', { name: /Give credit/ });
     await act(async () => {
       fireEvent.click(give);
     });
-    expect(screen.getByRole('heading', { name: 'Give a gift card' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Give credit' })).toBeTruthy();
   });
 
   it('a failed credit read leaves the row without a figure, never $0', async () => {
     mockFetch({ canGift: false, creditStatus: 503 });
     await renderSignedIn();
-    const row = screen.getByRole('button', { name: /Gift cards & credit/ });
+    const row = screen.getByRole('button', { name: /^Credit\b/ });
     expect(row.textContent).not.toMatch(/\$/);
   });
 
@@ -116,7 +116,7 @@ describe('ProfileTab — MONEY', () => {
     await renderSignedIn();
     expect(screen.getByText('Money')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Account balance/ })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Gift cards & credit/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Credit\b/ })).toBeNull();
   });
 
   it('Report a problem opens its page, and Back returns to Profile', async () => {

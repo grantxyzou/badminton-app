@@ -374,8 +374,8 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
         )}
       </Section>
 
-      {/* ── Credit & gift cards ── */}
-      <Section title="Credit & gift cards" subtitle="Money the group owes back">
+      {/* ── Credit & credit codes ── */}
+      <Section title="Credit & credit codes" subtitle="Money the group owes back">
         <div className="flex flex-col" style={{ gap: 'var(--space-2)' }}>
           <div className="flex items-baseline justify-between" style={{ gap: 'var(--space-3)' }}>
             <span className="fs-base" style={{ color: 'var(--text-primary)' }}>
@@ -385,7 +385,7 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
           </div>
           <div className="flex items-baseline justify-between" style={{ gap: 'var(--space-3)' }}>
             <span className="fs-base" style={{ color: 'var(--text-primary)' }}>
-              {giftCards.unredeemed} gift {giftCards.unredeemed === 1 ? 'card' : 'cards'} not yet redeemed
+              {giftCards.unredeemed} credit {giftCards.unredeemed === 1 ? 'code' : 'codes'} not yet redeemed
             </span>
             <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{money(giftCards.amount)}</span>
           </div>

@@ -61,11 +61,12 @@ describe('fmtCents / codeChars', () => {
 describe('GiftCardsPage', () => {
   it('shows the credit, the redeem field and the history, newest first', () => {
     const { onBack } = renderPage();
-    expect(screen.getByRole('heading', { name: 'Gift cards & credit' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Credit' })).toBeTruthy();
     expect(screen.getByText('$12.50')).toBeTruthy();
     expect(screen.getByText('Paid the Nov 5 session')).toBeTruthy();
     expect(screen.getByText('−$12')).toBeTruthy();
-    expect(screen.getByText('Gift card · Raffle')).toBeTruthy();
+    // The stored note keeps its old prefix; the line is drawn in today's words.
+    expect(screen.getByText('Credit code · Raffle')).toBeTruthy();
     expect(screen.getByText('+$25')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     expect(onBack).toHaveBeenCalledOnce();
@@ -76,7 +77,7 @@ describe('GiftCardsPage', () => {
     expect(screen.queryByText('$0')).toBeNull();
     expect(screen.queryByText('Your credit')).toBeNull();
     // The redeem field does not wait for the read.
-    expect(screen.getByRole('textbox', { name: 'Gift card code' })).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Credit code' })).toBeTruthy();
   });
 
   it('says the read failed rather than showing a zero', () => {
@@ -88,7 +89,7 @@ describe('GiftCardsPage', () => {
   it('says what an empty history means', () => {
     renderPage({ balanceCents: 0, entries: [], loadError: false, reload: vi.fn() });
     expect(screen.getByText('$0')).toBeTruthy();
-    expect(screen.getByText('No credit yet. A gift card adds it here.')).toBeTruthy();
+    expect(screen.getByText('No credit yet. A credit code adds it here.')).toBeTruthy();
   });
 
   it('redeems a code: clears the field, raises the toast and asks every balance to re-read', async () => {
@@ -103,7 +104,7 @@ describe('GiftCardsPage', () => {
       renderPage();
       const button = screen.getByRole('button', { name: 'Redeem' }) as HTMLButtonElement;
       expect(button.disabled).toBe(true);
-      const field = screen.getByRole('textbox', { name: 'Gift card code' }) as HTMLInputElement;
+      const field = screen.getByRole('textbox', { name: 'Credit code' }) as HTMLInputElement;
       fireEvent.change(field, { target: { value: 'abcd-1234' } });
       expect(field.value).toBe('ABCD-1234');
       await act(async () => {
@@ -127,7 +128,7 @@ describe('GiftCardsPage', () => {
       .mockResolvedValueOnce(new Response('{}', { status: 429 }));
     vi.stubGlobal('fetch', fetchMock);
     renderPage();
-    const field = screen.getByRole('textbox', { name: 'Gift card code' });
+    const field = screen.getByRole('textbox', { name: 'Credit code' });
     fireEvent.change(field, { target: { value: 'WXYZ9876' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Redeem' }));

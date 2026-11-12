@@ -77,7 +77,7 @@ export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refres
   useRevealReady(!enabled || cards !== null || loadError);
 
   if (!enabled) return null;
-  const title = 'Gift cards';
+  const title = 'Credit codes';
 
   if (loadError) {
     return (
@@ -85,7 +85,7 @@ export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refres
         tone="danger"
         icon="payments"
         title={title}
-        message={<>Couldn&apos;t load gift cards. <StateLink onClick={() => void load()}>Try again</StateLink></>}
+        message={<>Couldn&apos;t load credit codes. <StateLink onClick={() => void load()}>Try again</StateLink></>}
       />
     );
   }
@@ -112,14 +112,14 @@ export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refres
       setNote('');
       void load();
     } catch {
-      setError("Couldn't create a gift card — try again.");
+      setError("Couldn't make a credit code — try again.");
     } finally {
       setBusy(false);
     }
   }
 
   const message = minted
-    ? `Here's a ${money(minted.amountCents)} BPM gift card: ${minted.code}\nRedeem it in the app: Profile → Gift cards & credit.`
+    ? `Here's ${money(minted.amountCents)} of BPM credit: ${minted.code}\nAdd it in the app: Profile → Credit.`
     : '';
 
   async function share() {
@@ -167,7 +167,7 @@ export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refres
       {minted && (
         <div className="cc-mini-card flex flex-col gap-2 motion-fade" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
           <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-            {money(minted.amountCents)} gift card — copy it now, it won&apos;t be shown again:
+            {money(minted.amountCents)} credit code — copy it now, it won&apos;t be shown again:
           </p>
           <code className="fs-md" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', letterSpacing: '0.06em' }}>{minted.code}</code>
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
@@ -191,7 +191,7 @@ export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refres
         <input aria-label="Note" placeholder="Note (raffle, birthday…)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={80} style={input} />
       </div>
       <button type="button" className="cc-btn cc-btn-primary" disabled={!online || busy || !amount} onClick={() => void create()}>
-        Create gift card
+        Make a credit code
       </button>
       {error && <p className="field-error" role="alert">{error}</p>}
       {cards.length > 0 && (
