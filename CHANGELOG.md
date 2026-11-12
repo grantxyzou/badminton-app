@@ -17,6 +17,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **Motion**: a page on the right slides in from the fold as it fades in, and the right half scrolls into view when a row far down the list opens it. With reduced motion it only fades.
 - **Signed out on a foldable reads like a book**: the bpm logo on the left half, Sign up and Log in on the right. Log in and Sign up keep the logo on the left and put their form on the right.
 - **Notifications** shows your settings on the left half and the recent list on the right.
+- **Keep your account** (for someone an organiser let in) opens on the right half beside the banner that asks for it, instead of across both halves.
 - **A phone is unchanged.**
 
 ## Stringing: a walk-up's email goes once, and a waiting job can still be received (2026-11-12)

@@ -378,13 +378,20 @@ Apple's list-detail, the shape Stringing took the same day:
 - **Notifications** (the bell's page): its title and this phone's settings on
   the left page, Recent on the right; with no setting to show it keeps one
   column.
+- **Keep your account** (the page Home's "Choose how to sign in" banner opens
+  for a member an admin let in): on one screen it still stands in for Home; on
+  two pages it opens in the week's place on the RIGHT page, beside the banner
+  that opened it, with no Back ("Not now" closes it). It was the last screen
+  the audit had not reached (it needs an account with no way back in); forced
+  in the browser by answering `/api/auth/methods` with none, it ran 16–868
+  across the fold before this.
 - **Checked and left alone**: Home, Stats' four registers and the pages they
   open (on the right since #885), and every sheet (the left half since step 1).
 - **Measured**: Profile, Admin and every bench page at Z Fold open 402 / 402 and
   Duo sideways 356 / 355; nothing crosses the centre. Welcome: lockup 20–422,
   doors 474–876 on the Z Fold; 87–389 and 574–876 on the Duo. Phone: 0 pixels
   changed on Profile, a Profile page, the Admin console, Welcome (upright and
-  sideways), Log in and Notifications against main; a bench page differs by 17
+  sideways), Log in, Notifications and Keep your account against main; a bench page differs by 17
   anti-aliased edge pixels of the tab bar's pill.
 
 ## Shape

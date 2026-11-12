@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { usePaneMode } from '@/lib/paneMode';
+import { PaneDetail } from '@/components/primitives/PaneDetail';
 import dynamic from 'next/dynamic';
 import { useTranslations, useFormatter } from 'next-intl';
 import { signupErrorKey } from '@/lib/signupError';
@@ -203,6 +205,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // and password, for a member signed in with nothing to sign in WITH. A PAGE
   // in place of Home, not a sheet (Grant, 2026-11-08), so Back steps out of it.
   const [keepOpen, setKeepOpen] = useState(false);
+  // Two pages on an open foldable (lib/paneMode.ts); false on one screen.
+  const pane = usePaneMode();
   usePageBack(keepOpen, () => setKeepOpen(false));
   /**
    * Does the verified member have any way to sign in again —
@@ -627,17 +631,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   // The page stands in for Home while it is open: everything Home holds stays
   // in this component's state, so closing it shows the week as it was.
-  if (keepOpen && memberName) {
-    const close = () => setKeepOpen(false);
-    return (
-      <KeepAccountPage
-        onBack={close}
-        onDone={close}
-        /* A password now exists; the "no way back in" card has nothing left to say. */
-        onSaved={() => setHasCredential(true)}
-      />
-    );
-  }
+  const closeKeep = () => setKeepOpen(false);
+  const keepPage = (
+    <KeepAccountPage
+      onBack={closeKeep}
+      onDone={closeKeep}
+      /* A password now exists; the "no way back in" card has nothing left to say. */
+      onSaved={() => setHasCredential(true)}
+    />
+  );
+  /* One screen: the page stands in for Home. Two pages (an open foldable):
+     it opens on the RIGHT page in the week's place, beside the banner that
+     opened it (docs/plans/foldable-layout.md), with no Back — "Not now"
+     closes it. */
+  if (keepOpen && memberName && !pane) return keepPage;
+  const keepBeside = keepOpen && !!memberName && pane;
 
   return (
     <div className="space-y-5">
@@ -707,7 +715,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           first thing a new organiser sees after making their club.
           Flag-gated, because with one club this state means the pointer is
           MISSING, and the old layout is the honest report of that. */}
-      {weekLoadError ? (
+      {keepBeside ? (
+        <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')}>
+          <PaneDetail>
+            <div className="pane-page-open">{keepPage}</div>
+          </PaneDetail>
+        </section>
+      ) : weekLoadError ? (
         /* Page-level fallback: standalone, 48/24, no card (CLAUDE.md spacing
            ladder) — the card it replaces would have held nothing true. */
         <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')} style={{ padding: 'var(--space-9) var(--space-7)' }}>

@@ -223,6 +223,14 @@ describe('foldable layout', () => {
     expect(topLevelRules('.signed-out-cover').length).toBe(0);
   });
 
+  it('opens Keep your account in the week\'s place on two pages, beside the banner that opened it', () => {
+    const home = readFileSync(join(__dirname, '..', 'components', 'HomeTab.tsx'), 'utf8');
+    // One screen: the page stands in for Home, exactly as before.
+    expect(home).toContain('if (keepOpen && memberName && !pane) return keepPage;');
+    // Two pages: in the right page's group, with no Back beside the banner.
+    expect(home).toMatch(/\{keepBeside \? \(\s*<section className="bpm-home-group bpm-home-week"[^>]*>\s*<PaneDetail>\s*<div className="pane-page-open">\{keepPage\}<\/div>/);
+  });
+
   it("puts Notifications' settings on the left page and Recent on the right", () => {
     expect(pane).toContain('main[data-page-shell]:has(> .notices-shell) {\n    max-width: var(--panes-max-w);');
     expect(pane).toMatch(/\.notices-shell > \.notices-recent\s*\{\s*grid-column:\s*2;\s*grid-row:\s*2 \/ -1;/);
