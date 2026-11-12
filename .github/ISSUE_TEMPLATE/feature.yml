@@ -34,7 +34,7 @@ body:
     id: url
     attributes:
       label: URL
-      description: The page you were on when this idea struck (auto-filled).
+      description: The page you were on when this idea struck, if any.
     validations:
       required: false
   - type: input
