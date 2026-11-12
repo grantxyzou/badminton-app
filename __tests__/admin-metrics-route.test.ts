@@ -69,7 +69,17 @@ describe('GET /api/admin/metrics', () => {
     const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
     expect(body.paymentsInbox).toMatchObject({ received28d: 2, autoMatched28d: 1, waiting: 1, oldestWaitingDays: 5 });
     expect(body.stringingRequests).toMatchObject({ requests28d: 1, answeredWithin24h: 1, withReadyBy: 1 });
+    expect(body.equipment).toMatchObject({ racketSavers: 0, racketAndStringSavers: 0 });
     expect(JSON.stringify(body)).not.toMatch(/LIN Q|SOMEONE|1500|999/);
+  });
+
+  it('counts gear savers on this roster only, through the real read', async () => {
+    const { GET } = await import('@/app/api/admin/metrics/route');
+    const lin = seedMember('Lin');
+    seedDoc('playerGear', { id: 'g1', memberId: lin.id, items: [{ id: 'r', category: 'racket', label: 'Astrox' }, { id: 's', category: 'string', label: 'BG80' }] });
+    seedDoc('playerGear', { id: 'g2', memberId: 'not-on-roster', items: [{ id: 'r', category: 'racket', label: 'Arcsaber' }] });
+    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    expect(body.equipment).toMatchObject({ racketSavers: 1, racketAndStringSavers: 1 });
   });
 
   it('does not count another club', async () => {

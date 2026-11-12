@@ -132,6 +132,7 @@ flag's retirement.
   tinted panels with five-dot ratings. Not done: "Tonight's games / Confirm a
   score" needs court-rotation data and wants its own plan doc first. (The
   mixed side is read since `fit-4`, the same day — `docs/plans/racket-fit-engine.md`.)
+- **2026-11-12: both numbers are in the club report** (Grant: "add to report"). `equipment` on `GET /api/reports/metrics`: `racketSavers` (the same count slice0 shows; both now call `countGearSavers` in `lib/metricsMath.ts`) and `racketAndStringSavers`, the plan's "racket AND string", which nothing counted before. The review reads it from the report instead of the admin-only slice0 page.
 
 ## Shape
 

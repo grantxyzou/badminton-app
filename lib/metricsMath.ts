@@ -65,6 +65,8 @@ export interface MetricsInput {
   }>;
   /** The payments inbox's newest rows (`payments`, bounded), for `paymentsInbox`. */
   etransfers?: Array<{ status: string; matchedBy?: string; receivedAt: string }>;
+  /** Every `playerGear` doc (PERSON-scoped; narrowed to the roster here), for `equipment`. */
+  gear?: GearRow[];
   /** `memberId` of each push subscription doc (any device). */
   pushSubscriptions: Array<{ memberId: string }>;
   /**
@@ -153,6 +155,53 @@ export interface ClubMetrics {
   stringingRequests: StringingRequestMetrics;
   /** The e-transfer inbox (docs/plans/payments.md's review). */
   paymentsInbox: PaymentsInboxMetrics;
+  /** Who has saved their gear (docs/plans/equipment-setup-card.md's review). */
+  equipment: EquipmentMetrics;
+}
+
+/** A `playerGear` doc as the savers count reads it: its owner and its bag. */
+export interface GearRow {
+  memberId?: unknown;
+  /** Matches a row from before `memberId` was stamped, by roster name. */
+  name?: unknown;
+  items?: unknown;
+}
+
+/**
+ * Roster members with gear saved. `racketSavers` is the same figure
+ * `GET /api/admin/slice0` reports (both call `countGearSavers`); the second
+ * is the plan's "racket AND string", which nothing counted before 2026-11-12.
+ */
+export interface EquipmentMetrics {
+  racketSavers: number;
+  racketAndStringSavers: number;
+  /** racketSavers / roster size; null with an empty roster. */
+  racketShare: number | null;
+}
+
+/**
+ * THE one count of who has saved a racket (and a string), shared by the
+ * admin slice0 page and `clubMetrics` so the two cannot disagree. `resolve`
+ * maps a row's owner to a roster key, or null for someone not on THIS
+ * club's roster: `playerGear` belongs to a person, who may be in two clubs,
+ * so a club's count is narrowed to its roster.
+ */
+export function countGearSavers(
+  rows: GearRow[],
+  resolve: (memberId: unknown, name: unknown) => string | null,
+): { racketSavers: number; racketAndStringSavers: number } {
+  const rackets = new Set<string>();
+  const both = new Set<string>();
+  for (const g of rows) {
+    if (!Array.isArray(g?.items)) continue;
+    const cats = new Set((g.items as Array<{ category?: unknown }>).map((i) => i?.category));
+    if (!cats.has('racket')) continue;
+    const key = resolve(g.memberId, g.name);
+    if (!key) continue;
+    rackets.add(key);
+    if (cats.has('string')) both.add(key);
+  }
+  return { racketSavers: rackets.size, racketAndStringSavers: both.size };
 }
 
 /**
@@ -474,7 +523,18 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
     appReady: computeAppReady(input.timingEvents ?? [], rosterIds, input.now),
     stringingRequests: computeStringingRequests(input.stringingJobs, rosterIds, now),
     paymentsInbox: computePaymentsInbox(input.etransfers ?? [], now),
+    equipment: computeEquipment(input.gear ?? [], input.roster),
   };
+}
+
+function computeEquipment(rows: GearRow[], roster: MetricsRosterEntry[]): EquipmentMetrics {
+  const ids = new Set(roster.map((r) => r.memberId));
+  const byName = new Map(roster.map((r) => [r.name.trim().toLowerCase(), r.memberId]));
+  const counts = countGearSavers(rows, (memberId, name) => {
+    if (typeof memberId === 'string' && ids.has(memberId)) return memberId;
+    return typeof name === 'string' ? byName.get(name.trim().toLowerCase()) ?? null : null;
+  });
+  return { ...counts, racketShare: ratio(counts.racketSavers, roster.length) };
 }
 
 /** When a player's request was first answered: claimed, or moved off `requested`. */

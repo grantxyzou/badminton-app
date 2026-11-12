@@ -43,6 +43,7 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     ensureContainer('stringingJobs', '/memberId'),
     ensureContainer('pushSubscriptions', '/memberId'),
     ensureContainer('payments', '/id'),
+    ensureContainer('playerGear', '/memberId'),
   ]);
 
   // Sessions are one doc a week, so the group's whole list is small. The
@@ -165,6 +166,11 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     orderBy: 'c.receivedAt DESC',
     limit: INBOX_ROWS,
   });
+  // PERSON scoped, like push below: one doc per person's bag. Narrowed to the
+  // roster inside the math (`countGearSavers`), the same count slice0 makes.
+  const { resources: gearRows } = await getContainer('playerGear')
+    .items.query<{ memberId?: unknown; name?: unknown; items?: unknown }>({ query: 'SELECT c.memberId, c.name, c.items FROM c' })
+    .fetchAll();
   const { resources: pushRows } = await getContainer('pushSubscriptions')
     .items.query<{ memberId?: unknown }>({ query: 'SELECT c.memberId FROM c' })
     .fetchAll();
@@ -197,6 +203,7 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
           }]
         : [],
     ),
+    gear: gearRows,
     etransfers: paymentRows.flatMap((r) =>
       typeof r.status === 'string' && typeof r.receivedAt === 'string'
         ? [{ status: r.status, receivedAt: r.receivedAt, ...(typeof r.matchedBy === 'string' ? { matchedBy: r.matchedBy } : {}) }]

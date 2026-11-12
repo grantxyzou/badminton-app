@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeClubMetrics, computePaymentsInbox, computeStringingRequests, median, type MetricsInput, type MetricsPlayer } from '@/lib/metricsMath';
+import { computeClubMetrics, computePaymentsInbox, countGearSavers, computeStringingRequests, median, type MetricsInput, type MetricsPlayer } from '@/lib/metricsMath';
 
 /**
  * The club metrics are arithmetic an admin makes decisions from, so each
@@ -409,5 +409,43 @@ describe('paymentsInbox (docs/plans/payments.md review)', () => {
     expect(out.paymentsInbox.waiting).toBe(1);
     expect(out.stringingRequests.requests28d).toBe(0);
     expect(Object.keys(out.paymentsInbox)).not.toContain('senderName');
+  });
+});
+
+describe('equipment (docs/plans/equipment-setup-card.md review)', () => {
+  const bag = (...cats: string[]) => cats.map((category, n) => ({ id: `i${n}`, category, label: category }));
+
+  it('counts roster members with a racket, and with a racket AND a string, matching a pre-id row by name', () => {
+    const out = computeClubMetrics(
+      base({
+        roster: [
+          { memberId: 'lin', name: 'Lin' },
+          { memberId: 'kento', name: 'Kento' },
+          { memberId: 'akane', name: 'Akane' },
+          { memberId: 'viktor', name: 'Viktor' },
+        ],
+        gear: [
+          { memberId: 'lin', items: bag('racket', 'string') },
+          { memberId: 'kento', items: bag('racket') },
+          { memberId: 'akane', items: bag('string') }, // a string alone is not a racket saver
+          { name: 'viktor', items: bag('racket', 'string') }, // no memberId: matched by roster name
+          { memberId: 'stranger', items: bag('racket', 'string') }, // another club's person
+          { memberId: 'lin', items: 'not a list' },
+        ],
+      }),
+    );
+    expect(out.equipment).toEqual({ racketSavers: 3, racketAndStringSavers: 2, racketShare: 3 / 4 });
+  });
+
+  it('an empty roster is a null share, never 0%', () => {
+    expect(computeClubMetrics(base()).equipment.racketShare).toBeNull();
+  });
+
+  it('countGearSavers counts a person once however their rows repeat', () => {
+    const rows = [
+      { memberId: 'lin', items: bag('racket') },
+      { memberId: 'lin', items: bag('racket', 'string') },
+    ];
+    expect(countGearSavers(rows, (id) => (typeof id === 'string' ? id : null))).toEqual({ racketSavers: 1, racketAndStringSavers: 1 });
   });
 });

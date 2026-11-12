@@ -7,6 +7,7 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { PICK_KINDS, GEAR_SURFACE_KINDS, USAGE_KINDS, ERROR_KINDS, TIMING_KINDS, GUIDE_KINDS, isCheckInSource } from '@/lib/events';
 import { SKILLS } from '@/lib/assessment';
 import { rosterMembers } from '@/lib/roster';
+import { countGearSavers } from '@/lib/metricsMath';
 
 export const dynamic = 'force-dynamic';
 
@@ -324,15 +325,9 @@ export async function GET(req: NextRequest) {
       //
       // `c.name` is in the projection for the same reason `rosterKey` takes
       // one: a row whose `memberId` predates the migration is matched by name.
-      const savers = new Set<string>();
-      for (const g of gear) {
-        if (!Array.isArray(g?.items)) continue;
-        if (!g.items.some((i: { category?: string }) => i?.category === 'racket')) continue;
-        const rk = rosterKey(g?.memberId, g?.name);
-        // Not on this roster: not counted, and not denominated either.
-        if (rk) savers.add(rk);
-      }
-      racketSavers = savers.size;
+      // The shared count (lib/metricsMath.ts), so this page and the club
+      // report cannot disagree. Not on this roster: not counted.
+      racketSavers = countGearSavers(gear, rosterKey).racketSavers;
     } catch (err) {
       console.warn('slice0: gear read failed (treating as zero):', err);
     }
