@@ -439,6 +439,7 @@
     "balance": {
       "guestLine": "{name}（你的朋友）",
       "details": "查看详情",
+      "redeem": "兑换礼品卡",
       "groupSessions": "羽毛球",
       "groupStringing": "穿线",
       "title": "待付金额",

@@ -204,3 +204,62 @@ describe('<UnpaidSessionsCard variant="home" onDetails />', () => {
     expect(onDetails).toHaveBeenCalledOnce();
   });
 });
+
+/**
+ * Spec Q2 (Grant, 2026-11-12: "do Q2 now"): redeeming a gift card sits on
+ * Home's balance card, beside the credit it adds to, while store credit is on.
+ */
+describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
+  const owing = () =>
+    vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
+      String(input).includes('/api/credit')
+        ? new Response(JSON.stringify({ balanceCents: 0 }), { status: 200 })
+        : new Response(
+            JSON.stringify({
+              totalOwed: 10,
+              sessionCount: 1,
+              mostRecent: null,
+              sessions: [{ sessionId: 's1', date: '2026-06-01T19:00:00-04:00', owedAmount: 10 }],
+            }),
+            { status: 200 },
+          ),
+    );
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('offers "Redeem a gift card" with store credit on, and hands the tap to Home', async () => {
+    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
+    owing();
+    const onRedeem = vi.fn();
+    wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={vi.fn()} onRedeem={onRedeem} />);
+    const link = await screen.findByRole('button', { name: 'Redeem a gift card' });
+    expect(screen.getByRole('button', { name: 'See details' })).toBeTruthy();
+    fireEvent.click(link);
+    expect(onRedeem).toHaveBeenCalledOnce();
+  });
+
+  it('offers it on a paid-up card too, once the card is opened: a gift card is not only for paying a debt', async () => {
+    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
+    vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
+      String(input).includes('/api/credit')
+        ? new Response(JSON.stringify({ balanceCents: 0 }), { status: 200 })
+        : new Response(JSON.stringify({ totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] }), { status: 200 }),
+    );
+    wrap(<UnpaidSessionsCard name="Kento" variant="home" onRedeem={vi.fn()} />);
+    // Paid up, Home's card starts as one closed row ($0); its body opens on a tap.
+    const row = await screen.findByRole('button', { expanded: false });
+    expect(screen.queryByRole('button', { name: 'Redeem a gift card' })).toBeNull();
+    fireEvent.click(row);
+    expect(await screen.findByRole('button', { name: 'Redeem a gift card' })).toBeTruthy();
+  });
+
+  it('is absent while store credit is off', async () => {
+    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'false');
+    owing();
+    wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={vi.fn()} onRedeem={vi.fn()} />);
+    await screen.findByRole('button', { name: 'See details' });
+    expect(screen.queryByRole('button', { name: 'Redeem a gift card' })).toBeNull();
+  });
+});

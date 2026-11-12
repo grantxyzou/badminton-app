@@ -439,6 +439,7 @@
     "balance": {
         "guestLine": "{name}, your guest",
         "details": "See details",
+        "redeem": "Redeem a gift card",
         "groupSessions": "Badminton",
         "groupStringing": "Stringing",
       "title": "Balance",

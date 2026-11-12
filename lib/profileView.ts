@@ -8,8 +8,11 @@
  */
 export const PROFILE_VIEW_KEY = 'badminton_profile_view';
 
-/** `balance`: Home's balance card's "See details" (spec §4). */
-export type ProfileView = 'stats-privacy' | 'balance';
+/**
+ * `balance`: Home's balance card's "See details" (spec §4). `gift-cards`: its
+ * "Redeem a gift card" (spec Q2, Grant 2026-11-12: "do Q2 now").
+ */
+export type ProfileView = 'stats-privacy' | 'balance' | 'gift-cards';
 
 export function requestProfileView(view: ProfileView): void {
   try {
@@ -24,7 +27,7 @@ export function takeProfileView(): ProfileView | null {
   try {
     const v = sessionStorage.getItem(PROFILE_VIEW_KEY);
     sessionStorage.removeItem(PROFILE_VIEW_KEY);
-    return v === 'stats-privacy' || v === 'balance' ? v : null;
+    return v === 'stats-privacy' || v === 'balance' || v === 'gift-cards' ? v : null;
   } catch {
     return null;
   }
