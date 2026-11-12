@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Session dates and times on Admin read in the club's time (2026-11-12)
+
+- **Admin's session dates and times followed the phone's own time zone**, so a Thursday 7 PM session read "Fri" and "2:00 AM" on a phone or browser set to UTC: the next-session card, its sign-up deadline and members-first window, the session list, Payments, the Ledger, Past sessions, the Roster's last-seen date and a player's history. Every date and time helper in `lib/fmt.ts` now reads in Vancouver time, as CLAUDE.md already said they did.
+- **A shuttle purchase showed the day before it was bought** on a phone in Vancouver: its date is a plain calendar day, which a browser reads as midnight UTC, the afternoon before in BC. It now shows the day that was entered, on every phone.
+
 ## Admin pages and sheets checked against Apple's guidance (2026-11-12)
 
 - **Every Admin page passed the automatic accessibility check (WCAG 2.2 AA) and the 44pt tap check**, after three fixes: the Skip dates field now has a label a screen reader can say, the names on Sign-in readiness take a 44pt tap (their rows sit 12 px apart now), and on a foldable the Admin pages open from the fold instead of sliding in from the edge.

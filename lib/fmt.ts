@@ -3,7 +3,8 @@
  *
  * These were duplicated across components/admin/CommandCenter/* and the
  * legacy editors. Centralizing here so timezone behavior + presentation
- * stay consistent and a single tweak (e.g., locale) propagates.
+ * stay consistent and a single tweak (e.g., locale) propagates. Every
+ * date/time helper formats in `CLUB_TIME_ZONE`, never the device's zone.
  */
 
 /**
@@ -21,11 +22,32 @@ export function withLocalTz(date: string, time: string): string {
   return `${date}T${time}:00${sign}${hh}:${mm}`;
 }
 
+/**
+ * The zone every session date and time is shown in, whatever the device's.
+ *
+ * A session at `2026-11-19T19:00:00-08:00` is Thursday 7 PM at the club. A
+ * phone set to UTC formatting it in its own zone printed "Fri, Nov 20" and
+ * "3:00 AM". Every club is in BC today; a club elsewhere needs a per-group
+ * zone (CLAUDE.md, Gotchas, "Session times display in Vancouver time").
+ */
+export const CLUB_TIME_ZONE = 'America/Vancouver';
+
+const BARE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A bare `YYYY-MM-DD` (a shuttle purchase's date) is a calendar day, not a
+ * moment. `new Date()` reads it as UTC midnight, which is the afternoon
+ * before in Vancouver, so it is formatted in UTC to keep the day it names.
+ */
+function zoneFor(iso: string): string {
+  return BARE_DATE.test(iso) ? 'UTC' : CLUB_TIME_ZONE;
+}
+
 /** Short, locale-aware date — 'May 7'. */
 export function fmtShortDate(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: zoneFor(iso) });
   } catch {
     return iso.slice(0, 10);
   }
@@ -35,7 +57,7 @@ export function fmtShortDate(iso: string | undefined): string {
 export function fmtSessionLabel(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: zoneFor(iso) });
   } catch {
     return iso.slice(0, 10);
   }
@@ -45,7 +67,7 @@ export function fmtSessionLabel(iso: string | undefined): string {
 export function fmtFullDate(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: zoneFor(iso) });
   } catch {
     return iso.slice(0, 10);
   }
@@ -55,7 +77,7 @@ export function fmtFullDate(iso: string | undefined): string {
 export function fmtDeadline(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    return new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: zoneFor(iso) });
   } catch {
     return iso.slice(0, 10);
   }
@@ -65,7 +87,7 @@ export function fmtDeadline(iso: string | undefined): string {
 export function fmtTime(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: zoneFor(iso) });
   } catch {
     return iso.slice(11, 16);
   }
