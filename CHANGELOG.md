@@ -8,6 +8,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: jobs for walk-ups (2026-11-12)
+
+- **"New job" can take a racket from someone who is not in the club.** Search for a name that matches nobody and the card says "No one in the club is called Lee." with a row to "Add Lee as a walk-up". The walk-up shows with a "Walk-up" pill, "Not in the club", and an optional "Phone or email" so the stringer can tell them it's ready. The price card reads "How they pay: At pickup, to you". Everything else on the form is the same.
+- **A walk-up gets nothing from the app**: no push, no email, no notice. Their job never shows to any player, and their contact goes only to admins and the stringer who has the job.
+- **A change to a walk-up's job applies at once**, because nobody in the app can confirm it. The job page says to agree it in person, and the button reads "Save change". A paid job still can't be re-priced.
+- **Money**: a walk-up pays the stringer at pickup. Their job is on no member's balance and the e-transfer inbox never matches it. "Mark paid" still counts as club income, and the daily ledger check counts an unpaid walk-up job as "unlisted", not as a mismatch. A strung walk-up job uses string stock like any other.
+- The bench card and the job page show the "Walk-up" pill. The intake's error line now shows the general message for a refusal it has no sentence for, where it used to show the message key.
+
 ## Stringing: the stringer's note on each string, and a page for a change to confirm (2026-11-12)
 
 - **Strings we offer shows each string in full.** A list row carries the packet, name, price, type and feel, stock, the description and the coloured trait line. On the map, the picked string is the same row, tinted, and opens its page.

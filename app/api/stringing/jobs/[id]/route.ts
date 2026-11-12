@@ -21,7 +21,7 @@ import { canStringIn, stringerIn } from '@/lib/roster';
 import { isAdminAuthedWithMember, verifyLiveMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW, PROPOSAL_REASON_MAX } from '@/lib/stringing';
+import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW, PROPOSAL_REASON_MAX, isWalkUpJob } from '@/lib/stringing';
 import { notifyStringerOfAssignment } from '@/lib/stringingRequestNotify';
 import { isArchived } from '@/lib/stringingOrder';
 import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirror';
@@ -191,6 +191,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     const now = new Date().toISOString();
     const next: StringingJob = { ...job, updatedAt: now };
+    /* A WALK-UP has no app, so nobody can confirm a change in it
+       (docs/plans/stringing-walk-ups.md): the stringer agrees it at the
+       counter, and a change applies at once. A proposal would sit forever
+       under "Waiting on {name}". */
+    const walkUp = isWalkUpJob(job);
 
     if (body.status !== undefined) {
       if (!isStringingStatus(body.status) || !canTransition(job.status, body.status)) {
@@ -247,7 +252,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       if (job.paidAt && p !== job.priceCents && body.paid !== false) {
         return NextResponse.json({ error: 'job_paid' }, { status: 409 });
       }
-      if (job.priceCents !== null && p !== job.priceCents && body.force !== true) {
+      if (job.priceCents !== null && p !== job.priceCents && body.force !== true && !walkUp) {
         return NextResponse.json({ error: 'confirm_required' }, { status: 409 });
       }
       next.priceCents = p;
@@ -282,10 +287,19 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       if (job.paidAt && proposal.value.priceCents !== undefined && body.paid !== false) {
         return NextResponse.json({ error: 'job_paid' }, { status: 409 });
       }
-      next.pendingEdit = proposal.value;
-      // A fresh ask clears the last refusal: the bench should say "waiting on
-      // Lin", not go on reporting a no she has already been asked past.
-      next.pendingEditDeclinedAt = null;
+      if (walkUp) {
+        // Applied, not held: the same validated diff (only fields that
+        // differ), written straight onto the job. No `pendingEdit`, so no
+        // push below, and the ledger mirror sees an ordinary price change.
+        const { proposedAt: _at, proposedBy: _by, reason: _why, ...change } = proposal.value;
+        Object.assign(next, change);
+        next.pendingEdit = null;
+      } else {
+        next.pendingEdit = proposal.value;
+        // A fresh ask clears the last refusal: the bench should say "waiting on
+        // Lin", not go on reporting a no she has already been asked past.
+        next.pendingEditDeclinedAt = null;
+      }
     }
 
     if (body.tensionMains !== undefined || body.tensionCrosses !== undefined) {

@@ -1170,6 +1170,19 @@ export interface StringingJob {
    *  bench can show that the old price stands BECAUSE someone refused, rather
    *  than because nothing was ever asked. */
   pendingEditDeclinedAt?: string | null;
+  /**
+   * A racket for someone who is NOT on the club's roster (docs/plans/
+   * stringing-walk-ups.md, 2026-11-12). `memberId` is then a synthetic
+   * `~walkup:<hex>` partition key minted by the server, never a member, and
+   * `memberName` is the name the stringer typed. Additive; absent on every
+   * member's job. Nothing is ever sent to a walk-up, and a change to their job
+   * applies at once (there is nobody in the app to confirm it).
+   */
+  walkUp?: boolean;
+  /** The walk-up's phone or email, as typed (trimmed, ≤ 120). Personal data:
+   *  admins and the assigned stringer only, never a player response or a push.
+   *  Absent when none was given. */
+  walkUpContact?: string;
 }
 
 /**
@@ -1227,6 +1240,11 @@ export interface StringerJob {
    *  stringer's list says "Waiting on Lin" and what was suggested, and holds
    *  its button until the player answers. Absent when nothing is pending. */
   pendingEdit?: StringerPendingEdit | null;
+  /** Someone not on the roster (docs/plans/stringing-walk-ups.md). Additive. */
+  walkUp?: boolean;
+  /** Their phone or email — on the assigned stringer's own queue only, never
+   *  on the "Waiting for a stringer" list every stringer sees. */
+  walkUpContact?: string;
 }
 
 /** A pending change as a stringer may see it: the player's diff minus price. */

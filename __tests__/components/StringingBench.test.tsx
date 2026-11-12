@@ -401,7 +401,9 @@ describe('intake shows the stringer what the player will read', () => {
     // the common case the impossible one.
     openIntake();
     expect(await searchFor('Wei')).toBeDefined();
-    expect(screen.getByText(/walk-ups included/i)).toBeDefined();
+    // And says a walk-up without an account can be added too
+    // (docs/plans/stringing-walk-ups.md).
+    expect(screen.getByText(/or a walk-up without an account/i)).toBeDefined();
   });
 
   it('lets a job be saved with no price at all', async () => {

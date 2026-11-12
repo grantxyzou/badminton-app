@@ -10,6 +10,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
 import MoneyInput from '@/components/primitives/MoneyInput';
 import StatusBadge from '@/components/primitives/StatusBadge';
+import MemberAvatar from '@/components/primitives/MemberAvatar';
 import { useOnline } from '@/lib/useOnline';
 import { useCatalog } from '@/components/stats/useCatalog';
 import { searchCatalog } from '@/lib/gearSearch';
@@ -21,10 +22,18 @@ import { formatServicePrice } from '@/lib/stringingRateCard';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
+  WALK_UP_NAME_MAX,
+  WALK_UP_CONTACT_MAX,
 } from '@/lib/stringing';
 import { fmtMoney } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+/** The refusals `admin.stringing.error` has a sentence for. */
+const KNOWN_ERRORS = new Set([
+  'invalid_date', 'generic', 'invalid_price', 'invalid_tension', 'invalid_request',
+  'unauthorized', 'rate_limited', 'invalid_contact',
+]);
 
 interface Props {
   onBack: () => void;
@@ -67,6 +76,12 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
   const [membersAttempt, setMembersAttempt] = useState(0);
   const [search, setSearch] = useState('');
   const [picked, setPicked] = useState<PickableMember | null>(null);
+  /* A WALK-UP: someone not in the club (docs/plans/stringing-walk-ups.md,
+     Grant 2026-11-12: "give me the ability to add a job for people thats not
+     in the roster"). Offered when the search matches nobody; the server mints
+     the job's partition key, so all this holds is the typed name. */
+  const [walkUp, setWalkUp] = useState<{ name: string } | null>(null);
+  const [walkUpContact, setWalkUpContact] = useState('');
 
   const [racketLabel, setRacketLabel] = useState('');
   /* Catalog names as the racket is typed (docs/plans/grommet-holes.md, 4b):
@@ -179,6 +194,12 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
     if (!q) return [];
     return members.filter((m) => m.name.toLowerCase().includes(q)).slice(0, 8);
   }, [members, search]);
+  /* "No one in the club is called …" only once the members have LOADED and
+     matched nobody: before that, or after a failed read, it would be a claim
+     nobody checked — and it is the claim that invites a duplicate person. */
+  const typedName = search.trim();
+  const offerWalkUp = members !== null && typedName.length > 0 && matches.length === 0;
+  const whoName = picked?.name ?? walkUp?.name ?? null;
 
   /* Three, and only people still on the member list: a recent job's member
      who has since left must not be a chip that saves a job for nobody. */
@@ -232,7 +253,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
      said so): a tap with something missing scrolls to it instead, and the
      line under the button names it before anyone taps. */
   const missing: 'who' | 'racket' | 'string' | 'price' | null =
-    !picked ? 'who'
+    !picked && !walkUp ? 'who'
       : !racketLabel.trim() ? 'racket'
       : !stringLabel.trim() ? 'string'
       : priceCents === undefined ? 'price'
@@ -257,7 +278,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
   }
 
   async function save() {
-    if (!canSave || !picked) return;
+    if (!canSave || (!picked && !walkUp)) return;
     setBusy(true);
     setSaveError(null);
     try {
@@ -265,8 +286,11 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          memberId: picked.id,
-          memberName: picked.name,
+          // A walk-up sends no id: the server mints one that can never be a
+          // member's, and ignores any it is sent.
+          ...(walkUp
+            ? { walkUp: true, memberName: walkUp.name, walkUpContact: walkUpContact.trim() || null }
+            : { memberId: picked!.id, memberName: picked!.name }),
           racketLabel: racketLabel.trim(),
           stringLabel: stringLabel.trim(),
           tensionMains: mains,
@@ -277,7 +301,10 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setSaveError(t(`error.${data.error ?? 'generic'}`));
+        // Only a code this screen has a sentence for: next-intl prints the KEY
+        // PATH for one it does not (`not_on_roster` did).
+        const code = typeof data.error === 'string' && KNOWN_ERRORS.has(data.error) ? data.error : 'generic';
+        setSaveError(t(`error.${code}`));
         setBusy(false);
         return;
       }
@@ -312,6 +339,44 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
               title={<span className="fs-md" style={{ fontWeight: 600 }}>{picked.name}</span>}
               trailing={<span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('change')}</span>}
             />
+          ) : walkUp ? (
+            <>
+              {/* The walk-up, chosen. The initial only (`avatar={null}`): a
+                  name lookup would hand a walk-up the racket of a member who
+                  happens to share their name. The whole row is "Change", as
+                  the picked member's row above is, and goes back to the
+                  search with the name still in it. */}
+              <ListRow
+                onClick={() => {
+                  setWalkUp(null);
+                  setWalkUpContact('');
+                }}
+                leading={<MemberAvatar name={walkUp.name} avatar={null} />}
+                title={
+                  <span style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                    <span className="fs-md" style={{ fontWeight: 600 }}>{walkUp.name}</span>
+                    <StatusBadge variant="muted">{t('walkUp.badge')}</StatusBadge>
+                  </span>
+                }
+                subtitle={<span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('walkUp.notInClub')}</span>}
+                trailing={<span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('change')}</span>}
+              />
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                <input
+                  type="text"
+                  value={walkUpContact}
+                  onChange={(e) => setWalkUpContact(e.target.value)}
+                  placeholder={t('walkUp.contact')}
+                  aria-label={t('walkUp.contact')}
+                  aria-describedby="intake-walkup-contact-hint"
+                  maxLength={WALK_UP_CONTACT_MAX}
+                  autoComplete="off"
+                />
+                <span id="intake-walkup-contact-hint" className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+                  {t('walkUp.contactHint')}
+                </span>
+              </label>
+            </>
           ) : (
             <>
               <input
@@ -321,7 +386,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('searchMembers')}
                 aria-label={t('searchMembers')}
-                maxLength={50}
+                maxLength={WALK_UP_NAME_MAX}
               />
               {!search.trim() && recentPicks.length > 0 && (
                 <div role="group" aria-label={t('recent')} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
@@ -344,6 +409,19 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
                   {matches.map((m) => (
                     <ListRow key={m.id} onClick={() => setPicked(m)} title={<span className="fs-md">{m.name}</span>} />
                   ))}
+                </div>
+              )}
+              {offerWalkUp && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                  <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+                    {t('walkUp.noMatch', { name: typedName })}
+                  </p>
+                  <ListRow
+                    onClick={() => setWalkUp({ name: typedName })}
+                    leading={<span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>person_add</span>}
+                    title={<span className="fs-md" style={{ fontWeight: 600, color: 'var(--accent)' }}>{t('walkUp.add', { name: typedName })}</span>}
+                    subtitle={<span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('walkUp.addHint')}</span>}
+                  />
                 </div>
               )}
             </>
@@ -532,9 +610,12 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
               color: 'var(--text-secondary)',
             }}
           >
-            <span>{t('theySee', { name: picked?.name ?? t('theyFallback') })}</span>
+            <span>{walkUp ? t('walkUp.howTheyPay') : t('theySee', { name: picked?.name ?? t('theyFallback') })}</span>
             {/* The data face for a figure only; "Not priced yet" is a sentence. */}
-            {priceCents === undefined || priceCents === null ? (
+            {walkUp ? (
+              /* A walk-up reads nothing in the app: they pay at the counter. */
+              <span style={{ fontWeight: 600 }}>{t('walkUp.atPickup')}</span>
+            ) : priceCents === undefined || priceCents === null ? (
               <span style={{ fontWeight: 600 }}>{t('unpriced')}</span>
             ) : (
               <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{fmtMoney(priceCents / 100)}</span>
@@ -552,7 +633,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
           className="cc-btn cc-btn-primary cc-btn-lg"
           style={{ width: '100%' }}
         >
-          {busy ? t('saving') : t('saveAndTell', { name: picked?.name ?? t('theyFallback') })}
+          {busy ? t('saving') : t('saveAndTell', { name: whoName ?? t('theyFallback') })}
         </button>
         {missing && (
           <p

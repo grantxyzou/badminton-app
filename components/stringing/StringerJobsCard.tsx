@@ -8,7 +8,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
 import { dueFor, dueStyle, formatReadyBy, todayIso } from '@/lib/stringingDue';
-import JobCard, { nextStatusOf } from './JobCard';
+import JobCard, { JobSpecLine, nextStatusOf } from './JobCard';
 import {
   PROGRESS_STEPS,
   STAGE_TRACK,
@@ -401,7 +401,9 @@ function StringerJobCard({ job, stage, today, holes, action }: {
             />
           ))}
         </div>
-        <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{spec}</span>
+        {/* A walk-up's contact rides on this, the stringer's OWN queue, only:
+            they are the one who tells them it is ready. */}
+        <JobSpecLine spec={spec} walkUp={job.walkUp} contact={job.walkUpContact} />
         {dueText && <span className="fs-sm" style={dueStyle(due.tone)}>{dueText}</span>}
         {stage === 'waiting' && (
           <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>

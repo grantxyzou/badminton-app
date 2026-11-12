@@ -35,6 +35,9 @@ import {
   playerStageFor,
   playerStageIndex,
   formatJobNo,
+  WALK_UP_ID_PREFIX,
+  WALK_UP_NAME_MAX,
+  WALK_UP_CONTACT_MAX,
 } from '@/lib/stringing';
 import { isBillable } from '@/lib/stringingBilling';
 import type { StringingJob, PlayerStringingJob, PlayerPendingEdit, StringerJob, StringerPendingEdit } from '@/lib/types';
@@ -155,7 +158,13 @@ export function toPlayerPendingEdit(job: StringingJob): PlayerPendingEdit | null
  * Note what IS here that a player never gets: `status`, the bench vocabulary.
  * They are working the bench, so they get its words.
  */
-export function toStringerJob(job: StringingJob): StringerJob {
+/**
+ * A WALK-UP's contact rides only when the caller asks (docs/plans/
+ * stringing-walk-ups.md): the stringer the job is ASSIGNED to is the one who
+ * tells them it is ready, so their own queue asks for it; the "Waiting for a
+ * stringer" list every stringer in the club sees does not.
+ */
+export function toStringerJob(job: StringingJob, opts: { contact?: boolean } = {}): StringerJob {
   return {
     id: job.id,
     jobNo: job.jobNo,
@@ -172,6 +181,8 @@ export function toStringerJob(job: StringingJob): StringerJob {
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     ...stringerPendingEdit(job),
+    ...(job.walkUp === true ? { walkUp: true } : {}),
+    ...(job.walkUp === true && opts.contact && job.walkUpContact ? { walkUpContact: job.walkUpContact } : {}),
   };
 }
 
@@ -305,12 +316,12 @@ export async function GET(req: NextRequest) {
       const jobs = resources
         .filter((j) => j.stringerId === me && !isArchived(j))
         .sort(benchOrder)
-        .map(toStringerJob);
+        .map((j) => toStringerJob(j, { contact: true }));
       // Oldest first: the one that has waited longest is the one to take.
       const unclaimed = open
         .filter((j) => j.status === 'requested' && !j.stringerId && !isArchived(j) && !j.cancelledAt)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-        .map(toStringerJob);
+        .map((j) => toStringerJob(j));
       return NextResponse.json({ jobs, unclaimed, view: 'stringer', canString: true });
     }
 
@@ -395,12 +406,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
-  const memberId = trimmed(body.memberId);
-  const memberName = trimmed(body.memberName);
+  /**
+   * A WALK-UP: someone not on the roster (docs/plans/stringing-walk-ups.md).
+   * The partition key is minted HERE and any `memberId` in the body is
+   * ignored — a client-chosen id could name a member (their balance) or a
+   * ledger sentinel (`~club`). The name is what the stringer typed.
+   */
+  const walkUp = body.walkUp === true;
+  const memberId = walkUp ? `${WALK_UP_ID_PREFIX}${randomBytes(8).toString('hex')}` : trimmed(body.memberId);
+  const memberName = trimmed(body.memberName, walkUp ? WALK_UP_NAME_MAX : MAX_LABEL);
   const racketLabel = trimmed(body.racketLabel);
   const stringLabel = trimmed(body.stringLabel);
   if (!memberId || !memberName || !racketLabel || !stringLabel) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  }
+  // A member's job never carries a `~` id: that prefix is the ledger's
+  // sentinels and the walk-ups', and with groups off nothing below checks the
+  // id against a roster.
+  if (!walkUp && memberId.startsWith('~')) {
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  }
+  // Optional; blank is absent, never ''. Too long is refused, not cut.
+  let walkUpContact: string | undefined;
+  if (walkUp && body.walkUpContact !== undefined && body.walkUpContact !== null) {
+    if (typeof body.walkUpContact !== 'string' || body.walkUpContact.trim().length > WALK_UP_CONTACT_MAX) {
+      return NextResponse.json({ error: 'invalid_contact' }, { status: 400 });
+    }
+    walkUpContact = body.walkUpContact.trim() || undefined;
   }
   if (!isValidTension(body.tensionMains) || !isValidTension(body.tensionCrosses)) {
     return NextResponse.json({ error: 'invalid_tension' }, { status: 400 });
@@ -431,7 +463,9 @@ export async function POST(req: NextRequest) {
     // The job is billed to this person IN THIS CLUB, so they must be on its
     // roster (audit, 2026-11-05): any member id was accepted, and an admin of
     // one club could put a charge on someone who only plays in another.
-    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') && (await readMembership(scope.groupId, memberId))?.status !== 'active') {
+    // A walk-up is on no roster by definition; the club it belongs to is the
+    // scope's, stamped by `create` like any job.
+    if (!walkUp && isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') && (await readMembership(scope.groupId, memberId))?.status !== 'active') {
       return NextResponse.json({ error: 'not_on_roster' }, { status: 404 });
     }
 
@@ -463,6 +497,8 @@ export async function POST(req: NextRequest) {
       createdAt: now,
       updatedAt: now,
       history: [{ status, at: now, by: admin.memberId ?? null }],
+      ...(walkUp ? { walkUp: true } : {}),
+      ...(walkUpContact ? { walkUpContact } : {}),
     };
 
     await scope.create('stringingJobs', job);
