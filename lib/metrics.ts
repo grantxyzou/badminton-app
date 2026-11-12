@@ -2,7 +2,8 @@ import { getContainer, ensureContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import { rosterMembers } from './roster';
 import { USAGE_KINDS, ERROR_KINDS, TIMING_KINDS } from './events';
-import { computeClubMetrics, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
+import { computeClubMetrics, USAGE_RECORDED_FROM, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
+import { isUnclaimed } from './claimLinks';
 
 /**
  * The ONE place club metrics are read (docs/plans/usage-metrics.md). The admin
@@ -24,6 +25,8 @@ const MIGRATE_VIA = 'migrate';
 const MIGRATIONS_LIMIT = 1000;
 /** The inbox rows read, newest first — the same bound as `inboxCount` in lib/paymentsInbox.ts. */
 const INBOX_ROWS = 200;
+/** The new members' journey rows: a handful of people, a few months of opens and tab views. */
+const JOURNEY_ROWS = 5000;
 
 export const SESSIONS_SHOWN = [8, 12, 26] as const;
 export type SessionsShown = (typeof SESSIONS_SHOWN)[number];
@@ -101,6 +104,10 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     // day the person joined; their account date is the better answer.
     joinedAt:
       e.membership && e.membership.joinedVia !== 'backfill' ? e.membership.joinedAt : e.member.createdAt,
+    joinedVia: e.membership?.joinedVia,
+    // A way back in, read off the account: the signed-out steps of joining
+    // (the door's ask, "Keep your account") write no record of their own.
+    claimed: !isUnclaimed(e.member),
   }));
 
   const kudosRows = await scope.query<{ raterMemberId?: unknown; createdAt?: unknown }>('kudos', {
@@ -157,6 +164,24 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
       { name: '@via', value: MIGRATE_VIA },
     ],
     limit: MIGRATIONS_LIMIT,
+  });
+  // The new members' path (docs/plans/new-member-path.md): the app opens and
+  // tab views of the people who joined lately, since they joined — not the
+  // 28-day window above. The cohort is decided again in the math; this only
+  // narrows the read to the people who could be in it.
+  const journeyFloor = Math.max(now.getTime() - 90 * DAY, Date.parse(USAGE_RECORDED_FROM));
+  const newcomerIds = roster
+    .filter((r) => (r.joinedAt ? Date.parse(r.joinedAt) : NaN) >= journeyFloor)
+    .map((r) => r.memberId);
+  const journeyRows = newcomerIds.length === 0 ? [] : await scope.query<{ memberId?: unknown; kind?: unknown; at?: unknown; tab?: unknown }>('events', {
+    select: 'c.memberId, c.kind, c.at, c.tab',
+    where: 'ARRAY_CONTAINS(@newcomerIds, c.memberId) AND ARRAY_CONTAINS(@kinds, c.kind) AND c.at >= @since',
+    params: [
+      { name: '@newcomerIds', value: newcomerIds },
+      { name: '@kinds', value: ['app_open', 'tab_view'] },
+      { name: '@since', value: new Date(journeyFloor).toISOString() },
+    ],
+    limit: JOURNEY_ROWS,
   });
   // The e-transfer inbox: the newest rows, the same bounded read the admin
   // card counts "Needs a look" from (`inboxCount`), so the two agree. Status
@@ -237,6 +262,13 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
             ...(typeof r.launchMs === 'number' ? { launchMs: r.launchMs } : {}),
             ...(typeof r.start === 'string' ? { start: r.start } : {}),
           }]
+        : [],
+    ),
+    // Re-checked in the math too (cohort, join date): the mock applies no WHERE.
+    journeyEvents: journeyRows.flatMap((r) =>
+      typeof r.memberId === 'string' && newcomerIds.includes(r.memberId) && typeof r.kind === 'string' && typeof r.at === 'string' &&
+      (r.kind === 'app_open' || r.kind === 'tab_view')
+        ? [{ memberId: r.memberId, kind: r.kind, at: r.at, ...(typeof r.tab === 'string' ? { tab: r.tab } : {}) }]
         : [],
     ),
     migrations: migrationRows.flatMap((r) =>

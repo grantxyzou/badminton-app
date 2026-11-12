@@ -8,7 +8,7 @@ import ReportsKeyCard from './metrics/ReportsKeyCard';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
-import type { ClubMetrics, SessionMetrics, UsageMetrics } from '@/lib/metricsMath';
+import type { ClubMetrics, NewMemberPathMetrics, SessionMetrics, UsageMetrics } from '@/lib/metricsMath';
 import { NONE, dayCount, duration, pct, shortDate } from '@/lib/metricsFormat';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -154,6 +154,8 @@ export default function MetricsPage({ onBack }: { onBack: () => void }) {
           )}
         </div>
       </section>
+
+      <NewMemberPathCard path={data.newMemberPath} />
 
       <section className="glass-card p-5 flex flex-col gap-4" aria-label="Features">
         <CardHeader icon="thumb_up" title="Features" subtitle="Share of the roster, last 28 days" />
@@ -302,5 +304,68 @@ function MovedToApp({ usage }: { usage: UsageMetrics }) {
       Moved to the store app: {usage.movedToApp === 1 ? '1 member' : `${usage.movedToApp} members`}
       {last}, since the link went live.
     </Caption>
+  );
+}
+
+/**
+ * The new members' path (docs/plans/new-member-path.md): how far the people
+ * who joined lately got, as counts of the group — never who. Each bar is a
+ * share of everyone who joined; the steps are not nested (an organiser can
+ * add someone who never opens the app), so a later bar can be longer.
+ */
+/** "2 with an invite, 1 let in by an organiser": only the ways someone used. */
+function howJoined(v: NewMemberPathMetrics['joinedVia']): string {
+  const parts = [
+    v.invite > 0 && `${v.invite} with an invite link or code`,
+    v.organiser > 0 && `${v.organiser} added or let in by an organiser`,
+    v.created > 0 && `${v.created} started the club`,
+    v.unrecorded > 0 && `${v.unrecorded} before the app recorded how`,
+  ].filter(Boolean) as string[];
+  return parts.join(', ');
+}
+
+function NewMemberPathCard({ path }: { path: NewMemberPathMetrics | undefined }) {
+  if (!path) return null;
+  const n = path.joined;
+  const since = shortDate(path.since.slice(0, 10));
+  const step = (count: number) => (n === 0 ? null : count / n);
+  const of = (count: number) => (n === 0 ? NONE : `${count} of ${n}`);
+  const TAB_LABEL: Record<keyof NewMemberPathMetrics['tabs'], string> = {
+    home: 'Home',
+    stringing: 'Stringing',
+    skills: 'Stats',
+    profile: 'Profile',
+  };
+  return (
+    <section className="glass-card p-5 flex flex-col gap-4" aria-label="New members' path">
+      <CardHeader icon="how_to_reg" title="New members' path" subtitle={`Everyone who joined since ${since}`} />
+      {n === 0 ? (
+        <Caption>Nobody has joined since {since}. The path fills in as people join.</Caption>
+      ) : (
+        <>
+          <Caption>{n} joined: {howJoined(path.joinedVia)}.</Caption>
+          <BarRow label="Kept their account" value={step(path.keptAccount)} detail={of(path.keptAccount)} />
+          <BarRow label="Opened the app" value={step(path.openedApp)} detail={of(path.openedApp)} />
+          <BarRow label="Looked past Home" value={step(path.lookedAround)} detail={of(path.lookedAround)} />
+          <BarRow label="Signed up for a session" value={step(path.signedUp)} detail={of(path.signedUp)} />
+          <BarRow label="Played" value={step(path.played)} detail={of(path.played)} />
+          <BarRow label="Paid" value={step(path.paid)} detail={of(path.paid)} />
+          <div className="flex flex-col gap-2">
+            <span className="section-label-muted">Tabs they opened</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)' }}>
+              {(Object.keys(TAB_LABEL) as Array<keyof NewMemberPathMetrics['tabs']>).map((t) => (
+                <Tile key={t} value={String(path.tabs[t])} label={TAB_LABEL[t]} />
+              ))}
+            </div>
+          </div>
+          <Caption>
+            {path.medianDaysToFirstSignup === null
+              ? 'None of them has signed up for a session yet.'
+              : `Typically ${dayCount(path.medianDaysToFirstSignup)} days from joining to their first sign-up.`}{' '}
+            Kept their account means a PIN, a password, or Google or Apple. Asking to join and waiting to be let in leave no record, so the path starts once they are in.
+          </Caption>
+        </>
+      )}
+    </section>
   );
 }
