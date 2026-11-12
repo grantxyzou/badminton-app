@@ -148,15 +148,18 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(css).toContain('.bpm-chip:disabled');
   });
 
+  // The ladders are rem since the size factor (docs/plans/ui-scale.md), written
+  // `calc(Nrem / 16)` so the designed pixel value N stays readable: N px at the
+  // default size, N × --ui-scale when the phone's text size or the screen asks.
   it('pins the canonical --fs scale values (a re-scale must update this test)', () => {
-    expect(css).toContain('--fs-2xs: 10px');
-    expect(css).toContain('--fs-sm: 12px');
-    expect(css).toContain('--fs-base: 13px');
-    expect(css).toContain('--fs-lg: 16px');
+    expect(css).toContain('--fs-2xs: calc(10rem / 16)');
+    expect(css).toContain('--fs-sm: calc(12rem / 16)');
+    expect(css).toContain('--fs-base: calc(13rem / 16)');
+    expect(css).toContain('--fs-lg: calc(16rem / 16)');
   });
 
   it('caps the rectangular radius ladder at 16px (corner-radii ladder rule)', () => {
-    expect(css).toContain('--radius-xl: 16px');
+    expect(css).toContain('--radius-xl: calc(16rem / 16)');
     expect(css).toContain('--radius-pill: 100px');
   });
 
@@ -172,7 +175,7 @@ describe('design-system canary: globals.css token/class contract', () => {
      nothing but prose stops the next person hardcoding 30px everywhere and
      quietly re-establishing it as the default corner. */
   it('scopes the 30px rung to a token instead of raw literals', () => {
-    expect(css).toContain('--radius-3xl: 30px');
+    expect(css).toContain('--radius-3xl: calc(30rem / 16)');
     // Every 30px corner must resolve through the token. Strip comments first —
     // the prose explaining this rule necessarily names the literal it forbids,
     // and a doc comment is not a declaration.

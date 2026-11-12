@@ -104,6 +104,11 @@ const text = (item: CatalogItem | null, k: string): string | null => {
 export const powerOf = (item: CatalogItem | null) => num(item, 'repulsion');
 export const durabilityOf = (item: CatalogItem | null) => num(item, 'durability');
 export const controlOf = (item: CatalogItem | null) => num(item, 'control');
+/** The maker's hitting sound, 1–10 (`hittingSound`). */
+export const soundOf = (item: CatalogItem | null) => num(item, 'hittingSound');
+/** The maker's shock absorption, 1–10 (`shockAbsorption`, re-sourced 2026-11-12;
+ *  Yonex and Li-Ning publish it, Victor does not). */
+export const shockOf = (item: CatalogItem | null) => num(item, 'shockAbsorption');
 /** Soft to hard, 1–5 (`feelScale`; higher is harder). */
 export const feelOf = (item: CatalogItem | null) => num(item, 'feelScale');
 
@@ -111,16 +116,23 @@ export const feelOf = (item: CatalogItem | null) => num(item, 'feelScale');
  * What runs up the side of the map (docs/plans/string-inventory.md,
  * Decisions, 2026-10-16). Durability always runs along the bottom; power is
  * its mirror image (r = −0.78 across the catalog), so the map read as one
- * diagonal until the member could swap power for control or feel — the two
- * ratings nothing else on the map already says.
+ * diagonal until the member could swap power for another rating.
+ *
+ * The four are the maker's own ratings since 2026-11-12 (Grant: "For yonex:
+ * repulsion, durability, control, sound, shock absorption … lining and Victor
+ * can map to that too"): power is the maker's REPULSION (the catalog key is
+ * `repulsion`; the id stays `power` so a stored pick and the trait colours
+ * keep working), then control, hitting sound and shock absorption. Feel left
+ * the switch: it is a soft-to-hard word, not one of the maker's five, and the
+ * string's headline already says it. A stored `feel` falls back to power.
  */
-export const MAP_AXES = ['power', 'control', 'feel'] as const;
+export const MAP_AXES = ['power', 'control', 'sound', 'shock'] as const;
 export type MapAxis = (typeof MAP_AXES)[number];
 /** The top of each axis's scale, for "out of" in the copy. */
-export const AXIS_MAX: Record<MapAxis, number> = { power: 10, control: 10, feel: 5 };
+export const AXIS_MAX: Record<MapAxis, number> = { power: 10, control: 10, sound: 10, shock: 10 };
 
 export function axisValueOf(axis: MapAxis, item: CatalogItem | null): number | null {
-  return axis === 'power' ? powerOf(item) : axis === 'control' ? controlOf(item) : feelOf(item);
+  return axis === 'power' ? powerOf(item) : axis === 'control' ? controlOf(item) : axis === 'sound' ? soundOf(item) : shockOf(item);
 }
 export const bestForOf = (item: CatalogItem | null) => text(item, 'bestFor');
 
@@ -193,8 +205,15 @@ export function typeTint(type: StringTypeKey | null): string | null {
   return type ? TYPE_TINT[type] : null;
 }
 
-/** The three rated traits a list row and a meter name. */
-export type Trait = 'power' | 'control' | 'durability';
+/** The maker's five rated traits, as a list row and a meter name them. */
+export type Trait = 'power' | 'control' | 'durability' | 'sound' | 'shock';
+/** The five in the order the maker prints them (repulsion first). */
+export const TRAITS: readonly Trait[] = ['power', 'durability', 'control', 'sound', 'shock'];
+
+/** A trait's 1–10 rating, or null when the maker gives none. */
+export function traitValueOf(trait: Trait, item: CatalogItem | null): number | null {
+  return trait === 'durability' ? durabilityOf(item) : axisValueOf(trait, item);
+}
 
 /**
  * A trait's colour (Grant, 2026-11-12: "use colour code to map to control,
@@ -203,10 +222,14 @@ export type Trait = 'power' | 'control' | 'durability';
  * for power — the catalog's power score IS `repulsion` (`powerOf`) — so the
  * two share one colour.
  */
-const TRAIT_TYPE: Record<Trait, StringTypeKey> = { power: 'repulsion', control: 'control', durability: 'durability' };
+const TRAIT_TYPE: Partial<Record<Trait, StringTypeKey>> = { power: 'repulsion', control: 'control', durability: 'durability' };
+/** Sound and shock are ratings, never a string's type, so they have tints
+ *  of their own (the canvas, 2026-11-12: pink and teal). */
+const TRAIT_OWN: Partial<Record<Trait, string>> = { sound: '#f472b6', shock: '#2dd4bf' };
 
 export function traitTint(trait: Trait): string {
-  return TYPE_TINT[TRAIT_TYPE[trait]] as string;
+  const type = TRAIT_TYPE[trait];
+  return type ? (TYPE_TINT[type] as string) : (TRAIT_OWN[trait] as string);
 }
 
 /**

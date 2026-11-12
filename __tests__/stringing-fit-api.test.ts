@@ -99,4 +99,28 @@ describe('GET /api/stringing/fit', () => {
     }));
     expect((await res.json()).fit).toBeNull();
   });
+  /* The map's glow (the canvas, 2026-11-12): one answer for the shelf. */
+  it('answers verdicts for a list of strings, against the member’s own frame', async () => {
+    seedLin();
+    await seedGear('frame-hh');
+    const res = await GET(makeRequest('GET', 'http://localhost:3000/api/stringing/fit?ids=string-test,string-nope', undefined, {
+      cookie: `member_session=${memberCookieValue('Lin', 'm-lin')}`,
+    }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.racket).toBe('Yonex Astrox Test');
+    expect(Object.keys(body.fits)).toEqual(['string-test']);
+    expect(['good_match', 'worth_a_look', 'not_for_frame']).toContain(body.fits['string-test']);
+  });
+
+  it('says nothing for the list without a frame, and refuses a bad or oversized list', async () => {
+    seedLin();
+    await seedGear(null);
+    const ask2 = (q: string) => GET(makeRequest('GET', `http://localhost:3000/api/stringing/fit?${q}`, undefined, {
+      cookie: `member_session=${memberCookieValue('Lin', 'm-lin')}`,
+    }));
+    expect(await (await ask2('ids=string-test')).json()).toEqual({ fits: null, reason: 'no_frame' });
+    expect((await ask2('ids=../etc')).status).toBe(400);
+    expect((await ask2(`ids=${Array.from({ length: 41 }, (_, i) => `s-${i}`).join(',')}`)).status).toBe(400);
+  });
 });

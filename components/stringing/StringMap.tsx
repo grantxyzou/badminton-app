@@ -16,6 +16,9 @@ export interface MapDot {
   band: StockBand | null;
   /** The string's type, which colours its dot (`typeDotFill`); null = unknown. */
   type: StringTypeKey | null;
+  /** Suits the member's own racket (the fit engine's `good_match`): the dot
+   *  wears a soft accent glow (the canvas, 2026-11-12). */
+  match?: boolean;
 }
 
 const PLOT_H = 220;
@@ -308,6 +311,7 @@ export default function StringMap({
         <span
           aria-hidden="true"
           data-dot-type={type ?? 'none'}
+          data-match={m.members.some((n) => dots[n].match) ? 'true' : undefined}
           style={{
             position: 'absolute',
             left: (HIT - size) / 2,
@@ -330,7 +334,11 @@ export default function StringMap({
             border: out ? `2px solid ${fill}` : 'none',
             // No transition: the ring jumps, which is also what
             // reduced motion asks for.
-            boxShadow: isSel ? `0 0 0 3px var(--page-bg), 0 0 0 ${SELECTED_RING_PX}px var(--text-primary)` : 'none',
+            boxShadow: [
+              isSel ? `0 0 0 3px var(--page-bg), 0 0 0 ${SELECTED_RING_PX}px var(--text-primary)` : null,
+              // A string that suits the member's racket glows, selected or not.
+              m.members.some((n) => dots[n].match) ? `0 0 var(--space-4) var(--space-2) color-mix(in srgb, var(--accent) 45%, transparent)` : null,
+            ].filter(Boolean).join(', ') || 'none',
           }}
         >
           {many ? m.members.length : null}

@@ -42,27 +42,16 @@ import { STRINGING_HEIGHTS } from '@/components/TabFallbacks';
 import StringMap, { type MapDot } from './StringMap';
 import StockBadge from './StockBadge';
 import { ColourDots } from './StringColours';
+import StringPeek from './StringPeek';
+import StringListSheet, { type ListSort } from './StringListSheet';
+import { useTabActive } from '@/lib/tabActivity';
+import { isRefused } from '@/lib/apiFetch';
+import type { FitVerdict } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const VIEW_KEY = 'bpm:strings-view';
 /** `--duration-sheet` in globals.css: a sheet's close, waited out before a hand-off. */
 const SHEET_CLOSE_MS = 180;
 const AXIS_KEY = 'bpm:strings-axis';
-type View = 'map' | 'list';
-
-/** The view the member last picked, or null when they never have. */
-function readView(): View | null {
-  try {
-    const v = localStorage.getItem(VIEW_KEY);
-    return v === 'list' || v === 'map' ? v : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Past this many strings the List opens first: a map of nine or more is a
- *  crowd to pick through, where a list is a read (the canvas, 2026-10-28). */
-const MAP_DEFAULT_MAX = 8;
 
 /** The side axis the member last picked; power, the map's original, otherwise. */
 function readAxis(): MapAxis {
@@ -128,12 +117,19 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
      foldable-layout.md). `null` on one screen. */
   const aside = useStringingAside();
   const [learnOpen, setLearnOpen] = useState(false);
-  // Read once on mount. The card renders nothing until its data arrives, so
-  // there is no server markup for a stored choice to disagree with.
-  const [storedView, setView] = useState<View | null>(() => (typeof window === 'undefined' ? null : readView()));
   const [axis, setAxis] = useState<MapAxis>(() => (typeof window === 'undefined' ? 'power' : readAxis()));
-  /** Picked on the map; persists while the tab is mounted. */
+  /** Picked on the map; persists while the tab is mounted. Nothing is picked
+   *  until the member taps a dot: the peek then points back at the map. */
   const [picked, setPicked] = useState<string | null>(null);
+  /** The whole shelf as a list, the peek's swipe-up with nothing picked. */
+  const [listOpen, setListOpen] = useState(false);
+  const [listSort, setListSort] = useState<ListSort>('power');
+  /** Which strings suit the member's own racket (`/api/stringing/fit?ids=`),
+   *  for the map's glow, the peek and the list. null until it answers or
+   *  when it cannot say (no racket, no check-in): then nothing glows. */
+  const [fits, setFits] = useState<{ racket: string; verdicts: Record<string, FitVerdict> } | null>(null);
+  const [peekH, setPeekH] = useState(0);
+  const onScreen = useTabActive();
   // null = not read yet; 'failed' leaves the rows out rather than guess "Ask".
   const [other, setOther] = useState<OtherPrices | 'failed' | null>(null);
   // Asks for the other prices again on its own, so a retry does not empty the
@@ -181,6 +177,26 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     return sortShelf(shelf.strings.map((label) => ({ label, item: (shelf.links[label] && byId.get(shelf.links[label])) || null })));
   }, [shelf, catalog.items, catalog.loadError]);
 
+  // The racket match for every string the catalog knows, once. A refusal or
+  // a failure leaves the map unmarked: the glow is a bonus, never a claim.
+  const fitIds = useMemo(() => entries.map((e) => e.item?.id).filter((x): x is string => !!x).slice(0, 40).join(','), [entries]);
+  useEffect(() => {
+    if (!fitIds) return;
+    let cancelled = false;
+    fetch(`${BASE}/api/stringing/fit?ids=${encodeURIComponent(fitIds)}`, { cache: 'no-store' })
+      .then((r) => (isRefused(r) || !r.ok ? null : r.json()))
+      .then((d) => {
+        if (cancelled) return;
+        setFits(d && typeof d.racket === 'string' && d.fits && typeof d.fits === 'object' ? { racket: d.racket, verdicts: d.fits } : null);
+      })
+      .catch(() => { if (!cancelled) setFits(null); });
+    return () => { cancelled = true; };
+  }, [fitIds]);
+  const matches = useMemo(
+    () => new Set(Object.entries(fits?.verdicts ?? {}).filter(([, v]) => v === 'good_match').map(([k]) => k)),
+    [fits],
+  );
+
   // Holds its place until the list, the catalog and the prices have answered,
   // so the price rows never arrive after the card. An empty list closes the
   // slot, unless this is the whole register (`showEmpty`).
@@ -225,18 +241,14 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   }
 
   const bandOf = (label: string): StockBand | null => shelf?.stock?.[label] ?? null;
-  // A remembered choice wins; with none, a long shelf opens on the list.
-  const view: View = storedView ?? (entries.length > MAP_DEFAULT_MAX ? 'list' : 'map');
   const plotted = entries.filter(isPlottable);
   const notOnMap = entries.filter((e) => !isPlottable(e));
   // Too few to plot is list-only: a map of two dots says nothing.
   const mapOn = canPlot(plotted.length);
-  const showMap = mapOn && view === 'map';
-  // The first plotted string still on the shelf, unless one was picked.
-  const selected = plotted.find((e) => e.label === picked)
-    ?? plotted.find((e) => bandOf(e.label) !== 'out')
-    ?? plotted[0]
-    ?? null;
+  const showMap = mapOn;
+  // Only a string the member tapped: with nothing picked the peek points
+  // back at the map instead of choosing for them.
+  const selected = plotted.find((e) => e.label === picked) ?? null;
 
   const name = (e: ShelfEntry) => (e.item ? `${e.item.brand} ${e.item.model}` : e.label);
   /** The figure, "Ask", or null when the stringer has set no price. */
@@ -245,11 +257,6 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     const p = shelfPrice(shelf, label);
     return p === undefined ? null : p ?? t('priceAsk');
   };
-
-  function pickView(next: View) {
-    setView(next);
-    try { localStorage.setItem(VIEW_KEY, next); } catch { /* private mode: the choice lasts the visit */ }
-  }
 
   function pickAxis(next: MapAxis) {
     setAxis(next);
@@ -278,6 +285,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     durability: durabilityOf(e.item)!,
     band: bandOf(e.label),
     type: stringTypeOf(e.item),
+    match: matches.has(e.item!.id),
   }));
   const openEntry = entries.find((e) => e.label === open) ?? null;
   /* The right page's string: the one opened; else the map's pick (the
@@ -391,27 +399,52 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     </ul>
   );
 
+  const priceCentsOf = (label: string): number | null => {
+    const v = shelf?.prices?.[label];
+    return typeof v === 'number' ? v : null;
+  };
+  /** The picked string's two map numbers: what puts it where it is. */
+  const pickedLine = selected
+    ? `${t(`axisName_${shownAxis}`)} ${axisValueOf(shownAxis, selected.item) ?? '–'} · ${t('axisName_durability')} ${durabilityOf(selected.item) ?? '–'}`
+    : '';
+  const pickedMatch = !!(selected?.item && matches.has(selected.item.id));
+  // The peek belongs to the map on a phone: on a foldable the right page
+  // already shows the string, and a hidden tab shows nothing.
+  const showPeek = showMap && onScreen && !aside && status !== 'failed';
+
   return (
-    <div className="glass-card p-5 space-y-3">
-      {/* The subtitle names the view; the icon beside it switches (Grant:
-          "Map view", "List view"). Nothing to switch with too few to plot. */}
+    // Room under the card for the peek, so the map's foot is never under it.
+    <div className="glass-card p-5 space-y-3" style={showPeek ? { marginBottom: peekH } : undefined}>
+      {/* The card holds only the map and its controls (the Stringing canvas,
+          idea B, 2026-11-12; Grant: "What if the map card only contains the
+          map and the control?"). The list is the peek's swipe-up now, so the
+          header's one button is "How to choose a string". */}
       <CardHeader
         compact
         icon="storefront"
         title={t('title')}
-        subtitle={mapOn ? t(view === 'map' ? 'viewNameMap' : 'viewNameList') : t('subtitle')}
-        action={mapOn ? (
+        subtitle={mapOn ? t('viewNameMap') : t('subtitle')}
+        action={(
           <button
             type="button"
-            onClick={() => pickView(view === 'map' ? 'list' : 'map')}
-            aria-label={t(view === 'map' ? 'switchToList' : 'switchToMap')}
+            onClick={() => setLearnOpen((v) => !v)}
+            aria-expanded={learnOpen}
+            aria-label={t('learnTitle')}
             className="cc-btn cc-btn-ghost"
             style={{ width: 44, height: 44, padding: 0, justifyContent: 'center' }}
           >
-            <span className="material-icons icon-md" aria-hidden="true">{view === 'map' ? 'format_list_bulleted' : 'map'}</span>
+            <span className="material-icons icon-md" aria-hidden="true">school</span>
           </button>
-        ) : undefined}
+        )}
       />
+      {/* The lesson: four short paragraphs a member reads once. */}
+      <Collapse open={learnOpen} spaceAbove="var(--space-3)">
+        <div className="flex flex-col gap-3">
+          {(['learnGauge', 'learnType', 'learnFeel', 'learnTension'] as const).map((k) => (
+            <p key={k} className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t(k)}</p>
+          ))}
+        </div>
+      </Collapse>
       {catalog.loadError && status !== 'failed' && (
         <p className="fs-sm" role="status" style={{ color: 'var(--text-muted)' }}>{t('catalogError')}</p>
       )}
@@ -420,107 +453,125 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         // null, and the reveal slot has already let go of its skeleton, so the
         // register would go blank. The failure stays up until the answer.
         <ErrorState message={t('loadError')} action={<button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAttempt((n) => n + 1)}>{t('retry')}</button>} />
+      ) : showMap ? (
+        <>
+          {/* What runs up the side; durability always runs along the bottom.
+              Pressed buttons, not tabs: nothing behind them is a tabpanel. */}
+          {axes.length > 1 && (
+            <div className="flex flex-col gap-2">
+              <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>{t('compareByAcross')}</span>
+              <div className="segment-control flex" role="group" aria-label={t('axisSwitchLabel')}>
+                {axes.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    aria-pressed={shownAxis === a}
+                    onClick={() => pickAxis(a)}
+                    className={`flex-1 flex items-center justify-center fs-sm rounded-full ${shownAxis === a ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                  >
+                    {t(`axisName_${a}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* The member's racket, on the map itself (Grant: "we should not
+              loose this AI personalized analysis. In fact it should be top
+              level visible"): the strings that suit it glow. */}
+          {fits && (
+            <div data-testid="map-fit-strip" className="bpm-fit-strip">
+              <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
+              <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('forYourRacket', { racket: fits.racket })}</span>
+                {' · '}
+                {matches.size > 0 ? t('forYourRacketGlow') : t('forYourRacketNone')}
+              </span>
+            </div>
+          )}
+          <StringMap
+            dots={dots}
+            selected={selected?.label ?? null}
+            onSelect={(label) => {
+              setPicked(label);
+              // The right page follows the map's pick.
+              if (aside) setOpen(null);
+            }}
+            yLabel={t(`axisUp_${shownAxis}`)}
+            mapLabel={t(`mapLabel_${shownAxis}`)}
+            axisName={t(`axisName_${shownAxis}`)}
+          />
+          {notOnMap.length > 0 && (
+            <button type="button" className="link-quiet link-quiet--flush fs-sm" onClick={() => setListOpen(true)}>
+              {t('notOnMapLink', { count: notOnMap.length })}
+            </button>
+          )}
+          {aside && otherPrices}
+        </>
       ) : (
         <>
-          {showMap ? (
-            <>
-              {/* What runs up the side. Pressed buttons, not tabs, for the same
-                  reason as the Map/List pair above: nothing behind them is a
-                  tabpanel. */}
-              {axes.length > 1 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-                <span className="fs-sm" style={{ flex: 'none', color: 'var(--text-muted)' }}>{t('compareBy')}</span>
-                <div className="segment-control flex" role="group" aria-label={t('axisSwitchLabel')} style={{ flex: 1 }}>
-                  {axes.map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      aria-pressed={shownAxis === a}
-                      onClick={() => pickAxis(a)}
-                      className={`flex-1 fs-sm rounded-full ${shownAxis === a ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-                    >
-                      {t(`axisName_${a}`)}
-                    </button>
-                  ))}
-                </div>
-                </div>
-              )}
-              <StringMap
-                dots={dots}
-                selected={selected?.label ?? null}
-                onSelect={(label) => {
-                  setPicked(label);
-                  // The right page follows the map's pick.
-                  if (aside) setOpen(null);
-                }}
-                yLabel={t(`axisUp_${shownAxis}`)}
-                mapLabel={t(`mapLabel_${shownAxis}`)}
-                axisName={t(`axisName_${shownAxis}`)}
-              />
-              {selected && (() => {
-                const content = rowContent(selected, true);
-                return (
-                  // The list's own row, tinted as picked (a solid accent tint,
-                  // never a ring), and the whole card opens the string's page.
-                  // The meters and the feel scale live under "Ratings and
-                  // specs" there now.
-                  <div aria-live="polite">
-                    <button
-                      type="button"
-                      className="cc-mini-card"
-                      data-selected="true"
-                      onClick={() => setOpen(selected.label)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--space-3)',
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: 'var(--space-4)',
-                        borderRadius: 'var(--radius-lg)',
-                        background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {content.leading}
-                      {content.title}
-                      <span className="material-icons icon-sm" aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }}>chevron_right</span>
-                    </button>
-                  </div>
-                );
-              })()}
-              {notOnMap.length > 0 && (
-                <>
-                  {/* A block, so the card's space-y gap applies above it. */}
-                  <p className="section-label-muted">{t('notOnMap')}</p>
-                  {list(notOnMap)}
-                </>
-              )}
-            </>
-          ) : (
-            list(entries)
-          )}
+          {list(entries)}
           {otherPrices}
         </>
       )}
 
-      {/* The lesson: four short paragraphs a member reads once. Behind a row
-          link so the shelf stays the card's first job. */}
-      {/* Secondary ink: on this card the accent belongs to "See how it plays".
-          The label grows so it sits beside its icon rather than floating
-          between the icon and the chevron. */}
-      <button type="button" className="bpm-row-link" aria-expanded={learnOpen} onClick={() => setLearnOpen((v) => !v)} style={{ color: 'var(--text-secondary)' }}>
-        <span className="material-icons icon-sm" aria-hidden="true">school</span>
-        <span className="fs-sm" style={{ flex: 1 }}>{t('learnTitle')}</span>
-        <span className="material-icons icon-sm motion-chevron" aria-hidden="true">expand_more</span>
-      </button>
-      <Collapse open={learnOpen} spaceAbove="var(--space-3)">
-        <div className="flex flex-col gap-3">
-          {(['learnGauge', 'learnType', 'learnFeel', 'learnTension'] as const).map((k) => (
-            <p key={k} className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t(k)}</p>
-          ))}
-        </div>
-      </Collapse>
+      {showPeek && (
+        <StringPeek
+          onOpen={() => (selected ? setOpen(selected.label) : setListOpen(true))}
+          openLabel={selected ? t('peekOpenString', { name: name(selected) }) : t('peekOpenList')}
+          onHeight={setPeekH}
+        >
+          {selected ? (
+            <span aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                {selected.item && stringPackSrc(selected.item.id) && <StringPackImage catalogId={selected.item.id} size="line" />}
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                  <span className="fs-lg" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <span aria-hidden="true" style={{ flex: 'none', width: 'var(--space-3)', height: 'var(--space-3)', borderRadius: '50%', background: typeDotFill(stringTypeOf(selected.item)) }} />
+                    {selected.label}
+                  </span>
+                  <span className="fs-sm" style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pickedLine}</span>
+                </span>
+                <span className="fs-sm" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)' }}>
+                  {t('peekMore')}
+                  <span className="material-icons icon-md" aria-hidden="true">expand_less</span>
+                </span>
+              </span>
+              {pickedMatch && fits && (
+                <span className="fs-sm" data-testid="peek-match" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
+                  <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--accent)' }}>check_circle</span>
+                  {t('goodMatchFor', { racket: fits.racket })}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', color: 'var(--text-muted)' }}>
+              <span className="material-icons icon-md" aria-hidden="true">expand_less</span>
+              <span className="fs-base" style={{ flex: 1 }}>{t('peekEmpty')}</span>
+              <span className="fs-sm" style={{ flex: 'none', opacity: 0.7 }}>{t('peekSwipeList')}</span>
+            </span>
+          )}
+        </StringPeek>
+      )}
+
+      <StringListSheet
+        open={listOpen && !aside}
+        onClose={() => setListOpen(false)}
+        entries={entries}
+        sort={listSort}
+        onSort={setListSort}
+        priceOf={priceText}
+        priceCents={priceCentsOf}
+        matches={matches}
+        racket={fits?.racket ?? null}
+        onOpenString={(label) => {
+          // The list steps aside for the string's page, never under it.
+          setListOpen(false);
+          const e = entries.find((x) => x.label === label);
+          if (e && isPlottable(e)) setPicked(label);
+          window.setTimeout(() => setOpen(label), SHEET_CLOSE_MS);
+        }}
+        footer={otherPrices}
+      />
 
       <StringDetailSheet
         item={openEntry?.item ?? null}
@@ -538,6 +589,8 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         band={openEntry ? bandOf(openEntry.label) : null}
         clubCount={openEntry ? shelf?.players[openEntry.label] ?? null : null}
         note={openEntry ? shelf?.notes[openEntry.label] ?? null : null}
+        colours={openEntry ? shelf?.colours[openEntry.label] ?? [] : []}
+        customColours={shelf?.customColours}
       />
 
       {asideEntry && (
@@ -553,6 +606,8 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
             band={bandOf(asideEntry.label)}
             clubCount={shelf?.players[asideEntry.label] ?? null}
             note={shelf?.notes[asideEntry.label] ?? null}
+            colours={shelf?.colours[asideEntry.label] ?? []}
+            customColours={shelf?.customColours}
           />
         </StringingAside>
       )}

@@ -10,6 +10,11 @@ import { APP_TIME_ZONE, DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from '@
 import { APP_NAME, APP_SHORT_NAME } from '@/lib/brand';
 import './globals.css';
 import { QUICK_RETURN_PREPAINT } from '@/lib/quickReturn';
+import { uiScalePrepaint } from '@/lib/uiScale';
+import { PANE_QUERY } from '@/lib/paneQuery';
+
+/** The size factor (docs/plans/ui-scale.md), in the same pre-paint script. */
+const UI_SCALE_PREPAINT = uiScalePrepaint(PANE_QUERY);
 
 // Locked type system (design-system bundle v3, subset 2026-05-07):
 //   Space Grotesk  — display / headlines  (variable wght 400–700, Latin Ext WOFF2 ~40 KB)
@@ -222,7 +227,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{
-            __html: `(function(){var d=document.documentElement,l,m;function k(){var v=Math.min(innerWidth/360,innerHeight/740),h=Math.min((innerWidth/2-40)/360,innerHeight/740);if(v>0&&v!==l){l=v;d.style.setProperty('--launch-k',String(v))}if(h>0&&h!==m){m=h;d.style.setProperty('--launch-kh',String(h))}}k();addEventListener('resize',k);try{var t=localStorage.getItem('badminton_theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.setAttribute('data-theme',t)}catch(e){}${QUICK_RETURN_PREPAINT}})()`,
+            __html: `(function(){var d=document.documentElement,l,m;function k(){var v=Math.min(innerWidth/360,innerHeight/740),h=Math.min((innerWidth/2-40)/360,innerHeight/740);if(v>0&&v!==l){l=v;d.style.setProperty('--launch-k',String(v))}if(h>0&&h!==m){m=h;d.style.setProperty('--launch-kh',String(h))}}k();addEventListener('resize',k);try{var t=localStorage.getItem('badminton_theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.setAttribute('data-theme',t)}catch(e){}${QUICK_RETURN_PREPAINT}${UI_SCALE_PREPAINT}})()`,
           }}
         />
         {/* The loading shot — keyframes and the rules that run them — from the

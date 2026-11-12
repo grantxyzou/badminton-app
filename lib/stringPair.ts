@@ -697,7 +697,7 @@ export function pairString(
        rendering them differently: warnings stay inline and uncollapsed, while
        provenance joins the muted caveat paragraph under the action. Merging
        it into that paragraph unconditionally would have been the other bug —
-       the other 33 rows ARE manufacturer-published, and saying otherwise
+       the other 34 rows ARE manufacturer-published, and saying otherwise
        about them is a false claim, not a cautious one. */
     const provenance = text(s, 'ratingSource') === 'Consensus estimate'
       ? 'Performance ratings are community consensus, not manufacturer-published.'

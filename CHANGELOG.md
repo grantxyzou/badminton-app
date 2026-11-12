@@ -14,6 +14,26 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **The admin console's dates and times do too**: the next-session card, Payments, the Ledger, Past sessions, Roster, a player's profile and the club-run page all format through the same helpers, which now read in Vancouver time on any phone.
 - **A shuttle purchase showed the day before on a Pacific phone**: its date is a plain calendar day, which a phone read as midnight in London, still the previous evening in Vancouver. It now shows the day that was entered, on every phone.
 
+## Cards grow with your phone's text size (2026-11-12)
+
+- **Set larger text on your iPhone and the app follows**: every card grows as a whole — its text, padding, buttons, icons and avatar together — up to one and a half times the designed size. Pinch-to-zoom stays off.
+- **On a tablet or a computer the app is a little larger** (up to 12% on a wide screen). On a phone, or a page of an open Z Fold or Duo, it is exactly the size it was: the same screens before and after match pixel for pixel at the default text size.
+- **What stays fixed on purpose**: the tab bar and the top bar, the way iPhone apps keep their own bars, plus the launch screen and the courtside scoreboard. On an open foldable at large text no card crosses the fold.
+
+## Stringing: the strings map, rethought, and every rating re-checked against its maker (2026-11-12)
+
+- **The card holds only the map** (Grant: "What if the map card only contains the map and the control?"). Compare by is now the maker's own ratings: **Repulsion, Control, Sound, Shock**, with durability always along the bottom. The list/map button is gone, and "How to choose a string" is the card's one button.
+- **A quiet line on the tab bar points back at the map** (Grant: "This should bring all the interaction focus to the map"). With nothing picked it says "Tap a dot on the map to see it here"; with a string picked, its name and the two numbers that put it where it is. Tap it or swipe it up to open the string. A foldable keeps showing the string on its right page instead.
+- **Your racket on the map itself** (Grant: "we should not loose this AI personalized analysis. In fact it should be top level visible"): "For your Astrox 88D Pro", and the strings that suit it glow. The picked string says "Good match for your …", and so does its row in the list. One request answers for the whole shelf (`/api/stringing/fit?ids=`).
+- **Every string as a list**, the peek's swipe-up with nothing picked: the maker's five ratings as small number chips in their colours, sortable by any of them or by price. The sort button and its menu take the colour of what you sort by, and that column's chip is filled solid.
+- **A string's sheet**: the packet beside what it is for and five bars in their colours. Then one card with how it suits your racket and the stringer's note, the colours on the reel, and the price at the foot beside "Restring with this string".
+
+- **Five ratings, one set of names, for every brand** (Grant: "For yonex: repulsion, durability, control, sound, shock absorption … lining and Victor can map to that too"). Each of the 46 strings in the catalog was re-checked, and **shock absorption** is new.
+- **Yonex (19)**: all five from Yonex's own charts (Yonex Japan's string pages and the charts printed on the packs). BG66, BG66 Brilliant and BG85 have no Yonex page left, so their numbers come from shops' copies of the same chart. Several of our old numbers were off, e.g. Exbolt 63 is control 10 (was 8) and BG65 repulsion 7 (was 5). Where Yonex draws a bar past the top of its chart (11 of 10), it is stored as 10 with a note.
+- **Li-Ning (16)**: all five from Li-Ning's own stores (Singapore, India, UAE). No. 1 is durability 7 and control 8 (was 5 and 9). NS30 has no shock absorption anywhere.
+- **Victor (11)**: Victor publishes no numbers. Its four ratings come from shops copying a distributor's sheet, so every Victor string is now marked a community estimate, and none has shock absorption. VBS-58 Nano, VBS-69 Nano and VS-850 keep their old estimates where nothing agreed.
+- Each brand-rated string now names the chart it came from.
+
 ## Every sheet's fields have a name a screen reader can say (2026-11-12)
 
 - **All 59 files that open a sheet were checked**, not only the eight opened in a browser. Ten fields had no name a screen reader could read: on the shuttle purchase sheet (tubes, total cost, date, speed), the shuttle stock count, the receipt's recipient, and the session form's start, deadline and end times, courts and max players. Each now says what it is. Nothing on screen changed.
