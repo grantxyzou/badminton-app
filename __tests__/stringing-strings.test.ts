@@ -52,7 +52,7 @@ describe('who can read and who can write', () => {
     // keeps on the shelf is not a secret — from its own members.
     const res = await GET(memberGet('http://x/api/stringing/strings'));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ strings: [], links: {}, prices: {}, colours: {}, stock: {}, players: {} });
+    expect(await res.json()).toEqual({ strings: [], links: {}, prices: {}, colours: {}, stock: {}, players: {}, colourStock: {} });
   });
 
   it('returns the list and its per-label maps — no author, no timestamps', async () => {
@@ -60,7 +60,7 @@ describe('who can read and who can write', () => {
       makeAdminRequest('PATCH', 'http://x/api/stringing/strings', { strings: ['BG80'] }),
     );
     const body = await (await GET(memberGet('http://x/api/stringing/strings'))).json();
-    expect(Object.keys(body)).toEqual(['strings', 'links', 'prices', 'colours', 'stock', 'players']);
+    expect(Object.keys(body)).toEqual(['strings', 'links', 'prices', 'colours', 'stock', 'players', 'colourStock']);
   });
 
   it('refuses a player trying to set it', async () => {
@@ -173,7 +173,7 @@ describe('the shelf extras', () => {
     const ip = { 'X-Client-IP': 'strings-ratelimit-probe' };
     let last: Response | null = null;
     for (let i = 0; i < 121; i++) last = await GET(makeRequest('GET', 'http://x/api/stringing/strings', undefined, ip));
-    expect(await last!.json()).toEqual({ strings: null, links: null, prices: null, stock: null, players: null, colours: null });
+    expect(await last!.json()).toEqual({ strings: null, links: null, prices: null, stock: null, players: null, colours: null, colourStock: null });
   });
 });
 

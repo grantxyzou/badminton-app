@@ -7,8 +7,8 @@ import ActionRow from '@/components/primitives/ActionRow';
 import ErrorState from '@/components/primitives/ErrorState';
 import { catalogLabel, matches, parsePrice, priceDraftOf } from '@/lib/shelfEdit';
 import { MAX_LABEL_LEN } from '@/lib/stringingLimits';
-import type { StringColourId } from '@/lib/stringPalette';
-import { ColourPicker } from '@/components/stringing/StringColours';
+import { isStringColourId, type StringColourId } from '@/lib/stringPalette';
+import { ColourDot, ColourPicker } from '@/components/stringing/StringColours';
 import MoneyInput from '@/components/primitives/MoneyInput';
 import ListRow from '@/components/primitives/ListRow';
 import type { StringStockLine } from '@/lib/stringStockMath';
@@ -80,6 +80,8 @@ interface Props {
 export default function StringShelfSheet(props: Props) {
   const { open, onClose, mode, label, busy, online } = props;
   const t = useTranslations('admin.stringing');
+  // The palette's names live with the member copy; the bench reads the same ones.
+  const tOffer = useTranslations('home.stringing.offer');
   const [priceDraft, setPriceDraft] = useState(() => priceDraftOf(props.price));
   const [query, setQuery] = useState('');
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -111,6 +113,7 @@ export default function StringShelfSheet(props: Props) {
             <span style={{ minWidth: 0 }}>
               {day(p.date)} · {p.units} {p.unit}{p.units === 1 ? '' : 's'} × {p.metresPerUnit} m · {money(p.totalCostCents)}
               {p.label !== label ? ` · ${p.label}` : ''}
+              {isStringColourId(p.color) ? ` · ${tOffer(`colourName.${p.color}`)}` : ''}
               {p.notes ? ` · ${p.notes}` : ''}
             </span>
             <button
@@ -286,6 +289,23 @@ export default function StringShelfSheet(props: Props) {
                   {t('shelf.sheet.stockDetail', { remaining: line.remainingMetres, purchased: line.purchasedMetres, used: line.usedSets })}
                   {line.costPerSetCents !== null ? ` · ${t('shelf.sheet.costPerSet', { cost: money(line.costPerSetCents) })}` : ''}
                 </span>
+                {/* Per colour, once a purchase says one (docs/plans/string-stock-by-colour.md):
+                    what the request sheet offers a member is read from these. */}
+                {(line.byColour?.length ?? 0) > 0 && (
+                  <ul style={{ listStyle: 'none', padding: 0 }} className="flex flex-col gap-1">
+                    {line.byColour.map((c) => (
+                      <li key={c.color} className="fs-sm" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: c.remainingSets > 0 ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+                        <ColourDot id={c.color} size="sm" />
+                        {t('shelf.sheet.byColour', { colour: tOffer(`colourName.${c.color}`), count: c.remainingSets })}
+                      </li>
+                    ))}
+                    {purchases.some((p) => !isStringColourId(p.color)) && (
+                      <li className="fs-sm" style={{ color: line.mixedRemainingSets > 0 ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+                        {t('shelf.sheet.mixedPool', { count: line.mixedRemainingSets })}
+                      </li>
+                    )}
+                  </ul>
+                )}
               </>
             ) : (
               <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>

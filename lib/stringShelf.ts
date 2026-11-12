@@ -7,11 +7,11 @@
  * `__tests__/client-server-import-canary.test.ts` holds the line.
  */
 import type { CatalogItem } from './types';
-import type { StockBand } from './stringStockMath';
+import type { ColourStock, StockBand } from './stringStockMath';
 import { formatServicePrice } from './stringingRateCard';
-import { normaliseColourList, type StringColourId } from './stringPalette';
+import { colourIdOf, normaliseColourList, PALETTE_EN, type StringColourId } from './stringPalette';
 
-export type { StockBand };
+export type { ColourStock, StockBand };
 
 export interface Shelf {
   strings: string[];
@@ -23,6 +23,9 @@ export interface Shelf {
   players: Record<string, number>;
   /** Label → the colours the club has it in (palette ids); a missing label has none said. */
   colours: Record<string, StringColourId[]>;
+  /** Label → which colours are on the shelf, from colour-tagged purchases;
+   *  a missing label has none tagged (docs/plans/string-stock-by-colour.md). */
+  colourStock: Record<string, ColourStock>;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -61,7 +64,14 @@ export function parseShelf(d: unknown): Shelf | null {
       if (list.length > 0) colours[k] = list;
     }
   }
-  return { strings, links, prices, stock, players, colours };
+  const colourStock: Record<string, ColourStock> = {};
+  if (isObj(d.colourStock)) {
+    for (const [k, v] of Object.entries(d.colourStock)) {
+      if (!isObj(v)) continue;
+      colourStock[k] = { inStock: normaliseColourList(v.inStock), mixed: v.mixed === true };
+    }
+  }
+  return { strings, links, prices, stock, players, colours, colourStock };
 }
 
 /** The shelf price for a label: a figure, "ask" (`null` stored), or nothing set (`undefined`). */
@@ -233,4 +243,41 @@ export function stringColours(item: CatalogItem | null): StringColour[] {
 /** The stock band's dot colour. */
 export function stockColour(band: StockBand): string {
   return band === 'in' ? 'var(--accent)' : band === 'low' ? 'var(--color-amber)' : 'var(--text-muted)';
+}
+
+/** A colour the request sheet can offer. */
+export interface RequestColour {
+  /** The palette id, when the palette names it (a two-tone has none). */
+  id: StringColourId | null;
+  /** What the job stores as `stringColor`: the palette's English name, or the catalog's. */
+  name: string;
+  fill: string;
+}
+
+/**
+ * The colours a member may pick for a string on the request sheet
+ * (docs/plans/string-stock-by-colour.md, Grant 2026-11-11: "this need to match
+ * and be dynamic to the strings inventory and string type").
+ *
+ * The BASE list is the stringer's word — the reel colours set on the bench —
+ * and the maker's catalog list only when he has said none. When any purchase
+ * of the string carries a colour, only the tagged colours with sets left are
+ * offered, plus the base list while untagged ("Mixed / not sure") stock is
+ * left, since that reel could be any of them. Out of stock is HIDDEN, never
+ * greyed. An empty answer asks nothing.
+ */
+export function requestColours(shelf: Shelf | null, label: string, item: CatalogItem | null): RequestColour[] {
+  const fromId = (id: StringColourId): RequestColour => ({ id, name: PALETTE_EN[id], fill: paletteFill(id) });
+  const reel = shelf?.colours[label] ?? [];
+  const base: RequestColour[] = reel.length > 0
+    ? reel.map(fromId)
+    : stringColours(item).map((c) => {
+        const id = colourIdOf(c.name);
+        return id ? fromId(id) : { id: null, name: c.name, fill: c.fill };
+      });
+  const stocked = shelf?.colourStock[label];
+  if (!stocked) return base;
+  const out = stocked.inStock.map(fromId);
+  if (stocked.mixed) for (const c of base) if (!out.some((o) => o.name === c.name)) out.push(c);
+  return out;
 }
