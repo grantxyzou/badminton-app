@@ -174,4 +174,36 @@ describe('equipment catalog data', () => {
     expect(zz?.attributes?.playStyle).toBe('Power');
     expect(zz?.skillRange).toEqual([4, 6]); // tier: Premium
   });
+  /* The five ratings, re-sourced 2026-11-12 (Grant: "For yonex: repulsion,
+     durability, control, sound, shock absorption ... lining and Victor can map
+     to that too"). Yonex and Li-Ning publish all five; Victor publishes none,
+     so its rows are marked a consensus estimate and carry no shock absorption.
+     A brand-published row names the chart it came from. */
+  it('rates every string 1-10 on the five traits, with a source for brand numbers', () => {
+    const strings = items.filter((i) => i.category === 'string');
+    const attrs = (i: CatalogItem) => (i as unknown as { attributes: Record<string, unknown> }).attributes;
+    for (const item of strings) {
+      const a = attrs(item);
+      for (const k of ['repulsion', 'durability', 'control', 'hittingSound', 'shockAbsorption']) {
+        if (a[k] === undefined) continue;
+        expect(Number.isInteger(a[k]), `${item.model} ${k}`).toBe(true);
+        expect(a[k] as number, `${item.model} ${k}`).toBeGreaterThanOrEqual(1);
+        expect(a[k] as number, `${item.model} ${k}`).toBeLessThanOrEqual(10);
+      }
+      expect(['Brand published', 'Consensus estimate']).toContain(a.ratingSource);
+      if (a.ratingSource === 'Brand published') {
+        expect(String(a.ratingSourceUrl), String(item.model)).toMatch(/^https:\/\//);
+      }
+    }
+    const shock = (brand: string) => strings.filter((i) => i.brand === brand).filter((i) => attrs(i).shockAbsorption !== undefined).length;
+    expect(shock('Yonex')).toBe(19);
+    expect(shock('Li-Ning')).toBe(15); // NS30: no chart gives one
+    expect(shock('Victor')).toBe(0);
+    for (const item of strings.filter((i) => i.brand === 'Victor')) {
+      expect(attrs(item).ratingSource, String(item.model)).toBe('Consensus estimate');
+    }
+    const model = (m: string) => attrs(strings.find((i) => i.model === m) as CatalogItem);
+    expect(model('Exbolt 63')).toMatchObject({ repulsion: 10, durability: 7, control: 10, hittingSound: 10, shockAbsorption: 7 });
+    expect(model('No. 1')).toMatchObject({ repulsion: 10, durability: 7, control: 8, hittingSound: 9, shockAbsorption: 7 });
+  });
 });

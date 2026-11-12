@@ -8,6 +8,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: every string's ratings re-checked against its maker, plus shock absorption (2026-11-12)
+
+- **Five ratings, one set of names, for every brand** (Grant: "For yonex: repulsion, durability, control, sound, shock absorption … lining and Victor can map to that too"). Each of the 46 strings in the catalog was re-checked, and **shock absorption** is new.
+- **Yonex (19)**: all five from Yonex's own charts (Yonex Japan's string pages and the charts printed on the packs). BG66, BG66 Brilliant and BG85 have no Yonex page left, so their numbers come from shops' copies of the same chart. Several of our old numbers were off, e.g. Exbolt 63 is control 10 (was 8) and BG65 repulsion 7 (was 5). Where Yonex draws a bar past the top of its chart (11 of 10), it is stored as 10 with a note.
+- **Li-Ning (16)**: all five from Li-Ning's own stores (Singapore, India, UAE). No. 1 is durability 7 and control 8 (was 5 and 9). NS30 has no shock absorption anywhere.
+- **Victor (11)**: Victor publishes no numbers. Its four ratings come from shops copying a distributor's sheet, so every Victor string is now marked a community estimate, and none has shock absorption. VBS-58 Nano, VBS-69 Nano and VS-850 keep their old estimates where nothing agreed.
+- Each brand-rated string now names the chart it came from. Nothing on screen shows shock absorption yet; that comes with the new map design.
+
 ## Every tab on a foldable uses both halves, with motion (2026-11-12)
 
 - **Profile on an open Z Fold or Duo**: your list on the left, the page a row opens on the right — Edit profile is open before you tap anything. The open row is marked in green. Sheets (notifications, install) still open in the left half.
