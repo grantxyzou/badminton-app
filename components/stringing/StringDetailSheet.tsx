@@ -11,9 +11,11 @@ import Collapse from '@/components/primitives/Collapse';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { cadRange } from '@/lib/catalogPrice';
 import { CLUB_GEAR_MIN_COHORT } from '@/lib/clubGear';
-import RatingMeters, { ratingSourceKey, type MeterRow } from './RatingMeters';
+import { ratingSourceKey } from './RatingMeters';
 import StringPackImage from './StringPackImage';
-import { feelWordOf, stringTypeOf, type StockBand } from '@/lib/stringShelf';
+import { TRAITS, bestForOf, feelWordOf, stringTypeOf, traitTint, traitValueOf, type StockBand } from '@/lib/stringShelf';
+import { ColourList } from './StringColours';
+import type { CustomColour, ReelColourId } from '@/lib/stringPalette';
 import type { CatalogItem, StringFit } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -63,6 +65,8 @@ export default function StringDetailSheet({
   note = null,
   onRestring,
   asPage = false,
+  colours = [],
+  customColours = [],
 }: {
   item: CatalogItem | null;
   /** The shelf's own name for it, which is what a request sends. */
@@ -81,6 +85,9 @@ export default function StringDetailSheet({
    *  sheet: a foldable's right page, beside the shelf. `open` and `onClose`
    *  are unused then; the page is open while it is rendered. */
   asPage?: boolean;
+  /** The stringer's reel colours for this string, and the club's own names. */
+  colours?: ReelColourId[];
+  customColours?: readonly CustomColour[];
 }) {
   const t = useTranslations('home.stringing.offer');
   const a = item?.attributes ?? {};
@@ -93,15 +100,10 @@ export default function StringDetailSheet({
   const source = ratingSourceKey(a.ratingSource);
   const stringerNote = note?.trim() || null;
 
-  // Power first: it is the axis the map leads with, and the word a player uses.
-  const meters: MeterRow[] = [
-    ['power', num('repulsion')],
-    ['control', num('control')],
-    ['durability', num('durability')],
-    ['sound', num('hittingSound')],
-  ]
-    .filter((r): r is [string, number] => r[1] !== null)
-    .map(([key, value]) => ({ key, label: t(key), value }));
+  // The maker's five, repulsion first, as the maker prints them; a rating the
+  // maker does not give is left out rather than drawn empty.
+  const bars = TRAITS.map((tr) => ({ trait: tr, value: traitValueOf(tr, item) })).filter((b): b is { trait: typeof b.trait; value: number } => b.value !== null);
+  const bestFor = bestForOf(item);
 
   const headline = [type ? t(`hero_${type}`) : null, feel ? t(`heroFeel_${feel}`) : null].filter(Boolean).join(' · ');
   const subline = [mm !== null ? t('gaugeMm', { mm: mm.toFixed(2) }) : null, band ? t(`stock_${band}`) : null].filter(Boolean).join(' · ');
@@ -109,7 +111,7 @@ export default function StringDetailSheet({
   // Tension range and level, from the same curated rows as Specs.
   const facts = item ? catalogSpecRows(item).filter((r) => r.labelKey === 'specTension' || r.labelKey === 'specLevel') : [];
   const showCount = clubCount !== null && clubCount >= CLUB_GEAR_MIN_COHORT;
-  const hasSpecs = meters.length > 0 || facts.length > 0 || showCount;
+  const hasSpecs = !!source || facts.length > 0 || showCount;
   const [specsOpen, setSpecsOpen] = useState(false);
   const specsId = useId();
 
@@ -148,31 +150,44 @@ export default function StringDetailSheet({
   const body = item && (
           // Sections 24px apart; each label sits close over its own content.
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
-            {/* The strip: what it is, at a glance. The name is the sheet's title. */}
-            <div data-testid="string-strip" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-              <StringPackImage catalogId={item.id} size="row" />
-              <span style={{ flex: 1, minWidth: 0 }}>
+            {/* What it is, under its name (the sheet's title). */}
+            {(headline || subline) && (
+              <div data-testid="string-strip">
                 {headline && <span className="fs-md" style={{ display: 'block', fontWeight: 600, color: 'var(--text-primary)' }}>{headline}</span>}
                 {subline && <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>{subline}</span>}
-              </span>
-              {hasPrice && (
-                <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat)', fontWeight: 700, color: 'var(--text-primary)' }}>{price ?? t('priceAsk')}</span>
-              )}
-            </div>
+              </div>
+            )}
 
-            <FitSection state={fit} onRetry={() => setFitAttempt((n) => n + 1)} />
-
-            {stringerNote && (
-              <section aria-label={t('stringerNoteTitle')} className="flex flex-col gap-2">
-                <span className="section-label-muted">{t('stringerNoteTitle')}</span>
-                <div className="bpm-inner-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                  <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', whiteSpace: 'pre-line' }}>{stringerNote}</p>
+            {/* How it plays (the canvas, frame 3): the packet beside what it is
+                for and the maker's five ratings, each a bar in its trait's
+                colour with its name and number inside it. */}
+            {(bars.length > 0 || bestFor) && (
+              <section aria-label={t('howItPlays')} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)' }}>
+                <StringPackImage catalogId={item.id} size="hero" />
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  <span className="section-label-muted">{t('howItPlays')}</span>
+                  {bestFor && <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)', lineHeight: 'var(--lh-snug)' }}>{bestFor}</p>}
+                  {bars.length > 0 && (
+                    <ul data-testid="trait-bars" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                      {bars.map((bar) => <TraitBar key={bar.trait} trait={bar.trait} value={bar.value} />)}
+                    </ul>
+                  )}
                 </div>
               </section>
             )}
 
-            {/* Ratings and specs: there for a member who wants them, closed so
-                the match and the stringer's word come first. */}
+            {/* About you: the racket match and the stringer's note in one
+                card (Grant: "should we combine?"). */}
+            <FitSection state={fit} onRetry={() => setFitAttempt((n) => n + 1)} note={stringerNote} />
+
+            {colours.length > 0 && (
+              <section aria-label={t('coloursTitle')} className="flex flex-col gap-2">
+                <span className="section-label-muted">{t('coloursTitle')}</span>
+                <ColourList ids={colours} customs={customColours} />
+              </section>
+            )}
+
+            {/* Specs: there for a member who wants them, closed. */}
             {hasSpecs && (
               <div>
                 <button
@@ -188,15 +203,10 @@ export default function StringDetailSheet({
                 </button>
                 <Collapse open={specsOpen} id={specsId} spaceAbove="var(--space-3)">
                   <div className="flex flex-col gap-4">
-                    {meters.length > 0 && (
-                      <div className="flex flex-col gap-3">
-                        <RatingMeters rows={meters} />
-                        {source && (
-                          <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>
-                            {source === 'brand' ? t('ratedBy', { brand: item.brand }) : t('ratedCommunity')}
-                          </span>
-                        )}
-                      </div>
+                    {source && (
+                      <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>
+                        {source === 'brand' ? t('ratedBy', { brand: item.brand }) : t('ratedCommunity')}
+                      </span>
                     )}
                     {(facts.length > 0 || showCount) && (
                       <div className="fs-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
@@ -214,14 +224,20 @@ export default function StringDetailSheet({
               </div>
             )}
 
-            {/* The shop's typical range only when the club has no price of its
-                own — beside a real price it is a second number for no reason. */}
-            {!hasPrice && shopRange && (
+            {/* The price last, beside the button it pays for (Grant: "move
+                price to the bottom. there might be a cost dependency to color
+                in the future"). The shop's typical range only when the club
+                has no price of its own. */}
+            {hasPrice ? (
+              <div data-testid="string-price" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                <span className="fs-base" style={{ color: 'var(--text-secondary)' }}>{t('restringFor', { name: label ?? item.model })}</span>
+                <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat)', fontWeight: 700, color: 'var(--text-primary)' }}>{price ?? t('priceAsk')}</span>
+              </div>
+            ) : shopRange ? (
               <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
                 {t('typicalPrice', { range: shopRange[0] === shopRange[1] ? `$${shopRange[0]}` : `$${shopRange[0]}–${shopRange[1]}` })}
               </p>
-            )}
-
+            ) : null}
           </div>
   );
 
@@ -255,10 +271,32 @@ export default function StringDetailSheet({
 // answer, not an alarm, and it must not read milder than "Worth a look".
 const VERDICT_TONE = { good_match: 'paid', worth_a_look: 'waitlist', not_for_frame: 'unpaid' } as const;
 
-/** "How it suits you" — or nothing, when the engine cannot say. */
-function FitSection({ state, onRetry }: { state: FitState; onRetry: () => void }) {
+/** One string's bar: its trait's tint, filled to the rating, the name and
+ *  number inside it in the trait's colour (the canvas, frame 3). */
+function TraitBar({ trait, value }: { trait: (typeof TRAITS)[number]; value: number }) {
   const t = useTranslations('home.stringing.offer');
-  if (state.status === 'none') return null;
+  const tint = traitTint(trait);
+  return (
+    <li data-trait={trait} className="string-trait-bar" style={{ background: `color-mix(in srgb, ${tint} 12%, transparent)` }}>
+      <span aria-hidden="true" className="string-trait-fill" style={{ width: `${Math.max(0, Math.min(10, value)) * 10}%`, background: `color-mix(in srgb, ${tint} 30%, transparent)` }} />
+      <span className="string-trait-text fs-xs" style={{ color: tint }}>
+        <span>{trait === 'shock' ? t('traitFull_shock') : t(`trait_${trait}`)}</span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{value}</span>
+      </span>
+    </li>
+  );
+}
+
+/** "How it suits you" with the stringer's note — or the note alone, or
+ *  nothing, when the engine cannot say and the stringer said nothing. */
+function FitSection({ state, onRetry, note }: { state: FitState; onRetry: () => void; note: string | null }) {
+  const t = useTranslations('home.stringing.offer');
+  const noteBlock = note ? <StringerNote note={note} /> : null;
+  if (state.status === 'none') {
+    return noteBlock ? (
+      <section aria-label={t('stringerNoteTitle')} className="bpm-inner-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>{noteBlock}</section>
+    ) : null;
+  }
   return (
     <section aria-label={t('fitTitle')} className="flex flex-col gap-2">
       <span className="section-label-muted">{t('fitTitle')}</span>
@@ -268,18 +306,33 @@ function FitSection({ state, onRetry }: { state: FitState; onRetry: () => void }
         // 186 at 390px, measured 2026-10-28 (a reason on two lines, both checks).
         <CardSkeleton height={186} />
       ) : state.status === 'failed' ? (
-        <ErrorState
-          message={t('fitError')}
-          action={<button type="button" className="cc-btn cc-btn-ghost" onClick={onRetry}>{t('retry')}</button>}
-        />
+        <>
+          <ErrorState
+            message={t('fitError')}
+            action={<button type="button" className="cc-btn cc-btn-ghost" onClick={onRetry}>{t('retry')}</button>}
+          />
+          {noteBlock && <div className="bpm-inner-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>{noteBlock}</div>}
+        </>
       ) : (
-        <FitCard fit={state.fit} />
+        <FitCard fit={state.fit} note={noteBlock} />
       )}
     </section>
   );
 }
 
-function FitCard({ fit }: { fit: StringFit }) {
+/** The stringer's own words on this string, signed, so they read as a
+ *  person's beside the engine's. */
+function StringerNote({ note }: { note: string }) {
+  const t = useTranslations('home.stringing.offer');
+  return (
+    <div data-testid="stringer-note" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+      <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>{t('stringerNoteTitle')}</span>
+      <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', whiteSpace: 'pre-line' }}>{note}</p>
+    </div>
+  );
+}
+
+function FitCard({ fit, note }: { fit: StringFit; note?: React.ReactNode }) {
   const t = useTranslations('home.stringing.offer');
   const overlap = fit.frameTension && fit.stringTension
     ? Math.min(fit.frameTension[1], fit.stringTension[1]) >= Math.max(fit.frameTension[0], fit.stringTension[0])
@@ -349,6 +402,7 @@ function FitCard({ fit }: { fit: StringFit }) {
           ))}
         </div>
       )}
+      {note && <div className="string-fit-note">{note}</div>}
     </div>
   );
 }

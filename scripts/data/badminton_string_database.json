@@ -15,11 +15,13 @@
     "coreMaterial": "Multifilament nylon",
     "outerMaterial": "Braided nylon fiber",
     "technology": "Special braided fiber",
-    "repulsion": 5,
+    "repulsion": 7,
     "durability": 10,
-    "control": 7,
-    "hittingSound": 5,
+    "control": 6,
+    "hittingSound": 6,
+    "shockAbsorption": 6,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_bg65-thumb-500xauto-5303.jpg",
     "tensionMinLbs": 19,
     "tensionMaxLbs": 24,
     "skillLevel": "Beginner",
@@ -31,7 +33,7 @@
     "priceSetUsdMax": 12,
     "releaseYear": 1990,
     "notableUsers": "Ubiquitous club string",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-BG65TI",
@@ -50,10 +52,12 @@
     "outerMaterial": "Braided nylon + titanium hydride",
     "technology": "Titanium Hydride coating",
     "repulsion": 7,
-    "durability": 9,
-    "control": 7,
+    "durability": 7,
+    "control": 6,
     "hittingSound": 7,
+    "shockAbsorption": 6,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_bg65ti-thumb-500xauto-5299.jpg",
     "tensionMinLbs": 19,
     "tensionMaxLbs": 24,
     "skillLevel": "Beginner",
@@ -65,7 +69,7 @@
     "priceSetUsdMax": 14,
     "releaseYear": 2005,
     "notableUsers": "Popular club upgrade",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-BG66",
@@ -83,11 +87,13 @@
     "coreMaterial": "High-intensity nylon multifilament",
     "outerMaterial": "Braided nylon",
     "technology": "Thin-gauge braid",
-    "repulsion": 8,
+    "repulsion": 9,
     "durability": 5,
     "control": 7,
-    "hittingSound": 8,
-    "ratingSource": "Consensus estimate",
+    "hittingSound": 7,
+    "shockAbsorption": 7,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://www.badmintonbay.com/image/data/yonex/technology/string/yonex-bg66-string-rating.png",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 25,
     "skillLevel": "Intermediate",
@@ -99,7 +105,7 @@
     "priceSetUsdMax": 13,
     "releaseYear": 2003,
     "notableUsers": "Legacy line",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-BG66UM",
@@ -118,10 +124,12 @@
     "outerMaterial": "Braided nylon + Vectran coat",
     "technology": "Multifilament + high-elasticity coat",
     "repulsion": 10,
-    "durability": 4,
-    "control": 8,
-    "hittingSound": 9,
+    "durability": 6,
+    "control": 10,
+    "hittingSound": 10,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_bg66um-thumb-500xauto-5295.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -133,7 +141,7 @@
     "priceSetUsdMax": 18,
     "releaseYear": 2011,
     "notableUsers": "Long-time tour staple",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-BG66F",
@@ -152,10 +160,12 @@
     "outerMaterial": "Braided nylon + Vectran",
     "technology": "Vectran fiber reinforcement",
     "repulsion": 10,
-    "durability": 5,
-    "control": 8,
+    "durability": 6,
+    "control": 10,
     "hittingSound": 9,
+    "shockAbsorption": 9,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_bg66f-thumb-500xauto-5294.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -167,7 +177,7 @@
     "priceSetUsdMax": 19,
     "releaseYear": 2016,
     "notableUsers": "Attacking singles players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-BG66BR",
@@ -186,10 +196,12 @@
     "outerMaterial": "Lightweight braided structure",
     "technology": "Lightweight braiding",
     "repulsion": 9,
-    "durability": 6,
+    "durability": 5,
     "control": 7,
-    "hittingSound": 8,
-    "ratingSource": "Consensus estimate",
+    "hittingSound": 10,
+    "shockAbsorption": 8,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://www.badmintonbay.com/image/data/yonex/technology/string/yonex-bg66-brilliant-string-rating.png",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Intermediate",
@@ -201,7 +213,7 @@
     "priceSetUsdMax": 18,
     "releaseYear": 2018,
     "notableUsers": "Regional release",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-BG80",
@@ -219,11 +231,13 @@
     "coreMaterial": "Multifilament nylon",
     "outerMaterial": "High-modulus Vectran fiber",
     "technology": "Vectran outer wrap",
-    "repulsion": 9,
-    "durability": 7,
-    "control": 8,
-    "hittingSound": 8,
+    "repulsion": 8,
+    "durability": 6,
+    "control": 6,
+    "hittingSound": 7,
+    "shockAbsorption": 6,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/07/club_bg80_02-thumb-500xauto-6574.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 25,
     "skillLevel": "Intermediate",
@@ -235,7 +249,7 @@
     "priceSetUsdMax": 16,
     "releaseYear": 2009,
     "notableUsers": "Very common tour string",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-BG80P",
@@ -253,11 +267,13 @@
     "coreMaterial": "High-strength nylon",
     "outerMaterial": "Vectran + Yonex proprietary fiber",
     "technology": "Coiled Vectran, reduced string movement",
-    "repulsion": 10,
+    "repulsion": 9,
     "durability": 7,
-    "control": 8,
-    "hittingSound": 9,
+    "control": 6,
+    "hittingSound": 7,
+    "shockAbsorption": 6,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_bg80p-thumb-500xauto-5297.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -269,7 +285,7 @@
     "priceSetUsdMax": 18,
     "releaseYear": 2014,
     "notableUsers": "Widely used by attacking pros",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-BG85",
@@ -288,10 +304,12 @@
     "outerMaterial": "Vectran fiber",
     "technology": "Vectran fiber",
     "repulsion": 8,
-    "durability": 7,
-    "control": 9,
-    "hittingSound": 7,
-    "ratingSource": "Consensus estimate",
+    "durability": 6,
+    "control": 7,
+    "hittingSound": 8,
+    "shockAbsorption": 7,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://badmintonalley.com/Yonex_BG_85_Badminton_String_p/string-yonex-bg-85.htm",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 25,
     "skillLevel": "Intermediate",
@@ -303,7 +321,7 @@
     "priceSetUsdMax": 16,
     "releaseYear": 2010,
     "notableUsers": "Niche control pick",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-NBG95",
@@ -322,10 +340,12 @@
     "outerMaterial": "CS Carbon Nanotube coating",
     "technology": "Carbon nanotube coating",
     "repulsion": 8,
-    "durability": 8,
-    "control": 8,
+    "durability": 10,
+    "control": 6,
     "hittingSound": 7,
+    "shockAbsorption": 6,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20210511042312im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_nbg95-thumb-500xauto-5302.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 25,
     "skillLevel": "Intermediate",
@@ -337,7 +357,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2008,
     "notableUsers": "Keigo Sonoda",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-NBG98",
@@ -355,11 +375,13 @@
     "coreMaterial": "Nylon multifilament",
     "outerMaterial": "CS Carbon Nanotube coating",
     "technology": "Carbon nanotube coating",
-    "repulsion": 9,
-    "durability": 5,
+    "repulsion": 10,
+    "durability": 7,
     "control": 8,
-    "hittingSound": 9,
+    "hittingSound": 8,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_nbg98-thumb-500xauto-5296.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -371,7 +393,7 @@
     "priceSetUsdMax": 18,
     "releaseYear": 2008,
     "notableUsers": "Feel-focused players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-NBG99",
@@ -389,11 +411,13 @@
     "coreMaterial": "Nylon multifilament",
     "outerMaterial": "Rough braided outer",
     "technology": "Rough braid for shuttle bite",
-    "repulsion": 7,
-    "durability": 8,
-    "control": 9,
-    "hittingSound": 6,
+    "repulsion": 9,
+    "durability": 7,
+    "control": 10,
+    "hittingSound": 8,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20210511042312im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_nbg99-thumb-500xauto-5300.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 25,
     "skillLevel": "Intermediate",
@@ -405,7 +429,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2008,
     "notableUsers": "Control specialists",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-AERO",
@@ -424,10 +448,13 @@
     "outerMaterial": "Resin-filled filament gaps",
     "technology": "Resin infill for thin-gauge strength",
     "repulsion": 10,
-    "durability": 3,
+    "durability": 5,
     "control": 9,
     "hittingSound": 10,
+    "shockAbsorption": 7,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2016/01/club_bgas-thumb-500xauto-5293.jpg",
+    "ratingNote": "Off the top of the maker's chart: repulsion and hitting sound are 11 on the chart, 11 of 10. Stored as 10.",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -439,7 +466,7 @@
     "priceSetUsdMax": 22,
     "releaseYear": 2019,
     "notableUsers": "Feel-first advanced players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-ABITE",
@@ -457,11 +484,13 @@
     "coreMaterial": "Textured nylon main + Aerosonic cross",
     "outerMaterial": "Sticky-coat main / smooth cross",
     "technology": "Pre-packaged hybrid, high spin bite",
-    "repulsion": 8,
-    "durability": 7,
+    "repulsion": 10,
+    "durability": 6,
     "control": 10,
-    "hittingSound": 8,
+    "hittingSound": 9,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2017/06/club_aerobite2017-thumb-500xauto-8912.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -473,7 +502,7 @@
     "priceSetUsdMax": 23,
     "releaseYear": 2017,
     "notableUsers": "Widely used on tour",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-ABITEB",
@@ -491,11 +520,13 @@
     "coreMaterial": "Thick textured nylon main + Aerosonic cross",
     "outerMaterial": "Heavy sticky-coat main",
     "technology": "Hybrid with thicker, grippier main",
-    "repulsion": 7,
-    "durability": 8,
+    "repulsion": 8,
+    "durability": 7,
     "control": 10,
     "hittingSound": 7,
+    "shockAbsorption": 6,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2019/01/abb_spec-thumb-500xauto-14885.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -507,7 +538,7 @@
     "priceSetUsdMax": 24,
     "releaseYear": 2019,
     "notableUsers": "Control-heavy doubles players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-EX63",
@@ -526,10 +557,13 @@
     "outerMaterial": "Smooth low-texture coat",
     "technology": "Forged Fiber (~24% durability gain)",
     "repulsion": 10,
-    "durability": 6,
-    "control": 8,
+    "durability": 7,
+    "control": 10,
     "hittingSound": 10,
+    "shockAbsorption": 7,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2020/12/club_EXBOLT63-thumb-500xauto-19055.jpg",
+    "ratingNote": "Off the top of the maker's chart: repulsion is 11 on the chart, 11 of 10. Stored as 10.",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -541,7 +575,7 @@
     "priceSetUsdMax": 20,
     "releaseYear": 2020,
     "notableUsers": "Popular thin-gauge tour choice",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-EX65",
@@ -560,10 +594,12 @@
     "outerMaterial": "Smooth coat",
     "technology": "Forged Fiber",
     "repulsion": 10,
-    "durability": 7,
-    "control": 8,
+    "durability": 8,
+    "control": 10,
     "hittingSound": 9,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://yonexshop.jp/photo/BGSTG/BGXB65/zz-BGXB65_004-1.jpg",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Intermediate",
@@ -575,7 +611,7 @@
     "priceSetUsdMax": 20,
     "releaseYear": 2022,
     "notableUsers": "Rapidly replacing BG66 Ultimax",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-EX68",
@@ -593,11 +629,14 @@
     "coreMaterial": "Forged Fiber nylon",
     "outerMaterial": "Textured coat",
     "technology": "Forged Fiber",
-    "repulsion": 8,
-    "durability": 9,
-    "control": 9,
+    "repulsion": 9,
+    "durability": 10,
+    "control": 10,
     "hittingSound": 8,
+    "shockAbsorption": 6,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://yonexshop.jp/photo/BGSTG/BGXB68/zz-BGXB68_686-1.jpg",
+    "ratingNote": "Off the top of the maker's chart: durability is 11 on the chart, 11 of 10. Stored as 10.",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Intermediate",
@@ -609,7 +648,7 @@
     "priceSetUsdMax": 20,
     "releaseYear": 2022,
     "notableUsers": "Doubles defenders",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "YX-SKY",
@@ -629,9 +668,12 @@
     "technology": "Long dwell-time construction",
     "repulsion": 8,
     "durability": 7,
-    "control": 7,
-    "hittingSound": 7,
+    "control": 10,
+    "hittingSound": 6,
+    "shockAbsorption": 10,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://web.archive.org/web/20230201034309im_/https://www.yonex.co.jp/badminton/strings/assets_c/2019/11/skyarc_spec-thumb-500xauto-16483.jpg",
+    "ratingNote": "Off the top of the maker's chart: shock absorption is 11 on the chart, 11 of 10. Stored as 10.",
     "tensionMinLbs": 19,
     "tensionMaxLbs": 25,
     "skillLevel": "Beginner",
@@ -643,7 +685,7 @@
     "priceSetUsdMax": 19,
     "releaseYear": 2019,
     "notableUsers": "Comfort-focused players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS58N",
@@ -665,7 +707,7 @@
     "durability": 3,
     "control": 9,
     "hittingSound": 10,
-    "ratingSource": "Brand published",
+    "ratingSource": "Consensus estimate",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -677,7 +719,7 @@
     "priceSetUsdMax": 22,
     "releaseYear": 2021,
     "notableUsers": "Elite feel players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS61",
@@ -695,11 +737,12 @@
     "coreMaterial": "High-strength nylon multifilament",
     "outerMaterial": "High-tenacity braid",
     "technology": "Thin-gauge high resilience",
-    "repulsion": 10,
-    "durability": 4,
-    "control": 8,
-    "hittingSound": 9,
-    "ratingSource": "Brand published",
+    "repulsion": 9,
+    "durability": 6,
+    "control": 7,
+    "hittingSound": 7,
+    "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://www.gemsports.com.au/products/gem-sports-victor-vbs-61-high-resilience-badminton-string-set-0-61mm-white",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -711,7 +754,7 @@
     "priceSetUsdMax": 19,
     "releaseYear": 2019,
     "notableUsers": "Fast doubles",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS63",
@@ -730,10 +773,11 @@
     "outerMaterial": "High-strength multifilament wrap",
     "technology": "Crisp high-pitch construction",
     "repulsion": 9,
-    "durability": 5,
-    "control": 8,
-    "hittingSound": 10,
-    "ratingSource": "Brand published",
+    "durability": 7,
+    "control": 7,
+    "hittingSound": 7,
+    "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://web.archive.org/web/20250824022151/https://yumo.ca/blogs/badminton-information/victor-new-vbs-badminton-strings",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Advanced",
@@ -745,7 +789,7 @@
     "priceSetUsdMax": 18,
     "releaseYear": 2018,
     "notableUsers": "Anders Antonsen; H.S. Prannoy; Apriyani Rahayu",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS66N",
@@ -764,10 +808,11 @@
     "outerMaterial": "Nylon multifilament wrap",
     "technology": "Nano core for resilience + control",
     "repulsion": 9,
-    "durability": 7,
+    "durability": 8,
     "control": 7,
     "hittingSound": 7,
-    "ratingSource": "Brand published",
+    "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://web.archive.org/web/20250824022151/https://yumo.ca/blogs/badminton-information/victor-new-vbs-badminton-strings",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Intermediate",
@@ -779,7 +824,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2018,
     "notableUsers": "Very popular club string",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS68",
@@ -797,11 +842,12 @@
     "coreMaterial": "High-strength nylon",
     "outerMaterial": "Textured control braid",
     "technology": "Firm-feel control construction",
-    "repulsion": 7,
+    "repulsion": 8,
     "durability": 8,
     "control": 9,
     "hittingSound": 7,
-    "ratingSource": "Brand published",
+    "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://web.archive.org/web/20250824022151/https://yumo.ca/blogs/badminton-information/victor-new-vbs-badminton-strings",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Intermediate",
@@ -813,7 +859,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2018,
     "notableUsers": "Control-first players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS68P",
@@ -831,11 +877,12 @@
     "coreMaterial": "High-strength nylon",
     "outerMaterial": "Soft-feel braid",
     "technology": "Softer variant of VBS-68",
-    "repulsion": 8,
+    "repulsion": 9,
     "durability": 8,
-    "control": 9,
+    "control": 7,
     "hittingSound": 7,
-    "ratingSource": "Brand published",
+    "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://web.archive.org/web/20250824022151/https://yumo.ca/blogs/badminton-information/victor-new-vbs-badminton-strings",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Intermediate",
@@ -847,7 +894,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2019,
     "notableUsers": "Comfort-oriented control players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS69N",
@@ -866,10 +913,10 @@
     "outerMaterial": "High-intensity nylon",
     "technology": "Nano core + high-tenacity weave",
     "repulsion": 9,
-    "durability": 8,
+    "durability": 9,
     "control": 7,
     "hittingSound": 7,
-    "ratingSource": "Brand published",
+    "ratingSource": "Consensus estimate",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 28,
     "skillLevel": "Intermediate",
@@ -881,7 +928,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2020,
     "notableUsers": "Hard hitters",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS70",
@@ -901,9 +948,10 @@
     "technology": "Thick-gauge durable weave",
     "repulsion": 7,
     "durability": 9,
-    "control": 8,
-    "hittingSound": 6,
-    "ratingSource": "Brand published",
+    "control": 6,
+    "hittingSound": 8,
+    "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://web.archive.org/web/20250824022151/https://yumo.ca/blogs/badminton-information/victor-new-vbs-badminton-strings",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 28,
     "skillLevel": "Beginner",
@@ -915,7 +963,7 @@
     "priceSetUsdMax": 15,
     "releaseYear": 2018,
     "notableUsers": "Training and club use",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VBS70P",
@@ -933,11 +981,12 @@
     "coreMaterial": "Highly endurable multifilament nylon",
     "outerMaterial": "Special tenacity weave",
     "technology": "High-tenacity weaving adjustment",
-    "repulsion": 9,
+    "repulsion": 8,
     "durability": 9,
     "control": 7,
-    "hittingSound": 8,
-    "ratingSource": "Brand published",
+    "hittingSound": 7,
+    "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://web.archive.org/web/20250824022151/https://yumo.ca/blogs/badminton-information/victor-new-vbs-badminton-strings",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 28,
     "skillLevel": "Intermediate",
@@ -949,7 +998,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2019,
     "notableUsers": "Power doubles players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VS850",
@@ -983,7 +1032,7 @@
     "priceSetUsdMax": 12,
     "releaseYear": 2010,
     "notableUsers": "Entry-level club string",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "VC-VS890",
@@ -1001,11 +1050,12 @@
     "coreMaterial": "Nylon multifilament",
     "outerMaterial": "Elastic braid",
     "technology": "Long contact-time construction",
-    "repulsion": 8,
-    "durability": 7,
-    "control": 9,
-    "hittingSound": 6,
-    "ratingSource": "Brand published",
+    "repulsion": 9,
+    "durability": 8,
+    "control": 7,
+    "hittingSound": 7,
+    "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://badmintonbites.com/the-complete-guide-to-victor-and-ashaway-badminton-strings/",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 25,
     "skillLevel": "Beginner",
@@ -1017,7 +1067,7 @@
     "priceSetUsdMax": 13,
     "releaseYear": 2012,
     "notableUsers": "Developing players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NO1",
@@ -1036,10 +1086,12 @@
     "outerMaterial": "Heat-resistant nylon braid",
     "technology": "3D Knit technology",
     "repulsion": 10,
-    "durability": 5,
-    "control": 9,
+    "durability": 7,
+    "control": 8,
     "hittingSound": 9,
+    "shockAbsorption": 7,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://sg.lining.studio/products/no-1",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 30,
     "skillLevel": "Advanced",
@@ -1051,7 +1103,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2016,
     "notableUsers": "Chinese National Team; Jonatan Christie",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NO1B",
@@ -1070,10 +1122,12 @@
     "outerMaterial": "Elastic resin coating",
     "technology": "3D Knit + elastic resin coat",
     "repulsion": 10,
-    "durability": 7,
-    "control": 9,
-    "hittingSound": 9,
+    "durability": 8,
+    "control": 8,
+    "hittingSound": 10,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://sg.lining.studio/products/no-1-boost",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 30,
     "skillLevel": "Advanced",
@@ -1085,7 +1139,7 @@
     "priceSetUsdMax": 19,
     "releaseYear": 2022,
     "notableUsers": "Chinese National Team",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NO5",
@@ -1106,8 +1160,10 @@
     "repulsion": 8,
     "durability": 8,
     "control": 8,
-    "hittingSound": 8,
+    "hittingSound": 7,
+    "shockAbsorption": 7,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://in.lining.studio/products/no-5",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 28,
     "skillLevel": "Intermediate",
@@ -1119,7 +1175,7 @@
     "priceSetUsdMax": 15,
     "releaseYear": 2016,
     "notableUsers": "All-round club players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NO7",
@@ -1139,9 +1195,11 @@
     "technology": "Deep-Re-Dipping coating",
     "repulsion": 6,
     "durability": 10,
-    "control": 7,
-    "hittingSound": 6,
+    "control": 8,
+    "hittingSound": 7,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://sg.lining.studio/products/no-7",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Beginner",
@@ -1153,7 +1211,7 @@
     "priceSetUsdMax": 14,
     "releaseYear": 2016,
     "notableUsers": "Beginners and training rackets",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NO7B",
@@ -1173,9 +1231,11 @@
     "technology": "3D Knit for added stability",
     "repulsion": 7,
     "durability": 10,
-    "control": 8,
-    "hittingSound": 7,
+    "control": 9,
+    "hittingSound": 8,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://sg.lining.studio/products/no-7-boost",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Beginner",
@@ -1187,7 +1247,7 @@
     "priceSetUsdMax": 16,
     "releaseYear": 2022,
     "notableUsers": "Heavy hitters who hate restringing",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-N58",
@@ -1206,10 +1266,12 @@
     "outerMaterial": "Ultra-fine nylon",
     "technology": "Ultra-thin elliptical braiding",
     "repulsion": 10,
-    "durability": 3,
-    "control": 10,
+    "durability": 5,
+    "control": 8,
     "hittingSound": 10,
+    "shockAbsorption": 8,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://sg.lining.studio/products/n58",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 30,
     "skillLevel": "Advanced",
@@ -1221,7 +1283,7 @@
     "priceSetUsdMax": 22,
     "releaseYear": 2022,
     "notableUsers": "Technical singles players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-N61",
@@ -1239,11 +1301,13 @@
     "coreMaterial": "Heat-resistant high-intensity nylon multifilament",
     "outerMaterial": "Ultra-fine nylon",
     "technology": "Elliptical high-polymer braiding",
-    "repulsion": 9,
-    "durability": 4,
+    "repulsion": 10,
+    "durability": 6,
     "control": 8,
-    "hittingSound": 9,
-    "ratingSource": "Consensus estimate",
+    "hittingSound": 10,
+    "shockAbsorption": 8,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://sg.lining.studio/products/n61",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 29,
     "skillLevel": "Advanced",
@@ -1255,7 +1319,7 @@
     "priceSetUsdMax": 19,
     "releaseYear": 2022,
     "notableUsers": "Speed players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-N65",
@@ -1273,11 +1337,13 @@
     "coreMaterial": "Heat-resistant high-intensity nylon multifilament",
     "outerMaterial": "Ultra-fine nylon",
     "technology": "Elliptical high-polymer braiding",
-    "repulsion": 9,
-    "durability": 6,
+    "repulsion": 10,
+    "durability": 7,
     "control": 8,
-    "hittingSound": 9,
-    "ratingSource": "Consensus estimate",
+    "hittingSound": 10,
+    "shockAbsorption": 8,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://www.shopnings.com/li-ning-n65-badminton-string/",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 29,
     "skillLevel": "Intermediate",
@@ -1289,7 +1355,7 @@
     "priceSetUsdMax": 18,
     "releaseYear": 2022,
     "notableUsers": "Technical all-rounders",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-N68",
@@ -1311,7 +1377,9 @@
     "durability": 7,
     "control": 7,
     "hittingSound": 8,
+    "shockAbsorption": 7,
     "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://in.lining.studio/products/n68",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 29,
     "skillLevel": "Intermediate",
@@ -1323,7 +1391,7 @@
     "priceSetUsdMax": 18,
     "releaseYear": 2024,
     "notableUsers": "Aggressive doubles players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-N69",
@@ -1342,10 +1410,12 @@
     "outerMaterial": "Ultra-fine nylon",
     "technology": "Elliptical high-polymer braiding",
     "repulsion": 8,
-    "durability": 8,
+    "durability": 9,
     "control": 7,
     "hittingSound": 7,
-    "ratingSource": "Consensus estimate",
+    "shockAbsorption": 7,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://in.lining.studio/products/n69",
     "tensionMinLbs": 22,
     "tensionMaxLbs": 29,
     "skillLevel": "Intermediate",
@@ -1357,7 +1427,7 @@
     "priceSetUsdMax": 18,
     "releaseYear": 2022,
     "notableUsers": "Club players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-N70",
@@ -1375,11 +1445,13 @@
     "coreMaterial": "Heat-resistant high-intensity nylon multifilament",
     "outerMaterial": "Ultra-fine nylon",
     "technology": "Elliptical high-polymer braiding",
-    "repulsion": 7,
-    "durability": 9,
-    "control": 8,
-    "hittingSound": 6,
-    "ratingSource": "Consensus estimate",
+    "repulsion": 6,
+    "durability": 10,
+    "control": 7,
+    "hittingSound": 7,
+    "shockAbsorption": 7,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://in.lining.studio/products/n70",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 28,
     "skillLevel": "Beginner",
@@ -1391,7 +1463,7 @@
     "priceSetUsdMax": 17,
     "releaseYear": 2022,
     "notableUsers": "Training use",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NS30",
@@ -1409,11 +1481,12 @@
     "coreMaterial": "High-intensity nylon",
     "outerMaterial": "Nylon braid",
     "technology": "Value-line construction",
-    "repulsion": 8,
-    "durability": 7,
-    "control": 7,
+    "repulsion": 7,
+    "durability": 8,
+    "control": 6,
     "hittingSound": 8,
     "ratingSource": "Consensus estimate",
+    "ratingSourceUrl": "https://khelmart.com/lining-ns-30-badminton-strings",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Intermediate",
@@ -1425,7 +1498,7 @@
     "priceSetUsdMax": 11,
     "releaseYear": 2014,
     "notableUsers": "Value-conscious club players",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NS50",
@@ -1443,11 +1516,13 @@
     "coreMaterial": "High-intensity nylon",
     "outerMaterial": "Nylon braid",
     "technology": "Value-line construction",
-    "repulsion": 6,
-    "durability": 8,
-    "control": 7,
-    "hittingSound": 6,
-    "ratingSource": "Consensus estimate",
+    "repulsion": 10,
+    "durability": 10,
+    "control": 8,
+    "hittingSound": 8,
+    "shockAbsorption": 8,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://in.lining.studio/products/ns50",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Beginner",
@@ -1459,7 +1534,7 @@
     "priceSetUsdMax": 10,
     "releaseYear": 2014,
     "notableUsers": "Everyday play",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NS70",
@@ -1477,11 +1552,13 @@
     "coreMaterial": "High-intensity nylon",
     "outerMaterial": "Nylon braid",
     "technology": "Value-line construction",
-    "repulsion": 6,
-    "durability": 9,
-    "control": 7,
-    "hittingSound": 6,
-    "ratingSource": "Consensus estimate",
+    "repulsion": 9,
+    "durability": 8,
+    "control": 9,
+    "hittingSound": 8,
+    "shockAbsorption": 8,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://in.lining.studio/products/ns70",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Beginner",
@@ -1493,7 +1570,7 @@
     "priceSetUsdMax": 10,
     "releaseYear": 2014,
     "notableUsers": "Entry-level",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-NS95",
@@ -1511,11 +1588,13 @@
     "coreMaterial": "High-intensity nylon",
     "outerMaterial": "Textured nylon braid",
     "technology": "Value-line control construction",
-    "repulsion": 7,
-    "durability": 8,
+    "repulsion": 9,
+    "durability": 9,
     "control": 9,
-    "hittingSound": 7,
-    "ratingSource": "Consensus estimate",
+    "hittingSound": 8,
+    "shockAbsorption": 8,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://in.lining.studio/products/ns95",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Intermediate",
@@ -1527,7 +1606,7 @@
     "priceSetUsdMax": 12,
     "releaseYear": 2014,
     "notableUsers": "Control players on a budget",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   },
   {
     "id": "LN-AP70",
@@ -1545,11 +1624,13 @@
     "coreMaterial": "High-intensity nylon",
     "outerMaterial": "Nylon braid",
     "technology": "Consistent tension construction",
-    "repulsion": 6,
+    "repulsion": 7,
     "durability": 9,
     "control": 8,
-    "hittingSound": 6,
-    "ratingSource": "Consensus estimate",
+    "hittingSound": 7,
+    "shockAbsorption": 7,
+    "ratingSource": "Brand published",
+    "ratingSourceUrl": "https://in.lining.studio/products/ap70-turbo-1",
     "tensionMinLbs": 20,
     "tensionMaxLbs": 26,
     "skillLevel": "Beginner",
@@ -1561,6 +1642,6 @@
     "priceSetUsdMax": 11,
     "releaseYear": 2012,
     "notableUsers": "Pro-shop default",
-    "lastVerified": "2026-08-20"
+    "lastVerified": "2026-11-12"
   }
 ]
