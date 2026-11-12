@@ -14,7 +14,7 @@ interface Props {
    * actually on screen. `null` means "the initial", explicitly.
    */
   avatar?: Avatar | null;
-  /** Diameter in px. */
+  /** Diameter in px at the default size; drawn in rem, so it scales. */
   size?: number;
   /**
    * `neutral` for the one place there is only ever one person (Profile), where
@@ -51,10 +51,12 @@ export default function MemberAvatar({ name, avatar: given, size = 32, tone = 'n
       aria-hidden="true"
       className={`member-avatar${neutral ? ' member-avatar--neutral' : ''}`}
       data-avatar={racketId ? 'racket' : birdie ? 'birdie' : 'initial'}
+      // In rem so the circle grows with the app's size factor (docs/plans/ui-scale.md):
+      // `size` stays the designed diameter in px at the default text size.
       style={{
-        width: size,
-        height: size,
-        fontSize: size * 0.42,
+        width: `${size / 16}rem`,
+        height: `${size / 16}rem`,
+        fontSize: `${(size * 0.42) / 16}rem`,
         ...(colours ? { background: colours.bg, color: colours.fg } : {}),
       }}
     >

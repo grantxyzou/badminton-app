@@ -77,7 +77,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
       </BottomSheetHeader>
       <BottomSheetBody>
         {success ? (
-          <p className="motion-fade" style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
+          <p className="motion-fade sheet-success-line">
             {t('welcomeBack', { name: success })}
           </p>
         ) : (

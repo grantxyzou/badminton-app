@@ -20,8 +20,11 @@ import { useEffect, useSyncExternalStore } from 'react';
  * `PANE_QUERY` is the SAME condition as the CSS pane block, verbatim; the
  * foldable canary pins the two together.
  */
-export const PANE_QUERY =
-  '(min-width: 720px) and (min-height: 480px) and (pointer: coarse), (horizontal-viewport-segments: 2)';
+// The string lives in lib/paneQuery.ts, a plain module the server layout's
+// pre-paint script can import (lib/uiScale.ts reads it there): a constant from a
+// 'use client' file reaches a server component as a client reference, not text.
+export { PANE_QUERY } from './paneQuery';
+import { PANE_QUERY } from './paneQuery';
 
 export const PANE_FLIP_ATTR = 'data-pane-flip';
 
