@@ -113,9 +113,13 @@ export default function ConfirmChangeSheet({
       </BottomSheetHeader>
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>
-            {t('confirm.intro', { racket: job.racketLabel })}
-          </p>
+          {/* Only while there is a change to answer: over "Nothing left to
+              answer" it promised an update that is gone (Grant, 2026-11-12). */}
+          {error !== 'gone' && (
+            <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+              {t('confirm.intro', { racket: job.racketLabel })}
+            </p>
+          )}
 
           {/* Gone is not a failure — the stringer withdrew or already applied
               the change, and there is nothing left to answer. It said "Pull to

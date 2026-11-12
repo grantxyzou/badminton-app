@@ -75,5 +75,7 @@ describe('ConfirmChangeSheet', () => {
     expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Keep original' })).toBeNull();
     expect(screen.queryByText('$38.50')).toBeNull();
+    // Nor the intro promising an update that is no longer there.
+    expect(screen.queryByText(/has an update/)).toBeNull();
   });
 });

@@ -8,6 +8,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: statuses you can tell apart, colour by trait, a calmer closed bench (2026-11-12)
+
+- Every stringing status has its own colour AND icon, defined once and used by the stringer's list, the admin bench and the job page: not dropped off (grey, clock), received (amber, box), strung (blue, tick), ready for pickup (green), waiting on the player (purple, hourglass).
+- The stringer's "Rackets to string" drops its outer card; each racket has a 4-step bar under its name, and a job waiting on the player says what was suggested and holds its button. The stringer sees what changed, never the price.
+- The admin job page's progress is a horizontal row of steps in the current status's colour.
+- Strings we offer: each row reads Power in orange, Control in blue, Durability in green; on the map each dot takes its string's type colour, with a legend, the selected string's meters use the trait colours, and the bottom axis reads "Durability".
+- A string's page no longer lists colours (the request is where a colour is picked), and the level line reads "Rated Intermediate".
+- The admin bench, when the shop is closed, shows one card in the empty-state pattern with "Open shop", and "Add job" is the solid main button.
+- A change to confirm that is no longer waiting no longer shows the "has an update" line above "Nothing left to answer".
+
 ## The stringing animation reads inside its picture (2026-11-12)
 
 - After sending a stringing request, each step's line ("Opening a fresh set of BG80", "Ready to pick up. We'll let you know.") now sits inside the picture along its bottom edge, and "Play again" is a small pill with a replay icon in the picture's top-right corner, instead of a link under the dots.

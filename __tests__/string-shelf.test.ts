@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { stockBand, LOW_STOCK_SETS } from '../lib/stringStockMath';
 import { normalisePrices } from '../lib/stringingStrings';
-import { isBringOwnLabel, parseShelf, shelfPrice, sortShelf, stringColours, typeBand, type ShelfEntry } from '../lib/stringShelf';
+import { isBringOwnLabel, parseShelf, shelfPrice, sortShelf, stringColours, traitTint, typeBand, typeDotFill, typeDotInk, typeTint, type ShelfEntry } from '../lib/stringShelf';
 import type { CatalogItem } from '../lib/types';
 
 /**
@@ -90,6 +90,26 @@ describe('stringColours', () => {
   it('is empty without the attribute', () => {
     expect(stringColours(item('x', {}))).toEqual([]);
     expect(stringColours(null)).toEqual([]);
+  });
+});
+
+describe('traitTint', () => {
+  // Grant, 2026-11-12: one colour per trait, the same as the type tuned for it.
+  it('gives power the repulsion tint, and control and durability their own types\' tints', () => {
+    expect(traitTint('power')).toBe(typeTint('repulsion'));
+    expect(traitTint('control')).toBe(typeTint('control'));
+    expect(traitTint('durability')).toBe(typeTint('durability'));
+    expect(new Set([traitTint('power'), traitTint('control'), traitTint('durability')]).size).toBe(3);
+  });
+});
+
+describe('typeDotFill', () => {
+  it('is the type tint, and neutral (never the accent) for all-round and unknown', () => {
+    expect(typeDotFill('hybrid')).toBe(typeTint('hybrid'));
+    expect(typeDotFill('all_round')).toBe('var(--text-muted)');
+    expect(typeDotFill(null)).toBe('var(--text-muted)');
+    expect(typeDotInk(null)).toBe('var(--page-bg)');
+    expect(typeDotInk('control')).toContain(typeTint('control')!);
   });
 });
 

@@ -370,7 +370,7 @@ describe('as a whole tab', () => {
 });
 
 describe('the colours on the reel', () => {
-  it('shows the stringer’s colours on the row and on the string’s page, in place of the maker’s list', async () => {
+  it('shows the stringer’s colours on the row; the string’s page lists none (the request picks the colour)', async () => {
     try { localStorage.setItem('bpm:strings-view', 'list'); } catch { /* jsdom always has it */ }
     mockApi(['BG80', 'BG65'], { colours: { BG80: ['white', 'yellow', 'not-a-colour'] } });
     wrap();
@@ -379,8 +379,79 @@ describe('the colours on the reel', () => {
     expect(screen.getAllByRole('img', { name: /^Colours:/ })).toHaveLength(1);
     fireEvent.click(screen.getByText('BG80').closest('button')!);
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText('On the reel')).toBeDefined();
-    expect(within(sheet).getByText('Yellow')).toBeDefined();
+    // Grant, 2026-11-12: "people dont do any selection here. The CTA takes
+    // them to the request sheet with this string preselected."
+    expect(within(sheet).queryByText('On the reel')).toBeNull();
     expect(within(sheet).queryByText(enMessages.home.stringing.offer.coloursNote)).toBeNull();
+  });
+});
+
+describe('colour by trait (Grant, 2026-11-12: "A for lists, D for map")', () => {
+  // The browser's own reading of a colour, so a hex and its rgb() compare equal.
+  const norm = (c: string) => { const el = document.createElement('span'); el.style.color = c; return el.style.color; };
+  const normBg = (c: string) => { const el = document.createElement('span'); el.style.background = c; return el.style.background; };
+
+  const TYPED = [
+    str('s-80', 'BG80', 8, 6, { stringType: 'Repulsion' }),
+    str('s-66', 'BG66', 9, 4, { stringType: 'Control' }),
+    str('s-65', 'BG65', 5, 9, { stringType: 'Durability' }),
+    str('s-ex', 'Exbolt 63', 9, 5, { stringType: 'Hybrid' }),
+  ];
+  function mockTyped(strings: string[]) {
+    const links: Record<string, string> = { BG80: 's-80', BG66: 's-66', BG65: 's-65', Exbolt: 's-ex' };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: TYPED }) } as Response);
+      return Promise.resolve({ ok: true, json: async () => ({ strings, links }) } as Response);
+    }));
+  }
+
+  it('draws each "Trait N" on a list row in its trait colour, unbroken, with muted separators', async () => {
+    const { traitTint } = await import('@/lib/stringShelf');
+    mockApi(['BG65', 'BG80', 'BG66']);
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
+    const row = screen.getByText('BG80').closest('button')!;
+    const parts = Array.from(row.querySelectorAll<HTMLElement>('[data-trait]'));
+    expect(parts.map((p) => [p.dataset.trait, p.textContent])).toEqual([
+      ['power', 'Power 8'], ['control', 'Control 7'], ['durability', 'Durability 6'],
+    ]);
+    for (const p of parts) {
+      expect(p.style.whiteSpace).toBe('nowrap');
+      expect(p.style.color).toBe(norm(traitTint(p.dataset.trait as 'power' | 'control' | 'durability')));
+    }
+    // The separators are outside the coloured parts, in the row's muted ink.
+    expect(parts.every((p) => !p.textContent!.includes('·'))).toBe(true);
+    expect(row.textContent).toContain('Power 8 · Control 7 · Durability 6');
+  });
+
+  it('colours each map dot by its string type, with a legend and the type in words on the card', async () => {
+    const { typeDotFill } = await import('@/lib/stringShelf');
+    mockTyped(['BG80', 'BG66', 'BG65', 'Exbolt']);
+    wrap();
+    const map = await screen.findByRole('group', { name: 'Strings by power and durability' });
+    const dotOf = (name: RegExp) => within(map).getByRole('button', { name }).querySelector<HTMLElement>('[data-dot-type]')!;
+    expect(dotOf(/^Yonex BG80:/).dataset.dotType).toBe('repulsion');
+    expect(dotOf(/^Yonex BG80:/).style.background).toBe(normBg(typeDotFill('repulsion')));
+    expect(dotOf(/^Yonex BG66:/).dataset.dotType).toBe('control');
+    expect(dotOf(/^Yonex BG66:/).style.background).toBe(normBg(typeDotFill('control')));
+    expect(dotOf(/^Yonex Exbolt 63:/).dataset.dotType).toBe('hybrid');
+
+    const legend = screen.getByRole('list', { name: "Dot colour: the string's type" });
+    expect(within(legend).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Power', 'Control', 'Durability', 'Hybrid']);
+
+    // The selected string's card says its type in words, beside the colour.
+    fireEvent.click(within(map).getByRole('button', { name: /^Yonex BG66:/ }));
+    expect(screen.getByTestId('selected-type').textContent).toBe('Control');
+  });
+
+  it('draws a string with no type in neutral ink, never the accent, and leaves it out of the legend', async () => {
+    mockApi(['BG80', 'BG66', 'BG65']);
+    wrap();
+    const map = await screen.findByRole('group', { name: 'Strings by power and durability' });
+    const dot = within(map).getByRole('button', { name: /^Yonex BG80:/ }).querySelector<HTMLElement>('[data-dot-type]')!;
+    expect(dot.dataset.dotType).toBe('none');
+    expect(dot.getAttribute('style')).not.toContain('--accent');
+    expect(screen.queryByRole('list', { name: "Dot colour: the string's type" })).toBeNull();
+    expect(screen.queryByTestId('selected-type')).toBeNull();
   });
 });

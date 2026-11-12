@@ -37,7 +37,7 @@ import {
   formatJobNo,
 } from '@/lib/stringing';
 import { isBillable } from '@/lib/stringingBilling';
-import type { StringingJob, PlayerStringingJob, PlayerPendingEdit, StringerJob } from '@/lib/types';
+import type { StringingJob, PlayerStringingJob, PlayerPendingEdit, StringerJob, StringerPendingEdit } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -167,7 +167,18 @@ export function toStringerJob(job: StringingJob): StringerJob {
     readyBy: job.readyBy,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
+    ...stringerPendingEdit(job),
   };
+}
+
+/** The player's diff with the money taken OUT, here on the server: a stringer
+ *  sees that a change is waiting and what it is, never what it costs. */
+function stringerPendingEdit(job: StringingJob): { pendingEdit?: StringerPendingEdit } {
+  const edit = toPlayerPendingEdit(job);
+  if (!edit) return {};
+  const { priceFrom: _pf, priceTo: _pt, ...rest } = edit;
+  // Only a price changing leaves the stringer nothing to read.
+  return Object.keys(rest).length > 1 ? { pendingEdit: rest } : { pendingEdit: { proposedAt: rest.proposedAt } };
 }
 
 /** The ONLY way a job reaches a non-admin. See the file docblock. */

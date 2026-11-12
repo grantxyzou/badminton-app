@@ -1191,8 +1191,8 @@ export interface PendingEdit {
 /**
  * What a STRINGER is allowed to see of a job assigned to them.
  *
- * The spec and nothing else. No `priceCents`, no `paidAt`, no `pendingEdit` —
- * what the club charges is not the business of the person putting string on
+ * The spec and nothing else. No `priceCents`, no `paidAt`, and a pending
+ * change only without its price — what the club charges is not the business of the person putting string on
  * the racket, and the strip-canary rule applies to them exactly as it does to
  * a player. It DOES carry `status`, unlike the player view: they are working
  * the bench, so they get the bench's vocabulary.
@@ -1213,7 +1213,14 @@ export interface StringerJob {
   readyBy: string | null;
   createdAt: string;
   updatedAt: string;
+  /** A change waiting on the player, WITHOUT its money (2026-11-12): the
+   *  stringer's list says "Waiting on Lin" and what was suggested, and holds
+   *  its button until the player answers. Absent when nothing is pending. */
+  pendingEdit?: StringerPendingEdit | null;
 }
+
+/** A pending change as a stringer may see it: the player's diff minus price. */
+export type StringerPendingEdit = Omit<PlayerPendingEdit, 'priceFrom' | 'priceTo'>;
 
 /** What a PLAYER is allowed to see of their own job. Note what is missing:
  *  `stringerId`, and the bench's `status` vocabulary. */

@@ -170,6 +170,41 @@ export function typeTint(type: StringTypeKey | null): string | null {
   return type ? TYPE_TINT[type] : null;
 }
 
+/** The three rated traits a list row and a meter name. */
+export type Trait = 'power' | 'control' | 'durability';
+
+/**
+ * A trait's colour (Grant, 2026-11-12: "use colour code to map to control,
+ * power, durability, and repulsion"): the tint of the string TYPE tuned for
+ * it, so a trait and a type never disagree. "Repulsion" is the maker's word
+ * for power — the catalog's power score IS `repulsion` (`powerOf`) — so the
+ * two share one colour.
+ */
+const TRAIT_TYPE: Record<Trait, StringTypeKey> = { power: 'repulsion', control: 'control', durability: 'durability' };
+
+export function traitTint(trait: Trait): string {
+  return TYPE_TINT[TRAIT_TYPE[trait]] as string;
+}
+
+/**
+ * A map dot's fill: its type's tint, or neutral ink for all-round and
+ * unknown — not the accent, which is durability's green and would say a type
+ * the string is not.
+ */
+export function typeDotFill(type: StringTypeKey | null): string {
+  return typeTint(type) ?? 'var(--text-muted)';
+}
+
+/** Ink for a count drawn ON a type dot: the tints are light on both themes,
+ *  so a dark shade of the tint itself; the neutral dot keeps the page ink. */
+export function typeDotInk(type: StringTypeKey | null): string {
+  const tint = typeTint(type);
+  return tint ? `color-mix(in srgb, ${tint} 25%, black)` : 'var(--page-bg)';
+}
+
+/** The order the map's legend lists the types in: power first, as everywhere. */
+export const TYPE_ORDER: readonly StringTypeKey[] = ['repulsion', 'control', 'durability', 'hybrid', 'all_round'];
+
 /** The header band / gauge tile fill: the tint at 26% fading to 7%. */
 export function typeBand(type: StringTypeKey | null): string {
   const tint = typeTint(type);

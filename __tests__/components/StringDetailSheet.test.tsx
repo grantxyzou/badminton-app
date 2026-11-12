@@ -79,7 +79,7 @@ describe('StringDetailSheet', () => {
     expect(await screen.findByText('Yonex Astrox 88D Pro')).toBeDefined();
     expect(screen.getByText('Good match')).toBeDefined();
     expect(screen.getByText('Your frame 20–28 lb · string 20–25 lb')).toBeDefined();
-    expect(screen.getByText('Rated Intermediate, like you')).toBeDefined();
+    expect(screen.getByText('Rated Intermediate')).toBeDefined();
     expect(String((globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0])).toContain('/api/stringing/fit?id=string-yx-bg80');
   });
 

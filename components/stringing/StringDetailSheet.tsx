@@ -10,11 +10,9 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { cadRange } from '@/lib/catalogPrice';
 import { CLUB_GEAR_MIN_COHORT } from '@/lib/clubGear';
-import type { StringColourId } from '@/lib/stringPalette';
-import { ColourList } from './StringColours';
 import RatingMeters, { ratingSourceKey, type MeterRow } from './RatingMeters';
 import StringPackImage from './StringPackImage';
-import { stringColours, stringTypeOf, typeBand, stockColour, type StockBand } from '@/lib/stringShelf';
+import { stringTypeOf, typeBand, stockColour, type StockBand } from '@/lib/stringShelf';
 import type { CatalogItem, StringFit } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -29,15 +27,6 @@ const CHIP: React.CSSProperties = {
   background: 'var(--inner-card-bg)',
   border: '1px solid transparent',
   color: 'var(--text-secondary)',
-};
-
-/** A swatch: the 30%-ink inset ring is what lets White show on cream. */
-const SWATCH: React.CSSProperties = {
-  width: 16,
-  height: 16,
-  borderRadius: '50%',
-  flex: 'none',
-  boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)',
 };
 
 type FitState = { status: 'loading' } | { status: 'none' } | { status: 'failed' } | { status: 'ready'; fit: StringFit };
@@ -55,7 +44,6 @@ type FitState = { status: 'loading' } | { status: 'none' } | { status: 'failed' 
  *     engine's verdict and reason (`/api/stringing/fit`), and the tension and
  *     level checks. Absent when the engine cannot say — no check-in, or no
  *     racket the catalog knows — never filled with a guess;
- *   - the maker's colours (or the reel's, when the club has said);
  *   - "Restring with this string", which opens the request with it picked.
  *
  * The older "What this means" and "Specs" sections went: the hero names the
@@ -70,7 +58,6 @@ export default function StringDetailSheet({
   price,
   band = null,
   clubCount = null,
-  clubColours = [],
   onRestring,
 }: {
   item: CatalogItem | null;
@@ -82,9 +69,6 @@ export default function StringDetailSheet({
   price?: string | null;
   band?: StockBand | null;
   clubCount?: number | null;
-  /** The colours the club says it has this string in. When set, they replace
-   *  the maker's list — which can only say "ask the stringer". */
-  clubColours?: StringColourId[];
   /** Opens the request sheet with this string picked. No button without it. */
   onRestring?: (label: string) => void;
 }) {
@@ -99,7 +83,6 @@ export default function StringDetailSheet({
   const mm = num('gaugeMm');
   const gaugeClass = text('gaugeClass')?.toLowerCase();
   const shopRange = item ? cadRange(item) : null;
-  const colours = stringColours(item);
   const hasPrice = price !== undefined;
   const source = ratingSourceKey(a.ratingSource);
 
@@ -222,26 +205,6 @@ export default function StringDetailSheet({
             )}
 
             <FitSection state={fit} onRetry={() => setFitAttempt((n) => n + 1)} />
-
-            {clubColours.length > 0 ? (
-              <section aria-label={t('coloursOnReel')} className="flex flex-col gap-2">
-                <span className="section-label-muted">{t('coloursOnReel')}</span>
-                <ColourList ids={clubColours} />
-              </section>
-            ) : colours.length > 0 && (
-              <section aria-label={t('colours')} className="flex flex-col gap-2">
-                <span className="section-label-muted">{t('colours')}</span>
-                <div className="fs-base" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-                  {colours.map((c) => (
-                    <span key={c.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
-                      <span aria-hidden="true" style={{ ...SWATCH, background: c.fill }} />
-                      {c.name}
-                    </span>
-                  ))}
-                </div>
-                <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('coloursNote')}</p>
-              </section>
-            )}
 
             {/* The shop's typical range only when the club has no price of its
                 own — beside a real price it is a second number for no reason. */}

@@ -25,7 +25,11 @@ import {
   powerOf,
   shelfPrice,
   sortShelf,
+  stringTypeOf,
+  traitTint,
+  typeDotFill,
   type MapAxis,
+  type Trait,
   type Shelf,
   type ShelfEntry,
   type StockBand,
@@ -257,10 +261,16 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     value: axisValueOf(shownAxis, e.item)!,
     durability: durabilityOf(e.item)!,
     band: bandOf(e.label),
+    type: stringTypeOf(e.item),
   }));
   const openEntry = entries.find((e) => e.label === open) ?? null;
 
   const anyPack = entries.some((e) => stringPackSrc(e.item?.id));
+  const traitPart = (trait: Trait) => function TraitPart(chunks: React.ReactNode) {
+    return <span data-trait={trait} style={{ whiteSpace: 'nowrap', color: traitTint(trait) }}>{chunks}</span>;
+  };
+  // Tags named apart from the numbers they wrap: next-intl takes both from one object.
+  const traitParts = { powerPart: traitPart('power'), controlPart: traitPart('control'), durabilityPart: traitPart('durability') };
   const row = (e: ShelfEntry) => {
     const price = priceText(e.label);
     const p = powerOf(e.item);
@@ -270,9 +280,12 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     const subtitle = !e.item
       ? (catalog.loadError ? null : t('unknown'))
       : p !== null && d !== null
+        // Each "Trait N" in its trait's colour (Grant, 2026-11-12, option A),
+        // never broken across lines; the separators stay muted. The words and
+        // numbers stay, so colour is never the only signal.
         ? (controlOf(e.item) !== null
-          ? t('listLineControl', { power: p, control: controlOf(e.item)!, durability: d })
-          : t('listLine', { power: p, durability: d }))
+          ? t.rich('listLineControl', { power: p, control: controlOf(e.item)!, durability: d, ...traitParts })
+          : t.rich('listLine', { power: p, durability: d, ...traitParts }))
         : stringSpecLine(e.item, (k) => tSetup(k));
     return (
       <li key={e.label}>
@@ -416,7 +429,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
                   <RatingMeters
                     rows={(['power', 'control', 'durability'] as const).flatMap((key) => {
                       const value = key === 'power' ? powerOf(selected.item) : key === 'control' ? controlOf(selected.item) : durabilityOf(selected.item);
-                      return value === null ? [] : [{ key, label: t(key), value }];
+                      return value === null ? [] : [{ key, label: t(key), value, tint: traitTint(key) }];
                     })}
                   />
                   {feelOf(selected.item) !== null && <FeelScale value={feelOf(selected.item)!} />}
@@ -424,7 +437,17 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
                     {/* Stock only when it changes the choice (Grant: "In
                         stock, Low on stock, Out of stock" — and "Does user
                         care about stock here?"). */}
-                    {bandOf(selected.label) && bandOf(selected.label) !== 'in' ? <StockBadge band={bandOf(selected.label)!} /> : <span />}
+                    {/* The type in words beside its dot's colour, so the map's
+                        colour is never the only signal (option D). */}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)', minWidth: 0 }}>
+                      {stringTypeOf(selected.item) && (
+                        <span data-testid="selected-type" className="fs-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
+                          <span aria-hidden="true" style={{ flex: 'none', width: 'var(--space-4)', height: 'var(--space-4)', borderRadius: '50%', background: typeDotFill(stringTypeOf(selected.item)) }} />
+                          {t(`hero_${stringTypeOf(selected.item)!}`)}
+                        </span>
+                      )}
+                      {bandOf(selected.label) && bandOf(selected.label) !== 'in' ? <StockBadge band={bandOf(selected.label)!} /> : null}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setOpen(selected.label)}
@@ -485,7 +508,6 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         price={openEntry && shelf ? shelfPrice(shelf, openEntry.label) : undefined}
         band={openEntry ? bandOf(openEntry.label) : null}
         clubCount={openEntry ? shelf?.players[openEntry.label] ?? null : null}
-        clubColours={openEntry ? shelf?.colours[openEntry.label] ?? [] : []}
       />
     </div>
   );
