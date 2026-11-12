@@ -14,6 +14,7 @@ import type { StringerJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
 import { useTabReturn } from '@/lib/tabActivity';
 import { useHoleLookup } from '@/components/stringing/useHoleLookup';
+import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -50,6 +51,11 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   const t = useTranslations('home.stringing');
   const online = useOnline();
   const [jobs, setJobs] = useState<StringerJob[] | null>(null);
+  /* Requests nobody has taken, oldest first (docs/plans/stringing-request-
+     nudge.md). A stringer is nudged about these after 48 hours, so they are
+     listed here with "Take it" rather than only on the admin's bench. */
+  const [unclaimed, setUnclaimed] = useState<StringerJob[]>([]);
+  const [takenElsewhere, setTakenElsewhere] = useState(false);
   const [loadError, setLoadError] = useState(false);
   // Refused, not failed: a device with no session for this name (most
   // name-only regulars) is answered 401/403. That says nothing about whether
@@ -69,7 +75,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   const [lastMove, setLastMove] = useState<{ jobId: string; from: StringingStatus; to: StringingStatus } | null>(null);
   const today = todayIso();
   // Read only once there is a job to show (docs/plans/grommet-holes.md, Phase 4).
-  const holes = useHoleLookup(!!jobs && jobs.length > 0);
+  const holes = useHoleLookup(!!jobs && (jobs.length > 0 || unclaimed.length > 0));
 
   const load = useCallback(async () => {
     if (!hasIdentity) return;
@@ -85,6 +91,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
       if (!res.ok) throw new Error(`stringer jobs ${res.status}`);
       const data = await res.json();
       setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+      setUnclaimed(Array.isArray(data.unclaimed) ? data.unclaimed : []);
     } catch {
       setJobs(null);
       setLoadError(true);
@@ -121,6 +128,29 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
     }
   }
 
+  /** Take an unclaimed request for themselves. A 409 means someone else got
+   *  there first: say so, and reload so it leaves the list. */
+  async function take(job: StringerJob) {
+    if (busy || !online) return;
+    setBusy(job.id);
+    setSaveError(false);
+    setTakenElsewhere(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: job.memberId, claim: true }),
+      });
+      if (res.status === 409) setTakenElsewhere(true);
+      else if (!res.ok) throw new Error(`take ${res.status}`);
+      await load();
+    } catch {
+      setSaveError(true);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   // The Stringing tab's RevealSlot holds this place; with no jobs it closes.
   useRevealReady(!hasIdentity || refused || loadError || jobs !== null);
   if (!hasIdentity || refused) return null;
@@ -146,7 +176,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   // No work is the normal state for most people and deserves no card at all —
   // including everyone who is not a stringer, who gets an empty list. As the
   // Bench register it is a stringer's whole screen, so it says so.
-  if (!jobs || jobs.length === 0) {
+  if (!jobs || (jobs.length === 0 && unclaimed.length === 0)) {
     if (!showEmpty || !jobs) return null;
     return (
       <section className="glass-card p-5 space-y-3 motion-fade" aria-label={t('stringerTitle')}>
@@ -162,10 +192,41 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
         compact
         icon="sports_tennis"
         title={t('stringerTitle')}
-        subtitle={t('stringerSubtitle')}
+        // With requests nobody has taken listed too, "Assigned to you." would
+        // sit over jobs assigned to nobody; each list carries its own label.
+        subtitle={unclaimed.length > 0 ? undefined : t('stringerSubtitle')}
       />
       {saveError && <p className="field-error" role="alert">{t('stringerSaveError')}</p>}
+      {takenElsewhere && <p className="field-warn" role="alert">{t('unclaimedTaken')}</p>}
+      {unclaimed.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <span className="section-label-muted">{t('unclaimedTitle')}</span>
+          {unclaimed.map((job) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              today={today}
+              holes={holes.forLabel(job.racketLabel).holes}
+              waitingDays={isWaitingTooLong(job) ? waitingDays(job) : null}
+              action={
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-secondary"
+                  style={{ flex: 1 }}
+                  disabled={busy !== null || !online}
+                  onClick={() => void take(job)}
+                >
+                  {t('unclaimedTake')}
+                </button>
+              }
+            />
+          ))}
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        {unclaimed.length > 0 && jobs.length > 0 && (
+          <span className="section-label-muted">{t('assignedTitle')}</span>
+        )}
         {jobs.map((job) => {
           const nextStatus = nextStatusOf(job.status, STRINGING_FLOW);
           const undoable = lastMove?.jobId === job.id && job.status === lastMove.to;

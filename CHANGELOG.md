@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### A stringing request nobody takes now nudges the stringers (2026-11-12)
+
+- **After 48 hours, and again at 3 days**, a stringing request still waiting sends a notification. If nobody has taken it, the club's stringers and organisers get it. If a stringer has it, only that stringer does. "Wei's Astrox 88D Pro has waited 2 days for a stringer." No price, no string spec.
+- **The waiting job is highlighted** with an amber tint and a "Waiting 2 days for a stringer" line, on the bench and on a stringer's card.
+- **Stringers can take a request themselves.** Their card now lists requests nobody has taken, under "Waiting for a stringer", each with a "Take it" button. If two tap at once, the second is told someone took it first.
+- **The app has an hourly tick.** GitHub calls it once an hour, and the stringing nudge is its first job. It needs a `CRON_KEY`, set both in the App Settings and as a GitHub secret (`docs/plans/stringing-request-nudge.md`, "Setting it up").
+
 ### Calmer error cards, and a friendlier Stringing tab (2026-11-11)
 
 - **"Couldn't load… / Try again" is no longer red.** A card that couldn't reach the server now shows a cloud icon over the message in normal text, with "Try again" under it, laid out like the app's other empty states. The server not answering isn't the person's mistake. Red is kept for things they need to fix, like a wrong PIN or a form error.

@@ -137,6 +137,7 @@ cannot run without:
 | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web push (server side; the public key is build-time in the workflow) |
 | `FCM_SERVICE_ACCOUNT_JSON` | Native push via Firebase; carries a private key |
 | `MIGRATION_KEY` | Only on a deployment that has decided to run the multi-group backfill, and the second lock on the operator override; unset answers 503 |
+| `CRON_KEY` | The hourly tick's key (`POST /api/cron/tick`, `lib/tick.ts`): the same value is the `CRON_KEY` secret on the GitHub repository, which `.github/workflows/tick.yml` sends every hour. Unset answers 503, and the workflow skips while its secret is unset |
 | `OPERATOR_MEMBER_IDS` | Comma-separated member ids of the operator (`lib/operator.ts`): who may read `migrate-groups`, use the override, and whose usage is left out of the metrics. Unset, an admin of BPM is the operator — set it once BPM has more than one |
 
 `ADMIN_PIN` is no longer read anywhere: admin auth has been per-member PIN

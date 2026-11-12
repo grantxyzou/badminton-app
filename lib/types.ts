@@ -1095,6 +1095,11 @@ export interface StringingJob {
   /** When a stringer first took the job (claimed or was assigned), ISO.
    *  Additive since 2026-11-11; absent on older jobs and on any never taken. */
   claimedAt?: string;
+  /** One ISO stamp per "still waiting" nudge sent while the job sat at
+   *  `requested` (48 hours, then 3 days; docs/plans/stringing-request-nudge.md).
+   *  Stamped BEFORE each send, so a job is never nudged twice. Additive since
+   *  2026-11-12; absent on every job never nudged. */
+  requestNudgedAt?: string[];
   status: StringingStatus;
   racketLabel: string;
   stringLabel: string;

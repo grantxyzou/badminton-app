@@ -5216,6 +5216,12 @@ button.sheet-row { cursor: pointer; }
 .bpm-job-card:has(> button:first-child:active) {
   transform: scale(0.98);
 }
+/* A request nobody has moved in 48 hours (docs/plans/stringing-request-nudge.md):
+   an amber TINT, never a rim — containers are fill-only. The words on the card
+   ("Waiting 2 days") carry the meaning; the tint only makes it findable. */
+.bpm-job-card--waiting {
+  background: var(--tone-amber-bg);
+}
 
 /* Warn — the one answer an amber banner asks for ("Review the change"). SOLID,
    unlike its tinted siblings: it sits ON an amber banner, where a tint of the

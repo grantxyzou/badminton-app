@@ -10,6 +10,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { dueFor, todayIso } from '@/lib/stringingDue';
+import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
 import { fmtMoney } from '@/lib/fmt';
 import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
 import JobCard, { nextStatusOf } from '@/components/stringing/JobCard';
@@ -380,6 +381,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           holes={holes.forLabel(job.racketLabel).holes}
           pinned={pinned}
           owed={inArchive ? owed : null}
+          waitingDays={!inArchive && isWaitingTooLong(job) ? waitingDays(job) : null}
           onOpen={() => {
             setSelectedId(job.id);
             setView('detail');
