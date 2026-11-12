@@ -801,7 +801,9 @@ export default function ProfileTab({
           onRecoveryCode={() => setEnterCodeOpen(true)}
           onBack={() => setView('root')}
         />
-        {pinSheets}
+        {/* On two pages the root, still mounted beside this page, already
+            renders them; a second copy stacked two sheets on one tap. */}
+        {!twoPages && pinSheets}
       </>
     );
   }

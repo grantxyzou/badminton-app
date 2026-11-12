@@ -74,6 +74,16 @@ describe('Profile on two pages', () => {
     expect(container.querySelector('.profile-list')).not.toBeNull();
   });
 
+  it('opens ONE recovery-code sheet from How you sign in on two pages', async () => {
+    // Review of #906: the list (still mounted beside the page) and the page
+    // both rendered the PIN sheets, so one tap stacked two.
+    stubPane(true);
+    renderProfile();
+    fireEvent.click(await screen.findByRole('button', { name: /How you sign in/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Have a recovery code?' }));
+    await waitFor(() => expect(screen.getAllByRole('dialog')).toHaveLength(1));
+  });
+
   it('on one screen a row still opens its page in place of the list', async () => {
     stubPane(false);
     const { container } = renderProfile();
