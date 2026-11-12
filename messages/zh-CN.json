@@ -443,6 +443,9 @@
       "etransfer": "转账至 {email}",
       "sentIt": "我已转账",
       "sentItDone": "谢谢！收到转账后会自动标记为已付。",
+      "card": "刷卡支付",
+      "cardBusy": "正在打开刷卡支付…",
+      "cardError": "无法打开刷卡支付，请重试。",
       "sentItError": "保存失败，请重试。"
     },
     "credit": {

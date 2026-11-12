@@ -127,14 +127,17 @@ export function paymentEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' |
   const amountCents = cents(row.owedAmount);
   if (amountCents <= 0) return null;
   const via = row.paidVia ?? 'manual';
-  const key = via === 'etransfer' && row.paymentId ? row.paymentId : ms(row.paidAt);
+  // A card payment is keyed on its Checkout Session id, like an e-transfer on
+  // its payments doc: the webhook can be delivered twice, and a retry must
+  // compute the same id and collide.
+  const key = (via === 'etransfer' || via === 'card') && row.paymentId ? row.paymentId : ms(row.paidAt);
   return {
     id: `payment:${row.id}:${key}`,
     memberId: memberOf(row),
     account: 'member_owed',
     kind: 'payment',
     amountCents: -amountCents,
-    note: via === 'etransfer' ? 'E-transfer' : via === 'credit' ? 'Paid with credit' : 'Marked paid',
+    note: via === 'etransfer' ? 'E-transfer' : via === 'credit' ? 'Paid with credit' : via === 'card' ? 'Card' : 'Marked paid',
     ref: { kind: 'session', id: row.id, pk: row.sessionId },
     meta: { via, ...(row.paymentId ? { paymentId: row.paymentId } : {}) },
     ...(row.paidAt ? { createdAt: row.paidAt } : {}),

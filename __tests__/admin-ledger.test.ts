@@ -86,7 +86,7 @@ describe('GET /api/admin/ledger', () => {
 
     const body = await get();
     expect(body.income).toEqual({ sessions: 3000, stringing: 3000, total: 6000 });
-    expect(body.collected).toEqual({ etransferAuto: 1000, etransferAdmin: 0, manual: 4000, credit: 0, total: 5000 });
+    expect(body.collected).toEqual({ etransferAuto: 1000, etransferAdmin: 0, manual: 4000, credit: 0, card: 0, total: 5000 });
     expect(body.covered).toBe(1000);
     expect(body.outlay).toEqual({ courts: 3000, shuttles: 25000, strings: 0, other: 0, total: 28000 });
     expect(body.net).toBe(5000 - 28000);

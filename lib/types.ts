@@ -160,9 +160,9 @@ export interface Player {
   coverMode?: 'absorb' | 'resplit';
   /** ISO — when `paid` last went true. Absent on rows marked before 2026-10. */
   paidAt?: string;
-  /** How it was marked: an admin's tap, or an e-transfer the inbox matched. */
-  paidVia?: 'manual' | 'etransfer' | 'credit';
-  /** The `payments` doc that paid it (`paidVia: 'etransfer'`). */
+  /** How it was marked: an admin's tap, an e-transfer the inbox matched, credit, or a card (Stripe Checkout, docs/plans/card-pay-prototype.md). */
+  paidVia?: 'manual' | 'etransfer' | 'credit' | 'card';
+  /** The `payments` doc that paid it (`paidVia: 'etransfer'`), or the Stripe Checkout Session id (`paidVia: 'card'`). */
   paymentId?: string;
   /**
    * Waitlisted by the soft hold, not by a full session: the member owed for
@@ -251,8 +251,8 @@ export interface LedgerEntry {
   ref?: { kind: 'session' | 'stringing' | 'court' | 'purchase' | 'expense'; id: string; pk: string };
   meta?: {
     /** How a payment arrived. */
-    via?: 'manual' | 'etransfer' | 'credit';
-    /** The `payments` doc, for an e-transfer. */
+    via?: 'manual' | 'etransfer' | 'credit' | 'card';
+    /** The `payments` doc, for an e-transfer; the Checkout Session id, for a card. */
     paymentId?: string;
     coverMode?: 'absorb' | 'resplit';
     /** An expense's bucket. */

@@ -27,7 +27,7 @@ export interface MoneyView {
   /** Charges net of voids, cents, in window. */
   income: { sessions: number; stringing: number; total: number };
   /** Payments net of voids, cents, in window, by how they arrived. */
-  collected: { etransferAuto: number; etransferAdmin: number; manual: number; credit: number; total: number };
+  collected: { etransferAuto: number; etransferAdmin: number; manual: number; credit: number; card: number; total: number };
   /** Absorb covers net of voids, cents, in window — what the admin ate. */
   covered: number;
   /** Club outlay net of voids, cents, in window. `shuttles` includes price adjustments. */
@@ -40,7 +40,7 @@ export interface MoneyView {
 
 const empty = (): MoneyView => ({
   income: { sessions: 0, stringing: 0, total: 0 },
-  collected: { etransferAuto: 0, etransferAdmin: 0, manual: 0, credit: 0, total: 0 },
+  collected: { etransferAuto: 0, etransferAdmin: 0, manual: 0, credit: 0, card: 0, total: 0 },
   covered: 0,
   outlay: { courts: 0, shuttles: 0, strings: 0, other: 0, total: 0 },
   net: 0,
@@ -126,6 +126,7 @@ export function summarizeLedger(
         // A payment is negative in the owed account; collected is positive money in.
         const got = -cents;
         if (meta?.via === 'credit') v.collected.credit += got;
+        else if (meta?.via === 'card') v.collected.card += got;
         else if (meta?.via === 'etransfer') {
           if (meta.paymentId && matchedBy.get(meta.paymentId) === 'auto') v.collected.etransferAuto += got;
           else v.collected.etransferAdmin += got;
@@ -149,7 +150,7 @@ export function summarizeLedger(
   }
 
   v.income.total = v.income.sessions + v.income.stringing;
-  v.collected.total = v.collected.etransferAuto + v.collected.etransferAdmin + v.collected.manual + v.collected.credit;
+  v.collected.total = v.collected.etransferAuto + v.collected.etransferAdmin + v.collected.manual + v.collected.credit + v.collected.card;
   v.outlay.total = v.outlay.courts + v.outlay.shuttles + v.outlay.strings + v.outlay.other;
   v.net = v.collected.total - v.outlay.total;
   for (const bal of creditByMember.values()) {

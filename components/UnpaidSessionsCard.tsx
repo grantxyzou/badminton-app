@@ -55,6 +55,8 @@ interface UnpaidData {
   stringingOwed?: number;
   /** Where to send it — the club's recipient, only on a response that owes. */
   payTo?: { name: string; email: string } | null;
+  /** The club takes cards and something here is settled (docs/plans/card-pay-prototype.md). */
+  cardPay?: boolean;
 }
 
 function fmtMoney(n: number): string {
@@ -135,6 +137,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   const creditOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
   const [creditCents, setCreditCents] = useState<number | null>(null);
   const [spend, setSpend] = useState<'idle' | 'busy' | 'notEnough' | 'error'>('idle');
+  const [card, setCard] = useState<'idle' | 'busy' | 'error'>('idle');
   useEffect(() => {
     if (!creditOn || !name) return;
     let cancelled = false;
@@ -168,6 +171,19 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
     }
   }
   const hasCredit = creditOn && (creditCents ?? 0) > 0;
+  // Stripe-hosted Checkout on the club's own account. Nothing is marked paid
+  // here: the rows change when Stripe's signed webhook says the money arrived.
+  async function payByCard() {
+    setCard('busy');
+    try {
+      const res = await fetch(`${BASE}/api/payments/card/checkout`, { method: 'POST' });
+      const body = (await res.json().catch(() => null)) as { url?: string } | null;
+      if (!res.ok || !body?.url) throw new Error(String(res.status));
+      window.location.assign(body.url);
+    } catch {
+      setCard('error');
+    }
+  }
   async function sayPaid() {
     setSent('busy');
     try {
@@ -447,6 +463,14 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
                 <p className="fs-sm" role="status" style={{ margin: '0', color: 'var(--text-muted)' }}>{tCredit('notEnough')}</p>
               )}
               {spend === 'error' && <p className="field-error" role="alert">{tCredit('error')}</p>}
+            </div>
+          )}
+          {data.cardPay === true && data.totalOwed > 0 && (
+            <div className="flex flex-col gap-2">
+              <button type="button" className="btn-ghost" disabled={!online || card === 'busy'} onClick={() => void payByCard()}>
+                {card === 'busy' ? tPay('cardBusy') : tPay('card')}
+              </button>
+              {card === 'error' && <p className="field-error" role="alert">{tPay('cardError')}</p>}
             </div>
           )}
           {canSayPaid && data.totalOwed > 0 && (

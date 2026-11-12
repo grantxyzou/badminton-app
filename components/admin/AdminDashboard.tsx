@@ -20,6 +20,7 @@ import DoorPosterCard from './CommandCenter/DoorPosterCard';
 import GiftCardsCard from './CommandCenter/GiftCardsCard';
 import SignInReadinessCard from './CommandCenter/SignInReadinessCard';
 import PaymentsInboxCard from './CommandCenter/PaymentsInboxCard';
+import CardPayCard from './CommandCenter/CardPayCard';
 import type { FilterKey as RosterFilter } from './CommandCenter/RosterPage';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
@@ -273,6 +274,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
         <div className="animate-slideInRight space-y-3">
           <AdminBackHeader onBack={goBack} title="E-transfers" />
           <PaymentsInboxCard refreshKey={refreshKey} standalone onChanged={() => setRefreshKey((k) => k + 1)} />
+          {isFlagOn('NEXT_PUBLIC_FLAG_CARD_PAY') && <CardPayCard />}
         </div>
       );
     }

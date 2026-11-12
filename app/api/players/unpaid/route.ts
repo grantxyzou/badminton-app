@@ -7,6 +7,7 @@ import { resolveIdentity } from '@/lib/playerIdentity';
 import { computeOwed } from '@/lib/owedBalance';
 import { stringingTotal } from '@/lib/stringingBilling';
 import { clubPayTo } from '@/lib/payTo';
+import { clubTakesCards } from '@/lib/cardPay';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +83,10 @@ export async function GET(req: NextRequest) {
     const totalOwed = round2(sessionsOwed + stringingOwed);
     // Only to someone who owes — see lib/payTo.ts for why this is the one place.
     const payTo = totalOwed > 0 ? await clubPayTo(scope.groupId) : null;
+    // "Pay by card" (docs/plans/card-pay-prototype.md): offered only to someone
+    // with a SETTLED line, on a club whose Stripe account can take cards. A
+    // failed read hides the button — an optional way to pay, never the balance.
+    const cardPay = unpaid.some((s) => s.settled) ? await clubTakesCards(scope.groupId).catch(() => false) : false;
 
     return NextResponse.json({
       // `totalOwed` still means EVERYTHING owed, so existing callers that only
@@ -96,6 +101,7 @@ export async function GET(req: NextRequest) {
       sessions: unpaid,
       stringing,
       payTo,
+      cardPay,
     });
   } catch (error) {
     console.error('GET /api/players/unpaid error:', error);

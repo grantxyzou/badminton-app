@@ -23,7 +23,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
   | 'NEXT_PUBLIC_FLAG_STORE_CREDIT'
-  | 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR';
+  | 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR'
+  | 'NEXT_PUBLIC_FLAG_CARD_PAY';
 
 interface FlagMeta {
   description: string;
@@ -91,6 +92,13 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-11-21',
     note: 'Retire together with NEXT_PUBLIC_FLAG_PAYMENTS_AUTO after the 2026-11-07 review.',
   },
+  NEXT_PUBLIC_FLAG_CARD_PAY: {
+    description:
+      'SANDBOX PROTOTYPE of card payments (docs/plans/card-pay-prototype.md; docs/plans/payments.md Phase 3). An organiser connects the club\'s own Stripe account (Connect, Accounts v2, direct charges), and a member pays their SETTLED session lines by card through Stripe Checkout; a signed webhook marks the rows paid (paidVia "card"). Read SERVER-side by /api/admin/card-pay and /api/payments/card/*, which 404 while it is off, and inert without STRIPE_SECRET_KEY. OFF in production: "card payments processing" is still a locked ROADMAP non-goal, and this flag may not go on until that block is changed on purpose.',
+    owner: 'grant',
+    plannedRemoval: '2027-01-31',
+    note: 'A prototype, not a staged feature: the date is when to decide. Either the ROADMAP non-goal is lifted and this becomes a real rollout (new date = ship + 2 weeks), or the routes, the flag and the stripe dependency are deleted.',
+  },
   NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: {
     description:
       'E-transfer auto-detection (docs/plans/payments.md, Phase 1): the admin\'s Apps Script forwards Interac emails to POST /api/payments/etransfer, which marks matched rows paid and queues the rest; the "I\'ve sent it" button; and the soft hold (2+ unpaid settled sessions → sign-up lands on the waitlist). Read SERVER-side by every payments route and by the hold in POST /api/players; off, those routes 404 and sign-up is unchanged.',
@@ -118,6 +126,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
     case 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR':
       return process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
+    case 'NEXT_PUBLIC_FLAG_CARD_PAY':
+      return process.env.NEXT_PUBLIC_FLAG_CARD_PAY;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned

@@ -443,6 +443,9 @@
       "etransfer": "E-transfer to {email}",
       "sentIt": "I\u2019ve sent it",
       "sentItDone": "Thanks \u2014 it\u2019ll be marked paid when the e-transfer arrives.",
+      "card": "Pay by card",
+      "cardBusy": "Opening card payment\u2026",
+      "cardError": "Couldn\u2019t open card payment \u2014 try again.",
       "sentItError": "Couldn\u2019t save that \u2014 try again."
     },
     "credit": {

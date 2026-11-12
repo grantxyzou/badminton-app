@@ -126,6 +126,10 @@ jobs:
           # Phase 2 ledger, stage 1: mirror every charge/payment into `ledger`.
           # Read server-side; nothing visible changes. See lib/flags.ts.
           NEXT_PUBLIC_FLAG_LEDGER_MIRROR: 'true'
+          # Card payments through Stripe -- a SANDBOX PROTOTYPE
+          # (docs/plans/card-pay-prototype.md). OFF on purpose: "card payments
+          # processing" is a locked ROADMAP non-goal until Grant changes it.
+          NEXT_PUBLIC_FLAG_CARD_PAY: 'false'
           # ON as of 2026-08-27: the admin bench (job list, job detail, intake)
           # and /api/stringing/*. Players see the shop only once its own
           # admin-controlled `open` flag is set (PATCH /api/stringing/shop).
