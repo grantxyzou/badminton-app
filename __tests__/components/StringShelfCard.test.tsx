@@ -257,7 +257,7 @@ describe('a string on the shelf · rethought', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open BG80 Power-White' }));
     const sheet = screen.getByRole('dialog');
     const catalogLine = await within(sheet).findByTestId('shelf-catalog-line');
-    await waitFor(() => expect(catalogLine.textContent).toContain('Yonex BG80 · Power'));
+    await waitFor(() => expect(catalogLine.textContent).toContain('Yonex BG80 · Repulsion'));
     expect(within(catalogLine).getByRole('img', { name: 'Matched in the catalog' })).toBeDefined();
     expect(within(sheet).queryByText('Catalog')).toBeNull();
   });
