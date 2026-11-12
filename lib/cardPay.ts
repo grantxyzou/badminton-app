@@ -33,7 +33,7 @@ import { isFlagOn } from './flags';
 import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { computeOwed, settledLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
-import { mirrorPaid } from './ledgerMirror';
+import { mirrorPaid, mirrorUnpaid } from './ledgerMirror';
 import { releaseHoldIfSettled } from './paymentsInbox';
 import { requireOutboundOrigin } from './appOrigin';
 import type { Player } from './types';
@@ -368,4 +368,79 @@ export async function applyPaidCheckout(session: Stripe.Checkout.Session, eventA
     await releaseHoldIfSettled(scope, memberId);
   }
   return { applied, alreadyOurs, refundedCents };
+}
+
+// ── Refunds made in the Stripe Dashboard ────────────────────────────────────
+
+export type RefundResult =
+  | { ignored: 'not_ours' | 'unknown_club' | 'account_mismatch' | 'app_refund' }
+  | { unpaid: number; already: boolean }
+  | { review: 'amount_matches_no_line' };
+
+/**
+ * A refund an organiser made in Stripe puts the rows it paid back to unpaid —
+ * only when the amount says WHICH rows (never guess with money):
+ *
+ *   - refunds made by people (the app's own refunds of unapplied lines carry
+ *     `metadata.bpm_reason` and are left out) are summed for the charge;
+ *   - what this refund has already undone is the rows stamped
+ *     `refundedPaymentId: <session>`, so a redelivered event, or a second
+ *     partial refund later, only acts on what is new;
+ *   - new refunded money equal to everything still paid by this session →
+ *     every one of those rows; equal to exactly one row's amount, and only one
+ *     → that row; anything else → logged for a person, nothing changes.
+ */
+export async function applyRefund(charge: Stripe.Charge, eventAccount: string | undefined): Promise<RefundResult> {
+  if (!eventAccount) return { ignored: 'not_ours' };
+  const pi = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+  if (!pi) return { ignored: 'not_ours' };
+  const stripe = must();
+  const session = (await stripe.checkout.sessions.list({ payment_intent: pi, limit: 1 }, { stripeAccount: eventAccount })).data[0];
+  const groupId = session?.metadata?.bpm_group;
+  const memberId = session?.metadata?.bpm_member;
+  if (!session || !groupId || !memberId) return { ignored: 'not_ours' };
+  const settings = await readCardPay(groupId);
+  if (!settings) return { ignored: 'unknown_club' };
+  if (settings.stripeAccountId !== eventAccount) {
+    console.error('[card-pay] refund from an account that is not the club\'s', { groupId, charge: charge.id });
+    return { ignored: 'account_mismatch' };
+  }
+
+  const refunds = (await stripe.refunds.list({ charge: charge.id, limit: 100 }, { stripeAccount: eventAccount })).data;
+  const byPeople = refunds
+    .filter((r) => !r.metadata?.bpm_reason && r.status !== 'failed' && r.status !== 'canceled')
+    .reduce((sum, r) => sum + r.amount, 0);
+  if (byPeople <= 0) return { ignored: 'app_refund' };
+
+  const scope = groupScope(groupId);
+  const rows: { line: CardLine; row: Player & Record<string, unknown> }[] = [];
+  for (const line of linesFromMetadata(session.metadata)) {
+    const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
+    if (row) rows.push({ line, row });
+  }
+  const undone = rows.filter((r) => r.row.refundedPaymentId === session.id).reduce((sum, r) => sum + r.line.amountCents, 0);
+  const stillPaid = rows.filter((r) => r.row.paid === true && r.row.paidVia === 'card' && r.row.paymentId === session.id);
+  const fresh = byPeople - undone;
+  if (fresh <= 0) return { unpaid: 0, already: true };
+
+  const stillPaidCents = stillPaid.reduce((sum, r) => sum + r.line.amountCents, 0);
+  const oneLine = stillPaid.filter((r) => r.line.amountCents === fresh);
+  const target = fresh === stillPaidCents ? stillPaid : oneLine.length === 1 ? oneLine : null;
+  if (!target) {
+    console.error('[card-pay] a refund made in Stripe matches no paid line — left for a person', { groupId, charge: charge.id, fresh, stillPaidCents });
+    return { review: 'amount_matches_no_line' };
+  }
+
+  let unpaid = 0;
+  for (const { line, row } of target) {
+    const written = await scope.replace(
+      'players',
+      { ...row, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, refundedPaymentId: session.id },
+      line.pk,
+    );
+    if (!written) continue; // changed under us; the next delivery re-reads
+    await mirrorUnpaid(scope, row as unknown as Player);
+    unpaid += 1;
+  }
+  return { unpaid, already: false };
 }

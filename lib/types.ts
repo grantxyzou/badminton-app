@@ -175,6 +175,13 @@ export interface Player {
   /** The `payments` doc that paid it (`paidVia: 'etransfer'`), or the Stripe Checkout Session id (`paidVia: 'card'`). */
   paymentId?: string;
   /**
+   * The Stripe Checkout Session whose card payment for this row was REFUNDED
+   * in the Stripe Dashboard, which put the row back to unpaid
+   * (docs/plans/card-pay-prototype.md). Lets a redelivered or later partial
+   * refund know what it already undid. Additive; absent = never refunded.
+   */
+  refundedPaymentId?: string;
+  /**
    * Waitlisted by the soft hold, not by a full session: the member owed for
    * too many past sessions at sign-up (docs/plans/payments.md). Cleared — and
    * the row promoted if there is room — when a payment brings them under it.

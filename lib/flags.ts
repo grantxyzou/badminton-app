@@ -94,10 +94,10 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   },
   NEXT_PUBLIC_FLAG_CARD_PAY: {
     description:
-      'SANDBOX PROTOTYPE of card payments (docs/plans/card-pay-prototype.md; docs/plans/payments.md Phase 3). An organiser connects the club\'s own Stripe account (Connect, Accounts v2, direct charges), and a member pays their SETTLED session lines by card through Stripe Checkout; a signed webhook marks the rows paid (paidVia "card"). Read SERVER-side by /api/admin/card-pay and /api/payments/card/*, which 404 while it is off, and inert without STRIPE_SECRET_KEY. OFF in production: "card payments processing" is still a locked ROADMAP non-goal, and this flag may not go on until that block is changed on purpose.',
+      'Card payments (docs/plans/card-pay-prototype.md; docs/plans/payments.md Phase 3; ROADMAP non-goal lifted 2026-11-12). An organiser connects the club\'s own Stripe account (Connect, Accounts v2, direct charges), and a member pays their SETTLED session lines by card through Stripe Checkout; a signed webhook marks the rows paid (paidVia "card") and un-pays them when a refund made in Stripe says which. Read SERVER-side by /api/admin/card-pay and /api/payments/card/*, which 404 while it is off, and inert without STRIPE_SECRET_KEY. Turned on once the live key and webhook secret are in Azure App Settings.',
     owner: 'grant',
-    plannedRemoval: '2027-01-31',
-    note: 'A prototype, not a staged feature: the date is when to decide. Either the ROADMAP non-goal is lifted and this becomes a real rollout (new date = ship + 2 weeks), or the routes, the flag and the stripe dependency are deleted.',
+    plannedRemoval: '2026-12-17',
+    note: 'Ship + 2 weeks, assuming live by about 2026-12-03 — move it if going live slips. Retiring it deletes the flag check only: the STRIPE_SECRET_KEY check stays, because removing the key is the fast off switch (no rebuild).',
   },
   NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: {
     description:

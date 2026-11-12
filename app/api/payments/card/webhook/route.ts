@@ -17,11 +17,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { applyPaidCheckout, cardPayOn, stripeClient } from '@/lib/cardPay';
+import { applyPaidCheckout, applyRefund, cardPayOn, stripeClient } from '@/lib/cardPay';
 
 export const dynamic = 'force-dynamic';
 
-const HANDLED: readonly string[] = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
+const PAID: readonly string[] = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
+/** A refund an organiser made in the Stripe Dashboard (lib/cardPay.ts `applyRefund`). */
+const REFUNDED = 'charge.refunded';
 
 export async function POST(req: NextRequest) {
   if (!cardPayOn()) return NextResponse.json({ error: 'not_found' }, { status: 404 });
@@ -42,9 +44,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'bad_signature' }, { status: 400 });
   }
 
-  if (!HANDLED.includes(event.type)) return NextResponse.json({ received: true });
+  if (!PAID.includes(event.type) && event.type !== REFUNDED) return NextResponse.json({ received: true });
   try {
-    const result = await applyPaidCheckout(event.data.object as Stripe.Checkout.Session, event.account);
+    const result = event.type === REFUNDED
+      ? await applyRefund(event.data.object as Stripe.Charge, event.account)
+      : await applyPaidCheckout(event.data.object as Stripe.Checkout.Session, event.account);
     return NextResponse.json({ received: true, result });
   } catch (err) {
     console.error('[card-pay] webhook failed; Stripe will retry', { event: event.id, err });

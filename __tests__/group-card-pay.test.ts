@@ -40,6 +40,9 @@ let lin: { id: string };
 let row1: { id: string };
 let row2: { id: string };
 let fake: ReturnType<typeof makeFake>;
+/** What the fake answers for "the Checkout Session behind this payment" and "this charge's refunds". */
+let listedSession: Record<string, unknown> | null = null;
+let refundList: Array<{ amount: number; status: string; metadata: Record<string, string> }> = [];
 
 function makeFake() {
   return {
@@ -52,8 +55,16 @@ function makeFake() {
         accountLinks: { create: vi.fn(async () => ({ url: 'https://connect.stripe.com/setup/test' })) },
       },
     },
-    checkout: { sessions: { create: vi.fn(async () => ({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1' })) } },
-    refunds: { create: vi.fn(async () => ({ id: 're_1' })) },
+    checkout: {
+      sessions: {
+        create: vi.fn(async () => ({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1' })),
+        list: vi.fn(async () => ({ data: listedSession ? [listedSession] : [] })),
+      },
+    },
+    refunds: {
+      create: vi.fn(async () => ({ id: 're_1' })),
+      list: vi.fn(async () => ({ data: refundList })),
+    },
     webhooks: signer.webhooks,
   };
 }
@@ -81,11 +92,16 @@ async function checkoutMetadata(): Promise<Record<string, string>> {
   return params.metadata;
 }
 
-async function deliver(session: Record<string, unknown>, account: string | undefined = ACCT, secret = SECRET) {
+async function deliver(
+  session: Record<string, unknown>,
+  account: string | undefined = ACCT,
+  secret = SECRET,
+  type = 'checkout.session.completed',
+) {
   const payload = JSON.stringify({
     id: `evt_${Math.random().toString(36).slice(2)}`,
     object: 'event',
-    type: 'checkout.session.completed',
+    type,
     account,
     data: { object: session },
   });
@@ -116,6 +132,8 @@ beforeEach(async () => {
   process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
   process.env.STRIPE_WEBHOOK_SECRET = SECRET;
   fake = makeFake();
+  listedSession = null;
+  refundList = [];
   _setStripeForTests(fake as unknown as Stripe);
   await seedTestAdminMember();
   seedPointer('session-2026-10-08');
@@ -270,6 +288,58 @@ describe('the webhook', () => {
     const res = await deliver(paidSession(metadata));
     expect((await res.json()).result).toEqual({ applied: 1, alreadyOurs: 0, refundedCents: 1200 });
     expect(row(row1.id).paid).not.toBe(true);
+  });
+});
+
+describe('a refund made in the Stripe Dashboard', () => {
+  const charge = { id: 'ch_1', object: 'charge', payment_intent: 'pi_test_1' };
+  const refundEvent = (account = ACCT) => deliver(charge, account, SECRET, 'charge.refunded');
+  const byPerson = (amount: number) => ({ amount, status: 'succeeded', metadata: {} });
+  const result = async (res: Response) => (await res.json()).result;
+
+  beforeEach(async () => {
+    connectClubAccount();
+    const metadata = await checkoutMetadata();
+    listedSession = paidSession(metadata);
+    await deliver(paidSession(metadata)); // both rows paid by card, $12 and $15
+  });
+
+  it('a full refund puts every row it paid back to unpaid, voids the ledger payments, and a redelivery changes nothing', async () => {
+    refundList = [byPerson(2700)];
+    expect(await result(await refundEvent())).toEqual({ unpaid: 2, already: false });
+    for (const r of [row1, row2]) {
+      expect(row(r.id)).toMatchObject({ paid: false, refundedPaymentId: 'cs_test_1' });
+      expect(row(r.id).paidVia).toBeUndefined();
+      expect(ledger().some((e) => e.id === `void:payment:${r.id}:cs_test_1`)).toBe(true);
+    }
+    const entries = ledger().length;
+    expect(await result(await refundEvent())).toEqual({ unpaid: 0, already: true });
+    expect(ledger()).toHaveLength(entries);
+  });
+
+  it('a refund of exactly one session’s amount un-pays that session only, and a later refund of the other un-pays it', async () => {
+    refundList = [byPerson(1500)];
+    expect(await result(await refundEvent())).toEqual({ unpaid: 1, already: false });
+    expect(row(row2.id).paid).toBe(false);
+    expect(row(row1.id).paid).toBe(true);
+    refundList = [byPerson(1500), byPerson(1200)];
+    expect(await result(await refundEvent())).toEqual({ unpaid: 1, already: false });
+    expect(row(row1.id).paid).toBe(false);
+  });
+
+  it('an amount that matches no paid session changes nothing and is left for a person', async () => {
+    refundList = [byPerson(700)];
+    expect(await result(await refundEvent())).toEqual({ review: 'amount_matches_no_line' });
+    expect(row(row1.id).paid).toBe(true);
+    expect(row(row2.id).paid).toBe(true);
+  });
+
+  it('ignores the app’s own refunds of unapplied lines, and refunds from an account that is not the club’s', async () => {
+    refundList = [{ amount: 2700, status: 'succeeded', metadata: { bpm_reason: 'line_no_longer_owed' } }];
+    expect(await result(await refundEvent())).toEqual({ ignored: 'app_refund' });
+    refundList = [byPerson(2700)];
+    expect(await result(await refundEvent('acct_somebody_else'))).toEqual({ ignored: 'account_mismatch' });
+    expect(row(row1.id).paid).toBe(true);
   });
 });
 
