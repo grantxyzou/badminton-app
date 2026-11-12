@@ -1,7 +1,7 @@
 name: Bug report
 description: Something broke or looks wrong on the preview site.
 title: "[bug] "
-labels: ["bug", "next-triage"]
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
