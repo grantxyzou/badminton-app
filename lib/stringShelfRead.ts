@@ -1,5 +1,5 @@
 import { groupScope } from './groupScope';
-import { colourStockOf, labelKey, readStringCatalog, readStringPurchases, stockBand, summarizeStringStock, type ColourStock, type StockBand } from './stringStock';
+import { colourStockOf, labelKey, readStringCatalog, readStringPurchases, readStringUses, stockBand, summarizeStringStock, withDeletedUses, type ColourStock, type StockBand } from './stringStock';
 import { readClubGearDocs } from './clubGearDocs';
 import { tallyClubGear } from './clubGear';
 import type { CatalogItem, StringingJob } from './types';
@@ -50,16 +50,17 @@ export async function readShelfExtras(
   if (cached && Date.now() - cached.at < SHELF_TTL_MS) return cached.value;
 
   const scope = groupScope(groupId);
-  const [purchases, catalog, jobs, gear] = await Promise.all([
+  const [purchases, catalog, jobs, gear, uses] = await Promise.all([
     readStringPurchases(scope),
     readStringCatalog(),
     // Every job, archived included: a racket strung last winter still used a set.
     // `stringColor` so a strung job uses up its own colour's pool.
     scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor' }),
     readClubGearDocs(groupId),
+    readStringUses(scope),
   ]);
 
-  const summary = summarizeStringStock({ offered: strings, links, aliases, purchases, jobs, catalog });
+  const summary = summarizeStringStock({ offered: strings, links, aliases, purchases, jobs: withDeletedUses(jobs, uses), catalog });
   const offeredKeys = new Map(strings.map((l) => [labelKey(l), l]));
   const stock: Record<string, StockBand> = {};
   const colourStock: Record<string, ColourStock> = {};

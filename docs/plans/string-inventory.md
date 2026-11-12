@@ -137,6 +137,17 @@ shrinks to the plain list it replaces.
     hex. The Stringing tab shows them as dots on the row and as "On the reel"
     on the string's page, where they replace the maker's list and its "ask the
     stringer which are on the reel".
+- **A job's label is matched more loosely, and a deleted job keeps its set
+  (2026-11-12).** Grant: "the stock is not going down based on the archived and
+  finished stringing job". "Usage is counted, matched by label" broke on two
+  paths: the bench fills the string from the player's bag ("Yonex BG80", the
+  catalog's name) where the shelf says "BG80", and deleting an archived job
+  removed its usage. A job's label now also matches the catalog name of a
+  linked shelf string and a spaces-and-punctuation-free form, only where it
+  names one shelf string; deleting a job whose string went in first leaves a
+  `kind: 'stringUse'` row (label, colour, day) that the count reads. Beat
+  rewriting the job's label to the shelf's at intake (old jobs would still be
+  wrong) and refusing to delete a finished job (Grant clears the archive).
 - **Stock by colour (2026-11-11)** — a purchase may carry a colour, stock is
   counted per colour, and the request sheet offers the reel's colours narrowed
   to what is left: [`string-stock-by-colour.md`](string-stock-by-colour.md).
