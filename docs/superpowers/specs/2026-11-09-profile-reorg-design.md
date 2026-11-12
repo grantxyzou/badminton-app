@@ -4,7 +4,7 @@ Intent: docs/plans/profile-reorganization.md
 
 **Mock-up:** the "Profile reorganisation mock-up" Design canvas (Grant's, private): https://claude.ai/artifact/McqsPzJuDPWtVdArthhj7X. Every screen below is a board there; press Play to tap through. Where this spec and the mock-up disagree, this spec wins (the mock is a drawing in raw hex; the build uses tokens).
 
-**Date:** 2026-11-09. **Status:** steps 1–8 built (2026-11-11); Q1 (no) and Q3 (yes, built) answered; Q2 is "not yet" (end of this file). Build order is at the end.
+**Date:** 2026-11-09. **Status:** steps 1–8 built (2026-11-11); all three answered: Q1 no, Q2 and Q3 yes and built (end of this file). Build order is at the end.
 
 ---
 
@@ -349,7 +349,7 @@ Reduced motion: page slides become the crossfade; fades stay (`.claude/rules/des
 ## Open questions (Grant)
 
 1. **Q1** Move Language and Appearance from the header into Settings (bell stays in the header)? **No** (Grant, 2026-11-11: "dont move them"). The header keeps all three toggles.
-2. **Q2** Redeem a gift card on Home's balance card too (as a link to §3)? **Not yet** (Grant, 2026-11-11).
+2. **Q2** Redeem a gift card on Home's balance card too (as a link to §3)? **Not yet** (Grant, 2026-11-11), then **yes** (2026-11-12: "do Q2 now"). Built: a quiet "Redeem a gift card" link beside "See details" on Home's balance card, while store credit is on, opening Profile → Gift cards & credit through the same one-shot marker (`lib/profileView.ts`). Paid up, the card is one closed row, so the link is one tap away there, as "See details" is.
 3. **Q3** Keep the email typed at the join step as a contact email on Edit profile? It would need a privacy-policy line. **Yes** (Grant, 2026-11-11). Built the same day: §2.5 above.
 
 ## Build order (one PR each)

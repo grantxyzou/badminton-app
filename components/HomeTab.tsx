@@ -1102,6 +1102,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               requestProfileView('balance');
               onTabChange?.('profile');
             }}
+            onRedeem={() => {
+              requestProfileView('gift-cards');
+              onTabChange?.('profile');
+            }}
           />
         </RevealSlot>
       )}
