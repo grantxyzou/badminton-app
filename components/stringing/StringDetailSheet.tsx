@@ -148,19 +148,29 @@ export default function StringDetailSheet({
       </BottomSheetHeader>
       <BottomSheetBody>
         {item && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          // Sections 24px apart; each label sits close over its own content.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
             <div style={{ borderRadius: 'var(--radius-xl)', padding: 'var(--space-5)', background: typeBand(type), display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', minWidth: 0 }}>
-                  <StringPackImage catalogId={item.id} size="hero" />
-                  <span className="bpm-h3" style={{ minWidth: 0 }}>{item.brand} {item.model}</span>
-                </span>
-                {band && (
-                  <span className="fs-xs" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', height: 'var(--space-7)', padding: '0 var(--space-4)', borderRadius: 'var(--radius-pill)', background: 'color-mix(in srgb, var(--page-bg) 35%, transparent)', color: 'var(--text-secondary)', lineHeight: 1 }}>
-                    <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: stockColour(band) }} />
-                    {t(`stock_${band}`)}
-                  </span>
-                )}
+              {/* Packet left; beside it the name (the largest line) with the
+                  stock pill on its row, and what the string is for under it
+                  (Grant, 2026-11-12, on the canvas: "fix the alignment and
+                  hierarchy"). The description used to sit under the card too. */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-5)' }}>
+                <StringPackImage catalogId={item.id} size="hero" />
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                    <span className="bpm-h3" style={{ minWidth: 0, fontWeight: 700 }}>{item.brand} {item.model}</span>
+                    {band && (
+                      <span className="fs-xs" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', height: 'var(--space-7)', padding: '0 var(--space-4)', borderRadius: 'var(--radius-pill)', background: 'color-mix(in srgb, var(--page-bg) 35%, transparent)', color: 'var(--text-secondary)', lineHeight: 1 }}>
+                        <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: stockColour(band) }} />
+                        {t(`stock_${band}`)}
+                      </span>
+                    )}
+                  </div>
+                  {text('bestFor') && (
+                    <p className="fs-base" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{text('bestFor')}</p>
+                  )}
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
                 <div style={{ minWidth: 0 }}>
@@ -198,10 +208,6 @@ export default function StringDetailSheet({
                 </div>
               )}
             </div>
-
-            {text('bestFor') && (
-              <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)' }}>{text('bestFor')}</p>
-            )}
 
             {(facts.length > 0 || showCount) && (
               <div className="fs-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>

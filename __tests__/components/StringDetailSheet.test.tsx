@@ -55,6 +55,16 @@ describe('StringDetailSheet', () => {
     for (const label of ['Power', 'Control', 'Durability', 'Sound']) expect(screen.getAllByText(label).length).toBeGreaterThan(0);
   });
 
+  it('says what the string is for once, under its name beside the stock pill', () => {
+    wrap(BG80, { fit: null, reason: 'needs_check_in' });
+    const blurb = screen.getAllByText('All-round power string; stiff, crisp feedback with good tension hold');
+    expect(blurb).toHaveLength(1);
+    // The name, the pill and the blurb share one column beside the packet.
+    const column = blurb[0].parentElement!;
+    expect(column.textContent).toContain('Yonex BG80');
+    expect(column.textContent).toContain('In stock');
+  });
+
   it('says the maker rated it when the catalog says so, and the community otherwise', () => {
     wrap(BG80, { fit: null, reason: 'no_frame' });
     expect(screen.getByText('Rated by Yonex, out of 10')).toBeDefined();
