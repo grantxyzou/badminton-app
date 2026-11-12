@@ -79,6 +79,7 @@ export default function BirdReconcileSheet({ open, currentStock, onClose, onSave
               step={0.25}
               min={0}
               value={reconcileCount}
+              aria-label="Tubes actually on hand"
               onChange={(e) => setReconcileCount(e.target.value === '' ? '' : Number(e.target.value))}
             />
           </BirdSheetField>

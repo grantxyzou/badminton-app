@@ -159,6 +159,7 @@ export default function BirdPurchaseSheet({ open, editing, onClose, onSaved, onA
                 inputMode="decimal"
                 step={0.5}
                 value={formTubes}
+                aria-label="Tubes"
                 onChange={(e) => setFormTubes(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </BirdSheetField>
@@ -168,6 +169,7 @@ export default function BirdPurchaseSheet({ open, editing, onClose, onSaved, onA
                 inputMode="decimal"
                 step={0.01}
                 value={formCost}
+                aria-label="Total cost"
                 onChange={(e) => setFormCost(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </BirdSheetField>
@@ -177,6 +179,7 @@ export default function BirdPurchaseSheet({ open, editing, onClose, onSaved, onA
               <input
                 type="date"
                 value={formDate}
+                aria-label="Date"
                 onChange={(e) => setFormDate(e.target.value)}
               />
             </BirdSheetField>
@@ -185,6 +188,7 @@ export default function BirdPurchaseSheet({ open, editing, onClose, onSaved, onA
                 type="number"
                 inputMode="numeric"
                 value={formSpeed}
+                aria-label="Speed"
                 onChange={(e) => setFormSpeed(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="e.g. 76"
               />
