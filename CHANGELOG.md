@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Every sheet's fields have a name a screen reader can say (2026-11-12)
+
+- **All 59 files that open a sheet were checked**, not only the eight opened in a browser. Ten fields had no name a screen reader could read: on the shuttle purchase sheet (tubes, total cost, date, speed), the shuttle stock count, the receipt's recipient, and the session form's start, deadline and end times, courts and max players. Each now says what it is. Nothing on screen changed.
+- **A test now checks every sheet** for an unnamed field, a button drawn under 44 pt without a 44 pt tap, and an icon button with no name.
+
 ## Admin pages and sheets checked against Apple's guidance (2026-11-12)
 
 - **Every Admin page passed the automatic accessibility check (WCAG 2.2 AA) and the 44pt tap check**, after three fixes: the Skip dates field now has a label a screen reader can say, the names on Sign-in readiness take a 44pt tap (their rows sit 12 px apart now), and on a foldable the Admin pages open from the fold instead of sliding in from the edge.
