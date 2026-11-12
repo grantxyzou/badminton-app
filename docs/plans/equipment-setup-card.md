@@ -2,7 +2,7 @@
 
 **Track:** ROADMAP North Star pillar 4 (recommendations strong enough to suggest) — the club tally and the fit engine are only as good as the equipment members log, and today almost nobody logs any.
 **Status:** shipped 2026-09-14 (#419 dark, then the flag turned on); flag retired 2026-10-14, off-branch deleted (Grant's call, not the criterion's)
-**Review on:** 2026-11-12 — four weeks on the baseline below: has `racketSavers` in `GET /api/admin/slice0` risen above 10, and has the racket-AND-string count gained a reader?
+**Review on:** 2026-12-10 — read `equipment.racketAndStringSavers` on `GET /api/reports/metrics`: has it risen above 9 (its first reading, 2026-11-12)? Risen means the card earns its string line and this review can be removed; flat means the string half of the card is not pulling its weight.
 
 **Read 2026-10-15** (Grant, in the browser): the flag has been on since 2026-09-14 (#419). The kill criterion cannot be read as written — `GET /api/stats/club/gear` is the cohort-gated tally (`minCohort: 3`) and answered `entries: []`, because no racket or string model is shared by three members yet; it never carried a per-member "has both" count, and nothing else does. The nearest reader is slice0's `racketSavers`: **10 of 36** roster members have a racket saved. That is the baseline from today, racket-only. The flip-week number was never recorded. Two consequences: the criterion is reworded above onto the number that exists, and the retirement of `NEXT_PUBLIC_FLAG_GEAR_SETUP` (removal date 2026-10-12, past) is a decision for Grant rather than a reading — the card stays unless he says otherwise. Decided the same day: retire the flag, keep the card, delete the off branch.
 
@@ -133,6 +133,7 @@ flag's retirement.
   score" needs court-rotation data and wants its own plan doc first. (The
   mixed side is read since `fit-4`, the same day — `docs/plans/racket-fit-engine.md`.)
 - **2026-11-12: both numbers are in the club report** (Grant: "add to report"). `equipment` on `GET /api/reports/metrics`: `racketSavers` (the same count slice0 shows; both now call `countGearSavers` in `lib/metricsMath.ts`) and `racketAndStringSavers`, the plan's "racket AND string", which nothing counted before. The review reads it from the report instead of the admin-only slice0 page.
+- **2026-11-12 review: racket savers passed; racket-and-string has its first reading** (read from the live report the day #880 deployed, Grant: "yes write it into the plan"). Members with a racket saved rose from **10 of 36** (2026-10-15) to **14 of 39** (28% → 36%), above the bar of 10 this review set. Members with a racket AND a string saved: **9**, the first time it was counted, so a starting point rather than a verdict — the kill criterion asks whether it rises, and the flip-week number was never recorded. Next read 2026-12-10.
 
 ## Shape
 
