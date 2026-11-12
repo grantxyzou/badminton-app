@@ -1199,6 +1199,14 @@ export interface StringingJob {
 export interface WalkUpEmailStamp {
   at: string;
   ok: boolean;
+  /**
+   * A send CLAIMED but not finished (2026-11-12): written under the job's etag
+   * BEFORE the send, and replaced by the outcome after it. While it is recent
+   * (`walkUpEmailInFlight`), a second "Send again" or a second move to ready
+   * sends nothing, because `ok: false` alone reads exactly like a failure.
+   * Additive; absent on every finished stamp.
+   */
+  sending?: boolean;
 }
 
 /**

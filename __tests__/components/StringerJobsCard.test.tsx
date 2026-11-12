@@ -228,6 +228,13 @@ describe('telling the statuses apart (Stringing canvas, 2026-11-12)', () => {
     expect(bar.dataset.filled).toBe('1');
   });
 
+  it('a job waiting on the player before drop-off still offers "Mark received" (review, 2026-11-12)', async () => {
+    serve([{ ...stringerJob('requested'), pendingEdit: { proposedAt: '2026-11-01T00:00:00.000Z' } }]);
+    wrap();
+    expect(await screen.findByRole('button', { name: /Mark received/ })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Mark strung/ })).toBeNull();
+  });
+
   it('a pending change it cannot describe still says the player has to confirm', async () => {
     serve([{ ...stringerJob('received'), pendingEdit: { proposedAt: '2026-11-01T00:00:00.000Z' } }]);
     wrap();

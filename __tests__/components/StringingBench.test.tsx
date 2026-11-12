@@ -1145,6 +1145,19 @@ describe('the bench in the stringer\'s card style', () => {
     expect(bar.dataset.stage).toBe('waiting');
   });
 
+  it('a job waiting on the player before drop-off still offers "Mark received" (review, 2026-11-12)', async () => {
+    respondOpen([{
+      ...job,
+      status: 'requested',
+      pendingEdit: { stringLabel: 'BG66', proposedAt: '2026-11-01T00:00:00.000Z', proposedBy: 'member-grant' },
+    }]);
+    const { container } = wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText('Waiting on Wei')).toBeDefined();
+    const card = container.querySelector('[data-testid="job-card"]') as HTMLElement;
+    expect(within(card).getByRole('button', { name: /^Mark received/ })).toBeDefined();
+    expect(within(card).queryByRole('button', { name: /^Mark strung/ })).toBeNull();
+  });
+
   it('a change of tension says the tensions; a price-only change only says the player has to confirm', async () => {
     respondOpen([
       { ...job, id: 'a', jobNo: 'J-0001', pendingEdit: { tensionMains: 27, tensionCrosses: 29, proposedAt: 'x', proposedBy: 'g' } },

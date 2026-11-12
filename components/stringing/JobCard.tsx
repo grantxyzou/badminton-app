@@ -323,3 +323,20 @@ export function nextStatusOf(status: StringingStatus, flow: readonly StringingSt
   const i = flow.indexOf(status);
   return i >= 0 && i < flow.length - 1 ? flow[i + 1] : null;
 }
+
+/**
+ * The next step a card offers. While a change waits on the player only
+ * RECEIVING the racket stays on offer: "Mark strung" would string a racket
+ * the player has not agreed to, but a racket dropped off before they answer
+ * is on the bench all the same, and hiding "Mark received" left the job
+ * reading "waiting for drop-off" with the racket in hand (review, 2026-11-12).
+ * One rule for the bench and the stringer's card.
+ */
+export function nextStepOf(
+  status: StringingStatus,
+  flow: readonly StringingStatus[],
+  waitingOnPlayer: boolean,
+): StringingStatus | null {
+  const next = nextStatusOf(status, flow);
+  return waitingOnPlayer && next !== 'received' ? null : next;
+}

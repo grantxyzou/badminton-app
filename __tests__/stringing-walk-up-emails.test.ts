@@ -186,6 +186,38 @@ describe('the ready email', () => {
     expect(stored(job.id).walkUpEmails).toBeUndefined();
   });
 
+  it('an undo and a redo while the ready email is still going out send it once (review, 2026-11-12)', async () => {
+    const { job } = await create();
+    let release!: () => void;
+    // The spec email already went at create, so the slow send is the ready one.
+    sendMail.mockClear();
+    sendMail.mockImplementationOnce(async () => {
+      await new Promise<void>((r) => { release = r; });
+      return {};
+    });
+    const first = patch(job, { status: 'ready' });
+    await vi.waitFor(() => expect(sendMail).toHaveBeenCalledTimes(1));
+    // The claim is on the job before the send finishes.
+    expect(stored(job.id).walkUpEmails?.ready?.sending).toBe(true);
+    await patch(job, { status: 'strung' });
+    await patch(job, { status: 'ready' });
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    release();
+    expect((await first).res.status).toBe(200);
+    expect(subjects().filter((s) => s.startsWith('Your racket is ready'))).toHaveLength(1);
+    expect(stored(job.id).walkUpEmails?.ready).toMatchObject({ ok: true });
+    expect(stored(job.id).walkUpEmails?.ready?.sending).toBeUndefined();
+  });
+
+  it('a claim left behind by a send that never finished stops holding a later move after a minute', async () => {
+    const { job } = await create();
+    await patch(job, { status: 'strung' });
+    const stale = new Date(Date.now() - 2 * 60_000).toISOString();
+    stored(job.id).walkUpEmails = { ...stored(job.id).walkUpEmails, ready: { at: stale, ok: false, sending: true } };
+    await patch(job, { status: 'ready' });
+    expect(subjects().filter((s) => s.startsWith('Your racket is ready'))).toHaveLength(1);
+  });
+
   it('a failed ready send does not fail the move, and a later move may try again', async () => {
     const { job } = await create();
     sendMail.mockRejectedValueOnce(new Error('smtp down'));
@@ -264,6 +296,66 @@ describe('"Send again"', () => {
     const email = (await create()).job;
     const mixed = await patch(email, { resendSpecEmail: true, status: 'ready' });
     expect(mixed.res.status).toBe(400);
+  });
+
+  it('sends nothing while another tap\'s send is still going out, and hands back the job (review, 2026-11-12)', async () => {
+    sendMail.mockRejectedValueOnce(new Error('smtp down'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { job } = await create();
+    let release!: () => void;
+    sendMail.mockImplementationOnce(async () => {
+      await new Promise<void>((r) => { release = r; });
+      return {};
+    });
+    const first = patch(job, { resendSpecEmail: true });
+    await vi.waitFor(() => expect(sendMail).toHaveBeenCalledTimes(2));
+    expect(stored(job.id).walkUpEmails?.spec?.sending).toBe(true);
+
+    // A second tap that reads the job AFTER the first one's claim landed.
+    const second = await patch(job, { resendSpecEmail: true });
+    expect(second.res.status).toBe(409);
+    expect(second.body.error).toBe('sending');
+    expect(second.body.job.walkUpEmails.spec.sending).toBe(true);
+
+    release();
+    expect((await first).body.job.walkUpEmails.spec.ok).toBe(true);
+    expect(sendMail).toHaveBeenCalledTimes(2);
+    expect(stored(job.id).walkUpEmails?.spec).toMatchObject({ ok: true });
+    expect(stored(job.id).walkUpEmails?.spec?.sending).toBeUndefined();
+  });
+
+  it('a stale claim (a send that never finished) can be sent again', async () => {
+    delete process.env.GMAIL_USER;
+    const { job } = await create();
+    process.env.GMAIL_USER = 'club@example.com';
+    stored(job.id).walkUpEmails = { spec: { at: new Date(Date.now() - 2 * 60_000).toISOString(), ok: false, sending: true } };
+    const again = await patch(job, { resendSpecEmail: true });
+    expect(again.res.status).toBe(200);
+    expect(sendMail).toHaveBeenCalledTimes(1);
+  });
+
+  it('a job that is over gets nothing more: withdrawn, collected or archived', async () => {
+    delete process.env.GMAIL_USER;
+    const picked = (await create({ status: 'picked_up' })).job;
+    const cancelled = (await create()).job;
+    stored(cancelled.id).cancelledAt = new Date().toISOString();
+    const archived = (await create()).job;
+    stored(archived.id).archivedAt = new Date().toISOString();
+    process.env.GMAIL_USER = 'club@example.com';
+    for (const j of [picked, cancelled, archived]) {
+      const r = await patch(j, { resendSpecEmail: true });
+      expect(r.res.status).toBe(409);
+      expect(r.body.error).toBe('job_closed');
+    }
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it('already sent answers with the job, so the page can say Sent', async () => {
+    const { job } = await create();
+    const twice = await patch(job, { resendSpecEmail: true });
+    expect(twice.res.status).toBe(409);
+    expect(twice.body.error).toBe('already_sent');
+    expect(twice.body.job.walkUpEmails.spec.ok).toBe(true);
   });
 
   it('is an admin\'s: a stringer cannot send it', async () => {

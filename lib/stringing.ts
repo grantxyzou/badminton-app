@@ -163,6 +163,38 @@ export function walkUpEmailOf(job: { walkUp?: boolean; memberId?: string; walkUp
   return contact && isPlausibleEmail(contact) ? contact : null;
 }
 
+/**
+ * How long a CLAIMED walk-up email counts as still going out. Longer than the
+ * mail transport can take (5 s connect, 5 s greeting, 15 s socket in
+ * `lib/mailTransport.ts`), so a send in flight is never taken for a failure;
+ * short enough that a claim left by a server that died mid-send stops
+ * blocking "Send again" within a minute.
+ */
+export const WALK_UP_EMAIL_CLAIM_MS = 60_000;
+
+/**
+ * Is this walk-up email being sent right now? A stamp written as a claim
+ * (`sending: true`) and younger than `WALK_UP_EMAIL_CLAIM_MS`. One reading for
+ * the route (refuse a second send) and the job page (say "Sending…").
+ */
+export function walkUpEmailInFlight(
+  stamp: { at: string; ok: boolean; sending?: boolean } | undefined,
+  nowMs: number = Date.now(),
+): boolean {
+  if (!stamp || stamp.ok || stamp.sending !== true) return false;
+  const at = Date.parse(stamp.at);
+  return Number.isFinite(at) && nowMs - at < WALK_UP_EMAIL_CLAIM_MS;
+}
+
+/**
+ * Is this job OVER for the person who dropped it off — withdrawn, collected,
+ * or archived? Nothing more is emailed about it: a "your racket is with the
+ * stringer" sent again after pickup would be news about a job that ended.
+ */
+export function walkUpJobClosed(job: { cancelledAt?: string | null; status?: string; archivedAt?: string | null }): boolean {
+  return !!job.cancelledAt || job.status === 'picked_up' || !!job.archivedAt;
+}
+
 export function isValidTension(lb: unknown): lb is number {
   return (
     typeof lb === 'number' &&
