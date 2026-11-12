@@ -8,6 +8,25 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: one Save on a shelf string, and string types that follow the maker (2026-11-12)
+
+- **A shelf string's sheet is rethought** (Grant: "rethink about this page, use mobbin"). The catalog match sits under the name; stock comes first ("19 sets left", metres left, what a set costs you and what you make); name, restring price and the note for players are three fields with one Save pinned at the bottom (a rename goes first, then the rest under the new name); the reel's colours are one row that opens a colour grid; purchases are rows with a menu; "Remove from shelf" is a quiet link.
+- **String types follow the maker** (Grant: "double check the hybrid and all round"). Aerobite and Aerobite Boost are Control, Skyarc Durability and Li-Ning N68 power, as their makers class them; "Hybrid" was how Aerobite is built, not what it is tuned for. A test now holds our type to the maker's wherever the maker uses one of our words.
+
+## Stringing: walk-ups get their spec and a ready email, and a receipt to share (2026-11-12)
+
+- **A walk-up who left an email address is emailed automatically.** When the job is saved they get "Your racket is with BPM Core's stringer (J-0012)": the job number, racket, string and colour, tension, price ("$34, pay at pickup", or "Ask") and the ready-by date. When the job first moves to Ready they get "Your racket is ready (J-0012)", once, with "Bring $34 or pay your stringer at pickup." when it is priced and unpaid. An undo and a second move to Ready send nothing more. A phone number, or no contact, gets no email.
+- **The job page has a "Send to Lee" card.** "Emailed automatically" says when the spec email went ("✓ Sent 3:04 PM"), or "Not sent" with "Send again" if it failed. "Share the receipt" opens "Receipt for Lee": an image of the job with Racket, String, Tension, Ready by, Dropped off, the total, and "Pay at pickup, to your stringer. Bring this receipt or the job number." (or "Paid"), with "Save image" and "Share". The receipt shows the name, never the phone or email.
+- An email is sent after the job is saved and never stops it saving. Member jobs keep their own notices; nothing new is pushed.
+
+## Stringing: the bench, in the stringer's card style (2026-11-12)
+
+- **The admin's "Stringing jobs" list has no outer card.** A plain heading with "5 open · 1 late" under it, and a small "Open" pill with a green dot beside it while the shop is open. Each racket is its own card.
+- **Each job card carries the 4-step bar** (Received · Strung · Ready · Picked up) under the racket's name, coloured by its status: the same bar the stringer's list draws, now one shared component.
+- **A job waiting on the player** says what was suggested ("Suggested BG66 instead of BG80. Wei has to accept before you string it.") and has no next-step button until they answer. Racket, string and tension only: the price is never in that line.
+- **The "Open for stringing" row is gone.** "Close shop" is now the last row, under "Strings, stock, prices & holes", with "Players can't send new requests until you open it."; it closes the shop exactly as the old button did. A sign that can't be read, or is still being read, shows in that row's place. The closed shop's card and its "Open shop" are unchanged.
+- The archive keeps its list card; its job cards gain the same bar.
+
 ## Stringing: jobs for walk-ups (2026-11-12)
 
 - **"New job" can take a racket from someone who is not in the club.** Search for a name that matches nobody and the card says "No one in the club is called Lee." with a row to "Add Lee as a walk-up". The walk-up shows with a "Walk-up" pill, "Not in the club", and an optional "Phone or email" so the stringer can tell them it's ready. The price card reads "How they pay: At pickup, to you". Everything else on the form is the same.

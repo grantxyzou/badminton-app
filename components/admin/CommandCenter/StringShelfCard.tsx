@@ -16,7 +16,7 @@ import { LOW_STOCK_SETS, labelKey, type StringStockSummary } from '@/lib/stringS
 import { catalogLabel, matches } from '@/lib/shelfEdit';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
 import { normaliseColourList, type StringColourId } from '@/lib/stringPalette';
-import StringShelfSheet, { type ShelfSheetMode } from './StringShelfSheet';
+import StringShelfSheet, { type ShelfEdits, type ShelfSheetMode } from './StringShelfSheet';
 import StringPurchaseSheet from './StringPurchaseSheet';
 import { ColourDots } from '@/components/stringing/StringColours';
 
@@ -157,35 +157,83 @@ export default function StringShelfCard() {
     }
   }
 
+  /** The route's answer as the card's shelf. */
+  const shelfOf = (d: Record<string, unknown>): Shelf => ({
+    strings: d.strings as string[],
+    links: (d.links as Shelf['links']) ?? {},
+    prices: (d.prices as Shelf['prices']) ?? {},
+    aliases: (d.aliases as Shelf['aliases']) ?? {},
+    colours: coloursOf(d.colours),
+    notes: notesOf(d.notes),
+  });
+
   /**
-   * Rename one offered string. The server moves its price, link, colours and
-   * old spellings on the STORED doc, so nothing here is sent but the two names.
-   * The open sheet follows the string to its new name.
+   * The sheet's one Save: name, price, note and reel colours together. A new
+   * name goes FIRST, on its own (`{ rename }`: the server moves the price,
+   * link, colours, note and old spellings on the STORED doc), and the rest is
+   * saved under the NEW name in one PATCH that sends the list and only the
+   * maps this Save touched — the same rule as `save` above, so another
+   * device's aliases and links are never written back stale. The open sheet
+   * follows the string to its new name, so a failure after the rename keeps
+   * the remaining edits on the string they belong to. Returns whether it all
+   * landed.
    */
-  async function rename(from: string, to: string) {
-    if (busy || !online) return;
+  async function saveSheet(from: string, edits: ShelfEdits): Promise<boolean> {
+    if (busy || !online || !shelf) return false;
     setBusy(true);
     setSaveError(false);
     setRenameError(null);
+    let current = shelf;
+    let label = from;
     try {
-      const res = await fetch(`${BASE}/api/stringing/strings`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rename: { from, to } }),
-      });
-      if (res.status === 409 || res.status === 400) {
-        setRenameError(res.status === 409 ? 'name_taken' : 'invalid_name');
-        return;
+      if (edits.name !== undefined && edits.name !== from) {
+        const res = await fetch(`${BASE}/api/stringing/strings`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rename: { from, to: edits.name } }),
+        });
+        if (res.status === 409 || res.status === 400) {
+          setRenameError(res.status === 409 ? 'name_taken' : 'invalid_name');
+          return false;
+        }
+        if (!res.ok) throw new Error(String(res.status));
+        const d = await res.json();
+        if (Array.isArray(d.strings)) {
+          current = shelfOf(d);
+          setShelf(current);
+        }
+        label = edits.name;
+        setSheet((s) => (s && s.label === from ? { ...s, label } : s));
       }
-      if (!res.ok) throw new Error(String(res.status));
-      const d = await res.json();
-      if (Array.isArray(d.strings)) {
-        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {}, colours: coloursOf(d.colours), notes: notesOf(d.notes) });
+      const next: Partial<Shelf> = {};
+      if (edits.price !== undefined) next.prices = { ...current.prices, [label]: edits.price };
+      if (edits.note !== undefined) {
+        const notes = { ...current.notes };
+        if (edits.note) notes[label] = edits.note;
+        else delete notes[label];
+        next.notes = notes;
       }
-      setSheet((s) => (s && s.label === from ? { ...s, label: to } : s));
+      if (edits.colours !== undefined) {
+        const colours = { ...current.colours };
+        if (edits.colours.length > 0) colours[label] = edits.colours;
+        else delete colours[label];
+        next.colours = colours;
+      }
+      if (Object.keys(next).length > 0) {
+        const res = await fetch(`${BASE}/api/stringing/strings`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ strings: current.strings, ...next }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const d = await res.json();
+        setShelf(Array.isArray(d.strings) ? shelfOf(d) : { ...current, ...next });
+      }
       await loadStock().catch(() => setLoadError(true));
+      return true;
     } catch {
       setSaveError(true);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -430,7 +478,6 @@ export default function StringShelfCard() {
           aliasesHere={Object.entries(shelf.aliases).filter(([, to]) => to === sheetLabel).map(([from]) => from)}
           offered={shelf.strings}
           jobCount={jobLabels.find((u) => u.label === sheetLabel)?.usedSets ?? 0}
-          onSavePrice={(cents) => void save({ prices: { ...shelf.prices, [sheetLabel]: cents } })}
           onLogPurchase={() => {
             closeSheet();
             setPurchase((p) => ({ label: sheetLabel, n: (p?.n ?? 0) + 1 }));
@@ -449,20 +496,10 @@ export default function StringShelfCard() {
             void save({ aliases: { ...shelf.aliases, [sheetLabel]: target } }).then((ok) => ok && closeSheet());
           }}
           colours={shelf.colours[sheetLabel] ?? []}
-          onSaveColours={(ids) => {
-            const next = { ...shelf.colours };
-            if (ids.length > 0) next[sheetLabel] = ids;
-            else delete next[sheetLabel];
-            void save({ colours: next });
-          }}
           note={shelf.notes[sheetLabel] ?? ''}
-          onSaveNote={(note) => {
-            const next = { ...shelf.notes };
-            if (note) next[sheetLabel] = note;
-            else delete next[sheetLabel];
-            void save({ notes: next });
+          onSave={(edits) => {
+            void saveSheet(sheetLabel, edits).then((ok) => ok && closeSheet());
           }}
-          onRename={(to) => void rename(sheetLabel, to)}
           renameError={renameError}
           onOffer={() => {
             // Closes either way: a refused add (a full shelf) is said on the

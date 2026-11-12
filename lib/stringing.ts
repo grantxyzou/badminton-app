@@ -18,6 +18,7 @@
  * for the bench's convenience leaks to the player by default. Keeping them
  * separate makes leaking the deliberate act rather than the accidental one.
  */
+import { isPlausibleEmail } from './emailShape';
 
 export type StringingStatus = 'requested' | 'received' | 'strung' | 'ready' | 'picked_up';
 
@@ -148,6 +149,18 @@ export const WALK_UP_CONTACT_MAX = 120;
 /** A walk-up's job: the flag, or (belt and braces) the synthetic partition key. */
 export function isWalkUpJob(job: { walkUp?: boolean; memberId?: string }): boolean {
   return job.walkUp === true || (typeof job.memberId === 'string' && job.memberId.startsWith(WALK_UP_ID_PREFIX));
+}
+
+/**
+ * The address a walk-up's two automatic emails go to, or null: only a WALK-UP's
+ * job, and only when the contact they gave is shaped like an email. A phone
+ * number, or no contact, gets nothing sent — the stringer shares the receipt
+ * instead. One reading for the routes and the job page.
+ */
+export function walkUpEmailOf(job: { walkUp?: boolean; memberId?: string; walkUpContact?: string }): string | null {
+  if (!isWalkUpJob(job)) return null;
+  const contact = typeof job.walkUpContact === 'string' ? job.walkUpContact.trim() : '';
+  return contact && isPlausibleEmail(contact) ? contact : null;
 }
 
 export function isValidTension(lb: unknown): lb is number {

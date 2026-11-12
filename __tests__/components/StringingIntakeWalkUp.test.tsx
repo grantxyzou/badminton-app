@@ -101,7 +101,7 @@ describe('the intake offers a walk-up when the search matches nobody', () => {
     expect(screen.getByText('Lee')).toBeDefined();
     expect(screen.getByText('Walk-up')).toBeDefined();
     expect(screen.getByText('Not in the club')).toBeDefined();
-    expect(screen.getByText(/A walk-up has no app, so nothing reaches them on its own/)).toBeDefined();
+    expect(screen.getByText(/An email address gets the spec now and a note when it's ready/)).toBeDefined();
     // The price card's footer: how they pay, never what "the player sees".
     expect(screen.getByText('How they pay')).toBeDefined();
     expect(screen.getByText('At pickup, to you')).toBeDefined();
