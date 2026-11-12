@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 /**
  * The moment a foldable crosses from one pane to two — unfolding, or turning
@@ -39,4 +39,27 @@ export function usePaneFlip(): void {
       root.removeAttribute(PANE_FLIP_ATTR);
     };
   }, []);
+}
+
+function subscribePane(onChange: () => void): () => void {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {};
+  const mq = window.matchMedia(PANE_QUERY);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+}
+
+function readPane(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(PANE_QUERY).matches;
+}
+
+/**
+ * Whether the screen shows two pages, for the few places that must change
+ * WHAT renders on a foldable rather than where it sits (Stringing's right
+ * page: a tapped job opens beside the list instead of in place of it). The
+ * layout itself stays in CSS. Reads the same `PANE_QUERY`, never the window's
+ * width, and is `false` on the server and on any one-screen device, so a
+ * phone renders exactly what it did.
+ */
+export function usePaneMode(): boolean {
+  return useSyncExternalStore(subscribePane, readPane, () => false);
 }

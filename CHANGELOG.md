@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing on a foldable: the list on the left, what you tap on the right (2026-11-12)
+
+- **On an open Galaxy Z Fold or iPhone Duo, Stringing uses both halves of the screen.** The title, the switch and the list keep the left half; what you tap opens on the right half beside it, where on a phone it covers the list. Nothing crosses the fold.
+- **Something is already open on the right**: the job at the top of the bench (marked in green), the string the shelf's map picks, or your rackets in progress. With no racket in, the right half shows the strings on offer, and "Restring with this string" opens your request with that string picked. A stringer who isn't an admin sees their queue on the left and their shelf on the right.
+- **A phone is unchanged**: tapping a job still opens its page, and a string still opens its sheet. So do the bench's new job, archive and set-up pages on a foldable.
+
 ## Stringing: one Save on a shelf string, and string types that follow the maker (2026-11-12)
 
 - **A shelf string's sheet is rethought** (Grant: "rethink about this page, use mobbin"). The catalog match sits under the name; stock comes first ("19 sets left", metres left, what a set costs you and what you make); name, restring price and the note for players are three fields with one Save pinned at the bottom (a rename goes first, then the rest under the new name); the reel's colours are one row that opens a colour grid; purchases are rows with a menu; "Remove from shelf" is a quiet link.

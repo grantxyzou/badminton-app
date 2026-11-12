@@ -95,6 +95,19 @@ const SlotReadyContext = createContext<((ready: boolean, empty: boolean) => void
  * error is content too). `empty` when it loaded and has nothing to show.
  * Outside a slot it does nothing.
  */
+/**
+ * Content drawn ELSEWHERE through a portal (a foldable's right page) that
+ * must not report to the slot it was rendered from: React context follows a
+ * portal, so a card inside would otherwise answer for the slot's own card.
+ */
+export function RevealOutside({ children }: { children: ReactNode }) {
+  return (
+    <GroupContext.Provider value={null}>
+      <SlotReadyContext.Provider value={null}>{children}</SlotReadyContext.Provider>
+    </GroupContext.Provider>
+  );
+}
+
 export function useRevealReady(ready: boolean, empty = false) {
   const set = useContext(SlotReadyContext);
   useLayoutEffect(() => {

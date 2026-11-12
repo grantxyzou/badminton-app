@@ -5371,6 +5371,17 @@ html:root .glass-card.bpm-job-card--waiting {
   background: linear-gradient(var(--tone-amber-bg), var(--tone-amber-bg)), var(--fcard-bg);
 }
 
+/* The job open on a foldable's right page (Stringing, docs/plans/foldable-layout.md):
+   the accent's tint, solid, as a selected tile is. Never drawn on one screen,
+   where nothing stays open beside the list. */
+.bpm-job-card--open {
+  background: var(--tone-green-bg);
+}
+/* The same on the bench's own glass card, which outranks the bare class. */
+html:root .glass-card.bpm-job-card--open {
+  background: linear-gradient(var(--tone-green-bg), var(--tone-green-bg)), var(--fcard-bg);
+}
+
 /* Warn — the one answer an amber banner asks for ("Review the change"). SOLID,
    unlike its tinted siblings: it sits ON an amber banner, where a tint of the
    same amber would vanish into the fill. Dark ink on amber in both themes. */
@@ -8870,6 +8881,41 @@ html[data-pane-flip='b'] [data-app-shell] {
   .stats-shell > .stats-shell-register {
     grid-column: 2;
     grid-row: 3 / -1;
+  }
+  /* Stringing, the list on the LEFT and what it opens on the RIGHT (Grant,
+     2026-11-12: "Option 2 but can we have something opened by default on
+     the right?"). Apple's list-detail: the title, the switch and the
+     register (the bench, the shelf, the request card) keep the left page; a
+     tapped job or string opens on the right one instead of covering the list,
+     and before any tap the first thing is already open. The tab renders its
+     right page (`.stringing-aside`) only in two-page mode, and a register
+     fills it; the tab widens only while it shows something, so a register
+     with nothing to open (an empty bench, a sub-screen such as the archive)
+     keeps the one column it has today. The right page starts on the
+     switch's row, which clears the three round buttons over the right pane's
+     top on a portrait screen, and the last row is 1fr so its height never
+     opens a gap on the left. */
+  main[data-page-shell]:has(> [data-tab-panel='stringing']:not([hidden]) .stringing-aside > * > :not([hidden])) {
+    max-width: var(--panes-max-w);
+  }
+  .stringing-shell:has(> .stringing-aside > * > :not([hidden])) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--fold-gap);
+    row-gap: 0;
+    align-items: start;
+  }
+  .stringing-shell > * {
+    grid-column: 1;
+  }
+  .stringing-shell > .stringing-aside {
+    grid-column: 2;
+    grid-row: 2 / -1;
+  }
+  /* Holding nothing it takes no room, and no gap under the register. */
+  .stringing-shell > .stringing-aside:not(:has(> * > :not([hidden]))) {
+    display: none;
   }
   /* RIGHT pane: the week, alone — the page that opens (Grant, 2026-11-04:
      "I would want it on the right cuz that's the elevation opening up more

@@ -23,7 +23,10 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
   job: StringingJob;
-  onBack: () => void;
+  /** Back to the bench. Absent on a foldable's right page, where the bench is
+   *  still beside it and there is nothing to go back to: the name stands as
+   *  a plain heading instead of the page's back bar. */
+  onBack?: () => void;
   /** The header's crumb, from whichever screen opened the bench. */
   crumb?: string;
   onChanged: () => void;
@@ -280,8 +283,9 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
 
   return (
     <div>
-      <AdminBackHeader onBack={onBack} title={local.memberName} crumb={crumb} />
+      {onBack && <AdminBackHeader onBack={onBack} title={local.memberName} crumb={crumb} />}
       <div className="flex flex-col gap-4 pb-6">
+        {!onBack && <h2 className="bpm-h2" style={{ margin: 0 }}>{local.memberName}</h2>}
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
           <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: '0' }}>
             {/* Just the number now. The status has a card of its own directly

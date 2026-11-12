@@ -40,6 +40,10 @@ export interface MetricsRosterEntry {
   name: string;
   /** When this person joined the club — membership date, else account date. */
   joinedAt?: string;
+  /** How they joined (`Membership.joinedVia`), for the new members' path. */
+  joinedVia?: string;
+  /** Has a way back in (a PIN, a password or Google/Apple) — `!isUnclaimed`. */
+  claimed?: boolean;
 }
 
 export interface MetricsInput {
@@ -86,6 +90,12 @@ export interface MetricsInput {
    * window within a month of the link going live.
    */
   migrations?: Array<{ memberId: string; at: string }>;
+  /**
+   * The new members' own `app_open` and `tab_view` rows since they joined
+   * (docs/plans/new-member-path.md) — not the 28-day window above, which
+   * would forget a member who joined five weeks ago.
+   */
+  journeyEvents?: Array<{ memberId: string; kind: string; at: string; tab?: string }>;
 }
 
 export interface SessionMetrics {
@@ -157,6 +167,126 @@ export interface ClubMetrics {
   paymentsInbox: PaymentsInboxMetrics;
   /** Who has saved their gear (docs/plans/equipment-setup-card.md's review). */
   equipment: EquipmentMetrics;
+  /** How far the people who joined lately got (docs/plans/new-member-path.md). */
+  newMemberPath: NewMemberPathMetrics;
+}
+
+/**
+ * The new members' path (docs/plans/new-member-path.md): of the roster
+ * members who joined in the last 90 days and since usage tracking began, how
+ * many reached each step. TOTALS ONLY — never who — as the privacy policy
+ * promises the organiser. Each step counts the whole cohort; they are not
+ * nested (an organiser can add someone who signs up without opening the app).
+ */
+export interface NewMemberPathMetrics {
+  /** The earliest join counted: 90 days ago, or the day usage tracking began if later. */
+  since: string;
+  joined: number;
+  /**
+   * How they joined: an invite link or code; added or let in by an organiser
+   * (the door's approval is recorded as an organiser's add); started the club;
+   * or before the app recorded how (a membership the migration made).
+   */
+  joinedVia: { invite: number; organiser: number; created: number; unrecorded: number };
+  /** Have a way back in: a PIN, a password, or Google or Apple. */
+  keptAccount: number;
+  openedApp: number;
+  /** Opened a tab other than Home. */
+  lookedAround: number;
+  signedUp: number;
+  /** A confirmed spot in a session that has happened. */
+  played: number;
+  paid: number;
+  /** How many of them opened each tab. */
+  tabs: Record<(typeof PATH_TABS)[number], number>;
+  /** Typical days from joining to the first sign-up, among those who signed up; null when nobody has. */
+  medianDaysToFirstSignup: number | null;
+}
+
+/** The tabs the beacons record (`USAGE_TABS` in lib/events.ts), in nav order. */
+export const PATH_TABS = ['home', 'stringing', 'skills', 'profile'] as const;
+
+/**
+ * Usage tracking went on on 2026-10-07 (docs/plans/usage-metrics.md). A
+ * member who joined before then could have opened the app with nothing
+ * written down, and would read as "never opened" — so they are left out.
+ */
+export const USAGE_RECORDED_FROM = '2026-10-07T07:00:00.000Z';
+
+export function computeNewMemberPath(input: Pick<MetricsInput, 'now' | 'roster' | 'sessions' | 'players' | 'journeyEvents'>): NewMemberPathMetrics {
+  const now = input.now.getTime();
+  const floor = Math.max(now - 90 * 86_400_000, Date.parse(USAGE_RECORDED_FROM));
+  const cohort = new Map<string, { joined: number; via?: string; claimed: boolean }>();
+  for (const r of input.roster) {
+    const joined = ms(r.joinedAt);
+    if (joined === null || joined < floor || joined > now) continue;
+    cohort.set(r.memberId, { joined, via: r.joinedVia, claimed: r.claimed === true });
+  }
+
+  const sessionAt = new Map(input.sessions.map((s) => [s.id, ms(s.datetime)]));
+  const signedUp = new Set<string>();
+  const played = new Set<string>();
+  const paid = new Set<string>();
+  const firstSignup = new Map<string, number>();
+  for (const p of input.players) {
+    const who = p.memberId ? cohort.get(p.memberId) : undefined;
+    if (!who || !p.memberId) continue;
+    const at = sessionAt.get(p.sessionId);
+    // Only what they did as a member of THIS club: a session dated before
+    // they joined is someone else's history under a reused name.
+    if (at == null || at < who.joined) continue;
+    signedUp.add(p.memberId);
+    const t = ms(p.timestamp);
+    if (t !== null) firstSignup.set(p.memberId, Math.min(firstSignup.get(p.memberId) ?? Infinity, t));
+    if (isConfirmed(p) && at <= now) played.add(p.memberId);
+    if (p.paid === true) paid.add(p.memberId);
+  }
+
+  const opened = new Set<string>();
+  const lookedAround = new Set<string>();
+  const tabSeen = new Map<string, Set<string>>(PATH_TABS.map((t) => [t, new Set<string>()]));
+  for (const e of input.journeyEvents ?? []) {
+    const who = cohort.get(e.memberId);
+    const at = ms(e.at);
+    // Re-checked: the mock store applies no WHERE, and a person in two clubs
+    // has rows from before they joined this one.
+    if (!who || at === null || at < who.joined) continue;
+    if (e.kind === 'app_open') opened.add(e.memberId);
+    if (e.kind === 'tab_view' && e.tab) {
+      opened.add(e.memberId);
+      tabSeen.get(e.tab)?.add(e.memberId);
+      if (e.tab !== 'home') lookedAround.add(e.memberId);
+    }
+  }
+
+  let invite = 0;
+  let organiser = 0;
+  let created = 0;
+  let unrecorded = 0;
+  let keptAccount = 0;
+  for (const c of cohort.values()) {
+    if (c.via === 'link' || c.via === 'code') invite += 1;
+    else if (c.via === 'admin') organiser += 1;
+    else if (c.via === 'create') created += 1;
+    else unrecorded += 1;
+    if (c.claimed) keptAccount += 1;
+  }
+
+  const days = [...firstSignup].map(([id, t]) => Math.max(0, (t - (cohort.get(id)?.joined ?? t)) / 86_400_000));
+  const typical = median(days);
+  return {
+    since: new Date(floor).toISOString(),
+    joined: cohort.size,
+    joinedVia: { invite, organiser, created, unrecorded },
+    keptAccount,
+    openedApp: opened.size,
+    lookedAround: lookedAround.size,
+    signedUp: signedUp.size,
+    played: played.size,
+    paid: paid.size,
+    tabs: Object.fromEntries(PATH_TABS.map((t) => [t, tabSeen.get(t)?.size ?? 0])) as NewMemberPathMetrics['tabs'],
+    medianDaysToFirstSignup: typical === null ? null : Math.round(typical * 10) / 10,
+  };
 }
 
 /** A `playerGear` doc as the savers count reads it: its owner and its bag. */
@@ -524,6 +654,7 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
     stringingRequests: computeStringingRequests(input.stringingJobs, rosterIds, now),
     paymentsInbox: computePaymentsInbox(input.etransfers ?? [], now),
     equipment: computeEquipment(input.gear ?? [], input.roster),
+    newMemberPath: computeNewMemberPath(input),
   };
 }
 

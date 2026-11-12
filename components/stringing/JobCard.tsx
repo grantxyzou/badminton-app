@@ -191,6 +191,7 @@ export default function JobCard({
   waitingDays = null,
   pendingChange,
   surface = 'inner',
+  open = false,
 }: {
   job: JobCardJob;
   /** `todayIso()` — the viewer's own date, compared day to day with `readyBy`. */
@@ -222,6 +223,9 @@ export default function JobCard({
   /** `card`: a glass card of its own, on the tab's ground. `inner`: the tint
    *  of a card inside a list card. */
   surface?: 'inner' | 'card';
+  /** The job showing on a foldable's right page: a solid tint marks it (fill
+   *  only, never a ring), and the button says it is the current one. */
+  open?: boolean;
 }) {
   const t = useTranslations('home.stringing');
   const locale = useLocale();
@@ -249,6 +253,7 @@ export default function JobCard({
     surface === 'card' ? 'glass-card' : null,
     'bpm-job-card',
     waitingDays ? 'bpm-job-card--waiting' : null,
+    open ? 'bpm-job-card--open' : null,
   ].filter(Boolean).join(' ');
 
   return (
@@ -259,6 +264,7 @@ export default function JobCard({
         <button
           type="button"
           onClick={onOpen}
+          aria-current={open ? 'true' : undefined}
           aria-label={[openLabel, job.racketLabel, job.jobNo, t('stringerFor', { name: job.memberName })].filter(Boolean).join(' · ')}
           style={{ position: 'absolute', inset: 0, borderRadius: 'inherit' }}
         />

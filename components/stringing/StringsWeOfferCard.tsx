@@ -36,6 +36,9 @@ import {
   type StockBand,
 } from '@/lib/stringShelf';
 import StringDetailSheet from './StringDetailSheet';
+import { StringingAside, useStringingAside } from './StringingAside';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { STRINGING_HEIGHTS } from '@/components/TabFallbacks';
 import StringMap, { type MapDot } from './StringMap';
 import StockBadge from './StockBadge';
 import { ColourDots } from './StringColours';
@@ -120,6 +123,10 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [attempt, setAttempt] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
+  /* On a foldable a string opens on the right page, beside the shelf, in
+     place of its sheet — and one is open before any tap (docs/plans/
+     foldable-layout.md). `null` on one screen. */
+  const aside = useStringingAside();
   const [learnOpen, setLearnOpen] = useState(false);
   // Read once on mount. The card renders nothing until its data arrives, so
   // there is no server markup for a stored choice to disagree with.
@@ -180,6 +187,15 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   const ready = status !== 'loading' && (catalog.loaded || catalog.loadError) && other !== null;
   const empty = status === 'ready' && (shelf?.strings.length ?? 0) === 0;
   useRevealReady(ready, empty && !showEmpty);
+  // On a foldable the right page holds the string's place while the shelf
+  // loads, so the tab opens on two pages rather than moving to them.
+  if (!ready && aside) {
+    return (
+      <StringingAside id="loading">
+        <CardSkeleton height={STRINGING_HEIGHTS.detail} />
+      </StringingAside>
+    );
+  }
   if (!ready || (empty && !showEmpty)) return null;
 
   // The own-string price and the note, below the strings they sit beside.
@@ -264,6 +280,12 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     type: stringTypeOf(e.item),
   }));
   const openEntry = entries.find((e) => e.label === open) ?? null;
+  /* The right page's string: the one opened; else the map's pick (the
+     string its card under the map already shows); else the first linked
+     string still on the shelf. Only a string the catalog knows has a page. */
+  const asideEntry = aside
+    ? [openEntry, selected, ...entries.filter((e) => bandOf(e.label) !== 'out'), ...entries].find((e) => e?.item) ?? null
+    : null;
 
   const anyPack = entries.some((e) => stringPackSrc(e.item?.id));
   const traitPart = (trait: Trait) => function TraitPart(chunks: React.ReactNode) {
@@ -426,7 +448,11 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
               <StringMap
                 dots={dots}
                 selected={selected?.label ?? null}
-                onSelect={setPicked}
+                onSelect={(label) => {
+                  setPicked(label);
+                  // The right page follows the map's pick.
+                  if (aside) setOpen(null);
+                }}
                 yLabel={t(`axisUp_${shownAxis}`)}
                 mapLabel={t(`mapLabel_${shownAxis}`)}
                 axisName={t(`axisName_${shownAxis}`)}
@@ -506,13 +532,30 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
           setOpen(null);
           window.setTimeout(() => onRestring(label), SHEET_CLOSE_MS);
         } : undefined}
-        open={openEntry?.item != null}
+        open={!aside && openEntry?.item != null}
         onClose={() => setOpen(null)}
         price={openEntry && shelf ? shelfPrice(shelf, openEntry.label) : undefined}
         band={openEntry ? bandOf(openEntry.label) : null}
         clubCount={openEntry ? shelf?.players[openEntry.label] ?? null : null}
         note={openEntry ? shelf?.notes[openEntry.label] ?? null : null}
       />
+
+      {asideEntry && (
+        <StringingAside id={asideEntry.label}>
+          <StringDetailSheet
+            asPage
+            item={asideEntry.item}
+            label={asideEntry.label}
+            onRestring={onRestring}
+            open
+            onClose={() => setOpen(null)}
+            price={shelf ? shelfPrice(shelf, asideEntry.label) : undefined}
+            band={bandOf(asideEntry.label)}
+            clubCount={shelf?.players[asideEntry.label] ?? null}
+            note={shelf?.notes[asideEntry.label] ?? null}
+          />
+        </StringingAside>
+      )}
     </div>
   );
 }

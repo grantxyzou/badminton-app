@@ -31,6 +31,7 @@ import { useHoleLookup } from '@/components/stringing/useHoleLookup';
 import { StateLink } from '@/components/primitives/StateCard';
 import RegisterSwitch from '@/components/primitives/RegisterSwitch';
 import ListRow from '@/components/primitives/ListRow';
+import { StringingAside, useStringingAside } from '@/components/stringing/StringingAside';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -121,6 +122,11 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /* On a foldable the bench has a right page (docs/plans/foldable-layout.md):
+     a tapped job opens there, beside the list, instead of in place of it,
+     and before any tap the job at the top of the list is open. `null` on
+     one screen, where opening a job is the page it always was. */
+  const aside = useStringingAside();
   // null = UNKNOWN (throttled or failed), not closed. Rendering a CLOSED sign
   // on a shop that is open is the confident-wrong answer, so unknown says so.
   const [shopOpen, setShopOpen] = useState<boolean | null>(null);
@@ -289,7 +295,16 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     archivedJobs?.find((j) => j.id === selectedId) ??
     null;
   // A detail view whose job is gone renders the bench, so it is not a takeover.
-  const takingOver = view !== 'bench' && !(view === 'detail' && !selected);
+  // A job opens as its own page on one screen, and an archived one anywhere;
+  // on a foldable an open job opens on the right page and the bench stays.
+  const detailAsPage =
+    view === 'detail' && selected !== null && (!aside || typeof selected.archivedAt === 'string');
+  const takingOver = view !== 'bench' && !(view === 'detail' && !detailAsPage);
+  /* The right page's job: the one tapped, while it is still on the list; the
+     job at the top of the list before any tap (the list's own order, so the
+     first thing the bench asks of you is what is open). */
+  const asideJob =
+    aside && jobs && jobs.length > 0 ? (jobs.find((j) => j.id === selectedId) ?? jobs[0]) : null;
   useEffect(() => {
     onTakeover?.(takingOver);
   }, [takingOver, onTakeover]);
@@ -349,6 +364,13 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     }
   }
 
+  /** Opens a job: on the right page when there is one, else as its page. An
+   *  archived job always opens as its page — the archive is a page itself. */
+  function openJob(job: StringingJob, inArchive: boolean) {
+    setSelectedId(job.id);
+    if (!aside || inArchive) setView('detail');
+  }
+
   function renderJob(job: StringingJob, inArchive: boolean) {
     const pinned = typeof job.prioritizedAt === 'string';
     // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
@@ -395,10 +417,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
              canvas, 2026-11-12); still the inner tint inside the archive's
              list card. */
           surface={inArchive ? 'inner' : 'card'}
-          onOpen={() => {
-            setSelectedId(job.id);
-            setView('detail');
-          }}
+          onOpen={() => openJob(job, inArchive)}
+          open={!inArchive && asideJob?.id === job.id}
           openLabel={t('actions.open')}
           more={
             <button
@@ -462,7 +482,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .reduce<{ id: string; name: string }[]>((acc, j) => (acc.some((m) => m.id === j.memberId) ? acc : [...acc, { id: j.memberId, name: j.memberName }]), []);
 
-  if (view === 'detail' && selected) {
+  if (detailAsPage && selected) {
     return (
       <div className="animate-slideInRight">
         <StringingJobDetail
@@ -534,9 +554,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
               icon="open_in_new"
               label={t('actions.open')}
               onClick={() => {
-                setSelectedId(actionTarget.id);
+                openJob(actionTarget, typeof actionTarget.archivedAt === 'string');
                 setActionTarget(null);
-                setView('detail');
               }}
             />
           )}
@@ -933,6 +952,25 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           {shopState !== 'closed' && toggleError}
         </div>
       </div>
+      {/* The right page on a foldable: the open job, or its place while the
+          list loads, so the bench does not move when it arrives. */}
+      {asideJob ? (
+        <StringingAside id={asideJob.id}>
+          <StringingJobDetail
+            key={asideJob.id}
+            job={asideJob}
+            onChanged={() => void load()}
+            holesFor={holes.forLabel}
+            onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('setup'); }}
+          />
+        </StringingAside>
+      ) : (
+        aside && !loadError && jobs === null && (
+          <StringingAside id="loading">
+            <AdminPageSkeleton />
+          </StringingAside>
+        )
+      )}
       {actionSheet}
     </div>
   );
