@@ -21,7 +21,7 @@ import { canStringIn, stringerIn } from '@/lib/roster';
 import { isAdminAuthedWithMember, verifyLiveMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW, PROPOSAL_REASON_MAX, isWalkUpJob, walkUpEmailOf } from '@/lib/stringing';
+import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW, PROPOSAL_REASON_MAX, isWalkUpJob, walkUpEmailOf, walkUpEmailInFlight, walkUpJobClosed } from '@/lib/stringing';
 import { emailWalkUp } from '@/lib/stringingWalkUpEmail';
 import { notifyStringerOfAssignment } from '@/lib/stringingRequestNotify';
 import { isArchived } from '@/lib/stringingOrder';
@@ -195,22 +195,32 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     /* "SEND AGAIN" for a walk-up's spec email (2026-11-12). Admin only — a
        stringer's body allows `status` alone and was refused above — and only
        when the spec email is FAILED or MISSING: one that went is never sent
-       twice. The tap claims the send first, under the job's etag, so two taps
-       at once send one email (the second answers 409 `changed_elsewhere`).
-       Nothing else may ride in the same body. */
+       twice. The tap claims the send first, under the job's etag, as
+       `{ sending: true }` — NOT a bare `ok: false`, which reads exactly like a
+       failure, so a second tap that read the job after the claim landed would
+       claim again and send a second email. While the claim is recent
+       (`walkUpEmailInFlight`) every other tap answers 409 `sending`. A job
+       that is over (withdrawn, collected, archived) gets nothing more. Each
+       409 carries the job as it now stands, so the page can show "Sent" or
+       "Sending…" instead of a failure. Nothing else may ride in the body. */
     if (body.resendSpecEmail !== undefined) {
       if (!admin.authed) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
       if (body.resendSpecEmail !== true || Object.keys(body).some((k) => k !== 'memberId' && k !== 'resendSpecEmail')) {
         return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
       }
       if (!walkUpEmailOf(job)) return NextResponse.json({ error: 'no_email' }, { status: 409 });
-      if (job.walkUpEmails?.spec?.ok === true) return NextResponse.json({ error: 'already_sent' }, { status: 409 });
+      if (walkUpJobClosed(job)) return NextResponse.json({ error: 'job_closed', job }, { status: 409 });
+      if (job.walkUpEmails?.spec?.ok === true) return NextResponse.json({ error: 'already_sent', job }, { status: 409 });
+      if (walkUpEmailInFlight(job.walkUpEmails?.spec)) return NextResponse.json({ error: 'sending', job }, { status: 409 });
       const claimed = await scope.replace<StringingJob>(
         'stringingJobs',
-        { ...job, walkUpEmails: { ...job.walkUpEmails, spec: { at: new Date().toISOString(), ok: false } } },
+        { ...job, walkUpEmails: { ...job.walkUpEmails, spec: { at: new Date().toISOString(), ok: false, sending: true } } },
         memberId,
       );
-      if (!claimed) return NextResponse.json({ error: 'changed_elsewhere' }, { status: 409 });
+      if (!claimed) {
+        const current = await scope.read<StringingJob>('stringingJobs', id, memberId);
+        return NextResponse.json({ error: 'changed_elsewhere', ...(current ? { job: current } : {}) }, { status: 409 });
+      }
       const spec = await emailWalkUp(scope, claimed, 'spec');
       return NextResponse.json({ job: { ...job, walkUpEmails: { ...job.walkUpEmails, ...(spec ? { spec } : {}) } } });
     }
@@ -431,6 +441,26 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       }
     }
 
+    /* A walk-up with an EMAIL hears that it is READY, once (2026-11-12; Grant:
+       "yes" to a second email): on the first FORWARD move to ready — an undo
+       to `strung` and back is not news twice — and never once a ready email
+       has gone (`walkUpEmails.ready.ok`). The send is CLAIMED on this very
+       write, under its etag, before anything is sent: stamped only after the
+       send, an undo and a redo landing while the mail server was still
+       answering read no stamp and sent a second email. A claim in flight
+       (`walkUpEmailInFlight`) holds a second move off; an undo carries the
+       claim along with the rest of the job. */
+    const claimsReadyEmail =
+      next.status === 'ready' &&
+      job.status !== 'ready' &&
+      STRINGING_FLOW.indexOf('ready') > STRINGING_FLOW.indexOf(job.status) &&
+      !!walkUpEmailOf(job) &&
+      job.walkUpEmails?.ready?.ok !== true &&
+      !walkUpEmailInFlight(job.walkUpEmails?.ready);
+    if (claimsReadyEmail) {
+      next.walkUpEmails = { ...job.walkUpEmails, ready: { at: now, ok: false, sending: true } };
+    }
+
     // `replace`, not `upsert`: a job archived and DELETED from another phone
     // between the read above and this write must stay deleted, not come back
     // with a new status and its price intact.
@@ -477,20 +507,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       await notifyPlayerOfStage(next);
     }
 
-    /* A walk-up with an EMAIL hears that it is READY, once (2026-11-12; Grant:
-       "yes" to a second email). The same forward-only test as the notice
-       above — an undo to `strung` and back is not news twice — and never
-       again once a ready email has gone (`walkUpEmails.ready.ok`). The status
-       write above is etag-conditional, so two taps cannot both make this
-       move. After the job's own write, stamped, never able to fail the tap. */
+    /* The ready email claimed above: sent after the job's own write, its
+       outcome stamped over the claim, never able to fail the tap. */
     let readyStamp: WalkUpEmailStamp | null = null;
-    if (
-      next.status === 'ready' &&
-      job.status !== 'ready' &&
-      STRINGING_FLOW.indexOf('ready') > STRINGING_FLOW.indexOf(job.status) &&
-      walkUpEmailOf(job) &&
-      job.walkUpEmails?.ready?.ok !== true
-    ) {
+    if (claimsReadyEmail) {
       readyStamp = await emailWalkUp(scope, written, 'ready');
     }
 

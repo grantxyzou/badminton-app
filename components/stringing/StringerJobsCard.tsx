@@ -8,7 +8,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
 import { dueFor, dueStyle, formatReadyBy, todayIso } from '@/lib/stringingDue';
-import JobCard, { JobProgress, JobSpecLine, JobsHeading, PendingChangeLine, nextStatusOf } from './JobCard';
+import JobCard, { JobProgress, JobSpecLine, JobsHeading, PendingChangeLine, nextStepOf } from './JobCard';
 import { toneStageOf, type ToneStage } from '@/lib/stringingStatusTone';
 import type { StringerJob } from '@/lib/types';
 import StagePill from './StagePill';
@@ -248,11 +248,11 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
         )}
         {jobs.map((job) => {
           const stage = toneStageOf(job);
-          // Waiting on the player: nothing to do until they answer, so no
-          // next step and no undo — a "Mark strung" here would string the
-          // racket the player has not agreed to.
+          // Waiting on the player: no undo, and no next step past receiving
+          // the racket — a "Mark strung" here would string the racket the
+          // player has not agreed to (`nextStepOf`).
           const waiting = stage === 'waiting';
-          const nextStatus = waiting ? null : nextStatusOf(job.status, STRINGING_FLOW);
+          const nextStatus = nextStepOf(job.status, STRINGING_FLOW, waiting);
           const undoable = !waiting && lastMove?.jobId === job.id && job.status === lastMove.to;
           return (
             <StringerJobCard

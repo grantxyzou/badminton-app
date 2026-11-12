@@ -13,7 +13,7 @@ import { dueFor, todayIso } from '@/lib/stringingDue';
 import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
 import { fmtMoney } from '@/lib/fmt';
 import { STRINGING_FLOW, isWalkUpJob, type StringingStatus } from '@/lib/stringing';
-import JobCard, { JobsHeading, nextStatusOf } from '@/components/stringing/JobCard';
+import JobCard, { JobsHeading, nextStepOf } from '@/components/stringing/JobCard';
 import { toPlayerPendingEdit } from '@/lib/stringingPendingEdit';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -376,11 +376,11 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
     // archive, where the whole risk is money quietly going out of sight.
     const owed = isBillable(job) ? (job.priceCents ?? 0) / 100 : null;
-    /* Waiting on the player (a proposed change they have not answered): no
-       next step, as on the stringer's card — "Mark strung" here would string
-       the racket the player has not agreed to. */
+    /* Waiting on the player (a proposed change they have not answered): only
+       "Mark received" stays, as on the stringer's card — "Mark strung" here
+       would string the racket the player has not agreed to (`nextStepOf`). */
     const waiting = !!job.pendingEdit;
-    const next = inArchive || waiting ? null : nextStatusOf(job.status, STRINGING_FLOW);
+    const next = inArchive ? null : nextStepOf(job.status, STRINGING_FLOW, waiting);
 
     return (
       <SwipeRow
