@@ -37,7 +37,7 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
           type="button"
           onClick={handleClose}
           aria-label={t('close')}
-          className="terminal-prompt transition-colors"
+          className="terminal-prompt terminal-close transition-colors"
         >
           <span className="material-icons" style={{ fontSize: '16px' }}>close</span>
         </button>

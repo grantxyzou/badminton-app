@@ -35,7 +35,8 @@ function NameChip({ name, note, onOpenMember }: { name: string; note?: string; o
   return (
     <button
       type="button"
-      className="fs-sm"
+      // `.tap-44`: a 26px chip with a 44pt tap (the Apple pass, globals.css).
+      className="fs-sm tap-44"
       disabled={!onOpenMember}
       onClick={() => onOpenMember?.(name)}
       aria-label={onOpenMember ? `Open ${name} in the roster` : undefined}
@@ -54,7 +55,9 @@ function NameChip({ name, note, onOpenMember }: { name: string; note?: string; o
   );
 }
 
-const chipList = { margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' } as const;
+// Rows 12px apart: each chip's 44pt tap reaches 9px past it, and at 6px a
+// wrapped row's taps covered the row above.
+const chipList = { margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-2)', rowGap: 'var(--space-4)' } as const;
 
 /**
  * "Only a PIN" (docs/plans/pin-retirement.md, step 1): members whose ONE way

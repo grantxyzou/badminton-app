@@ -145,7 +145,9 @@
   /* ── Release notes terminal — dark ── */
   --terminal-bg: #0f1116;
   --terminal-titlebar-bg: #1e2128;
-  --terminal-prompt: #6b7280;
+  /* #9ca3af: 6.35:1 on the title bar. #6b7280 read 3.33:1, under AA's 4.5
+     for 12px text (axe-core, the Apple pass, 2026-11-12). */
+  --terminal-prompt: #9ca3af;
   --terminal-accent: #f0d079;
   --terminal-date: #9ca3af;
   --terminal-title: #e5e7eb;
@@ -391,7 +393,8 @@
   /* ── Release notes terminal — light ── */
   --terminal-bg: #ffffff;
   --terminal-titlebar-bg: #e5e7eb;
-  --terminal-prompt: #6b7280;
+  /* #4b5563: 6.1:1 on the light title bar, where #6b7280 read 3.9:1. */
+  --terminal-prompt: #4b5563;
   --terminal-accent: #b8942d;
   --terminal-date: #6b7280;
   --terminal-title: #1a2332;
@@ -4201,6 +4204,20 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   transform: translateY(-50%);
 }
 
+/* A 32px round control (the check-in sheet's ✕) keeps its circle and takes a
+   44pt SQUARE behind it: a circle's edge pixels take no pointer, so a round
+   target reads short of its drawn size. */
+.tap-44-box {
+  position: relative;
+}
+.tap-44-box::before {
+  content: '';
+  position: absolute;
+  /* 32 + 2×7 = 46 drawn, 44 measured: the box's edge pixels take no pointer
+     either (-6px, exactly 44 drawn, measured 42). */
+  inset: calc(-1 * (var(--space-2) + var(--space-hair)));
+}
+
 /* The visual track is 31px tall — under the app-wide 44px touch minimum.
    Extend the hit area with an overlay so the target passes without the
    control growing and pushing the card's layout around. */
@@ -4755,6 +4772,18 @@ html[data-launch="loading"] .splash {
 }
 
 .terminal-prompt  { color: var(--terminal-prompt); }
+/* "What's new"'s ✕: a 16px glyph with a 44pt tap. The negative margins give
+   back what the box grew, so the title bar keeps its height. */
+.terminal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  /* The bar's own 8px padding is all it gives back: past it the sheet's
+     rounded top would clip the target, so the bar grows to 44px instead. */
+  margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) 0;
+}
 .terminal-version { color: var(--terminal-accent); font-weight: 600; }
 .terminal-date    { color: var(--terminal-date); }
 .terminal-title   { color: var(--terminal-title); font-weight: 600; }

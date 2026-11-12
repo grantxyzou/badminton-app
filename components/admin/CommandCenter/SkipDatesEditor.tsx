@@ -142,6 +142,7 @@ export default function SkipDatesEditor() {
           <div className="flex gap-2">
             <input
               type="date"
+              aria-label="Date to skip"
               value={adding}
               onChange={(e) => { setAdding(e.target.value); setError(''); }}
               className="flex-1 fs-md rounded-lg p-2"

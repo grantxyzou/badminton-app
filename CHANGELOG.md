@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Admin pages and sheets checked against Apple's guidance (2026-11-12)
+
+- **Every Admin page passed the automatic accessibility check (WCAG 2.2 AA) and the 44pt tap check**, after three fixes: the Skip dates field now has a label a screen reader can say, the names on Sign-in readiness take a 44pt tap (their rows sit 12 px apart now), and on a foldable the Admin pages open from the fold instead of sliding in from the edge.
+- **"What's new" is easier to read and to close**: its grey title text was below the contrast minimum in both themes and is now well above it, and its ✕ takes a 44pt tap (the title bar is a few pixels taller).
+- **The check-in sheet's ✕** keeps its circle and takes a 44pt tap behind it.
+
 ## Easier to tap: every small control takes a 44pt tap (2026-11-12)
 
 - **Apple asks for tap targets of at least 44 by 44 points.** Measured in a browser on Home and every Stats register, a handful fell short: the You / Equipment / Play / Learn switch and Doubles / Singles (28 px tall), "Add to calendar" (16 px), the Balance row (20 px), "Update", "Share", "+ String tension", the racket to try next, its shop link, "Open this week's focus" and "All your kudos".
