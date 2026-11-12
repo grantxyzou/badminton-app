@@ -354,7 +354,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <DatePicker value={date} onChange={v => setDate(v)} placeholder="Date" />
               </div>
               <div className="flex-1 min-w-0">
-                <input id="advance-start-time" name="startTime" type="time" value={time} onChange={e => setTime(e.target.value)} style={{ height: '42px' }} />
+                <input id="advance-start-time" aria-label="Start time" name="startTime" type="time" value={time} onChange={e => setTime(e.target.value)} style={{ height: '42px' }} />
               </div>
             </div>
             {skipCheckFailed && (
@@ -372,7 +372,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <DatePicker value={deadlineDate} onChange={v => setDeadlineDate(v)} placeholder="Date" />
               </div>
               <div className="flex-1 min-w-0">
-                <input id="advance-deadline-time" name="deadlineTime" type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} style={{ height: '42px' }} />
+                <input id="advance-deadline-time" aria-label="Sign-up deadline time" name="deadlineTime" type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
@@ -383,7 +383,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <DatePicker value={endDate} onChange={v => setEndDate(v)} placeholder="Date" />
               </div>
               <div className="flex-1 min-w-0">
-                <input id="advance-end-time" name="endTime" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={{ height: '42px' }} />
+                <input id="advance-end-time" aria-label="End time" name="endTime" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
@@ -392,6 +392,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             <Label text="Courts">
               <input
                 id="advance-courts"
+                aria-label="Courts"
                 name="courts"
                 type="number"
                 min={1}
@@ -408,7 +409,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
               />
             </Label>
             <Label text="Max players">
-              <input id="advance-max-players" name="maxPlayers" type="number" min={1} max={100} value={maxPlayers ?? ''} onChange={e => setMaxPlayers(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
+              <input id="advance-max-players" aria-label="Max players" name="maxPlayers" type="number" min={1} max={100} value={maxPlayers ?? ''} onChange={e => setMaxPlayers(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
             </Label>
           </div>
 
