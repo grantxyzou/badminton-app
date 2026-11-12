@@ -1,5 +1,5 @@
 name: Bug report
-description: Something broke or looks wrong on the preview site.
+description: Something broke or looks wrong in the app.
 title: "[bug] "
 labels: ["bug"]
 body:
@@ -26,15 +26,15 @@ body:
     id: url
     attributes:
       label: URL
-      description: The page you were on when it broke (auto-filled from the preview banner).
-      placeholder: https://next.grantzou.com/bpm/...
+      description: The page you were on when it broke, if you know it.
+      placeholder: https://bpm.grantzou.com/bpm/...
     validations:
       required: false
   - type: input
     id: sha
     attributes:
       label: Build SHA
-      description: Auto-filled from the preview banner — helps pin down which build broke.
+      description: Which build broke, if you know it. Leave blank if you don't.
       placeholder: abcd123
     validations:
       required: false
@@ -42,7 +42,7 @@ body:
     id: ua
     attributes:
       label: Device / browser
-      description: Auto-filled with your user-agent string.
+      description: The phone and browser you were using.
       placeholder: iPhone 17 Pro Max, Safari 18.x
     validations:
       required: false
