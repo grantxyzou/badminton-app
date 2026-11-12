@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A string's page reads top to bottom (2026-11-12)
+
+- The header of a string's page puts the packet on the left and, beside it, the string's name as the largest line, with the stock pill on the same row and what the string is for underneath. That sentence used to appear a second time under the card; it shows once now.
+- The sections below the card sit further apart, so each label reads with its own content.
+
 ## v1.0 — Pre-SaaS baseline (2026-04-18)
 
 First tagged baseline of the stable production site, before the SaaS transformation begins.
