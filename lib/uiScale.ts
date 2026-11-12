@@ -46,6 +46,22 @@ export function uiScaleOf(appleBodyPx: number | null, pageWidthPx: number): numb
   return Math.round(textScaleOf(appleBodyPx) * screenScaleOf(pageWidthPx) * 1000) / 1000;
 }
 
+const SCRIPT_UNSAFE: Record<string, string> = {
+  '<': '\\u003C',
+  '>': '\\u003E',
+  '/': '\\u002F',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+};
+
+/** A string as a JS literal that is safe inside an inline <script>: JSON
+ *  escapes quotes and backslashes, and this escapes what JSON leaves alone —
+ *  `<`, `>` and `/` (so no `</script>` can close the tag) and the two line
+ *  separators. */
+export function scriptLiteral(value: string): string {
+  return JSON.stringify(value).replace(/[<>/\u2028\u2029]/g, (c) => SCRIPT_UNSAFE[c]);
+}
+
 /**
  * The same rule as plain ES5 for the pre-paint script (no imports there). The
  * page is HALF the screen while the two-page query matches (lib/paneMode.ts's
@@ -55,5 +71,5 @@ export function uiScaleOf(appleBodyPx: number | null, pageWidthPx: number): numb
  * `__tests__/ui-scale.test.ts` runs this string against `uiScaleOf`.
  */
 export function uiScalePrepaint(paneQuery: string): string {
-  return `var us;function uiS(){var b=null;try{var p=document.createElement('span');p.style.font='-apple-system-body';if(p.style.font){p.style.position='absolute';p.style.visibility='hidden';d.appendChild(p);b=parseFloat(getComputedStyle(p).fontSize)||null;d.removeChild(p)}}catch(e){}var w=innerWidth;try{if(matchMedia(${JSON.stringify(paneQuery)}).matches)w=w/2}catch(e){}var t=b&&b>0?Math.min(${TEXT_SCALE_MAX},Math.max(${TEXT_SCALE_MIN},b/${APPLE_BODY_DEFAULT_PX})):1;var r=Math.min(1,Math.max(0,(w-${SCREEN_FROM_PX})/(${SCREEN_TO_PX - SCREEN_FROM_PX})));var s=Math.round(t*(1+${(SCREEN_SCALE_MAX - 1).toFixed(2)}*r)*1000)/1000;if(s>0&&s!==us){us=s;d.style.setProperty('--ui-scale',String(s))}}uiS();addEventListener('resize',uiS);document.addEventListener('visibilitychange',function(){if(!document.hidden)uiS()});`;
+  return `var us;function uiS(){var b=null;try{var p=document.createElement('span');p.style.font='-apple-system-body';if(p.style.font){p.style.position='absolute';p.style.visibility='hidden';d.appendChild(p);b=parseFloat(getComputedStyle(p).fontSize)||null;d.removeChild(p)}}catch(e){}var w=innerWidth;try{if(matchMedia(${scriptLiteral(paneQuery)}).matches)w=w/2}catch(e){}var t=b&&b>0?Math.min(${TEXT_SCALE_MAX},Math.max(${TEXT_SCALE_MIN},b/${APPLE_BODY_DEFAULT_PX})):1;var r=Math.min(1,Math.max(0,(w-${SCREEN_FROM_PX})/(${SCREEN_TO_PX - SCREEN_FROM_PX})));var s=Math.round(t*(1+${(SCREEN_SCALE_MAX - 1).toFixed(2)}*r)*1000)/1000;if(s>0&&s!==us){us=s;d.style.setProperty('--ui-scale',String(s))}}uiS();addEventListener('resize',uiS);document.addEventListener('visibilitychange',function(){if(!document.hidden)uiS()});`;
 }

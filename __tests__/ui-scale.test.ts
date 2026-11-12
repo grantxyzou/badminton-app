@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { uiScaleOf, textScaleOf, screenScaleOf, uiScalePrepaint } from '../lib/uiScale';
+import { uiScaleOf, textScaleOf, screenScaleOf, uiScalePrepaint, scriptLiteral } from '../lib/uiScale';
 import { PANE_QUERY } from '../lib/paneQuery';
 
 /**
@@ -76,6 +76,19 @@ describe('the size factor', () => {
       const expected = uiScaleOf(c.appleBodyPx, c.pane ? c.width / 2 : c.width);
       expect(Number(runPrepaint(c))).toBe(expected);
     }
+  });
+});
+
+describe('the script-safe literal', () => {
+  it('cannot close the script tag, and still reads back as the same string', () => {
+    const nasty = '</script><script>alert(1)</script>\u2028"\\';
+    const lit = scriptLiteral(nasty);
+    expect(lit).not.toMatch(/[<>/\u2028\u2029]/);
+    expect(new Function(`return ${lit}`)()).toBe(nasty);
+  });
+
+  it('carries the pane query into the script escaped', () => {
+    expect(uiScalePrepaint(PANE_QUERY)).toContain(`matchMedia(${scriptLiteral(PANE_QUERY)})`);
   });
 });
 
