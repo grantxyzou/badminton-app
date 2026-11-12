@@ -7341,6 +7341,8 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
    It is a dark scene in both themes, like the share image: the racket and
    packet renders are lit for a dark ground. */
 .ss { display: flex; flex-direction: column; gap: var(--space-3); }
+/* Holds the picture and the "Play again" pill over its top-right corner. */
+.ss-frame { position: relative; }
 .ss-box {
   --ss-amber: var(--color-amber);
   --ss-thread: #f2efe6;
@@ -7353,7 +7355,8 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   --ss-shadow: rgba(0, 0, 0, 0.5);
   position: relative;
   width: 100%;
-  aspect-ratio: 420 / 490;
+  /* The stage is 490 tall; the 60 below it is the caption's band. */
+  aspect-ratio: 420 / 550;
   overflow: hidden;
   border-radius: var(--radius-xl);
   background: radial-gradient(80% 70% at 30% 0%, rgba(245, 158, 11, 0.16), transparent 70%), var(--bpm-night);
@@ -7414,10 +7417,12 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   animation: ss-done 12s both;
 }
 
-/* The captions under the stage, one at a time, and the step dots. */
-.ss-captions { display: grid; }
-/* Centred under the scene (Grant, 2026-11-11, on the design canvas). */
-.ss-cap { grid-area: 1 / 1; margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); opacity: 0; text-align: center; }
+/* The captions sit inside the picture along its foot, one at a time
+   (Grant, 2026-11-12, on the design canvas: "move this inside the animation
+   box"), centred. The picture is dark in both themes, so the text is the
+   scene's own light thread colour, not --text-primary. */
+.ss-captions { position: absolute; left: var(--space-4); right: var(--space-4); bottom: var(--space-5); display: grid; }
+.ss-cap { grid-area: 1 / 1; margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--ss-thread); opacity: 0; text-align: center; }
 .ss-cap-1 { animation: ss-cap-1 12s both; }
 .ss-cap-2 { animation: ss-cap-2 12s both; }
 .ss-cap-3 { animation: ss-cap-3 12s both; }
@@ -7481,6 +7486,22 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 @keyframes ss-dot-3 { 0%, 34% { background: var(--text-muted); width: 6px; opacity: 0.5; } 36%, 69% { background: var(--color-amber); width: 18px; opacity: 1; } 71%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
 @keyframes ss-dot-4 { 0%, 69% { background: var(--text-muted); width: 6px; opacity: 0.5; } 71%, 83% { background: var(--color-amber); width: 18px; opacity: 1; } 85%, 100% { background: var(--text-muted); width: 6px; opacity: 0.5; } }
 @keyframes ss-dot-5 { 0%, 83% { background: var(--text-muted); width: 6px; opacity: 0.5; } 85%, 100% { background: var(--color-amber); width: 18px; opacity: 1; } }
+/* "Play again": a small pill in the picture's top-right corner, with a
+   replay glyph (Grant, 2026-11-12, on the canvas). The button is the 44px
+   tap target; the pill inside it is what shows. */
+.ss-again {
+  position: absolute; top: 0; right: 0;
+  min-height: 44px; padding: 0 var(--space-2);
+  display: inline-flex; align-items: center;
+  border: none; background: transparent; font: inherit; cursor: pointer;
+}
+.ss-again-pill {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: var(--space-7); padding: 0 var(--space-4) 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: rgba(242, 239, 230, 0.12);
+  color: #f2efe6; font-size: var(--fs-sm); font-weight: 600;
+}
 /* Reduced motion lands on the last frame at once, so replaying shows nothing new. */
 @media (prefers-reduced-motion: reduce) { .ss-again { display: none; } }
 
