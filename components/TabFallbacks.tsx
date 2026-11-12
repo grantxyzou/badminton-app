@@ -38,6 +38,10 @@ export const STRINGING_HEIGHTS = {
   // strings but is not an admin), empty: 170 at 390px, 2026-10-12. One
   // assigned racket is 220.
   queue: 170,
+  // A string's page on a foldable's right page, held while the shelf loads:
+  // 267 at 402px (the right half of a Galaxy Z Fold open, 884 wide),
+  // measured 2026-11-12 for a member with no fit section (the commonest).
+  detail: 267,
 } as const;
 
 /** StringingTab: header, the register switch (32px), then the Racket

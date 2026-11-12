@@ -83,6 +83,7 @@ export default function JobCard({
   more,
   action,
   waitingDays = null,
+  open = false,
 }: {
   job: JobCardJob;
   /** `todayIso()` — the viewer's own date, compared day to day with `readyBy`. */
@@ -104,6 +105,9 @@ export default function JobCard({
    * an amber tint and a "Waiting N days" line (docs/plans/stringing-request-nudge.md).
    */
   waitingDays?: number | null;
+  /** The job showing on a foldable's right page: a solid tint marks it (fill
+   *  only, never a ring), and the button says it is the current one. */
+  open?: boolean;
 }) {
   const t = useTranslations('home.stringing');
   const locale = useLocale();
@@ -127,13 +131,17 @@ export default function JobCard({
           : tAdmin(`due.${due.key}`);
 
   return (
-    <div className={waitingDays ? 'bpm-job-card bpm-job-card--waiting' : 'bpm-job-card'} style={{ position: 'relative' }}>
+    <div
+      className={['bpm-job-card', waitingDays ? 'bpm-job-card--waiting' : null, open ? 'bpm-job-card--open' : null].filter(Boolean).join(' ')}
+      style={{ position: 'relative' }}
+    >
       {onOpen && (
         // Named for THIS job: a bench of identical "Open this job" buttons
         // tells a screen reader nothing about which.
         <button
           type="button"
           onClick={onOpen}
+          aria-current={open ? 'true' : undefined}
           aria-label={[openLabel, job.racketLabel, job.jobNo, t('stringerFor', { name: job.memberName })].filter(Boolean).join(' · ')}
           style={{ position: 'absolute', inset: 0, borderRadius: 'inherit' }}
         />

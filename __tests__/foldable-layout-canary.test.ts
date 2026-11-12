@@ -154,6 +154,38 @@ describe('foldable layout', () => {
     expect(fallback).toMatch(/<div className="stats-shell-lead">\s*<CardSkeleton height=\{STATS_HEIGHTS\.greeting\} \/>/);
   });
 
+  it('puts Stringing in two pages: the list left, what it opens right (Grant, 2026-11-12, "Option 2")', () => {
+    // The page widens only while the right page shows something — never a
+    // nested :has(), which a browser drops as invalid (the first cut did, and
+    // the two pages came out 216px wide).
+    expect(pane).toContain(
+      "main[data-page-shell]:has(> [data-tab-panel='stringing']:not([hidden]) .stringing-aside > * > :not([hidden])) {\n    max-width: var(--panes-max-w);",
+    );
+    expect(pane).toMatch(/\.stringing-shell:has\(> \.stringing-aside > \* > :not\(\[hidden\]\)\)\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)[^}]*grid-template-rows:\s*auto auto 1fr[^}]*column-gap:\s*var\(--fold-gap\)/);
+    expect(pane).toMatch(/\.stringing-shell > \*\s*\{\s*grid-column:\s*1;/);
+    // From the switch's row, clear of the round buttons over the right pane.
+    expect(pane).toMatch(/\.stringing-shell > \.stringing-aside\s*\{\s*grid-column:\s*2;\s*grid-row:\s*2 \/ -1;/);
+    expect(pane).toMatch(/\.stringing-shell > \.stringing-aside:not\(:has\(> \* > :not\(\[hidden\]\)\)\)\s*\{\s*display:\s*none;/);
+    // Outside the pane block none of it exists: one screen keeps its column.
+    expect(topLevelRules('.stringing-shell').length).toBe(0);
+    expect(topLevelRules('.stringing-aside').length).toBe(0);
+    // The tab renders the right page only in two-page mode, LAST, and reads
+    // the mode from the shared query, never the window's width.
+    const tab = readFileSync(join(__dirname, '..', 'components', 'StringingTab.tsx'), 'utf8');
+    expect(tab).toMatch(/className="space-y-5 w-full stringing-shell"/);
+    expect(tab).toMatch(/\{pane && <div ref=\{setAsideEl\} className="stringing-aside" \/>\}\s*<\/div>\s*<\/StringingAsideProvider>/);
+    expect(tab).toContain('usePaneMode()');
+    expect(tab).not.toMatch(/innerWidth/);
+    // Each register opens its first thing on the right page by default.
+    const bench = readFileSync(join(__dirname, '..', 'components', 'admin', 'CommandCenter', 'StringingPage.tsx'), 'utf8');
+    expect(bench).toMatch(/jobs\.find\(\(j\) => j\.id === selectedId\) \?\? jobs\[0\]/);
+    const shelf = readFileSync(join(__dirname, '..', 'components', 'stringing', 'StringsWeOfferCard.tsx'), 'utf8');
+    expect(shelf).toMatch(/\[openEntry, selected, \.\.\./);
+    expect(shelf).toMatch(/open=\{!aside && openEntry\?\.item != null\}/);
+    const card = readFileSync(join(__dirname, '..', 'components', 'stringing', 'StringingCard.tsx'), 'utf8');
+    expect(card).toContain('{!aside && racketCards}');
+  });
+
   it('opens a sheet in the left half, and only there', () => {
     expect(pane).toMatch(/\.bottom-sheet,[^{]*\{\s*margin-left:\s*var\(--shell-pad-x\);/);
     expect(pane).toMatch(/--sheet-max-w:\s*min\(32rem, var\(--half-w\)\)/);

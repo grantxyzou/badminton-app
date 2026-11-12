@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing on a foldable: the list on the left, what you tap on the right (2026-11-12)
+
+- **On an open Galaxy Z Fold or iPhone Duo, Stringing uses both halves of the screen.** The title, the switch and the list keep the left half; what you tap opens on the right half beside it, where on a phone it covers the list. Nothing crosses the fold.
+- **Something is already open on the right**: the job at the top of the bench (marked in green), the string the shelf's map picks, or your rackets in progress. With no racket in, the right half shows the strings on offer, and "Restring with this string" opens your request with that string picked. A stringer who isn't an admin sees their queue on the left and their shelf on the right.
+- **A phone is unchanged**: tapping a job still opens its page, and a string still opens its sheet. So do the bench's new job, archive and set-up pages on a foldable.
+
 ## Stringing: jobs for walk-ups (2026-11-12)
 
 - **"New job" can take a racket from someone who is not in the club.** Search for a name that matches nobody and the card says "No one in the club is called Lee." with a row to "Add Lee as a walk-up". The walk-up shows with a "Walk-up" pill, "Not in the club", and an optional "Phone or email" so the stringer can tell them it's ready. The price card reads "How they pay: At pickup, to you". Everything else on the form is the same.
