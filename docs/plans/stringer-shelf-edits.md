@@ -1,7 +1,7 @@
 # A stringer names the strings and says their reel colours
 
 **Track:** the stringing service (`home.stringing`): the roles split in `docs/roles.md` (stringer is not admin), and the colour work in `string-stock-by-colour.md`, which this finishes.
-**Status:** in-flight
+**Status:** shipped 2026-11-12
 **Review on:** 2026-12-12 — has a stringer who is not an admin renamed a string or changed its reel colours, and has any such edit had to be undone by an admin?
 
 ## Problem
