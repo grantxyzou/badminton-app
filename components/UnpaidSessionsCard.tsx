@@ -505,6 +505,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
           type="button"
           onClick={() => setOpenOverride(!open)}
           aria-expanded={open}
+          className="tap-44"
           /* `block`, matching StringingCard: CardHeader owns the
              space-between row now, so a flex button around it would be a
              second layout fighting the first. */

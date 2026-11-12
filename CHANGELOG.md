@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Easier to tap: every small control on Home and Stats takes a 44pt tap (2026-11-12)
+
+- **Apple asks for tap targets of at least 44 by 44 points.** Measured in a browser on Home and every Stats register, a handful fell short: the You / Equipment / Play / Learn switch and Doubles / Singles (28 px tall), "Add to calendar" (16 px), the Balance row (20 px), "Update", "Share", "+ String tension", the racket to try next, its shop link, "Open this week's focus" and "All your kudos".
+- **Each now takes a 44pt tap area that is invisible**, so nothing moved or was redrawn: the same screens before and after match pixel for pixel on Home, and differ on Stats only by 2 to 7 shades out of 255 on some text edges.
+
 ## Every tab on a foldable uses both halves, with motion (2026-11-12)
 
 - **Profile on an open Z Fold or Duo**: your list on the left, the page a row opens on the right — Edit profile is open before you tap anything. The open row is marked in green. Sheets (notifications, install) still open in the left half.
