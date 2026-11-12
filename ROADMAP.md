@@ -13,7 +13,7 @@
 - ❌ Any new user-facing surface that doesn't serve a named track below
 - ❌ Real-offline/PWA, card payments processing, social feed. (*Native app struck 2026-10-25:* the Capacitor shell went on both stores on 2026-10-07, `docs/plans/native-shell.md`. E-transfer matching, the ledger and store credit record money, they don't process it; taking cards stays a non-goal until it is decided on purpose, `docs/plans/payments.md` Phase 3.)
 
-**Change Rule (the gate):** every new work item must name the track or critical-path step it serves. **Names none → it's drift → GitHub issue in a `later`/parking milestone, NOT started.**
+**Change Rule (the gate):** every new work item must name the track or critical-path step it serves. **Names none → it's drift → GitHub issue titled `later: …` with the `later` label, NOT started.**
 
 **WIP cap:** one active workstream, the *focus*, carried to *shipped-and-live-in-production* before the next starts. Alongside it, at most two more Claude sessions, and each must be a small fix or review that ends in one PR or one issue (Grant, 2026-10-25: "3 sessions, 1 focus"; the `/sessions` check-in enforces it). Unmerged branches are where drift hides (this is enforced by observation: >3 in-flight branches = stop and converge).
 
