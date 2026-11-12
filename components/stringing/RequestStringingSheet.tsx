@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatServicePrice } from '@/lib/stringingRateCard';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
@@ -8,7 +8,7 @@ import { useOnline } from '@/lib/useOnline';
 import type { UseGear } from '@/components/stats/useGear';
 import { useCatalog } from '@/components/stats/useCatalog';
 import { stringSpecLine } from '@/lib/gearSetup';
-import { parseShelf, shelfPrice, stringColours, stringTypeOf, typeBand, type Shelf } from '@/lib/stringShelf';
+import { parseShelf, requestColours, shelfPrice, stringTypeOf, typeBand, type RequestColour, type Shelf } from '@/lib/stringShelf';
 import type { CatalogItem } from '@/lib/types';
 import StockBadge from './StockBadge';
 import StringPackImage from './StringPackImage';
@@ -275,10 +275,19 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   };
   const isOut = (label: string) => shelf?.stock?.[label] === 'out';
   const pickedItem = !ownString && pickedString ? itemFor(pickedString) : null;
-  const colours = stringColours(pickedItem);
+  /* The colours on offer follow the club, not the maker
+     (docs/plans/string-stock-by-colour.md): the stringer's reel colours, else
+     the catalog's, narrowed to what colour-tagged purchases say is left. */
+  const colours = useMemo(
+    () => (!mustBeCustom && !ownString && pickedString ? requestColours(shelf, pickedString, pickedItem) : []),
+    [mustBeCustom, ownString, pickedString, shelf, pickedItem],
+  );
   /* More than one colour asks which; a single colour (or a two-tone, which is
      one name) is sent as it is; an unlinked string or your own sends none. */
   const stringColor = mustBeCustom || ownString ? '' : colours.length > 1 ? pickedColour : colours[0]?.name ?? '';
+  /** A colour in the member's language; the stored name for one the palette does not name. */
+  const colourText = (c: RequestColour | undefined) => (c ? (c.id ? t(`offer.colourName.${c.id}`) : c.name) : '');
+  const shownColour = colourText(colours.find((c) => c.name === stringColor));
 
   const clamp = (n: number) => Math.max(TENSION_MIN_LB, Math.min(TENSION_MAX_LB, n));
   const stringLabel = (mustBeCustom ? customString : ownString ? ownLabel : pickedString).trim();
@@ -303,7 +312,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
     if (isOut(label)) return;
     setOwnString(false);
     setPickedString(label);
-    setPickedColour(stringColours(itemFor(label))[0]?.name ?? '');
+    setPickedColour(requestColours(shelf, label, itemFor(label))[0]?.name ?? '');
   }
 
   function splitApart() {
@@ -403,7 +412,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   }
 
   const tensionText = `${playerTensionText(mains, finalCrosses)} ${t('lb')}`;
-  const summary = [stringLabel, stringColor, tensionText].filter(Boolean).join(' · ');
+  const summary = [stringLabel, shownColour, tensionText].filter(Boolean).join(' · ');
 
   /** Step 1: the racket, the string, its colour. */
   const whatStep = (
@@ -575,7 +584,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
                         {/* The app's chip (`.filter-chip`), inside a 44px hit area. */}
                         <span className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'}>
                           <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: '50%', background: c.fill, boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)' }} />
-                          {c.name}
+                          {colourText(c)}
                         </span>
                       </button>
                     );

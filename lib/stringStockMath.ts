@@ -1,4 +1,5 @@
 import type { CatalogItem, StringingJob, StringPurchase } from './types';
+import { colourIdOf, isStringColourId, STRING_PALETTE, type StringColourId } from './stringPalette';
 
 /**
  * The string inventory's ARITHMETIC — client-safe, no I/O (the sheet and
@@ -37,6 +38,22 @@ export interface StringStockLine {
   costPerSetCents: number | null;
   /** Sets used × cost per set; null without a price. */
   usedCostCents: number | null;
+  /**
+   * Per colour, for the colours a purchase was TAGGED with, in palette order
+   * (docs/plans/string-stock-by-colour.md). Empty while no purchase of this
+   * string carries a colour. ADDITIVE on the admin stock read.
+   */
+  byColour: StringColourStock[];
+  /** Sets left in the untagged ("Mixed / not sure") pool: untagged metres
+   *  less every strung job that no tagged colour took. */
+  mixedRemainingSets: number;
+}
+
+export interface StringColourStock {
+  color: StringColourId;
+  purchasedMetres: number;
+  usedSets: number;
+  remainingSets: number;
 }
 
 export interface StringStockSummary {
@@ -57,10 +74,22 @@ export function summarizeStringStock(input: {
    */
   aliases?: Readonly<Record<string, string>>;
   purchases: readonly StringPurchase[];
-  jobs: readonly Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt'>[];
+  /** `stringColor` is optional: a job read without it counts in the mixed pool. */
+  jobs: readonly Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor'>[];
   catalog: ReadonlyMap<string, CatalogItem>;
 }): StringStockSummary {
   const byKey = new Map<string, StringStockLine>();
+  // The two pools per line (docs/plans/string-stock-by-colour.md), keyed like
+  // `byKey`: metres bought per tagged colour and untagged, and the sets each
+  // pool gave up. A job draws from its colour's pool when that colour was
+  // bought tagged, from the mixed pool otherwise — never one from another.
+  interface Pools { colourMetres: Map<StringColourId, number>; mixedMetres: number; colourUsed: Map<StringColourId, number>; mixedUsed: number }
+  const pools = new Map<string, Pools>();
+  const poolsOf = (key: string): Pools => {
+    let p = pools.get(key);
+    if (!p) { p = { colourMetres: new Map(), mixedMetres: 0, colourUsed: new Map(), mixedUsed: 0 }; pools.set(key, p); }
+    return p;
+  };
   for (const label of input.offered) {
     const catalogId = input.links[label] ?? null;
     const set = catalogId ? numberAttr(input.catalog.get(catalogId), 'setLengthM') ?? SET_M : SET_M;
@@ -69,6 +98,7 @@ export function summarizeStringStock(input: {
       purchasedMetres: 0, purchasedCostCents: 0, purchases: 0, purchaseIds: [],
       usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
       costPerSetCents: null, usedCostCents: null,
+      byColour: [], mixedRemainingSets: 0,
     });
   }
 
@@ -109,6 +139,7 @@ export function summarizeStringStock(input: {
         purchasedMetres: 0, purchasedCostCents: 0, purchases: 0, purchaseIds: [],
         usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
         costPerSetCents: null, usedCostCents: null,
+        byColour: [], mixedRemainingSets: 0,
       };
       byKey.set(key, line);
     }
@@ -118,6 +149,9 @@ export function summarizeStringStock(input: {
     line.purchases += 1;
     line.purchaseIds.push(p.id);
     if (metres > 0) latestPerMetre.set(key, p.totalCostCents / metres);
+    const pool = poolsOf(key);
+    if (isStringColourId(p.color)) pool.colourMetres.set(p.color, (pool.colourMetres.get(p.color) ?? 0) + metres);
+    else pool.mixedMetres += metres;
   }
 
   const unmatched = new Map<string, { label: string; usedSets: number }>();
@@ -127,15 +161,28 @@ export function summarizeStringStock(input: {
     if (!own) continue;
     const key = byKey.has(own) ? own : renamed.get(own) ?? own;
     const line = byKey.get(key);
-    if (line) line.usedSets += 1;
-    else {
+    if (line) {
+      line.usedSets += 1;
+      const pool = poolsOf(key);
+      const colour = colourIdOf(j.stringColor);
+      if (colour && pool.colourMetres.has(colour)) pool.colourUsed.set(colour, (pool.colourUsed.get(colour) ?? 0) + 1);
+      else pool.mixedUsed += 1;
+    } else {
       const u = unmatched.get(key) ?? { label: j.stringLabel.trim(), usedSets: 0 };
       u.usedSets += 1;
       unmatched.set(key, u);
     }
   }
 
-  const lines = [...byKey.values()].map((line) => {
+  const lines = [...byKey.entries()].map(([lineKey, line]) => {
+    const pool = poolsOf(lineKey);
+    const setsLeft = (metres: number, used: number) => Math.floor(Math.max(0, metres - used * line.setMetres) / line.setMetres);
+    const byColour: StringColourStock[] = STRING_PALETTE.filter((c) => pool.colourMetres.has(c)).map((color) => {
+      const purchasedMetres = pool.colourMetres.get(color) ?? 0;
+      const usedSets = pool.colourUsed.get(color) ?? 0;
+      return { color, purchasedMetres, usedSets, remainingSets: setsLeft(purchasedMetres, usedSets) };
+    });
+    const mixedRemainingSets = setsLeft(pool.mixedMetres, pool.mixedUsed);
     const key = labelKey(line.label);
     const perMetre = latestPerMetre.get(key);
     const costPerSetCents = perMetre === undefined ? null : Math.round(perMetre * line.setMetres);
@@ -148,6 +195,8 @@ export function summarizeStringStock(input: {
       remainingSets: Math.floor(remainingMetres / line.setMetres),
       costPerSetCents,
       usedCostCents: costPerSetCents === null ? null : line.usedSets * costPerSetCents,
+      byColour,
+      mixedRemainingSets,
     };
   });
 
@@ -187,4 +236,24 @@ export function stockBand(line: Pick<StringStockLine, 'purchases' | 'remainingSe
   if (line.purchases === 0) return null;
   if (line.remainingSets === 0) return 'out';
   return line.remainingSets <= LOW_STOCK_SETS ? 'low' : 'in';
+}
+
+/**
+ * What a PLAYER is told about a string's colours: which are on the shelf,
+ * never how many (docs/plans/string-stock-by-colour.md). `null` while no
+ * purchase of it carries a colour — then nothing is known per colour, and the
+ * request sheet offers the reel's or the maker's list as before. `mixed` says
+ * the untagged pool still has sets, which could be any of those colours.
+ */
+export interface ColourStock {
+  inStock: StringColourId[];
+  mixed: boolean;
+}
+
+export function colourStockOf(line: Pick<StringStockLine, 'byColour' | 'mixedRemainingSets'>): ColourStock | null {
+  if (line.byColour.length === 0) return null;
+  return {
+    inStock: line.byColour.filter((c) => c.remainingSets > 0).map((c) => c.color),
+    mixed: line.mixedRemainingSets > 0,
+  };
 }

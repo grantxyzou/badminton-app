@@ -477,6 +477,76 @@ describe('the string list as a shelf', () => {
     expect(sentBody(fetchMock)).toMatchObject({ stringLabel: 'BG65', stringColor: 'Yellow' });
   });
 
+  /* docs/plans/string-stock-by-colour.md — Grant, 2026-11-11: "this need to
+     match and be dynamic to the strings inventory and string type". */
+  const coloursOffered = async () =>
+    Array.from((await screen.findByRole('radiogroup', { name: 'Available colours' })).querySelectorAll('[role="radio"]')).map((r) => r.textContent);
+
+  it('offers the stringer’s reel colours, not the maker’s, when he has set them', async () => {
+    mockApi(['BG65'], { ...SHELF, colours: { BG65: ['white', 'navy'] } }, [BG65]);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /BG65/ }));
+    expect(await coloursOffered()).toEqual(['White', 'Navy']);
+  });
+
+  it('with tagged and untagged purchases, offers the tagged colours left plus the reel’s while untagged stock remains', async () => {
+    const fetchMock = mockApi(['BG65'], {
+      ...SHELF,
+      colours: { BG65: ['white', 'yellow', 'red'] },
+      colourStock: { BG65: { inStock: ['yellow'], mixed: true } },
+    }, [BG65]);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /BG65/ }));
+    // Yellow first (on the shelf for certain), then the reel's others.
+    expect(await coloursOffered()).toEqual(['Yellow', 'White', 'Red']);
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
+    toTension();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
+    expect(sentBody(fetchMock)).toMatchObject({ stringLabel: 'BG65', stringColor: 'Red' });
+  });
+
+  it('hides a colour the tagged purchases say is gone, and asks nothing when one is left', async () => {
+    const fetchMock = mockApi(['BG65'], { ...SHELF, colourStock: { BG65: { inStock: ['white'], mixed: false } } }, [BG65]);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /BG65/ }));
+    // Yellow and Red are the maker's; nothing tagged says the club has them.
+    expect(screen.queryByRole('radiogroup', { name: 'Available colours' })).toBeNull();
+    toTension();
+    expect(screen.getByText('BG65 · White · 26 lb')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
+    expect(sentBody(fetchMock)).toMatchObject({ stringColor: 'White' });
+  });
+
+  it('falls back to the maker’s colours when no purchase carries a colour', async () => {
+    mockApi(['BG65'], { ...SHELF, colourStock: {} }, [BG65]);
+    wrap();
+    await fillRacket();
+    fireEvent.click(await screen.findByRole('radio', { name: /BG65/ }));
+    expect(await coloursOffered()).toEqual(['White', 'Yellow', 'Red']);
+  });
+
+  it('names a colour in the member’s language', async () => {
+    const zh = (await import('../../messages/zh-CN.json')).default;
+    const fetchMock = mockApi(['BG65'], { ...SHELF, colours: { BG65: ['white', 'yellow'] } }, [BG65]);
+    render(
+      <NextIntlClientProvider locale="zh-CN" messages={zh}>
+        <RequestStringingSheet open onClose={() => {}} onRequested={() => {}} gear={null} />
+      </NextIntlClientProvider>,
+    );
+    const yellow = zh.home.stringing.offer.colourName.yellow;
+    fireEvent.click(await screen.findByRole('radio', { name: /BG65/ }));
+    const chip = await screen.findByRole('radio', { name: yellow });
+    fireEvent.click(chip);
+    expect(chip.getAttribute('aria-checked')).toBe('true');
+    // The English name is what goes on the job (the bench reads it); nothing sent yet.
+    expect(sentBody(fetchMock)).toBeNull();
+  });
+
   it('sends no colour for a string the catalog does not know', async () => {
     const fetchMock = mockApi(['House'], {}, []);
     wrap();

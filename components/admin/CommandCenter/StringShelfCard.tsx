@@ -465,6 +465,7 @@ export default function StringShelfCard() {
           offered={shelf.strings.map((label) => ({
             label,
             item: shelf.links[label] ? catalog.items.find((i) => i.id === shelf.links[label]) ?? null : null,
+            colours: shelf.colours[label] ?? [],
           }))}
         />
       )}

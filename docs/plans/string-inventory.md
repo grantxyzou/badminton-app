@@ -137,6 +137,9 @@ shrinks to the plain list it replaces.
     hex. The Stringing tab shows them as dots on the row and as "On the reel"
     on the string's page, where they replace the maker's list and its "ask the
     stringer which are on the reel".
+- **Stock by colour (2026-11-11)** — a purchase may carry a colour, stock is
+  counted per colour, and the request sheet offers the reel's colours narrowed
+  to what is left: [`string-stock-by-colour.md`](string-stock-by-colour.md).
 
 ## Shape
 

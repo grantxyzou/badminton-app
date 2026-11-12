@@ -59,6 +59,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Cancelling a stringing request now says "A cancellation fee may apply."** It used to say "Nothing is owed yet."
 - **A change that is no longer waiting** shows the empty-state pattern: an icon, "Nothing left to answer", and "The stringer withdrew that change or already applied it."
 
+### String colours follow the club's shelf (2026-11-11)
+
+Grant, on the request sheet's colour chips: "this need to match and be dynamic to the strings inventory and string type" (`docs/plans/string-stock-by-colour.md`).
+
+- **The request sheet offers the colours the club has, not every colour the maker sells.** It starts from the reel colours the stringer sets on a string's sheet on the bench (it used to ignore them and show the catalog's list), and falls back to the maker's colours only when he has set none. A colour the club is out of is hidden, not greyed out. One colour left: no question, it is sent as it is. Colour names are now in the member's language.
+- **"Log a purchase" asks the reel's colour**: chips from the string's reel colours (else the maker's, else the whole palette), with "Mixed / not sure" first and the default. Mixed stores nothing, so skipping it logs exactly what it did before.
+- **Stock is counted per colour once a purchase says one.** A strung job uses up its own colour; a job in a colour nobody tagged, and every untagged purchase, share a "Mixed / not sure" pool. The string's total, its stock band and its cost are unchanged. The bench's string sheet lists sets left per colour and shows each purchase's colour. Members are told which colours are on the shelf, never how many.
+
 ### A quieter sign-up card (2026-11-11)
 
 - **The faces say who has signed up.** The line under the count reads "[faces] +7 others have signed up" instead of "Anders and 11 others have signed up". A screen reader still hears the names.

@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
       at('purchases', readStringPurchases(scope)),
       at('catalog', readStringCatalog()),
       // Every job, archived included: a racket strung last winter still used a set.
-      at('jobs', scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt' })),
+      at('jobs', scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor' })),
     ]);
     if (!offered) { step = 'offered'; throw new Error('offered strings unreadable'); }
     const summary = summarizeStringStock({ offered: offered.strings, links: offered.links, aliases: offered.aliases, purchases, jobs, catalog });

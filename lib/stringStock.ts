@@ -4,6 +4,7 @@ import { ensureCatalogSeeded } from './catalogSeed';
 import { groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
 import type { CatalogItem, StringPurchase } from './types';
+import { isStringColourId, type StringColourId } from './stringPalette';
 
 export * from './stringStockMath';
 import { MAX_UNITS, MAX_METRES_PER_UNIT, MAX_COST_CENTS } from './stringStockMath';
@@ -73,6 +74,8 @@ export interface NewStringPurchase {
   totalCostCents: number;
   date: string;
   notes?: string;
+  /** A palette id; absent = "Mixed / not sure". */
+  color?: StringColourId;
 }
 
 export function validatePurchase(input: Record<string, unknown>): NewStringPurchase {
@@ -89,7 +92,14 @@ export function validatePurchase(input: Record<string, unknown>): NewStringPurch
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) throw new StringStockError('invalid_date');
   const catalogId = typeof input.catalogId === 'string' && input.catalogId.startsWith('string-') ? input.catalogId : null;
   const notes = typeof input.notes === 'string' ? input.notes.trim().slice(0, 200) : undefined;
-  return { label, catalogId, unit, units, metresPerUnit: Math.round(metresPerUnit * 10) / 10, totalCostCents, date, ...(notes ? { notes } : {}) };
+  // Not a palette id (absent, empty, "mixed", a typo) is "Mixed / not sure":
+  // the purchase still saves, it just counts in the string's mixed pool.
+  const color = isStringColourId(input.color) ? input.color : undefined;
+  return {
+    label, catalogId, unit, units, metresPerUnit: Math.round(metresPerUnit * 10) / 10, totalCostCents, date,
+    ...(notes ? { notes } : {}),
+    ...(color ? { color } : {}),
+  };
 }
 
 export async function logStringPurchase(groupId: string, input: NewStringPurchase, adminId: string): Promise<StringPurchase> {
@@ -105,6 +115,7 @@ export async function logStringPurchase(groupId: string, input: NewStringPurchas
     totalCostCents: input.totalCostCents,
     date: input.date,
     ...(input.notes ? { notes: input.notes } : {}),
+    ...(input.color ? { color: input.color } : {}),
     createdAt: new Date().toISOString(),
     createdBy: adminId,
   };
