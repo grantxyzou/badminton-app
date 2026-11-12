@@ -133,6 +133,27 @@ describe('foldable layout', () => {
     }
   });
 
+  it("puts You's greeting on the left page, under the tiles (Grant, 2026-11-12)", () => {
+    // Four rows on the left: title, subhead, tiles, greeting; the last 1fr.
+    expect(pane).toMatch(/\.stats-shell\s*\{[^}]*grid-template-rows:\s*auto auto auto auto 1fr/);
+    // The greeting is a SHELL child (so `.stats-shell > *` puts it in column 1),
+    // never a card inside the register, which sits whole in column 2.
+    const tab = readFileSync(join(__dirname, '..', 'components', 'SkillsTab.tsx'), 'utf8');
+    expect(tab).toMatch(/youLead=\{\s*<RevealSlot className="stats-shell-lead"/);
+    const youLead = tab.slice(tab.indexOf('youLead={'), tab.indexOf('youSlot={'));
+    expect(youLead).toContain('<SummaryGreeting />');
+    const youSlot = tab.slice(tab.indexOf('youSlot={'), tab.indexOf('playSlot='));
+    expect(youSlot).not.toContain('<SummaryGreeting');
+    // Between the switch and the register, so one screen keeps its order.
+    const shell = readFileSync(join(__dirname, '..', 'components', 'stats', 'StatsV2Shell.tsx'), 'utf8');
+    const lead = shell.indexOf("{view === 'you' && !takeover && youLead}");
+    expect(lead).toBeGreaterThan(shell.indexOf('className="stats-shell-switch"'));
+    expect(lead).toBeLessThan(shell.indexOf('stats-shell-register"'));
+    // The loading frame draws the greeting's skeleton in the same place.
+    const fallback = readFileSync(join(__dirname, '..', 'components', 'TabFallbacks.tsx'), 'utf8');
+    expect(fallback).toMatch(/<div className="stats-shell-lead">\s*<CardSkeleton height=\{STATS_HEIGHTS\.greeting\} \/>/);
+  });
+
   it('opens a sheet in the left half, and only there', () => {
     expect(pane).toMatch(/\.bottom-sheet,[^{]*\{\s*margin-left:\s*var\(--shell-pad-x\);/);
     expect(pane).toMatch(/--sheet-max-w:\s*min\(32rem, var\(--half-w\)\)/);

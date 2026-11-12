@@ -207,8 +207,12 @@ export function RevealSlot({
   placeholder,
   empty: emptyProp,
   canBeEmpty = emptyProp !== undefined,
+  className,
   children,
 }: {
+  /** On the slot's own box — for a parent that places its children by class
+   *  (the Stats shell's panes on a foldable). */
+  className?: string;
   /**
    * The card's data has arrived (loaded OR failed). Omit it when the card
    * reports its own readiness with `useRevealReady()`.
@@ -303,7 +307,7 @@ export function RevealSlot({
   const holdsNothing = !holdsSpace && (!shown || isEmpty);
 
   return (
-    <div ref={node} data-reveal-slot="" hidden={gone || instantEmpty || holdsNothing}>
+    <div ref={node} data-reveal-slot="" className={className} hidden={gone || instantEmpty || holdsNothing}>
       {showPlaceholder &&
         (canBeEmpty ? <Collapse open={!closing}>{placeholder}</Collapse> : placeholder)}
       {/* Mounted from the start so a card that fetches inside itself fetches.

@@ -108,8 +108,10 @@ export function StatsFallback() {
       <div className="stats-shell-switch">
         <div className="segment-control w-full" style={{ height: 32 }} aria-hidden="true" />
       </div>
-      <div className="flex flex-col gap-5 stats-shell-register">
+      <div className="stats-shell-lead">
         <CardSkeleton height={STATS_HEIGHTS.greeting} />
+      </div>
+      <div className="flex flex-col gap-5 stats-shell-register">
         <CardSkeleton height={STATS_HEIGHTS.trend} />
         <CardSkeleton height={STATS_HEIGHTS.whereYouSit} />
         <CardSkeleton height={STATS_HEIGHTS.kudosReceived} />

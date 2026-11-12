@@ -261,11 +261,18 @@ location") and chose candidate 1: "go with 1".
   `StatsV2Shell` and its loading frame (`StatsFallback`) so the chunk arriving
   moves nothing. A page a register opens (Your fit, a racket) hides the
   overview and stays on the right.
-- **The greeting stays the first card of the You register, on the right.**
-  The canvas drew it under the tiles on the left, but in the app it belongs to
-  the register, and placing one card of a register in the other column with
-  CSS would tie the two columns' rows together and open gaps. Moving it is a
-  component change; not done without Grant's word.
+- **The greeting moved to the left page, under the tiles** (Grant, the same
+  day after #885 merged: "move the greeting to the left", as on his canvas).
+  Placing one card of a register in the other column with CSS would tie the
+  two columns' rows together, so it is a component change: the greeting left
+  the You register and became the shell's `youLead`, a shell child carrying
+  `.stats-shell-lead` (a `className` on its `RevealSlot`), rendered between
+  the switch and the register only on You and only with no page open. On one
+  screen that is exactly where the register's first card stood (Tailwind 3's
+  `space-y` skips a `hidden` child, so an empty greeting leaves no gap); on two
+  pages `.stats-shell > *` puts it in column 1, row 4. The loading frame draws
+  its skeleton in the same place. Phone, Duo closed, Duo upright, desktop: 0
+  pixels changed against the base.
 - **The header's sticky bar is half-width** on two pages, as every card is.
 - **Measured** (mock store, Lin, Chromium): Duo sideways 356 / 356, Z Fold
   open 402 / 402, tablet 470 / 470; nothing crosses the centre at any of them.

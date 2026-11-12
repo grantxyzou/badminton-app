@@ -137,6 +137,14 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
       openView={openView}
       // No LevelCard: the overview strip above owns the level, and showing the
       // same number twice on one screen reads as two different facts.
+      // Distributed AI insight: a plain-language greeting leads You. The shell
+      // places it (StatsV2Shell `youLead`): directly above the register on one
+      // screen, on the left page under the tiles on a foldable.
+      youLead={
+        <RevealSlot className="stats-shell-lead" canBeEmpty placeholder={<CardSkeleton height={STATS_HEIGHTS.greeting} />}>
+          <SummaryGreeting />
+        </RevealSlot>
+      }
       youSlot={
         <>
           {/* LOADING CASCADE (docs/plans/loading-cascade.md): each card holds
@@ -144,13 +152,9 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
               the four reads answer. The greeting used to land last and push
               the whole register down; the trend card's chunk used to insert a
               skeleton above WhereYouSit's. A flex gap, not space-y, so a slot
-              that closes (no greeting, no kudos) leaves no gap behind. */}
+              that closes (no kudos) leaves no gap behind. */}
           <div className="flex flex-col gap-5">
           <RevealGroup>
-          {/* Distributed AI insight: a plain-language greeting leads You. */}
-          <RevealSlot canBeEmpty placeholder={<CardSkeleton height={STATS_HEIGHTS.greeting} />}>
-            <SummaryGreeting />
-          </RevealSlot>
           {/* Both comparison-dependent cards are keyed on the answer, so
               saying yes remounts them and they re-read the bands endpoint
               — which only returns bands once the prompt is answered.
