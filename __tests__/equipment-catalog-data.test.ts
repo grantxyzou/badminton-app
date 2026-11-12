@@ -31,6 +31,29 @@ describe('equipment catalog data', () => {
     }
   });
 
+  /* A string's type follows its MAKER (Grant, 2026-11-12: "double check the
+     hybrid and all round. where is the data?"). Our label had called
+     Aerobite "Hybrid" (how it is built, already its own `construction`
+     field) and Skyarc and N68 "All-round" where Yonex and Li-Ning say
+     Durability and High Elasticity. Where the maker uses one of our words,
+     ours must agree. */
+  it("gives a string the maker's type wherever the maker uses one of ours", () => {
+    const strings = items.filter((i) => i.category === 'string');
+    for (const item of strings) {
+      const a = (item as unknown as { attributes: Record<string, unknown> }).attributes;
+      if (a.brandCategory === 'Control' || a.brandCategory === 'Durability') {
+        expect(a.stringType, String(item.model)).toBe(a.brandCategory);
+      }
+    }
+    const model = (m: string) => (strings.find((i) => i.model === m) as unknown as { attributes: Record<string, unknown> }).attributes;
+    expect(model('Aerobite').stringType).toBe('Control');
+    expect(model('Aerobite Boost').stringType).toBe('Control');
+    expect(model('Skyarc').stringType).toBe('Durability');
+    expect(model('N68').stringType).toBe('Repulsion');
+    // No string is typed by how it is built.
+    expect(strings.some((i) => (i as unknown as { attributes: Record<string, unknown> }).attributes.stringType === 'Hybrid')).toBe(false);
+  });
+
   it('never carries the source partitionKey field', () => {
     for (const item of items) {
       expect(item).not.toHaveProperty('partitionKey');
