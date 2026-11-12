@@ -337,7 +337,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
               onClick={() => setPicked(null)}
               leading={<span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>check_circle</span>}
               title={<span className="fs-md" style={{ fontWeight: 600 }}>{picked.name}</span>}
-              trailing={<span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('change')}</span>}
+              trailing={<span className="fs-md" style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('change')}</span>}
             />
           ) : walkUp ? (
             <>
@@ -359,7 +359,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
                   </span>
                 }
                 subtitle={<span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('walkUp.notInClub')}</span>}
-                trailing={<span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('change')}</span>}
+                trailing={<span className="fs-md" style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('change')}</span>}
               />
               <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
                 <input
@@ -630,7 +630,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
           onClick={missing ? showMissing : save}
           disabled={busy || !online}
           aria-describedby={missing ? 'intake-missing' : undefined}
-          className="cc-btn cc-btn-primary cc-btn-lg"
+          className="btn-primary"
           style={{ width: '100%' }}
         >
           {busy ? t('saving') : t('saveAndTell', { name: whoName ?? t('theyFallback') })}
