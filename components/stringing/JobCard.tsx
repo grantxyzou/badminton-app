@@ -53,6 +53,7 @@ export default function JobCard({
   openLabel,
   more,
   action,
+  waitingDays = null,
 }: {
   job: JobCardJob;
   /** `todayIso()` — the viewer's own date, compared day to day with `readyBy`. */
@@ -67,6 +68,13 @@ export default function JobCard({
   more?: ReactNode;
   /** The next-step row: one or two buttons. */
   action?: ReactNode;
+  /**
+   * Whole days a request has sat at `requested` past the 48-hour mark
+   * (`isWaitingTooLong` / `waitingDays` in lib/stringingWaiting.ts), or null.
+   * The caller decides, because it holds the clock; the card only draws it:
+   * an amber tint and a "Waiting N days" line (docs/plans/stringing-request-nudge.md).
+   */
+  waitingDays?: number | null;
 }) {
   const t = useTranslations('home.stringing');
   const locale = useLocale();
@@ -90,7 +98,7 @@ export default function JobCard({
           : tAdmin(`due.${due.key}`);
 
   return (
-    <div className="bpm-job-card" style={{ position: 'relative' }}>
+    <div className={waitingDays ? 'bpm-job-card bpm-job-card--waiting' : 'bpm-job-card'} style={{ position: 'relative' }}>
       {onOpen && (
         // Named for THIS job: a bench of identical "Open this job" buttons
         // tells a screen reader nothing about which.
@@ -123,6 +131,11 @@ export default function JobCard({
         </div>
         {/* Words in the body face; the spec is what the stringer opened it for. */}
         <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{spec}</span>
+        {waitingDays && !job.cancelledAt ? (
+          <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>
+            {tAdmin('waiting', { days: waitingDays })}
+          </span>
+        ) : null}
         {job.cancelledAt ? (
           <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{tAdmin('cancelledByPlayer')}</span>
         ) : owed !== null ? (

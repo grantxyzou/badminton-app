@@ -267,17 +267,32 @@ export async function GET(req: NextRequest) {
       const canString = await canStringIn(groupId, me).catch(() => false);
       if (!canString) return NextResponse.json({ jobs: [], view: 'stringer', canString: false });
 
-      const resources = await scope.query<StringingJob>('stringingJobs', {
-        where: `c.stringerId = @stringerId AND ${LIVE_SQL}`,
-        params: [{ name: '@stringerId', value: me }],
-      });
+      const [resources, open] = await Promise.all([
+        scope.query<StringingJob>('stringingJobs', {
+          where: `c.stringerId = @stringerId AND ${LIVE_SQL}`,
+          params: [{ name: '@stringerId', value: me }],
+        }),
+        /* Requests nobody has taken (docs/plans/stringing-request-nudge.md):
+           a stringer is nudged about these after 48 hours, so their card
+           lists them with "Take it" — a push about a request they could not
+           see would open an empty screen. Same money-free projection. */
+        scope.query<StringingJob>('stringingJobs', {
+          where: `c.status = @status AND (NOT IS_DEFINED(c.stringerId) OR IS_NULL(c.stringerId)) AND ${LIVE_SQL}`,
+          params: [{ name: '@status', value: 'requested' }],
+        }),
+      ]);
       // Re-filtered: the mock recognises @stringerId but not the archive
       // predicate, and an archived job is off the bench for everyone.
       const jobs = resources
         .filter((j) => j.stringerId === me && !isArchived(j))
         .sort(benchOrder)
         .map(toStringerJob);
-      return NextResponse.json({ jobs, view: 'stringer', canString: true });
+      // Oldest first: the one that has waited longest is the one to take.
+      const unclaimed = open
+        .filter((j) => j.status === 'requested' && !j.stringerId && !isArchived(j) && !j.cancelledAt)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map(toStringerJob);
+      return NextResponse.json({ jobs, unclaimed, view: 'stringer', canString: true });
     }
 
     if (admin.authed && !asPlayer) {

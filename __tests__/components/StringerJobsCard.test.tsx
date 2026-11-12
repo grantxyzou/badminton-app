@@ -159,3 +159,32 @@ describe('as the Bench register (docs/plans/stringing-tabs.md)', () => {
     expect(await screen.findByText(enMessages.home.stringing.stringerEmpty)).toBeDefined();
   });
 });
+
+describe('requests nobody has taken (docs/plans/stringing-request-nudge.md)', () => {
+  const old = new Date(Date.now() - 50 * 3_600_000).toISOString();
+  const unclaimed = { ...stringerJob('requested'), id: 'u1', jobNo: 'J-0009', createdAt: old };
+
+  it('lists them with "Take it", and marks one waiting past 48 hours', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ jobs: [], unclaimed: [unclaimed], view: 'stringer' }), { status: 200 }),
+    );
+    const { container } = wrap();
+    expect(await screen.findByText('Waiting for a stringer')).toBeDefined();
+    expect(screen.getByText('Waiting 2 days for a stringer')).toBeDefined();
+    expect(container.querySelector('.bpm-job-card--waiting')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Take it' })).toBeDefined();
+  });
+
+  it('Take it sends a claim for themselves, and a 409 says someone got there first', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (_url, init) => {
+      if (init?.method === 'PATCH') return new Response('{"error":"already_taken"}', { status: 409 });
+      return new Response(JSON.stringify({ jobs: [], unclaimed: [unclaimed], view: 'stringer' }), { status: 200 });
+    });
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Take it' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Someone took this one first.');
+    const patch = fetchSpy.mock.calls.find(([, init]) => init?.method === 'PATCH')!;
+    expect(String(patch[0])).toMatch(/\/api\/stringing\/jobs\/u1$/);
+    expect(JSON.parse(String(patch[1]!.body))).toEqual({ memberId: 'm-akane', claim: true });
+  });
+});
