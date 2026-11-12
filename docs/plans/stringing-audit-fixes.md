@@ -2,7 +2,7 @@
 
 **Track:** North Star pillar 4 (equipment service) — the stringing service is the one paid thing the app sells, and `restring-reach.md` already measures its reach; this closes what a role-by-role audit found between the player, the stringer and the bench.
 **Status:** shipped 2026-10-11 (#598)
-**Review on:** 2026-11-11 — From `stringingJobs`: of the requests made in the four weeks after ship, how many were claimed within 24h of `createdAt` (the notification's job), and how many player-origin jobs carry a `readyBy` (the detail-screen date's job)? Before ship both were structurally zero.
+**Review on:** 2026-12-09 — From `GET /api/reports/metrics` → `stringingRequests`: with `claimedAt` stamped since 2026-11-11, how many of the last 28 days' player-made requests were answered within 24 hours, and is `unanswered` at 0? Compare with the 2026-11-12 reading below; if no faster, the kill criterion fires and the new-request push goes.
 
 ## Problem
 
@@ -47,6 +47,15 @@ Grant, 2026-10-11, on the two open choices: "All stringer, bench first. and the 
 - **"Grant" leaves the player copy** (10 strings) for "the stringer" / neutral phrasing. Beat passing the stringer's name through the player projection: `docs/roles.md` strips the stringer on purpose and a `requested` job has none.
 - **Light-theme ink moves to `--accent-dark` where accent sat on a tint.** `--segment-active-text` and `.cc-btn-primary` light both read `#15803d`; `#166534` measures ≥ 4.7:1 on both tints. The amber banner title moves to `#9a4408` (≥ 5.9:1 on `--banner-orange-solid` light). Same class on the Command Center's "Finalize cost" and "Set up" is fixed by the same line.
 - **2026-11-11: the review's numbers are in the club report** (Grant: "add the missing numbers to the report"). `stringingRequests` on `GET /api/reports/metrics` (and the admin Metrics read): player-made requests in the last 28 days, how many were answered within 24 hours, how many wait unanswered, and how many carry a ready-by date. A claim left no time on the job, so ANSWERED is the first of a claim (`StringingJob.claimedAt`, stamped from this day by `PATCH /api/stringing/jobs/[id]` the first time anybody takes a job) or the job moving off `requested` in its history. A job claimed before the stamp and still `requested` reads as unanswered: an undercount, never an overcount.
+
+
+## Review outcome (2026-11-12)
+
+Read from the club report (`stringingRequests` on `GET /api/reports/metrics`, BPM Core, the 28 days to 2026-11-12): **6** player-made requests, **1** answered within 24 hours, **4** answered later, **1** still unanswered, **5** with a ready-by date.
+
+- **Ready-by on the detail screen: works.** 5 of 6 player-made requests carry a date; before ship it was structurally 0, so "N days late" now reaches player-made jobs. This half is closed.
+- **The new-request push: not judged yet.** Until 2026-11-11 a claim left no time on the job, so "answered" here is mostly the job moving off `requested`, which waits for the racket to be handed over, not for the stringer to see the request. 1 of 6 within a day measures the hand-over as much as the push, and no "before" figure was recorded to compare with. `claimedAt` is stamped from 2026-11-11, so the 2026-12-09 reading measures the claim itself; the kill criterion is decided then.
+- **Bench reorder:** no telemetry by design; still waits on Grant's say-so (the second kill criterion above).
 
 ## Shape
 
