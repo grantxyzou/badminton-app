@@ -206,6 +206,31 @@ describe('foldable layout', () => {
     for (const src of [profile, admin]) expect(src).not.toMatch(/innerWidth/);
   });
 
+  it('signs out as a book spread: the lockup on the left page, the doors and forms on the right', () => {
+    expect(pane).toMatch(/\.launch-canvas\s*\{\s*left:\s*25%;\s*transform:\s*translate\(-50%, -50%\) scale\(var\(--launch-kh, var\(--launch-k, 1\)\)\);/);
+    expect(pane).toMatch(/\.launch-actions\s*\{\s*left:\s*calc\(50% \+ var\(--fold-gap\) \/ 2\);/);
+    expect(pane).toMatch(/\.signed-out-cover\s*\{\s*right:\s*50%;/);
+    expect(pane).toMatch(/\.signed-out-cover \.launch-canvas\s*\{\s*left:\s*50%;/);
+    expect(pane).toMatch(/main\[data-page-shell\]\.signed-out-main:not\(:has\(\.launch-stage--welcome\)\)\s*\{[^}]*max-width:\s*calc\(50% - var\(--fold-gap\) \/ 2\);[^}]*margin-left:\s*auto;/);
+    // The one-page fit is unchanged; the one-PAGE fit is a second variable.
+    const layout = readFileSync(join(__dirname, '..', 'app', 'layout.tsx'), 'utf8');
+    expect(layout).toContain("var v=Math.min(innerWidth/360,innerHeight/740),h=Math.min((innerWidth/2-40)/360,innerHeight/740)");
+    expect(layout).toContain("d.style.setProperty('--launch-k',String(v))");
+    expect(layout).toContain("d.style.setProperty('--launch-kh',String(h))");
+    // Rendered only on two pages.
+    const shell = readFileSync(join(__dirname, '..', 'components', 'onboarding', 'SignedOutShell.tsx'), 'utf8');
+    expect(shell).toMatch(/\{pane && \(\s*<div className="launch-stage signed-out-cover" aria-hidden="true">/);
+    expect(topLevelRules('.signed-out-cover').length).toBe(0);
+  });
+
+  it("puts Notifications' settings on the left page and Recent on the right", () => {
+    expect(pane).toContain('main[data-page-shell]:has(> .notices-shell) {\n    max-width: var(--panes-max-w);');
+    expect(pane).toMatch(/\.notices-shell > \.notices-recent\s*\{\s*grid-column:\s*2;\s*grid-row:\s*2 \/ -1;/);
+    expect(topLevelRules('.notices-shell').length).toBe(0);
+    const page = readFileSync(join(__dirname, '..', 'components', 'NotificationsPage.tsx'), 'utf8');
+    expect(page).toContain('const twoPages = pane && (migrateOn || showPushCard);');
+  });
+
   it('opens a right page from the fold, and keeps only the fade under reduced motion', () => {
     expect(css).toMatch(/@keyframes panePageOpen\s*\{\s*from\s*\{\s*opacity:\s*0;\s*transform:\s*translateX\(calc\(-1 \* var\(--space-5\)\)\);\s*\}\s*to\s*\{\s*opacity:\s*1;\s*transform:\s*none;/);
     expect(css).toMatch(/\.pane-page-open\s*\{\s*animation:\s*panePageOpen var\(--duration-normal\) var\(--ease-out-quart\) backwards;/);

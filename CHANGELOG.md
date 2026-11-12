@@ -15,6 +15,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **The stringing bench's own pages** — Add job, Archived, the set-up page, an archived job — and a player's "A change to confirm" now open on the right half beside the list instead of covering both halves.
 - **A page on the right has no Back button**: the list it came from is right beside it. A page opened from it (your name, from Edit profile) still has one.
 - **Motion**: a page on the right slides in from the fold as it fades in, and the right half scrolls into view when a row far down the list opens it. With reduced motion it only fades.
+- **Signed out on a foldable reads like a book**: the bpm logo on the left half, Sign up and Log in on the right. Log in and Sign up keep the logo on the left and put their form on the right.
+- **Notifications** shows your settings on the left half and the recent list on the right.
 - **A phone is unchanged.**
 
 ## Stringing: a walk-up's email goes once, and a waiting job can still be received (2026-11-12)

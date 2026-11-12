@@ -365,9 +365,27 @@ Apple's list-detail, the shape Stringing took the same day:
   fold/unfold crossfade (`data-pane-flip`) is unchanged. Sampled in Chromium:
   −6 px / 0.62 at 40 ms, −1 px / 0.93 at 120 ms, none / 1 at 400 ms; reduced:
   no transform at any sample.
+- **Signed out, a book's spread** (same evening, after the rest of the audit:
+  Welcome's lockup and its two doors sat across the fold): the launch lockup
+  on the LEFT page — the cover — and Sign up / Log in on the RIGHT, opposite
+  it, where the hand holding the right half reaches. The splash's lockup sits
+  on the same left page, so a cold start still hands over to Welcome with
+  nothing moving. Log in, Sign up and the ask keep the lockup on the left as a
+  cover (`.signed-out-cover`, rendered only on two pages) and put their form on
+  the right. The lockup's fit for one page is `--launch-kh`, a second value
+  from the same pre-paint script (`app/layout.tsx`), because a unitless scale
+  from viewport units needs typed `calc()` division, which Safari lacks.
+- **Notifications** (the bell's page): its title and this phone's settings on
+  the left page, Recent on the right; with no setting to show it keeps one
+  column.
+- **Checked and left alone**: Home, Stats' four registers and the pages they
+  open (on the right since #885), and every sheet (the left half since step 1).
 - **Measured**: Profile, Admin and every bench page at Z Fold open 402 / 402 and
-  Duo sideways 356 / 355; nothing crosses the centre. Phone: 0 pixels changed
-  on Profile, a Profile page, the Admin console and a bench page against main.
+  Duo sideways 356 / 355; nothing crosses the centre. Welcome: lockup 20–422,
+  doors 474–876 on the Z Fold; 87–389 and 574–876 on the Duo. Phone: 0 pixels
+  changed on Profile, a Profile page, the Admin console, Welcome (upright and
+  sideways), Log in and Notifications against main; a bench page differs by 17
+  anti-aliased edge pixels of the tab bar's pill.
 
 ## Shape
 
@@ -386,6 +404,8 @@ Apple's list-detail, the shape Stringing took the same day:
 | Shell canary (both plugins pinned) | `__tests__/native-shell-projects.test.ts` |
 | Every right page (no Back beside a list, scroll into view) | `components/primitives/PaneDetail.tsx`, read by `components/primitives/TopBar.tsx` |
 | Profile and Admin two pages | `ProfileTab.tsx` (`subScreen`, `.profile-shell`), `admin/AdminDashboard.tsx` (`pageFor`, `.admin-shell`), `__tests__/components/ProfileTab.twoPages.test.tsx` |
+| Signed out as a spread | `.signed-out-cover`, `.launch-canvas` / `.launch-actions` in the pane block, `--launch-kh` in `app/layout.tsx`, `components/onboarding/SignedOutShell.tsx` |
+| Notifications two pages | `components/NotificationsPage.tsx` (`.notices-shell`) |
 | Right page motion | `.pane-page-open` / `panePageOpen` in `globals.css` |
 | Stringing's right page | `components/stringing/StringingAside.tsx` (slot, provider, portal), `usePaneMode` in `lib/paneMode.ts`, `.stringing-shell` / `.stringing-aside` in the pane block, `__tests__/components/stringing-two-pages.test.tsx` |
 | The fold/unfold crossfade | `lib/paneMode.ts`, `components/PaneFlip.tsx` (mounted in `HomeShell`), `paneFlipA/B` in `globals.css`, `__tests__/pane-mode.test.tsx` |

@@ -207,7 +207,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               only when the value CHANGES (a phone is width-bound, so a
               collapsing toolbar or a keyboard does not restyle the document),
               and never as 0 — a viewport not laid out yet keeps the CSS
-              fallback of 1.
+              fallback of 1. `--launch-kh` is the same fit for ONE page of an
+              open foldable (half the width, less the fold's gap and side
+              padding), read only inside the two-pane block: the lockup sits
+              on the left page there, as a book's cover.
             - `data-theme`: ThemeToggle sets it in an effect, after hydration,
               so a light-mode member watched the whole dark splash and then a
               flash to cream. Same rule as ThemeToggle's `read()`: a stored
@@ -219,7 +222,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{
-            __html: `(function(){var d=document.documentElement,l;function k(){var v=Math.min(innerWidth/360,innerHeight/740);if(v>0&&v!==l){l=v;d.style.setProperty('--launch-k',String(v))}}k();addEventListener('resize',k);try{var t=localStorage.getItem('badminton_theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.setAttribute('data-theme',t)}catch(e){}${QUICK_RETURN_PREPAINT}})()`,
+            __html: `(function(){var d=document.documentElement,l,m;function k(){var v=Math.min(innerWidth/360,innerHeight/740),h=Math.min((innerWidth/2-40)/360,innerHeight/740);if(v>0&&v!==l){l=v;d.style.setProperty('--launch-k',String(v))}if(h>0&&h!==m){m=h;d.style.setProperty('--launch-kh',String(h))}}k();addEventListener('resize',k);try{var t=localStorage.getItem('badminton_theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.setAttribute('data-theme',t)}catch(e){}${QUICK_RETURN_PREPAINT}})()`,
           }}
         />
         {/* The loading shot — keyframes and the rules that run them — from the

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import LaunchArt from '@/components/launch/LaunchArt';
+import { usePaneMode } from '@/lib/paneMode';
 import { buttonDelayMs } from '@/lib/launchMotion';
 import TopBar from '@/components/primitives/TopBar';
 import TopToast from '@/components/primitives/TopToast';
@@ -123,6 +124,8 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
   // BPM), so the prop is ignored rather than rendering a mode nothing can reach.
   const noClub = groupsOn ? (noClubProp ?? null) : null;
   const [view, setView] = useState<View>('welcome');
+  const pane = usePaneMode();
+  const tCover = useTranslations('signedOut');
   const [notice, setNotice] = useState<AuthNotice | null>(null);
   const [nativeReturn, setNativeReturn] = useState(false);
   /** The native return code from the landing's `#hc=`, or from the name step. */
@@ -317,7 +320,14 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
     <>
       <ThemeToggle />
       <LanguageToggle />
-      <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top min-h-screen">
+      {/* An open foldable: the lockup stays on the left page as a cover while
+          a form takes the right one (globals.css, the two-pane block). */}
+      {pane && (
+        <div className="launch-stage signed-out-cover" aria-hidden="true">
+          <LaunchArt tagline={tCover('tagline')} variant="settled" />
+        </div>
+      )}
+      <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top min-h-screen signed-out-main">
         <TopToast
           content={
             notice && banner
