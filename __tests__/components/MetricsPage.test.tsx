@@ -34,6 +34,19 @@ const HAPPY: ClubMetrics = {
   clientErrors: { last7d: 0, members7d: 0, byTab: {} },
   appReady: { opens7d: 0, medianMs: null, slowMs: null, medianLaunchMs: null, byStart: {} },
   equipment: { racketSavers: 0, racketAndStringSavers: 0, racketShare: null },
+  newMemberPath: {
+    since: '2026-10-07T07:00:00.000Z',
+    joined: 4,
+    joinedVia: { invite: 1, organiser: 3, created: 0, unrecorded: 0 },
+    keptAccount: 3,
+    openedApp: 4,
+    lookedAround: 2,
+    signedUp: 2,
+    played: 1,
+    paid: 1,
+    tabs: { home: 4, stringing: 1, skills: 2, profile: 3 },
+    medianDaysToFirstSignup: 2.5,
+  },
   stringingRequests: { requests28d: 0, answeredWithin24h: 0, answeredWithin24hRate: null, unanswered: 0, withReadyBy: 0 },
   paymentsInbox: {
     received28d: 0, autoMatched28d: 0, adminMatched28d: 0, ignored28d: 0, autoMatchRate: null, waiting: 0, oldestWaitingDays: null,
@@ -174,5 +187,34 @@ describe('<MetricsPage />', () => {
     const usage = await screen.findByRole('region', { name: 'Usage' });
     expect(within(usage).getByText('Starts when usage tracking is on')).toBeTruthy();
     expect(usage.textContent).not.toMatch(/\d/);
+  });
+
+  // docs/plans/new-member-path.md: totals of the people who joined lately.
+  it('draws the new members\' path as counts of the group, never names', async () => {
+    mockMetrics(HAPPY);
+    render(<MetricsPage onBack={() => {}} />);
+    const path = await screen.findByRole('region', { name: "New members' path" });
+    expect(within(path).getByText(/Everyone who joined since Oct 7/)).toBeTruthy();
+    expect(within(path).getByText(/4 joined: 1 with an invite link or code, 3 added or let in by an organiser\./)).toBeTruthy();
+    expect(within(path).getByText('Kept their account')).toBeTruthy();
+    expect(within(path).getAllByText('3 of 4').length).toBeGreaterThan(0);
+    expect(within(path).getByText('Opened the app')).toBeTruthy();
+    expect(within(path).getByText('4 of 4')).toBeTruthy();
+    expect(within(path).getByText(/Typically 2\.5 days from joining to their first sign-up/)).toBeTruthy();
+  });
+
+  it('says nobody has joined rather than drawing empty bars', async () => {
+    mockMetrics({
+      ...HAPPY,
+      newMemberPath: {
+        ...HAPPY.newMemberPath,
+        joined: 0, joinedVia: { invite: 0, organiser: 0, created: 0, unrecorded: 0 }, keptAccount: 0, openedApp: 0, lookedAround: 0,
+        signedUp: 0, played: 0, paid: 0, tabs: { home: 0, stringing: 0, skills: 0, profile: 0 }, medianDaysToFirstSignup: null,
+      },
+    });
+    render(<MetricsPage onBack={() => {}} />);
+    const path = await screen.findByRole('region', { name: "New members' path" });
+    expect(within(path).getByText(/Nobody has joined since Oct 7/)).toBeTruthy();
+    expect(within(path).queryByText('Kept their account')).toBeNull();
   });
 });
