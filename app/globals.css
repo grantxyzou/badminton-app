@@ -1084,6 +1084,29 @@ h1, h2, h3, h4 {
   line-height: var(--lh-snug);
   color: var(--sev-crit-text);
 }
+/* A load failure with a way out ("Try again"): `<ErrorState action>`. The
+   same icon-over-text layout and spacing as a standing `<EmptyState>`, and
+   NEUTRAL ink — the server was unreachable, the person did nothing wrong
+   (Grant, 2026-11-11: "should not be red"). Red stays for what the person
+   must fix (.field-error). */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+.error-state__icon {
+  color: var(--text-muted);
+}
+.error-state__message {
+  margin: 0;
+  max-width: 32ch;
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+}
 /* Its amber twin: a refusal that is not the person's fault (try again later,
    an account already exists, invite only). Same size and rhythm, warn ink. */
 .field-warn {
@@ -7391,14 +7414,37 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
 
 /* The captions under the stage, one at a time, and the step dots. */
 .ss-captions { display: grid; }
-.ss-cap { grid-area: 1 / 1; margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); opacity: 0; }
+/* Centred under the scene (Grant, 2026-11-11, on the design canvas). */
+.ss-cap { grid-area: 1 / 1; margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); opacity: 0; text-align: center; }
 .ss-cap-1 { animation: ss-cap-1 12s both; }
 .ss-cap-2 { animation: ss-cap-2 12s both; }
 .ss-cap-3 { animation: ss-cap-3 12s both; }
 .ss-cap-4 { animation: ss-cap-4 12s both; }
 .ss-cap-5 { animation: ss-cap-5 12s both; }
-.ss-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.ss-dots { display: flex; align-items: center; gap: var(--space-2); }
+.ss-foot { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+.ss-dots { display: flex; align-items: center; gap: var(--space-05); }
+/* Each dot is a button: tap to hold that step. The dot stays 6px; the
+   button around it is the 44px tap target the app's controls take. */
+.ss-dot-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.ss-box { touch-action: pan-y; }
+/* A held step: every animation paused at that step's moment. */
+.ss--held .ss-stage,
+.ss--held .ss-stage *,
+.ss--held .ss-cap,
+.ss--held .ss-dot {
+  animation-delay: var(--ss-at) !important;
+  animation-play-state: paused !important;
+}
 .ss-dot { display: block; height: 6px; width: 6px; border-radius: 3px; background: var(--text-muted); opacity: 0.5; }
 .ss-dot-1 { animation: ss-dot-1 12s both; }
 .ss-dot-2 { animation: ss-dot-2 12s both; }

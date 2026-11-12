@@ -22,7 +22,7 @@
       "cancelError": "取消失败，再试一次。",
       "cancelGo": "取消申请",
       "cancelKeep": "保留",
-      "cancelAsk": "取消这个申请？目前不收费。",
+      "cancelAsk": "取消这个申请？可能会收取取消费。",
       "cancelCta": "取消申请",
       "segReady": "可取",
       "segBeingStrung": "正在穿线",
@@ -53,11 +53,11 @@
       "registers": {
         "benchSignIn": "这台设备上的管理员登录已失效。请用名字和 PIN 登录以使用工作台。",
         "racket": "申请穿线",
-        "strings": "价格详情",
+        "strings": "可选球线",
         "bench": "穿线单"
       },
       "stringerTitle": "待穿线的球拍",
-      "seeStrings": "查看价格详情",
+      "seeStrings": "看看提供哪些球线",
       "stringerEmpty": "目前没有分配给你的球拍。",
       "stringerSubtitle": "指派给你的。",
       "stringerFor": "给 {name}",
@@ -87,7 +87,8 @@
         "decline": "保持原样",
         "working": "保存中…",
         "error": "保存失败，再试一次。",
-        "gone": "这条修改已经处理过了，不用再确认。",
+        "goneTitle": "没有需要回复的了",
+        "gone": "穿线师已撤回或已应用了这个修改。",
         "close": "关闭"
       },
       "jobsError": "球拍加载失败。",
@@ -158,6 +159,8 @@
       "title": "穿线服务",
       "subtitle": "在这里申请穿线，查看球拍进度。",
       "soon": "暂停中",
+      "closedTitle": "穿线服务暂时关闭。",
+      "closedBody": "请稍后再来提交请求。",
       "shopUnavailable": "暂时无法确认穿线服务是否开放。",
       "offer": {
         "feelWord_5": "很硬",
@@ -2702,7 +2705,7 @@
             },
             {
               "t": "选择球线和磅数",
-              "b": "从可选的球线中挑选并设置磅数。“价格详情”会列出每种的价格。",
+              "b": "从可选的球线中挑选并设置磅数。“可选球线”会列出每种的价格。",
               "img": "",
               "alt": "",
               "caption": ""

@@ -49,9 +49,16 @@ export interface EmptyStateProps {
    * off a left-aligned caption reads as a form, not a state.
    */
   action?: ReactNode;
+  /**
+   * Standing layout only: one line in primary ink above the muted copy, for a
+   * state that is the whole card ("The stringing service is closed for now."
+   * over "Please check back soon…"). The same size and ink as a standing
+   * `<ErrorState>`'s message, so the two states read as one pattern.
+   */
+  title?: ReactNode;
 }
 
-export default function EmptyState({ children, icon, action }: EmptyStateProps) {
+export default function EmptyState({ children, icon, action, title }: EmptyStateProps) {
   if (!icon && !action) {
     return (
       <p className="fs-base" style={{ color: 'var(--text-muted)', margin: '0' }}>
@@ -85,6 +92,11 @@ export default function EmptyState({ children, icon, action }: EmptyStateProps) 
         </span>
       ) : (
         <span aria-hidden="true" style={{ lineHeight: 1, display: 'flex' }}>{icon}</span>
+      )}
+      {title && (
+        <p className="error-state__message" style={{ marginBottom: 'calc(-1 * var(--space-2))' }}>
+          {title}
+        </p>
       )}
       <p className="fs-base" style={{ color: 'var(--text-muted)', margin: '0', maxWidth: '28ch' }}>
         {children}

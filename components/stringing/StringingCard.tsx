@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { useStringingShop } from '@/lib/useStringingShop';
 import { takeStringingIntent } from '@/lib/stringingIntent';
@@ -172,7 +173,7 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
   if (shop.status === 'error') {
     return (
       <div className="glass-card p-5 space-y-3">
-        <CardHeader compact icon="grid_4x4" title={t('title')} subtitle={t('subtitle')} />
+        <CardHeader compact icon="grid_4x4" title={t('title')} />
         <ErrorState
           message={t('shopUnavailable')}
           action={
@@ -185,18 +186,21 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
     );
   }
 
-  // A confirmed closed shop: the same header, the badge saying so, and
-  // nothing to tap.
+  // A confirmed closed shop: the same header, the badge saying so, and the
+  // standing icon-and-text state saying it in words (Grant, 2026-11-11, on the
+  // design canvas: "make this more personable"). Nothing to tap.
   if (open !== true) {
     return (
-      <div className="glass-card p-5">
+      <div className="glass-card p-5 space-y-3">
         <CardHeader
           compact
           icon="grid_4x4"
           title={t('title')}
-          subtitle={t('subtitle')}
           badge={<StatusBadge variant="muted">{t('soon')}</StatusBadge>}
         />
+        <EmptyState icon="bedtime" title={t('closedTitle')}>
+          {t('closedBody')}
+        </EmptyState>
       </div>
     );
   }
@@ -252,21 +256,21 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
             />
           )}
 
-          {/* The tab's one way in, so a real button now (Grant: "This is not
-              Request anymore. Its the next action."). It was a text row while
-              this card sat on Home under the week's sign-up; on its own tab
-              nothing competes with it. The tinted `cc-btn-primary`, not the
-              filled `.btn-primary`, which stays the sign-up's. */}
+          {/* The tab's one way in, so a real button (Grant: "This is not
+              Request anymore. Its the next action."). It wears the app's
+              primary pattern, the same as Home's "Sign up for this week":
+              the filled `.btn-primary`, a leading glyph, the label centred
+              (Grant, 2026-11-11, on the design canvas: "button needs to
+              follow pattern"). Nothing on this tab competes with it. */}
           <button
             type="button"
             onClick={() => { setPrefillTension(null); setPrefillString(null); setSheetOpen(true); }}
             // Refused means the request would be refused too — no button that fails.
             disabled={!hasIdentity || !online || jobsProblem === 'refused'}
-            className="cc-btn cc-btn-primary cc-btn-lg"
-            style={{ width: '100%', justifyContent: 'space-between' }}
+            className="btn-primary w-full flex items-center justify-center gap-2"
           >
-            <span>{t('requestCta')}</span>
-            <span className="material-icons icon-md" aria-hidden="true">arrow_forward</span>
+            <span className="material-icons icon-sm" aria-hidden="true">add</span>
+            {t('requestCta')}
           </button>
 
           {onShowStrings && (

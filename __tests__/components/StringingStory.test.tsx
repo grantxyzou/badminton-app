@@ -61,4 +61,26 @@ describe('StringingStory', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Play again' }));
     expect(container.querySelector('.ss-stage')).not.toBe(before);
   });
+
+  // Swipe or tap a dot to move through the steps (Grant, 2026-11-11: "make
+  // it scrollable"). A held step pauses every animation at that step's
+  // moment; "Play again" lets it run from the start.
+  it('a dot holds its step, a swipe moves to the next, and Play again lets it run', () => {
+    const { container } = show();
+    const root = container.querySelector('.ss') as HTMLElement;
+    const dots = container.querySelectorAll('.ss-dot-btn');
+    expect(dots).toHaveLength(5);
+    fireEvent.click(dots[2]);
+    expect(root.className).toContain('ss--held');
+    expect(root.style.getPropertyValue('--ss-at')).toBe('-6.6s');
+    expect(dots[2].getAttribute('aria-pressed')).toBe('true');
+
+    const box = container.querySelector('.ss-box') as HTMLElement;
+    fireEvent.pointerDown(box, { clientX: 300 });
+    fireEvent.pointerUp(box, { clientX: 200 });
+    expect(root.style.getPropertyValue('--ss-at')).toBe('-9.2s');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Play again' }));
+    expect(root.className).not.toContain('ss--held');
+  });
 });

@@ -52,6 +52,16 @@ describe('closed is said plainly', () => {
     expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 
+  // Said in words, with an icon, and without the "Request and track…" line,
+  // which describes a service that is not running (Grant, 2026-11-11).
+  it('says it is closed in a sentence, and drops the service subtitle', async () => {
+    mockApi(false);
+    wrap();
+    expect(await screen.findByText('The stringing service is closed for now.')).toBeDefined();
+    expect(screen.getByText('Please check back soon to submit a request.')).toBeDefined();
+    expect(screen.queryByText(/Request and track/)).toBeNull();
+  });
+
   // Unknown is not closed (loading cascade, phase 4). A failed or throttled
   // probe used to render "Coming soon" — a shop that could not be READ said it
   // was closed. It now says it could not check, with Retry. The safety half is
@@ -221,8 +231,11 @@ describe('the process strip', () => {
     // text row while the card sat on Home under the week's sign-up.
     mockApi(true, []);
     wrap();
+    // And it wears the app's primary pattern, Home's "Sign up for this week"
+    // (Grant, 2026-11-11: "button needs to follow pattern").
     const cta = await screen.findByRole('button', { name: 'Submit a request' });
-    expect(cta.className).toContain('cc-btn-primary');
+    expect(cta.className).toContain('btn-primary');
+    expect(cta.className).not.toContain('cc-btn');
     expect(cta.className).not.toContain('bpm-row-link');
   });
 });
@@ -404,7 +417,7 @@ describe('every open racket is listed', () => {
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel request' }));
     // Only one racket can be cancelled: the ready one has no such button.
-    expect(screen.getByText('Cancel this request? Nothing is owed yet.')).toBeDefined();
+    expect(screen.getByText('Cancel this request? A cancellation fee may apply.')).toBeDefined();
     fireEvent.click(screen.getAllByRole('button', { name: 'Cancel request' })[0]);
     await waitFor(() => {
       const call = fetchMock.mock.calls.find((c) => String(c[0]).includes('/api/stringing/jobs/jw/cancel'));

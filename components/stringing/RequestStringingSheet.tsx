@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatServicePrice } from '@/lib/stringingRateCard';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import type { UseGear } from '@/components/stats/useGear';
 import { useCatalog } from '@/components/stats/useCatalog';
@@ -596,17 +596,6 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
         )}
       </div>
 
-      {/* Dimmed until step 1 is answered — the same disabled rule as every
-          cc-btn — rather than hidden, so the way on is always in view. */}
-      <button
-        type="button"
-        onClick={() => setStep(2)}
-        disabled={!canContinue}
-        className="cc-btn cc-btn-primary cc-btn-lg"
-        style={{ width: '100%' }}
-      >
-        {t('nextTension')}
-      </button>
     </div>
   );
 
@@ -652,16 +641,6 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
         {summaryPrice && <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryPrice}</span>}
       </div>
 
-      {error && <p className="field-error" role="alert">{error}</p>}
-      <button
-        type="button"
-        onClick={submit}
-        disabled={!canSubmit}
-        className="cc-btn cc-btn-primary cc-btn-lg"
-        style={{ width: '100%' }}
-      >
-        {busy ? t('requestSending') : t('sendCta')}
-      </button>
     </div>
   );
 
@@ -692,13 +671,43 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
         <SegmentedProgress current={0} labels={[t('segRequested'), t('segWithStringer'), t('segBeingStrung'), t('segReady')]} />
       </div>
       <NotifyButton label={t('turnOnNotifications')} />
-      <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
-        {t('requestDone')}
-      </button>
     </div>
   );
 
   const title = done ? t('sentTitle') : t('requestTitle');
+
+  /* Each step's one action, pinned to the bottom of the screen in the sheet's
+     footer while the step above it scrolls (Grant, 2026-11-11, on the design
+     canvas: every sheet's CTA anchored to the bottom). The way on is always in
+     view: "Next" is dimmed until step 1 is answered, never hidden. */
+  const footer = done ? (
+    <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+      {t('requestDone')}
+    </button>
+  ) : step === 1 ? (
+    <button
+      type="button"
+      onClick={() => setStep(2)}
+      disabled={!canContinue}
+      className="cc-btn cc-btn-primary cc-btn-lg"
+      style={{ width: '100%' }}
+    >
+      {t('nextTension')}
+    </button>
+  ) : (
+    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+      {error && <p className="field-error" role="alert" style={{ margin: 0 }}>{error}</p>}
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!canSubmit}
+        className="cc-btn cc-btn-primary cc-btn-lg"
+        style={{ width: '100%' }}
+      >
+        {busy ? t('requestSending') : t('sendCta')}
+      </button>
+    </div>
+  );
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
@@ -727,6 +736,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
           {done ? sentStep : step === 1 ? whatStep : howStep}
         </div>
       </BottomSheetBody>
+      <BottomSheetFooter>{footer}</BottomSheetFooter>
     </BottomSheet>
   );
 }

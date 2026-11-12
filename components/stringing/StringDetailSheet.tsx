@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import { isRefused } from '@/lib/apiFetch';
@@ -245,19 +245,23 @@ export default function StringDetailSheet({
               </p>
             )}
 
-            {onRestring && label && band !== 'out' && (
-              <button
-                type="button"
-                className="cc-btn cc-btn-primary cc-btn-lg"
-                style={{ width: '100%' }}
-                onClick={() => onRestring(label)}
-              >
-                {t('restringWith')}
-              </button>
-            )}
           </div>
         )}
       </BottomSheetBody>
+      {/* Pinned to the bottom of the screen while the string's details scroll
+          (Grant, 2026-11-11: every sheet's CTA anchored to the bottom). */}
+      {item && onRestring && label && band !== 'out' && (
+        <BottomSheetFooter>
+          <button
+            type="button"
+            className="cc-btn cc-btn-primary cc-btn-lg"
+            style={{ width: '100%' }}
+            onClick={() => onRestring(label)}
+          >
+            {t('restringWith')}
+          </button>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

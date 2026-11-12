@@ -22,7 +22,7 @@
       "cancelError": "Couldn't cancel that. Try again.",
       "cancelGo": "Cancel request",
       "cancelKeep": "Keep it",
-      "cancelAsk": "Cancel this request? Nothing is owed yet.",
+      "cancelAsk": "Cancel this request? A cancellation fee may apply.",
       "cancelCta": "Cancel request",
       "segReady": "Ready",
       "segBeingStrung": "Being strung",
@@ -53,11 +53,11 @@
       "registers": {
         "benchSignIn": "Your admin sign-in has ended on this device. Sign in with your name and PIN to use the bench.",
         "racket": "Submit request",
-        "strings": "Pricing details",
+        "strings": "Strings we offer",
         "bench": "Stringing jobs"
       },
       "stringerTitle": "Rackets to string",
-      "seeStrings": "See pricing details",
+      "seeStrings": "See what kind of strings are offered",
       "stringerEmpty": "Nothing assigned to you right now.",
       "stringerSubtitle": "Assigned to you.",
       "stringerFor": "for {name}",
@@ -87,7 +87,8 @@
           "decline": "Keep original",
           "working": "Saving…",
           "error": "That didn't save. Try again.",
-          "gone": "That change is no longer waiting, so there's nothing to answer.",
+          "goneTitle": "Nothing left to answer",
+          "gone": "The stringer withdrew that change or already applied it.",
           "close": "Close"
         },
         "jobsError": "Couldn't load your rackets.",
@@ -158,6 +159,8 @@
       "title": "Stringing service",
       "subtitle": "Request and track the progress of your racket here.",
       "soon": "Closed",
+      "closedTitle": "The stringing service is closed for now.",
+      "closedBody": "Please check back soon to submit a request.",
       "shopUnavailable": "Couldn\u2019t check whether the stringing service is open.",
       "offer": {
         "feelWord_5": "Very hard",
@@ -2714,7 +2717,7 @@
             },
             {
               "t": "Choose your string and tension",
-              "b": "Pick from the strings on offer and set your tension. “Pricing details” shows what each costs.",
+              "b": "Pick from the strings on offer and set your tension. “Strings we offer” shows what each costs.",
               "img": "",
               "alt": "",
               "caption": ""
