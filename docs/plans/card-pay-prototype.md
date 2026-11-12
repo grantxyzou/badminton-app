@@ -39,6 +39,7 @@ If, once a club turns it on, fewer than 20% of that club's settled lines over fo
 | Stripe Connect webhook | `app/api/payments/card/webhook/route.ts` |
 | Home button (`cardPay` on the balance) | `components/UnpaidSessionsCard.tsx`, `app/api/players/unpaid/route.ts` |
 | Organiser card, on the E-transfers page | `components/admin/CommandCenter/CardPayCard.tsx` |
+| Visa / Mastercard / Amex acceptance marks on the button | `public/brand/cards/` — from Aaron Fagan's svg-credit-card-payment-icons (flat-rounded), Apache-2.0, its LICENSE beside them; copied as SVG text, not a dependency |
 | `paidVia: 'card'`, ledger id + "Card" in the money view | `lib/types.ts`, `lib/ledgerMirror.ts`, `lib/ledgerView.ts`, `components/admin/LedgerPage.tsx` |
 | Flag | `NEXT_PUBLIC_FLAG_CARD_PAY` (`lib/flags.ts`, `'false'` in both workflows) |
 | Tests | `__tests__/group-card-pay.test.ts` |

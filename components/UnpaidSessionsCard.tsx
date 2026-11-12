@@ -15,6 +15,8 @@ import { useTabReturn } from '@/lib/tabActivity';
 import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+/** Card networks the club's Stripe account accepts in Canada, as acceptance marks. */
+const CARD_MARKS = ['visa', 'mastercard', 'amex'] as const;
 
 /** The card's reads, named once: Home primes them before the card mounts. */
 export const unpaidPath = (name: string) => `/api/players/unpaid?name=${encodeURIComponent(name)}`;
@@ -467,8 +469,15 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
           )}
           {data.cardPay === true && data.totalOwed > 0 && (
             <div className="flex flex-col gap-2">
-              <button type="button" className="btn-ghost" disabled={!online || card === 'busy'} onClick={() => void payByCard()}>
-                {card === 'busy' ? tPay('cardBusy') : tPay('card')}
+              <button type="button" className="btn-ghost pay-card-btn" disabled={!online || card === 'busy'} onClick={() => void payByCard()}>
+                <span>{card === 'busy' ? tPay('cardBusy') : tPay('card')}</span>
+                {/* Decorative: the button's name stays "Pay by card". 780×500 marks at 18px tall. */}
+                <span className="card-marks" aria-hidden="true">
+                  {CARD_MARKS.map((m) => (
+                    // eslint-disable-next-line @next/next/no-img-element -- an 18px same-origin SVG; next/image adds nothing.
+                    <img key={m} src={`${BASE}/brand/cards/${m}.svg`} alt="" width={28} height={18} decoding="async" />
+                  ))}
+                </span>
               </button>
               {card === 'error' && <p className="field-error" role="alert">{tPay('cardError')}</p>}
             </div>
