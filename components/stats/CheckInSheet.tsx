@@ -212,7 +212,8 @@ export default function CheckInSheet({
             <button
               onClick={onClose}
               aria-label={t('assess.close')}
-              className="flex items-center justify-center rounded-full"
+              // `.tap-44-box`: the 32px circle with a 44pt tap (the Apple pass, globals.css).
+              className="flex items-center justify-center rounded-full tap-44-box"
               style={{ width: 32, height: 32, background: 'var(--inner-card-bg)', border: '1px solid transparent' }}
             >
               <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>close</span>
