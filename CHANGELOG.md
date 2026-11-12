@@ -17,6 +17,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **Motion**: a page on the right slides in from the fold as it fades in, and the right half scrolls into view when a row far down the list opens it. With reduced motion it only fades.
 - **A phone is unchanged.**
 
+## Stringing: a walk-up's email goes once, and a waiting job can still be received (2026-11-12)
+
+- **A walk-up never gets the same email twice.** Undoing and redoing "Mark ready" while the ready email was still going out, or a second "Send again" from another phone, could each send a second copy. The job now notes the email as being sent before it goes, and the job page says "Sending…" until it has.
+- **"Send again" is gone from a job that is over.** A racket that was withdrawn, collected or archived gets no more email about it.
+- **"Send again" shows "Sent" when the email already went from another tap**, instead of saying it could not send.
+- **"Mark received" stays on a job waiting on the player.** A suggested change no longer hides it on the bench or the stringer's card; only "Mark strung" and later wait for the player to agree.
+
 ## Stringing on a foldable: the list on the left, what you tap on the right (2026-11-12)
 
 - **On an open Galaxy Z Fold or iPhone Duo, Stringing uses both halves of the screen.** The title, the switch and the list keep the left half; what you tap opens on the right half beside it, where on a phone it covers the list. Nothing crosses the fold.

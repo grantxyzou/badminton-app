@@ -128,6 +128,44 @@ describe('the "Send to {name}" card', () => {
     expect(screen.getByRole('button', { name: 'Send again' })).toBeTruthy();
   });
 
+  it('a send in flight from another tap says "Sending…" and offers nothing (review, 2026-11-12)', () => {
+    detail({ walkUpEmails: { spec: { at: new Date().toISOString(), ok: false, sending: true } } });
+    expect(screen.getByTestId('walkup-email-sending').textContent).toBe(enMessages.admin.stringing.walkUp.sending);
+    expect(screen.queryByRole('button', { name: 'Send again' })).toBeNull();
+  });
+
+  it('a claim left from a send that never finished reads as not sent again', () => {
+    detail({ walkUpEmails: { spec: { at: '2026-11-01T19:00:05.000Z', ok: false, sending: true } } });
+    expect(screen.getByTestId('walkup-email-not-sent')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Send again' })).toBeTruthy();
+  });
+
+  it('a job that is over offers no "Send again"', () => {
+    detail({ status: 'picked_up', walkUpEmails: { spec: { at: '2026-11-12T19:00:05.000Z', ok: false } } });
+    expect(screen.getByTestId('walkup-email-not-sent')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Send again' })).toBeNull();
+  });
+
+  it('a refusal because it already went shows "Sent", not a failure', async () => {
+    detail({ walkUpEmails: { spec: { at: '2026-11-12T19:00:05.000Z', ok: false } } });
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).includes('/api/stringing/jobs/job-1') && init?.method === 'PATCH') {
+        return {
+          ok: false,
+          status: 409,
+          json: async () => ({
+            error: 'already_sent',
+            job: { ...walkUp, walkUpEmails: { spec: { at: '2026-11-12T19:10:00.000Z', ok: true } } },
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as Response;
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send again' }));
+    await waitFor(() => expect(screen.getByTestId('walkup-email-sent')).toBeTruthy());
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('a phone number: no email row, and the hint says only the receipt applies', () => {
     detail({ walkUpContact: '604-555-0199', walkUpEmails: undefined });
     const card = screen.getByTestId('walkup-send-card');
