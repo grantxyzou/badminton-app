@@ -176,7 +176,7 @@ describe('the club connects its own Stripe account', () => {
     connectClubAccount(false);
     const unpaidNow = async () => (await (await unpaid(makeRequest('GET', `${BASE}/players/unpaid?name=Lin`, undefined, asLin()))).json()).cardPay;
     expect(await unpaidNow()).toBe(false);
-    expect(await (await status(makeAdminRequest('GET', `${BASE}/admin/card-pay`))).json()).toEqual({ connected: true, chargesEnabled: true });
+    expect(await (await status(makeAdminRequest('GET', `${BASE}/admin/card-pay`))).json()).toEqual({ connected: true, chargesEnabled: true, stripeAccountId: ACCT });
     expect(await unpaidNow()).toBe(true);
   });
 });

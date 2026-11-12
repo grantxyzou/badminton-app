@@ -27,7 +27,7 @@ type Status =
   | { kind: 'error' }
   | { kind: 'organiserOnly' }
   | { kind: 'unconfigured' }
-  | { kind: 'ready'; connected: boolean; chargesEnabled: boolean };
+  | { kind: 'ready'; connected: boolean; chargesEnabled: boolean; stripeAccountId?: string };
 
 export default function CardPayCard() {
   const online = useOnline();
@@ -40,8 +40,8 @@ export default function CardPayCard() {
       if (res.status === 403) return setStatus({ kind: 'organiserOnly' });
       if (res.status === 404) return setStatus({ kind: 'unconfigured' });
       if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as { connected: boolean; chargesEnabled: boolean };
-      setStatus({ kind: 'ready', connected: body.connected, chargesEnabled: body.chargesEnabled });
+      const body = (await res.json()) as { connected: boolean; chargesEnabled: boolean; stripeAccountId?: string };
+      setStatus({ kind: 'ready', connected: body.connected, chargesEnabled: body.chargesEnabled, stripeAccountId: body.stripeAccountId });
     } catch {
       setStatus({ kind: 'error' });
     }
@@ -67,7 +67,7 @@ export default function CardPayCard() {
 
   return (
     <div className="glass-card p-5 flex flex-col gap-3">
-      <CardHeader icon="payments" title="Card payments" subtitle="Sandbox prototype — members pay settled sessions by card" />
+      <CardHeader icon="payments" title="Card payments" subtitle="Members pay what they owe by card." />
       {status.kind === 'error' && (
         <ErrorState
           message="Couldn't check card payments."
@@ -90,7 +90,7 @@ export default function CardPayCard() {
       )}
       {status.kind === 'ready' && (
         <>
-          <p className="fs-md" style={{ margin: '0', color: 'var(--text-primary)' }}>
+          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>
             {!status.connected
               ? 'Connect the club’s own Stripe account. Card payments go straight to it; Stripe takes its fee from each one.'
               : status.chargesEnabled
@@ -101,6 +101,19 @@ export default function CardPayCard() {
             <button type="button" className="cc-btn cc-btn-primary" disabled={!online || connect === 'busy'} onClick={() => void startConnect()}>
               {status.connected ? 'Continue Stripe setup' : 'Connect Stripe'}
             </button>
+          )}
+          {status.chargesEnabled && status.stripeAccountId && (
+            // A full-Dashboard account logs in to Stripe on its own: payouts,
+            // refunds and disputes live there, not here.
+            <a
+              className="cc-btn cc-btn-ghost"
+              href={`https://dashboard.stripe.com/${encodeURIComponent(status.stripeAccountId)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open Stripe Dashboard
+              <span className="material-icons icon-sm" aria-hidden="true">open_in_new</span>
+            </a>
           )}
           {connect === 'error' && <p className="field-error" role="alert">Couldn&apos;t open Stripe — try again.</p>}
         </>

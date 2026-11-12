@@ -171,6 +171,8 @@ export async function connectClub(groupId: string, organiserMemberId: string): P
 export interface CardPayStatus {
   connected: boolean;
   chargesEnabled: boolean;
+  /** The club's own account, for the organiser's "Open Stripe Dashboard" link. */
+  stripeAccountId?: string;
 }
 
 /** Ask Stripe whether the club can take cards yet, and remember the answer. */
@@ -183,7 +185,7 @@ export async function refreshCardPayStatus(groupId: string): Promise<CardPayStat
     // Best effort: a lost race only means the next read asks Stripe again.
     await groupScope(groupId).replace('clubSettings', { ...doc, chargesEnabled, updatedAt: new Date().toISOString() });
   }
-  return { connected: true, chargesEnabled };
+  return { connected: true, chargesEnabled, stripeAccountId: doc.stripeAccountId };
 }
 
 /** Whether Home should offer "Pay by card" — the stored answer, no Stripe call. */
