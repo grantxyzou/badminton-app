@@ -274,7 +274,9 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 'var(--space-1)',
-          overflow: 'hidden',
+          // No `overflow: hidden` here: the text truncates in its own span
+          // below, and a clip on the button would also clip its 44pt tap
+          // area (`.date-picker-trigger::after`, the Apple pass in globals.css).
           whiteSpace: 'nowrap',
         }}
       >

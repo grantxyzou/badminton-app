@@ -200,7 +200,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     if (v === 'payments') {
       // Reached from a Ledger row or a Past sessions row.
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="Payments" />
           <PaymentsCard refreshKey={refreshKey} initialSessionId={paymentsSessionId} />
         </div>
@@ -208,7 +208,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'announcements') {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="Announcements" />
           <AnnouncementsCard refreshKey={refreshKey} />
         </div>
@@ -216,7 +216,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'etransfer') {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="E-transfer recipient" />
           <ETransferRecipientEditor />
         </div>
@@ -224,7 +224,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'skip-dates') {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="Skip dates" />
           <SkipDatesEditor />
         </div>
@@ -232,7 +232,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'late-cancel') {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="Late cancellations" />
           <LateCancelEditor />
         </div>
@@ -240,7 +240,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'club-run') {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="How your club runs" />
           <ClubRunPage onOpenLateCancel={() => push('late-cancel')} />
         </div>
@@ -248,7 +248,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'club-name') {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="Club name" />
           <ClubNameEditor />
         </div>
@@ -256,7 +256,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'invite') {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="Invite someone" />
           <InviteCard enabled groupName={group?.name} bare />
           {/* The club's door link, for a chat or a wall (docs/plans/door-link.md). */}
@@ -266,7 +266,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'gift-cards') {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="Credit codes" />
           <GiftCardsCard refreshKey={refreshKey} bare />
         </div>
@@ -276,7 +276,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
       // A name opens the member in the Roster (recovery code inside); the
       // Roster's Back lands on the console, the same as from Needs you.
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="Sign-in readiness" />
           <SignInReadinessCard refreshKey={refreshKey} standalone onOpenMember={(name) => { setRosterFocus(name); push('members'); }} />
         </div>
@@ -284,7 +284,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     }
     if (v === 'etransfers' && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
       return (
-        <div className="animate-slideInRight space-y-3">
+        <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="E-transfers" />
           <PaymentsInboxCard refreshKey={refreshKey} standalone onChanged={() => setRefreshKey((k) => k + 1)} />
         </div>

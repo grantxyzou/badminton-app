@@ -103,7 +103,7 @@ export default function StringListSheet({
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
-              className="fs-sm"
+              className="fs-sm tap-44"
               data-testid="list-sort"
               style={{
                 flex: 'none',
