@@ -11,6 +11,7 @@ import StringingCard from '@/components/stringing/StringingCard';
 import { hasStringingIntent, requestStringingWith } from '@/lib/stringingIntent';
 import { useTabActive } from '@/lib/tabActivity';
 import StringerJobsCard from '@/components/stringing/StringerJobsCard';
+import StringerShelfCard from '@/components/stringing/StringerShelfCard';
 import StringsWeOfferCard from '@/components/stringing/StringsWeOfferCard';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { isFlagOn } from '@/lib/flags';
@@ -179,11 +180,19 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
         )}
 
         {current === 'bench' && !adminBench && stringer === true && (
+          /* A flex gap, not space-y, as on Stats: a slot that closes leaves no gap behind. */
+          <div className="flex flex-col gap-5">
           <RevealGroup>
             <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.queue} />}>
               <StringerJobsCard hasIdentity={hasIdentity} showEmpty />
             </RevealSlot>
+            {/* The names and reel colours a stringer may set
+                (docs/plans/stringer-shelf-edits.md); an admin does it on the bench. */}
+            <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.queue} />}>
+              <StringerShelfCard hasIdentity={hasIdentity} />
+            </RevealSlot>
           </RevealGroup>
+          </div>
         )}
       </div>
     </div>

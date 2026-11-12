@@ -84,6 +84,29 @@
       "stringerChangePart": "{to} instead of {from}",
       "stringerWaitingChange": "Suggested {change}. {name} has to accept before you string it.",
       "stringerWaitingGeneric": "Waiting for {name} to confirm the change.",
+      "shelfEdit": {
+        "title": "Strings on the shelf",
+        "subtitle": "Name each string and say what colours are on the reel. Players pick from these colours when they ask for a restring.",
+        "empty": "No strings are listed yet. An admin adds them on the bench.",
+        "loadError": "Couldn't load the strings.",
+        "retry": "Try again",
+        "edit": "Edit {name}",
+        "noColours": "No colours set",
+        "name": "Name",
+        "nameHint": "What players and the bench see. Rackets strung under the old name still count as this string.",
+        "nameTaken": "Another string on the shelf already has that name.",
+        "nameInvalid": "Give it a name of up to 60 characters.",
+        "colours": "Colours on the reel",
+        "coloursHint": "Players are offered only these colours. Pick none to fall back to the maker's colours.",
+        "save": "Save",
+        "saving": "Saving…",
+        "saveError": "Couldn't save. Try again.",
+        "refused": "You can't change the strings any more. Ask an admin."
+      },
+      "unclaimedTitle": "Waiting for a stringer",
+      "assignedTitle": "Assigned to you",
+      "unclaimedTake": "Take it",
+      "unclaimedTaken": "Someone took this one first.",
         "confirm": {
           "review": "Review changes",
           "reviewBody": "Your stringer suggested a change. Please confirm before they string it.",
@@ -453,6 +476,7 @@
     "balance": {
         "guestLine": "{name}, your guest",
         "details": "See details",
+        "redeem": "Redeem a gift card",
         "groupSessions": "Badminton",
         "groupStringing": "Stringing",
       "title": "Balance",
@@ -2039,6 +2063,7 @@
   "admin": {
     "stringing": {
       "cancelledByPlayer": "Cancelled by the player",
+      "waiting": "Waiting {days, plural, one {# day} other {# days}} for a stringer",
       "recent": "Recent",
       "jobsSummaryLate": "{open} open · {late} late",
       "jobsSummary": "{open} open",
@@ -3434,6 +3459,11 @@
     "assignment": {
       "title": "A racket for you to string",
       "body": "{name}'s {racket} is yours.",
+      "racket": "racket"
+    },
+    "requestWaiting": {
+      "title": "A stringing request is waiting",
+      "body": "{name}'s {racket} has waited {days} days for a stringer.",
       "racket": "racket"
     },
     "reminder": {

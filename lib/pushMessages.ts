@@ -312,3 +312,27 @@ export function buildAssignmentPayload(job: {
     tag: safeTag(`str-${job.jobNo}-assigned`),
   };
 }
+
+/**
+ * "Still waiting" — a request nobody has moved past `requested` in 48 hours,
+ * or 3 days (docs/plans/stringing-request-nudge.md). Player and racket and how
+ * long, no spec and no money (the lock-screen rule). An admin or organiser
+ * opens the bench; any other stringer opens their card, where unclaimed
+ * requests are listed with "Take it". One tag per job, so the 3-day nudge
+ * replaces the 48-hour one on the device.
+ */
+export function buildRequestWaitingPayload(
+  job: { jobNo: string; memberName: string; racketLabel?: string | null },
+  days: number,
+  opens: 'admin' | 'stringing',
+  locale: PushLocale = 'en',
+): PushPayload {
+  const t = pushT(locale);
+  const racket = job.racketLabel?.trim() || t('requestWaiting.racket');
+  return {
+    title: t('requestWaiting.title'),
+    body: t('requestWaiting.body', { name: job.memberName, racket, days: String(days) }),
+    url: `${BASE}/?tab=${opens}`,
+    tag: safeTag(`str-${job.jobNo}-waiting`),
+  };
+}

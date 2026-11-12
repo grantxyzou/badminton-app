@@ -84,6 +84,29 @@
       "stringerChangePart": "用{to}代替{from}",
       "stringerWaitingChange": "已建议{change}。{name} 接受后才能穿线。",
       "stringerWaitingGeneric": "等待 {name} 确认修改。",
+      "shelfEdit": {
+        "title": "在售球线",
+        "subtitle": "为每种球线命名，并标明线盘上的颜色。球友申请穿线时只能从这些颜色中选择。",
+        "empty": "还没有列出球线。管理员会在工作台添加。",
+        "loadError": "无法加载球线。",
+        "retry": "重试",
+        "edit": "编辑 {name}",
+        "noColours": "未设置颜色",
+        "name": "名称",
+        "nameHint": "球友和工作台看到的名称。用旧名称穿的球拍仍算作这种球线。",
+        "nameTaken": "已有另一种球线使用这个名称。",
+        "nameInvalid": "请填写不超过 60 个字符的名称。",
+        "colours": "线盘上的颜色",
+        "coloursHint": "球友只能选择这些颜色。都不选则使用厂商的颜色。",
+        "save": "保存",
+        "saving": "正在保存…",
+        "saveError": "无法保存，请重试。",
+        "refused": "你已无法修改球线。请联系管理员。"
+      },
+      "unclaimedTitle": "等人接的请求",
+      "assignedTitle": "分配给你的",
+      "unclaimedTake": "我来穿",
+      "unclaimedTaken": "这一单已经被别人接了。",
       "confirm": {
         "review": "查看更改",
         "reviewBody": "穿线师建议了一项更改，请在穿线前确认。",
@@ -453,6 +476,7 @@
     "balance": {
       "guestLine": "{name}（你的朋友）",
       "details": "查看详情",
+      "redeem": "兑换礼品卡",
       "groupSessions": "羽毛球",
       "groupStringing": "穿线",
       "title": "待付金额",
@@ -2027,6 +2051,7 @@
   "admin": {
     "stringing": {
       "cancelledByPlayer": "球员已取消",
+      "waiting": "已等 {days} 天，还没人接",
       "recent": "最近",
       "jobsSummaryLate": "{open} 单进行中 · {late} 单逾期",
       "jobsSummary": "{open} 单进行中",
@@ -3422,6 +3447,11 @@
     "assignment": {
       "title": "有一支球拍要你穿线",
       "body": "{name} 的 {racket} 交给你了。",
+      "racket": "球拍"
+    },
+    "requestWaiting": {
+      "title": "有一个穿线请求在等",
+      "body": "{name} 的 {racket} 已经等了 {days} 天，还没人接。",
       "racket": "球拍"
     },
     "reminder": {

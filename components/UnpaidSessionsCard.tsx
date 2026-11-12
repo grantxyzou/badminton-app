@@ -81,6 +81,13 @@ interface Props {
    * view of this card from the same read (spec §4).
    */
   onDetails?: () => void;
+  /**
+   * Home only: "Redeem a gift card" opens Profile → Gift cards & credit
+   * (spec Q2, Grant 2026-11-12: "do Q2 now"). The credit already shows on
+   * this card, so redeeming sits beside the money. Shown while store credit
+   * is on.
+   */
+  onRedeem?: () => void;
 }
 
 /**
@@ -92,7 +99,7 @@ interface Props {
  * never a silent "you owe nothing". On `home`, a brief pre-load gap is
  * preferred over flashing "paid up" before the first response.
  */
-export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn, onDetails }: Props) {
+export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn, onDetails, onRedeem }: Props) {
   const t = useTranslations('profile.unpaid');
   const tBal = useTranslations('home.balance');
   const tPay = useTranslations('home.payment');
@@ -464,10 +471,22 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
         </>
       )
     )}
-    {onDetails && !forbidden && !loadError && (
-      <button type="button" className="link-quiet link-quiet--flush" style={{ alignSelf: 'flex-start' }} onClick={onDetails}>
-        {tBal('details')}
-      </button>
+    {/* The card's two ways on: the detailed view, and redeeming a card
+        beside the credit it adds to. Quiet links, so neither outweighs the
+        balance itself. Absent while the card cannot say what is owed. */}
+    {!forbidden && !loadError && (onDetails || (onRedeem && creditOn)) && (
+      <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-5)' }}>
+        {onDetails && (
+          <button type="button" className="link-quiet link-quiet--flush" onClick={onDetails}>
+            {tBal('details')}
+          </button>
+        )}
+        {onRedeem && creditOn && (
+          <button type="button" className="link-quiet link-quiet--flush" onClick={onRedeem}>
+            {tBal('redeem')}
+          </button>
+        )}
+      </div>
     )}
     </>
   );

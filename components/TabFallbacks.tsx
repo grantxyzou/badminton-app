@@ -90,7 +90,9 @@ export function StatsFallback() {
   const tLoading = useTranslations('a11y');
   const t = useTranslations('stats');
   return (
-    <div className="space-y-5 w-full" role="status" aria-label={tLoading('loading')}>
+    // The shell's own pane classes, so an unfolded phone's loading frame is
+    // already two pages and the chunk arriving moves nothing.
+    <div className="space-y-5 w-full stats-shell" role="status" aria-label={tLoading('loading')}>
       <PageHeader>{t('heading')}</PageHeader>
       <p className="fs-md text-gray-400" style={{ marginTop: 'var(--space-1)' }}>
         {t('subheadV2')}
@@ -103,8 +105,10 @@ export function StatsFallback() {
         <CardSkeleton height={98} />
         <CardSkeleton height={98} />
       </div>
-      <div className="segment-control w-full" style={{ height: 32 }} aria-hidden="true" />
-      <div className="flex flex-col gap-5">
+      <div className="stats-shell-switch">
+        <div className="segment-control w-full" style={{ height: 32 }} aria-hidden="true" />
+      </div>
+      <div className="flex flex-col gap-5 stats-shell-register">
         <CardSkeleton height={STATS_HEIGHTS.greeting} />
         <CardSkeleton height={STATS_HEIGHTS.trend} />
         <CardSkeleton height={STATS_HEIGHTS.whereYouSit} />
