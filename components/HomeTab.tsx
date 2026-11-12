@@ -777,9 +777,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="fs-md text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
+                className="fs-md text-gray-300 underline underline-offset-2 decoration-dotted block tap-44"
               >
-                {session.locationAddress}
+                {/* The two-line clamp sits on the text, not the link: a clamp
+                    clips its box's overflow, and the link's 44pt tap area
+                    (`.tap-44`, an overlay past its edges) would be clipped too. */}
+                <span className="line-clamp-2">{session.locationAddress}</span>
               </a>
             ) : (
               <p className="fs-md text-gray-300 line-clamp-2">{session.locationAddress}</p>
