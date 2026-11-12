@@ -47,4 +47,28 @@ describe('toStringerJob', () => {
     } as unknown as StringingJob;
     expect(toStringerJob(job).pendingEdit).toEqual({ proposedAt: '2026-11-11T10:00:00-08:00' });
   });
+
+  // The stringer's "why" (2026-11-12) is words, not a price field, so it rides
+  // beside a spec change — and goes with the price when only the price moves,
+  // because a note explaining a price is where money could ride along.
+  it('carries the reason beside a spec change, and still no price', () => {
+    const job = {
+      ...base,
+      pendingEdit: { proposedAt: '2026-11-11T10:00:00-08:00', proposedBy: 'admin1', stringLabel: 'BG65', priceCents: 3000, reason: 'BG80 is out until next week.' },
+    } as unknown as StringingJob;
+    const out = toStringerJob(job);
+    expect(out.pendingEdit).toEqual({
+      proposedAt: '2026-11-11T10:00:00-08:00', stringFrom: 'BG80', stringTo: 'BG65', reason: 'BG80 is out until next week.',
+    });
+    expect(out.pendingEdit).not.toHaveProperty('priceFrom');
+    expect(out.pendingEdit).not.toHaveProperty('priceTo');
+  });
+
+  it('drops the reason with a price-only change', () => {
+    const job = {
+      ...base,
+      pendingEdit: { proposedAt: '2026-11-11T10:00:00-08:00', proposedBy: 'admin1', priceCents: 3800, reason: 'It is a little more.' },
+    } as unknown as StringingJob;
+    expect(toStringerJob(job).pendingEdit).toEqual({ proposedAt: '2026-11-11T10:00:00-08:00' });
+  });
 });

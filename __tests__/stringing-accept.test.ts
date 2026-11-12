@@ -438,3 +438,59 @@ describe('accepting after the job was paid (audit, 2026-11-05)', () => {
     }
   });
 });
+
+// "Can we have some detail explaining why the change?" (Grant, 2026-11-12).
+describe('a proposal can say why', () => {
+  const playerEdit = async () => {
+    const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
+    return (await res.json()).jobs[0].pendingEdit;
+  };
+
+  it('stores the reason trimmed, and the player sees it', async () => {
+    const job = await seedJob({ priceCents: 3000 });
+    const res = await propose(job, { priceCents: 3400, reason: '  BG80 is out until next week.  ' });
+    expect(res.status).toBe(200);
+    expect(stored(job.id).pendingEdit?.reason).toBe('BG80 is out until next week.');
+    expect((await playerEdit()).reason).toBe('BG80 is out until next week.');
+  });
+
+  it('stores no reason when none, or a blank one, is given', async () => {
+    const job = await seedJob({ priceCents: 3000 });
+    await propose(job, { priceCents: 3400, reason: '   ' });
+    expect(stored(job.id).pendingEdit).not.toHaveProperty('reason');
+    expect(await playerEdit()).not.toHaveProperty('reason');
+  });
+
+  it('refuses a reason over the limit, and one that is not text', async () => {
+    const job = await seedJob({ priceCents: 3000 });
+    const long = await propose(job, { priceCents: 3400, reason: 'x'.repeat(281) });
+    expect(long.status).toBe(400);
+    expect((await long.json()).error).toBe('invalid_reason');
+    const notText = await propose(job, { priceCents: 3400, reason: 42 });
+    expect(notText.status).toBe(400);
+    expect(stored(job.id).pendingEdit ?? null).toBeNull();
+  });
+
+  it('is not a change on its own', async () => {
+    const job = await seedJob({ priceCents: 3000 });
+    const res = await propose(job, { priceCents: 3000, reason: 'Just saying hi.' });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('no_change');
+  });
+
+  it('goes with the proposal when the player accepts', async () => {
+    const job = await seedJob({ priceCents: 3000 });
+    await propose(job, { priceCents: 3400, reason: 'Aerobite costs a little more.' });
+    expect((await answer(job, 'wei', 'accept')).status).toBe(200);
+    expect(stored(job.id).pendingEdit ?? null).toBeNull();
+    expect(JSON.stringify(stored(job.id))).not.toContain('Aerobite costs');
+  });
+
+  it('goes with the proposal when the player declines', async () => {
+    const job = await seedJob({ priceCents: 3000 });
+    await propose(job, { priceCents: 3400, reason: 'Aerobite costs a little more.' });
+    expect((await answer(job, 'wei', 'decline')).status).toBe(200);
+    expect(stored(job.id).pendingEdit ?? null).toBeNull();
+    expect(await playerEdit()).toBeNull();
+  });
+});

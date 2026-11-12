@@ -74,6 +74,7 @@ export const ICON_NAMES = [
   'notifications',
   'open_in_new',
   'paid',
+  'pause',
   'payments',
   'person',
   'person_add',

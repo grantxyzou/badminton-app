@@ -135,6 +135,10 @@ export function toPlayerPendingEdit(job: StringingJob): PlayerPendingEdit | null
     out.priceFrom = job.priceCents === null ? null : job.priceCents / 100;
     out.priceTo = p.priceCents === null ? null : p.priceCents / 100;
   }
+  // The stringer's "why", when they gave one. Words, not money fields, so it
+  // rides the stringer's projection too — but only beside a spec change (see
+  // `stringerPendingEdit`).
+  if (p.reason) out.reason = p.reason;
   return out;
 }
 
@@ -176,9 +180,13 @@ export function toStringerJob(job: StringingJob): StringerJob {
 function stringerPendingEdit(job: StringingJob): { pendingEdit?: StringerPendingEdit } {
   const edit = toPlayerPendingEdit(job);
   if (!edit) return {};
-  const { priceFrom: _pf, priceTo: _pt, ...rest } = edit;
-  // Only a price changing leaves the stringer nothing to read.
-  return Object.keys(rest).length > 1 ? { pendingEdit: rest } : { pendingEdit: { proposedAt: rest.proposedAt } };
+  const { priceFrom: _pf, priceTo: _pt, reason, ...rest } = edit;
+  // Only a price changing leaves the stringer nothing to read — and then the
+  // reason goes too: a note written to explain a PRICE ("so it's a little
+  // more") is the one place money could ride along in words.
+  return Object.keys(rest).length > 1
+    ? { pendingEdit: reason ? { ...rest, reason } : rest }
+    : { pendingEdit: { proposedAt: rest.proposedAt } };
 }
 
 /** The ONLY way a job reaches a non-admin. See the file docblock. */

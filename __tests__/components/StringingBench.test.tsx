@@ -682,6 +682,65 @@ describe('a proposal is not re-sent by a second tap', () => {
   });
 });
 
+describe('a proposal can say why (Grant, 2026-11-12)', () => {
+  function capturePatch() {
+    const calls: Array<Record<string, unknown>> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') {
+          const body = JSON.parse(String(init.body));
+          calls.push(body);
+          return Promise.resolve({ ok: true, json: async () => ({ job: { ...job, pendingEdit: { ...body.propose, proposedAt: 'x', proposedBy: 'g' } } }) } as Response);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ stringers: [], strings: [] }) } as Response);
+      }),
+    );
+    return calls;
+  }
+
+  it('sends the "Why?" note, trimmed, with the proposal', async () => {
+    const calls = capturePatch();
+    wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
+    const why = screen.getByLabelText('Why? (the player sees this)') as HTMLTextAreaElement;
+    expect(why.tagName).toBe('TEXTAREA');
+    expect(why.maxLength).toBe(280);
+    fireEvent.change(why, { target: { value: '  BG80 is out until next week.  ' } });
+    fireEvent.click(screen.getByText('Send to Wei').closest('button')!);
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].propose).toMatchObject({ priceCents: 3400, reason: 'BG80 is out until next week.' });
+  });
+
+  it('a new "why" for the same change can be sent again', async () => {
+    capturePatch();
+    const pendingJob: StringingJob = {
+      ...job,
+      priceCents: 3000,
+      pendingEdit: { priceCents: 3400, proposedAt: '2026-09-01T00:00:00.000Z', proposedBy: 'member-grant', reason: 'Old note.' },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
+    const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
+    fireEvent.change(screen.getByLabelText('Why? (the player sees this)'), { target: { value: 'Old note.' } });
+    expect(send.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Why? (the player sees this)'), { target: { value: 'A better note.' } });
+    expect(send.disabled).toBe(false);
+  });
+
+  it('shows the bench the note it is waiting on', () => {
+    capturePatch();
+    const pendingJob: StringingJob = {
+      ...job,
+      pendingEdit: { priceCents: 3400, proposedAt: '2026-09-01T00:00:00.000Z', proposedBy: 'member-grant', reason: 'Aerobite costs a little more.' },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getByText('“Aerobite costs a little more.”')).toBeDefined();
+  });
+});
+
 /** The change form is collapsed on every mount, so a test that touches it has
  *  to open it first — same as a stringer would. */
 function openChangeForm() {

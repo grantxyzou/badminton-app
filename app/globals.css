@@ -5168,6 +5168,63 @@ button.sheet-row { cursor: pointer; }
   }
 }
 
+/* A change the stringer is asking a player about (2026-11-12; Grant, on the
+   design canvas: "more visible with the change colour wise"). ONE amber row on
+   the racket's card — what changes, then "Review ›" — that opens the page
+   "A change to confirm". The warn banner's solid fill, so it reads as the same
+   "something is waiting on you" as every other warn banner; fill only. */
+.change-ask-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-xl);
+  background: var(--banner-orange-solid);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-press) var(--ease-glass);
+}
+.change-ask-row:active { transform: scale(0.98); }
+/* The stringer's "why", quoted: the inner-card material with an amber bar
+   down its left edge, so it reads as their words rather than ours. */
+.change-note {
+  position: relative;
+  margin: 0;
+  padding: var(--space-4) var(--space-5) var(--space-4) var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  color: var(--text-primary);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.change-note::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-3);
+  bottom: var(--space-3);
+  width: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-amber);
+}
+/* One field of "What changes": label left, old → new right, on the amber
+   tint, so every line that moves is coloured as moving. */
+.change-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--tone-amber-bg);
+}
+
 /* An inner row: one line of facts inside a card, label left, value right.
    The inner-card material at the inner-row spec (12px radius, 12px padding).
    Fill only, no stroke: the Stats tab's inner containers carry none, and the
@@ -6076,6 +6133,9 @@ html:root[data-theme="light"] {
 :root {
   --step-dot: 12px;
   --step-rail: 2px;
+  /* The current step's dot while a change waits on the player: big enough to
+     hold a pause glyph. */
+  --step-dot-held: 18px;
 }
 
 .bpm-steps {
@@ -6136,6 +6196,38 @@ html:root[data-theme="light"] {
 .bpm-steps__label--here {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+/* ON HOLD (Grant, canvas StrTwoRackets, 2026-11-12: "some visual showing
+   blocked"). While a change waits on the player the step they stand on is
+   paused: an amber ring holding a pause glyph, its label "On hold" in amber,
+   and the leg ahead dashed amber — the way forward is there, not open yet.
+   The amber is the change rows' (`--accent-amber` for marks, `--sev-med-text`
+   for words, `--tone-amber-bg` for the tint). */
+.bpm-steps__dot--held {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--step-dot-held);
+  height: var(--step-dot-held);
+  border-color: var(--accent-amber);
+  background: var(--tone-amber-bg);
+}
+.bpm-steps__dot--held .material-icons {
+  font-size: var(--icon-xs);
+  line-height: 1;
+  color: var(--accent-amber);
+}
+.bpm-steps__leg--held {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent-amber) 0 var(--space-1),
+    transparent var(--space-1) var(--space-3)
+  );
+}
+.bpm-steps__label--held {
+  color: var(--sev-med-text);
+  font-weight: 700;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

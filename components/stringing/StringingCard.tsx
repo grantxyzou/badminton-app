@@ -14,7 +14,7 @@ import { restringDueWeeks } from '@/lib/restring';
 import RequestStringingSheet from './RequestStringingSheet';
 import { useGear } from '@/components/stats/useGear';
 import { useActiveName } from '@/lib/useActiveName';
-import ConfirmChangeSheet from './ConfirmChangeSheet';
+import ConfirmChangePage from './ConfirmChangePage';
 import RacketProgressCard from './RacketProgressCard';
 import type { PlayerStringingJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
@@ -33,6 +33,9 @@ interface Props {
   /** Switches the Stringing tab to its Strings register, where every price
    *  is (docs/plans/stringing-tabs.md). No link without it. */
   onShowStrings?: () => void;
+  /** While "A change to confirm" is open the page stands in for the whole
+   *  tab: the tab hides its heading and register switch. */
+  onTakeover?: (on: boolean) => void;
 }
 
 /**
@@ -54,7 +57,7 @@ interface Props {
  * collapsed by default under one step strip for the newest racket (Grant:
  * "Does not need collapseing", "this and the bottom card is redudant").
  */
-export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
+export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }: Props) {
   /* The kit's ONE owner in this tree, handed to the request sheet as a prop.
      `useGear` is single-owner by rule — four components once read the gear
      endpoint independently and raced each other's responses. `useActiveName`
@@ -80,9 +83,16 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
   // the branch flips (here: the shop opening). The id of the racket whose
   // change is being answered.
   // A SNAPSHOT of the job, not an id: once answered (or found stale, a 409)
-  // the reload drops its pendingEdit, and a sheet looked up by id would vanish
+  // the reload drops its pendingEdit, and a page looked up by id would vanish
   // before the player read why.
   const [confirmingJob, setConfirmingJob] = useState<PlayerStringingJob | null>(null);
+  // The page takes the tab over while it is open, and gives it back on close
+  // or unmount (a group switch remounts the tab with the page still up).
+  const reviewing = confirmingJob !== null;
+  useEffect(() => {
+    onTakeover?.(reviewing);
+  }, [reviewing, onTakeover]);
+  useEffect(() => () => onTakeover?.(false), [onTakeover]);
   /* Why the racket list is absent, when it is. `refused` is a device with no
      session for this name (the server answers 401/403) — not a failure, and
      not "no rackets" either. `failed` is a read that went wrong. Both used to
@@ -222,6 +232,19 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
   const restringWeeks =
     jobs !== null && openJobs.length === 0 ? restringDueWeeks(shopStrungAt, new Date()) : null;
 
+  /* "A change to confirm" is a PAGE in place of the cards (Grant, 2026-11-12:
+     "i think it should be its own page"). The request sheet is not mounted
+     under it: nothing on the page opens it. */
+  if (confirmingJob) {
+    return (
+      <ConfirmChangePage
+        job={confirmingJob}
+        onBack={() => setConfirmingJob(null)}
+        onAnswered={loadJobs}
+      />
+    );
+  }
+
   return (
     <>
       <div className="flex flex-col gap-3">
@@ -304,15 +327,6 @@ export default function StringingCard({ hasIdentity, onShowStrings }: Props) {
         initialTension={prefillTension}
         initialString={prefillString}
       />
-
-      {confirmingJob && (
-        <ConfirmChangeSheet
-          job={confirmingJob}
-          open
-          onClose={() => setConfirmingJob(null)}
-          onAnswered={loadJobs}
-        />
-      )}
     </>
   );
 }

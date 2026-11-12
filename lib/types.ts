@@ -1186,6 +1186,11 @@ export interface PendingEdit {
   /** The admin who proposed it. Never sent to the player — they are told the
    *  club changed something, not which volunteer typed it. */
   proposedBy: string | null;
+  /** Why, in the stringer's own words ("BG80 is out until next week…"),
+   *  trimmed, at most `PROPOSAL_REASON_MAX` characters; absent when they gave
+   *  none. Additive (2026-11-12). The player sees it on "A change to confirm";
+   *  it is not a CHANGE, so a proposal of a reason alone is `no_change`. */
+  reason?: string;
 }
 
 /**
@@ -1287,6 +1292,8 @@ export interface PlayerPendingEdit {
   /** Exact dollars. See the note above. */
   priceFrom?: number | null;
   priceTo?: number | null;
+  /** The stringer's note on why, when they wrote one (`PendingEdit.reason`). */
+  reason?: string;
 }
 
 /**

@@ -13,7 +13,7 @@ import MoneyInput from '@/components/primitives/MoneyInput';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { formatReadyBy } from '@/lib/stringingDue';
-import { STRINGING_FLOW, formatPriceExact, playerStageFor } from '@/lib/stringing';
+import { STRINGING_FLOW, PROPOSAL_REASON_MAX, formatPriceExact, playerStageFor } from '@/lib/stringing';
 import type { StringingStatus } from '@/lib/stringing';
 import type { StringingJob } from '@/lib/types';
 import { STAGE_TRACK, stageLook } from '@/lib/stringingStatusTone';
@@ -81,6 +81,10 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
   const [proposeString, setProposeString] = useState(local.stringLabel);
   const [proposeMains, setProposeMains] = useState(String(local.tensionMains));
   const [proposeCrosses, setProposeCrosses] = useState(String(local.tensionCrosses));
+  /* Why, in the stringer's words — the player reads it first on "A change to
+     confirm" (Grant, 2026-11-12: "Can we have some detail explaining why the
+     change?"). Optional; blank sends none. */
+  const [proposeReason, setProposeReason] = useState('');
   /* CLOSED ON EVERY MOUNT, including when a proposal is already pending.
      This screen's job is to tell you where a racket is; changing what you
      charge for it is a deliberate act, and a form standing open invites a
@@ -112,6 +116,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
     setProposeString(local.stringLabel);
     setProposeMains(String(local.tensionMains));
     setProposeCrosses(String(local.tensionCrosses));
+    setProposeReason('');
     setProposeError(null);
   }
 
@@ -166,7 +171,10 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
     (pending.priceCents ?? local.priceCents) === parsedCents &&
     (pending.stringLabel ?? local.stringLabel) === proposeString.trim() &&
     (pending.tensionMains ?? local.tensionMains) === Number(proposeMains) &&
-    (pending.tensionCrosses ?? local.tensionCrosses) === Number(proposeCrosses);
+    (pending.tensionCrosses ?? local.tensionCrosses) === Number(proposeCrosses) &&
+    // A new "why" for the same change is worth sending: the player is asked
+    // again with the better explanation.
+    (pending.reason ?? '') === proposeReason.trim();
 
   const proposalDirty = differsFromJob && !alreadyProposed;
 
@@ -198,6 +206,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             stringLabel: proposeString.trim(),
             tensionMains: Number(proposeMains),
             tensionCrosses: Number(proposeCrosses),
+            reason: proposeReason.trim(),
           },
         }),
       });
@@ -297,6 +306,12 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
               {t('propose.waitingHint')}
             </div>
+            {/* The "why" they were sent, so the bench can see what was said. */}
+            {pending.reason && (
+              <div className="fs-sm" style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>
+                “{pending.reason}”
+              </div>
+            )}
           </div>
         )}
         {declined && (
@@ -456,7 +471,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             card about money; the form is what you do to it.
 
             When a change is drafted the headline becomes the diff, in the same
-            from → to shape the player is shown in `ConfirmChangeSheet`. The
+            from → to shape the player is shown in `ConfirmChangePage`. The
             admin sees the exact thing they are about to ask for. */}
         <div
           className="glass-card p-5 space-y-3"
@@ -665,6 +680,17 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                 />
               </label>
             </div>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              <span className="section-label-muted">{t('propose.reason')}</span>
+              <textarea
+                value={proposeReason}
+                onChange={(e) => setProposeReason(e.target.value)}
+                aria-label={t('propose.reason')}
+                placeholder={t('propose.reasonPlaceholder')}
+                rows={2}
+                maxLength={PROPOSAL_REASON_MAX}
+              />
+            </label>
 
             <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch' }}>
               <button
