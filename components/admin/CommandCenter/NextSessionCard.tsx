@@ -17,7 +17,7 @@ import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
 import Switch from '@/components/primitives/Switch';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { sharedFetch } from '@/lib/sharedRead';
 import { useRevealReady } from '@/components/primitives/Reveal';
@@ -700,20 +700,22 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0', lineHeight: 1.5 }}>
                 Can&apos;t go back to the previous week once you advance.
               </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
-                <button type="button" onClick={() => setConfirmingAdvance(false)} className="cc-btn cc-btn-ghost">
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setConfirmingAdvance(false); onAdvance(); }}
-                  className="cc-btn cc-btn-danger"
-                >
-                  Confirm advance →
-                </button>
-              </div>
             </div>
           </BottomSheetBody>
+          <BottomSheetFooter>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+              <button type="button" onClick={() => setConfirmingAdvance(false)} className="cc-btn cc-btn-ghost">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => { setConfirmingAdvance(false); onAdvance(); }}
+                className="cc-btn cc-btn-danger"
+              >
+                Confirm advance →
+              </button>
+            </div>
+          </BottomSheetFooter>
         </BottomSheet>
       )}
     </section>

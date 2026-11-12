@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from './BottomSheet';
 import PinInput from './PinInput';
 import { setIdentity } from '@/lib/identity';
 
@@ -122,15 +122,14 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
               <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 'var(--space-1)' }}>{t('confirmPinLabel')}</p>
               <PinInput value={confirmPin} onChange={setConfirmPin} digits={4} label={t('confirmPinLabel')} ariaInvalid={error === 'pin_problem'} />
             </div>
-            <button
-              type="button"
-              disabled={!canSubmit}
-              onClick={submit}
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ marginTop: 'var(--space-1)' }}
-            >
-              {submitting ? t('submitting') : t('submit')}
-            </button>
+          </div>
+        )}
+      </BottomSheetBody>
+      {/* The action, pinned to the bottom of the screen, with the error about
+          it just above. The success line has nothing left to answer. */}
+      {!successName && (
+        <BottomSheetFooter>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {error === 'pin_problem' && (
               <p role="alert" className="field-error">{t('errorPinProblem')}</p>
             )}
@@ -143,9 +142,18 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
             {error === 'invite_only' && (
               <p role="alert" className="field-warn">{t('errorInviteOnly')}</p>
             )}
+            <button
+              type="button"
+              disabled={!canSubmit}
+              onClick={submit}
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              style={{ marginTop: 'var(--space-1)' }}
+            >
+              {submitting ? t('submitting') : t('submit')}
+            </button>
           </div>
-        )}
-      </BottomSheetBody>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

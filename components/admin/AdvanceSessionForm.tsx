@@ -11,7 +11,7 @@ import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
 import { showTopToast } from '@/lib/topToast';
 import ErrorState from '../primitives/ErrorState';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
 import { StateLink } from '@/components/primitives/StateCard';
 import { withLocalTz } from '@/lib/fmt';
 
@@ -567,27 +567,29 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             <p className="fs-sm text-gray-400">
               You can advance anyway if this is intentional. The skip date stays on the list.
             </p>
-            <div className="flex flex-wrap gap-2 justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setShowSkipBlock(false)}
-                className="cc-btn cc-btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setShowSkipBlock(false);
-                  await performAdvance();
-                }}
-                className="cc-btn cc-btn-danger"
-              >
-                Advance anyway
-              </button>
-            </div>
           </div>
         </BottomSheetBody>
+        <BottomSheetFooter>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => setShowSkipBlock(false)}
+              className="cc-btn cc-btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setShowSkipBlock(false);
+                await performAdvance();
+              }}
+              className="cc-btn cc-btn-danger"
+            >
+              Advance anyway
+            </button>
+          </div>
+        </BottomSheetFooter>
       </BottomSheet>
     </div>
   );

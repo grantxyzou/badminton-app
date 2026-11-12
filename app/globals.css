@@ -4799,7 +4799,9 @@ html:root[data-tab="admin"] .bottom-sheet {
    there, or the pin reads as the bottom of the content. */
 .bottom-sheet-footer {
   flex: 0 0 auto;
-  padding: var(--space-5) var(--space-6) var(--space-6);
+  /* The footer is the bottom of the sheet, so it keeps the home indicator
+     clear: on an iPhone without this the main button sat under the bar. */
+  padding: var(--space-5) var(--space-6) calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border-subtle);
   background: var(--sheet-footer-bg);
   -webkit-backdrop-filter: blur(14px);

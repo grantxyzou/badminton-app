@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import type { EtransferPayment, PaymentAllocation } from '@/lib/types';
@@ -434,17 +434,13 @@ function SetupSheet({ open, onClose, onDone, configured = false }: { open: boole
           <p className="fs-sm" style={step}>
             <strong>1.</strong> {configured ? 'Your key is set. Create a new one only if you need to reinstall or think it leaked.' : 'Create your group’s key. It is shown once.'}
           </p>
-          {key ? (
+          {key && (
             <div className="flex flex-col gap-2">
               <code className="fs-sm" style={{ wordBreak: 'break-all', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{key}</code>
               <button type="button" className="cc-btn cc-btn-secondary" onClick={() => void copy('key')}>
                 {copied === 'key' ? 'Copied' : 'Copy key'}
               </button>
             </div>
-          ) : (
-            <button type="button" className="cc-btn cc-btn-primary" disabled={!online || busy} onClick={() => void mint()}>
-              {configured ? 'Create a new key' : 'Create key'}
-            </button>
           )}
           <p className="fs-sm" style={step}>
             <strong>2.</strong> On a computer, open script.google.com signed in to the Gmail that gets your e-transfers.
@@ -463,6 +459,15 @@ function SetupSheet({ open, onClose, onDone, configured = false }: { open: boole
           {error && <p className="field-error" role="alert">{error}</p>}
         </div>
       </BottomSheetBody>
+      {/* Step 1's button, pinned until the key exists; then the key and its
+          copy button stand in step 1's place and the sheet has no footer. */}
+      {!key && (
+        <BottomSheetFooter className="flex flex-col">
+          <button type="button" className="cc-btn cc-btn-primary" disabled={!online || busy} onClick={() => void mint()}>
+            {configured ? 'Create a new key' : 'Create key'}
+          </button>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }
@@ -605,22 +610,24 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
               Remember “{payment.senderName}” as {name}
             </label>
           )}
-          {error && <p className="field-error" role="alert">{error}</p>}
-          <button
-            type="button"
-            className="cc-btn cc-btn-primary"
-            disabled={!online || busy || !name || picked.size === 0}
-            onClick={() => void send({ action: 'assign', name, refs: [...picked], remember })}
-          >
-            Mark paid
-          </button>
-          <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore', ...(name && remember ? { name, remember: true } : {}) })}>
-            {name && remember && payment.senderName && payment.senderName.toLowerCase() !== name.toLowerCase()
-              ? `Dismiss, and remember as ${name}`
-              : 'Not a session payment — dismiss'}
-          </button>
         </div>
       </BottomSheetBody>
+      <BottomSheetFooter className="flex flex-col gap-3">
+        {error && <p className="field-error" role="alert">{error}</p>}
+        <button
+          type="button"
+          className="cc-btn cc-btn-primary"
+          disabled={!online || busy || !name || picked.size === 0}
+          onClick={() => void send({ action: 'assign', name, refs: [...picked], remember })}
+        >
+          Mark paid
+        </button>
+        <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore', ...(name && remember ? { name, remember: true } : {}) })}>
+          {name && remember && payment.senderName && payment.senderName.toLowerCase() !== name.toLowerCase()
+            ? `Dismiss, and remember as ${name}`
+            : 'Not a session payment — dismiss'}
+        </button>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

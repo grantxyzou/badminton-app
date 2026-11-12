@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { todayIso } from '@/lib/stringingDue';
 import type { BirdPurchase } from '@/lib/types';
 import BirdSheetField from './BirdSheetField';
@@ -229,12 +229,6 @@ export default function BirdPurchaseSheet({ open, editing, onClose, onSaved, onA
             />
           </BirdSheetField>
 
-          {formError && (
-            <p role="alert" className="field-error" style={{ margin: '0' }}>
-              {formError}
-            </p>
-          )}
-
           {editing && (
             <button
               type="button"
@@ -249,69 +243,75 @@ export default function BirdPurchaseSheet({ open, editing, onClose, onSaved, onA
               Assign tubes to sessions
             </button>
           )}
-
-          {/* Two-step delete confirm — in-sheet (no stacked sheet, no native
-              confirm()). A referenced purchase comes back 409 with guidance
-              ("move its tubes first"), surfaced via formError above. */}
-          {confirmingDelete ? (
-            // Fades in: a confirm that appears in one frame reads as a mis-tap.
-            <div className="motion-fade" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span className="fs-sm" style={{ color: 'var(--text-secondary)', flex: 1, minWidth: 160 }}>
-                Delete this purchase? This cannot be undone.
-              </span>
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(false)}
-                className="cc-btn cc-btn-ghost"
-                disabled={deleting}
-              >
-                Keep it
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="cc-btn cc-btn-danger"
-                aria-label="Confirm delete purchase"
-              >
-                {deleting ? 'Deleting…' : 'Confirm delete'}
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmingDelete(true)}
-                  disabled={saving || deleting}
-                  className="cc-btn cc-btn-danger"
-                  aria-label="Delete this purchase"
-                >
-                  Delete
-                </button>
-              )}
-              <div style={{ flex: 1 }} />
-              <button
-                type="button"
-                onClick={onClose}
-                className="cc-btn cc-btn-ghost"
-                disabled={saving || deleting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="cc-btn cc-btn-primary"
-                disabled={saving || deleting}
-                style={{ minWidth: 100 }}
-              >
-                {saving ? 'Saving…' : editingId ? 'Save' : 'Add'}
-              </button>
-            </div>
-          )}
         </div>
       </BottomSheetBody>
+      <BottomSheetFooter className="flex flex-col gap-3">
+        {formError && (
+          <p role="alert" className="field-error" style={{ margin: '0' }}>
+            {formError}
+          </p>
+        )}
+        {/* Two-step delete confirm — in-sheet (no stacked sheet, no native
+            confirm()). A referenced purchase comes back 409 with guidance
+            ("move its tubes first"), surfaced via formError above. */}
+        {confirmingDelete ? (
+          // Fades in: a confirm that appears in one frame reads as a mis-tap.
+          <div className="motion-fade" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className="fs-sm" style={{ color: 'var(--text-secondary)', flex: 1, minWidth: 160 }}>
+              Delete this purchase? This cannot be undone.
+            </span>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="cc-btn cc-btn-ghost"
+              disabled={deleting}
+            >
+              Keep it
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="cc-btn cc-btn-danger"
+              aria-label="Confirm delete purchase"
+            >
+              {deleting ? 'Deleting…' : 'Confirm delete'}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+            {editingId && (
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={saving || deleting}
+                className="cc-btn cc-btn-danger"
+                aria-label="Delete this purchase"
+              >
+                Delete
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
+            <button
+              type="button"
+              onClick={onClose}
+              className="cc-btn cc-btn-ghost"
+              disabled={saving || deleting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="cc-btn cc-btn-primary"
+              disabled={saving || deleting}
+              style={{ minWidth: 100 }}
+            >
+              {saving ? 'Saving…' : editingId ? 'Save' : 'Add'}
+            </button>
+          </div>
+        )}
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

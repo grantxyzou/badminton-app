@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { reconcileFailureFrom, reconcileFailureMessage } from '@/lib/reconcileFailure';
@@ -143,12 +143,17 @@ export default function ReconcileSheet({ open, onClose, onChanged }: { open: boo
               )}
             </>
           )}
-          {checkError && <p className="field-error" role="alert">{checkError}</p>}
+        </div>
+      </BottomSheetBody>
+      {/* The sheet's one action stays in reach under a long mismatch list. */}
+      <BottomSheetFooter>
+        <div className="flex flex-col" style={{ gap: 'var(--space-3)' }}>
+          {checkError && <p className="field-error" role="alert" style={{ margin: 0 }}>{checkError}</p>}
           <button type="button" className="cc-btn cc-btn-secondary" disabled={!online || checking} onClick={() => void checkNow()} style={{ alignSelf: 'flex-start' }}>
             {checking ? 'Checking…' : 'Check now'}
           </button>
         </div>
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

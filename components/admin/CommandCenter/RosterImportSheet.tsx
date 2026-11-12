@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import ListRow from '@/components/primitives/ListRow';
 import { useOnline } from '@/lib/useOnline';
 import { isRefused } from '@/lib/apiFetch';
@@ -277,15 +277,6 @@ export default function RosterImportSheet({
                 onChange={(e) => { void pickFile(e.target.files?.[0]); e.target.value = ''; }}
               />
             </div>
-            {error && <p className="field-error" role="alert">{error}</p>}
-            <button
-              type="button"
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              onClick={() => void check()}
-              disabled={busy || !online || text.trim() === ''}
-            >
-              {busy ? 'Checking…' : 'Check the list'}
-            </button>
           </div>
         )}
 
@@ -371,22 +362,6 @@ export default function RosterImportSheet({
                 );
               })}
             </ul>
-            {error && <p className="field-error" role="alert">{error}</p>}
-            {/* Two choices side by side, as in the bench's remove confirmation. */}
-            <div className="flex gap-3">
-              <button type="button" className="cc-btn cc-btn-ghost" style={{ flex: 1 }} onClick={() => setStep({ at: 'input' })} disabled={busy}>
-                Back
-              </button>
-              <button
-                type="button"
-                className="cc-btn cc-btn-primary"
-                style={{ flex: 1 }}
-                onClick={() => void runImport()}
-                disabled={busy || !online || picked === 0}
-              >
-                {busy ? 'Importing…' : `Import ${picked} ${picked === 1 ? 'person' : 'people'}`}
-              </button>
-            </div>
           </div>
         )}
 
@@ -400,17 +375,6 @@ export default function RosterImportSheet({
               They can’t sign in yet. Share the club link in your chat: each of them asks to be let in under their own
               name, and you approve them one at a time.
             </p>
-            <button
-              type="button"
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              onClick={() => {
-                reset();
-                onShareClaimLink?.();
-              }}
-            >
-              Share the club link
-            </button>
-            <button type="button" className="cc-btn cc-btn-ghost" onClick={close}>Done</button>
           </div>
         )}
 
@@ -434,10 +398,73 @@ export default function RosterImportSheet({
             <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
               Importing the same list again adds only what’s missing.
             </p>
-            <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" onClick={close}>Done</button>
           </div>
         )}
       </BottomSheetBody>
+      {/* Each step's finishing action is pinned below the scrolling body
+          (Grant, 2026-11-11: a sheet's CTA is anchored to the bottom), with
+          the error about it just above, where it is seen. */}
+      {step.at === 'input' && (
+        <BottomSheetFooter>
+          <div className="flex flex-col gap-3">
+            {error && <p className="field-error" role="alert" style={{ margin: 0 }}>{error}</p>}
+            <button
+              type="button"
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              onClick={() => void check()}
+              disabled={busy || !online || text.trim() === ''}
+            >
+              {busy ? 'Checking…' : 'Check the list'}
+            </button>
+          </div>
+        </BottomSheetFooter>
+      )}
+      {step.at === 'preview' && (
+        <BottomSheetFooter>
+          <div className="flex flex-col gap-3">
+            {error && <p className="field-error" role="alert" style={{ margin: 0 }}>{error}</p>}
+            {/* Two choices side by side, as in the bench's remove confirmation. */}
+            <div className="flex gap-3">
+              <button type="button" className="cc-btn cc-btn-ghost" style={{ flex: 1 }} onClick={() => setStep({ at: 'input' })} disabled={busy}>
+                Back
+              </button>
+              <button
+                type="button"
+                className="cc-btn cc-btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => void runImport()}
+                disabled={busy || !online || picked === 0}
+              >
+                {busy ? 'Importing…' : `Import ${picked} ${picked === 1 ? 'person' : 'people'}`}
+              </button>
+            </div>
+          </div>
+        </BottomSheetFooter>
+      )}
+      {step.at === 'done' && (
+        <BottomSheetFooter>
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              onClick={() => {
+                reset();
+                onShareClaimLink?.();
+              }}
+            >
+              Share the club link
+            </button>
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={close}>Done</button>
+          </div>
+        </BottomSheetFooter>
+      )}
+      {step.at === 'results' && (
+        <BottomSheetFooter>
+          <div className="flex flex-col gap-3">
+            <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" onClick={close}>Done</button>
+          </div>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSkillText } from '@/lib/useSkillText';
-import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '@/components/BottomSheet';
 import ErrorState from '@/components/primitives/ErrorState';
 import { KUDOS_TAGS, TAG_ICON, KUDOS_NOTE_MAX, type KudosTag } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
@@ -129,9 +129,6 @@ export default function GiveKudosSheet({
               check_circle
             </span>
             <p className="fs-md m-0" style={{ textAlign: 'center' }}>{t('sentTo', { name: who ?? '' })}</p>
-            <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg">
-              {t('done')}
-            </button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
@@ -252,7 +249,18 @@ export default function GiveKudosSheet({
                 </div>
               )}
             </section>
-
+          </div>
+        )}
+      </BottomSheetBody>
+      <BottomSheetFooter>
+        {state === 'sent' ? (
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg">
+              {t('done')}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
             {state === 'error' && <ErrorState message={t('sendError')} />}
             {state === 'duplicate' && (
               <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('alreadySent')}</p>
@@ -272,7 +280,7 @@ export default function GiveKudosSheet({
             </button>
           </div>
         )}
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

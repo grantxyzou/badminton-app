@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -66,6 +66,8 @@ export default function ForgotPasswordSheet({ open, onClose }: Props) {
     }
   }
 
+  const formId = useId();
+
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('forgotTitle')}>
       <BottomSheetHeader onClose={onClose} closeLabel={tClose('close')}>{t('forgotTitle')}</BottomSheetHeader>
@@ -79,7 +81,7 @@ export default function ForgotPasswordSheet({ open, onClose }: Props) {
             {t('forgotSent')}
           </p>
         ) : (
-          <form onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <form id={formId} onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('forgotBody')}
             </p>
@@ -97,18 +99,28 @@ export default function ForgotPasswordSheet({ open, onClose }: Props) {
               maxLength={254}
               autoFocus
             />
+          </form>
+        )}
+      </BottomSheetBody>
+      {/* The action, pinned to the bottom of the screen with the error about it
+          just above; `form={formId}` keeps Enter in the field submitting. The
+          sent confirmation has nothing left to answer. */}
+      {!sent && (
+        <BottomSheetFooter>
+          <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
             {error && <p className="field-error">{error}</p>}
             <button
               type="submit"
+              form={formId}
               disabled={busy || !email.trim()}
               className="cc-btn cc-btn-primary cc-btn-lg"
               style={{ width: '100%' }}
             >
               {busy ? t('forgotSending') : t('forgotCta')}
             </button>
-          </form>
-        )}
-      </BottomSheetBody>
+          </div>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { useEffect, useId, useState } from 'react';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { GUEST_NAME_MAX } from '@/lib/plusOne';
 import { useOnline } from '@/lib/useOnline';
 
@@ -39,6 +39,7 @@ export default function AddGuestSheet({
   onAdded: () => void;
 }) {
   const online = useOnline();
+  const formId = useId();
   const [hostId, setHostId] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -100,7 +101,7 @@ export default function AddGuestSheet({
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Add a guest</span>
       </BottomSheetHeader>
       <BottomSheetBody>
-        <form onSubmit={submit} className="flex flex-col gap-4 motion-fade">
+        <form id={formId} onSubmit={submit} className="flex flex-col gap-4 motion-fade">
           <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>
             For a member who asked you instead of adding them in the app. The guest shows as “Jenny (Josh)” and
             leaves if their member cancels.
@@ -126,16 +127,19 @@ export default function AddGuestSheet({
               autoComplete="off"
             />
           </label>
-          {error && <p className="field-error" role="alert">{error}</p>}
-          <button
-            type="submit"
-            className="cc-btn cc-btn-primary cc-btn-lg"
-            disabled={!host || !name.trim() || busy || !online}
-          >
-            {busy ? 'Adding…' : host ? `Add ${host.name}’s guest` : 'Add guest'}
-          </button>
         </form>
       </BottomSheetBody>
+      <BottomSheetFooter className="flex flex-col gap-3">
+        {error && <p className="field-error" role="alert">{error}</p>}
+        <button
+          type="submit"
+          form={formId}
+          className="cc-btn cc-btn-primary cc-btn-lg"
+          disabled={!host || !name.trim() || busy || !online}
+        >
+          {busy ? 'Adding…' : host ? `Add ${host.name}’s guest` : 'Add guest'}
+        </button>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

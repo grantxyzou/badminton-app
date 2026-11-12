@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import ActionRow from '@/components/primitives/ActionRow';
@@ -143,7 +143,7 @@ export default function ClaimLinkSheet({
               Let in only people you know asked — the link is in the whole chat.
             </p>
 
-            {state.link ? (
+            {state.link && (
               <>
                 <label className="flex flex-col gap-2">
                   <span className="section-label-muted">The link</span>
@@ -158,15 +158,9 @@ export default function ClaimLinkSheet({
                     style={{ fontFamily: 'var(--font-mono)' }}
                   />
                 </label>
-                {error && <p className="field-error" role="alert">{error}</p>}
-                <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" onClick={() => void share()} disabled={busy}>
-                  <span key={String(copied)} className={copied === null ? undefined : 'motion-fade'}>
-                    {copied ? 'Copied ✓' : 'Share the link'}
-                  </span>
-                </button>
                 {/* Retiring a live link is a second, deliberate tap — an action
                     row then a confirm, as the bench's "Remove" is. */}
-                {!confirmingNew ? (
+                {!confirmingNew && (
                   <ActionRow
                     icon="link"
                     label="New link"
@@ -174,45 +168,57 @@ export default function ClaimLinkSheet({
                     onClick={() => setConfirmingNew(true)}
                     disabled={busy || !online}
                   />
-                ) : (
-                  /* Two choices side by side, as in the bench's confirmations. */
-                  <div className="motion-fade flex flex-col gap-3">
-                    <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-                      The old link stops working at once, and anyone waiting with it will need to ask again.
-                    </p>
-                    <div className="flex gap-3">
-                      <button type="button" className="cc-btn cc-btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmingNew(false)}>
-                        Keep this one
-                      </button>
-                      <button
-                        type="button"
-                        className="cc-btn cc-btn-primary"
-                        style={{ flex: 1 }}
-                        onClick={() => void makeNew()}
-                        disabled={busy || !online}
-                      >
-                        {busy ? 'Making…' : 'Make a new link'}
-                      </button>
-                    </div>
-                  </div>
                 )}
-              </>
-            ) : (
-              <>
-                {error && <p className="field-error" role="alert">{error}</p>}
-                <button
-                  type="button"
-                  className="cc-btn cc-btn-primary cc-btn-lg"
-                  onClick={() => void makeNew()}
-                  disabled={busy || !online}
-                >
-                  {busy ? 'Making…' : 'Make the club link'}
-                </button>
               </>
             )}
           </div>
         )}
       </BottomSheetBody>
+      {!loadError && state && (
+        <BottomSheetFooter className="flex flex-col gap-3">
+          {error && <p className="field-error" role="alert">{error}</p>}
+          {state.link ? (
+            <>
+              <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" onClick={() => void share()} disabled={busy}>
+                <span key={String(copied)} className={copied === null ? undefined : 'motion-fade'}>
+                  {copied ? 'Copied ✓' : 'Share the link'}
+                </span>
+              </button>
+              {confirmingNew && (
+                /* Two choices side by side, as in the bench's confirmations. */
+                <div className="motion-fade flex flex-col gap-3">
+                  <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                    The old link stops working at once, and anyone waiting with it will need to ask again.
+                  </p>
+                  <div className="flex gap-3">
+                    <button type="button" className="cc-btn cc-btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmingNew(false)}>
+                      Keep this one
+                    </button>
+                    <button
+                      type="button"
+                      className="cc-btn cc-btn-primary"
+                      style={{ flex: 1 }}
+                      onClick={() => void makeNew()}
+                      disabled={busy || !online}
+                    >
+                      {busy ? 'Making…' : 'Make a new link'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <button
+              type="button"
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              onClick={() => void makeNew()}
+              disabled={busy || !online}
+            >
+              {busy ? 'Making…' : 'Make the club link'}
+            </button>
+          )}
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

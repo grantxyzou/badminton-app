@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import TopBar from '@/components/primitives/TopBar';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import SettingsList from './SettingsList';
 import type { GroupListEntry } from '@/lib/useCurrentGroup';
 
@@ -245,17 +245,19 @@ function StepDownSheet({ open, onClose }: { open: boolean; onClose: () => void }
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('stepDown.title')}</span>
       </BottomSheetHeader>
       <BottomSheetBody>
+        <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('stepDown.body')}</p>
+      </BottomSheetBody>
+      <BottomSheetFooter>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('stepDown.body')}</p>
+          {error && <p className="field-error" role="alert">{error}</p>}
           <button type="button" className="cc-btn cc-btn-secondary" disabled={busy} onClick={() => void stepDown('admin')}>
             {t('stepDown.toAdmin')}
           </button>
           <button type="button" className="cc-btn cc-btn-danger" disabled={busy} onClick={() => void stepDown('member')}>
             {t('stepDown.toMember')}
           </button>
-          {error && <p className="field-error" role="alert">{error}</p>}
         </div>
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

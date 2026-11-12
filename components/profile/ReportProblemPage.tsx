@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import TopBar from '@/components/primitives/TopBar';
-import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '@/components/BottomSheet';
 import { REPORT_CATEGORIES, type ReportCategory } from '@/lib/reportCategories';
 import { useOnline } from '@/lib/useOnline';
 
@@ -160,12 +160,14 @@ export default function ReportProblemPage({ name, onBack }: Props) {
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('replaceTitle')}</span>
         </BottomSheetHeader>
         <BottomSheetBody>
+          <p className="fs-md" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('replaceBody')}</p>
+        </BottomSheetBody>
+        <BottomSheetFooter>
           <div className="flex flex-col gap-3">
-            <p className="fs-md" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('replaceBody')}</p>
             <button type="button" className="btn-primary" onClick={() => asking && apply(asking)}>{t('replace')}</button>
             <button type="button" className="btn-ghost" onClick={() => setAsking(null)}>{t('keep')}</button>
           </div>
-        </BottomSheetBody>
+        </BottomSheetFooter>
       </BottomSheet>
     </div>
   );

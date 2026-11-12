@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { KUDOS_TAGS, TAG_ICON, type KudosTag } from '@/lib/kudos';
@@ -349,16 +349,6 @@ export default function SteppedGameLoggerSheet({
               <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
                 {step === 'partner' ? t('rosterNote') : t('pickTwo')}
               </p>
-
-              {step === 'opponents' && (
-                <Footer
-                  backLabel={t('back')}
-                  onBack={() => setStep('partner')}
-                  nextLabel={t('next')}
-                  onNext={() => setStep('score')}
-                  nextDisabled={opponents.length === 0}
-                />
-              )}
             </div>
           )}
 
@@ -399,17 +389,6 @@ export default function SteppedGameLoggerSheet({
               >
                 {mine > theirs ? t('youWon') : mine < theirs ? t('theyWon') : t('level')}
               </p>
-              {error && <ErrorState message={t('saveError')} />}
-              {!online && (
-                <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('offline')}</p>
-              )}
-              <Footer
-                backLabel={t('back')}
-                onBack={() => setStep('opponents')}
-                nextLabel={busy ? t('saving') : t('logIt')}
-                onNext={submit}
-                nextDisabled={busy || !online}
-              />
             </div>
           )}
 
@@ -472,17 +451,48 @@ export default function SteppedGameLoggerSheet({
                   })}
                 </div>
               </div>
-
-              <Footer
-                backLabel={t('logAnother')}
-                onBack={reset}
-                nextLabel={t('done')}
-                onNext={onClose}
-              />
             </div>
           )}
         </div>
       </BottomSheetBody>
+      {step === 'opponents' && (
+        <BottomSheetFooter>
+          <Footer
+            backLabel={t('back')}
+            onBack={() => setStep('partner')}
+            nextLabel={t('next')}
+            onNext={() => setStep('score')}
+            nextDisabled={opponents.length === 0}
+          />
+        </BottomSheetFooter>
+      )}
+      {step === 'score' && (
+        <BottomSheetFooter>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+            {error && <ErrorState message={t('saveError')} />}
+            {!online && (
+              <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('offline')}</p>
+            )}
+            <Footer
+              backLabel={t('back')}
+              onBack={() => setStep('opponents')}
+              nextLabel={busy ? t('saving') : t('logIt')}
+              onNext={submit}
+              nextDisabled={busy || !online}
+            />
+          </div>
+        </BottomSheetFooter>
+      )}
+      {step === 'done' && (
+        <BottomSheetFooter>
+          <Footer
+            backLabel={t('logAnother')}
+            onBack={reset}
+            nextLabel={t('done')}
+            onNext={onClose}
+          />
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }

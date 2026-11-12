@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useSkillText } from '@/lib/useSkillText';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { SKILLS } from '@/lib/assessment';
 import { useOnline } from '@/lib/useOnline';
 
@@ -248,7 +248,7 @@ export default function CheckInSheet({
           )}
         </BottomSheetHeader>
 
-        <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(var(--space-8), env(safe-area-inset-bottom))' }}>
+        <BottomSheetBody bare className="px-5 pb-8">
           {/* Intro + reconciliation mirror */}
           {/* Each screen is keyed and fades in (opacity only: fourteen of
               them in a row cannot afford to move). */}
@@ -275,9 +275,6 @@ export default function CheckInSheet({
                 <EmptyState>{t('assess.noGames')}</EmptyState>
               ) : null}
               <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: '0', lineHeight: 1.5 }}>{t('assess.ratePrompt')}</p>
-              <button type="button" onClick={() => setStep(0)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
-                {t('assess.start')}
-              </button>
             </div>
           )}
 
@@ -314,56 +311,6 @@ export default function CheckInSheet({
                   </button>
                 );
               })}
-                {/* Skip becomes its own control. It used to be the SAME
-                    button as Next with a flipped label, so the only way to
-                    skip was to not answer — and the label changed under your
-                    finger the moment you did. Two controls, one meaning
-                    each. */}
-                <div style={{ display: 'flex', gap: 'var(--space-4)', paddingTop: 'var(--space-1)' }}>
-                  <button
-                    type="button"
-                    onClick={() => setStep((s) => Math.max(s - 1, -1))}
-                    className="cc-btn cc-btn-ghost"
-                    style={{ flex: 1, minHeight: 44 }}
-                  >
-                    {t('assess.back')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Skipping clears any rating, so the control means what
-                      // it says rather than "keep whatever was seeded".
-                      setRatings((r) => {
-                        const next = { ...r };
-                        delete next[skill.key];
-                        return next;
-                      });
-                      setStep((s) => Math.min(s + 1, total));
-                    }}
-                    className="cc-btn cc-btn-ghost"
-                    style={{ flex: 1, minHeight: 44 }}
-                  >
-                    {t('assess.skip')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep((s) => Math.min(s + 1, total))}
-                    className="cc-btn cc-btn-primary"
-                    style={{ flex: 1.4, minHeight: 44 }}
-                  >
-                    {step === total - 1 ? t('assess.review') : t('assess.next')}
-                  </button>
-                </div>
-                {/* An escape hatch for someone re-rating three skills who
-                    does not want to tap through the other eleven. */}
-                <button
-                  type="button"
-                  onClick={() => setStep(total)}
-                  className="cc-btn cc-btn-ghost"
-                  style={{ alignSelf: 'center', display: 'block', margin: '0 auto', minHeight: 44 }}
-                >
-                  {t('assess.stopHere')}
-                </button>
             </div>
           )}
 
@@ -423,23 +370,6 @@ export default function CheckInSheet({
                 <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0' }}>{t('assess.reviewPrompt')}</p>
               )}
 
-              {error && <ErrorState message={error} />}
-              {!online && (
-                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>
-              )}
-              <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-                <button
-                  type="button"
-                  onClick={() => setStep(-1)}
-                  className="cc-btn cc-btn-ghost"
-                  style={{ flex: 1, minHeight: 44 }}
-                >
-                  {t('assess.startOver')}
-                </button>
-                <button type="button" onClick={submit} disabled={!online || busy || ratedCount === 0} className="cc-btn cc-btn-primary" style={{ flex: 1.6, minHeight: 44 }}>
-                  {busy ? t('assess.saving') : t('assess.save')}
-                </button>
-              </div>
             </div>
           )}
 
@@ -489,12 +419,102 @@ export default function CheckInSheet({
               <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                 {t('assess.savedBody')}
               </p>
-              <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
-                {t('assess.done')}
-              </button>
             </div>
           )}
         </BottomSheetBody>
+        {step === -1 && (
+          <BottomSheetFooter>
+            <button type="button" onClick={() => setStep(0)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+              {t('assess.start')}
+            </button>
+          </BottomSheetFooter>
+        )}
+        {skill && (
+          <BottomSheetFooter>
+            <div className="space-y-3">
+              {/* Skip becomes its own control. It used to be the SAME
+                  button as Next with a flipped label, so the only way to
+                  skip was to not answer — and the label changed under your
+                  finger the moment you did. Two controls, one meaning
+                  each. */}
+              <div style={{ display: 'flex', gap: 'var(--space-4)', paddingTop: 'var(--space-1)' }}>
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => Math.max(s - 1, -1))}
+                  className="cc-btn cc-btn-ghost"
+                  style={{ flex: 1, minHeight: 44 }}
+                >
+                  {t('assess.back')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Skipping clears any rating, so the control means what
+                    // it says rather than "keep whatever was seeded".
+                    setRatings((r) => {
+                      const next = { ...r };
+                      delete next[skill.key];
+                      return next;
+                    });
+                    setStep((s) => Math.min(s + 1, total));
+                  }}
+                  className="cc-btn cc-btn-ghost"
+                  style={{ flex: 1, minHeight: 44 }}
+                >
+                  {t('assess.skip')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => Math.min(s + 1, total))}
+                  className="cc-btn cc-btn-primary"
+                  style={{ flex: 1.4, minHeight: 44 }}
+                >
+                  {step === total - 1 ? t('assess.review') : t('assess.next')}
+                </button>
+              </div>
+              {/* An escape hatch for someone re-rating three skills who
+                  does not want to tap through the other eleven. */}
+              <button
+                type="button"
+                onClick={() => setStep(total)}
+                className="cc-btn cc-btn-ghost"
+                style={{ alignSelf: 'center', display: 'block', margin: '0 auto', minHeight: 44 }}
+              >
+                {t('assess.stopHere')}
+              </button>
+            </div>
+          </BottomSheetFooter>
+        )}
+        {step === total && (
+          <BottomSheetFooter>
+            <div className="space-y-4">
+              {error && <ErrorState message={error} />}
+              {!online && (
+                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>
+              )}
+              <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+                <button
+                  type="button"
+                  onClick={() => setStep(-1)}
+                  className="cc-btn cc-btn-ghost"
+                  style={{ flex: 1, minHeight: 44 }}
+                >
+                  {t('assess.startOver')}
+                </button>
+                <button type="button" onClick={submit} disabled={!online || busy || ratedCount === 0} className="cc-btn cc-btn-primary" style={{ flex: 1.6, minHeight: 44 }}>
+                  {busy ? t('assess.saving') : t('assess.save')}
+                </button>
+              </div>
+            </div>
+          </BottomSheetFooter>
+        )}
+        {step === SAVED && (
+          <BottomSheetFooter>
+            <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+              {t('assess.done')}
+            </button>
+          </BottomSheetFooter>
+        )}
       </div>
     </BottomSheet>
   );

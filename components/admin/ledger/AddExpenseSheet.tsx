@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import BirdSheetField from '@/components/admin/CommandCenter/BirdSheetField';
 import { useOnline } from '@/lib/useOnline';
 import { todayIso } from '@/lib/stringingDue';
@@ -109,7 +109,11 @@ export default function AddExpenseSheet({ open, onClose, onSaved }: { open: bool
               ))}
             </div>
           </BirdSheetField>
-          {error && <p className="field-error" role="alert">{error}</p>}
+        </div>
+      </BottomSheetBody>
+      <BottomSheetFooter>
+        <div className="flex flex-col" style={{ gap: 'var(--space-3)' }}>
+          {error && <p className="field-error" role="alert" style={{ margin: 0 }}>{error}</p>}
           <div className="flex items-center" style={{ gap: 'var(--space-3)' }}>
             <div style={{ flex: 1 }} />
             <button type="button" className="cc-btn cc-btn-ghost" onClick={onClose} disabled={saving}>
@@ -120,7 +124,7 @@ export default function AddExpenseSheet({ open, onClose, onSaved }: { open: bool
             </button>
           </div>
         </div>
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

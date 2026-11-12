@@ -7,7 +7,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
-import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '@/components/BottomSheet';
 import { markExternalExcursion } from '@/lib/excursion';
 import { usePageBack } from '@/lib/pageStack';
 import { useOnline } from '@/lib/useOnline';
@@ -242,8 +242,10 @@ export default function GiveGiftPage({ clubName, onBack }: Props) {
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('leaveTitle')}</span>
         </BottomSheetHeader>
         <BottomSheetBody>
+          <p className="fs-md" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('leaveBody')}</p>
+        </BottomSheetBody>
+        <BottomSheetFooter>
           <div className="flex flex-col gap-3">
-            <p className="fs-md" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('leaveBody')}</p>
             <button type="button" className="btn-primary" onClick={() => setConfirmLeave(false)}>{t('stay')}</button>
             <button
               type="button"
@@ -257,7 +259,7 @@ export default function GiveGiftPage({ clubName, onBack }: Props) {
               {t('leave')}
             </button>
           </div>
-        </BottomSheetBody>
+        </BottomSheetFooter>
       </BottomSheet>
     </div>
   );

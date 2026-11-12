@@ -21,7 +21,7 @@ import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import UnpaidSessionsCard, { CREDIT_PATH, unpaidPath } from '@/components/UnpaidSessionsCard';
 import SkillLeadCard, { SKILL_LEAD_HEIGHT } from './home/SkillLeadCard';
 import { levelPath } from '@/lib/levelRead';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import WaitlistPingSheet, { waitlistPingKind, type WaitlistPingKind } from '@/components/home/WaitlistPingSheet';
 import MigrateSheet from '@/components/MigrateSheet';
 import type { UsePushResult } from '@/lib/usePush';
@@ -1142,16 +1142,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 {myGuests.length > 0 &&
                   ` ${tGuest('cancelNote', { name: format.list(myGuests.map((g) => g.guestName ?? g.name), { type: 'conjunction' }) })}`}
               </p>
-              {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {/* The destructive action leads and is named for what it does. */}
-                <button type="button" onClick={() => void handleCancel()} disabled={!online} className="cc-btn cc-btn-danger cc-btn-lg">
-                  {isWaitlisted ? tPlayers('leaveSheetConfirm') : tPlayers('cancelSheetConfirm')}
-                </button>
-                <button type="button" onClick={closeCancel} className="cc-btn cc-btn-ghost cc-btn-lg">
-                  {tPlayers('sheetKeep')}
-                </button>
-              </div>
             </div>
           ) : (
             <div key="late" className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -1162,8 +1152,26 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 title={tPlayers('lateCancelTitle', { hours: lateCancelHours })}
                 body={tPlayers('lateCancelBody')}
               />
-              {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            </div>
+          )}
+        </BottomSheetBody>
+        {/* The answer, pinned to the bottom of the screen with the error about
+            it just above; each state has its own pair. */}
+        <BottomSheetFooter>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {cancelError && <p className="field-error" role="alert">{cancelError}</p>}
+            {lateCancelHours === null ? (
+              <div key="cancel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {/* The destructive action leads and is named for what it does. */}
+                <button type="button" onClick={() => void handleCancel()} disabled={!online} className="cc-btn cc-btn-danger cc-btn-lg">
+                  {isWaitlisted ? tPlayers('leaveSheetConfirm') : tPlayers('cancelSheetConfirm')}
+                </button>
+                <button type="button" onClick={closeCancel} className="cc-btn cc-btn-ghost cc-btn-lg">
+                  {tPlayers('sheetKeep')}
+                </button>
+              </div>
+            ) : (
+              <div key="late" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                 <button type="button" onClick={() => void handleCancel(true)} disabled={!online} className="cc-btn cc-btn-danger cc-btn-lg">
                   {tPlayers('lateCancelConfirm')}
                 </button>
@@ -1171,9 +1179,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   {tPlayers('sheetKeep')}
                 </button>
               </div>
-            </div>
-          )}
-        </BottomSheetBody>
+            )}
+          </div>
+        </BottomSheetFooter>
       </BottomSheet>
       {/* Opened on a specific person from the roster, so the sheet skips its
           picker. Same sheet as Stats: one flow, two entry points. */}

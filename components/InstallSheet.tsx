@@ -1,6 +1,6 @@
 'use client';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from './BottomSheet';
 import { isIOS } from '@/lib/standalone';
 import { useClientValue } from '@/lib/useClientValue';
 
@@ -73,10 +73,12 @@ export default function InstallSheet({ open, onClose }: Props) {
               ios.note describes the Android way, android.note the iOS way. */}
           {ios ? t('ios.note') : t('android.note')}
         </p>
+      </BottomSheetBody>
+      <BottomSheetFooter>
         <button type="button" onClick={onClose} className="cc-btn cc-btn-primary" style={{ width: '100%', marginTop: 'var(--space-1)' }}>
           {t('done')}
         </button>
-      </BottomSheetBody>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

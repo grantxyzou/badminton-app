@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import EmptyState from '@/components/primitives/EmptyState';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody, SheetCloseButton } from './BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from './BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import ErrorState from './primitives/ErrorState';
 
@@ -97,33 +97,24 @@ export default function MigrateSheet({ open, onClose }: Props) {
           {failure === 'server' && <ErrorState message={t('errorServer')} />}
 
           {minted && !expired && (
-            <>
-              <a
-                href={`bpm://migrate?c=${minted.linkCode}`}
-                className="btn-primary"
-                style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            <div>
+              <p className="section-label" style={{ margin: '0 0 var(--space-2)' }}>{t('orCode')}</p>
+              <p
+                aria-label={t('codeLabel')}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--fs-stat-lg)',
+                  letterSpacing: '0.2em',
+                  color: 'var(--text-primary)',
+                  margin: '0',
+                }}
               >
-                {t('openInApp')}
-              </a>
-              <div>
-                <p className="section-label" style={{ margin: '0 0 var(--space-2)' }}>{t('orCode')}</p>
-                <p
-                  aria-label={t('codeLabel')}
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 'var(--fs-stat-lg)',
-                    letterSpacing: '0.2em',
-                    color: 'var(--text-primary)',
-                    margin: '0',
-                  }}
-                >
-                  {minted.shortCode.slice(0, 3)} {minted.shortCode.slice(3)}
-                </p>
-                <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 'var(--space-2) 0 0' }}>
-                  {t('codeHelp')} · {t('expiresIn', { time: `${mm}:${ss}` })}
-                </p>
-              </div>
-            </>
+                {minted.shortCode.slice(0, 3)} {minted.shortCode.slice(3)}
+              </p>
+              <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 'var(--space-2) 0 0' }}>
+                {t('codeHelp')} · {t('expiresIn', { time: `${mm}:${ss}` })}
+              </p>
+            </div>
           )}
 
           {(expired || (failure && failure !== 'auth')) && online && (
@@ -137,6 +128,19 @@ export default function MigrateSheet({ open, onClose }: Props) {
           </p>
         </div>
       </BottomSheetBody>
+      {/* The main way across, pinned to the bottom of the screen while a code
+          is live; the typed code above is the fallback. */}
+      {minted && !expired && (
+        <BottomSheetFooter>
+          <a
+            href={`bpm://migrate?c=${minted.linkCode}`}
+            className="btn-primary"
+            style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+          >
+            {t('openInApp')}
+          </a>
+        </BottomSheetFooter>
+      )}
     </BottomSheet>
   );
 }
