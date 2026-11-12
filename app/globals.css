@@ -8629,9 +8629,12 @@ html[data-pane-flip='b'] [data-app-shell] {
   main[data-page-shell]:has(> [data-tab-panel='home']:not([hidden])) {
     max-width: var(--panes-max-w);
   }
-  /* Left pane: the week, alone. Right pane, top to bottom: the install and
-     push nudges, then your account — banners are never a header across both.
-     Three rows because the right side holds at most three things; the last
+  /* RIGHT pane: the week, alone — the page that opens (Grant, 2026-11-04:
+     "I would want it on the right cuz that's the elevation opening up more
+     like a page"). LEFT pane, top to bottom: the install and push nudges,
+     then your account — banners are never a header across both. Apple's Mail
+     example puts the primary list on the left; the book reading won here.
+     Three rows because the left side holds at most three things; the last
      row is 1fr, so whatever height the week needs beyond them lands there
      and never opens a gap between the nudges and the account. */
   .bpm-home-stack {
@@ -8643,11 +8646,11 @@ html[data-pane-flip='b'] [data-app-shell] {
     align-items: start;
   }
   .bpm-home-stack > .bpm-home-week {
-    grid-column: 1;
+    grid-column: 2;
     grid-row: 1 / -1;
   }
   .bpm-home-stack > :not(.bpm-home-week) {
-    grid-column: 2;
+    grid-column: 1;
   }
   /* A nudge renders nothing at all when it is hidden, so this margin only
      ever separates two real cards. */
@@ -8660,17 +8663,20 @@ html[data-pane-flip='b'] [data-app-shell] {
   .rail-bar {
     max-width: var(--panes-max-w);
   }
-  /* Home's loading frame is the left pane's cards: draw it that wide. */
+  /* Home's loading frame is the week's cards: draw it the right pane's
+     width, on the right, where the week lands. */
   .bpm-home-skeleton {
     max-width: calc((100% - var(--fold-gap)) / 2);
+    margin-left: auto;
   }
-  /* A sheet and a toast open in the right half, beside the pane they came
-     from (Apple's Mail: list and message side by side), never across the
-     fold. */
+  /* A sheet and a toast open in the LEFT half — the other page — so they
+     never cover the week they were raised from, and never cross the fold.
+     Fixed at left:0, so the shell's own side padding keeps them off the edge
+     and the half-width cap (which already subtracts it) ends them at the gap. */
   .bottom-sheet,
   .toast-stack,
   .top-toast {
-    margin-left: calc(50vw + var(--fold-gap) / 2);
+    margin-left: var(--shell-pad-x);
     margin-right: auto;
   }
   .toast-stack,

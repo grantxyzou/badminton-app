@@ -22,6 +22,8 @@ const DAY = 86_400_000;
 const MIGRATE_VIA = 'migrate';
 /** A move is one row per person per device; a club is under a hundred people. */
 const MIGRATIONS_LIMIT = 1000;
+/** The inbox rows read, newest first — the same bound as `inboxCount` in lib/paymentsInbox.ts. */
+const INBOX_ROWS = 200;
 
 export const SESSIONS_SHOWN = [8, 12, 26] as const;
 export type SessionsShown = (typeof SESSIONS_SHOWN)[number];
@@ -40,6 +42,7 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     ensureContainer('kudos', '/recipientMemberId'),
     ensureContainer('stringingJobs', '/memberId'),
     ensureContainer('pushSubscriptions', '/memberId'),
+    ensureContainer('payments', '/id'),
   ]);
 
   // Sessions are one doc a week, so the group's whole list is small. The
@@ -104,8 +107,10 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     where: 'c.createdAt >= @since',
     params: [{ name: '@since', value: since28 }],
   });
-  const jobRows = await scope.query<{ memberId?: unknown; createdAt?: unknown }>('stringingJobs', {
-    select: 'c.memberId, c.createdAt',
+  const jobRows = await scope.query<{
+    memberId?: unknown; createdAt?: unknown; readyBy?: unknown; claimedAt?: unknown; history?: unknown;
+  }>('stringingJobs', {
+    select: 'c.memberId, c.createdAt, c.readyBy, c.claimedAt, c.history',
     where: 'c.createdAt >= @since',
     params: [{ name: '@since', value: since28 }],
   });
@@ -152,6 +157,14 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     ],
     limit: MIGRATIONS_LIMIT,
   });
+  // The e-transfer inbox: the newest rows, the same bounded read the admin
+  // card counts "Needs a look" from (`inboxCount`), so the two agree. Status
+  // and dates only — no sender, amount or memo leaves this function.
+  const paymentRows = await scope.query<{ status?: unknown; matchedBy?: unknown; receivedAt?: unknown }>('payments', {
+    select: 'c.status, c.matchedBy, c.receivedAt',
+    orderBy: 'c.receivedAt DESC',
+    limit: INBOX_ROWS,
+  });
   const { resources: pushRows } = await getContainer('pushSubscriptions')
     .items.query<{ memberId?: unknown }>({ query: 'SELECT c.memberId FROM c' })
     .fetchAll();
@@ -168,7 +181,26 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
         : [],
     ),
     stringingJobs: jobRows.flatMap((r) =>
-      typeof r.memberId === 'string' && typeof r.createdAt === 'string' ? [{ memberId: r.memberId, createdAt: r.createdAt }] : [],
+      typeof r.memberId === 'string' && typeof r.createdAt === 'string'
+        ? [{
+            memberId: r.memberId,
+            createdAt: r.createdAt,
+            readyBy: typeof r.readyBy === 'string' ? r.readyBy : null,
+            ...(typeof r.claimedAt === 'string' ? { claimedAt: r.claimedAt } : {}),
+            history: Array.isArray(r.history)
+              ? r.history.flatMap((h: { status?: unknown; at?: unknown; by?: unknown }) =>
+                  typeof h?.status === 'string' && typeof h.at === 'string'
+                    ? [{ status: h.status, at: h.at, by: typeof h.by === 'string' ? h.by : null }]
+                    : [],
+                )
+              : [],
+          }]
+        : [],
+    ),
+    etransfers: paymentRows.flatMap((r) =>
+      typeof r.status === 'string' && typeof r.receivedAt === 'string'
+        ? [{ status: r.status, receivedAt: r.receivedAt, ...(typeof r.matchedBy === 'string' ? { matchedBy: r.matchedBy } : {}) }]
+        : [],
     ),
     pushSubscriptions: pushRows.flatMap((r) => (typeof r.memberId === 'string' ? [{ memberId: r.memberId }] : [])),
     // Re-checked in the math (window, roster); the mock store applies no WHERE.

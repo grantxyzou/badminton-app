@@ -60,16 +60,17 @@ describe('foldable layout', () => {
     // Nothing in the pane block may stretch across the grid's two columns.
     expect(pane).not.toMatch(/grid-column:\s*1\s*\/\s*-1/);
     expect(pane).not.toMatch(/grid-column:\s*span\s*2/);
-    // The week alone on the left; everything else — the nudges included — on the right.
-    expect(pane).toMatch(/\.bpm-home-stack > \.bpm-home-week\s*\{\s*grid-column:\s*1;\s*grid-row:\s*1 \/ -1;/);
-    expect(pane).toMatch(/\.bpm-home-stack > :not\(\.bpm-home-week\)\s*\{\s*grid-column:\s*2;/);
-    // Every version of the week's group carries the class, or one would fall into the right pane.
+    // The week alone on the RIGHT — the page that opens (Grant, 2026-11-04);
+    // everything else — the nudges included — on the left.
+    expect(pane).toMatch(/\.bpm-home-stack > \.bpm-home-week\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1 \/ -1;/);
+    expect(pane).toMatch(/\.bpm-home-stack > :not\(\.bpm-home-week\)\s*\{\s*grid-column:\s*1;/);
+    // Every version of the week's group carries the class, or one would fall into the left pane.
     const home = readFileSync(join(__dirname, '..', 'components', 'HomeTab.tsx'), 'utf8');
     const weekGroups = home.match(/className="bpm-home-group[^"]*" aria-label=\{t\('groups\.session'\)\}/g) ?? [];
     expect(weekGroups.length).toBeGreaterThan(0);
     for (const g of weekGroups) expect(g).toContain('bpm-home-week');
-    // The floating notices take the right half like a sheet.
-    expect(pane).toMatch(/\.bottom-sheet,\s*\.toast-stack,\s*\.top-toast\s*\{\s*margin-left:\s*calc\(50vw \+ var\(--fold-gap\) \/ 2\)/);
+    // The floating notices take the LEFT half like a sheet, off the week.
+    expect(pane).toMatch(/\.bottom-sheet,\s*\.toast-stack,\s*\.top-toast\s*\{\s*margin-left:\s*var\(--shell-pad-x\);\s*margin-right:\s*auto;/);
   });
 
   it('is the last rule block in the file, so it outranks the rules it moves', () => {
@@ -113,9 +114,11 @@ describe('foldable layout', () => {
     expect(pane).toMatch(/main\[data-page-shell\]:has\(> \[data-tab-panel='home'\]:not\(\[hidden\]\)\)\s*\{\s*max-width:\s*var\(--panes-max-w\)/);
   });
 
-  it('opens a sheet in the right half, and only there', () => {
-    expect(pane).toMatch(/\.bottom-sheet,[^{]*\{\s*margin-left:\s*calc\(50vw \+ var\(--fold-gap\) \/ 2\)/);
+  it('opens a sheet in the left half, and only there', () => {
+    expect(pane).toMatch(/\.bottom-sheet,[^{]*\{\s*margin-left:\s*var\(--shell-pad-x\);/);
     expect(pane).toMatch(/--sheet-max-w:\s*min\(32rem, var\(--half-w\)\)/);
+    // Outside the pane block the sheet is still centred (margin-inline: auto).
+    expect(topLevelRules('.bottom-sheet').join('')).toMatch(/margin-inline:\s*auto/);
   });
 
   it('keeps 16px page sides on a portrait phone, and the column centred under a side inset', () => {
@@ -124,9 +127,9 @@ describe('foldable layout', () => {
     expect(topLevelRules('main[data-page-shell]').join('')).toMatch(/padding-inline:\s*var\(--shell-pad-x\)/);
   });
 
-  it("draws Home's loading frame as the left pane", () => {
+  it("draws Home's loading frame as the right pane", () => {
     const skeleton = readFileSync(join(__dirname, '..', 'components', 'primitives', 'CardSkeleton.tsx'), 'utf8');
     expect(skeleton).toMatch(/className="space-y-5 bpm-home-skeleton"/);
-    expect(pane).toMatch(/\.bpm-home-skeleton\s*\{\s*max-width:\s*calc\(\(100% - var\(--fold-gap\)\) \/ 2\)/);
+    expect(pane).toMatch(/\.bpm-home-skeleton\s*\{\s*max-width:\s*calc\(\(100% - var\(--fold-gap\)\) \/ 2\);\s*margin-left:\s*auto;/);
   });
 });
