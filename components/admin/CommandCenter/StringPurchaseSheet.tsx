@@ -8,8 +8,8 @@ import type { CatalogItem, StringPurchase } from '@/lib/types';
 import DatePicker from '@/components/DatePicker';
 import MoneyInput from '@/components/primitives/MoneyInput';
 import { ColourDot } from '@/components/stringing/StringColours';
-import { stringColours } from '@/lib/stringShelf';
-import { colourIdOf, PALETTE_EN, STRING_PALETTE, type StringColourId } from '@/lib/stringPalette';
+import { makerColourIds } from '@/lib/stringShelf';
+import { reelColourEnglish, STRING_PALETTE, type CustomColour, type ReelColourId } from '@/lib/stringPalette';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -35,9 +35,11 @@ interface Props {
   onSaved: () => void;
   /** The offered strings, with the catalog row for each linked one and the
    *  reel colours the stringer set for it (empty when none are said). */
-  offered: Array<{ label: string; item: CatalogItem | null; colours?: StringColourId[] }>;
+  offered: Array<{ label: string; item: CatalogItem | null; colours?: ReelColourId[] }>;
   /** Preselect a string: the sheet is opened from that string's own sheet. */
   initialLabel?: string;
+  /** The club's own colours, for their names. */
+  customColours?: CustomColour[];
 }
 
 /**
@@ -47,7 +49,7 @@ interface Props {
  * cost, when. Mount it with a fresh `key` per opening, like the bird sheet:
  * the fields are `useState` initialisers.
  */
-export default function StringPurchaseSheet({ open, onClose, onSaved, offered, initialLabel }: Props) {
+export default function StringPurchaseSheet({ open, onClose, onSaved, offered, initialLabel, customColours = [] }: Props) {
   const first = offered.find((o) => o.label === initialLabel) ?? offered[0];
   const [label, setLabel] = useState(first?.label ?? '');
   const [unit, setUnit] = useState<StringPurchase['unit']>('reel');
@@ -60,19 +62,19 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
   const [date, setDate] = useState(() => todayIso());
   const [notes, setNotes] = useState('');
   /** `null` is "Mixed / not sure": the purchase stores no colour. */
-  const [color, setColor] = useState<StringColourId | null>(null);
+  const [color, setColor] = useState<ReelColourId | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const chosen = offered.find((o) => o.label === label) ?? null;
   /* The colours this reel could be (docs/plans/string-stock-by-colour.md):
-     the stringer's reel colours for the string, else the maker's (single
-     colours only — a two-tone is no palette colour), else the whole palette
-     for a string nothing describes. */
-  const colourChoices: StringColourId[] = (() => {
+     the stringer's reel colours for the string, else the maker's (a
+     two-tone is its set, "Red/White" red mains), else the whole palette for
+     a string nothing describes. */
+  const colourChoices: ReelColourId[] = (() => {
     if (chosen?.colours && chosen.colours.length > 0) return chosen.colours;
-    const fromCatalog = stringColours(chosen?.item ?? null).map((c) => colourIdOf(c.name)).filter((id): id is StringColourId => id !== null);
-    return fromCatalog.length > 0 ? STRING_PALETTE.filter((id) => fromCatalog.includes(id)) : [...STRING_PALETTE];
+    const fromCatalog = makerColourIds(chosen?.item ?? null);
+    return fromCatalog.length > 0 ? fromCatalog : [...STRING_PALETTE];
   })();
   const defaultMetres = (u: StringPurchase['unit']) => metresFor(u, chosen?.item ?? undefined);
 
@@ -154,7 +156,7 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
                 sure" first and the default: a stringer who skips it logs what
                 he always did, and the reel counts in the string's mixed pool. */}
             <div role="radiogroup" aria-label="Colour" style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-2)' }}>
-              {([null, ...colourChoices] as Array<StringColourId | null>).map((id) => {
+              {([null, ...colourChoices] as Array<ReelColourId | null>).map((id) => {
                 const on = color === id;
                 return (
                   <button
@@ -167,7 +169,7 @@ export default function StringPurchaseSheet({ open, onClose, onSaved, offered, i
                   >
                     <span className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       {id && <ColourDot id={id} size="sm" />}
-                      {id ? PALETTE_EN[id] : 'Mixed / not sure'}
+                      {id ? reelColourEnglish(id, customColours) ?? 'Your colour' : 'Mixed / not sure'}
                     </span>
                   </button>
                 );

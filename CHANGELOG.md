@@ -20,6 +20,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **Keep your account** (for someone an organiser let in) opens on the right half beside the banner that asks for it, instead of across both halves.
 - **A phone is unchanged.**
 
+## Stringing: two-colour sets, your own colours, and a tidier colour picker (2026-11-12)
+
+- **A reel can be a two-colour set** (Grant: "two colour combo like aerobites"). "Red / White" means red mains and white crosses; the mains are always named first. A set is shown as a swatch split down the middle with a small M and C, and is counted in stock like any single colour: buy a reel of "Red / White", string a racket in it, and that set's count goes down.
+- **An admin can add the club's own colour** (Grant: "custom picker for future"). "Custom colour" asks for a name and a colour (a quick pick, the hue strip, or a hex like #14B8A6). It is saved with the club's strings, so another string can use it too. Players see its swatch and the name you gave it.
+- **The colour picker is tidier.** "Colours on the reel" lists what the maker makes the string in first ("Yonex makes BG80 in"), then "Two-colour sets" (the maker's, such as Aerobite's, and the club's) with "New combo", then "Other colours" with "Custom colour". The tiles are three across, and long names are shortened to fit ("Fl. yellow"). A stringer who isn't an admin gets the same picker and can make a new set, but can't add a club colour.
+- **A player's request offers the sets and the club's colours** and sends the colour's English name ("Red / White", or "Teal") to the bench.
+- **Catalog colours corrected against retailer listings**: Aerobite is red mains with white crosses ("Red/White"), Aerobite Boost is yellow mains with grey crosses ("Yellow/Grey", not white/yellow), and BG80 no longer lists red.
+
 ## Stringing: a walk-up's email goes once, and a waiting job can still be received (2026-11-12)
 
 - **A walk-up never gets the same email twice.** Undoing and redoing "Mark ready" while the ready email was still going out, or a second "Send again" from another phone, could each send a second copy. The job now notes the email as being sent before it goes, and the job page says "Sending…" until it has.

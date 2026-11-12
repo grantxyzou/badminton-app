@@ -13,6 +13,7 @@ const shelf = (over: Partial<OfferedStringsRead> = {}): OfferedStringsRead => ({
   aliases: { 'bg-80': 'BG80' },
   colours: { BG80: ['white', 'yellow'] },
   notes: { BG80: 'Hard hitters, 26 lb.' },
+  customColours: [],
   ...over,
 });
 

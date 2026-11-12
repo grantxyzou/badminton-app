@@ -5855,6 +5855,42 @@ html:root[data-theme="light"] {
 }
 .cc-choice:disabled { opacity: 0.5; pointer-events: none; }
 
+/* The "Custom colour" step's hue strip (components/stringing/ReelColourPicker.tsx):
+   a range input whose track IS the colour wheel unrolled. The strip is DATA
+   (`HUE_STRIP` in lib/stringShelf.ts), set inline; this rule only clears the
+   form-field material and draws the thumb. Specificity outranks `input`/`input:focus`. */
+input[type="range"].reel-hue {
+  -webkit-appearance: none;
+  appearance: none;
+  height: var(--space-7);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  cursor: pointer;
+}
+input[type="range"].reel-hue::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 3px var(--text-primary), 0 0 0 2px var(--page-bg);
+}
+input[type="range"].reel-hue::-moz-range-thumb {
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: 50%;
+  background: transparent;
+  border: 3px solid var(--text-primary);
+}
+input[type="range"].reel-hue:focus-visible {
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+
 /* Dot indicator — scroll-position pagination markers. Same theme split
    as cc-mini-card so they don't vanish over light backgrounds. */
 .cc-dot {

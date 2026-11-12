@@ -39,7 +39,7 @@ describe('a stringer on the shelf', () => {
     const zach = as('Zach', { canString: true });
     const res = await patch({ colours: { Aerobite: ['red', 'white', 'nope'] } }, zach);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ strings: ['BG80', 'Aerobite'], colours: { BG80: ['white'], Aerobite: ['white', 'red'] } });
+    expect(await res.json()).toEqual({ strings: ['BG80', 'Aerobite'], colours: { BG80: ['white'], Aerobite: ['white', 'red'] }, customColours: [] });
     const after = await shelf();
     expect(after.colours).toEqual({ BG80: ['white'], Aerobite: ['white', 'red'] });
     // The price the admin set is untouched.
@@ -56,7 +56,7 @@ describe('a stringer on the shelf', () => {
     const res = await patch({ rename: { from: 'BG80', to: 'BG80 white' } }, as('Zach', { canString: true }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ strings: ['BG80 white', 'Aerobite'], colours: { 'BG80 white': ['white'] } });
+    expect(body).toEqual({ strings: ['BG80 white', 'Aerobite'], colours: { 'BG80 white': ['white'] }, customColours: [] });
     expect(body).not.toHaveProperty('aliases');
     expect((await shelf()).prices).toEqual({ 'BG80 white': 3000 });
   });

@@ -25,7 +25,7 @@ export function stringsDocId(groupId: string): string {
 export { MAX_OFFERED, MAX_LABEL_LEN, MAX_NOTE_LEN } from './stringingLimits';
 import { MAX_OFFERED, MAX_LABEL_LEN, MAX_NOTE_LEN } from './stringingLimits';
 import { MAX_PRICE_CENTS } from './stringingRateCard';
-import { normaliseColourList, type StringColourId } from './stringPalette';
+import { normaliseColourList, normaliseCustomColours, type CustomColour, type ReelColourId } from './stringPalette';
 
 export interface OfferedStringsDoc {
   id: string;
@@ -62,6 +62,14 @@ export interface OfferedStringsDoc {
    */
   colours?: Record<string, string[]>;
   /**
+   * The club's own reel colours (docs/plans/string-stock-by-colour.md,
+   * 2026-11-12): `{ id: 'custom:<rrggbb>', name, hex }`. ADDITIVE: absent is
+   * none, and a `colours` list can name one only while it is defined here.
+   * Club-wide, so a colour named for one string can be picked for another.
+   * Added by an admin (`addColours` on the PATCH), never removed by one.
+   */
+  customColours?: CustomColour[];
+  /**
    * Offered label → the stringer's note for players ("Your stringer
    * recommends" on the string's page: who it suits, the tension he'd use).
    * ADDITIVE, like the maps above: trimmed, at most `MAX_NOTE_LEN`, and a
@@ -77,8 +85,10 @@ export interface OfferedStringsRead {
   links: Record<string, string>;
   prices: Record<string, number | null>;
   aliases: Record<string, string>;
-  colours: Record<string, StringColourId[]>;
+  colours: Record<string, ReelColourId[]>;
   notes: Record<string, string>;
+  /** The club's own colours; `[]` for a club that has named none. */
+  customColours: CustomColour[];
 }
 
 /** More than any shelf has had typos for; a cap so the doc stays small. */
@@ -94,13 +104,15 @@ export async function readOfferedStringsWithLinks(groupId: string): Promise<Offe
     const known = new Set(strings);
     const links: Record<string, string> = {};
     for (const [label, id] of Object.entries(raw)) if (known.has(label) && typeof id === 'string') links[label] = id;
+    const customColours = normaliseCustomColours(resource?.customColours);
     return {
       strings,
       links,
       prices: normalisePrices(resource?.prices, strings),
       aliases: normaliseAliases(resource?.aliases, strings),
-      colours: normaliseColours(resource?.colours, strings),
+      colours: normaliseColours(resource?.colours, strings, customColours),
       notes: normaliseNotes(resource?.notes, strings),
+      customColours,
     };
   } catch (err) {
     console.error('readOfferedStringsWithLinks failed:', err);
@@ -145,17 +157,19 @@ export function normalisePrices(value: unknown, strings: readonly string[]): Rec
 
 /**
  * Clean a submitted colour map against the (already normalised) list: a label
- * not in the list is DROPPED, like the other maps, and each list keeps palette
- * ids only. An empty list is dropped too — "no colours set" and "none" read
- * the same, the maker's colours.
+ * not in the list is DROPPED, like the other maps, and each list keeps reel
+ * colour ids only — palette ids, two-colour sets, and the club's own colours
+ * while `customs` defines them. An empty list is dropped too — "no colours
+ * set" and "none" read the same, the maker's colours.
  */
-export function normaliseColours(value: unknown, strings: readonly string[]): Record<string, StringColourId[]> {
+export function normaliseColours(value: unknown, strings: readonly string[], customs: readonly CustomColour[] = []): Record<string, ReelColourId[]> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const known = new Set(strings);
-  const out: Record<string, StringColourId[]> = {};
+  const customIds = new Set(customs.map((c) => c.id));
+  const out: Record<string, ReelColourId[]> = {};
   for (const [label, list] of Object.entries(value as Record<string, unknown>)) {
     if (!known.has(label)) continue;
-    const clean = normaliseColourList(list);
+    const clean = normaliseColourList(list, customIds);
     if (clean.length > 0) out[label] = clean;
   }
   return out;
@@ -189,20 +203,22 @@ export function normaliseNotes(value: unknown, strings: readonly string[]): Reco
  * shelf never writes that copy back.
  */
 export function mergeColours(
-  stored: Readonly<Record<string, StringColourId[]>>,
+  stored: Readonly<Record<string, ReelColourId[]>>,
   value: unknown,
   strings: readonly string[],
-): Record<string, StringColourId[]> | null {
+  customs: readonly CustomColour[] = [],
+): Record<string, ReelColourId[]> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const known = new Set(strings);
-  const out: Record<string, StringColourId[]> = { ...stored };
+  const customIds = new Set(customs.map((c) => c.id));
+  const out: Record<string, ReelColourId[]> = { ...stored };
   for (const [label, list] of Object.entries(value as Record<string, unknown>)) {
     if (!known.has(label)) continue;
-    const clean = normaliseColourList(list);
+    const clean = normaliseColourList(list, customIds);
     if (clean.length > 0) out[label] = clean;
     else delete out[label];
   }
-  return normaliseColours(out, strings);
+  return normaliseColours(out, strings, customs);
 }
 
 export type RenameError = 'invalid_name' | 'not_offered' | 'name_taken';
@@ -249,6 +265,7 @@ export function renameOffered(
       colours: move(read.colours),
       notes: move(read.notes),
       aliases: normaliseAliases(aliases, strings),
+      customColours: read.customColours,
     },
   };
 }

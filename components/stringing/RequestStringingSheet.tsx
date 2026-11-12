@@ -11,6 +11,7 @@ import { stringSpecLine } from '@/lib/gearSetup';
 import { parseShelf, requestColours, shelfPrice, stringTypeOf, typeBand, type RequestColour, type Shelf } from '@/lib/stringShelf';
 import type { CatalogItem } from '@/lib/types';
 import StockBadge from './StockBadge';
+import { useReelColourName } from './StringColours';
 import StringPackImage from './StringPackImage';
 import StringingStory from './StringingStory';
 import { stringPackSrc } from '@/lib/stringPackSrc';
@@ -122,6 +123,8 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const online = useOnline();
 
   const [shelf, setShelf] = useState<Shelf | null>(null);
+  // A reel colour in the member's language: a set from its translated parts, a club colour as typed.
+  const colourName = useReelColourName(shelf?.customColours);
   const catalog = useCatalog('string');
   /** Loading and failed used to be the same `null`, so a list still on its
    *  way forced the form into free text and then swapped to a dropdown, and a
@@ -286,7 +289,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
      one name) is sent as it is; an unlinked string or your own sends none. */
   const stringColor = mustBeCustom || ownString ? '' : colours.length > 1 ? pickedColour : colours[0]?.name ?? '';
   /** A colour in the member's language; the stored name for one the palette does not name. */
-  const colourText = (c: RequestColour | undefined) => (c ? (c.id ? t(`offer.colourName.${c.id}`) : c.name) : '');
+  const colourText = (c: RequestColour | undefined) => (c ? (c.id ? colourName(c.id) : c.name) : '');
   const shownColour = colourText(colours.find((c) => c.name === stringColor));
 
   const clamp = (n: number) => Math.max(TENSION_MIN_LB, Math.min(TENSION_MAX_LB, n));
