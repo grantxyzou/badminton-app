@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The stringing animation reads inside its picture (2026-11-12)
+
+- After sending a stringing request, each step's line ("Opening a fresh set of BG80", "Ready to pick up. We'll let you know.") now sits inside the picture along its bottom edge, and "Play again" is a small pill with a replay icon in the picture's top-right corner, instead of a link under the dots.
+
 ## Every sheet keeps its main button in reach (2026-11-12)
 
 - A sheet's finishing button (Save, Send, Next, Done, a Keep / Delete pair) now stays pinned to the bottom of the screen while the content above it scrolls, across sign-in and account, the admin console, Profile and Stats. Stringing moved first. An error about that action shows just above the button, and a form still submits on Enter.

@@ -102,6 +102,10 @@ export default function StringingStory({ racketId, stringId, stringName, tension
       className={`ss${held !== null ? ' ss--held' : ''}`}
       style={held !== null ? { ['--ss-at' as string]: `-${STEP_AT[held]}s` } : undefined}
     >
+      {/* The caption sits inside the picture and "Play again" in its top-right
+          corner (Grant, 2026-11-12, on the canvas). The button is a sibling of
+          the box, not inside it, because the box is hidden from screen readers. */}
+      <div className="ss-frame">
       <div ref={boxRef} className="ss-box" aria-hidden="true" style={{ ['--ss-k' as string]: String(scale) }} {...swipe}>
         <div key={run} className="ss-stage">
           <div className="ss-machine">
@@ -150,10 +154,16 @@ export default function StringingStory({ racketId, stringId, stringName, tension
             {t('pill', { string: stringName, tension })}
           </span>
         </div>
+        <div key={`caps-${run}`} className="ss-captions">
+          {steps.map((s, i) => <p key={i} className={`ss-cap ss-cap-${i + 1}`}>{s}</p>)}
+        </div>
       </div>
-
-      <div key={run} className="ss-captions" aria-hidden="true">
-        {steps.map((s, i) => <p key={i} className={`ss-cap ss-cap-${i + 1}`}>{s}</p>)}
+      <button type="button" className="ss-again" onClick={() => { setHeld(null); setRun((n) => n + 1); }}>
+        <span className="ss-again-pill">
+          <span className="material-icons icon-sm" aria-hidden="true">replay</span>
+          {t('again')}
+        </span>
+      </button>
       </div>
       <div className="ss-foot">
         <span key={`dots-${run}`} className="ss-dots">
@@ -170,9 +180,6 @@ export default function StringingStory({ racketId, stringId, stringName, tension
             </button>
           ))}
         </span>
-        <button type="button" className="link-quiet link-quiet--flush ss-again" onClick={() => { setHeld(null); setRun((n) => n + 1); }}>
-          {t('again')}
-        </button>
       </div>
     </div>
   );

@@ -82,6 +82,7 @@ export const ICON_NAMES = [
   'radio_button_unchecked',
   'receipt_long',
   'remove',
+  'replay',
   'request_quote',
   'restore',
   'schedule',
