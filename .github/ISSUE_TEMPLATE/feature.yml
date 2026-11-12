@@ -1,7 +1,7 @@
 name: Feature idea
 description: Something the app should do that it doesn't, or could do better.
 title: "[idea] "
-labels: ["feature", "backlog"]
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
