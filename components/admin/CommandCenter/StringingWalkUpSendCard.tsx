@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
-import { walkUpEmailOf } from '@/lib/stringing';
+import { walkUpEmailInFlight, walkUpEmailOf, walkUpJobClosed } from '@/lib/stringing';
 import { useOnline } from '@/lib/useOnline';
 import type { StringingJob } from '@/lib/types';
 import StringingReceiptSheet from './StringingReceiptSheet';
@@ -56,6 +56,10 @@ export default function StringingWalkUpSendCard({ job, onJobChange }: Props) {
   const email = walkUpEmailOf(job);
   const spec = job.walkUpEmails?.spec;
   const ready = job.walkUpEmails?.ready;
+  // Another tap (or the save itself) is sending it now: say so, offer nothing.
+  const specInFlight = walkUpEmailInFlight(spec);
+  // A job that is over gets no more email, so there is nothing to send again.
+  const closed = walkUpJobClosed(job);
 
   async function sendAgain() {
     if (sending || !online) return;
@@ -67,10 +71,13 @@ export default function StringingWalkUpSendCard({ job, onJobChange }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId: job.memberId, resendSpecEmail: true }),
       });
-      if (!res.ok) throw new Error(`resend ${res.status}`);
-      const data = (await res.json()) as { job: StringingJob };
-      onJobChange(data.job);
-      if (data.job.walkUpEmails?.spec?.ok !== true) setSendError(true);
+      const data = (await res.json().catch(() => null)) as { job?: StringingJob; error?: string } | null;
+      // A 409 carries the job as it now stands: the email may have gone, or be
+      // going, from another tap — show that, not a failure.
+      if (data?.job) onJobChange(data.job);
+      if (!res.ok && !(res.status === 409 && data?.job)) throw new Error(`resend ${res.status}`);
+      const after = data?.job?.walkUpEmails?.spec;
+      if (after?.ok !== true && !walkUpEmailInFlight(after)) setSendError(true);
     } catch {
       setSendError(true);
     } finally {
@@ -87,19 +94,23 @@ export default function StringingWalkUpSendCard({ job, onJobChange }: Props) {
       <span className="material-icons icon-sm" aria-hidden="true">check</span>
       {t('walkUp.sentAt', { time: sentTime(spec.at, locale) })}
     </span>
+  ) : specInFlight && !sending ? (
+    <span className="fs-sm" data-testid="walkup-email-sending" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+      {t('walkUp.sending')}
+    </span>
   ) : (
     <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-1)' }}>
       <span className="fs-sm" data-testid="walkup-email-not-sent" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
         {t('walkUp.notSent')}
       </span>
-      <button
+      {!closed && <button
         type="button"
         className="cc-btn cc-btn-secondary"
         disabled={sending || !online}
         onClick={() => void sendAgain()}
       >
         {sending ? t('walkUp.sending') : t('walkUp.sendAgain')}
-      </button>
+      </button>}
     </span>
   );
 
@@ -118,7 +129,7 @@ export default function StringingWalkUpSendCard({ job, onJobChange }: Props) {
             subtitle={
               <span style={{ overflowWrap: 'anywhere' }}>
                 {t('walkUp.emailedSub', { email })}
-                {ready && (
+                {ready && !walkUpEmailInFlight(ready) && (
                   <>
                     <br />
                     {ready.ok
