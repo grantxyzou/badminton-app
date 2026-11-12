@@ -92,6 +92,13 @@ export interface Session {
    */
   membersFirst?: { daysBefore: number; time: string };
   /**
+   * The organiser's fee per player, in dollars, copied from the club's
+   * `ClubRun.organiserFee` when the session was created
+   * (docs/plans/organiser-fee.md). Added to every share by `costSplit`.
+   * Additive; absent = no fee.
+   */
+  organiserFee?: number;
+  /**
    * When the waitlist was let in: by the first visit after the window ended,
    * or early by an organiser. Present = the window is over and the promotion
    * has run. Additive.
@@ -114,6 +121,9 @@ export interface SettledSnapshot {
    *  (Σ costPerPerson over absorb-covered players). 0 / absent when nobody
    *  was covered. Drives the "You've covered $X this session" summary. */
   coveredTotal?: number;
+  /** The organiser's fee per player INCLUDED in `costPerPerson`
+   *  (docs/plans/organiser-fee.md). Absent / 0 = none. */
+  organiserFee?: number;
 }
 
 export interface BirdUsage {

@@ -44,8 +44,11 @@ export interface CostSplit<P extends SplitPlayer> {
   active: P[];
   /** Who the total was divided by: active minus the resplit-covered. */
   denominator: number;
-  /** 0 when there is no cost or nobody to split it across. */
+  /** 0 when there is no cost or nobody to split it across. INCLUDES `organiserFee`. */
   costPerPerson: number;
+  /** The organiser's fee inside each share (docs/plans/organiser-fee.md); 0 when none
+   *  or when there is nothing to split. `costPerPerson − organiserFee` is the cost share. */
+  organiserFee: number;
   /** Σ costPerPerson over absorb-covered players — what the admin eats. */
   coveredTotal: number;
 }
@@ -73,8 +76,14 @@ export function isResplitCovered(p: SplitPlayer): boolean {
   return p.writtenOff === true && p.coverMode === 'resplit';
 }
 
+/** The session's organiser fee per player, or 0 for an absent, negative or malformed one. */
+export function organiserFeeOf(session: Pick<Session, 'organiserFee'> | null | undefined): number {
+  const fee = session?.organiserFee;
+  return typeof fee === 'number' && Number.isFinite(fee) && fee > 0 ? round2(fee) : 0;
+}
+
 export function costSplit<P extends SplitPlayer>(
-  session: Pick<Session, 'costPerCourt' | 'courts' | 'birdUsage' | 'birdUsages'> | null | undefined,
+  session: Pick<Session, 'costPerCourt' | 'courts' | 'birdUsage' | 'birdUsages' | 'organiserFee'> | null | undefined,
   players: P[],
 ): CostSplit<P> {
   const { courtTotal, birdTotal, totalCost } = sessionCostTotals(session);
@@ -82,7 +91,12 @@ export function costSplit<P extends SplitPlayer>(
   const resplitCount = active.filter(isResplitCovered).length;
   const absorbCount = active.filter((p) => p.writtenOff === true && !isResplitCovered(p)).length;
   const denominator = active.length - resplitCount;
-  const costPerPerson = totalCost > 0 && denominator > 0 ? round2(totalCost / denominator) : 0;
+  const priced = totalCost > 0 && denominator > 0;
+  // The organiser's fee rides on top of the cost share, per player who pays —
+  // never on an unpriced night, and never re-spread by a resplit cover. An
+  // absorb cover forgives it with the rest of the share (coveredTotal).
+  const organiserFee = priced ? organiserFeeOf(session) : 0;
+  const costPerPerson = priced ? round2(round2(totalCost / denominator) + organiserFee) : 0;
   const coveredTotal = round2(absorbCount * costPerPerson);
-  return { courtTotal, birdTotal, totalCost, active, denominator, costPerPerson, coveredTotal };
+  return { courtTotal, birdTotal, totalCost, active, denominator, costPerPerson, organiserFee, coveredTotal };
 }

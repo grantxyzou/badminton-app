@@ -176,7 +176,7 @@ export async function PATCH(req: NextRequest) {
       // Parsed again against the stored window and guest number, which a
       // request without them keeps (lib/clubRun.ts `parseClubRun`).
       const current = clubRunOf(group?.settings);
-      const stored = parseClubRun(body.run, { membersFirst: current.membersFirst, guests: current.guests }) ?? run;
+      const stored = parseClubRun(body.run, { membersFirst: current.membersFirst, guests: current.guests, organiserFee: current.organiserFee }) ?? run;
       await updateGroupSettings(groupId, { run: stored });
       // The old switch is written beside it, so a rollback still sees guests
       // on or off the way the club left them.
