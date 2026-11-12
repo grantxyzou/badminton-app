@@ -62,6 +62,7 @@ export default function StringDetailSheet({
   clubCount = null,
   note = null,
   onRestring,
+  asPage = false,
 }: {
   item: CatalogItem | null;
   /** The shelf's own name for it, which is what a request sends. */
@@ -76,6 +77,10 @@ export default function StringDetailSheet({
   note?: string | null;
   /** Opens the request sheet with this string picked. No button without it. */
   onRestring?: (label: string) => void;
+  /** Drawn as a page (a card with its own heading and button) rather than a
+   *  sheet: a foldable's right page, beside the shelf. `open` and `onClose`
+   *  are unused then; the page is open while it is rendered. */
+  asPage?: boolean;
 }) {
   const t = useTranslations('home.stringing.offer');
   const a = item?.attributes ?? {};
@@ -112,7 +117,7 @@ export default function StringDetailSheet({
   const [fitAttempt, setFitAttempt] = useState(0);
   const itemId = item?.id ?? null;
   useEffect(() => {
-    if (!open || !itemId) return;
+    if ((!open && !asPage) || !itemId) return;
     let cancelled = false;
     setFit({ status: 'loading' });
     fetch(`${BASE}/api/stringing/fit?id=${encodeURIComponent(itemId)}`, { cache: 'no-store' })
@@ -125,15 +130,22 @@ export default function StringDetailSheet({
       })
       .catch(() => { if (!cancelled) setFit({ status: 'failed' }); });
     return () => { cancelled = true; };
-  }, [open, itemId, fitAttempt]);
+  }, [open, asPage, itemId, fitAttempt]);
 
-  return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={item ? `${item.brand} ${item.model}` : t('title')}>
-      <BottomSheetHeader onClose={onClose} closeLabel={t('close')}>
-        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{item ? `${item.brand} ${item.model}` : ''}</span>
-      </BottomSheetHeader>
-      <BottomSheetBody>
-        {item && (
+  const title = item ? `${item.brand} ${item.model}` : '';
+  const canRestring = !!(item && onRestring && label && band !== 'out');
+  const restringButton = canRestring ? (
+    <button
+      type="button"
+      className="cc-btn cc-btn-primary cc-btn-lg"
+      style={{ width: '100%' }}
+      onClick={() => onRestring!(label!)}
+    >
+      {t('restringWith')}
+    </button>
+  ) : null;
+
+  const body = item && (
           // Sections 24px apart; each label sits close over its own content.
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
             {/* The strip: what it is, at a glance. The name is the sheet's title. */}
@@ -211,22 +223,30 @@ export default function StringDetailSheet({
             )}
 
           </div>
-        )}
-      </BottomSheetBody>
+  );
+
+  // The right page of a foldable: the same content as a card, its name as
+  // the heading and the button at its foot (nothing scrolls under it here).
+  if (asPage) {
+    if (!item) return null;
+    return (
+      <section className="glass-card p-5 flex flex-col gap-5" aria-label={title}>
+        <h2 className="bpm-h3" style={{ margin: 0 }}>{title}</h2>
+        {body}
+        {restringButton}
+      </section>
+    );
+  }
+
+  return (
+    <BottomSheet open={open} onClose={onClose} ariaLabel={item ? title : t('title')}>
+      <BottomSheetHeader onClose={onClose} closeLabel={t('close')}>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{title}</span>
+      </BottomSheetHeader>
+      <BottomSheetBody>{body}</BottomSheetBody>
       {/* Pinned to the bottom of the screen while the string's details scroll
           (Grant, 2026-11-11: every sheet's CTA anchored to the bottom). */}
-      {item && onRestring && label && band !== 'out' && (
-        <BottomSheetFooter>
-          <button
-            type="button"
-            className="cc-btn cc-btn-primary cc-btn-lg"
-            style={{ width: '100%' }}
-            onClick={() => onRestring(label)}
-          >
-            {t('restringWith')}
-          </button>
-        </BottomSheetFooter>
-      )}
+      {restringButton && <BottomSheetFooter>{restringButton}</BottomSheetFooter>}
     </BottomSheet>
   );
 }

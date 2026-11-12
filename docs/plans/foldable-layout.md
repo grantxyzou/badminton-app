@@ -280,6 +280,51 @@ location") and chose candidate 1: "go with 1".
   base (the phone's first diff of 48 px was the trend line's anti-aliasing,
   identical between two runs of the same code).
 
+### Stringing: the list stays left, what you tap opens on the right (2026-11-12)
+
+The propose mode drew three candidates for Stringing, whose 480 px column sat
+on the fold on every register: Stats' shape (everything on the right page),
+list-and-detail, and two registers at once. Grant: "Option 2 but can we have
+something opened by default on the right?" — Apple's list-detail, with the
+detail never empty.
+
+- **Left page: the title, the switch and the register** (the bench, the shelf,
+  the request card) — the phone's column, unchanged in order. **Right page:
+  what a tap opens**, in place of the page or sheet it opens on a phone: a
+  job's page (no back bar — the bench is beside it), a string's page (the
+  sheet's content as a card, its "Restring with this string" at its foot).
+  The right page starts on the switch's row, which clears the three round
+  buttons on a portrait screen.
+- **Open by default**: the bench opens the job at the top of its list (the
+  list's own order: what needs you next), marked with a solid green tint and
+  `aria-current`; the shelf opens the string its map already picks; Submit
+  request opens the player's rackets in progress, or — with none in — the
+  strings on offer, whose "Restring with this string" opens the request with
+  that string picked. A stringer who is not an admin gets their queue left and
+  their shelf (names and reel colours) right.
+- **How it is built**: what renders where is a component change, so the tab
+  renders an empty right page (`.stringing-aside`) only in two-page mode —
+  `usePaneMode()` in `lib/paneMode.ts`, the same `PANE_QUERY` string, never the
+  window's width — and hands it down through `StringingAsideProvider`; a
+  register portals into it with `<StringingAside>`
+  (`components/stringing/StringingAside.tsx`). On one screen there is no slot,
+  every caller takes its phone path, and nothing renders differently. The CSS
+  widens the tab and draws two pages only while the right page shows
+  something (`.stringing-aside > * > :not([hidden])`), so an empty bench and
+  the bench's own sub-pages (new job, the archive, set-up — and an archived
+  job, which opens as its page) keep today's one column. Nesting `:has()` is
+  invalid CSS and the first cut did it: the two pages came out 216 px wide.
+- **The right page is outside the loading cascade** (`RevealOutside` in
+  `Reveal.tsx`): context follows a portal, so a shelf card on the right would
+  otherwise have answered for the request card's slot on the left. It holds
+  its own place with a skeleton while it loads.
+- **Measured** (mock store, Grant and Lin, Chromium): Z Fold open 402 / 402,
+  Duo sideways 356 / 355 with the side tab bar; nothing crosses the centre on
+  any register. Phone: 0 pixels changed on the shelf, the request card (with
+  and without a racket in) and a job's page; the bench's 16 px were the
+  switch's sliding pill caught mid-slide, which two shots of the same code
+  also differ by.
+
 ## Shape
 
 | Piece | Where |
@@ -295,6 +340,7 @@ location") and chose candidate 1: "go with 1".
 | The Android plugin (WindowManager FoldingFeature) | `android/.../BpmFoldPlugin.java`, registered in `MainActivity.java`, deps in `app/build.gradle` + `variables.gradle` |
 | The courtside scoreboard | `components/stats/CourtsideScoreboard.tsx`, opened from `YourRecordCard`; styles `.courtside-*` and `--court-digit` in `globals.css`; strings `stats.courtside` |
 | Shell canary (both plugins pinned) | `__tests__/native-shell-projects.test.ts` |
+| Stringing's right page | `components/stringing/StringingAside.tsx` (slot, provider, portal), `usePaneMode` in `lib/paneMode.ts`, `.stringing-shell` / `.stringing-aside` in the pane block, `__tests__/components/stringing-two-pages.test.tsx` |
 | The fold/unfold crossfade | `lib/paneMode.ts`, `components/PaneFlip.tsx` (mounted in `HomeShell`), `paneFlipA/B` in `globals.css`, `__tests__/pane-mode.test.tsx` |
 
 ## Next steps (not started)

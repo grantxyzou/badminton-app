@@ -18,6 +18,8 @@ import { isFlagOn } from '@/lib/flags';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import AdminSignInCard from '@/components/admin/AdminSignInCard';
 import { STRINGING_HEIGHTS } from '@/components/TabFallbacks';
+import { StringingAside, StringingAsideProvider } from '@/components/stringing/StringingAside';
+import { usePaneMode } from '@/lib/paneMode';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -124,8 +126,14 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
     view === 'bench' && !adminBench && flagOn && (!identityRead || (hasIdentity && stringer === null));
   const current: StringingView = views.includes(view) || benchPending ? view : 'racket';
 
+  /* The right page on a foldable (docs/plans/foldable-layout.md). Rendered
+     only in two-page mode; a register fills it with what a tap would open. */
+  const pane = usePaneMode();
+  const [asideEl, setAsideEl] = useState<HTMLDivElement | null>(null);
+
   return (
-    <div className="space-y-5 w-full">
+    <StringingAsideProvider value={pane ? asideEl : null}>
+    <div className="space-y-5 w-full stringing-shell">
       {/* PageHeader must stay a direct child of the tall scroll root or its
           `position: sticky` un-sticks. */}
       {!takeover && <PageHeader>{tNav('stringing')}</PageHeader>}
@@ -188,13 +196,28 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
             </RevealSlot>
             {/* The names and reel colours a stringer may set
                 (docs/plans/stringer-shelf-edits.md); an admin does it on the bench. */}
-            <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.queue} />}>
-              <StringerShelfCard hasIdentity={hasIdentity} />
-            </RevealSlot>
+            {!pane && (
+              <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.queue} />}>
+                <StringerShelfCard hasIdentity={hasIdentity} />
+              </RevealSlot>
+            )}
           </RevealGroup>
+          {/* On a foldable the queue keeps the left page and the shelf takes
+              the right one; on a phone it sits under the queue. */}
+          {pane && (
+            <StringingAside id="stringer-shelf">
+              <StringerShelfCard hasIdentity={hasIdentity} />
+            </StringingAside>
+          )}
           </div>
         )}
       </div>
+
+      {/* The right page: empty until a register puts something in it, and
+          the CSS widens the tab only while it holds something. Last, so the
+          left page's order is the phone's. */}
+      {pane && <div ref={setAsideEl} className="stringing-aside" />}
     </div>
+    </StringingAsideProvider>
   );
 }

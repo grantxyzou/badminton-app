@@ -15,10 +15,12 @@ import RequestStringingSheet from './RequestStringingSheet';
 import { useGear } from '@/components/stats/useGear';
 import { useActiveName } from '@/lib/useActiveName';
 import ConfirmChangePage from './ConfirmChangePage';
+import StringsWeOfferCard from './StringsWeOfferCard';
+import { StringingAside, useStringingAside } from './StringingAside';
 import RacketProgressCard from './RacketProgressCard';
 import type { PlayerStringingJob } from '@/lib/types';
 import { isRefused } from '@/lib/apiFetch';
-import { useRevealReady } from '@/components/primitives/Reveal';
+import { RevealGroup, RevealSlot, useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { STRINGING_HEIGHTS } from '@/components/TabFallbacks';
 
@@ -86,6 +88,10 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
   // the reload drops its pendingEdit, and a page looked up by id would vanish
   // before the player read why.
   const [confirmingJob, setConfirmingJob] = useState<PlayerStringingJob | null>(null);
+  /* A foldable's right page (docs/plans/foldable-layout.md): the player's
+     rackets open there beside the request card, or — with none in — the
+     strings on offer. `null` on one screen, where nothing moves. */
+  const aside = useStringingAside();
   // The page takes the tab over while it is open, and gives it back on close
   // or unmount (a group switch remounts the tab with the page still up).
   const reviewing = confirmingJob !== null;
@@ -179,7 +185,36 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
   // Unknown is not closed. Before the shop answers this is a skeleton the size
   // of the card; if it cannot be read, it says so. "Coming soon" is only for a
   // shop the server says is closed — it used to stand in for all three.
-  if (shop.status === 'loading') return <CardSkeleton height={STRINGING_HEIGHTS.service} />;
+  /** The strings on offer, on the right page, for a player with no racket
+   *  in. Inside it a string opens as its sheet (in the left half); its
+   *  "Restring with this string" opens this card's request with it picked. */
+  const shelfAside = (canRequest: boolean) =>
+    aside ? (
+      <StringingAside id="shelf">
+        {/* Its own reveal: the right page holds the shelf's place while it
+            loads, and closes (one column again) if nothing is listed. */}
+        <RevealGroup>
+          <RevealSlot canBeEmpty placeholder={<CardSkeleton height={STRINGING_HEIGHTS.shelf} />}>
+            <StringsWeOfferCard
+              onRestring={canRequest ? (label) => { setPrefillTension(null); setPrefillString(label); setSheetOpen(true); } : undefined}
+            />
+          </RevealSlot>
+        </RevealGroup>
+      </StringingAside>
+    ) : null;
+
+  if (shop.status === 'loading') {
+    return (
+      <>
+        <CardSkeleton height={STRINGING_HEIGHTS.service} />
+        {aside && (
+          <StringingAside id="loading">
+            <CardSkeleton height={STRINGING_HEIGHTS.shelf} />
+          </StringingAside>
+        )}
+      </>
+    );
+  }
   if (shop.status === 'error') {
     return (
       <div className="glass-card p-5 space-y-3">
@@ -201,17 +236,20 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
   // design canvas: "make this more personable"). Nothing to tap.
   if (open !== true) {
     return (
-      <div className="glass-card p-5 space-y-3">
-        <CardHeader
-          compact
-          icon="grid_4x4"
-          title={t('title')}
-          badge={<StatusBadge variant="muted">{t('soon')}</StatusBadge>}
-        />
-        <EmptyState icon="bedtime" title={t('closedTitle')}>
-          {t('closedBody')}
-        </EmptyState>
-      </div>
+      <>
+        <div className="glass-card p-5 space-y-3">
+          <CardHeader
+            compact
+            icon="grid_4x4"
+            title={t('title')}
+            badge={<StatusBadge variant="muted">{t('soon')}</StatusBadge>}
+          />
+          <EmptyState icon="bedtime" title={t('closedTitle')}>
+            {t('closedBody')}
+          </EmptyState>
+        </div>
+        {shelfAside(false)}
+      </>
     );
   }
 
@@ -244,6 +282,10 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
       />
     );
   }
+
+  const racketCards = openJobs.map((j) => (
+    <RacketProgressCard key={j.id} job={j} onReview={() => setConfirmingJob(j)} onCancel={() => cancelRequest(j.id)} />
+  ));
 
   return (
     <>
@@ -314,10 +356,24 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
           )}
         </div>
 
-        {openJobs.map((j) => (
-          <RacketProgressCard key={j.id} job={j} onReview={() => setConfirmingJob(j)} onCancel={() => cancelRequest(j.id)} />
-        ))}
+        {!aside && racketCards}
       </div>
+
+      {/* The right page: the rackets in, else (once the read has answered
+          with none) the strings on offer, else its place while it reads. */}
+      {aside && (
+        openJobs.length > 0 ? (
+          <StringingAside id="rackets">
+            <div className="flex flex-col gap-3">{racketCards}</div>
+          </StringingAside>
+        ) : hasIdentity && jobs === null && jobsProblem === null ? (
+          <StringingAside id="loading">
+            <CardSkeleton height={STRINGING_HEIGHTS.shelf} />
+          </StringingAside>
+        ) : (
+          shelfAside(hasIdentity && online && jobsProblem !== 'refused')
+        )
+      )}
 
       <RequestStringingSheet
         open={sheetOpen}
