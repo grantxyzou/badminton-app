@@ -4,7 +4,7 @@
 notifications the admin already receives. Phase 3 (cards) WOULD be "payments processing", a locked
 ROADMAP non-goal, and needs that block changed on purpose before it starts.
 **Status:** in-flight
-**Review on:** 2026-12-09 — of the e-transfers received since the flag went on, what share auto-matched, and is the "Needs a look" queue staying short? (2026-11-11: Grant was "not sure" — the answer is a count, not a memory, so this review reads it from the inbox or the `payments` container rather than asking.)
+**Review on:** 2026-12-09 — read `paymentsInbox` on `GET /api/reports/metrics`: is the auto-match share at or above 70% yet (it read 54% on 2026-11-11), and for the e-transfers an admin matched by hand, why did each not match (no alias for the bank name, two candidates, an amount that fit no owed line)? Fix the commonest cause before Phase 2 starts.
 
 ## Problem
 
@@ -100,6 +100,7 @@ fix before anything in Phase 2 starts.
   promotes them only into a spot no earlier waitlister is waiting for. Reminders (push, no amount on the
   lock screen) are Phase 1b — see the Roadmap.
 - **2026-11-11: the review's numbers are in the club report** (Grant: "add the missing numbers to the report"). `paymentsInbox` on `GET /api/reports/metrics` (and the admin Metrics read): e-transfers received in the last 28 days, split auto-matched / matched by an admin / ignored, the auto-match share, and how many wait in "Needs a look" and for how long. Counted from the same newest-200 read the admin card uses, status and dates only — no sender, amount or memo leaves `lib/metrics.ts`.
+- **2026-11-11 review: below the kill criterion, queue clear** (read from the live report the day #869 deployed, Grant: "yes write them into the plans"). Of 35 e-transfers received in 28 days, 19 auto-matched (54%; 63% of the 30 left when the 5 ignored are taken out), 11 were matched by an admin, 5 ignored, and 0 wait in "Needs a look". Under the 70% bar this plan set, so the matcher and the alias coverage it leans on are the thing to fix before Phase 2, as the kill criterion says; the queue itself is being cleared. Next review reads why the hand-matched ones missed.
 
 ## What a real notification settled (2026-10-03)
 
