@@ -31,6 +31,7 @@ import { sendPushToMembers } from '@/lib/push';
 import { buildStringingPayload, buildPendingEditPayload } from '@/lib/pushMessages';
 import { recordNotices } from '@/lib/notices';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
+import { isWalkUpJob } from '@/lib/stringing';
 import type { StringingJob, Member } from '@/lib/types';
 
 export interface NotifyOutcome {
@@ -43,7 +44,7 @@ export interface NotifyOutcome {
   /** Why no EMAIL was sent, for the log. Never surfaced to a user, and
    *  deliberately about the email arm only: push has no single reason worth
    *  recording, because reaching zero devices is an ordinary outcome. */
-  reason?: 'quiet_stage' | 'no_member' | 'no_email' | 'send_failed';
+  reason?: 'quiet_stage' | 'no_member' | 'no_email' | 'send_failed' | 'walk_up';
 }
 
 /**
@@ -63,7 +64,17 @@ async function pushToPlayer(notice: PlayerNotice, memberId: string): Promise<num
   }
 }
 
+/**
+ * A WALK-UP has no account, so there is nobody to tell (docs/plans/
+ * stringing-walk-ups.md). Answered before ANY read or write: the stage
+ * notice would point-read `members` with a sentinel id, and the pending-edit
+ * notice would write a Notifications-page record under a person who does not
+ * exist. The stringer tells them, from the contact on the job.
+ */
+const WALK_UP: NotifyOutcome = { attempted: false, emailSent: false, pushSent: 0, reason: 'walk_up' };
+
 export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutcome> {
+  if (isWalkUpJob(job)) return WALK_UP;
   try {
     const notice = buildPlayerNotice(job);
 
@@ -140,6 +151,7 @@ export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutc
  * until there is an email template that means this.
  */
 export async function notifyPlayerOfPendingEdit(job: StringingJob): Promise<NotifyOutcome> {
+  if (isWalkUpJob(job)) return WALK_UP;
   try {
     await recordNotices(job.groupId ?? BPM_GROUP_ID, [job.memberId], {
       type: 'stringing_change',

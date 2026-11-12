@@ -12,7 +12,7 @@ import { useOnline } from '@/lib/useOnline';
 import { dueFor, todayIso } from '@/lib/stringingDue';
 import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
 import { fmtMoney } from '@/lib/fmt';
-import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
+import { STRINGING_FLOW, isWalkUpJob, type StringingStatus } from '@/lib/stringing';
 import JobCard, { nextStatusOf } from '@/components/stringing/JobCard';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -444,6 +444,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   /* The intake's Recent chips: the members on the newest jobs, open or
      archived, each once. */
   const recentMembers = [...(jobs ?? []), ...(archivedJobs ?? [])]
+    // A walk-up is nobody to pick again: their id is one job's, not a person's
+    // (docs/plans/stringing-walk-ups.md).
+    .filter((j) => !isWalkUpJob(j))
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .reduce<{ id: string; name: string }[]>((acc, j) => (acc.some((m) => m.id === j.memberId) ? acc : [...acc, { id: j.memberId, name: j.memberName }]), []);
 

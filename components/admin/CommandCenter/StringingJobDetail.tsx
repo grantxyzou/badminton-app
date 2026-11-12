@@ -13,7 +13,7 @@ import MoneyInput from '@/components/primitives/MoneyInput';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { formatReadyBy } from '@/lib/stringingDue';
-import { STRINGING_FLOW, PROPOSAL_REASON_MAX, formatPriceExact, playerStageFor } from '@/lib/stringing';
+import { STRINGING_FLOW, PROPOSAL_REASON_MAX, formatPriceExact, playerStageFor, isWalkUpJob } from '@/lib/stringing';
 import type { StringingStatus } from '@/lib/stringing';
 import type { StringingJob } from '@/lib/types';
 import { STAGE_TRACK, stageLook } from '@/lib/stringingStatusTone';
@@ -136,6 +136,10 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
   }, []);
 
   const pending = local.pendingEdit ?? null;
+  /* A WALK-UP (docs/plans/stringing-walk-ups.md) has no app: nothing is sent
+     to them, a change applies at once (the route writes a `propose` straight
+     onto the job) and they pay at pickup. */
+  const walkUp = isWalkUpJob(local);
   /* The Progress card's colour is the RACKET's stage, not "waiting": the
      amber banner above already says a change is out, and the stepper is about
      where the racket physically is. */
@@ -277,12 +281,23 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
     <div>
       <AdminBackHeader onBack={onBack} title={local.memberName} crumb={crumb} />
       <div className="flex flex-col gap-4 pb-6">
-        <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: '0' }}>
-          {/* Just the number now. The status has a card of its own directly
-              below, and printing it twice on one screen made the smaller,
-              greyer copy look like the authoritative one. */}
-          {local.jobNo}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+          <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: '0' }}>
+            {/* Just the number now. The status has a card of its own directly
+                below, and printing it twice on one screen made the smaller,
+                greyer copy look like the authoritative one. */}
+            {local.jobNo}
+          </p>
+          {walkUp && <StatusBadge variant="muted">{t('walkUp.badge')}</StatusBadge>}
+        </div>
+        {/* How to reach them: a walk-up hears nothing from the app, so this is
+            the only way they learn the racket is ready. Admin screen only;
+            no player response and no push carries it. */}
+        {walkUp && local.walkUpContact && (
+          <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: '0', overflowWrap: 'anywhere' }}>
+            {t('walkUp.contactLabel')} · {local.walkUpContact}
+          </p>
+        )}
 
         {error && <ErrorState message={t('saveError')} />}
 
@@ -568,11 +583,20 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
               gap: 'var(--space-3)',
             }}
           >
-            <span>{t('playerSees', { name: local.memberName })}</span>
-            {/* A stage is words ("You have it"), so not the data face. */}
-            <span style={{ fontWeight: 600 }}>
-              {t(`playerStage.${playerStageFor(local.status)}`)}
-            </span>
+            {walkUp ? (
+              <>
+                <span>{t('walkUp.howTheyPay')}</span>
+                <span style={{ fontWeight: 600 }}>{t('walkUp.atPickup')}</span>
+              </>
+            ) : (
+              <>
+                <span>{t('playerSees', { name: local.memberName })}</span>
+                {/* A stage is words ("You have it"), so not the data face. */}
+                <span style={{ fontWeight: 600 }}>
+                  {t(`playerStage.${playerStageFor(local.status)}`)}
+                </span>
+              </>
+            )}
           </div>
 
           {/* The action half. A second rule rather than a second card. */}
@@ -628,7 +652,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
               className="fs-sm"
               style={{ color: 'var(--text-secondary)', margin: 0 }}
             >
-              {t('propose.hint', { name: local.memberName })}
+              {walkUp ? t('walkUp.changeHint', { name: local.memberName }) : t('propose.hint', { name: local.memberName })}
             </p>
 
             {proposeError && (
@@ -700,7 +724,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                 disabled={proposeBusy || !online || !proposalDirty || parsedCents === undefined}
                 onClick={() => void sendProposal()}
               >
-                {proposeBusy ? t('propose.sending') : t('propose.send', { name: local.memberName })}
+                {proposeBusy ? t('propose.sending') : walkUp ? t('walkUp.save') : t('propose.send', { name: local.memberName })}
               </button>
               {/* Asking is the primary action and keeps the filled button.
                   Changing without asking sits behind an ellipsis because it is
@@ -724,6 +748,8 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                   Mark paid / Take this one buttons carry further down the same
                   screen, which is what makes it read as their peer without
                   competing with Send. */}
+              {/* Nobody to ask on a walk-up's job, so nothing to skip asking. */}
+              {!walkUp && (
               <button
                 type="button"
                 className="cc-btn cc-btn-secondary"
@@ -751,9 +777,10 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
               >
                 <span className="material-icons icon-md" aria-hidden="true">more_horiz</span>
               </button>
+              )}
             </div>
 
-            {forceOpen && (
+            {forceOpen && !walkUp && (
               // A confirm for a destructive change: it fades in so it reads as
               // a response to the tap, not as something that was always there.
               <div

@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import StagePill from './StagePill';
+import StatusBadge from '@/components/primitives/StatusBadge';
 import { dueFor, dueStyle, formatReadyBy } from '@/lib/stringingDue';
 import { fmtMoney } from '@/lib/fmt';
 import type { StringingStatus } from '@/lib/stringing';
@@ -28,6 +29,33 @@ export interface JobCardJob {
   cancelledAt?: string | null;
   /** A change waiting on the player: the pill reads "Waiting on <name>". */
   pendingEdit?: unknown;
+  /** Someone not on the roster (docs/plans/stringing-walk-ups.md): a
+   *  "Walk-up" pill beside "for <name>". */
+  walkUp?: boolean;
+}
+
+/**
+ * The spec line, "string · colour · tension · holes · for <name>", with a
+ * WALK-UP's pill after the name (docs/plans/stringing-walk-ups.md). Shared by
+ * this card and the stringer's queue card, so both say it the same way.
+ * `contact` is the walk-up's phone or email, for the stringer who has the job.
+ */
+export function JobSpecLine({ spec, walkUp, contact }: { spec: string; walkUp?: boolean; contact?: string }) {
+  const tAdmin = useTranslations('admin.stringing');
+  if (!walkUp) return <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{spec}</span>;
+  return (
+    <>
+      <span className="fs-sm" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+        <span>{spec}</span>
+        <StatusBadge variant="muted">{tAdmin('walkUp.badge')}</StatusBadge>
+      </span>
+      {contact && (
+        <span className="fs-sm" style={{ color: 'var(--text-secondary)', overflowWrap: 'anywhere' }}>
+          {tAdmin('walkUp.contactLabel')} · {contact}
+        </span>
+      )}
+    </>
+  );
 }
 
 /**
@@ -130,7 +158,7 @@ export default function JobCard({
           {more && <span style={{ flex: 'none', pointerEvents: 'auto' }}>{more}</span>}
         </div>
         {/* Words in the body face; the spec is what the stringer opened it for. */}
-        <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{spec}</span>
+        <JobSpecLine spec={spec} walkUp={job.walkUp} />
         {waitingDays && !job.cancelledAt ? (
           <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>
             {tAdmin('waiting', { days: waitingDays })}

@@ -127,6 +127,29 @@ export const TENSION_MAX_LB = 32;
  *  (`PendingEdit.reason`): a couple of sentences, read on a phone. */
 export const PROPOSAL_REASON_MAX = 280;
 
+/**
+ * WALK-UPS: a job for someone not on the roster (docs/plans/stringing-walk-ups.md).
+ *
+ * The job's partition key is `~walkup:<16 hex>`, one per job, minted by the
+ * server. `~` follows the ledger's sentinels (`~club`, `~unlinked`, `~anon`):
+ * a real member id is `randomBytes` hex and can never start with it, so
+ * `isSentinelLedgerId` is already true for a walk-up and `purgeMember` and the
+ * credit route refuse it with no new code. One partition PER JOB, not one for
+ * every walk-up, because the ledger mirror writes the job's charge and payment
+ * under that same id: separate partitions keep one walk-up's money out of any
+ * read of another's.
+ */
+export const WALK_UP_ID_PREFIX = '~walkup:';
+/** The typed name: a first name, maybe a surname. Matches the search field. */
+export const WALK_UP_NAME_MAX = 50;
+/** A phone number or an email, as typed. */
+export const WALK_UP_CONTACT_MAX = 120;
+
+/** A walk-up's job: the flag, or (belt and braces) the synthetic partition key. */
+export function isWalkUpJob(job: { walkUp?: boolean; memberId?: string }): boolean {
+  return job.walkUp === true || (typeof job.memberId === 'string' && job.memberId.startsWith(WALK_UP_ID_PREFIX));
+}
+
 export function isValidTension(lb: unknown): lb is number {
   return (
     typeof lb === 'number' &&
