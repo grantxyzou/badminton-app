@@ -32,6 +32,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - The admin bench, when the shop is closed, shows one card in the empty-state pattern with "Open shop", and "Add job" is the solid main button.
 - A change to confirm that is no longer waiting no longer shows the "has an update" line above "Nothing left to answer".
 
+## On a foldable, your weekly read sits beside the tiles (2026-11-12)
+
+- On an unfolded iPhone Duo or Galaxy Z Fold, the greeting at the top of Stats → You moves to the left page, under the Level, Games and Kudos tiles, so "Your skills" heads the right page. On an ordinary phone nothing changes.
+
 ## Stats opens like a book on a foldable (2026-11-12)
 
 - On an unfolded iPhone Duo or Galaxy Z Fold, Stats now uses both halves of the screen: the title and the Level, Games and Kudos tiles on the left page, and the You · Equipment · Play · Learn switch with that register's cards on the right page. Until now Stats kept one column in the middle, so every card sat across the fold.

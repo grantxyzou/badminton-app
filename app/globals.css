@@ -8758,11 +8758,14 @@ html[data-pane-flip='b'] [data-app-shell] {
      clears the three round buttons over the right pane's top on a portrait
      screen; the register starts on the tiles' row and the last row is 1fr,
      so its height never opens a gap on the left. A page a register opens
-     (Your fit, a racket) hides the overview and stays on the right. */
+     (Your fit, a racket) hides the overview and stays on the right. You's
+     greeting (`.stats-shell-lead`, a shell child, not a register card) takes
+     the left page under the tiles (Grant, same day: "move the greeting to the
+     left"), so the fourth row is the left page's. */
   .stats-shell {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: auto auto auto 1fr;
+    grid-template-rows: auto auto auto auto 1fr;
     column-gap: var(--fold-gap);
     row-gap: 0;
     align-items: start;

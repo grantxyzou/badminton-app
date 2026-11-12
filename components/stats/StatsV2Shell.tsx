@@ -39,6 +39,12 @@ export interface StatsV2ShellProps {
    *  register switch and does not gain any here — it only passes this through. */
   checkIn?: UseCheckIn;
   youSlot?: ReactNode;
+  /** The card that leads You (the greeting), placed by the shell rather than
+   *  inside the register: on one screen it sits exactly where the register's
+   *  first card would, and on an unfolded phone it moves to the left page,
+   *  under the tiles (Grant, 2026-11-12, "move the greeting to the left"). It
+   *  must be a single element carrying `stats-shell-lead`. */
+  youLead?: ReactNode;
   playSlot?: ReactNode;
   learnSlot?: ReactNode;
   gearSlot?: ReactNode;
@@ -52,6 +58,7 @@ export default function StatsV2Shell({
   activeName,
   checkIn,
   youSlot,
+  youLead,
   playSlot,
   learnSlot,
   gearSlot,
@@ -99,6 +106,10 @@ export default function StatsV2Shell({
           <RegisterSwitch views={VIEWS} value={view} onChange={setView} label={(id) => t(`registers.${id}`)} ariaLabel={t('heading')} />
         </div>
       )}
+
+      {/* You's lead card, between the switch and the register: the same place
+          on one screen, the left page on a foldable. Gone with a page open. */}
+      {view === 'you' && !takeover && youLead}
 
       {/* Keyed by view so a register switch remounts its content, and the
           remount crossfades (opacity only — the register moves nowhere, it is
