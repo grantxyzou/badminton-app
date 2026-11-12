@@ -32,6 +32,7 @@ import { StateLink } from '@/components/primitives/StateCard';
 import RegisterSwitch from '@/components/primitives/RegisterSwitch';
 import ListRow from '@/components/primitives/ListRow';
 import { StringingAside, useStringingAside } from '@/components/stringing/StringingAside';
+import { PaneDetail } from '@/components/primitives/PaneDetail';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -297,14 +298,17 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   // A detail view whose job is gone renders the bench, so it is not a takeover.
   // A job opens as its own page on one screen, and an archived one anywhere;
   // on a foldable an open job opens on the right page and the bench stays.
-  const detailAsPage =
-    view === 'detail' && selected !== null && (!aside || typeof selected.archivedAt === 'string');
-  const takingOver = view !== 'bench' && !(view === 'detail' && !detailAsPage);
+  const detailAsPage = view === 'detail' && selected !== null && !aside;
+  // On a foldable nothing takes the tab over: every page the bench opens —
+  // a job, a new job, the archive, set-up — opens on the right page.
+  const takingOver = !aside && view !== 'bench' && !(view === 'detail' && !detailAsPage);
   /* The right page's job: the one tapped, while it is still on the list; the
      job at the top of the list before any tap (the list's own order, so the
      first thing the bench asks of you is what is open). */
   const asideJob =
     aside && jobs && jobs.length > 0 ? (jobs.find((j) => j.id === selectedId) ?? jobs[0]) : null;
+  // Whether the right page is showing that job (and not a page the bench opened).
+  const rightShowsJob = view === 'bench' || (view === 'detail' && typeof selected?.archivedAt !== 'string');
   useEffect(() => {
     onTakeover?.(takingOver);
   }, [takingOver, onTakeover]);
@@ -364,11 +368,15 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     }
   }
 
-  /** Opens a job: on the right page when there is one, else as its page. An
-   *  archived job always opens as its page — the archive is a page itself. */
+  /** Opens a job: as its page on one screen. On a foldable an open job opens
+   *  on the right page and anything else open there (a new job, set-up, the
+   *  archive) closes; an archived job opens over the archive, which is where
+   *  its Back returns. */
   function openJob(job: StringingJob, inArchive: boolean) {
     setSelectedId(job.id);
-    if (!aside || inArchive) setView('detail');
+    if (!aside || inArchive) { setView('detail'); return; }
+    if (view === 'setup') { setHolesPreset(null); holes.reload(); }
+    setViews([]);
   }
 
   function renderJob(job: StringingJob, inArchive: boolean) {
@@ -418,7 +426,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
              list card. */
           surface={inArchive ? 'inner' : 'card'}
           onOpen={() => openJob(job, inArchive)}
-          open={!inArchive && asideJob?.id === job.id}
+          open={!inArchive && rightShowsJob && asideJob?.id === job.id}
           openLabel={t('actions.open')}
           more={
             <button
@@ -622,9 +630,12 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     </BottomSheet>
   );
 
-  if (view === 'archive') {
-    return (
-      <div className="animate-slideInRight">
+  // The bench's own pages: in place of the bench on one screen, on the right
+  // page beside it on a foldable (where the page-open motion stands in for
+  // the slide, and the bench's own ⋮ sheet is the one already mounted).
+  const pageClass = aside ? undefined : 'animate-slideInRight';
+  const archiveScreen = view !== 'archive' ? null : (
+      <div className={pageClass}>
         <AdminBackHeader onBack={back} title={t('archive.title')} crumb={crumb} />
         <div className="flex flex-col gap-4 pb-6">
           {archiveError && (
@@ -654,14 +665,13 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             </section>
           )}
         </div>
-        {actionSheet}
+        {!aside && actionSheet}
       </div>
-    );
-  }
+  );
+  if (archiveScreen && !aside) return archiveScreen;
 
-  if (view === 'setup') {
-    return (
-      <div className="animate-slideInRight">
+  const setupScreen = view !== 'setup' ? null : (
+      <div className={pageClass}>
         <AdminBackHeader
           onBack={() => { setHolesPreset(null); holes.reload(); back(); }}
           title={t('setupRow')}
@@ -676,12 +686,11 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           <HoleCountsCard preset={holesPreset} />
         </div>
       </div>
-    );
-  }
+  );
+  if (setupScreen && !aside) return setupScreen;
 
-  if (view === 'new') {
-    return (
-      <div className="animate-slideInRight">
+  const newScreen = view !== 'new' ? null : (
+      <div className={pageClass}>
         <StringingIntake
           crumb={crumb}
           recent={recentMembers}
@@ -692,8 +701,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           }}
         />
       </div>
-    );
-  }
+  );
+  if (newScreen && !aside) return newScreen;
 
   const shopState = shopReadFailed ? 'unknown' : shopOpen === null ? 'checking' : shopOpen ? 'open' : 'closed';
   /* A closed shop over a bench KNOWN to be empty says both in one card, so the
@@ -954,7 +963,24 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       </div>
       {/* The right page on a foldable: the open job, or its place while the
           list loads, so the bench does not move when it arrives. */}
-      {asideJob ? (
+      {aside && (archiveScreen || setupScreen || newScreen) ? (
+        <StringingAside id={view}>{archiveScreen ?? setupScreen ?? newScreen}</StringingAside>
+      ) : aside && view === 'detail' && selected && typeof selected.archivedAt === 'string' ? (
+        <StringingAside id={`archived-${selected.id}`}>
+          {/* Opened from the archive, so its Back returns there. */}
+          <PaneDetail nested>
+            <StringingJobDetail
+              key={selected.id}
+              job={selected}
+              crumb={t('archive.title')}
+              onBack={back}
+              onChanged={() => void load()}
+              holesFor={holes.forLabel}
+              onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('setup'); }}
+            />
+          </PaneDetail>
+        </StringingAside>
+      ) : asideJob ? (
         <StringingAside id={asideJob.id}>
           <StringingJobDetail
             key={asideJob.id}

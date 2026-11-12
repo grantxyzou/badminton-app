@@ -13,6 +13,7 @@ import InstallSheet from './InstallSheet';
 import MigrateSheet from './MigrateSheet';
 import { registerOpenSheet } from '@/lib/sheetStack';
 import { useOnline } from '@/lib/useOnline';
+import { usePaneMode } from '@/lib/paneMode';
 import { getNotices, markNoticesSeen, refreshNotices, useNotices, type Notice } from '@/lib/useNotices';
 import type { UsePushResult } from '@/lib/usePush';
 
@@ -70,6 +71,7 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   const online = useOnline();
+  const pane = usePaneMode();
   const { status, notices } = useNotices();
   const [installOpen, setInstallOpen] = useState(false);
   const [migrateOpen, setMigrateOpen] = useState(false);
@@ -226,11 +228,14 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
     );
   }
 
-  return (
-    // Not wrapped in a header-only element: TopBar is sticky (StatsPrivacyScreen).
-    <div ref={rootRef} className="animate-slideInRight space-y-5">
-      <TopBar title={t('title')} onBack={onBack} backLabel={t('back')} />
-
+  const showPushCard = !migrateOn || push.state.status === 'on';
+  /* An open foldable (docs/plans/foldable-layout.md): the title and this
+     phone's settings on the LEFT page, the Recent list on the RIGHT, rather
+     than one column across the fold. With no setting to show there is no
+     left page to fill, and the page keeps its one column. */
+  const twoPages = pane && (migrateOn || showPushCard);
+  const settings = (
+    <>
       {migrateOn && (
         // A flex gap, not space-y: the body's inline margin would cancel it.
         <div className="glass-card p-5 flex flex-col gap-3">
@@ -246,13 +251,22 @@ export default function NotificationsPage({ onBack, onNavigate, push, isAdmin, m
 
       {/* The push switch: always in the store app; on the web only for a
           browser that already has push on, so it can still be turned off. */}
-      {(!migrateOn || push.state.status === 'on') && (
+      {showPushCard && (
         <div className="glass-card p-5">
           <PushSettings push={push} isAdmin={isAdmin} onOpenInstall={() => setInstallOpen(true)} />
         </div>
       )}
+    </>
+  );
 
-      {list()}
+  return (
+    // Not wrapped in a header-only element: TopBar is sticky (StatsPrivacyScreen).
+    <div ref={rootRef} className={twoPages ? 'animate-slideInRight space-y-5 notices-shell' : 'animate-slideInRight space-y-5'}>
+      <TopBar title={t('title')} onBack={onBack} backLabel={t('back')} />
+
+      {twoPages ? <div className="space-y-5 notices-settings">{settings}</div> : settings}
+
+      {twoPages ? <div className="notices-recent">{list()}</div> : list()}
 
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
       {migrateOn && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useScrollCondensed } from './useScrollCondensed';
+import { useBesideList } from './PaneDetail';
 
 /**
  * Sticky, scroll-condensed top bar. Implements `TopBar Spec.html`
@@ -29,8 +30,12 @@ export interface TopBarProps {
   backLabel?: string;
 }
 
-export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back' }: TopBarProps) {
+export default function TopBar({ title, crumb, onBack: onBackProp, right, backLabel = 'Back' }: TopBarProps) {
   const ref = useRef<HTMLDivElement>(null);
+  // On a foldable's right page the list that opened this page is beside it:
+  // no Back, no edge swipe and no Escape closing it (components/primitives/PaneDetail.tsx).
+  const besideList = useBesideList();
+  const onBack = besideList ? undefined : onBackProp;
 
   // Scroll-condense (shared with PageHeader). Handles the <body>-is-scroller
   // reality of this app — see useScrollCondensed.

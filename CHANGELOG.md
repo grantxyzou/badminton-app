@@ -8,6 +8,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Every tab on a foldable uses both halves, with motion (2026-11-12)
+
+- **Profile on an open Z Fold or Duo**: your list on the left, the page a row opens on the right — Edit profile is open before you tap anything. The open row is marked in green. Sheets (notifications, install) still open in the left half.
+- **Admin**: the console on the left, the page you open on the right, with Roster open by default. Opening another row swaps the right half.
+- **The stringing bench's own pages** — Add job, Archived, the set-up page, an archived job — and a player's "A change to confirm" now open on the right half beside the list instead of covering both halves.
+- **A page on the right has no Back button**: the list it came from is right beside it. A page opened from it (your name, from Edit profile) still has one.
+- **Motion**: a page on the right slides in from the fold as it fades in, and the right half scrolls into view when a row far down the list opens it. With reduced motion it only fades.
+- **Signed out on a foldable reads like a book**: the bpm logo on the left half, Sign up and Log in on the right. Log in and Sign up keep the logo on the left and put their form on the right.
+- **Notifications** shows your settings on the left half and the recent list on the right.
+- **Keep your account** (for someone an organiser let in) opens on the right half beside the banner that asks for it, instead of across both halves.
+- **A phone is unchanged.**
+
 ## Stringing: two-colour sets, your own colours, and a tidier colour picker (2026-11-12)
 
 - **A reel can be a two-colour set** (Grant: "two colour combo like aerobites"). "Red / White" means red mains and white crosses; the mains are always named first. A set is shown as a swatch split down the middle with a small M and C, and is counted in stock like any single colour: buy a reel of "Red / White", string a racket in it, and that set's count goes down.

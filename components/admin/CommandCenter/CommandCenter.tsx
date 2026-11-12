@@ -40,6 +40,9 @@ interface CommandCenterProps {
   onOpenDormant?: () => void;
   /** Exit the Admin tab back to Profile (Admin is reached from Profile). */
   onExit: () => void;
+  /** The page open on a foldable's right page beside the console: its row is
+   *  marked open. Absent on one screen. */
+  openView?: AdminView;
 }
 
 /**
@@ -47,7 +50,7 @@ interface CommandCenterProps {
  * across every admin domain (session, payments, birds, roster) so the
  * organizer can confirm "everything looks right" in 30 seconds.
  */
-export default function CommandCenter({ refreshKey, setView, onExit, onOpenDormant }: CommandCenterProps) {
+export default function CommandCenter({ refreshKey, setView, onExit, onOpenDormant, openView }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   const [localRefresh, setLocalRefresh] = useState(0);
   // "This week" shows ONE card at a time: the session, or Payments.
@@ -232,9 +235,9 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
     {
       title: 'People',
       rows: [
-        { icon: 'person_add', label: 'Invite someone', onClick: () => setView('invite') },
+        { icon: 'person_add', label: 'Invite someone', onClick: () => setView('invite'), selected: openView === 'invite' },
         // Who has no PIN, password or Google yet; the count is the work.
-        { icon: 'key', label: 'Sign-in readiness', meta: lockedTrailing, accent: !!lockedTrailing, onClick: () => setView('sign-in-readiness') },
+        { icon: 'key', label: 'Sign-in readiness', meta: lockedTrailing, accent: !!lockedTrailing, onClick: () => setView('sign-in-readiness'), selected: openView === 'sign-in-readiness' },
       ],
     },
     {
@@ -242,26 +245,26 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       // A club that collects money outside the app has none of these to keep;
       // turning money back on is on "How your club runs".
       rows: moneyOff ? [] : [
-        { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
+        { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger'), selected: openView === 'ledger' },
         // The inbox, reminders, the unpaid hold and the ledger check.
         ...(paymentsAutoOn
-          ? [{ icon: 'receipt_long', label: 'E-transfers', meta: inboxTrailing, accent: !!inboxTrailing && inbox?.configured === true, onClick: () => setView('etransfers') }]
+          ? [{ icon: 'receipt_long', label: 'E-transfers', meta: inboxTrailing, accent: !!inboxTrailing && inbox?.configured === true, onClick: () => setView('etransfers'), selected: openView === 'etransfers' }]
           : []),
-        ...(giftCardsOn ? [{ icon: 'payments', label: 'Credit codes', onClick: () => setView('gift-cards') }] : []),
-        { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
+        ...(giftCardsOn ? [{ icon: 'payments', label: 'Credit codes', onClick: () => setView('gift-cards'), selected: openView === 'gift-cards' }] : []),
+        { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer'), selected: openView === 'etransfer' },
       ],
     },
     {
       title: 'Club',
       rows: [
-        { icon: 'tune', label: 'How your club runs', meta: runKnown ? styleLabel : undefined, onClick: () => setView('club-run') },
+        { icon: 'tune', label: 'How your club runs', meta: runKnown ? styleLabel : undefined, onClick: () => setView('club-run'), selected: openView === 'club-run' },
         ...(stringingOn
-          ? [{ icon: 'sports_tennis', label: 'Stringing bench', meta: benchTrailing, accent: !!benchTrailing, onClick: () => setView('stringing') }]
+          ? [{ icon: 'sports_tennis', label: 'Stringing bench', meta: benchTrailing, accent: !!benchTrailing, onClick: () => setView('stringing'), selected: openView === 'stringing' }]
           : []),
-        { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },
-        { icon: 'groups', label: 'Club name', onClick: () => setView('club-name') },
-        { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
-        { icon: 'schedule', label: 'Late cancellations', onClick: () => setView('late-cancel') },
+        { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements'), selected: openView === 'announcements' },
+        { icon: 'groups', label: 'Club name', onClick: () => setView('club-name'), selected: openView === 'club-name' },
+        { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates'), selected: openView === 'skip-dates' },
+        { icon: 'schedule', label: 'Late cancellations', onClick: () => setView('late-cancel'), selected: openView === 'late-cancel' },
         // Guests are a rule of How your club runs (docs/plans/six-feathers-guests.md).
         { icon: 'person_add', label: 'Guests', onClick: () => setView('club-run') },
       ],
@@ -270,10 +273,10 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       title: 'More',
       rows: [
         // Club totals: who plays, how fast sessions fill, who comes back.
-        { icon: 'bar_chart', label: 'Metrics', onClick: () => setView('metrics') },
-        ...(operator ? [{ icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') }] : []),
+        { icon: 'bar_chart', label: 'Metrics', onClick: () => setView('metrics'), selected: openView === 'metrics' },
+        ...(operator ? [{ icon: 'bolt', label: 'Release notes', onClick: () => setView('releases'), selected: openView === 'releases' }] : []),
         // Rackets members typed in by name: the models the catalog is missing.
-        { icon: 'sports_tennis', label: 'Missing from the catalog', onClick: () => setView('catalog-gaps') },
+        { icon: 'sports_tennis', label: 'Missing from the catalog', onClick: () => setView('catalog-gaps'), selected: openView === 'catalog-gaps' },
       ],
     },
   ];
