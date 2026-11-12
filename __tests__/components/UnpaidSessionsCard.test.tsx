@@ -229,12 +229,12 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
     vi.unstubAllEnvs();
   });
 
-  it('offers "Redeem a gift card" with store credit on, and hands the tap to Home', async () => {
+  it('offers "Have a code?" with store credit on, and hands the tap to Home', async () => {
     vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
     owing();
     const onRedeem = vi.fn();
     wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={vi.fn()} onRedeem={onRedeem} />);
-    const link = await screen.findByRole('button', { name: 'Redeem a gift card' });
+    const link = await screen.findByRole('button', { name: 'Have a code?' });
     expect(screen.getByRole('button', { name: 'See details' })).toBeTruthy();
     fireEvent.click(link);
     expect(onRedeem).toHaveBeenCalledOnce();
@@ -250,9 +250,9 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
     wrap(<UnpaidSessionsCard name="Kento" variant="home" onRedeem={vi.fn()} />);
     // Paid up, Home's card starts as one closed row ($0); its body opens on a tap.
     const row = await screen.findByRole('button', { expanded: false });
-    expect(screen.queryByRole('button', { name: 'Redeem a gift card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Have a code?' })).toBeNull();
     fireEvent.click(row);
-    expect(await screen.findByRole('button', { name: 'Redeem a gift card' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Have a code?' })).toBeTruthy();
   });
 
   it('is absent while store credit is off', async () => {
@@ -260,6 +260,6 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
     owing();
     wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={vi.fn()} onRedeem={vi.fn()} />);
     await screen.findByRole('button', { name: 'See details' });
-    expect(screen.queryByRole('button', { name: 'Redeem a gift card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Have a code?' })).toBeNull();
   });
 });

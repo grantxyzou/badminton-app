@@ -247,7 +247,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
         ...(paymentsAutoOn
           ? [{ icon: 'receipt_long', label: 'E-transfers', meta: inboxTrailing, accent: !!inboxTrailing && inbox?.configured === true, onClick: () => setView('etransfers') }]
           : []),
-        ...(giftCardsOn ? [{ icon: 'payments', label: 'Gift cards', onClick: () => setView('gift-cards') }] : []),
+        ...(giftCardsOn ? [{ icon: 'payments', label: 'Credit codes', onClick: () => setView('gift-cards') }] : []),
         { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
       ],
     },

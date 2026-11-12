@@ -95,9 +95,9 @@ describe('<LedgerPage />', () => {
     expect(within(owed).getByText('People')).toBeTruthy();
     expect(within(owed).getByText('Cara')).toBeTruthy();
 
-    const creditCard = screen.getByRole('region', { name: 'Credit & gift cards' });
+    const creditCard = screen.getByRole('region', { name: 'Credit & credit codes' });
     expect(within(creditCard).getByText('$25.00')).toBeTruthy();
-    expect(within(creditCard).getByText(/2 gift cards not yet redeemed/)).toBeTruthy();
+    expect(within(creditCard).getByText(/2 credit codes not yet redeemed/)).toBeTruthy();
 
     const outlay = screen.getByRole('region', { name: 'Group outlay' });
     expect(within(outlay).getByText('$250.00')).toBeTruthy(); // shuttles

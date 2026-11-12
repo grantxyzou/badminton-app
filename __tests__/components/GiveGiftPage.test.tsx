@@ -43,14 +43,14 @@ async function renderPage() {
 
 async function make(amount = '$25') {
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: `Make a ${amount} gift card` }));
+    fireEvent.click(screen.getByRole('button', { name: `Make a ${amount} credit code` }));
   });
 }
 
 describe('GiveGiftPage', () => {
   it('lists the cards you gave, redeemed or not, with no name of who redeemed them', async () => {
     await renderPage();
-    expect(screen.getByRole('heading', { name: 'Give a gift card' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Give credit' })).toBeTruthy();
     expect(screen.getByText('Redeemed Nov 3')).toBeTruthy();
     expect(screen.getByText('Given Nov 1 · …AB12 · Raffle')).toBeTruthy();
     expect(screen.getByText('Not redeemed yet')).toBeTruthy();
@@ -67,7 +67,7 @@ describe('GiveGiftPage', () => {
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')!;
     expect(String(post[0])).toMatch(/\/api\/giftcards$/);
     expect(JSON.parse(String(post[1]!.body))).toEqual({ amountCents: 5000, note: 'Thanks' });
-    expect(screen.getByText('BPM Core gift card · $50')).toBeTruthy();
+    expect(screen.getByText('BPM Core credit · $50')).toBeTruthy();
     expect(screen.getByText('WXYZ-9876')).toBeTruthy();
   });
 
@@ -103,15 +103,15 @@ describe('GiveGiftPage', () => {
         : new Response(JSON.stringify({ canGift: false, cards: [] }), { status: 200 }),
     );
     await renderPage();
-    expect(screen.getByText('No cards yet.')).toBeTruthy();
+    expect(screen.getByText('No codes yet.')).toBeTruthy();
     await make();
-    expect(screen.getByRole('alert').textContent).toBe('Only organisers can make gift cards.');
+    expect(screen.getByRole('alert').textContent).toBe('Only organisers can give credit.');
   });
 
   it('says the list failed to load rather than showing none', async () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 503 }));
     await renderPage();
-    expect(screen.getByText('Couldn’t load your cards.')).toBeTruthy();
-    expect(screen.queryByText('No cards yet.')).toBeNull();
+    expect(screen.getByText('Couldn’t load your codes.')).toBeTruthy();
+    expect(screen.queryByText('No codes yet.')).toBeNull();
   });
 });

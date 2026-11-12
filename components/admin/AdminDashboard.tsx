@@ -253,7 +253,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     if (view === 'gift-cards') {
       return (
         <div className="animate-slideInRight space-y-3">
-          <AdminBackHeader onBack={goBack} title="Gift cards" />
+          <AdminBackHeader onBack={goBack} title="Credit codes" />
           <GiftCardsCard refreshKey={refreshKey} bare />
         </div>
       );

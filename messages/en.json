@@ -476,7 +476,7 @@
     "balance": {
         "guestLine": "{name}, your guest",
         "details": "See details",
-        "redeem": "Redeem a gift card",
+        "redeem": "Have a code?",
         "groupSessions": "Badminton",
         "groupStringing": "Stringing",
       "title": "Balance",
@@ -618,7 +618,7 @@
       "can": {
         "member": ["Sign up for sessions", "Pay what you owe", "Ask for a restring"],
         "admin": ["Run sessions and open sign-ups", "Mark payments and settle the bill", "Add, rename and remove members"],
-        "owner": ["Run sessions and open sign-ups", "Mark payments and settle the bill", "Add, rename and remove members", "Give out ranks and gift cards"]
+        "owner": ["Run sessions and open sign-ups", "Mark payments and settle the bill", "Add, rename and remove members", "Give out ranks and credit"]
       },
       "memberSince": "Member since",
       "deleteAccount": "Delete my account",
@@ -887,13 +887,13 @@
       }
     },
     "giftCards": {
-      "title": "Gift cards & credit",
+      "title": "Credit",
       "back": "Profile",
       "yourCredit": "Your credit",
       "creditNote": "Credit pays a whole session once its bill is settled.",
       "loadError": "Couldn’t load your credit. Pull to refresh.",
-      "redeemGroup": "Redeem a gift card",
-      "codeLabel": "Gift card code",
+      "redeemGroup": "Add a credit code",
+      "codeLabel": "Credit code",
       "placeholder": "XXXX-XXXX",
       "redeem": "Redeem",
       "added": "Added {amount} to your credit",
@@ -903,9 +903,9 @@
         "failed": "Couldn’t redeem right now. Try again."
       },
       "historyGroup": "History",
-      "empty": "No credit yet. A gift card adds it here.",
+      "empty": "No credit yet. A credit code adds it here.",
       "history": {
-        "gift": "Gift card",
+        "gift": "Credit code",
         "grant": "Added by the club",
         "session": "Paid the {date} session",
         "stringing": "Paid for stringing",
@@ -914,30 +914,30 @@
       }
     },
     "giveGift": {
-      "title": "Give a gift card",
+      "title": "Give credit",
       "back": "Profile",
       "amountGroup": "Amount",
-      "noteLabel": "Note on the card (optional)",
+      "noteLabel": "Note (optional)",
       "notePlaceholder": "Raffle, thank-you…",
-      "make": "Make a {amount} gift card",
+      "make": "Make a {amount} credit code",
       "booksNote": "It’s added to the club’s books as money owed to whoever redeems it.",
       "error": {
-        "forbidden": "Only organisers can make gift cards.",
-        "rateLimited": "That’s enough cards for today. Try again tomorrow.",
-        "failed": "Couldn’t make a gift card. Try again."
+        "forbidden": "Only organisers can give credit.",
+        "rateLimited": "That’s enough codes for today. Try again tomorrow.",
+        "failed": "Couldn’t make a code. Try again."
       },
       "thisClub": "Club",
-      "mintedTitle": "{club} gift card · {amount}",
-      "codeLabel": "Gift card code",
+      "mintedTitle": "{club} credit · {amount}",
+      "codeLabel": "Credit code",
       "onceNote": "Works once. Whoever redeems it gets the credit. This is the only time the code is shown, so copy or share it now.",
       "copy": "Copy code",
       "copied": "Copied",
       "share": "Share",
       "another": "Make another",
-      "shareText": "Here’s a {amount} %APP% gift card: {code}\nRedeem it in the app: Profile → Gift cards & credit.",
-      "givenGroup": "Cards you gave",
-      "empty": "No cards yet.",
-      "listError": "Couldn’t load your cards.",
+      "shareText": "Here’s {amount} of %APP% credit: {code}\nAdd it in the app: Profile → Credit.",
+      "givenGroup": "Codes you made",
+      "empty": "No codes yet.",
+      "listError": "Couldn’t load your codes.",
       "redeemed": "Redeemed {date}",
       "notRedeemed": "Not redeemed yet",
       "given": "Given {date}",
@@ -953,13 +953,13 @@
       "newPin": "New PIN",
       "updatePin": "Update PIN",
       "recoveryCode": "Have a recovery code?",
-      "giftCards": "Gift cards & credit",
+      "giftCards": "Credit",
       "accountBalance": "Account balance",
       "owedMeta": "{amount} owed",
       "moneyGroup": "Money",
       "clubGroup": "Club",
       "settingsGroup": "Settings",
-      "giveGift": "Give a gift card",
+      "giveGift": "Give credit",
       "statsPrivacy": "Stats & privacy",
       "statsPrivacyOn": "On",
       "statsPrivacyOff": "Private",
@@ -2735,7 +2735,7 @@
             },
             {
               "t": "Or pay with credit",
-              "b": "Credit from a gift card pays any settled line it covers in full: Profile → Account balance.",
+              "b": "Credit pays any settled line it covers in full: Profile → Account balance.",
               "img": "account-balance",
               "alt": "Account balance: what you owe, your credit beside it, a line per item and a “Pay with credit” button.",
               "caption": "Profile → Account balance."
@@ -2955,7 +2955,7 @@
             "• **Guests you bring**, if your group allows them: the name you give for your guest, shown on the roster beside yours. Their share of the cost is added to your balance.",
             "• **A request to join**, if you ask through a group's join link: the name you typed. An organiser sees it, and it is kept for an hour or until they answer.",
             "• **E-transfer notices**, if your group's organiser turns on automatic payment matching: the organiser's email forwards Interac's notification to the app. We keep the sender's name, the amount, the memo and which sessions it paid — never the email itself. Only admins see it.",
-            "• **Stringing and store credit**: rackets you hand in for stringing, with the string, tension, price and whether it is paid; and any store credit or gift card on your account.",
+            "• **Stringing and store credit**: rackets you hand in for stringing, with the string, tension, price and whether it is paid; and any store credit on your account, including the credit codes you redeem.",
             "• **Notices**: a copy of each notification we send you, so you can read it again on the Notifications page."
           ]
         },

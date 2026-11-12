@@ -105,7 +105,9 @@ export default function CreditSection({ memberId }: { memberId: string }) {
           </p>
           {data.entries.slice(0, 4).map((e) => (
             <div key={e.id} className="fs-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', color: 'var(--text-secondary)' }}>
-              <span>{e.note || e.kind.replace('_', ' ')}</span>
+              {/* A redemption's note is stored as "Gift card · …" (the member's history
+                  reads that prefix); it is shown in today's words. */}
+              <span>{(e.note ?? '').replace(/^Gift card\b/, 'Credit code') || e.kind.replace('_', ' ')}</span>
               <span style={{ fontFamily: 'var(--font-mono)' }}>{e.amountCents > 0 ? '+' : ''}{money(e.amountCents)}</span>
             </div>
           ))}

@@ -476,7 +476,7 @@
     "balance": {
       "guestLine": "{name}（你的朋友）",
       "details": "查看详情",
-      "redeem": "兑换礼品卡",
+      "redeem": "有充值码？",
       "groupSessions": "羽毛球",
       "groupStringing": "穿线",
       "title": "待付金额",
@@ -618,7 +618,7 @@
       "can": {
         "member": ["报名活动", "支付欠款", "申请穿线"],
         "admin": ["组织活动、开放报名", "记录付款、结算账单", "添加、改名和移除成员"],
-        "owner": ["组织活动、开放报名", "记录付款、结算账单", "添加、改名和移除成员", "授予身份和发放礼品卡"]
+        "owner": ["组织活动、开放报名", "记录付款、结算账单", "添加、改名和移除成员", "授予身份和发放余额"]
       },
       "memberSince": "加入时间",
       "deleteAccount": "删除我的账户",
@@ -887,13 +887,13 @@
       }
     },
     "giftCards": {
-      "title": "礼品卡与余额",
+      "title": "余额",
       "back": "我的",
       "yourCredit": "你的余额",
       "creditNote": "活动账单结算后，余额可以支付整场活动的费用。",
       "loadError": "无法加载你的余额。下拉刷新。",
-      "redeemGroup": "兑换礼品卡",
-      "codeLabel": "礼品卡兑换码",
+      "redeemGroup": "兑换充值码",
+      "codeLabel": "充值码",
       "placeholder": "XXXX-XXXX",
       "redeem": "兑换",
       "added": "已将 {amount} 存入你的余额",
@@ -903,9 +903,9 @@
         "failed": "暂时无法兑换，请重试。"
       },
       "historyGroup": "记录",
-      "empty": "还没有余额。兑换礼品卡后会显示在这里。",
+      "empty": "还没有余额。兑换充值码后会显示在这里。",
       "history": {
-        "gift": "礼品卡",
+        "gift": "充值码",
         "grant": "俱乐部添加",
         "session": "支付 {date} 的活动",
         "stringing": "支付穿线费用",
@@ -914,30 +914,30 @@
       }
     },
     "giveGift": {
-      "title": "送出礼品卡",
+      "title": "送出余额",
       "back": "我的",
       "amountGroup": "金额",
-      "noteLabel": "卡上的备注（可选）",
+      "noteLabel": "备注（可选）",
       "notePlaceholder": "抽奖、感谢……",
-      "make": "制作一张 {amount} 的礼品卡",
+      "make": "制作一个 {amount} 的充值码",
       "booksNote": "它会记入俱乐部的账目，作为欠兑换人的款项。",
       "error": {
-        "forbidden": "只有组织者可以制作礼品卡。",
-        "rateLimited": "今天制作的卡已经够多了，明天再试。",
-        "failed": "暂时无法制作礼品卡，请重试。"
+        "forbidden": "只有组织者可以发放余额。",
+        "rateLimited": "今天制作的充值码已经够多了，明天再试。",
+        "failed": "暂时无法制作充值码，请重试。"
       },
       "thisClub": "俱乐部",
-      "mintedTitle": "{club} 礼品卡 · {amount}",
-      "codeLabel": "礼品卡兑换码",
+      "mintedTitle": "{club} 余额 · {amount}",
+      "codeLabel": "充值码",
       "onceNote": "只能使用一次，兑换的人获得余额。兑换码只显示这一次，请现在复制或分享。",
       "copy": "复制兑换码",
       "copied": "已复制",
       "share": "分享",
       "another": "再做一张",
-      "shareText": "这是一张 {amount} 的 %APP% 礼品卡：{code}\n在应用里兑换：我的 → 礼品卡与余额。",
-      "givenGroup": "你送出的卡",
-      "empty": "还没有卡。",
-      "listError": "无法加载你的礼品卡。",
+      "shareText": "这是 {amount} 的 %APP% 余额充值码：{code}\n在应用里兑换：我的 → 余额。",
+      "givenGroup": "你制作的充值码",
+      "empty": "还没有充值码。",
+      "listError": "无法加载你的充值码。",
       "redeemed": "已于 {date} 兑换",
       "notRedeemed": "尚未兑换",
       "given": "{date} 送出",
@@ -953,13 +953,13 @@
       "newPin": "设置 PIN",
       "updatePin": "修改 PIN",
       "recoveryCode": "有恢复码？",
-      "giftCards": "礼品卡与余额",
+      "giftCards": "余额",
       "accountBalance": "欠款与付款",
       "owedMeta": "欠 {amount}",
       "moneyGroup": "钱款",
       "clubGroup": "俱乐部",
       "settingsGroup": "设置",
-      "giveGift": "送出礼品卡",
+      "giveGift": "送出余额",
       "statsPrivacy": "数据与隐私",
       "statsPrivacyOn": "已开启",
       "statsPrivacyOff": "私密",
@@ -2723,7 +2723,7 @@
             },
             {
               "t": "或用余额支付",
-              "b": "礼品卡的余额可以支付它能全额覆盖的已结算项目：我的 → 欠款与付款。",
+              "b": "余额可以支付它能全额覆盖的已结算项目：我的 → 欠款与付款。",
               "img": "account-balance",
               "alt": "欠款与付款页面：待付金额、旁边的余额、逐项列表和“用余额支付”按钮。",
               "caption": "我的 → 欠款与付款。"
@@ -2943,7 +2943,7 @@
             "• **你带来的客人**（如果你的小组允许）：你为客人填写的名字，会显示在名单上你的名字旁边。客人那份费用会加到你的账单里。",
             "• **加入申请**：如果你通过小组的加入链接申请，我们会保存你填写的名字。组织者会看到它；它保存一小时，或者直到组织者作出答复。",
             "• **转账通知**：如果你所在小组的组织者开启了自动核对付款，组织者的邮箱会把 Interac 的转账通知转发给应用。我们保存付款人姓名、金额、附言，以及这笔钱付了哪些场次——邮件本身从不保存。只有管理员能看到。",
-            "• **穿线和储值**：你送来穿线的球拍，以及球线、磅数、价格和是否已付；还有你账户里的储值或礼品卡。",
+            "• **穿线和储值**：你送来穿线的球拍，以及球线、磅数、价格和是否已付；还有你账户里的储值，包括你兑换的充值码。",
             "• **通知记录**：我们发给你的每条通知都会保存一份副本，方便你在「通知」页面再次查看。"
           ]
         },
