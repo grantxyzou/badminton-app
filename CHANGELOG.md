@@ -92,6 +92,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### String stock goes down for every finished job (2026-11-12)
+
+Grant: "the stock is not going down based on the archived and finished stringing job".
+
+- **A job added on the bench now uses up a set even when its string came from the player's bag.** The bag names a string the catalog way ("Yonex BG80") while the shelf says "BG80", and stock only matched the exact shelf name, so those jobs never came off the reel. A job's string now also matches the catalog name of a linked shelf string, and the same name typed with a space or a dash ("BG 80", "BG-80"). A name that could be two shelf strings is still left under "not on your list" rather than guessed.
+- **Deleting an archived job no longer puts its set back.** The job is gone, but a small record of the string it used stays, so the shelf keeps counting it.
+
 ### Stringers name the strings and set their reel colours (2026-11-12)
 
 Grant: "open up reel and string name, colour for stringers" (`docs/plans/stringer-shelf-edits.md`).

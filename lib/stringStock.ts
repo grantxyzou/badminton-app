@@ -3,11 +3,11 @@ import { randomBytes } from 'crypto';
 import { ensureCatalogSeeded } from './catalogSeed';
 import { groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
-import type { CatalogItem, StringPurchase } from './types';
+import type { CatalogItem, StringPurchase, StringingJob } from './types';
 import { isStringColourId, type StringColourId } from './stringPalette';
 
 export * from './stringStockMath';
-import { MAX_UNITS, MAX_METRES_PER_UNIT, MAX_COST_CENTS } from './stringStockMath';
+import { MAX_UNITS, MAX_METRES_PER_UNIT, MAX_COST_CENTS, STRUNG_STATUSES } from './stringStockMath';
 
 /**
  * STRING INVENTORY — what the club bought, what went onto rackets, what it
@@ -129,4 +129,65 @@ export async function deleteStringPurchase(groupId: string, id: string): Promise
   if (!existing || existing.kind !== STRING_PURCHASE_KIND) throw new StringStockError('not_found');
   await scope.remove('clubSettings', id);
   return existing;
+}
+
+// ── A deleted job's set ──────────────────────────────────────────────────────
+//
+// Usage is COUNTED from jobs, so deleting an archived job used to hand its set
+// back to the reel (2026-11-12, Grant: "the stock is not going down based on
+// the archived and finished stringing job"). Deleting a job whose string went
+// in now leaves this row behind first: the label, colour and day, nothing about
+// the person or the money. A `kind: 'stringUse'` row in `clubSettings` beside
+// the purchases, id derived from the job's (`su-<jobId>`), so a retried delete
+// writes the same row; a row whose job still exists is never counted twice.
+
+export const STRING_USE_KIND = 'stringUse';
+
+export interface StringUse {
+  id: string;
+  kind: typeof STRING_USE_KIND;
+  groupId?: string;
+  jobId: string;
+  stringLabel: string;
+  stringColor?: string;
+  /** When the job left the bench. */
+  deletedAt: string;
+}
+
+/** A job's string has gone in: deleting it must leave its set counted. */
+export function usesASet(job: Pick<StringingJob, 'status'>): boolean {
+  return STRUNG_STATUSES.has(job.status);
+}
+
+export async function recordStringUse(scope: GroupScope, job: Pick<StringingJob, 'id' | 'stringLabel' | 'stringColor'>): Promise<void> {
+  await ensureClubSettings();
+  const doc: StringUse = {
+    id: `su-${job.id}`,
+    kind: STRING_USE_KIND,
+    jobId: job.id,
+    stringLabel: job.stringLabel,
+    ...(job.stringColor ? { stringColor: job.stringColor } : {}),
+    deletedAt: new Date().toISOString(),
+  };
+  await scope.upsert('clubSettings', doc);
+}
+
+export async function readStringUses(scope: GroupScope): Promise<StringUse[]> {
+  await ensureClubSettings();
+  // A literal, as `readStringPurchases`: the mock knows no `@kind`.
+  const rows = await scope.query<StringUse & { kind?: string }>('clubSettings', { where: `c.kind = '${STRING_USE_KIND}'` });
+  return rows.filter((r) => r.kind === STRING_USE_KIND);
+}
+
+type CountedJob = Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor'>;
+
+/** The jobs the stock counts: every job still stored, plus each deleted one's set. */
+export function withDeletedUses(jobs: readonly CountedJob[], uses: readonly StringUse[]): CountedJob[] {
+  const live = new Set(jobs.map((j) => j.id));
+  return [
+    ...jobs,
+    ...uses
+      .filter((u) => !live.has(u.jobId))
+      .map((u) => ({ id: u.jobId, stringLabel: u.stringLabel, status: 'picked_up' as const, archivedAt: u.deletedAt, ...(u.stringColor ? { stringColor: u.stringColor } : {}) })),
+  ];
 }

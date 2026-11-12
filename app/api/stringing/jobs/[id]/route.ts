@@ -25,6 +25,8 @@ import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW, PROPO
 import { notifyStringerOfAssignment } from '@/lib/stringingRequestNotify';
 import { isArchived } from '@/lib/stringingOrder';
 import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirror';
+import { recordStringUse, usesASet } from '@/lib/stringStock';
+import { forgetShelfExtras } from '@/lib/stringShelfRead';
 import type { StringingJob, PendingEdit } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -548,9 +550,13 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'not_archived' }, { status: 409 });
     }
 
+    // Its set stays used: stock is counted from jobs, so the job's string
+    // leaves a row behind BEFORE the job goes (a failed write stops the delete).
+    if (usesASet(job)) await recordStringUse(scope, job);
     const removed = await scope.remove('stringingJobs', id, memberId);
     if (!removed) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     await mirrorStringingDeleted(scope, job);
+    forgetShelfExtras(scope.groupId);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error(`DELETE /api/stringing/jobs/${id} failed:`, err);

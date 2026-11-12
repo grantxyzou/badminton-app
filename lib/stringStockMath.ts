@@ -19,6 +19,13 @@ export const STRUNG_STATUSES: ReadonlySet<StringingJob['status']> = new Set(['st
 
 export const labelKey = (label: string) => label.trim().toLowerCase();
 
+/**
+ * A label with its spaces and punctuation gone: "BG-80", "bg 80" and "BG80"
+ * are one key. Only a FALLBACK for a job's label (`summarizeStringStock`),
+ * and only where it names exactly one shelf string.
+ */
+export const compactKey = (label: string) => label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
 export interface StringStockLine {
   label: string;
   catalogId: string | null;
@@ -154,12 +161,37 @@ export function summarizeStringStock(input: {
     else pool.mixedMetres += metres;
   }
 
+  // A job's label is free text: the bench fills it from the player's bag,
+  // where a catalog string is named "Yonex BG80", while the shelf says "BG80"
+  // (2026-11-12, Grant: "the stock is not going down based on the archived
+  // and finished stringing job"). Exact label first, then the catalog's names
+  // for a linked shelf string, then either with spaces and punctuation gone —
+  // each only where it names ONE shelf string, so a fallback never guesses.
+  const otherNames = new Map<string, string | null>();
+  const claim = (name: string, key: string) => {
+    if (!name) return;
+    const held = otherNames.get(name);
+    otherNames.set(name, held === undefined || held === key ? key : null);
+  };
+  for (const [key, line] of byKey) {
+    claim(`c:${compactKey(line.label)}`, key);
+    const item = line.catalogId ? input.catalog.get(line.catalogId) : undefined;
+    if (!item) continue;
+    for (const name of [`${item.brand} ${item.model}`, item.model]) {
+      if (!name?.trim()) continue;
+      claim(`l:${labelKey(name)}`, key);
+      claim(`c:${compactKey(name)}`, key);
+    }
+  }
+  const byOtherName = (label: string): string | undefined =>
+    otherNames.get(`l:${labelKey(label)}`) ?? otherNames.get(`c:${compactKey(label)}`) ?? undefined;
+
   const unmatched = new Map<string, { label: string; usedSets: number }>();
   for (const j of input.jobs) {
     if (!STRUNG_STATUSES.has(j.status)) continue;
     const own = keyOf(j.stringLabel ?? '');
     if (!own) continue;
-    const key = byKey.has(own) ? own : renamed.get(own) ?? own;
+    const key = byKey.has(own) ? own : renamed.get(own) ?? byOtherName(j.stringLabel) ?? own;
     const line = byKey.get(key);
     if (line) {
       line.usedSets += 1;
