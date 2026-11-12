@@ -241,6 +241,38 @@ Grant: "can you review with design system and also appli motion to it".
   on `grid-template-rows, grid-template-columns`, the Stats field, a
   transparent +1 rim, and `status-celebrate` → `signupBannerIn` at 21–0.
 
+### Stats gets the two pages (2026-11-12)
+
+The propose mode of the `foldable-review` skill found Stats still sitting ON
+the fold: its 480 px column stayed centred on every foldable, so the title, the
+three tiles, the switch and every card crossed the hinge. Four candidates were
+drawn (overview left and register right; the same with the tiles stacked; the
+cards two-up; cards about you right and about the club left), first as
+injected CSS at the real sizes, then on a Claude Design canvas. Grant moved the
+switch to the head of the right page on the canvas ("this is the tabs
+location") and chose candidate 1: "go with 1".
+
+- **Left page: the overview** — title, subhead, the Level / Games / Kudos
+  tiles. **Right page: the switch, then the register** — the switch on the
+  page it changes, on the subhead's row (which clears the three round buttons
+  over the right pane's top on a portrait screen), the register from the
+  tiles' row down. Home's shape, inside the same media block: `.stats-shell`,
+  `.stats-shell-switch`, `.stats-shell-register`, carried by both
+  `StatsV2Shell` and its loading frame (`StatsFallback`) so the chunk arriving
+  moves nothing. A page a register opens (Your fit, a racket) hides the
+  overview and stays on the right.
+- **The greeting stays the first card of the You register, on the right.**
+  The canvas drew it under the tiles on the left, but in the app it belongs to
+  the register, and placing one card of a register in the other column with
+  CSS would tie the two columns' rows together and open gaps. Moving it is a
+  component change; not done without Grant's word.
+- **The header's sticky bar is half-width** on two pages, as every card is.
+- **Measured** (mock store, Lin, Chromium): Duo sideways 356 / 356, Z Fold
+  open 402 / 402, tablet 470 / 470; nothing crosses the centre at any of them.
+  Phone, Duo closed, Duo upright and desktop: 0 pixels changed against the
+  base (the phone's first diff of 48 px was the trend line's anti-aliasing,
+  identical between two runs of the same code).
+
 ## Shape
 
 | Piece | Where |

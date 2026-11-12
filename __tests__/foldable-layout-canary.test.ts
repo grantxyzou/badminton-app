@@ -110,8 +110,27 @@ describe('foldable layout', () => {
     expect(base[0]).toMatch(/flex-direction:\s*column/);
   });
 
-  it('widens the page only while Home is the tab on screen', () => {
-    expect(pane).toMatch(/main\[data-page-shell\]:has\(> \[data-tab-panel='home'\]:not\(\[hidden\]\)\)\s*\{\s*max-width:\s*var\(--panes-max-w\)/);
+  it('widens the page only while Home or Stats is the tab on screen', () => {
+    expect(pane).toMatch(
+      /main\[data-page-shell\]:has\(> \[data-tab-panel='home'\]:not\(\[hidden\]\)\),\s*main\[data-page-shell\]:has\(> \[data-tab-panel='skills'\]:not\(\[hidden\]\)\)\s*\{\s*max-width:\s*var\(--panes-max-w\)/,
+    );
+  });
+
+  it('puts Stats in two panes: the overview left, the switch and the register right (Grant, 2026-11-12)', () => {
+    expect(pane).toMatch(/\.stats-shell\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)[^}]*column-gap:\s*var\(--fold-gap\)/);
+    expect(pane).toMatch(/\.stats-shell > \*\s*\{\s*grid-column:\s*1;/);
+    expect(pane).toMatch(/\.stats-shell > \.stats-shell-switch\s*\{\s*grid-column:\s*2;\s*grid-row:\s*2;/);
+    expect(pane).toMatch(/\.stats-shell > \.stats-shell-register\s*\{\s*grid-column:\s*2;\s*grid-row:\s*3 \/ -1;/);
+    // Outside the pane block the classes draw nothing: one screen keeps its column.
+    expect(topLevelRules('.stats-shell').length).toBe(0);
+    // The shell and its loading frame carry the same three classes, or the
+    // chunk arriving on an unfolded phone would move the page.
+    for (const file of [['components', 'stats', 'StatsV2Shell.tsx'], ['components', 'TabFallbacks.tsx']]) {
+      const src = readFileSync(join(__dirname, '..', ...file), 'utf8');
+      expect(src).toMatch(/className="space-y-5 w-full stats-shell"/);
+      expect(src).toMatch(/className="stats-shell-switch"/);
+      expect(src).toMatch(/stats-shell-register"/);
+    }
   });
 
   it('opens a sheet in the left half, and only there', () => {
