@@ -2,7 +2,7 @@
 
 **Track:** ROADMAP North Star — admin cost-automation; `docs/plans/payments.md` Phase 2 (the ledger), of which store credit and gift cards were the first slice (shipped 2026-10-06).
 **Status:** shipped 2026-10-09
-**Review on:** 2026-11-25 — has an organiser opened a card's record and found what they needed (who, when, how much, what is left)? If the per-card view was never opened, fold it back into the plain list. (The other half, who may give cards, was answered on 2026-11-10: organisers only.)
+**Review on:** 2026-12-10 — opening a code on Profile → Give credit, did the record answer who has it, when it was given, where it was spent and what is left? If an organiser still has to go to the console for any of the four, say which. (2026-11-12: Grant opened the Profile list and found all four missing; the record was only on the console. Profile carries it since. Who may give cards was answered on 2026-11-10: organisers only.)
 
 ## Problem
 
@@ -31,8 +31,9 @@ the roster sheet and leave the field as harmless data.
   an ATTRIBUTION over the member's credit history (oldest source first),
   not a second balance. Two balances for one pool of money would disagree
   the first time a refund landed.
-- A gifter seeing WHO redeemed their card. The gifter handed the code to
-  someone; the admin's record names them, the gifter's shows redeemed or not.
+- ~~A gifter seeing WHO redeemed their card.~~ Withdrawn 2026-11-12: only an
+  organiser gives cards since 2026-11-10, so the gifter IS the person the
+  record was kept from nobody for (see Decisions).
 - Revoking a minted-but-unredeemed card. Not asked for; the admin can see
   it is unredeemed and simply not hand it out.
 - Changing how a member redeems or spends credit.
@@ -42,6 +43,7 @@ the roster sheet and leave the field as harmless data.
 
 ## Decisions
 
+- **2026-11-12 review: the record is on BOTH doors** (Grant opened a code's record and found it missing "Who has it / who gave it, Where it was spent, What's left, When it was given"). He had opened Profile → Give credit, whose list showed only redeemed-or-not and a date, by the bullet below that hid the redeemer from a non-admin gifter. The console's Credit codes card already had all four. Since giving is an organiser's (2026-11-10), that reason is gone, so Profile's list now carries the console's record for the caller's own codes: the row names who redeemed it and what is left, and opens into made (when, by whom), redeemed (when, by whom), used of the amount, and each draw on it, a refunded one struck through. Both routes read one shape, `giftCardViews` in `lib/giftCardView.ts`, so the two cannot disagree; `GET /api/giftcards`'s new fields are additive, and the page reads an older server's list as before. Profile still lists only the caller's OWN codes: another organiser's are on the console. `__tests__/store-credit.test.ts` (the list equals the console's record for that card) and `__tests__/components/GiveGiftPage.test.tsx` hold it.
 - **2026-11-07 review: giving a card is an ORGANISER's, and the switch is retired** (Grant, 2026-11-10: "gift card should be organizer feature only"). Both ways to give one, the console's Gift cards (`/api/admin/giftcards`, mint and every card's record) and Profile's "Give a gift card" (`/api/giftcards`), answer `organiser_only` to anyone else, with the rank re-read from this club's membership on every call; with groups off every admin is one. The `canGift` switch below, which let an organiser hand minting to a helper, does nothing now: the Roster sheet's checkbox is gone, `PATCH /api/members` ignores the field, and the stored values stay because the schema is additive. The console's row shows only once the rank is known to be organiser. Redeeming is unchanged: every member's. `__tests__/group-giftcards.test.ts` holds it. The `canGift` bullets below are the history of why it was per club.
 
 - **"Remaining" is an attribution, not a balance.** `attributeCredit` in
@@ -83,6 +85,8 @@ the roster sheet and leave the field as harmless data.
 - **A gifter sees redeemed-or-not; the admin sees who.** The gifter handed
   the code to a person and already knows who they meant it for; naming the
   redeemer to a non-admin would be a roster read through a side door.
+  **Superseded 2026-11-12**: with giving an organiser's alone, the "non-admin"
+  this protected against no longer exists (next bullet).
 
 ## Shape
 
@@ -90,7 +94,9 @@ the roster sheet and leave the field as harmless data.
 |---|---|
 | Attribution (pure) | `lib/creditAttribution.ts`, `__tests__/credit-attribution.test.ts` |
 | `GiftCardDoc.redeemedBy`, `giftCardRecords`, `giftHashOf` | `lib/storeCredit.ts` |
+| The record's one shape | `lib/giftCardView.ts` (`giftCardViews`), read by both routes |
 | Admin list with records | `GET /api/admin/giftcards`; `components/admin/CommandCenter/GiftCardsCard.tsx` (tap a card) |
+| The organiser's own codes, with the same record | `GET /api/giftcards`; `components/profile/GiveGiftPage.tsx` (tap a code) |
 | The switch | `Member.canGift` (`lib/types.ts`), `PATCH /api/members`, `RosterPage` checkbox |
 | The gifter's surface | `GET`/`POST /api/giftcards`; `components/profile/GiveGiftPage.tsx` (a page since 2026-11-09, replacing `GiveGiftSheet`); Profile → MONEY → "Give a gift card" (`profile.giveGift.*`, `settings.giveGift`) |
 | Tests | `__tests__/store-credit.test.ts` (record, legacy card, gifter) |

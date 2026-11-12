@@ -18,29 +18,13 @@ import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
-import { getContainer } from '@/lib/cosmos';
-import { CreditError, giftCardRecords, mintGiftCard } from '@/lib/storeCredit';
-import type { Member } from '@/lib/types';
+import { CreditError, mintGiftCard } from '@/lib/storeCredit';
+import { giftCardViews } from '@/lib/giftCardView';
 
 export const dynamic = 'force-dynamic';
 
 const off = () => NextResponse.json({ error: 'not_found' }, { status: 404 });
 const organiserOnly = () => NextResponse.json({ error: 'organiser_only' }, { status: 403 });
-
-/** Display names for a few member ids; an id with no Member (deleted) stays unnamed. */
-async function namesOf(ids: Iterable<string>): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  const container = getContainer('members');
-  await Promise.all([...new Set(ids)].map(async (id) => {
-    try {
-      const { resource } = await container.item(id, id).read<Member>();
-      if (resource?.name) out.set(id, resource.name);
-    } catch (err) {
-      if ((err as { code?: number })?.code !== 404) throw err;
-    }
-  }));
-  return out;
-}
 
 export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) return off();
@@ -51,19 +35,7 @@ export async function GET(req: NextRequest) {
   if (!admin.authed) return unauthorized();
   if (!admin.organiser) return organiserOnly();
   try {
-    const records = await giftCardRecords(resolveGroupId(req));
-    const names = await namesOf(records.flatMap((r) => [r.createdBy, ...(r.redeemedBy ? [r.redeemedBy] : [])]));
-    const person = (id: string | undefined) => (id ? { memberId: id, name: names.get(id) ?? null } : null);
-    return NextResponse.json({
-      cards: records.map(({ id, amountCents, note, hint, createdAt, createdBy, redeemedAt, redeemedBy, usedCents, remainingCents, uses }) => ({
-        id, amountCents, note, hint, createdAt,
-        createdBy: person(createdBy),
-        redeemedAt: redeemedAt ?? null,
-        redeemedBy: person(redeemedBy),
-        usedCents, remainingCents,
-        uses: uses.map(({ at, amountCents, note, kind, reversed }) => ({ at, amountCents, note, kind, reversed: reversed === true })),
-      })),
-    });
+    return NextResponse.json({ cards: await giftCardViews(resolveGroupId(req)) });
   } catch (err) {
     console.error('GET /api/admin/giftcards failed', err);
     return NextResponse.json({ error: 'read_failed' }, { status: 503 });

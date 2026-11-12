@@ -944,7 +944,23 @@
       "leaveTitle": "不保存兑换码就离开？",
       "leaveBody": "你还没有复制这个兑换码。仍要离开吗？它无法再次显示。",
       "stay": "留下",
-      "leave": "仍要离开"
+      "leave": "仍要离开",
+      "redeemedBy": "{name} 已兑换",
+      "left": "剩余 {amount}",
+      "deletedAccount": "已删除的账户",
+      "record": {
+        "made": "制作",
+        "redeemed": "兑换",
+        "used": "已用",
+        "on": "{date} · {name}",
+        "notYet": "尚未兑换",
+        "usedOf": "已用 {used} / {amount} · 剩余 {left}",
+        "noRecord": "没有记录：兑换它的账户已被删除。",
+        "usesLabel": "用在哪里",
+        "spent": "已花费",
+        "takenBack": "已收回",
+        "refunded": "已退回"
+      }
     },
     "settings": {
       "clubName": "你在俱乐部的名字",

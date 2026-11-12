@@ -944,7 +944,23 @@
       "leaveTitle": "Leave without the code?",
       "leaveBody": "You haven’t copied this code. Leave anyway? It can’t be shown again.",
       "stay": "Stay",
-      "leave": "Leave anyway"
+      "leave": "Leave anyway",
+      "redeemedBy": "Redeemed by {name}",
+      "left": "{amount} left",
+      "deletedAccount": "a deleted account",
+      "record": {
+        "made": "Made",
+        "redeemed": "Redeemed",
+        "used": "Used",
+        "on": "{date} by {name}",
+        "notYet": "Not yet",
+        "usedOf": "{used} of {amount} · {left} left",
+        "noRecord": "No record: the account that redeemed it has been deleted.",
+        "usesLabel": "Where it was spent",
+        "spent": "Spent",
+        "takenBack": "Taken back",
+        "refunded": "refunded"
+      }
     },
     "settings": {
       "clubName": "Your name in the club",

@@ -3,9 +3,12 @@
  * (docs/plans/gift-card-ledger.md; Grant, 2026-11-10: "gift card should be
  * organizer feature only").
  *
- *   GET  — `{ canGift }`, plus the caller's own cards (amount, note, last
- *          four, redeemed or not — never who redeemed it; that is the
- *          console's record) when they may give them out.
+ *   GET  — `{ canGift }`, plus the caller's own cards when they may give
+ *          them out, each with the same RECORD the console shows (who made
+ *          it, who redeemed it and when, what it was spent on, what is left;
+ *          `lib/giftCardView.ts`). Only an organiser gets here, so the old
+ *          reason to hide the redeemer (a non-admin helper could give cards)
+ *          went with the `canGift` switch (review of 2026-11-12).
  *   POST { amountCents, note } — mint one. The code is in THIS response only.
  *
  * The rank is re-read on every call (`requireGroupMember` reads the
@@ -19,7 +22,8 @@ import { requireGroupMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
-import { CreditError, listGiftCards, mintGiftCard } from '@/lib/storeCredit';
+import { CreditError, mintGiftCard } from '@/lib/storeCredit';
+import { giftCardViews } from '@/lib/giftCardView';
 import type { MembershipRole } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -47,11 +51,8 @@ export async function GET(req: NextRequest) {
   if (!me) return unauthorized();
   try {
     if (!canGift(me.role)) return NextResponse.json({ canGift: false, cards: [] });
-    const cards = (await listGiftCards(resolveGroupId(req))).filter((c) => c.createdBy === me.memberId);
-    return NextResponse.json({
-      canGift: true,
-      cards: cards.map(({ id, amountCents, note, hint, createdAt, redeemedAt }) => ({ id, amountCents, note, hint, createdAt, redeemedAt: redeemedAt ?? null })),
-    });
+    const cards = (await giftCardViews(resolveGroupId(req))).filter((c) => c.createdBy?.memberId === me.memberId);
+    return NextResponse.json({ canGift: true, cards });
   } catch (err) {
     console.error('GET /api/giftcards failed', err);
     return NextResponse.json({ error: 'read_failed' }, { status: 503 });

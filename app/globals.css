@@ -2794,6 +2794,48 @@ button.edit-profile-row { cursor: pointer; }
   color: var(--text-primary);
   white-space: nowrap;
 }
+/* A money row that opens something (Give credit's codes): the row itself is
+   the button, fill-only, flashing the press tint like every list row. */
+.money-row--button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.money-row--button:active { background: var(--press-bg); }
+/* A credit code's record, opened under its row: the facts as a two-column
+   list, then each draw on it. Indented to the row's text. */
+.gift-record {
+  padding: 0 var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.gift-record__facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+}
+.gift-record__facts dt { color: var(--text-muted); }
+.gift-record__facts dd { margin: 0; overflow-wrap: anywhere; }
+.gift-record__uses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.gift-record__uses li { display: flex; justify-content: space-between; gap: var(--space-4); }
+.gift-record__amount { font-family: var(--font-mono); white-space: nowrap; }
+.gift-record__use--reversed { color: var(--text-muted); text-decoration: line-through; }
 /* Account balance (spec §4). The credit sits beside what you owe as a tinted
    box: green because credit is yours, never the amber of an amount owed. */
 .balance-credit {

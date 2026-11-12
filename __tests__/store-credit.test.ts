@@ -217,7 +217,7 @@ describe('gift cards', () => {
     expect(cards[0]).toMatchObject({ redeemedBy: { memberId: lin.id, name: 'Lin' }, usedCents: 0, remainingCents: 1000 });
   });
 
-  it('only an organiser gives from Profile (groups off: an admin), re-read on every call, and the list shows redeemed-or-not, never who', async () => {
+  it('only an organiser gives from Profile (groups off: an admin), re-read on every call, and their list carries the console record for their own codes', async () => {
     const zach = seedMember('Zach');
     const asZach = { Cookie: `member_session=${memberCookieValue('Zach', zach.id)}` };
     // A member: the row is hidden and a mint is refused.
@@ -235,12 +235,23 @@ describe('gift cards', () => {
     await redeemAs(code);
     const mine = await (await myCards(makeRequest('GET', `${BASE}/giftcards`, undefined, asZach))).json();
     expect(mine.canGift).toBe(true);
-    expect(mine.cards).toEqual([expect.objectContaining({ amountCents: 500, note: 'Thanks', redeemedAt: expect.any(String) })]);
-    expect(JSON.stringify(mine)).not.toContain(lin.id);
+    // Review of 2026-11-12 (Grant opened this list and found none of who,
+    // when, where it was spent or what is left): only an organiser gets
+    // here, so it carries the same record as the console.
+    expect(mine.cards).toEqual([expect.objectContaining({
+      amountCents: 500, note: 'Thanks', redeemedAt: expect.any(String),
+      createdBy: { memberId: zach.id, name: 'Zach' },
+      redeemedBy: { memberId: lin.id, name: 'Lin' },
+      usedCents: 0, remainingCents: 500, uses: [],
+    })]);
     expect(JSON.stringify(mine)).not.toContain(code);
-    // The admin's record says who made it.
+    // The same record the console shows for that card, and only HIS codes:
+    // another organiser's code is on the console, not on Zach's list.
+    await mintOne(1000, 'Not Zach');
     const { cards } = await (await listCards(makeAdminRequest('GET', `${BASE}/admin/giftcards`))).json();
-    expect(cards[0].createdBy).toEqual({ memberId: zach.id, name: 'Zach' });
+    expect(cards).toHaveLength(2);
+    const after = await (await myCards(makeRequest('GET', `${BASE}/giftcards`, undefined, asZach))).json();
+    expect(after.cards).toEqual([cards.find((c: { createdBy: { memberId: string } }) => c.createdBy.memberId === zach.id)]);
     // Taking the rank away takes the ability with it, at once.
     await patchMember(makeAdminRequest('PATCH', `${BASE}/members`, { id: zach.id, role: 'member' }));
     expect((await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500 }, asZach))).status).toBe(403);
