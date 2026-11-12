@@ -1,7 +1,7 @@
 # String stock by colour
 
 **Track:** ROADMAP North Star — admin cost-automation (the string inventory, `string-inventory.md`) and the stringing service's member request. Extends `docs/plans/string-inventory.md`.
-**Status:** in-flight
+**Status:** shipped 2026-11-12
 **Review on:** 2026-12-11 — has a purchase been logged with a colour, and has a request since then asked for a colour the club had none of? If no purchase carries a colour, drop the per-colour count and keep the reel colours driving the sheet.
 
 ## Problem
