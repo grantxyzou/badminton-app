@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Receipts and the admin console read dates on the club's clock (2026-11-12)
+
+- **A receipt read the session's date in the phone's own time zone**, so a Thursday 7 PM session showed as "Fri, Nov 20" on a phone or browser set to UTC, on the receipt image, both receipt texts and the e-transfer memo. It now reads in Vancouver time like every other session date in the app. The payments inbox matches a memo by the name after the dash, so a memo's date was never part of matching.
+- **The admin console's dates and times do too**: the next-session card, Payments, the Ledger, Past sessions, Roster, a player's profile and the club-run page all format through the same helpers, which now read in Vancouver time on any phone.
+- **A shuttle purchase showed the day before on a Pacific phone**: its date is a plain calendar day, which a phone read as midnight in London, still the previous evening in Vancouver. It now shows the day that was entered, on every phone.
+
 ## Cards grow with your phone's text size (2026-11-12)
 
 - **Set larger text on your iPhone and the app follows**: every card grows as a whole — its text, padding, buttons, icons and avatar together — up to one and a half times the designed size. Pinch-to-zoom stays off.

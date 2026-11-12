@@ -6,7 +6,7 @@
  * of truth; the image renders the same content with design-system fonts.
  */
 
-import { fmtMoney } from './fmt';
+import { CLUB_TIME_ZONE, fmtMoney } from './fmt';
 
 export interface ReceiptBreakdown {
   /** What the courts cost in all, and the price of one when known. */
@@ -58,6 +58,9 @@ export interface IndividualReceiptInput extends ReceiptInput {
   playerName: string;
 }
 
+// The date reads on the club's clock (`CLUB_TIME_ZONE`), on the receipt AND
+// in the memo people type into their e-transfer: on a UTC device a Thursday
+// 7 PM session read "Fri, Nov 20" until 2026-11-12.
 function fmtDate(iso: string): string {
   if (!iso) return '';
   try {
@@ -65,6 +68,7 @@ function fmtDate(iso: string): string {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
+      timeZone: CLUB_TIME_ZONE,
     });
   } catch {
     return iso.slice(0, 10);
@@ -75,7 +79,7 @@ function fmtMemo(template: string, dateIso: string, name: string, clubName?: str
   const dateShort = (() => {
     if (!dateIso) return '';
     try {
-      return new Date(dateIso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return new Date(dateIso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: CLUB_TIME_ZONE });
     } catch {
       return dateIso.slice(0, 10);
     }
