@@ -571,7 +571,9 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
       </div>
 
       {/* Filter chips */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', margin: 'var(--space-4) 0 var(--space-2)' }}>
+      {/* Rows 12px apart, not 6: each chip is 32px drawn with a 44pt tap,
+          and at 6px a wrapped row's tap areas covered the row above. */}
+      <div style={{ display: 'flex', columnGap: 'var(--space-2)', rowGap: 'var(--space-4)', flexWrap: 'wrap', margin: 'var(--space-4) 0 var(--space-2)' }}>
         {chipDefs.map(([k, label, count]) => {
           const on = filter === k;
           return (
@@ -581,7 +583,8 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
               onClick={() => setFilter(k)}
               // The member/drop-in chips arrive with the first mark (an import):
               // they fade in rather than pop into the row.
-              className={k === 'members' || k === 'dropins' ? 'motion-fade' : undefined}
+              // `.tap-44`: a 32px chip with a 44pt tap (the Apple pass, globals.css).
+              className={k === 'members' || k === 'dropins' ? 'tap-44 motion-fade' : 'tap-44'}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

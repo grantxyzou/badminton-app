@@ -8,10 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
-## Easier to tap: every small control on Home and Stats takes a 44pt tap (2026-11-12)
+## Easier to tap: every small control takes a 44pt tap (2026-11-12)
 
 - **Apple asks for tap targets of at least 44 by 44 points.** Measured in a browser on Home and every Stats register, a handful fell short: the You / Equipment / Play / Learn switch and Doubles / Singles (28 px tall), "Add to calendar" (16 px), the Balance row (20 px), "Update", "Share", "+ String tension", the racket to try next, its shop link, "Open this week's focus" and "All your kudos".
-- **Each now takes a 44pt tap area that is invisible**, so nothing moved or was redrawn: the same screens before and after match pixel for pixel on Home, and differ on Stats only by 2 to 7 shades out of 255 on some text edges.
+- **The rest of the app had the same check**: Stringing, Profile, Admin, the signed-out screens. Roster's filter chips (32 px) and a job's "Ready by" date field (42 px) take the same tap area; the chips' rows sit 12 px apart now so each row keeps its own. The round top buttons (theme, language, notifications) measured 42 px across and now measure 44.
+- **Each now takes a 44pt tap area that is invisible**, so nothing moved or was redrawn: the same screens before and after match pixel for pixel on Home, Profile and Welcome, and differ on Stats only by 2 to 7 shades out of 255 on some text edges. The one visible change is the Roster's second row of chips, 6 px lower.
 
 ## Every tab on a foldable uses both halves, with motion (2026-11-12)
 

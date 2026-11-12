@@ -4177,6 +4177,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 .setup-next-name,
 .setup-price-row,
 .kudos-all-link,
+.date-picker-trigger,
 .tap-44 {
   position: relative;
 }
@@ -4189,6 +4190,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 .setup-next-name::after,
 .setup-price-row::after,
 .kudos-all-link::after,
+.date-picker-trigger::after,
 .tap-44::after {
   content: '';
   position: absolute;
@@ -4328,7 +4330,10 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 .notif-toggle::before {
   content: '';
   position: absolute;
-  inset: -4px;
+  /* 36 + 2×5 = 46 drawn, which hit-tests at 44 across: a circle's edge pixels
+     do not take the pointer, and -4px measured 42 (the Apple pass,
+     2026-11-12). Transparent, so nothing on screen moves. */
+  inset: -5px;
   border-radius: 50%;
 }
 
