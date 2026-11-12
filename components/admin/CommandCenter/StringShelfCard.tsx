@@ -15,7 +15,8 @@ import { formatServicePrice } from '@/lib/stringingRateCard';
 import { LOW_STOCK_SETS, labelKey, type StringStockSummary } from '@/lib/stringStockMath';
 import { catalogLabel, matches } from '@/lib/shelfEdit';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
-import { normaliseColourList, type StringColourId } from '@/lib/stringPalette';
+import { normaliseColourList, normaliseCustomColours, type CustomColour, type ReelColourId } from '@/lib/stringPalette';
+import { clubCombos } from '@/lib/stringShelf';
 import StringShelfSheet, { type ShelfEdits, type ShelfSheetMode } from './StringShelfSheet';
 import StringPurchaseSheet from './StringPurchaseSheet';
 import { ColourDots } from '@/components/stringing/StringColours';
@@ -28,8 +29,10 @@ interface Shelf {
   links: Record<string, string>;
   prices: Record<string, number | null>;
   aliases: Record<string, string>;
-  colours: Record<string, StringColourId[]>;
+  colours: Record<string, ReelColourId[]>;
   notes: Record<string, string>;
+  /** The club's own colours (`custom:<rrggbb>`), named. */
+  customColours: CustomColour[];
 }
 
 /** The route's note map, non-empty strings only. */
@@ -41,16 +44,31 @@ function notesOf(v: unknown): Record<string, string> {
   return out;
 }
 
-/** The route's colour map, palette ids only. */
-function coloursOf(v: unknown): Record<string, StringColourId[]> {
-  const out: Record<string, StringColourId[]> = {};
+/** The route's colour map, reel colour ids only (a club colour only while `customs` names it). */
+function coloursOf(v: unknown, customs: readonly CustomColour[]): Record<string, ReelColourId[]> {
+  const ids = new Set(customs.map((c) => c.id));
+  const out: Record<string, ReelColourId[]> = {};
   if (v && typeof v === 'object' && !Array.isArray(v)) {
     for (const [k, list] of Object.entries(v)) {
-      const clean = normaliseColourList(list);
+      const clean = normaliseColourList(list, ids);
       if (clean.length > 0) out[k] = clean;
     }
   }
   return out;
+}
+
+/** The route's answer as the card's shelf. */
+function shelfOf(d: Record<string, unknown>): Shelf {
+  const customColours = normaliseCustomColours(d.customColours);
+  return {
+    strings: d.strings as string[],
+    links: (d.links as Shelf['links']) ?? {},
+    prices: (d.prices as Shelf['prices']) ?? {},
+    aliases: (d.aliases as Shelf['aliases']) ?? {},
+    colours: coloursOf(d.colours, customColours),
+    notes: notesOf(d.notes),
+    customColours,
+  };
 }
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2).replace(/\.00$/, '')}`;
@@ -104,13 +122,15 @@ export default function StringShelfCard() {
         if (cancelled) return;
         // `strings: null` is the route's "unknown" (throttled or failed), never an empty shelf.
         if (!Array.isArray(d?.strings)) throw new Error('strings unknown');
+        const customColours = normaliseCustomColours(d.customColours);
         setShelf({
           strings: d.strings,
           links: d.links && typeof d.links === 'object' ? d.links : {},
           prices: d.prices && typeof d.prices === 'object' ? d.prices : {},
           aliases: s.aliases && typeof s.aliases === 'object' ? s.aliases : {},
-          colours: coloursOf(d.colours),
+          colours: coloursOf(d.colours, customColours),
           notes: notesOf(d.notes),
+          customColours,
         });
       })
       .catch(() => {
@@ -144,7 +164,7 @@ export default function StringShelfCard() {
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
       if (Array.isArray(d.strings)) {
-        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {}, colours: coloursOf(d.colours), notes: notesOf(d.notes) });
+        setShelf(shelfOf(d));
       }
       await loadStock().catch(() => setLoadError(true));
       return true;
@@ -157,15 +177,6 @@ export default function StringShelfCard() {
     }
   }
 
-  /** The route's answer as the card's shelf. */
-  const shelfOf = (d: Record<string, unknown>): Shelf => ({
-    strings: d.strings as string[],
-    links: (d.links as Shelf['links']) ?? {},
-    prices: (d.prices as Shelf['prices']) ?? {},
-    aliases: (d.aliases as Shelf['aliases']) ?? {},
-    colours: coloursOf(d.colours),
-    notes: notesOf(d.notes),
-  });
 
   /**
    * The sheet's one Save: name, price, note and reel colours together. A new
@@ -220,10 +231,13 @@ export default function StringShelfCard() {
         next.colours = colours;
       }
       if (Object.keys(next).length > 0) {
+        // A colour of the club's named in the sheet is added by the same PATCH,
+        // ahead of the colour lists that name it (the route does it first).
+        const addColours = edits.addColours?.map(({ name, hex }) => ({ name, hex }));
         const res = await fetch(`${BASE}/api/stringing/strings`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ strings: current.strings, ...next }),
+          body: JSON.stringify({ strings: current.strings, ...next, ...(addColours?.length ? { addColours } : {}) }),
         });
         if (!res.ok) throw new Error(String(res.status));
         const d = await res.json();
@@ -341,7 +355,7 @@ export default function StringShelfCard() {
                       {hasStock ? t('shelf.setsLeft', { count: line.remainingSets }) : t('shelf.noStock')}
                       {(shelf.colours[label]?.length ?? 0) > 0 && (
                         <span style={{ marginLeft: 'var(--space-2)', display: 'inline-flex' }}>
-                          <ColourDots ids={shelf.colours[label]} />
+                          <ColourDots ids={shelf.colours[label]} customs={shelf.customColours} />
                         </span>
                       )}
                     </span>
@@ -496,6 +510,8 @@ export default function StringShelfCard() {
             void save({ aliases: { ...shelf.aliases, [sheetLabel]: target } }).then((ok) => ok && closeSheet());
           }}
           colours={shelf.colours[sheetLabel] ?? []}
+          customColours={shelf.customColours}
+          clubCombos={clubCombos(shelf.colours)}
           note={shelf.notes[sheetLabel] ?? ''}
           onSave={(edits) => {
             void saveSheet(sheetLabel, edits).then((ok) => ok && closeSheet());
@@ -522,6 +538,7 @@ export default function StringShelfCard() {
             item: shelf.links[label] ? catalog.items.find((i) => i.id === shelf.links[label]) ?? null : null,
             colours: shelf.colours[label] ?? [],
           }))}
+          customColours={shelf.customColours}
         />
       )}
     </div>

@@ -8,10 +8,13 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
-import { ColourDots, ColourPicker } from './StringColours';
-import { parseShelf, type Shelf } from '@/lib/stringShelf';
+import { ColourDots, useReelColourName } from './StringColours';
+import ReelColourPicker from './ReelColourPicker';
+import { clubCombos, makerColourIds, parseShelf, type Shelf } from '@/lib/stringShelf';
 import { MAX_LABEL_LEN } from '@/lib/stringingLimits';
-import type { StringColourId } from '@/lib/stringPalette';
+import type { ComboColourId, CustomColour, ReelColourId } from '@/lib/stringPalette';
+import type { CatalogItem } from '@/lib/types';
+import { useCatalog } from '@/components/stats/useCatalog';
 import { useOnline } from '@/lib/useOnline';
 import { isRefused } from '@/lib/apiFetch';
 import { useTabReturn } from '@/lib/tabActivity';
@@ -28,6 +31,11 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * (`requestColours`). So a stringer may NAME a string and say its COLOURS —
  * nothing else: no price, link, list, purchase or stock, which stay with an
  * admin on the bench's set-up screen. The server refuses any other field.
+ *
+ * The colours are picked on the SAME step the admin's shelf sheet uses
+ * (`ReelColourPicker`): the maker's, two-colour sets (a stringer may make a
+ * new one — a set needs no definition) and the club's own colours, without
+ * "Custom colour": naming a colour of the club's is an admin's.
  */
 export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolean }) {
   const t = useTranslations('home.stringing.shelfEdit');
@@ -35,6 +43,7 @@ export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolea
   const [shelf, setShelf] = useState<Shelf | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
+  const catalog = useCatalog('string');
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -90,7 +99,7 @@ export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolea
                 subtitle={ids.length === 0 ? <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('noColours')}</span> : undefined}
                 trailing={
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-muted)' }}>
-                    <ColourDots ids={ids} />
+                    <ColourDots ids={ids} customs={shelf.customColours} />
                     <span className="material-icons icon-sm" aria-hidden="true">chevron_right</span>
                   </span>
                 }
@@ -106,10 +115,13 @@ export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolea
           label={picked}
           strings={shelf.strings}
           colours={shelf.colours[picked] ?? []}
+          customs={shelf.customColours}
+          clubCombos={clubCombos(shelf.colours)}
+          item={shelf.links[picked] ? catalog.items.find((i) => i.id === shelf.links[picked]) ?? null : null}
           online={online}
           onClose={() => setPicked(null)}
           onSaved={(next) => {
-            setShelf({ ...shelf, strings: next.strings, colours: next.colours });
+            setShelf({ ...shelf, strings: next.strings, colours: next.colours, customColours: next.customColours });
             setPicked(null);
           }}
         />
@@ -118,17 +130,21 @@ export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolea
   );
 }
 
-type Saved = { strings: string[]; colours: Record<string, StringColourId[]> };
+type Saved = { strings: string[]; colours: Record<string, ReelColourId[]>; customColours: CustomColour[] };
 
 /**
  * One string: its name and the colours on its reel, saved together by the one
  * button pinned at the foot of the sheet. A rename goes first, then the
  * colours under the NEW name, so the two can never land on different strings.
  */
-function StringerShelfSheet({ label, strings, colours, online, onClose, onSaved }: {
+function StringerShelfSheet({ label, strings, colours, customs, clubCombos: combos, item, online, onClose, onSaved }: {
   label: string;
   strings: string[];
-  colours: StringColourId[];
+  colours: ReelColourId[];
+  customs: CustomColour[];
+  clubCombos: ComboColourId[];
+  /** The linked catalog string, for the maker's colours; `null` when not linked (or not loaded). */
+  item: CatalogItem | null;
   online: boolean;
   onClose: () => void;
   onSaved: (next: Saved) => void;
@@ -136,7 +152,9 @@ function StringerShelfSheet({ label, strings, colours, online, onClose, onSaved 
   const t = useTranslations('home.stringing.shelfEdit');
   const tClose = useTranslations('recovery');
   const [name, setName] = useState(label);
-  const [picked, setPicked] = useState<StringColourId[]>(colours);
+  const [picked, setPicked] = useState<ReelColourId[]>(colours);
+  const [step, setStep] = useState<'main' | 'colours'>('main');
+  const colourName = useReelColourName(customs);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<'name_taken' | 'invalid_name' | 'refused' | 'failed' | null>(null);
 
@@ -157,8 +175,8 @@ function StringerShelfSheet({ label, strings, colours, online, onClose, onSaved 
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && Array.isArray(data.strings)) {
-        const shelf = parseShelf({ strings: data.strings, colours: data.colours });
-        return shelf ? { strings: shelf.strings, colours: shelf.colours } : 'failed';
+        const shelf = parseShelf({ strings: data.strings, colours: data.colours, customColours: data.customColours });
+        return shelf ? { strings: shelf.strings, colours: shelf.colours, customColours: shelf.customColours } : 'failed';
       }
       if (data.error === 'name_taken' || data.error === 'invalid_name') return data.error;
       return isRefused(res) ? 'refused' : 'failed';
@@ -201,6 +219,21 @@ function StringerShelfSheet({ label, strings, colours, online, onClose, onSaved 
     : error === 'failed' ? t('saveError')
     : null;
 
+  if (step === 'colours') {
+    return (
+      <ReelColourPicker
+        open
+        onClose={onClose}
+        onBack={() => setStep('main')}
+        value={picked}
+        onChange={setPicked}
+        maker={item ? { brand: item.brand, model: item.model, ids: makerColourIds(item) } : null}
+        customs={customs}
+        clubCombos={combos}
+      />
+    );
+  }
+
   return (
     <BottomSheet open onClose={onClose} ariaLabel={label}>
       <BottomSheetHeader onClose={onClose} closeLabel={tClose('close')}>{label}</BottomSheetHeader>
@@ -219,8 +252,31 @@ function StringerShelfSheet({ label, strings, colours, online, onClose, onSaved 
             <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('nameHint')}</p>
           </div>
           <div className="flex flex-col gap-2">
-            <span className="section-label-muted">{t('colours')}</span>
-            <ColourPicker value={picked} onChange={setPicked} disabled={busy} label={t('colours')} />
+            <span className="section-label-muted">{t('onTheReel')}</span>
+            <div className="bpm-inner-row">
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0 }}>
+                {picked.length > 0 ? (
+                  <>
+                    <ColourDots ids={picked} size="md" customs={customs} />
+                    <span className="fs-md" style={{ color: 'var(--text-primary)', minWidth: 0, overflowWrap: 'anywhere' }}>
+                      {picked.map((id) => colourName(id)).join(', ')}
+                    </span>
+                  </>
+                ) : (
+                  <span className="fs-md" style={{ color: 'var(--text-muted)' }}>{t('noColours')}</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setStep('colours')}
+                disabled={busy}
+                aria-label={t('editReelLabel')}
+                className="fs-md"
+                style={{ flex: '0 0 auto', minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' }}
+              >
+                {t('editReel')}
+              </button>
+            </div>
             <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('coloursHint')}</p>
           </div>
         </div>

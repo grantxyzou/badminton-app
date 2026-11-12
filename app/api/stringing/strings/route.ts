@@ -33,6 +33,16 @@
  * { <label>: ids } }` on its own: those strings' reel colours, merged into the
  * stored map.
  *
+ * The club's own reel colours (docs/plans/string-stock-by-colour.md,
+ * 2026-11-12) ride on GET and every answer as `customColours`
+ * (`[{ id: 'custom:<rrggbb>', name, hex }]`, `[]` for none). An ADMIN adds one
+ * with `addColours: [{ name, hex }]` beside `colours` (or beside `strings` on
+ * the full save): added first, all or none — `invalid_colour_name`,
+ * `invalid_hex` (400), `colour_name_taken`, `colour_taken`,
+ * `too_many_colours` (409) — so the same PATCH's colour lists may name it. A
+ * two-colour set (`combo:<mains>+<crosses>`) needs no definition, so a
+ * stringer may pick one; a stringer may NOT add a colour of the club's.
+ *
  * A STRINGER who is not an admin may send those two and nothing else
  * (docs/plans/stringer-shelf-edits.md; Grant, 2026-11-12: "open up reel and
  * string name, colour for stringers"). Any other key is a 403, never quietly
@@ -58,15 +68,17 @@ import {
   mergeColours,
   renameOffered,
   stringsDocId,
+  type OfferedStringsRead,
   type OfferedStringsDoc,
 } from '@/lib/stringingStrings';
 import { readStringCatalog } from '@/lib/stringStock';
+import { addCustomColours, type CustomColour, type CustomColourError } from '@/lib/stringPalette';
 import { forgetShelfExtras, readShelfExtras } from '@/lib/stringShelfRead';
 
 export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
-const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null, colours: null, colourStock: null, notes: null };
+const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null, colours: null, colourStock: null, notes: null, customColours: null };
 
 export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
@@ -88,7 +100,7 @@ export async function GET(req: NextRequest) {
   if (!read) return NextResponse.json(UNKNOWN);
   // The list stands without the extras: a stock or gear read that fails
   // leaves those two maps unknown rather than taking the shelf down with it.
-  const extras = await readShelfExtras(groupId, read.strings, read.links, read.aliases).catch((err) => {
+  const extras = await readShelfExtras(groupId, read.strings, read.links, read.aliases, read.customColours).catch((err) => {
     console.error('GET /api/stringing/strings: stock/players read failed', err);
     return null;
   });
@@ -101,6 +113,7 @@ export async function GET(req: NextRequest) {
     players: extras?.players ?? null,
     colourStock: extras?.colourStock ?? null,
     notes: read.notes,
+    customColours: read.customColours,
   });
 }
 
@@ -136,7 +149,7 @@ export async function PATCH(req: NextRequest) {
   }
   if (body && typeof body === 'object' && 'rename' in body) return rename(req, body.rename, actorId, stringerId !== null);
   if (body && typeof body === 'object' && 'colours' in body && !('strings' in body)) {
-    return setColours(req, body.colours, actorId, stringerId !== null);
+    return setColours(req, body.colours, body.addColours, actorId, stringerId !== null);
   }
   const strings = normaliseOfferedStrings(body?.strings);
   if (strings === null) {
@@ -151,6 +164,11 @@ export async function PATCH(req: NextRequest) {
     // ones already stored for labels that survive, so an older client that
     // sends only `strings` does not wipe them.
     const prior = await readOfferedStringsWithLinks(groupId);
+    // The club's own colours, with any this save adds — before the colour
+    // lists, which may name them.
+    const added = withAdded(prior?.customColours ?? [], body?.addColours);
+    if (!added.ok) return customColourRefusal(added.error);
+    const customColours = added.value;
     const validIds = new Set((await readStringCatalog()).keys());
     const links = normaliseLinks(body?.links === undefined ? prior?.links ?? {} : body.links, strings, validIds);
     // Prices follow the same rule as links: absent keeps what is stored for
@@ -160,7 +178,7 @@ export async function PATCH(req: NextRequest) {
     // and an alias whose target left the list leaves with it.
     const aliases = normaliseAliases(body?.aliases === undefined ? prior?.aliases ?? {} : body.aliases, strings);
     // Colours, the same again.
-    const colours = normaliseColours(body?.colours === undefined ? prior?.colours ?? {} : body.colours, strings);
+    const colours = normaliseColours(body?.colours === undefined ? prior?.colours ?? {} : body.colours, strings, customColours);
     // And the stringer's notes for players.
     const notes = normaliseNotes(body?.notes === undefined ? prior?.notes ?? {} : body.notes, strings);
     const doc: OfferedStringsDoc = {
@@ -171,6 +189,7 @@ export async function PATCH(req: NextRequest) {
       aliases,
       colours,
       notes,
+      ...(customColours.length > 0 ? { customColours } : {}),
       updatedAt: new Date().toISOString(),
       updatedBy: actorId,
     };
@@ -183,7 +202,7 @@ export async function PATCH(req: NextRequest) {
     // The list changed, so the stock and count keyed by it may have too.
     forgetShelfExtras(groupId);
     // Aliases go back to the admin who saved them; the public GET never lists them.
-    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices, aliases, colours, notes });
+    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices, aliases, colours, notes, customColours });
   } catch (err) {
     console.error('PATCH /api/stringing/strings failed:', err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });
@@ -191,27 +210,53 @@ export async function PATCH(req: NextRequest) {
 }
 
 const RENAME_STATUS = { invalid_name: 400, not_offered: 404, name_taken: 409 } as const;
+const COLOUR_STATUS: Record<CustomColourError, number> = {
+  invalid_colour_name: 400, invalid_hex: 400, colour_name_taken: 409, colour_taken: 409, too_many_colours: 409,
+};
 
-/** What a stringer is told back: the list and its reel colours, nothing of the admin's. */
-function answer(read: { strings: string[]; links: Record<string, string>; prices: Record<string, number | null>; aliases: Record<string, string>; colours: Record<string, string[]>; notes?: Record<string, string> }, stringer: boolean) {
+/** `addColours` applied to the club's own colours; absent adds none. */
+function withAdded(existing: CustomColour[], value: unknown) {
+  return value === undefined ? { ok: true as const, value: existing } : addCustomColours(existing, value);
+}
+const customColourRefusal = (error: CustomColourError) => NextResponse.json({ error }, { status: COLOUR_STATUS[error] });
+
+/** The doc to store: `customColours` only once the club has one, so an old doc stays as it was. */
+function docOf(groupId: string, read: OfferedStringsRead, memberId: string | null): OfferedStringsDoc {
+  const { customColours, ...rest } = read;
+  return {
+    id: stringsDocId(groupId),
+    ...rest,
+    ...(customColours.length > 0 ? { customColours } : {}),
+    updatedAt: new Date().toISOString(),
+    updatedBy: memberId,
+  };
+}
+
+/** What a stringer is told back: the list, its reel colours and the names of the club's own colours, nothing of the admin's. */
+function answer(read: OfferedStringsRead, stringer: boolean) {
   return NextResponse.json(
     stringer
-      ? { strings: read.strings, colours: read.colours }
-      : { strings: read.strings, links: read.links, prices: read.prices, aliases: read.aliases, colours: read.colours, notes: read.notes ?? {} },
+      ? { strings: read.strings, colours: read.colours, customColours: read.customColours }
+      : { strings: read.strings, links: read.links, prices: read.prices, aliases: read.aliases, colours: read.colours, notes: read.notes ?? {}, customColours: read.customColours },
   );
 }
 
 /** Some strings' reel colours, merged into the stored doc (rate limit and auth already passed). */
-async function setColours(req: NextRequest, value: unknown, memberId: string | null, stringer: boolean) {
+async function setColours(req: NextRequest, value: unknown, addColours: unknown, memberId: string | null, stringer: boolean) {
   try {
     await ensureClubSettings();
     const groupId = resolveGroupId(req);
     const prior = await readOfferedStringsWithLinks(groupId);
     if (!prior) return NextResponse.json({ error: 'write_failed' }, { status: 503 });
-    const colours = mergeColours(prior.colours, value, prior.strings);
+    // A stringer never gets here with `addColours` (the key check above), so
+    // only an admin adds a colour of the club's.
+    const added = withAdded(prior.customColours, addColours);
+    if (!added.ok) return customColourRefusal(added.error);
+    const customColours = added.value;
+    const colours = mergeColours(prior.colours, value, prior.strings, customColours);
     if (!colours) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
-    const next = { ...prior, colours };
-    const doc: OfferedStringsDoc = { id: stringsDocId(groupId), ...next, updatedAt: new Date().toISOString(), updatedBy: memberId };
+    const next: OfferedStringsRead = { ...prior, colours, customColours };
+    const doc = docOf(groupId, next, memberId);
     await groupScope(groupId).upsert('clubSettings', doc);
     forgetShelfExtras(groupId);
     return answer(next, stringer);
@@ -233,12 +278,7 @@ async function rename(req: NextRequest, op: unknown, memberId: string | null, st
     const result = renameOffered(prior, from, to);
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: RENAME_STATUS[result.error] });
     const next = result.value;
-    const doc: OfferedStringsDoc = {
-      id: stringsDocId(groupId),
-      ...next,
-      updatedAt: new Date().toISOString(),
-      updatedBy: memberId,
-    };
+    const doc = docOf(groupId, next, memberId);
     await groupScope(groupId).upsert('clubSettings', doc);
     forgetShelfExtras(groupId);
     return answer(next, stringer);

@@ -9,7 +9,11 @@
 import type { CatalogItem } from './types';
 import type { ColourStock, StockBand } from './stringStockMath';
 import { formatServicePrice } from './stringingRateCard';
-import { colourIdOf, normaliseColourList, PALETTE_EN, type StringColourId } from './stringPalette';
+import {
+  colourIdOf, comboParts, hexOfCustom, isComboColourId, isCustomColourId, isStringColourId, normaliseColourList,
+  normaliseCustomColours, reelColourEnglish,
+  type ComboColourId, type CustomColour, type ReelColourId, type StringColourId,
+} from './stringPalette';
 
 export type { ColourStock, StockBand };
 
@@ -21,13 +25,15 @@ export interface Shelf {
   /** `null` = the stock read failed; a missing label = unknown. */
   stock: Record<string, StockBand> | null;
   players: Record<string, number>;
-  /** Label → the colours the club has it in (palette ids); a missing label has none said. */
-  colours: Record<string, StringColourId[]>;
+  /** Label → the colours the club has it in (reel colour ids); a missing label has none said. */
+  colours: Record<string, ReelColourId[]>;
   /** Label → which colours are on the shelf, from colour-tagged purchases;
    *  a missing label has none tagged (docs/plans/string-stock-by-colour.md). */
   colourStock: Record<string, ColourStock>;
   /** Label → the stringer's note for players; a missing label has none. */
   notes: Record<string, string>;
+  /** The club's own colours (`custom:<rrggbb>` with a name); `[]` for none. */
+  customColours: CustomColour[];
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -59,10 +65,12 @@ export function parseShelf(d: unknown): Shelf | null {
   }
   const players: Record<string, number> = {};
   if (isObj(d.players)) for (const [k, v] of Object.entries(d.players)) if (typeof v === 'number') players[k] = v;
-  const colours: Record<string, StringColourId[]> = {};
+  const customColours = normaliseCustomColours(d.customColours);
+  const customIds = new Set(customColours.map((c) => c.id));
+  const colours: Record<string, ReelColourId[]> = {};
   if (isObj(d.colours)) {
     for (const [k, v] of Object.entries(d.colours)) {
-      const list = normaliseColourList(v);
+      const list = normaliseColourList(v, customIds);
       if (list.length > 0) colours[k] = list;
     }
   }
@@ -70,12 +78,12 @@ export function parseShelf(d: unknown): Shelf | null {
   if (isObj(d.colourStock)) {
     for (const [k, v] of Object.entries(d.colourStock)) {
       if (!isObj(v)) continue;
-      colourStock[k] = { inStock: normaliseColourList(v.inStock), mixed: v.mixed === true };
+      colourStock[k] = { inStock: normaliseColourList(v.inStock, customIds), mixed: v.mixed === true };
     }
   }
   const notes: Record<string, string> = {};
   if (isObj(d.notes)) for (const [k, v] of Object.entries(d.notes)) if (typeof v === 'string' && v.trim()) notes[k] = v.trim();
-  return { strings, links, prices, stock, players, colours, colourStock, notes };
+  return { strings, links, prices, stock, players, colours, colourStock, notes, customColours };
 }
 
 /** The shelf price for a label: a figure, "ask" (`null` stored), or nothing set (`undefined`). */
@@ -266,6 +274,69 @@ export function paletteFill(id: StringColourId): string {
   return PALETTE_FILL[id];
 }
 
+/** A colour nobody can draw (a malformed id): the muted ink, never a guess. */
+const UNKNOWN_FILL = 'var(--text-muted)';
+
+/**
+ * Any reel colour, drawn as a CSS background: a palette swatch, a club
+ * colour from the hex its id carries, or a set split down the middle —
+ * MAINS on the left, crosses on the right.
+ */
+export function reelColourFill(id: ReelColourId | string): string {
+  if (isStringColourId(id)) return PALETTE_FILL[id];
+  if (isCustomColourId(id)) return hexOfCustom(id);
+  const parts = comboParts(id);
+  if (!parts) return UNKNOWN_FILL;
+  return `linear-gradient(90deg, ${reelColourFill(parts.mains)} 50%, ${reelColourFill(parts.crosses)} 50%)`;
+}
+
+/**
+ * Ink for a letter drawn ON a single colour's swatch (a set's "M" and "C"):
+ * near-black on a light colour, white on a dark one, by relative luminance.
+ */
+export function swatchInk(id: StringColourId | string): string {
+  const fill = isStringColourId(id) ? PALETTE_FILL[id] : isCustomColourId(id) ? hexOfCustom(id) : '';
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(fill);
+  if (!m) return 'var(--text-primary)';
+  const [r, g, b] = [m[1], m[2], m[3]].map((x) => {
+    const c = parseInt(x, 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.35 ? '#111827' : '#ffffff';
+}
+
+/** The "Custom colour" step's quick picks: one tap to a colour no palette has. */
+export const CUSTOM_PRESETS: readonly string[] = [
+  '#14b8a6', '#84cc16', '#f43f5e', '#c026d3', '#0ea5e9', '#a16207', '#64748b', '#fde68a',
+];
+
+/** The hue strip behind the "Custom colour" step's slider, red round to red. */
+export const HUE_STRIP = 'linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)';
+
+/** A hue (0–359) as a reel-friendly `#rrggbb`: saturated, mid-light. */
+export function hexOfHue(hue: number): string {
+  const h = ((Math.round(hue) % 360) + 360) % 360;
+  const s = 0.75;
+  const l = 0.55;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const hex = (x: number) => Math.round(x * 255).toString(16).padStart(2, '0');
+  return `#${hex(f(0))}${hex(f(8))}${hex(f(4))}`;
+}
+
+/** A `#rrggbb`'s hue, 0–359 (0 for a grey). */
+export function hueOfHex(hex: string): number {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return 0;
+  const [r, g, b] = [m[1], m[2], m[3]].map((x) => parseInt(x, 16) / 255);
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  if (d === 0) return 0;
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return Math.round(((h * 60) + 360) % 360);
+}
+
 export interface StringColour {
   name: string;
   /** A CSS background: a flat colour, or a half-and-half gradient for a two-tone. */
@@ -280,6 +351,10 @@ export function stringColours(item: CatalogItem | null): StringColour[] {
   const raw = text(item, 'colors');
   if (!raw) return [];
   return raw.split(';').map((s) => s.trim()).filter(Boolean).map((name) => {
+    // A colour the reel vocabulary names is drawn as the reel picker draws it
+    // ("Yellow/Grey" is yellow mains, grey crosses); anything else as before.
+    const id = colourIdOf(name);
+    if (id) return { name, fill: reelColourFill(id) };
     const parts = name.split('/').map((p) => p.trim()).filter(Boolean);
     const fill = parts.length === 2
       ? `linear-gradient(90deg, ${swatchOf(parts[0])} 50%, ${swatchOf(parts[1])} 50%)`
@@ -290,6 +365,27 @@ export function stringColours(item: CatalogItem | null): StringColour[] {
 
 /* eslint-enable no-restricted-syntax */
 
+/**
+ * The maker's colours for a linked string as reel colour ids, in the
+ * catalog's order: "Red/White" is the set with red mains
+ * (`combo:red+white`). A colour the palette does not name is left out.
+ */
+export function makerColourIds(item: CatalogItem | null): ReelColourId[] {
+  const out: ReelColourId[] = [];
+  for (const c of stringColours(item)) {
+    const id = colourIdOf(c.name);
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+/** The two-colour sets a club has on any string's reel, in shelf order. */
+export function clubCombos(colours: Readonly<Record<string, readonly ReelColourId[]>>): ComboColourId[] {
+  const out: ComboColourId[] = [];
+  for (const list of Object.values(colours)) for (const id of list) if (isComboColourId(id) && !out.includes(id)) out.push(id);
+  return out;
+}
+
 /** The stock band's dot colour. */
 export function stockColour(band: StockBand): string {
   return band === 'in' ? 'var(--accent)' : band === 'low' ? 'var(--color-amber)' : 'var(--text-muted)';
@@ -297,9 +393,9 @@ export function stockColour(band: StockBand): string {
 
 /** A colour the request sheet can offer. */
 export interface RequestColour {
-  /** The palette id, when the palette names it (a two-tone has none). */
-  id: StringColourId | null;
-  /** What the job stores as `stringColor`: the palette's English name, or the catalog's. */
+  /** The reel colour id, when one names it (a catalog colour the palette lacks has none). */
+  id: ReelColourId | null;
+  /** What the job stores as `stringColor`: the English name ("Red / White" for a set, a club colour as typed), or the catalog's. */
   name: string;
   fill: string;
 }
@@ -317,17 +413,23 @@ export interface RequestColour {
  * greyed. An empty answer asks nothing.
  */
 export function requestColours(shelf: Shelf | null, label: string, item: CatalogItem | null): RequestColour[] {
-  const fromId = (id: StringColourId): RequestColour => ({ id, name: PALETTE_EN[id], fill: paletteFill(id) });
+  const customs = shelf?.customColours ?? [];
+  // A club colour with no name to send is left out: a job saying nothing is better than one saying an id.
+  const fromId = (id: ReelColourId): RequestColour | null => {
+    const name = reelColourEnglish(id, customs);
+    return name ? { id, name, fill: reelColourFill(id) } : null;
+  };
+  const known = (c: RequestColour | null): c is RequestColour => c !== null;
   const reel = shelf?.colours[label] ?? [];
   const base: RequestColour[] = reel.length > 0
-    ? reel.map(fromId)
+    ? reel.map(fromId).filter(known)
     : stringColours(item).map((c) => {
         const id = colourIdOf(c.name);
-        return id ? fromId(id) : { id: null, name: c.name, fill: c.fill };
+        return (id ? fromId(id) : null) ?? { id: null, name: c.name, fill: c.fill };
       });
   const stocked = shelf?.colourStock[label];
   if (!stocked) return base;
-  const out = stocked.inStock.map(fromId);
+  const out = stocked.inStock.map(fromId).filter(known);
   if (stocked.mixed) for (const c of base) if (!out.some((o) => o.name === c.name)) out.push(c);
   return out;
 }

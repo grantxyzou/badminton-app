@@ -422,7 +422,7 @@ describe('colours on the reel', () => {
     expect(screen.getByText("None picked: players see the maker's colours")).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Edit the colours on the reel' }));
 
-    const picker = screen.getByRole('group', { name: 'Colours on the reel' });
+    const picker = screen.getByRole('group', { name: 'Other colours' });
     expect(screen.getByText('0 picked')).toBeDefined();
     expect(screen.getByText("Pick none to fall back to the maker's colours.")).toBeDefined();
     fireEvent.click(within(picker).getByRole('checkbox', { name: /Yellow/ }));
@@ -451,6 +451,140 @@ describe('colours on the reel', () => {
     fireEvent.click(saveButton());
     await waitFor(() => expect(patches).toHaveLength(1));
     expect(patches[0].colours).toEqual({ 'Li-Ning No. 1': ['red'] });
+  });
+});
+
+describe('the reel-colour picker: the maker\'s, two-colour sets, your own (2026-11-12)', () => {
+  const BG80_COLOURS = { ...BG80, attributes: { stringType: 'repulsion', colors: 'White; Blue; Yellow' } };
+  const AEROBITE = { id: 'string-yonex-aerobite', category: 'string', brand: 'Yonex', model: 'Aerobite', attributes: { colors: 'Red/White' } };
+  const openPicker = async (label = 'BG80 Power-White') => {
+    fireEvent.click(await screen.findByRole('button', { name: `Open ${label}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit the colours on the reel' }));
+  };
+
+  it('lists the maker\'s colours first, then the sets, then the rest, each three across', async () => {
+    respond({ strings: { links: { 'BG80 Power-White': BG80_COLOURS.id } }, catalog: [BG80_COLOURS] });
+    wrap();
+    await openPicker();
+    const maker = await screen.findByRole('group', { name: 'Yonex makes BG80 in' });
+    const sections = screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'));
+    expect(sections).toEqual(['Yonex makes BG80 in', 'Two-colour sets', 'Other colours']);
+    expect(within(maker).getAllByRole('checkbox').map((b) => b.getAttribute('aria-label'))).toEqual(['White', 'Blue', 'Yellow']);
+    // jsdom versions differ on whether a unitless 0 reads back as `0px`.
+    expect((maker as HTMLElement).style.gridTemplateColumns).toMatch(/^repeat\(3, minmax\(0(px)?, 1fr\)\)$/);
+    const other = screen.getByRole('group', { name: 'Other colours' });
+    const otherNames = within(other).getAllByRole('checkbox').map((b) => b.getAttribute('aria-label'));
+    // The maker's are not repeated, and the long name fits a tile's one line.
+    expect(otherNames).not.toContain('White');
+    expect(within(other).getByRole('checkbox', { name: 'Fluorescent yellow' }).textContent).toBe('Fl. yellow');
+    expect(within(other).getByRole('button', { name: 'Custom colour' })).toBeDefined();
+    expect(within(screen.getByRole('group', { name: 'Two-colour sets' })).getByRole('button', { name: 'New combo' })).toBeDefined();
+    expect(screen.getByText('Mains one colour, crosses another. M mains, C crosses; mains are named first.')).toBeDefined();
+  });
+
+  it('offers a hybrid\'s set from the maker, split M / C, and saves it as one colour', async () => {
+    const patches = respond({ strings: { links: { 'BG80 Power-White': AEROBITE.id } }, catalog: [AEROBITE] });
+    wrap();
+    await openPicker();
+    await screen.findByRole('checkbox', { name: 'Red / White' });
+    // Only sets from this maker: no single-colour section to show.
+    expect(screen.queryByRole('group', { name: /makes/ })).toBeNull();
+    const set = within(screen.getByRole('group', { name: 'Two-colour sets' })).getByRole('checkbox', { name: 'Red / White' });
+    const swatch = set.querySelector('[data-swatch="combo"]') as HTMLElement;
+    expect(swatch.textContent).toBe('MC');
+    fireEvent.click(set);
+    expect(set.getAttribute('aria-checked')).toBe('true');
+    // A set shows it is picked by the tile's tint, never a check over its letters.
+    expect(within(set).queryByText('check')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByText('Red / White')).toBeDefined();
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0].colours).toEqual({ 'BG80 Power-White': ['combo:red+white'] });
+  });
+
+  it('makes a new set, mains then crosses, and offers the club\'s sets on another string', async () => {
+    const patches = respond({ strings: { colours: { 'Li-Ning No. 1': ['combo:blue+yellow'] } } });
+    wrap();
+    await openPicker();
+    // Li-Ning's set is the club's: offered here too.
+    expect(within(screen.getByRole('group', { name: 'Two-colour sets' })).getByRole('checkbox', { name: 'Blue / Yellow' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'New combo' }));
+    expect(screen.getByRole('button', { name: 'Add set' })).toHaveProperty('disabled', true);
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Mains' })).getByRole('radio', { name: /Navy/ }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Crosses' })).getByRole('radio', { name: /Navy/ }));
+    expect(screen.getByTestId('combo-preview-name').textContent).toBe('Mains and crosses need two different colours.');
+    expect(screen.getByRole('button', { name: 'Add set' })).toHaveProperty('disabled', true);
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Crosses' })).getByRole('radio', { name: /Gold/ }));
+    expect(screen.getByTestId('combo-preview-name').textContent).toBe('Navy / Gold');
+    fireEvent.click(screen.getByRole('button', { name: 'Add set' }));
+    expect(screen.getByRole('checkbox', { name: 'Navy / Gold' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText('1 picked')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0].colours).toEqual({ 'BG80 Power-White': ['combo:navy+gold'], 'Li-Ning No. 1': ['combo:blue+yellow'] });
+    expect(patches[0]).not.toHaveProperty('addColours');
+  });
+
+  it('adds a colour of the club\'s own, held until Save, and sends its definition with the list', async () => {
+    const patches = respond();
+    wrap();
+    await openPicker();
+    fireEvent.click(screen.getByRole('button', { name: 'Custom colour' }));
+    expect(screen.getByText('How it shows to players: a swatch and the name you give it.')).toBeDefined();
+    expect(screen.getByText("It joins this string's reel only. Stock counts it like any other colour.")).toBeDefined();
+    const add = screen.getByRole('button', { name: 'Add colour' });
+    expect(add).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Mint' } });
+    fireEvent.change(screen.getByLabelText('Hex'), { target: { value: '#12' } });
+    expect(screen.getByRole('alert').textContent).toBe('Use a hex colour like #14B8A6.');
+    expect(add).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('button', { name: 'Use #84CC16' }));
+    expect((screen.getByLabelText('Hex') as HTMLInputElement).value).toBe('#84CC16');
+    expect(screen.getByTestId('custom-preview').style.background).toBe('rgb(132, 204, 22)');
+    expect(add).toHaveProperty('disabled', false);
+    fireEvent.click(add);
+    // Back on the picker, picked, under "Other colours" by its name alone.
+    const tile = within(screen.getByRole('group', { name: 'Other colours' })).getByRole('checkbox', { name: 'Mint' });
+    expect(tile.getAttribute('aria-checked')).toBe('true');
+    expect(tile.querySelector('.fs-xs')?.textContent).toBe('Mint');
+    expect(patches).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0].colours).toEqual({ 'BG80 Power-White': ['custom:84cc16'] });
+    expect(patches[0].addColours).toEqual([{ name: 'Mint', hex: '#84cc16' }]);
+  });
+
+  it('refuses a name or a colour the club already has, and a palette colour\'s name', async () => {
+    respond({ strings: { customColours: [{ id: 'custom:14b8a6', name: 'Teal', hex: '#14b8a6' }] } });
+    wrap();
+    await openPicker();
+    fireEvent.click(screen.getByRole('button', { name: 'Custom colour' }));
+    const add = screen.getByRole('button', { name: 'Add colour' });
+    // The first quick pick IS the club's Teal.
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Sea' } });
+    expect(screen.getByRole('alert').textContent).toBe('The club already has this exact colour: Teal.');
+    fireEvent.change(screen.getByLabelText('Hex'), { target: { value: '#123456' } });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'teal' } });
+    expect(screen.getByRole('alert').textContent).toBe('The club already has a colour called that.');
+    expect(add).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Navy' } });
+    expect(screen.getByRole('alert').textContent).toMatch(/^Give it a name of up to 30 characters/);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ink' } });
+    expect(add).toHaveProperty('disabled', false);
+  });
+
+  it('stops at the most a string can list', async () => {
+    respond({ strings: { colours: { 'BG80 Power-White': ['white', 'yellow', 'gold', 'orange', 'red', 'pink', 'purple', 'blue'] } } });
+    wrap();
+    await openPicker();
+    expect(screen.getByText('8 colours is the most one string can list.')).toBeDefined();
+    expect(screen.getByRole('checkbox', { name: 'Navy' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'New combo' })).toHaveProperty('disabled', true);
+    // Unpicking is always allowed.
+    expect(screen.getByRole('checkbox', { name: 'White' })).toHaveProperty('disabled', false);
   });
 });
 

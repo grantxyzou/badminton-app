@@ -52,10 +52,10 @@ export async function GET(req: NextRequest) {
       at('uses', readStringUses(scope)),
     ]);
     if (!offered) { step = 'offered'; throw new Error('offered strings unreadable'); }
-    const summary = summarizeStringStock({ offered: offered.strings, links: offered.links, aliases: offered.aliases, purchases, jobs: withDeletedUses(jobs, uses), catalog });
+    const summary = summarizeStringStock({ offered: offered.strings, links: offered.links, aliases: offered.aliases, purchases, jobs: withDeletedUses(jobs, uses), catalog, customColours: offered.customColours });
     // `aliases` rides here, on the admin read, so the bench can show and undo
     // them (docs/plans/bench-redesign.md); the public strings read omits them.
-    return NextResponse.json({ ...summary, purchases, aliases: offered.aliases });
+    return NextResponse.json({ ...summary, purchases, aliases: offered.aliases, customColours: offered.customColours });
   } catch (err) {
     console.error('GET /api/stringing/stock failed', { step }, err);
     return NextResponse.json({ error: 'read_failed', step }, { status: 503 });

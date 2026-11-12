@@ -7,11 +7,12 @@ import ActionRow from '@/components/primitives/ActionRow';
 import ErrorState from '@/components/primitives/ErrorState';
 import { catalogLabel, matches, parsePrice, priceDraftOf } from '@/lib/shelfEdit';
 import { MAX_LABEL_LEN, MAX_NOTE_LEN } from '@/lib/stringingLimits';
-import { isStringColourId, STRING_PALETTE, type StringColourId } from '@/lib/stringPalette';
-import { paletteFill, stringTypeOf } from '@/lib/stringShelf';
+import { comboParts, isReelColourId, type ComboColourId, type CustomColour, type ReelColourId } from '@/lib/stringPalette';
+import { makerColourIds, stringTypeOf } from '@/lib/stringShelf';
 import { stringPackSrc } from '@/lib/stringPackSrc';
 import { fmtMoney } from '@/lib/fmt';
-import { ColourDot, ColourDots } from '@/components/stringing/StringColours';
+import { ColourDot, ColourDots, useReelColourName } from '@/components/stringing/StringColours';
+import ReelColourPicker from '@/components/stringing/ReelColourPicker';
 import StringPackImage from '@/components/stringing/StringPackImage';
 import MoneyInput from '@/components/primitives/MoneyInput';
 import ListRow from '@/components/primitives/ListRow';
@@ -52,7 +53,9 @@ export interface ShelfEdits {
   /** Trimmed; empty deletes it. */
   note?: string;
   /** Empty falls back to the maker's colours. */
-  colours?: StringColourId[];
+  colours?: ReelColourId[];
+  /** Colours of the club's own named in this sheet that the new list uses: saved WITH it. */
+  addColours?: CustomColour[];
 }
 
 interface Props {
@@ -89,7 +92,11 @@ interface Props {
   onAlias?: (target: string) => void;
   onOffer?: () => void;
   /** offered: the colours the club has it in. */
-  colours?: StringColourId[];
+  colours?: ReelColourId[];
+  /** The club's own colours (`custom:<rrggbb>`), for names and the picker. */
+  customColours?: CustomColour[];
+  /** Two-colour sets on the club's other strings, offered in the picker. */
+  clubCombos?: ComboColourId[];
   /** offered: the stringer's note players see on the string's page. */
   note?: string;
   /**
@@ -124,7 +131,11 @@ export default function StringShelfSheet(props: Props) {
   const [query, setQuery] = useState('');
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [nameDraft, setNameDraft] = useState(label);
-  const [colourDraft, setColourDraft] = useState<StringColourId[]>(() => props.colours ?? []);
+  const [colourDraft, setColourDraft] = useState<ReelColourId[]>(() => props.colours ?? []);
+  // Colours of the club's own named in this sheet, held until Save like every other edit.
+  const [customDraft, setCustomDraft] = useState<CustomColour[]>([]);
+  const customs = [...(props.customColours ?? []), ...customDraft];
+  const colourName = useReelColourName(customs);
   const [noteDraft, setNoteDraft] = useState(() => props.note ?? '');
   const [step, setStep] = useState<'main' | 'colours'>('main');
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -165,7 +176,13 @@ export default function StringShelfSheet(props: Props) {
     if (nameChanged) edits.name = nameTrim;
     if (priceChanged) edits.price = parsed ?? null;
     if (noteChanged) edits.note = noteDraft.trim();
-    if (coloursChanged) edits.colours = colourDraft;
+    if (coloursChanged) {
+      edits.colours = colourDraft;
+      // Only the new colours this list still uses: one added then unpicked is forgotten with the sheet.
+      const uses = (id: string) => colourDraft.some((c) => c === id || comboParts(c)?.mains === id || comboParts(c)?.crosses === id);
+      const added = customDraft.filter((c) => uses(c.id));
+      if (added.length > 0) edits.addColours = added;
+    }
     setSentName(nameChanged ? nameTrim : null);
     setSaving(true);
     props.onSave?.(edits);
@@ -184,7 +201,7 @@ export default function StringShelfSheet(props: Props) {
         {purchases.map((p) => {
           const sub = [
             day(p.date),
-            isStringColourId(p.color) ? tOffer(`colourName.${p.color}`) : null,
+            isReelColourId(p.color) ? colourName(p.color) : null,
             p.label !== label ? p.label : null,
             p.notes || null,
           ].filter(Boolean).join(' · ');
@@ -303,102 +320,25 @@ export default function StringShelfSheet(props: Props) {
   const catalogReady = props.catalogState === 'ready';
   const suggestions = linkedId || !catalogReady ? [] : matches(props.catalog ?? [], query.trim() || label);
   const type = stringTypeOf(props.linked ?? null);
-  const colourNames = colourDraft.map((id) => tOffer(`colourName.${id}`)).join(', ');
+  const colourNames = colourDraft.map((id) => colourName(id)).join(', ');
 
-  // ── The colour picker: a second step of the same sheet. What is picked is
-  //    held here until Save, like every other edit. ──
+  // ── The colour picker: a second step of the same sheet, shared with the
+  //    stringer's (`ReelColourPicker`). What is picked — and any colour of
+  //    the club's named on the way — is held here until Save. ──
   if (step === 'colours') {
-    const on = new Set(colourDraft);
+    const linked = props.linked ?? null;
     return (
-      <BottomSheet open={open} onClose={onClose} ariaLabel={t('shelf.sheet.colours')}>
-        <BottomSheetHeader>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0, flex: 1 }}>
-            <button
-              type="button"
-              className="sheet-close-btn"
-              onClick={() => setStep('main')}
-              aria-label={t('shelf.sheet.back')}
-              style={{ marginLeft: 'calc(-1 * var(--space-4))' }}
-            >
-              <span className="material-icons icon-lg" aria-hidden="true">chevron_left</span>
-            </button>
-            <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600, minWidth: 0 }}>{t('shelf.sheet.colours')}</span>
-          </span>
-          <span className="fs-sm" aria-live="polite" style={{ color: 'var(--text-muted)', flex: '0 0 auto' }}>
-            {t('shelf.sheet.picked', { count: colourDraft.length })}
-          </span>
-        </BottomSheetHeader>
-        <BottomSheetBody>
-          <div key="colours" className="motion-fade flex flex-col gap-4">
-            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.pickerHint')}</p>
-            <div role="group" aria-label={t('shelf.sheet.colours')} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--space-2)' }}>
-              {STRING_PALETTE.map((id) => {
-                const picked = on.has(id);
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={picked}
-                    className="cc-choice"
-                    onClick={() => setColourDraft(STRING_PALETTE.filter((c) => (c === id ? !picked : on.has(c))))}
-                    style={{
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 'var(--space-2)',
-                      padding: 'var(--space-4) var(--space-1)',
-                      textAlign: 'center',
-                      color: picked ? 'var(--accent)' : 'var(--text-primary)',
-                      // Selected is a SOLID tint, never a ring (fill-only containers).
-                      ...(picked ? { background: 'var(--tone-green-bg)' } : {}),
-                    }}
-                  >
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        position: 'relative',
-                        width: 'var(--space-8)',
-                        height: 'var(--space-8)',
-                        borderRadius: '50%',
-                        background: paletteFill(id),
-                        // A white swatch on a pale sheet needs an edge to be seen at all.
-                        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)',
-                      }}
-                    >
-                      {picked && (
-                        <span
-                          className="material-icons icon-xs"
-                          style={{
-                            position: 'absolute',
-                            right: 'calc(-1 * var(--space-1))',
-                            bottom: 'calc(-1 * var(--space-1))',
-                            width: 'var(--space-6)',
-                            height: 'var(--space-6)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: 'var(--accent)',
-                            color: 'var(--on-accent)',
-                          }}
-                        >
-                          check
-                        </span>
-                      )}
-                    </span>
-                    <span className="fs-xs" style={{ fontWeight: picked ? 600 : 400, overflowWrap: 'anywhere' }}>{tOffer(`colourName.${id}`)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </BottomSheetBody>
-        <BottomSheetFooter>
-          <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }} onClick={() => setStep('main')}>
-            {t('shelf.sheet.done')}
-          </button>
-        </BottomSheetFooter>
-      </BottomSheet>
+      <ReelColourPicker
+        open={open}
+        onClose={onClose}
+        onBack={() => setStep('main')}
+        value={colourDraft}
+        onChange={setColourDraft}
+        maker={linked ? { brand: linked.brand, model: linked.model, ids: makerColourIds(linked) } : null}
+        customs={customs}
+        clubCombos={props.clubCombos ?? []}
+        onAddCustom={(c) => setCustomDraft((d) => (d.some((x) => x.id === c.id) ? d : [...d, c]))}
+      />
     );
   }
 
@@ -529,10 +469,10 @@ export default function StringShelfSheet(props: Props) {
                     {line.byColour.map((c) => (
                       <li key={c.color} className="fs-sm" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: c.remainingSets > 0 ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
                         <ColourDot id={c.color} size="sm" />
-                        {t('shelf.sheet.byColour', { colour: tOffer(`colourName.${c.color}`), count: c.remainingSets })}
+                        {t('shelf.sheet.byColour', { colour: colourName(c.color), count: c.remainingSets })}
                       </li>
                     ))}
-                    {purchases.some((p) => !isStringColourId(p.color)) && (
+                    {purchases.some((p) => !isReelColourId(p.color)) && (
                       <li className="fs-sm" style={{ color: line.mixedRemainingSets > 0 ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
                         {t('shelf.sheet.mixedPool', { count: line.mixedRemainingSets })}
                       </li>
@@ -601,7 +541,7 @@ export default function StringShelfSheet(props: Props) {
               <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0 }}>
                 {colourDraft.length > 0 ? (
                   <>
-                    <ColourDots ids={colourDraft} size="md" />
+                    <ColourDots ids={colourDraft} size="md" customs={customs} />
                     <span className="fs-md" style={{ color: 'var(--text-primary)', minWidth: 0, overflowWrap: 'anywhere' }}>{colourNames}</span>
                   </>
                 ) : (
