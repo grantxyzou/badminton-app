@@ -2,7 +2,6 @@
 
 **Track:** North Star pillar 4 (equipment service), the same track as [`stringing-audit-fixes.md`](stringing-audit-fixes.md): the bench is where the stringing service is run, and this is the admin half of it.
 **Status:** in-flight
-**Review on:** 2026-11-12 — has any shelf string been left with no price, and has an off-shelf purchase or job label been left unaliased?
 
 ## Problem
 
@@ -40,6 +39,10 @@ Made while building:
 - **An old spelling is aliased, not relabelled.** A first idea was to rewrite the purchases' labels to the offered one. That would have broken #603's `renamed` mapping: jobs strung under the old spelling only count against the new label while a purchase still carries the old spelling. Those jobs would have fallen into `unmatched`, and the string would have shown more sets left than the shelf holds. `aliases` (old label → offered label) on the offered-strings doc is additive, maps purchases AND jobs, and rewrites nothing.
 - **The old rate card is kept in the doc, not shown** (PR 2). `services` stays stored so a rollback still has its menu; the set-up screen says, while it holds lines, that players no longer see it, with a "Clear the old list" button. A price that quietly stopped showing would otherwise be a surprise.
 - **Mine/All shows only when the bench has two or more stringers**, read from the jobs already loaded (an All load), and stays once shown. Asking `/api/stringing/stringers` instead would have shown the segment one request late and pushed the list down.
+
+Review of 2026-11-12 (Grant):
+
+- **Passed on both counts.** Asked whether any shelf string had been left with no price, or any purchase or job label bought off the shelf left unaliased: "All priced and linked". Asked the kill criterion, whether he still scrolls past set-up to reach a job or has had to ask where a string's stock or price went: "Neither, it works". The review line is removed; nothing in this plan is waiting on a reading.
 
 ## Shape
 

@@ -7,6 +7,8 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
+import Collapse from '@/components/primitives/Collapse';
+import GiftRecord, { type GiftPerson, type GiftUse } from './GiftRecord';
 import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '@/components/BottomSheet';
 import { markExternalExcursion } from '@/lib/excursion';
 import { usePageBack } from '@/lib/pageStack';
@@ -18,6 +20,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** The three amounts on offer (spec §5), in cents. */
 export const GIFT_AMOUNTS = [1000, 2500, 5000] as const;
 
+/** One code with its record (`lib/giftCardView.ts`, the console's shape). */
 export interface MyGiftCard {
   id: string;
   amountCents: number;
@@ -25,6 +28,12 @@ export interface MyGiftCard {
   hint: string;
   createdAt: string;
   redeemedAt: string | null;
+  /** Additive since 2026-11-12; a server from before sends none of these. */
+  createdBy?: GiftPerson | null;
+  redeemedBy?: GiftPerson | null;
+  usedCents?: number | null;
+  remainingCents?: number | null;
+  uses?: GiftUse[];
 }
 
 interface Props {
@@ -41,9 +50,11 @@ interface Props {
  *
  * The code is shown ONCE (the server keeps only its hash), so Copy and Share
  * sit right under it, and leaving before either asks first. The list is this
- * person's own cards, redeemed or not; WHO redeemed one is the organiser's
- * record, not the gifter's (docs/plans/gift-card-ledger.md, non-goals), which
- * is why it says "Redeemed {date}" where the mock-up named a person.
+ * person's own codes, and each opens into its RECORD, the same one the
+ * console's Credit codes card shows: who made it and when, who redeemed it
+ * and when, what it was spent on and what is left (docs/plans/gift-card-ledger.md,
+ * review of 2026-11-12; only an organiser reaches this page, so the redeemer
+ * is theirs to see).
  */
 export default function GiveGiftPage({ clubName, onBack }: Props) {
   const t = useTranslations('profile.giveGift');
@@ -60,9 +71,11 @@ export default function GiveGiftPage({ clubName, onBack }: Props) {
   const [kept, setKept] = useState(false);
   const [copied, setCopied] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const day = (iso: string) =>
     format.dateTime(new Date(iso), { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' });
+  const who = (p: GiftPerson | null | undefined) => (p ? p.name ?? t('deletedAccount') : '—');
 
   const load = useCallback(async () => {
     try {
@@ -220,19 +233,38 @@ export default function GiveGiftPage({ clubName, onBack }: Props) {
       ) : (
         <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
           <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
-            {cards.map((c, i) => (
-              <li key={c.id} className="money-row" style={{ borderTop: i === 0 ? 'none' : '1px solid var(--divider)' }}>
-                <span className="money-row__text">
-                  <span className="money-row__title">
-                    {c.redeemedAt ? t('redeemed', { date: day(c.redeemedAt) }) : t('notRedeemed')}
-                  </span>
-                  <span className="money-row__sub">
-                    {[t('given', { date: day(c.createdAt) }), `…${c.hint}`, c.note].filter(Boolean).join(' · ')}
-                  </span>
-                </span>
-                <span className="money-row__amount">{fmtCents(c.amountCents)}</span>
-              </li>
-            ))}
+            {cards.map((c, i) => {
+              const isOpen = openId === c.id;
+              const left = c.redeemedAt && typeof c.remainingCents === 'number' ? t('left', { amount: fmtCents(c.remainingCents) }) : null;
+              return (
+                <li key={c.id} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--divider)' }}>
+                  <button
+                    type="button"
+                    className="money-row money-row--button"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpenId(isOpen ? null : c.id)}
+                  >
+                    <span className="money-row__text">
+                      <span className="money-row__title">
+                        {c.redeemedAt
+                          ? c.redeemedBy !== undefined
+                            ? t('redeemedBy', { name: who(c.redeemedBy) })
+                            : t('redeemed', { date: day(c.redeemedAt) })
+                          : t('notRedeemed')}
+                      </span>
+                      <span className="money-row__sub">
+                        {[left, t('given', { date: day(c.createdAt) }), `…${c.hint}`, c.note].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <span className="money-row__amount">{fmtCents(c.amountCents)}</span>
+                    <span className="material-icons icon-sm motion-chevron" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>expand_more</span>
+                  </button>
+                  <Collapse open={isOpen}>
+                    <GiftRecord card={c} day={day} who={who} />
+                  </Collapse>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -264,3 +296,4 @@ export default function GiveGiftPage({ clubName, onBack }: Props) {
     </div>
   );
 }
+
