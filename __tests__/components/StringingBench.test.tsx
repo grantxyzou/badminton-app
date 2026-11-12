@@ -56,7 +56,7 @@ function wrap(node: React.ReactNode) {
  * their own error states, and then an assertion about "the" error on screen
  * finds two. Answer everything; assert on one.
  */
-function respondJobs(jobs: StringingJob[]) {
+function respondJobs(jobs: StringingJob[], shopOpen = false) {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockImplementation((url: string) =>
@@ -64,7 +64,7 @@ function respondJobs(jobs: StringingJob[]) {
         ok: true,
         json: async () => {
           const u = String(url);
-          if (u.includes('/shop')) return { open: false };
+          if (u.includes('/shop')) return { open: shopOpen };
           if (u.includes('/strings')) return { strings: [] };
           return { jobs, view: 'bench' };
         },
@@ -130,7 +130,7 @@ describe('the shop sign', () => {
 
     respondShop(false);
     wrap(<StringingPage onBack={() => {}} />);
-    expect(await screen.findByText('Closed for now')).toBeDefined();
+    expect(await screen.findByText(enMessages.admin.stringing.shop.closedTitle)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open shop' })).toBeDefined();
   });
 
@@ -168,7 +168,8 @@ describe('the shop sign', () => {
     respondShop(null);
     wrap(<StringingPage onBack={() => {}} />);
     expect(await screen.findByText("Can't tell right now")).toBeDefined();
-    expect(screen.queryByText('Closed for now')).toBeNull();
+    expect(screen.queryByText(enMessages.admin.stringing.shop.closedTitle)).toBeNull();
+    expect(screen.queryByText(enMessages.admin.stringing.shop.closedTitleEmpty)).toBeNull();
     // And no toggle at all, because there is nothing to toggle FROM — only the
     // way to read the sign again.
     expect(screen.queryByRole('button', { name: 'Open shop' })).toBeNull();
@@ -211,6 +212,36 @@ describe('the shop sign', () => {
     expect(await screen.findByText(/for Wei/)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Add job' })).toBeDefined();
   });
+
+  it('closed: one empty-state card with Open shop under it, and Add job is the .btn-primary', async () => {
+    // Grant, 2026-11-12, on the design canvas: "Follow design system". The
+    // closed sign is the player's closed-shop card; with nothing on the bench
+    // it says so itself, so "Nothing on the bench." is not said twice.
+    respondJobs([]);
+    const { container } = wrap(<StringingPage onBack={() => {}} />);
+    const shop = enMessages.admin.stringing.shop;
+    expect(await screen.findByText(shop.closedTitleEmpty)).toBeDefined();
+    const card = container.querySelector('[data-state="closed"]') as HTMLElement;
+    expect(card.className).toContain('glass-card');
+    expect(within(card).getByText(enMessages.home.stringing.soon)).toBeDefined();
+    expect(within(card).getByText(shop.closedBody)).toBeDefined();
+    expect(within(card).getByRole('button', { name: 'Open shop' })).toBeDefined();
+    await waitFor(() => expect(screen.queryByText(enMessages.admin.stringing.empty)).toBeNull());
+
+    const add = screen.getByRole('button', { name: 'Add job' });
+    expect(add.className).toContain('btn-primary');
+    expect(add.className).not.toContain('cc-btn');
+  });
+
+  it('closed with jobs still on the bench: the plain title, and the jobs are unaffected', async () => {
+    respondJobs([job]);
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText(/for Wei/)).toBeDefined();
+    const shop = enMessages.admin.stringing.shop;
+    expect(screen.getByText(shop.closedTitle)).toBeDefined();
+    expect(screen.getByText(shop.closedBodyJobs)).toBeDefined();
+    expect(screen.queryByText(shop.closedTitleEmpty)).toBeNull();
+  });
 });
 
 describe('a failed load is not an empty bench', () => {
@@ -240,7 +271,8 @@ describe('a failed load is not an empty bench', () => {
   });
 
   it('shows the empty state only on a real empty answer', async () => {
-    respondJobs([]);
+    // Shop OPEN: under a closed shop the sign's card says the bench is empty.
+    respondJobs([], true);
     wrap(<StringingPage onBack={() => {}} />);
 
     expect(await screen.findByText('Nothing on the bench.')).toBeDefined();
@@ -647,6 +679,65 @@ describe('a proposal is not re-sent by a second tap', () => {
     fireEvent.change(screen.getByLabelText('Price'), { target: { value: '36.00' } });
     const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
     expect(send.disabled).toBe(false);
+  });
+});
+
+describe('a proposal can say why (Grant, 2026-11-12)', () => {
+  function capturePatch() {
+    const calls: Array<Record<string, unknown>> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') {
+          const body = JSON.parse(String(init.body));
+          calls.push(body);
+          return Promise.resolve({ ok: true, json: async () => ({ job: { ...job, pendingEdit: { ...body.propose, proposedAt: 'x', proposedBy: 'g' } } }) } as Response);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ stringers: [], strings: [] }) } as Response);
+      }),
+    );
+    return calls;
+  }
+
+  it('sends the "Why?" note, trimmed, with the proposal', async () => {
+    const calls = capturePatch();
+    wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
+    const why = screen.getByLabelText('Why? (the player sees this)') as HTMLTextAreaElement;
+    expect(why.tagName).toBe('TEXTAREA');
+    expect(why.maxLength).toBe(280);
+    fireEvent.change(why, { target: { value: '  BG80 is out until next week.  ' } });
+    fireEvent.click(screen.getByText('Send to Wei').closest('button')!);
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].propose).toMatchObject({ priceCents: 3400, reason: 'BG80 is out until next week.' });
+  });
+
+  it('a new "why" for the same change can be sent again', async () => {
+    capturePatch();
+    const pendingJob: StringingJob = {
+      ...job,
+      priceCents: 3000,
+      pendingEdit: { priceCents: 3400, proposedAt: '2026-09-01T00:00:00.000Z', proposedBy: 'member-grant', reason: 'Old note.' },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
+    const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
+    fireEvent.change(screen.getByLabelText('Why? (the player sees this)'), { target: { value: 'Old note.' } });
+    expect(send.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Why? (the player sees this)'), { target: { value: 'A better note.' } });
+    expect(send.disabled).toBe(false);
+  });
+
+  it('shows the bench the note it is waiting on', () => {
+    capturePatch();
+    const pendingJob: StringingJob = {
+      ...job,
+      pendingEdit: { priceCents: 3400, proposedAt: '2026-09-01T00:00:00.000Z', proposedBy: 'member-grant', reason: 'Aerobite costs a little more.' },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getByText('“Aerobite costs a little more.”')).toBeDefined();
   });
 });
 

@@ -13,9 +13,10 @@ import MoneyInput from '@/components/primitives/MoneyInput';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { formatReadyBy } from '@/lib/stringingDue';
-import { STRINGING_FLOW, formatPriceExact, playerStageFor } from '@/lib/stringing';
+import { STRINGING_FLOW, PROPOSAL_REASON_MAX, formatPriceExact, playerStageFor } from '@/lib/stringing';
 import type { StringingStatus } from '@/lib/stringing';
 import type { StringingJob } from '@/lib/types';
+import { STAGE_TRACK, stageLook } from '@/lib/stringingStatusTone';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -80,6 +81,10 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
   const [proposeString, setProposeString] = useState(local.stringLabel);
   const [proposeMains, setProposeMains] = useState(String(local.tensionMains));
   const [proposeCrosses, setProposeCrosses] = useState(String(local.tensionCrosses));
+  /* Why, in the stringer's words — the player reads it first on "A change to
+     confirm" (Grant, 2026-11-12: "Can we have some detail explaining why the
+     change?"). Optional; blank sends none. */
+  const [proposeReason, setProposeReason] = useState('');
   /* CLOSED ON EVERY MOUNT, including when a proposal is already pending.
      This screen's job is to tell you where a racket is; changing what you
      charge for it is a deliberate act, and a form standing open invites a
@@ -111,6 +116,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
     setProposeString(local.stringLabel);
     setProposeMains(String(local.tensionMains));
     setProposeCrosses(String(local.tensionCrosses));
+    setProposeReason('');
     setProposeError(null);
   }
 
@@ -130,6 +136,10 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
   }, []);
 
   const pending = local.pendingEdit ?? null;
+  /* The Progress card's colour is the RACKET's stage, not "waiting": the
+     amber banner above already says a change is out, and the stepper is about
+     where the racket physically is. */
+  const statusLook = stageLook(local.status);
   const declined = !pending && typeof local.pendingEditDeclinedAt === 'string';
 
   const parsedCents = (() => {
@@ -161,7 +171,10 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
     (pending.priceCents ?? local.priceCents) === parsedCents &&
     (pending.stringLabel ?? local.stringLabel) === proposeString.trim() &&
     (pending.tensionMains ?? local.tensionMains) === Number(proposeMains) &&
-    (pending.tensionCrosses ?? local.tensionCrosses) === Number(proposeCrosses);
+    (pending.tensionCrosses ?? local.tensionCrosses) === Number(proposeCrosses) &&
+    // A new "why" for the same change is worth sending: the player is asked
+    // again with the better explanation.
+    (pending.reason ?? '') === proposeReason.trim();
 
   const proposalDirty = differsFromJob && !alreadyProposed;
 
@@ -193,6 +206,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             stringLabel: proposeString.trim(),
             tensionMains: Number(proposeMains),
             tensionCrosses: Number(proposeCrosses),
+            reason: proposeReason.trim(),
           },
         }),
       });
@@ -292,6 +306,12 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
               {t('propose.waitingHint')}
             </div>
+            {/* The "why" they were sent, so the bench can see what was said. */}
+            {pending.reason && (
+              <div className="fs-sm" style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>
+                “{pending.reason}”
+              </div>
+            )}
           </div>
         )}
         {declined && (
@@ -338,7 +358,18 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                 <span
                   style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
                 >
-                  <span className="fs-md" style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                  {/* The stage's own hue and glyph (lib/stringingStatusTone.ts),
+                      the same as the stringer's queue: amber while Received,
+                      blue at Strung. It used to be accent green at every stage. */}
+                  <span
+                    className="fs-md"
+                    data-testid="job-status-label"
+                    data-stage={local.status}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', fontWeight: 600, color: statusLook.tone }}
+                  >
+                    <span className="material-icons icon-sm" aria-hidden="true" style={{ color: statusLook.tone }}>
+                      {statusLook.icon}
+                    </span>
                     {t(`status.${local.status}`)}
                   </span>
                   <span
@@ -355,11 +386,21 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             </div>
           </button>
           <Collapse open={statusOpen} spaceAbove="var(--space-3)">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              {STRINGING_FLOW.map((step: StringingStatus) => {
-                const idx = STRINGING_FLOW.indexOf(step);
+            {/* FIVE STEPS IN A ROW, joined by a line (Stringing canvas,
+                2026-11-12; Grant: "colour should match the updated status
+                colour"). Everything up to the current step — its line, its
+                tick, its name — takes the CURRENT stage's colour, so the
+                stepper says "Received" in the same amber as the stringer's
+                pill. Each step is still a button and still a 44px-plus
+                target (a column the width of a fifth of the card and 64 tall),
+                still tappable in BOTH directions, as `canTransition` allows. */}
+            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+              {STRINGING_FLOW.map((step: StringingStatus, idx: number) => {
                 const current = STRINGING_FLOW.indexOf(local.status);
                 const on = idx <= current;
+                const last = idx === STRINGING_FLOW.length - 1;
+                const lineIn = idx === 0 ? 'transparent' : on ? statusLook.tone : STAGE_TRACK;
+                const lineOut = last ? 'transparent' : idx < current ? statusLook.tone : STAGE_TRACK;
                 return (
                   <button
                     key={step}
@@ -367,37 +408,45 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                     disabled={busy || !online}
                     onClick={() => patch({ status: step })}
                     className="flow-step"
+                    aria-current={idx === current ? 'step' : undefined}
                     style={{
+                      flex: 1,
+                      minWidth: 0,
+                      minHeight: 64,
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 'var(--space-3)',
-                      padding: 'var(--space-4)',
-                      borderRadius: 'var(--radius-lg)',
-                      textAlign: 'left',
-                      background: on ? 'var(--banner-green-bg)' : 'var(--inner-card-bg)',
+                      gap: 'var(--space-2)',
+                      padding: 'var(--space-1) 0',
+                      background: 'transparent',
                       border: 'none',
+                      color: on ? statusLook.tone : 'var(--text-secondary)',
                       ...(busy || !online ? { opacity: 0.5, pointerEvents: 'none' as const } : {}),
                     }}
                   >
-                    <span
-                      className="material-icons icon-sm"
-                      style={{ color: on ? 'var(--accent)' : 'var(--text-muted)' }}
-                    >
-                      {on ? 'check_circle' : 'radio_button_unchecked'}
+                    <span aria-hidden="true" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      <span style={{ flex: 1, height: 'var(--space-05)', background: lineIn }} />
+                      <span
+                        className="material-icons"
+                        style={{ flex: 'none', fontSize: 'var(--icon-lg)', color: on ? statusLook.tone : 'var(--text-muted)' }}
+                      >
+                        {on ? 'check_circle' : 'radio_button_unchecked'}
+                      </span>
+                      <span style={{ flex: 1, height: 'var(--space-05)', background: lineOut }} />
                     </span>
-                    <span
-                      className="fs-md"
-                      style={{ flex: 1, fontWeight: 600, color: on ? 'var(--accent)' : 'var(--text-muted)' }}
-                    >
+                    <span className="fs-sm" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {t(`status.${step}`)}
                     </span>
-                    {idx === current && (
-                      <span className="fs-2xs" style={{ color: 'var(--text-muted)' }}>{t('now')}</span>
-                    )}
+                    <span className="fs-xs" style={{ color: 'var(--text-muted)', minHeight: 'var(--space-5)' }}>
+                      {idx === current ? t('now') : null}
+                    </span>
                   </button>
                 );
               })}
             </div>
+            <p className="fs-sm" style={{ margin: 'var(--space-2) 0 0', color: 'var(--text-muted)' }}>
+              {t('stepHint')}
+            </p>
           </Collapse>
         </div>
 
@@ -422,7 +471,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             card about money; the form is what you do to it.
 
             When a change is drafted the headline becomes the diff, in the same
-            from → to shape the player is shown in `ConfirmChangeSheet`. The
+            from → to shape the player is shown in `ConfirmChangePage`. The
             admin sees the exact thing they are about to ask for. */}
         <div
           className="glass-card p-5 space-y-3"
@@ -631,6 +680,17 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
                 />
               </label>
             </div>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              <span className="section-label-muted">{t('propose.reason')}</span>
+              <textarea
+                value={proposeReason}
+                onChange={(e) => setProposeReason(e.target.value)}
+                aria-label={t('propose.reason')}
+                placeholder={t('propose.reasonPlaceholder')}
+                rows={2}
+                maxLength={PROPOSAL_REASON_MAX}
+              />
+            </label>
 
             <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch' }}>
               <button

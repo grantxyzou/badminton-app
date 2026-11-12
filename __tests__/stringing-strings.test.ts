@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET, PATCH } from '../app/api/stringing/strings/route';
 import { POST as stockPOST } from '../app/api/stringing/stock/route';
-import { normaliseOfferedStrings, MAX_OFFERED } from '../lib/stringingStrings';
+import { normaliseOfferedStrings, MAX_OFFERED, MAX_NOTE_LEN } from '../lib/stringingStrings';
 import { resetShelfCache } from '../lib/stringShelfRead';
 import { __resetCatalogSeedForTests } from '../lib/catalogSeed';
 import {
@@ -52,7 +52,7 @@ describe('who can read and who can write', () => {
     // keeps on the shelf is not a secret — from its own members.
     const res = await GET(memberGet('http://x/api/stringing/strings'));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ strings: [], links: {}, prices: {}, colours: {}, stock: {}, players: {}, colourStock: {} });
+    expect(await res.json()).toEqual({ strings: [], links: {}, prices: {}, colours: {}, stock: {}, players: {}, colourStock: {}, notes: {} });
   });
 
   it('returns the list and its per-label maps — no author, no timestamps', async () => {
@@ -60,7 +60,7 @@ describe('who can read and who can write', () => {
       makeAdminRequest('PATCH', 'http://x/api/stringing/strings', { strings: ['BG80'] }),
     );
     const body = await (await GET(memberGet('http://x/api/stringing/strings'))).json();
-    expect(Object.keys(body)).toEqual(['strings', 'links', 'prices', 'colours', 'stock', 'players', 'colourStock']);
+    expect(Object.keys(body)).toEqual(['strings', 'links', 'prices', 'colours', 'stock', 'players', 'colourStock', 'notes']);
   });
 
   it('refuses a player trying to set it', async () => {
@@ -173,7 +173,7 @@ describe('the shelf extras', () => {
     const ip = { 'X-Client-IP': 'strings-ratelimit-probe' };
     let last: Response | null = null;
     for (let i = 0; i < 121; i++) last = await GET(makeRequest('GET', 'http://x/api/stringing/strings', undefined, ip));
-    expect(await last!.json()).toEqual({ strings: null, links: null, prices: null, stock: null, players: null, colours: null, colourStock: null });
+    expect(await last!.json()).toEqual({ strings: null, links: null, prices: null, stock: null, players: null, colours: null, colourStock: null, notes: null });
   });
 });
 
@@ -207,6 +207,38 @@ describe('renaming a string, and the colours on its reel', () => {
     expect((await PATCH(admin({ rename: { from: 'BG80', to: '   ' } }))).status).toBe(400);
     expect((await PATCH(admin({ rename: { from: 'Nope', to: 'X' } }))).status).toBe(404);
     expect((await read()).strings).toEqual(['BG80', 'Aerobite']);
+  });
+
+  it('stores a note per string, keeps it when only the list is sent, and deletes it when emptied', async () => {
+    const note = 'My go-to for hard hitters. On an 88D I would string it at 26 lb.';
+    const res = await PATCH(admin({ strings: ['BG80', 'Aerobite'], notes: { BG80: `  ${note}  `, Aerobite: '   ', Gone: 'x', House: 7 } }));
+    expect((await res.json()).notes).toEqual({ BG80: note });
+    // A member reads it on the strings-we-offer read.
+    expect((await read()).notes).toEqual({ BG80: note });
+    // An older client, or a save of another map, keeps it.
+    await PATCH(admin({ strings: ['BG80', 'Aerobite'], colours: { BG80: ['white'] } }));
+    expect((await read()).notes).toEqual({ BG80: note });
+    // A long note is cut at the limit rather than refused.
+    await PATCH(admin({ strings: ['BG80', 'Aerobite'], notes: { BG80: note, Aerobite: 'a'.repeat(400) } }));
+    expect((await read()).notes.Aerobite).toHaveLength(MAX_NOTE_LEN);
+    // An empty note deletes that one and leaves the rest.
+    await PATCH(admin({ strings: ['BG80', 'Aerobite'], notes: { BG80: '', Aerobite: 'Control.' } }));
+    expect((await read()).notes).toEqual({ Aerobite: 'Control.' });
+    // It leaves with its string, and follows a rename.
+    await PATCH(admin({ rename: { from: 'Aerobite', to: 'Aerobite Boost' } }));
+    expect((await read()).notes).toEqual({ 'Aerobite Boost': 'Control.' });
+    await PATCH(admin({ strings: ['BG80'] }));
+    expect((await read()).notes).toEqual({});
+  });
+
+  it('refuses a player trying to set a note, and still needs a signed-in member to read one', async () => {
+    await PATCH(admin({ strings: ['BG80'], notes: { BG80: 'Mine.' } }));
+    const res = await PATCH(makeRequest('PATCH', 'http://x/api/stringing/strings', { strings: ['BG80'], notes: { BG80: 'Hijacked.' } }, {
+      Cookie: `member_session=${memberCookieValue('wei')}`,
+    }));
+    expect(res.status).toBe(401);
+    expect((await read()).notes).toEqual({ BG80: 'Mine.' });
+    expect((await GET(makeRequest('GET', 'http://x/api/stringing/strings'))).status).toBe(401);
   });
 
   it('refuses a player trying to rename', async () => {

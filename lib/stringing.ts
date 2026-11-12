@@ -123,6 +123,10 @@ export function formatPriceExact(priceCents: number | null | undefined): string 
 export const TENSION_MIN_LB = 18;
 export const TENSION_MAX_LB = 32;
 
+/** The longest "why" a stringer may attach to a proposed change
+ *  (`PendingEdit.reason`): a couple of sentences, read on a phone. */
+export const PROPOSAL_REASON_MAX = 280;
+
 export function isValidTension(lb: unknown): lb is number {
   return (
     typeof lb === 'number' &&

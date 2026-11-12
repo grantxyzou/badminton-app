@@ -2,8 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import StatusBadge from '@/components/primitives/StatusBadge';
-import { STATUS_TONE } from './statusTone';
+import StagePill from './StagePill';
 import { dueFor, dueStyle, formatReadyBy } from '@/lib/stringingDue';
 import { fmtMoney } from '@/lib/fmt';
 import type { StringingStatus } from '@/lib/stringing';
@@ -27,6 +26,8 @@ export interface JobCardJob {
   paidAt?: string | null;
   /** The player called the request off before handing the racket over. */
   cancelledAt?: string | null;
+  /** A change waiting on the player: the pill reads "Waiting on <name>". */
+  pendingEdit?: unknown;
 }
 
 /**
@@ -123,9 +124,8 @@ export default function JobCard({
             </span>
           </span>
           <span style={{ flex: 'none' }}>
-            <StatusBadge variant="state" tone={STATUS_TONE[job.status] ?? STATUS_TONE.requested}>
-              {tAdmin(`status.${job.status}`)}
-            </StatusBadge>
+            {/* The same pill as the stringer's list (lib/stringingStatusTone.ts). */}
+            <StagePill stage={job.pendingEdit ? 'waiting' : job.status} label={job.pendingEdit ? tAdmin('status.waiting', { name: job.memberName }) : tAdmin(`status.${job.status}`)} />
           </span>
           {more && <span style={{ flex: 'none', pointerEvents: 'auto' }}>{more}</span>}
         </div>

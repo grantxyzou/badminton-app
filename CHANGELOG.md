@@ -8,6 +8,22 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: the stringer's note on each string, and a page for a change to confirm (2026-11-12)
+
+- **Strings we offer shows each string in full.** A list row carries the packet, name, price, type and feel, stock, the description and the coloured trait line. On the map, the picked string is the same row, tinted, and opens its page.
+- **A string's page leads with how it suits you**, then "Your stringer recommends" (a note the stringer writes per string in the shelf sheet, up to 280 characters; additive `OfferedStringsDoc.notes`), then "Ratings and specs", closed until tapped.
+- **A proposed change carries the stringer's "why"** (additive `PendingEdit.reason`, up to 280 characters). The player's racket card shows an amber "Review changes" row and the tracker reads "On hold". The row opens "A change to confirm", a page in place of the old sheet, with the reason, each change in amber, and Keep mine / Accept change. A stringer who isn't an admin still sees no price, and gets the reason only beside a non-price change.
+
+## Stringing: statuses you can tell apart, colour by trait, a calmer closed bench (2026-11-12)
+
+- Every stringing status has its own colour AND icon, defined once and used by the stringer's list, the admin bench and the job page: not dropped off (grey, clock), received (amber, box), strung (blue, tick), ready for pickup (green), waiting on the player (purple, hourglass).
+- The stringer's "Rackets to string" drops its outer card; each racket has a 4-step bar under its name, and a job waiting on the player says what was suggested and holds its button. The stringer sees what changed, never the price.
+- The admin job page's progress is a horizontal row of steps in the current status's colour.
+- Strings we offer: each row reads Power in orange, Control in blue, Durability in green; on the map each dot takes its string's type colour, with a legend, the selected string's meters use the trait colours, and the bottom axis reads "Durability".
+- A string's page no longer lists colours (the request is where a colour is picked), and the level line reads "Rated Intermediate".
+- The admin bench, when the shop is closed, shows one card in the empty-state pattern with "Open shop", and "Add job" is the solid main button.
+- A change to confirm that is no longer waiting no longer shows the "has an update" line above "Nothing left to answer".
+
 ## Stats opens like a book on a foldable (2026-11-12)
 
 - On an unfolded iPhone Duo or Galaxy Z Fold, Stats now uses both halves of the screen: the title and the Level, Games and Kudos tiles on the left page, and the You · Equipment · Play · Learn switch with that register's cards on the right page. Until now Stats kept one column in the middle, so every card sat across the fold.

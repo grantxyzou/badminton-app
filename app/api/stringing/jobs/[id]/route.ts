@@ -21,7 +21,7 @@ import { canStringIn, stringerIn } from '@/lib/roster';
 import { isAdminAuthedWithMember, verifyLiveMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW } from '@/lib/stringing';
+import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW, PROPOSAL_REASON_MAX } from '@/lib/stringing';
 import { notifyStringerOfAssignment } from '@/lib/stringingRequestNotify';
 import { isArchived } from '@/lib/stringingOrder';
 import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirror';
@@ -77,8 +77,19 @@ function parseProposal(
     if (p !== job.priceCents) out.priceCents = p as number | null;
   }
 
+  // A reason EXPLAINS a change; it is not one. So it is read after the diff is
+  // known, and does not count toward `changed` below — "why" with no "what"
+  // would ask the player to agree to nothing.
   const changed = Object.keys(out).some((k) => k !== 'proposedAt' && k !== 'proposedBy');
   if (!changed) return { error: 'no_change' };
+
+  if (b.reason !== undefined && b.reason !== null) {
+    if (typeof b.reason !== 'string') return { error: 'invalid_request' };
+    const why = b.reason.trim();
+    if (why.length > PROPOSAL_REASON_MAX) return { error: 'invalid_reason' };
+    // Blank is "no reason given", stored as absent rather than as ''.
+    if (why) out.reason = why;
+  }
   return { value: out };
 }
 

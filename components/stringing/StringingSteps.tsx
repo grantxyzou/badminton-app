@@ -52,7 +52,12 @@ export function stepForStage(stage: PlayerStage | null): number {
  * a pixel: the dot size and the rail thickness are tokens, and the rail
  * thickness doubles as the dot's border so the two cannot drift apart.
  */
-export default function StringingSteps({ current }: { current: number }) {
+export default function StringingSteps({ current, held = false }: {
+  current: number;
+  /** A change waits on the player: the current step shows ON HOLD — an amber
+   *  ring with a pause glyph, "On hold", and the leg ahead dashed amber. */
+  held?: boolean;
+}) {
   const t = useTranslations('home.stringing.steps');
 
   return (
@@ -62,6 +67,7 @@ export default function StringingSteps({ current }: { current: number }) {
         const here = i === current;
         const first = i === 0;
         const last = i === STEP_KEYS.length - 1;
+        const onHold = held && here;
         return (
           <li key={key} className="bpm-steps__item">
             <div className="bpm-steps__rail">
@@ -69,19 +75,25 @@ export default function StringingSteps({ current }: { current: number }) {
                 aria-hidden="true"
                 className={`bpm-steps__leg ${first ? 'bpm-steps__leg--end' : reached ? 'bpm-steps__leg--on' : ''}`}
               />
-              <span
-                aria-hidden="true"
-                className={`bpm-steps__dot ${reached ? 'bpm-steps__dot--on' : ''}`}
-              />
+              {onHold ? (
+                <span aria-hidden="true" className="bpm-steps__dot bpm-steps__dot--held">
+                  <span className="material-icons">pause</span>
+                </span>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className={`bpm-steps__dot ${reached ? 'bpm-steps__dot--on' : ''}`}
+                />
+              )}
               <span
                 aria-hidden="true"
                 // The leg AHEAD only lights once this step is behind you —
                 // otherwise the strip would claim progress it has not made.
-                className={`bpm-steps__leg ${last ? 'bpm-steps__leg--end' : i < current ? 'bpm-steps__leg--on' : ''}`}
+                className={`bpm-steps__leg ${last ? 'bpm-steps__leg--end' : i < current ? 'bpm-steps__leg--on' : onHold ? 'bpm-steps__leg--held' : ''}`}
               />
             </div>
-            <span className={`fs-xs bpm-steps__label ${here ? 'bpm-steps__label--here' : ''}`}>
-              {t(key)}
+            <span className={`fs-xs bpm-steps__label ${onHold ? 'bpm-steps__label--held' : here ? 'bpm-steps__label--here' : ''}`}>
+              {onHold ? t('onHold') : t(key)}
             </span>
           </li>
         );

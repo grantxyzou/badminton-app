@@ -160,6 +160,88 @@ describe('as the Bench register (docs/plans/stringing-tabs.md)', () => {
   });
 });
 
+describe('telling the statuses apart (Stringing canvas, 2026-11-12)', () => {
+  // Grant: "I am having trouble telling the status apart". Each stage has its
+  // own words, glyph and colour, and a bar that fills to where the racket is.
+  const serve = (jobs: unknown[]) =>
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ jobs, view: 'stringer' }), { status: 200 }),
+    );
+
+  const cases = [
+    { status: 'requested', label: 'Not dropped off', icon: 'schedule', filled: 0 },
+    { status: 'received', label: 'Received', icon: 'inventory_2', filled: 1 },
+    { status: 'strung', label: 'Strung', icon: 'check', filled: 2 },
+    { status: 'ready', label: 'Ready for pickup', icon: 'check_circle', filled: 3 },
+    { status: 'picked_up', label: 'Picked up', icon: 'check_circle', filled: 4 },
+  ] as const;
+
+  for (const c of cases) {
+    it(`${c.status}: "${c.label}" with its icon, and the bar filled to ${c.filled}`, async () => {
+      serve([stringerJob(c.status)]);
+      const { container } = wrap();
+      await screen.findByText('Arcsaber 11 Pro');
+      const pill = container.querySelector('[data-testid="stringer-job-status"]') as HTMLElement;
+      expect(pill.textContent).toBe(`${c.icon}${c.label}`);
+      const bar = container.querySelector('[data-testid="stringer-job-progress"]') as HTMLElement;
+      const on = [...bar.children].map((s) => (s as HTMLElement).dataset.on);
+      expect(on.filter((v) => v === 'true')).toHaveLength(c.filled);
+      // Filled from the left: no gap before the last filled segment.
+      expect(on.indexOf('false') === -1 ? on.length : on.indexOf('false')).toBe(c.filled);
+    });
+  }
+
+  it('each stage has its own colour, except the two greys at either end', async () => {
+    serve(cases.map((c, i) => ({ ...stringerJob(c.status), id: `j${i}` })));
+    const { container } = wrap();
+    await screen.findByText('Not dropped off');
+    const colours = [...container.querySelectorAll('[data-testid="stringer-job-status"]')]
+      .map((el) => (el as HTMLElement).style.color);
+    // received, strung, ready: three distinct hues.
+    expect(new Set(colours.slice(1, 4)).size).toBe(3);
+  });
+
+  it('heads the list with a plain heading and the count, not an outer card', async () => {
+    serve([
+      { ...stringerJob('received'), readyBy: '2000-01-01' },
+      { ...stringerJob('strung'), id: 'j2' },
+    ]);
+    const { container } = wrap();
+    expect(await screen.findByText('2 assigned to you · 1 late')).toBeDefined();
+    const section = container.querySelector('section') as HTMLElement;
+    expect(section.className).not.toContain('glass-card');
+    expect(container.querySelectorAll('[data-testid="stringer-job"].glass-card')).toHaveLength(2);
+  });
+
+  it('a job waiting on the player says what was suggested and offers no action', async () => {
+    serve([{
+      ...stringerJob('received'),
+      memberName: 'Lin',
+      pendingEdit: { proposedAt: '2026-11-01T00:00:00.000Z', stringFrom: 'BG80', stringTo: 'BG65' },
+    }]);
+    const { container } = wrap();
+    expect(await screen.findByText('Waiting on Lin')).toBeDefined();
+    expect(screen.getByText('Suggested BG65 instead of BG80. Lin has to accept before you string it.')).toBeDefined();
+    expect(screen.queryByRole('button')).toBeNull();
+    // The bar still says where the racket is: received.
+    const bar = container.querySelector('[data-testid="stringer-job-progress"]') as HTMLElement;
+    expect(bar.dataset.filled).toBe('1');
+  });
+
+  it('a pending change it cannot describe still says the player has to confirm', async () => {
+    serve([{ ...stringerJob('received'), pendingEdit: { proposedAt: '2026-11-01T00:00:00.000Z' } }]);
+    wrap();
+    expect(await screen.findByText('Waiting for Akane to confirm the change.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Mark strung' })).toBeNull();
+  });
+
+  it('every stage label exists in Chinese too', () => {
+    const en = enMessages.home.stringing.stringerStage;
+    const zh = zhMessages.home.stringing.stringerStage;
+    expect(Object.keys(zh).sort()).toEqual(Object.keys(en).sort());
+  });
+});
+
 describe('requests nobody has taken (docs/plans/stringing-request-nudge.md)', () => {
   const old = new Date(Date.now() - 50 * 3_600_000).toISOString();
   const unclaimed = { ...stringerJob('requested'), id: 'u1', jobNo: 'J-0009', createdAt: old };

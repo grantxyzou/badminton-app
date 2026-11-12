@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { clusterPoints, dotPositions, placeLabels, ringPositions, CLUSTER_PX, DOT_PX, RING_RADIUS, type Rect } from '@/lib/stringMap';
-import type { StockBand } from '@/lib/stringShelf';
+import { TYPE_ORDER, typeDotFill, typeDotInk, type StockBand, type StringTypeKey } from '@/lib/stringShelf';
 
 export interface MapDot {
   key: string;
@@ -14,6 +14,8 @@ export interface MapDot {
   value: number;
   durability: number;
   band: StockBand | null;
+  /** The string's type, which colours its dot (`typeDotFill`); null = unknown. */
+  type: StringTypeKey | null;
 }
 
 const PLOT_H = 220;
@@ -62,6 +64,14 @@ const GUIDE = 'color-mix(in srgb, var(--text-primary) 10%, transparent)';
  * (a ResizeObserver) and each label's width in the card's own font, then
  * re-places labels whenever either, or the selection, changes. A label with
  * nowhere to go is hidden; its dot keeps its accessible name.
+ *
+ * EACH DOT WEARS ITS STRING'S TYPE COLOUR (Grant, 2026-11-12, option D on
+ * the design canvas: "A for lists, D for map"), the tint a string's page
+ * already sits on, with a legend under the plot. Stock is not drawn here
+ * beyond the empty ring of a string that cannot be had, so the colour means
+ * the type and nothing about stock; the card under the map names the type
+ * and any low or out stock in words. A cluster wears its strings' type when
+ * they share one, neutral otherwise.
  *
  * The List view beside it is the full text equivalent — nothing is said only
  * here.
@@ -169,6 +179,13 @@ export default function StringMap({
   const origin = zoomed ? allMarks.find((m) => m.key === zoomed.key)?.point ?? null : null;
 
   type Mark = (typeof allMarks)[number];
+  /** A mark's type: its string's, or the one every string in a cluster shares. */
+  const typeOfMark = (m: Mark): StringTypeKey | null => {
+    const first = dots[m.members[0]].type;
+    return m.members.every((i) => dots[i].type === first) ? first : null;
+  };
+  /** The types on the map, in the legend's order. */
+  const typesShown = TYPE_ORDER.filter((ty) => dots.some((d) => d.type === ty));
   const selectedOf = (marks: Mark[]) => marks.findIndex((m) => m.members.some((i) => dots[i].key === selected));
   const textOf = (m: Mark) => {
     if (m.members.length === 1) return dots[m.members[0]].model;
@@ -263,6 +280,8 @@ export default function StringMap({
     const many = m.members.length > 1;
     const size = many ? CLUSTER_PX : DOT_PX;
     const out = !many && dots[m.members[0]].band === 'out';
+    const type = typeOfMark(m);
+    const fill = typeDotFill(type);
     return (
       <button
         key={m.key}
@@ -288,6 +307,7 @@ export default function StringMap({
       >
         <span
           aria-hidden="true"
+          data-dot-type={type ?? 'none'}
           style={{
             position: 'absolute',
             left: (HIT - size) / 2,
@@ -302,12 +322,12 @@ export default function StringMap({
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--fs-2xs)',
             fontWeight: 700,
-            color: 'var(--page-bg)',
-            // One colour for every string: stock is said on the card
-            // under the map, only when it is low or out. An empty ring
-            // still marks a string that cannot be had.
-            background: out ? 'transparent' : 'var(--accent)',
-            border: out ? '2px solid var(--text-muted)' : 'none',
+            color: typeDotInk(type),
+            // The string's type colour: stock is said on the card under the
+            // map, only when it is low or out. An empty ring, in the type's
+            // colour, still marks a string that cannot be had.
+            background: out ? 'transparent' : fill,
+            border: out ? `2px solid ${fill}` : 'none',
             // No transition: the ring jumps, which is also what
             // reduced motion asks for.
             boxShadow: isSel ? `0 0 0 3px var(--page-bg), 0 0 0 ${SELECTED_RING_PX}px var(--text-primary)` : 'none',
@@ -357,7 +377,7 @@ export default function StringMap({
   return (
     // The plot never changes size: the way back and the caption live INSIDE
     // it while zoomed (Grant: "The chart area should not skip or grow").
-    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr)', gridTemplateRows: `${PLOT_H}px auto`, columnGap: 'var(--space-2)', rowGap: 'var(--space-2)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr)', gridTemplateRows: `${PLOT_H}px auto auto`, columnGap: 'var(--space-2)', rowGap: 'var(--space-2)' }}>
       <span
         aria-hidden="true"
         className="fs-xs"
@@ -450,6 +470,22 @@ export default function StringMap({
       <span aria-hidden="true" className="fs-xs" style={{ gridRow: 2, gridColumn: 2, textAlign: 'start', color: 'var(--text-muted)' }}>
         {t('axisDurability')}
       </span>
+      {/* What the dot colours mean: the types on the map, each with its dot
+          and its word, so colour is never the only signal. */}
+      {typesShown.length > 0 && (
+        <ul
+          aria-label={t('mapLegend')}
+          className="fs-sm"
+          style={{ gridRow: 3, gridColumn: 2, listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2) var(--space-4)', color: 'var(--text-secondary)' }}
+        >
+          {typesShown.map((ty) => (
+            <li key={ty} data-legend-type={ty} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span aria-hidden="true" style={{ flex: 'none', width: 'var(--space-4)', height: 'var(--space-4)', borderRadius: '50%', background: typeDotFill(ty) }} />
+              {t(`hero_${ty}`)}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

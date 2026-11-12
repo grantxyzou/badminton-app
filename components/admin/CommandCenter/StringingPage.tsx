@@ -15,6 +15,7 @@ import { fmtMoney } from '@/lib/fmt';
 import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
 import JobCard, { nextStatusOf } from '@/components/stringing/JobCard';
 import CardHeader from '@/components/primitives/CardHeader';
+import StatusBadge from '@/components/primitives/StatusBadge';
 import type { StringingJob } from '@/lib/types';
 import SwipeRow from '@/components/primitives/SwipeRow';
 import ActionRow from '@/components/primitives/ActionRow';
@@ -47,7 +48,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * trusting that.
  */
 
-/* Status pill tones live in components/stringing/statusTone.ts and the due
+/* Status pills live in components/stringing/StagePill.tsx (colours: lib/stringingStatusTone.ts) and the due
    column's colours in lib/stringingDue.ts (`dueStyle`), shared with a
    stringer's own queue. The two are separate on purpose: a job can be
    `received` (neutral) and overdue (red) at once, which is exactly the pair a
@@ -660,6 +661,14 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     );
   }
 
+  const shopState = shopReadFailed ? 'unknown' : shopOpen === null ? 'checking' : shopOpen ? 'open' : 'closed';
+  /* A closed shop over a bench KNOWN to be empty says both in one card, so the
+     "Nothing on the bench." line under it is not shown as well. Only the ALL
+     list can say the bench is empty: "Mine" being empty says nothing about
+     the other stringers' jobs. */
+  const closedAndEmpty =
+    shopState === 'closed' && !loadError && !mine && jobs !== null && jobs.length === 0;
+
   return (
     // Returning to the bench from a job, the archive or intake: it fades back
     // rather than cutting in (the wrapper's slide only runs on first entry).
@@ -677,16 +686,55 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             NEXT_PUBLIC_FLAG_STRINGING on purpose: that says whether this code
             exists, this says whether Grant is taking rackets this week.
             Closing does NOT stop the bench. The icon carries the state as well
-            as the colour, never colour alone. */}
+            as the colour, never colour alone.
+            CLOSED is the exception, and a card (Grant, 2026-11-12, on the
+            design canvas: "Follow design system"): the player's closed-shop
+            card — same header, the muted "Closed" badge, the standing bedtime
+            state — with "Open shop" as the state's one action under it. */}
         {(() => {
-          const state = shopReadFailed ? 'unknown' : shopOpen === null ? 'checking' : shopOpen ? 'open' : 'closed';
-          const icon = { unknown: 'error', checking: 'storefront', open: 'check_circle', closed: 'lock' }[state];
+          const state = shopState;
+          if (state === 'closed') {
+            return (
+              <section
+                data-state="closed"
+                className="glass-card p-5 space-y-3"
+                aria-label={tPlayer('title')}
+              >
+                {/* The player card's own header words: the same service, by
+                    the same name, on both sides of the counter. */}
+                <CardHeader
+                  compact
+                  icon="grid_4x4"
+                  title={tPlayer('title')}
+                  badge={<StatusBadge variant="muted">{tPlayer('soon')}</StatusBadge>}
+                />
+                <EmptyState
+                  icon="bedtime"
+                  title={closedAndEmpty ? t('shop.closedTitleEmpty') : t('shop.closedTitle')}
+                  action={
+                    <button
+                      type="button"
+                      onClick={toggleShop}
+                      disabled={shopBusy || !online || shopOpen === null}
+                      className="cc-btn cc-btn-secondary"
+                    >
+                      {t('shop.openCta')}
+                    </button>
+                  }
+                >
+                  {/* Until the list says it is empty, jobs may be on it, and
+                      closing never touches them — keep saying so. */}
+                  {closedAndEmpty ? t('shop.closedBody') : t('shop.closedBodyJobs')}
+                </EmptyState>
+              </section>
+            );
+          }
+          const icon = { unknown: 'error', checking: 'storefront', open: 'check_circle' }[state];
           // Accent on this page is "Add job"'s. The icon carries the state.
           const ink = {
             unknown: 'var(--sev-crit-text)',
             checking: 'var(--text-muted)',
             open: 'var(--text-secondary)',
-            closed: 'var(--text-muted)',
           }[state];
           if (state === 'checking') {
             // A skeleton the row's size while the sign is read: no guessed
@@ -714,7 +762,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
               <span className="material-icons icon-md" aria-hidden="true" style={{ color: ink }}>{icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {state === 'unknown' ? t('shop.unknown') : state === 'open' ? t('shop.open') : t('shop.closed')}
+                  {state === 'unknown' ? t('shop.unknown') : t('shop.open')}
                 </div>
                 <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
                   {state === 'unknown' ? (
@@ -729,9 +777,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                         {t('retry')}
                       </StateLink>
                     </>
-                  ) : state === 'open'
-                    ? t('shop.openHint')
-                    : t('shop.closedHint')}
+                  ) : (
+                    t('shop.openHint')
+                  )}
                 </p>
               </div>
               {/* No toggle on a sign that could not be read: there is nothing to
@@ -778,7 +826,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           />
         )}
         {!loadError && jobs === null && <AdminPageSkeleton />}
-        {!loadError && jobs !== null && jobs.length === 0 && (
+        {/* Not under a closed sign that already said the bench is empty. */}
+        {!loadError && jobs !== null && jobs.length === 0 && !closedAndEmpty && (
           <EmptyState icon="sports_tennis">{mine ? t('emptyMine') : t('empty')}</EmptyState>
         )}
 
@@ -801,13 +850,15 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           </section>
         )}
 
-        {/* The page's one accent action. */}
+        {/* The page's one main action, in the app's primary pattern: the
+            filled `.btn-primary`, a leading glyph, the label centred — the
+            same as the player's "Submit a request" (design-system rule "A
+            tab's one main action is `.btn-primary`"). */}
         <button
           type="button"
           onClick={() => setView('new')}
           disabled={!online}
-          className="cc-btn cc-btn-primary cc-btn-lg"
-          style={{ width: '100%' }}
+          className="btn-primary w-full flex items-center justify-center gap-2"
         >
           <span className="material-icons icon-sm" aria-hidden="true">add</span>
           {t('addJob')}

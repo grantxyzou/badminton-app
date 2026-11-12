@@ -382,24 +382,76 @@ describe('every open racket is listed', () => {
     expect(screen.getByRole('region', { name: 'Nanoflare 800 Pro' }).textContent).not.toContain('ready');
   });
 
-  it('asks about a change on that racket, with the price diff and one button', async () => {
-    mockApi(true, [two[0], { ...two[1], pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', priceFrom: 34, priceTo: 38 } }]);
+  it('asks about a change on that racket as ONE amber row: "Review changes", a line asking to confirm, a chevron', async () => {
+    mockApi(true, [two[0], { ...two[1], pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', stringFrom: 'BG80 white', stringTo: 'Aerobite', tensionFrom: '26/28', tensionTo: '27/29', priceFrom: 34, priceTo: 38 } }]);
     wrap();
-    const banner = await screen.findByText('The stringer suggested a change');
-    const card = banner.closest('section')!;
+    const title = await screen.findByText('Review changes');
+    const card = title.closest('section')!;
     expect(card.textContent).toContain('Astrox 88D Pro');
-    expect(card.textContent).toContain('$34');
-    expect(card.textContent).toContain('$38');
-    expect(screen.getAllByRole('button', { name: 'Review the change' })).toHaveLength(1);
+    const rows = screen.getAllByRole('button', { name: /^Review changes/ });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].className).toContain('change-ask-row');
+    // Title, the fixed line, a chevron: no trailing "Review" word, and no
+    // details — what changes is only on the page — and the old banner with
+    // its separate button is gone.
+    expect(rows[0].textContent).toBe(`request_quoteReview changes${enMessages.home.stringing.confirm.reviewBody}chevron_right`);
+    expect(card.textContent).not.toContain('Aerobite');
+    expect(card.textContent).not.toContain('$38');
+    expect(screen.queryByText('The stringer suggested a change')).toBeNull();
+    expect(screen.queryByText('Your stringer suggested a change')).toBeNull();
   });
 
-  it('opens the confirm sheet from the banner\'s button', async () => {
-    mockApi(true, [{ ...two[1], pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', priceFrom: 34, priceTo: 38 } }]);
+  it('shows the tracker ON HOLD while a change waits on the player, and only then', async () => {
+    // Grant, canvas StrTwoRackets: "some visual showing blocked".
+    mockApi(true, [
+      { ...two[0], id: 'jh', racketLabel: 'Held One', pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', priceFrom: 34, priceTo: 38 } },
+      { ...two[0], id: 'jf', racketLabel: 'Free One', pendingEdit: null },
+    ]);
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: 'Review the change' }));
-    expect(await screen.findByText('A change to confirm')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Keep original' })).toBeDefined();
+    const held = await screen.findByRole('region', { name: 'Held One' });
+    const free = screen.getByRole('region', { name: 'Free One' });
+
+    // with_stringer stands on step 2 ("Stringing"): its dot is the amber ring
+    // holding a pause glyph, its label says On hold, the leg ahead is dashed.
+    const items = held.querySelectorAll('li.bpm-steps__item');
+    const here = items[2];
+    const dot = here.querySelector('.bpm-steps__dot--held');
+    expect(dot).not.toBeNull();
+    expect(dot!.textContent).toBe('pause');
+    const label = here.querySelector('.bpm-steps__label')!;
+    expect(label.textContent).toBe('On hold');
+    expect(label.className).toContain('bpm-steps__label--held');
+    const legs = here.querySelectorAll('.bpm-steps__leg');
+    expect(legs[1].className).toContain('bpm-steps__leg--held');
+    expect(held.querySelectorAll('.bpm-steps__dot--held')).toHaveLength(1);
+    expect(held.textContent).not.toContain('Stringing');
+
+    // No change waiting: the tracker is exactly as before.
+    expect(free.querySelector('.bpm-steps__dot--held')).toBeNull();
+    expect(free.querySelector('.bpm-steps__leg--held')).toBeNull();
+    expect(free.textContent).not.toContain('On hold');
+    expect(free.querySelectorAll('li.bpm-steps__item')[2].querySelector('.bpm-steps__label--here')!.textContent).toBe('Stringing');
+  });
+
+  it('opens "A change to confirm" as a page in place of the cards, and Back returns', async () => {
+    mockApi(true, [{ ...two[1], pendingEdit: { proposedAt: '2026-10-03T00:00:00Z', priceFrom: 34, priceTo: 38, reason: 'Aerobite holds tension better.' } }]);
+    const onTakeover = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <StringingCard hasIdentity onTakeover={onTakeover} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /^Review changes/ }));
+    expect(await screen.findByRole('heading', { name: 'A change to confirm' })).toBeDefined();
+    expect(screen.getByText('Aerobite holds tension better.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Accept change' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Keep mine' })).toBeDefined();
+    // The page stands in for the cards, and asks the tab to step aside.
+    expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
+    expect(onTakeover).toHaveBeenLastCalledWith(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByRole('button', { name: 'Submit a request' })).toBeDefined();
+    expect(onTakeover).toHaveBeenLastCalledWith(false);
   });
 
   it('shows no amount on a ready racket that is already paid — the quote is not a bill', async () => {

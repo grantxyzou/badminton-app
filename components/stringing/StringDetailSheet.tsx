@@ -1,25 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import { isRefused } from '@/lib/apiFetch';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import Collapse from '@/components/primitives/Collapse';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { cadRange } from '@/lib/catalogPrice';
 import { CLUB_GEAR_MIN_COHORT } from '@/lib/clubGear';
-import type { StringColourId } from '@/lib/stringPalette';
-import { ColourList } from './StringColours';
 import RatingMeters, { ratingSourceKey, type MeterRow } from './RatingMeters';
 import StringPackImage from './StringPackImage';
-import { stringColours, stringTypeOf, typeBand, stockColour, type StockBand } from '@/lib/stringShelf';
+import { feelWordOf, stringTypeOf, type StockBand } from '@/lib/stringShelf';
 import type { CatalogItem, StringFit } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-/** A chip in the fact row: inner-card fill, radius 8. */
+/** A chip in the specs: inner-card fill, radius 8. */
 const CHIP: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -31,36 +30,27 @@ const CHIP: React.CSSProperties = {
   color: 'var(--text-secondary)',
 };
 
-/** A swatch: the 30%-ink inset ring is what lets White show on cream. */
-const SWATCH: React.CSSProperties = {
-  width: 16,
-  height: 16,
-  borderRadius: '50%',
-  flex: 'none',
-  boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)',
-};
-
 type FitState = { status: 'loading' } | { status: 'none' } | { status: 'failed' } | { status: 'ready'; fit: StringFit };
 
 /**
- * One string the club offers, explained (Stringing canvas, 2026-10-28;
- * docs/plans/stringing-canvas-redesign.md, Decision 9).
+ * One string the club offers, and what it means for THIS member (Stringing
+ * canvas; Grant, 2026-11-12: "This info should be on the first page in
+ * Strings we offer. And then, this section should more focus on the match and
+ * recommendation of the stringer").
  *
- *   - THE HERO, on the string type's own colour: the name and whether it is on
- *     the shelf; what it is ("Power · Hard feel") and its gauge; the club's
- *     price; then its ratings as meters, with whose ratings they are — the
- *     maker's ("Rated by Yonex") or the community's (`ratingSource`).
- *   - what it is for, then its tension window and level as chips;
- *   - "Based on your racket and skill": the member's own racket, the pairing
- *     engine's verdict and reason (`/api/stringing/fit`), and the tension and
- *     level checks. Absent when the engine cannot say — no check-in, or no
- *     racket the catalog knows — never filled with a guess;
- *   - the maker's colours (or the reel's, when the club has said);
- *   - "Restring with this string", which opens the request with it picked.
- *
- * The older "What this means" and "Specs" sections went: the hero names the
- * type, the feel and the gauge, and the fit section says what they mean for
- * this member's racket — which is the part a member cannot get from the box.
+ *   - a slim strip: the packet, what it is ("Power · Hard feel"), its gauge
+ *     and stock in words, and the club's price. The type, feel, stock and
+ *     what it is for lead each row of the list now, so the page does not
+ *     repeat them at size, and the description is not repeated at all;
+ *   - "How it suits you" LEADS: the member's own racket, the pairing engine's
+ *     verdict and reason (`/api/stringing/fit`), and the tension and level
+ *     checks. Absent when the engine cannot say — no check-in, or no racket
+ *     the catalog knows — never filled with a guess;
+ *   - "Your stringer recommends": the stringer's own note on this string
+ *     (`OfferedStringsDoc.notes`), only when there is one;
+ *   - "Ratings and specs", closed: the meters with whose ratings they are,
+ *     the tension window, the level and how many in the club play it;
+ *   - "Restring with this string", pinned in the footer.
  */
 export default function StringDetailSheet({
   item,
@@ -70,7 +60,7 @@ export default function StringDetailSheet({
   price,
   band = null,
   clubCount = null,
-  clubColours = [],
+  note = null,
   onRestring,
 }: {
   item: CatalogItem | null;
@@ -82,26 +72,21 @@ export default function StringDetailSheet({
   price?: string | null;
   band?: StockBand | null;
   clubCount?: number | null;
-  /** The colours the club says it has this string in. When set, they replace
-   *  the maker's list — which can only say "ask the stringer". */
-  clubColours?: StringColourId[];
+  /** The stringer's note on this string; nothing shows without one. */
+  note?: string | null;
   /** Opens the request sheet with this string picked. No button without it. */
   onRestring?: (label: string) => void;
 }) {
   const t = useTranslations('home.stringing.offer');
   const a = item?.attributes ?? {};
   const num = (k: string) => (typeof a[k] === 'number' ? (a[k] as number) : null);
-  const text = (k: string) => (typeof a[k] === 'string' && (a[k] as string).trim() ? (a[k] as string) : null);
   const type = stringTypeOf(item);
-  // The catalog's five feels, read as the hero's three words.
-  const feelRaw = text('feel')?.toLowerCase();
-  const feel = feelRaw === 'medium-soft' ? 'soft' : feelRaw === 'medium-hard' ? 'hard' : feelRaw;
+  const feel = feelWordOf(item);
   const mm = num('gaugeMm');
-  const gaugeClass = text('gaugeClass')?.toLowerCase();
   const shopRange = item ? cadRange(item) : null;
-  const colours = stringColours(item);
   const hasPrice = price !== undefined;
   const source = ratingSourceKey(a.ratingSource);
+  const stringerNote = note?.trim() || null;
 
   // Power first: it is the axis the map leads with, and the word a player uses.
   const meters: MeterRow[] = [
@@ -113,14 +98,15 @@ export default function StringDetailSheet({
     .filter((r): r is [string, number] => r[1] !== null)
     .map(([key, value]) => ({ key, label: t(key), value }));
 
-  const headline = [
-    type ? t(`hero_${type}`) : null,
-    feel === 'soft' || feel === 'medium' || feel === 'hard' ? t(`heroFeel_${feel}`) : null,
-  ].filter(Boolean) as string[];
+  const headline = [type ? t(`hero_${type}`) : null, feel ? t(`heroFeel_${feel}`) : null].filter(Boolean).join(' · ');
+  const subline = [mm !== null ? t('gaugeMm', { mm: mm.toFixed(2) }) : null, band ? t(`stock_${band}`) : null].filter(Boolean).join(' · ');
 
   // Tension range and level, from the same curated rows as Specs.
   const facts = item ? catalogSpecRows(item).filter((r) => r.labelKey === 'specTension' || r.labelKey === 'specLevel') : [];
   const showCount = clubCount !== null && clubCount >= CLUB_GEAR_MIN_COHORT;
+  const hasSpecs = meters.length > 0 || facts.length > 0 || showCount;
+  const [specsOpen, setSpecsOpen] = useState(false);
+  const specsId = useId();
 
   const [fit, setFit] = useState<FitState>({ status: 'loading' });
   const [fitAttempt, setFitAttempt] = useState(0);
@@ -150,97 +136,70 @@ export default function StringDetailSheet({
         {item && (
           // Sections 24px apart; each label sits close over its own content.
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
-            <div style={{ borderRadius: 'var(--radius-xl)', padding: 'var(--space-5)', background: typeBand(type), display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-              {/* Packet left; beside it the name (the largest line) with the
-                  stock pill on its row, and what the string is for under it
-                  (Grant, 2026-11-12, on the canvas: "fix the alignment and
-                  hierarchy"). The description used to sit under the card too. */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-5)' }}>
-                <StringPackImage catalogId={item.id} size="hero" />
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    <span className="bpm-h3" style={{ minWidth: 0, fontWeight: 700 }}>{item.brand} {item.model}</span>
-                    {band && (
-                      <span className="fs-xs" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', height: 'var(--space-7)', padding: '0 var(--space-4)', borderRadius: 'var(--radius-pill)', background: 'color-mix(in srgb, var(--page-bg) 35%, transparent)', color: 'var(--text-secondary)', lineHeight: 1 }}>
-                        <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: stockColour(band) }} />
-                        {t(`stock_${band}`)}
-                      </span>
-                    )}
-                  </div>
-                  {text('bestFor') && (
-                    <p className="fs-base" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{text('bestFor')}</p>
-                  )}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-                <div style={{ minWidth: 0 }}>
-                  {headline.length > 0 && (
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-stat-lg)', fontWeight: 700, lineHeight: 'var(--lh-tight)' }}>
-                      {headline.map((h, i) => (
-                        <span key={h}>
-                          {i > 0 && <span style={{ color: 'var(--text-muted)' }}> · </span>}
-                          {h}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {mm !== null && (
-                    <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {gaugeClass ? t('gaugeLine', { mm: mm.toFixed(2), class: gaugeClass }) : t('gaugeMm', { mm: mm.toFixed(2) })}
-                    </span>
-                  )}
-                </div>
-                {hasPrice && (
-                  <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat-lg)', fontWeight: 700, lineHeight: 'var(--lh-tight)' }}>{price ?? t('priceAsk')}</span>
-                    <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('restringPrice')}</span>
-                  </div>
-                )}
-              </div>
-              {meters.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', paddingTop: 'var(--space-4)', borderTop: '1px solid color-mix(in srgb, var(--text-primary) 16%, transparent)' }}>
-                  <RatingMeters rows={meters} onBand />
-                  {source && (
-                    <span className="fs-xs" style={{ color: 'var(--text-secondary)' }}>
-                      {source === 'brand' ? t('ratedBy', { brand: item.brand }) : t('ratedCommunity')}
-                    </span>
-                  )}
-                </div>
+            {/* The strip: what it is, at a glance. The name is the sheet's title. */}
+            <div data-testid="string-strip" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+              <StringPackImage catalogId={item.id} size="row" />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {headline && <span className="fs-md" style={{ display: 'block', fontWeight: 600, color: 'var(--text-primary)' }}>{headline}</span>}
+                {subline && <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>{subline}</span>}
+              </span>
+              {hasPrice && (
+                <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat)', fontWeight: 700, color: 'var(--text-primary)' }}>{price ?? t('priceAsk')}</span>
               )}
             </div>
 
-            {(facts.length > 0 || showCount) && (
-              <div className="fs-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                {facts.map((f) => <span key={f.labelKey} style={CHIP}>{f.value}</span>)}
-                {showCount && (
-                  <span style={CHIP}>
-                    <span className="material-icons icon-xs" aria-hidden="true">group</span>
-                    {t('clubCount', { count: clubCount! })}
-                  </span>
-                )}
-              </div>
-            )}
-
             <FitSection state={fit} onRetry={() => setFitAttempt((n) => n + 1)} />
 
-            {clubColours.length > 0 ? (
-              <section aria-label={t('coloursOnReel')} className="flex flex-col gap-2">
-                <span className="section-label-muted">{t('coloursOnReel')}</span>
-                <ColourList ids={clubColours} />
-              </section>
-            ) : colours.length > 0 && (
-              <section aria-label={t('colours')} className="flex flex-col gap-2">
-                <span className="section-label-muted">{t('colours')}</span>
-                <div className="fs-base" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-                  {colours.map((c) => (
-                    <span key={c.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
-                      <span aria-hidden="true" style={{ ...SWATCH, background: c.fill }} />
-                      {c.name}
-                    </span>
-                  ))}
+            {stringerNote && (
+              <section aria-label={t('stringerNoteTitle')} className="flex flex-col gap-2">
+                <span className="section-label-muted">{t('stringerNoteTitle')}</span>
+                <div className="bpm-inner-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                  <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', whiteSpace: 'pre-line' }}>{stringerNote}</p>
                 </div>
-                <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('coloursNote')}</p>
               </section>
+            )}
+
+            {/* Ratings and specs: there for a member who wants them, closed so
+                the match and the stringer's word come first. */}
+            {hasSpecs && (
+              <div>
+                <button
+                  type="button"
+                  className="bpm-row-link"
+                  aria-expanded={specsOpen}
+                  aria-controls={specsId}
+                  onClick={() => setSpecsOpen((v) => !v)}
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <span className="fs-base" style={{ flex: 1, textAlign: 'left' }}>{t('specsTitle')}</span>
+                  <span className="material-icons icon-md motion-chevron" data-open={specsOpen ? 'true' : 'false'} aria-hidden="true" style={{ color: 'var(--text-muted)' }}>expand_more</span>
+                </button>
+                <Collapse open={specsOpen} id={specsId} spaceAbove="var(--space-3)">
+                  <div className="flex flex-col gap-4">
+                    {meters.length > 0 && (
+                      <div className="flex flex-col gap-3">
+                        <RatingMeters rows={meters} />
+                        {source && (
+                          <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>
+                            {source === 'brand' ? t('ratedBy', { brand: item.brand }) : t('ratedCommunity')}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {(facts.length > 0 || showCount) && (
+                      <div className="fs-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                        {facts.map((f) => <span key={f.labelKey} style={CHIP}>{f.value}</span>)}
+                        {showCount && (
+                          <span style={CHIP}>
+                            <span className="material-icons icon-xs" aria-hidden="true">group</span>
+                            {t('clubCount', { count: clubCount! })}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </Collapse>
+              </div>
             )}
 
             {/* The shop's typical range only when the club has no price of its
@@ -276,7 +235,7 @@ export default function StringDetailSheet({
 // answer, not an alarm, and it must not read milder than "Worth a look".
 const VERDICT_TONE = { good_match: 'paid', worth_a_look: 'waitlist', not_for_frame: 'unpaid' } as const;
 
-/** "Based on your racket and skill" — or nothing, when the engine cannot say. */
+/** "How it suits you" — or nothing, when the engine cannot say. */
 function FitSection({ state, onRetry }: { state: FitState; onRetry: () => void }) {
   const t = useTranslations('home.stringing.offer');
   if (state.status === 'none') return null;
@@ -326,8 +285,21 @@ function FitCard({ fit }: { fit: StringFit }) {
     });
   }
 
+  // The page's lead: a good match wears the accent's tint, as the frame
+  // draws it; a caution or a no stays on the neutral inner fill, so a tint is
+  // never read as a yes it is not. Fill only, no rim.
   return (
-    <div className="bpm-inner-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+    <div
+      className="bpm-inner-row"
+      data-verdict={fit.verdict}
+      style={{
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        ...(fit.verdict === 'good_match'
+          ? { background: 'linear-gradient(160deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 5%, transparent))' }
+          : {}),
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
         <span className="material-icons icon-md" aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }}>sports_tennis</span>
         <span style={{ flex: 1, minWidth: 0 }}>
@@ -337,7 +309,8 @@ function FitCard({ fit }: { fit: StringFit }) {
         <StatusBadge variant="state" tone={VERDICT_TONE[fit.verdict]}>{t(`fit_${fit.verdict}`)}</StatusBadge>
       </div>
       {fit.reason && (
-        <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{fit.reason}</p>
+        // The reason is the answer, so it reads at the lead size.
+        <p className="fs-lg" style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 'var(--lh-snug)' }}>{fit.reason}</p>
       )}
       {checks.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', paddingTop: 'var(--space-4)' }}>

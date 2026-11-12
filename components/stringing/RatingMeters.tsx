@@ -15,6 +15,10 @@ export interface MeterRow {
   label: string;
   /** 0–10. */
   value: number;
+  /** The trait's own colour (`traitTint`), for the label and the fill. The
+   *  map's selected card passes it (Grant, 2026-11-12: one colour per trait);
+   *  the string page's band keeps its ink. */
+  tint?: string;
 }
 
 export function ratingSourceKey(source: unknown): 'brand' | 'community' | null {
@@ -32,7 +36,7 @@ export default function RatingMeters({ rows, onBand = false }: { rows: MeterRow[
           <div key={r.key}>
             <span
               className="section-label"
-              style={{ display: 'block', marginBottom: 'var(--space-1)', color: onBand ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+              style={{ display: 'block', marginBottom: 'var(--space-1)', color: r.tint ?? (onBand ? 'var(--text-primary)' : 'var(--text-secondary)') }}
             >
               {r.label}
             </span>
@@ -50,7 +54,7 @@ export default function RatingMeters({ rows, onBand = false }: { rows: MeterRow[
               >
                 <div
                   className="bpm-meter-fill"
-                  style={{ width: `${pct}%`, background: onBand ? 'var(--text-primary)' : 'var(--accent)' }}
+                  style={{ width: `${pct}%`, background: r.tint ?? (onBand ? 'var(--text-primary)' : 'var(--accent)') }}
                 />
               </div>
               <span className="fs-md" style={{ minWidth: 'var(--space-5)', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-primary)' }}>

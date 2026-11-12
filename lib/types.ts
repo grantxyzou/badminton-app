@@ -1191,13 +1191,18 @@ export interface PendingEdit {
   /** The admin who proposed it. Never sent to the player — they are told the
    *  club changed something, not which volunteer typed it. */
   proposedBy: string | null;
+  /** Why, in the stringer's own words ("BG80 is out until next week…"),
+   *  trimmed, at most `PROPOSAL_REASON_MAX` characters; absent when they gave
+   *  none. Additive (2026-11-12). The player sees it on "A change to confirm";
+   *  it is not a CHANGE, so a proposal of a reason alone is `no_change`. */
+  reason?: string;
 }
 
 /**
  * What a STRINGER is allowed to see of a job assigned to them.
  *
- * The spec and nothing else. No `priceCents`, no `paidAt`, no `pendingEdit` —
- * what the club charges is not the business of the person putting string on
+ * The spec and nothing else. No `priceCents`, no `paidAt`, and a pending
+ * change only without its price — what the club charges is not the business of the person putting string on
  * the racket, and the strip-canary rule applies to them exactly as it does to
  * a player. It DOES carry `status`, unlike the player view: they are working
  * the bench, so they get the bench's vocabulary.
@@ -1218,7 +1223,14 @@ export interface StringerJob {
   readyBy: string | null;
   createdAt: string;
   updatedAt: string;
+  /** A change waiting on the player, WITHOUT its money (2026-11-12): the
+   *  stringer's list says "Waiting on Lin" and what was suggested, and holds
+   *  its button until the player answers. Absent when nothing is pending. */
+  pendingEdit?: StringerPendingEdit | null;
 }
+
+/** A pending change as a stringer may see it: the player's diff minus price. */
+export type StringerPendingEdit = Omit<PlayerPendingEdit, 'priceFrom' | 'priceTo'>;
 
 /** What a PLAYER is allowed to see of their own job. Note what is missing:
  *  `stringerId`, and the bench's `status` vocabulary. */
@@ -1285,6 +1297,8 @@ export interface PlayerPendingEdit {
   /** Exact dollars. See the note above. */
   priceFrom?: number | null;
   priceTo?: number | null;
+  /** The stringer's note on why, when they wrote one (`PendingEdit.reason`). */
+  reason?: string;
 }
 
 /**

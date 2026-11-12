@@ -139,7 +139,9 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
         {current === 'racket' && (
           <RevealGroup>
             <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.service} />}>
-              <StringingCard hasIdentity={hasIdentity} onShowStrings={() => setView('strings')} />
+              {/* "A change to confirm" is a page that takes the tab over,
+                  as a bench sub-screen does. */}
+              <StringingCard hasIdentity={hasIdentity} onShowStrings={() => setView('strings')} onTakeover={setTakeover} />
             </RevealSlot>
           </RevealGroup>
         )}

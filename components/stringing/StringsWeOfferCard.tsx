@@ -17,15 +17,20 @@ import {
   AXIS_MAX,
   MAP_AXES,
   axisValueOf,
+  bestForOf,
   controlOf,
   durabilityOf,
-  feelOf,
+  feelWordOf,
   isPlottable,
   parseShelf,
   powerOf,
   shelfPrice,
   sortShelf,
+  stringTypeOf,
+  traitTint,
+  typeDotFill,
   type MapAxis,
+  type Trait,
   type Shelf,
   type ShelfEntry,
   type StockBand,
@@ -33,7 +38,6 @@ import {
 import StringDetailSheet from './StringDetailSheet';
 import StringMap, { type MapDot } from './StringMap';
 import StockBadge from './StockBadge';
-import RatingMeters, { ratingSourceKey } from './RatingMeters';
 import { ColourDots } from './StringColours';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -257,65 +261,107 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     value: axisValueOf(shownAxis, e.item)!,
     durability: durabilityOf(e.item)!,
     band: bandOf(e.label),
+    type: stringTypeOf(e.item),
   }));
   const openEntry = entries.find((e) => e.label === open) ?? null;
 
   const anyPack = entries.some((e) => stringPackSrc(e.item?.id));
-  const row = (e: ShelfEntry) => {
-    const price = priceText(e.label);
+  const traitPart = (trait: Trait) => function TraitPart(chunks: React.ReactNode) {
+    return <span data-trait={trait} style={{ whiteSpace: 'nowrap', color: traitTint(trait) }}>{chunks}</span>;
+  };
+  // Tags named apart from the numbers they wrap: next-intl takes both from one object.
+  const traitParts = { powerPart: traitPart('power'), controlPart: traitPart('control'), durabilityPart: traitPart('durability') };
+  /** The coloured trait line, or what stands in for it. */
+  const traitLine = (e: ShelfEntry): React.ReactNode => {
     const p = powerOf(e.item);
     const d = durabilityOf(e.item);
     // A failed catalog knows nothing about ANY string, which is not the same as
     // this string being unknown: the card says so once, and the row stays quiet.
-    const subtitle = !e.item
+    return !e.item
       ? (catalog.loadError ? null : t('unknown'))
       : p !== null && d !== null
+        // Each "Trait N" in its trait's colour (Grant, 2026-11-12, option A),
+        // never broken across lines; the separators stay muted. The words and
+        // numbers stay, so colour is never the only signal.
         ? (controlOf(e.item) !== null
-          ? t('listLineControl', { power: p, control: controlOf(e.item)!, durability: d })
-          : t('listLine', { power: p, durability: d }))
+          ? t.rich('listLineControl', { power: p, control: controlOf(e.item)!, durability: d, ...traitParts })
+          : t.rich('listLine', { power: p, durability: d, ...traitParts }))
         : stringSpecLine(e.item, (k) => tSetup(k));
-    return (
-      <li key={e.label}>
-        {/* A string the catalog does not know has no page to open, so its row
-            is not a button. It is still on offer, with a price, so it keeps
-            the row's surface at full strength: the half-opacity disabled row
-            read as "not available". */}
-        {(() => {
-          const content = {
-            // The packet, when the string has one; a row without keeps its old shape.
-            // A row with no packet keeps the packet's room while any row has
-            // one, so every name in the list starts at the same edge.
-            leading: stringPackSrc(e.item?.id)
-              ? <StringPackImage catalogId={e.item!.id} size="row" />
-              : anyPack ? <span aria-hidden="true" className="string-pack-row" style={{ flex: 'none' }} /> : undefined,
-            title: (
-              <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{e.label}</span>
-                {/* The colours on the reel, when the stringer has said. */}
-                <ColourDots ids={shelf?.colours[e.label] ?? []} />
-              </span>
-            ),
-            subtitle,
-            trailing: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)', flex: 'none' }}>
-              {/* The price only: stock is on the string's page, and on the
-                  map's card when it is low or out. */}
-              {price && <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>{price}</span>}
-              {e.item && <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>}
-            </span>
-            ),
-          };
-          return e.item ? (
-            <ListRow onClick={() => openRow(e)} {...content} />
-          ) : (
-            <div className="cc-mini-card" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
-              <ListRow {...content} />
-            </div>
-          );
-        })()}
-      </li>
-    );
   };
+
+  /**
+   * ONE row's content, for the list AND the map's selected card, so the two
+   * cannot drift: what the string's page used to lead with (Grant, 2026-11-12:
+   * "This info should be on the first page in Strings we offer") — the packet;
+   * the name and price; type · feel beside the stock; what it is for; then the
+   * coloured trait line. On the map the type also wears its dot's colour, so
+   * the map's colour is never the only signal (option D).
+   */
+  const rowContent = (e: ShelfEntry, onMap = false) => {
+    const price = priceText(e.label);
+    const type = stringTypeOf(e.item);
+    const feel = feelWordOf(e.item);
+    const headline = [type ? t(`hero_${type}`) : null, feel ? t(`heroFeel_${feel}`) : null].filter(Boolean).join(' · ');
+    const band = bandOf(e.label);
+    const bestFor = bestForOf(e.item);
+    const trait = traitLine(e);
+    const body = (
+      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)', minWidth: 0 }}>
+            <span className="fs-lg" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)' }}>{e.label}</span>
+            {/* The colours on the reel, when the stringer has said. */}
+            <ColourDots ids={shelf?.colours[e.label] ?? []} />
+          </span>
+          {price && <span className="fs-lg" style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-primary)' }}>{price}</span>}
+        </span>
+        {(headline || band) && (
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+            <span
+              data-testid={onMap && type ? 'selected-type' : undefined}
+              className="fs-base"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', fontWeight: 600, color: 'var(--text-secondary)' }}
+            >
+              {onMap && type && (
+                <span aria-hidden="true" style={{ flex: 'none', width: 'var(--space-4)', height: 'var(--space-4)', borderRadius: '50%', background: typeDotFill(type) }} />
+              )}
+              {headline}
+            </span>
+            {band && <StockBadge band={band} />}
+          </span>
+        )}
+        {bestFor && (
+          <span className="fs-sm" style={{ color: 'var(--text-muted)', lineHeight: 'var(--lh-snug)' }}>{bestFor}</span>
+        )}
+        {trait && <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{trait}</span>}
+      </span>
+    );
+    return {
+      // The packet, when the string has one; a row without keeps its old shape.
+      // A row with no packet keeps the packet's room while any row has
+      // one, so every name in the list starts at the same edge.
+      leading: stringPackSrc(e.item?.id)
+        ? <StringPackImage catalogId={e.item!.id} size="row" />
+        : anyPack ? <span aria-hidden="true" className="string-pack-row" style={{ flex: 'none' }} /> : undefined,
+      title: body,
+    };
+  };
+
+  const row = (e: ShelfEntry) => (
+    <li key={e.label}>
+      {/* A string the catalog does not know has no page to open, so its row
+          is not a button. It is still on offer, with a price, so it keeps
+          the row's surface at full strength: the half-opacity disabled row
+          read as "not available". */}
+      {e.item ? (
+        <ListRow onClick={() => openRow(e)} {...rowContent(e)} />
+      ) : (
+        <div className="cc-mini-card" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
+          <ListRow {...rowContent(e)} />
+        </div>
+      )}
+    </li>
+  );
 
   const list = (rows: ShelfEntry[]) => (
     <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="flex flex-col gap-2">
@@ -385,58 +431,38 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
                 mapLabel={t(`mapLabel_${shownAxis}`)}
                 axisName={t(`axisName_${shownAxis}`)}
               />
-              {selected && (
-                <div
-                  aria-live="polite"
-                  style={{
-                    padding: 'var(--space-4)',
-                    borderRadius: 'var(--radius-lg)',
-                    background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 'var(--space-2)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0 }}>
-                      <StringPackImage catalogId={selected.item?.id} size="row" />
-                      <span className="fs-lg" style={{ fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>{selected.label}</span>
-                    </span>
-                    {priceText(selected.label) && (
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)', flex: 'none' }}>{priceText(selected.label)}</span>
-                    )}
-                  </div>
-                  {ratingSourceKey(selected.item?.attributes?.ratingSource) && (
-                    <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {ratingSourceKey(selected.item?.attributes?.ratingSource) === 'brand'
-                        ? t('ratedByShort', { brand: selected.item!.brand })
-                        : t('ratedCommunityShort')}
-                    </span>
-                  )}
-                  <RatingMeters
-                    rows={(['power', 'control', 'durability'] as const).flatMap((key) => {
-                      const value = key === 'power' ? powerOf(selected.item) : key === 'control' ? controlOf(selected.item) : durabilityOf(selected.item);
-                      return value === null ? [] : [{ key, label: t(key), value }];
-                    })}
-                  />
-                  {feelOf(selected.item) !== null && <FeelScale value={feelOf(selected.item)!} />}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    {/* Stock only when it changes the choice (Grant: "In
-                        stock, Low on stock, Out of stock" — and "Does user
-                        care about stock here?"). */}
-                    {bandOf(selected.label) && bandOf(selected.label) !== 'in' ? <StockBadge band={bandOf(selected.label)!} /> : <span />}
+              {selected && (() => {
+                const content = rowContent(selected, true);
+                return (
+                  // The list's own row, tinted as picked (a solid accent tint,
+                  // never a ring), and the whole card opens the string's page.
+                  // The meters and the feel scale live under "Ratings and
+                  // specs" there now.
+                  <div aria-live="polite">
                     <button
                       type="button"
+                      className="cc-mini-card"
+                      data-selected="true"
                       onClick={() => setOpen(selected.label)}
-                      className="fs-sm"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', minHeight: 44, margin: 'calc(-1 * var(--space-4)) 0', padding: 0, background: 'transparent', border: 'none', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-3)',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: 'var(--space-4)',
+                        borderRadius: 'var(--radius-lg)',
+                        background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                        cursor: 'pointer',
+                      }}
                     >
-                      {t('seeHow')}
-                      <span className="material-icons icon-sm" aria-hidden="true">chevron_right</span>
+                      {content.leading}
+                      {content.title}
+                      <span className="material-icons icon-sm" aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }}>chevron_right</span>
                     </button>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {notOnMap.length > 0 && (
                 <>
                   {/* A block, so the card's space-y gap applies above it. */}
@@ -485,27 +511,8 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         price={openEntry && shelf ? shelfPrice(shelf, openEntry.label) : undefined}
         band={openEntry ? bandOf(openEntry.label) : null}
         clubCount={openEntry ? shelf?.players[openEntry.label] ?? null : null}
-        clubColours={openEntry ? shelf?.colours[openEntry.label] ?? [] : []}
+        note={openEntry ? shelf?.notes[openEntry.label] ?? null : null}
       />
-    </div>
-  );
-}
-
-/**
- * Feel as a position, not a score: soft to hard is a preference, so it is a
- * marker on a scale with its word, never a bar that fills (more is not better).
- */
-function FeelScale({ value }: { value: number }) {
-  const t = useTranslations('home.stringing.offer');
-  const v = Math.max(1, Math.min(5, Math.round(value)));
-  const pct = ((v - 1) / 4) * 100;
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 'var(--space-3)' }}>
-      <span className="section-label" style={{ color: 'var(--text-secondary)' }}>{t('feelLabel')}</span>
-      <div aria-hidden="true" style={{ position: 'relative', height: 'var(--space-3)', borderRadius: 'var(--radius-pill)', background: 'var(--inner-card-bg)', boxShadow: 'inset 0 0 0 1px var(--inner-card-border)' }}>
-        <span style={{ position: 'absolute', top: 'calc(-1 * var(--space-05))', bottom: 'calc(-1 * var(--space-05))', left: `calc(${pct}% - var(--space-1))`, width: 'var(--space-3)', borderRadius: 'var(--radius-pill)', background: 'var(--text-primary)', transition: 'left var(--duration-normal) var(--ease-out-quart)' }} />
-      </div>
-      <span className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t(`feelWord_${v}`)}</span>
     </div>
   );
 }

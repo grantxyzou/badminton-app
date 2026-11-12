@@ -26,6 +26,8 @@ export interface Shelf {
   /** Label → which colours are on the shelf, from colour-tagged purchases;
    *  a missing label has none tagged (docs/plans/string-stock-by-colour.md). */
   colourStock: Record<string, ColourStock>;
+  /** Label → the stringer's note for players; a missing label has none. */
+  notes: Record<string, string>;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -71,7 +73,9 @@ export function parseShelf(d: unknown): Shelf | null {
       colourStock[k] = { inStock: normaliseColourList(v.inStock), mixed: v.mixed === true };
     }
   }
-  return { strings, links, prices, stock, players, colours, colourStock };
+  const notes: Record<string, string> = {};
+  if (isObj(d.notes)) for (const [k, v] of Object.entries(d.notes)) if (typeof v === 'string' && v.trim()) notes[k] = v.trim();
+  return { strings, links, prices, stock, players, colours, colourStock, notes };
 }
 
 /** The shelf price for a label: a figure, "ask" (`null` stored), or nothing set (`undefined`). */
@@ -111,6 +115,17 @@ export function axisValueOf(axis: MapAxis, item: CatalogItem | null): number | n
   return axis === 'power' ? powerOf(item) : axis === 'control' ? controlOf(item) : feelOf(item);
 }
 export const bestForOf = (item: CatalogItem | null) => text(item, 'bestFor');
+
+/**
+ * The catalog's five feels as the three words a string's headline uses
+ * ("Power · Hard feel"): medium-soft reads soft, medium-hard reads hard.
+ * Keys `heroFeel_<word>` in `home.stringing.offer`.
+ */
+export function feelWordOf(item: CatalogItem | null): 'soft' | 'medium' | 'hard' | null {
+  const raw = text(item, 'feel')?.toLowerCase();
+  const feel = raw === 'medium-soft' ? 'soft' : raw === 'medium-hard' ? 'hard' : raw;
+  return feel === 'soft' || feel === 'medium' || feel === 'hard' ? feel : null;
+}
 
 export interface ShelfEntry {
   label: string;
@@ -169,6 +184,41 @@ const TYPE_TINT: Record<StringTypeKey, string | null> = {
 export function typeTint(type: StringTypeKey | null): string | null {
   return type ? TYPE_TINT[type] : null;
 }
+
+/** The three rated traits a list row and a meter name. */
+export type Trait = 'power' | 'control' | 'durability';
+
+/**
+ * A trait's colour (Grant, 2026-11-12: "use colour code to map to control,
+ * power, durability, and repulsion"): the tint of the string TYPE tuned for
+ * it, so a trait and a type never disagree. "Repulsion" is the maker's word
+ * for power — the catalog's power score IS `repulsion` (`powerOf`) — so the
+ * two share one colour.
+ */
+const TRAIT_TYPE: Record<Trait, StringTypeKey> = { power: 'repulsion', control: 'control', durability: 'durability' };
+
+export function traitTint(trait: Trait): string {
+  return TYPE_TINT[TRAIT_TYPE[trait]] as string;
+}
+
+/**
+ * A map dot's fill: its type's tint, or neutral ink for all-round and
+ * unknown — not the accent, which is durability's green and would say a type
+ * the string is not.
+ */
+export function typeDotFill(type: StringTypeKey | null): string {
+  return typeTint(type) ?? 'var(--text-muted)';
+}
+
+/** Ink for a count drawn ON a type dot: the tints are light on both themes,
+ *  so a dark shade of the tint itself; the neutral dot keeps the page ink. */
+export function typeDotInk(type: StringTypeKey | null): string {
+  const tint = typeTint(type);
+  return tint ? `color-mix(in srgb, ${tint} 25%, black)` : 'var(--page-bg)';
+}
+
+/** The order the map's legend lists the types in: power first, as everywhere. */
+export const TYPE_ORDER: readonly StringTypeKey[] = ['repulsion', 'control', 'durability', 'hybrid', 'all_round'];
 
 /** The header band / gauge tile fill: the tint at 26% fading to 7%. */
 export function typeBand(type: StringTypeKey | null): string {

@@ -23,8 +23,12 @@
  *             colour-tagged purchases: `{ inStock: ids, mixed }`, never a
  *             count; missing = no tagged purchase
  *             (docs/plans/string-stock-by-colour.md).
+ *   notes   — the stringer's note for players on that string's page ("Your
+ *             stringer recommends"); missing = no note. Same rules as the
+ *             others on PATCH: absent keeps the stored notes, and an empty
+ *             note is dropped, which is how one is deleted.
  * PATCH also takes `{ rename: { from, to } }` on its own: one string renamed,
- * with its price, link, colours and old spellings carried across on the
+ * with its price, link, colours, note and old spellings carried across on the
  * STORED doc, and the old name counted as the new one. And `{ colours:
  * { <label>: ids } }` on its own: those strings' reel colours, merged into the
  * stored map.
@@ -50,6 +54,7 @@ import {
   normalisePrices,
   normaliseAliases,
   normaliseColours,
+  normaliseNotes,
   mergeColours,
   renameOffered,
   stringsDocId,
@@ -61,7 +66,7 @@ import { forgetShelfExtras, readShelfExtras } from '@/lib/stringShelfRead';
 export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
-const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null, colours: null, colourStock: null };
+const UNKNOWN = { strings: null, links: null, prices: null, stock: null, players: null, colours: null, colourStock: null, notes: null };
 
 export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
@@ -95,6 +100,7 @@ export async function GET(req: NextRequest) {
     stock: extras?.stock ?? null,
     players: extras?.players ?? null,
     colourStock: extras?.colourStock ?? null,
+    notes: read.notes,
   });
 }
 
@@ -155,6 +161,8 @@ export async function PATCH(req: NextRequest) {
     const aliases = normaliseAliases(body?.aliases === undefined ? prior?.aliases ?? {} : body.aliases, strings);
     // Colours, the same again.
     const colours = normaliseColours(body?.colours === undefined ? prior?.colours ?? {} : body.colours, strings);
+    // And the stringer's notes for players.
+    const notes = normaliseNotes(body?.notes === undefined ? prior?.notes ?? {} : body.notes, strings);
     const doc: OfferedStringsDoc = {
       id: stringsDocId(groupId),
       strings,
@@ -162,19 +170,20 @@ export async function PATCH(req: NextRequest) {
       prices,
       aliases,
       colours,
+      notes,
       updatedAt: new Date().toISOString(),
       updatedBy: actorId,
     };
     // Upsert, like the shop sign. The maps are merged ABOVE, from the stored
     // doc, for any the caller did not send — which is why the bench sends only
-    // the map it changed: a stale phone sending all four would write its old
-    // copies of the other three back over another device's edits. The list
+    // the map it changed: a stale phone sending all five would write its old
+    // copies of the other four back over another device's edits. The list
     // itself is always sent, and replacing it is what the caller means.
     await groupScope(groupId).upsert('clubSettings', doc);
     // The list changed, so the stock and count keyed by it may have too.
     forgetShelfExtras(groupId);
     // Aliases go back to the admin who saved them; the public GET never lists them.
-    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices, aliases, colours });
+    return NextResponse.json({ strings: doc.strings, links: doc.links, prices: doc.prices, aliases, colours, notes });
   } catch (err) {
     console.error('PATCH /api/stringing/strings failed:', err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });
@@ -184,11 +193,11 @@ export async function PATCH(req: NextRequest) {
 const RENAME_STATUS = { invalid_name: 400, not_offered: 404, name_taken: 409 } as const;
 
 /** What a stringer is told back: the list and its reel colours, nothing of the admin's. */
-function answer(read: { strings: string[]; links: Record<string, string>; prices: Record<string, number | null>; aliases: Record<string, string>; colours: Record<string, string[]> }, stringer: boolean) {
+function answer(read: { strings: string[]; links: Record<string, string>; prices: Record<string, number | null>; aliases: Record<string, string>; colours: Record<string, string[]>; notes?: Record<string, string> }, stringer: boolean) {
   return NextResponse.json(
     stringer
       ? { strings: read.strings, colours: read.colours }
-      : { strings: read.strings, links: read.links, prices: read.prices, aliases: read.aliases, colours: read.colours },
+      : { strings: read.strings, links: read.links, prices: read.prices, aliases: read.aliases, colours: read.colours, notes: read.notes ?? {} },
   );
 }
 

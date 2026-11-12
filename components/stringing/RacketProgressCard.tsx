@@ -25,8 +25,8 @@ function Money({ value, size = 'md' }: { value: number; size?: 'md' | 'lg' }) {
  * player with two in saw the progress of one. Now every racket carries its own
  * strip, and its own news:
  *
- *   - a change the stringer asked about → an amber banner with the diff and
- *     the one button that answers it;
+ *   - a change the stringer asked about → one amber row, "Review changes",
+ *     which opens "A change to confirm" (`ConfirmChangePage`);
  *   - ready → a green banner with the bill;
  *   - otherwise → the stage, with the quote beside it.
  *
@@ -63,18 +63,6 @@ export default function RacketProgressCard({
     `${playerTensionText(job.tensionMains, job.tensionCrosses)} ${t('lb')}`,
   ].filter(Boolean).join(' · ');
 
-  /* The diff on the banner is the PRICE when the price is what changes —
-     the question a player answers first. Any other change names itself in
-     the sheet behind "Review the change". */
-  const priceDiff = edit && edit.priceTo !== undefined && typeof edit.priceTo === 'number' ? (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--space-2)', fontFamily: 'var(--font-mono)' }}>
-      {typeof edit.priceFrom === 'number' && (
-        <span className="fs-base" style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{fmtMoney(edit.priceFrom)}</span>
-      )}
-      <Money value={edit.priceTo} size="lg" />
-    </span>
-  ) : null;
-
   // The BILL only — what the balance card adds. A racket paid before pickup
   // (credit, an e-transfer) owes nothing, and its quote is no longer a bill.
   const bill = job.amountDue;
@@ -90,18 +78,18 @@ export default function RacketProgressCard({
       </div>
 
       {edit ? (
-        <StatusBanner
-          tone="warn"
-          icon="request_quote"
-          title={t('confirm.banner')}
-          body={t('confirm.bannerBody')}
-          trailing={priceDiff}
-          action={
-            <button type="button" className="cc-btn cc-btn-warn" onClick={onReview} style={{ width: '100%' }}>
-              {t('confirm.review')}
-            </button>
-          }
-        />
+        /* ONE amber row, not a banner with a button under it (Grant, on the
+           design canvas, 2026-11-12): "Review changes", one line asking them
+           to confirm, and a chevron — the whole row is the way in. What
+           changes, and why, is on the page it opens. */
+        <button type="button" className="change-ask-row" onClick={onReview}>
+          <span className="material-icons icon-status text-amber-400" aria-hidden="true" style={{ flex: 'none' }}>request_quote</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span className="fs-md text-amber-300" style={{ display: 'block', fontWeight: 600 }}>{t('confirm.review')}</span>
+            <span className="fs-sm" style={{ display: 'block', color: 'var(--text-secondary)' }}>{t('confirm.reviewBody')}</span>
+          </span>
+          <span className="material-icons icon-md text-amber-400" aria-hidden="true" style={{ flex: 'none' }}>chevron_right</span>
+        </button>
       ) : ready ? (
         <StatusBanner
           tone="success"
@@ -112,7 +100,7 @@ export default function RacketProgressCard({
         />
       ) : null}
 
-      <StringingSteps current={stepForStage(stage)} />
+      <StringingSteps current={stepForStage(stage)} held={!!edit} />
 
       {/* Still in the bag: the one point where calling it off is clean — no
           racket to hand back, nothing owed. Asked first, then done. */}
