@@ -85,17 +85,19 @@
       "stringerWaitingChange": "已建议{change}。{name} 接受后才能穿线。",
       "stringerWaitingGeneric": "等待 {name} 确认修改。",
       "confirm": {
-        "review": "查看修改",
-        "bannerBody": "你同意之前，账单不会变。",
-        "banner": "穿线师建议了一处修改",
+        "review": "查看更改",
+        "reviewBody": "穿线师建议了一项更改，请在穿线前确认。",
         "title": "待确认的修改",
-        "intro": "你的 {racket} 有更新。你同意之前，账单不会变。",
+        "why": "穿线师的说明",
+        "changes": "修改内容",
+        "note": "你同意之前，账单不会变。选择“保持原样”，穿线师会按你原来的要求穿线。",
+        "back": "返回",
         "price": "价格",
         "string": "线",
         "tension": "磅数",
         "racket": "球拍",
         "unpriced": "未定价",
-        "accept": "确认",
+        "accept": "接受修改",
         "decline": "保持原样",
         "working": "保存中…",
         "error": "保存失败，再试一次。",
@@ -109,7 +111,8 @@
         "submit": "申请",
         "dropOff": "送拍",
         "track": "穿线",
-        "collect": "取拍"
+        "collect": "取拍",
+        "onHold": "暂停中"
       },
       "requestTitle": "申请穿线",
       "requestSubtitle": "告诉穿线师你的要求，场次上把拍子交过去。",
@@ -206,7 +209,7 @@
         "fit_good_match": "很合适",
         "fitFromGear": "你的球拍，来自装备",
         "fitError": "暂时查不到它和你球拍的搭配。",
-        "fitTitle": "根据你的球拍和水平",
+        "fitTitle": "适不适合你",
         "ratedCommunity": "社区估计评分，满分 10",
         "ratedBy": "{brand} 官方评分，满分 10",
         "restringPrice": "穿线价格",
@@ -263,6 +266,8 @@
         "ownString": "自带拍线",
         "pricesError": "穿线师的说明加载失败。",
         "restringWith": "用这款线穿线",
+        "stringerNoteTitle": "穿线师推荐",
+        "specsTitle": "评分和参数",
         "clubCount": "俱乐部里有 {count} 人在用",
         "colours": "颜色",
         "coloursNote": "厂家出的颜色。线盘上有哪些颜色请问穿线师。",
@@ -2160,7 +2165,11 @@
           "nameInvalid": "名称不能为空，最多 60 个字。",
           "colours": "现有颜色",
           "coloursHint": "球员会在穿线页面看到这些颜色。",
-          "coloursSave": "保存颜色"
+          "coloursSave": "保存颜色",
+          "note": "给球员的备注",
+          "noteSave": "保存备注",
+          "noteHint": "球员会在这条线的页面上看到。例如适合什么样的球员、你会用的磅数。",
+          "notePlaceholder": "例如：我推荐给发力大的球员，我会拉 25–26 磅。"
         }
       },
       "propose": {
@@ -2184,7 +2193,9 @@
         "waiting": "等待 {name} 确认修改。",
         "waitingHint": "确认之前，欠款仍是原来的金额。",
         "declined": "{name} 拒绝了修改，按原来的算。",
-        "withdraw": "撤回"
+        "withdraw": "撤回",
+        "reason": "原因（球员会看到）",
+        "reasonPlaceholder": "例如：BG80 下周才到货，所以换成 Aerobite"
       },
       "actions": {
         "title": "穿线单操作",

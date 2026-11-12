@@ -259,3 +259,34 @@ describe('a string’s name and colours', () => {
     expect(patches[0].prices).toBeUndefined();
   });
 });
+
+describe('a note for players', () => {
+  it('saves the stringer’s note, trimmed, and only the note map', async () => {
+    const patches = respond();
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Open BG80 Power-White' }));
+    const field = screen.getByLabelText('Note for players');
+    expect(screen.getByText(enMessages.admin.stringing.shelf.sheet.noteHint)).toBeDefined();
+    const save = screen.getByRole('button', { name: 'Save note' });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(field, { target: { value: '  Hard hitters: 26 lb.  ' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0].notes).toEqual({ 'BG80 Power-White': 'Hard hitters: 26 lb.' });
+    expect(patches[0].colours).toBeUndefined();
+    expect(patches[0].prices).toBeUndefined();
+  });
+
+  it('opens with the stored note, and emptying it deletes it', async () => {
+    const patches = respond({ strings: { notes: { 'BG80 Power-White': 'Hard hitters.', 'Li-Ning No. 1': 'Control.' } } });
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Open BG80 Power-White' }));
+    const field = screen.getByLabelText('Note for players') as HTMLTextAreaElement;
+    expect(field.value).toBe('Hard hitters.');
+    fireEvent.change(field, { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
+    await waitFor(() => expect(patches).toHaveLength(1));
+    // The other string's note is sent back as it was; this one is gone.
+    expect(patches[0].notes).toEqual({ 'Li-Ning No. 1': 'Control.' });
+  });
+});

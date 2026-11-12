@@ -9,3 +9,5 @@
  */
 export const MAX_OFFERED = 24;
 export const MAX_LABEL_LEN = 60;
+/** A stringer's note on one string, shown on its page to members. */
+export const MAX_NOTE_LEN = 280;

@@ -22,8 +22,8 @@ export const STRINGS_DOC_ID = 'stringing-strings';
 export function stringsDocId(groupId: string): string {
   return groupDocId(groupId, STRINGS_DOC_ID);
 }
-export { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
-import { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
+export { MAX_OFFERED, MAX_LABEL_LEN, MAX_NOTE_LEN } from './stringingLimits';
+import { MAX_OFFERED, MAX_LABEL_LEN, MAX_NOTE_LEN } from './stringingLimits';
 import { MAX_PRICE_CENTS } from './stringingRateCard';
 import { normaliseColourList, type StringColourId } from './stringPalette';
 
@@ -61,6 +61,13 @@ export interface OfferedStringsDoc {
    * stringer"; a label with one shows what is actually on the reel.
    */
   colours?: Record<string, string[]>;
+  /**
+   * Offered label → the stringer's note for players ("Your stringer
+   * recommends" on the string's page: who it suits, the tension he'd use).
+   * ADDITIVE, like the maps above: trimmed, at most `MAX_NOTE_LEN`, and a
+   * label with no entry (or an empty one) shows no note.
+   */
+  notes?: Record<string, string>;
   updatedAt: string;
   updatedBy: string | null;
 }
@@ -71,6 +78,7 @@ export interface OfferedStringsRead {
   prices: Record<string, number | null>;
   aliases: Record<string, string>;
   colours: Record<string, StringColourId[]>;
+  notes: Record<string, string>;
 }
 
 /** More than any shelf has had typos for; a cap so the doc stays small. */
@@ -92,6 +100,7 @@ export async function readOfferedStringsWithLinks(groupId: string): Promise<Offe
       prices: normalisePrices(resource?.prices, strings),
       aliases: normaliseAliases(resource?.aliases, strings),
       colours: normaliseColours(resource?.colours, strings),
+      notes: normaliseNotes(resource?.notes, strings),
     };
   } catch (err) {
     console.error('readOfferedStringsWithLinks failed:', err);
@@ -152,11 +161,30 @@ export function normaliseColours(value: unknown, strings: readonly string[]): Re
   return out;
 }
 
+/**
+ * Clean a submitted note map against the (already normalised) list: a label
+ * not in the list is DROPPED, like the other maps; each note is trimmed, and
+ * an empty one is dropped — that is how a note is deleted. A note over
+ * `MAX_NOTE_LEN` is cut there rather than refused: it is a detail on the list
+ * being saved, and the field already stops at that length.
+ */
+export function normaliseNotes(value: unknown, strings: readonly string[]): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const known = new Set(strings);
+  const out: Record<string, string> = {};
+  for (const [label, note] of Object.entries(value as Record<string, unknown>)) {
+    if (!known.has(label) || typeof note !== 'string') continue;
+    const clean = note.trim().slice(0, MAX_NOTE_LEN).trim();
+    if (clean) out[label] = clean;
+  }
+  return out;
+}
+
 export type RenameError = 'invalid_name' | 'not_offered' | 'name_taken';
 
 /**
  * Rename one offered string, carrying everything keyed by its label with it
- * (price, catalog link, colours, and the old spellings counted as it), and
+ * (price, catalog link, colours, note, and the old spellings counted as it), and
  * counting the OLD name as the new one from now on — jobs and purchases
  * recorded under it are not rewritten, so without that alias the stock would
  * forget them. Pure: the route applies it to the stored doc, so a rename never
@@ -194,6 +222,7 @@ export function renameOffered(
       links: move(read.links),
       prices: move(read.prices),
       colours: move(read.colours),
+      notes: move(read.notes),
       aliases: normaliseAliases(aliases, strings),
     },
   };

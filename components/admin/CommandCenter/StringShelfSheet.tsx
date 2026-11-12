@@ -6,7 +6,7 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import ActionRow from '@/components/primitives/ActionRow';
 import ErrorState from '@/components/primitives/ErrorState';
 import { catalogLabel, matches, parsePrice, priceDraftOf } from '@/lib/shelfEdit';
-import { MAX_LABEL_LEN } from '@/lib/stringingLimits';
+import { MAX_LABEL_LEN, MAX_NOTE_LEN } from '@/lib/stringingLimits';
 import { isStringColourId, type StringColourId } from '@/lib/stringPalette';
 import { ColourDot, ColourPicker } from '@/components/stringing/StringColours';
 import MoneyInput from '@/components/primitives/MoneyInput';
@@ -72,6 +72,10 @@ interface Props {
   /** offered: the colours the club has it in. */
   colours?: StringColourId[];
   onSaveColours?: (ids: StringColourId[]) => void;
+  /** offered: the stringer's note players see on the string's page. */
+  note?: string;
+  /** An empty note deletes it. */
+  onSaveNote?: (note: string) => void;
   /** offered: a new name for it. The card answers with `renameError` if the server refused. */
   onRename?: (to: string) => void;
   renameError?: 'name_taken' | 'invalid_name' | null;
@@ -87,6 +91,7 @@ export default function StringShelfSheet(props: Props) {
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [nameDraft, setNameDraft] = useState(label);
   const [colourDraft, setColourDraft] = useState<StringColourId[]>(() => props.colours ?? []);
+  const [noteDraft, setNoteDraft] = useState(() => props.note ?? '');
   const off = busy || !online;
   const nameTrim = nameDraft.trim();
   // Another offered string with this name, any case: refused here before the
@@ -98,6 +103,7 @@ export default function StringShelfSheet(props: Props) {
     ? t('shelf.sheet.nameTaken')
     : props.renameError === 'invalid_name' ? t('shelf.sheet.nameInvalid') : null;
   const coloursChanged = colourDraft.join() !== (props.colours ?? []).join();
+  const noteChanged = noteDraft.trim() !== (props.note ?? '').trim();
   const parsed = parsePrice(priceDraft);
   // Against the STORED value, unset included: an empty field on a string with
   // no price saves "Ask" (null), which is different from no price at all.
@@ -272,6 +278,33 @@ export default function StringShelfSheet(props: Props) {
                 style={{ flex: '0 0 auto' }}
               >
                 {t('shelf.sheet.coloursSave')}
+              </button>
+            </div>
+          </div>
+
+          {/* NOTE — "Your stringer recommends" on the string's page (Grant,
+              2026-11-12: "yes the input field"). Emptied and saved, it is gone. */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="shelf-note" className="section-label-muted">{t('shelf.sheet.note')}</label>
+            <textarea
+              id="shelf-note"
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              maxLength={MAX_NOTE_LEN}
+              rows={3}
+              placeholder={t('shelf.sheet.notePlaceholder')}
+              style={{ resize: 'vertical' }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+              <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.noteHint')}</p>
+              <button
+                type="button"
+                className="cc-btn cc-btn-secondary"
+                disabled={off || !noteChanged}
+                onClick={() => props.onSaveNote?.(noteDraft.trim())}
+                style={{ flex: '0 0 auto' }}
+              >
+                {t('shelf.sheet.noteSave')}
               </button>
             </div>
           </div>

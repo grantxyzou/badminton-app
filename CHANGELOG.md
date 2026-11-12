@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: the stringer's note on each string, and a page for a change to confirm (2026-11-12)
+
+- **Strings we offer shows each string in full.** A list row carries the packet, name, price, type and feel, stock, the description and the coloured trait line. On the map, the picked string is the same row, tinted, and opens its page.
+- **A string's page leads with how it suits you**, then "Your stringer recommends" (a note the stringer writes per string in the shelf sheet, up to 280 characters; additive `OfferedStringsDoc.notes`), then "Ratings and specs", closed until tapped.
+- **A proposed change carries the stringer's "why"** (additive `PendingEdit.reason`, up to 280 characters). The player's racket card shows an amber "Review changes" row and the tracker reads "On hold". The row opens "A change to confirm", a page in place of the old sheet, with the reason, each change in amber, and Keep mine / Accept change. A stringer who isn't an admin still sees no price, and gets the reason only beside a non-price change.
+
 ## Stringing: statuses you can tell apart, colour by trait, a calmer closed bench (2026-11-12)
 
 - Every stringing status has its own colour AND icon, defined once and used by the stringer's list, the admin bench and the job page: not dropped off (grey, clock), received (amber, box), strung (blue, tick), ready for pickup (green), waiting on the player (purple, hourglass).

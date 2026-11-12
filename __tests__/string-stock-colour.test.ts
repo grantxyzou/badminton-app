@@ -94,7 +94,7 @@ describe('validatePurchase, colour', () => {
 });
 
 describe('requestColours (what the request sheet offers)', () => {
-  const shelf = (over: Partial<Shelf>): Shelf => ({ strings: ['BG80'], links: { BG80: bg80.id }, prices: {}, stock: {}, players: {}, colours: {}, colourStock: {}, ...over });
+  const shelf = (over: Partial<Shelf>): Shelf => ({ strings: ['BG80'], links: { BG80: bg80.id }, prices: {}, stock: {}, players: {}, colours: {}, colourStock: {}, notes: {}, ...over });
   const names = (s: Shelf | null) => requestColours(s, 'BG80', bg80).map((c) => c.name);
 
   it('falls back to the maker\'s colours when nothing is tagged and the stringer said none', () => {

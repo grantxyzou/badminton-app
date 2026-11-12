@@ -29,6 +29,16 @@ interface Shelf {
   prices: Record<string, number | null>;
   aliases: Record<string, string>;
   colours: Record<string, StringColourId[]>;
+  notes: Record<string, string>;
+}
+
+/** The route's note map, non-empty strings only. */
+function notesOf(v: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    for (const [k, note] of Object.entries(v)) if (typeof note === 'string' && note.trim()) out[k] = note;
+  }
+  return out;
 }
 
 /** The route's colour map, palette ids only. */
@@ -100,6 +110,7 @@ export default function StringShelfCard() {
           prices: d.prices && typeof d.prices === 'object' ? d.prices : {},
           aliases: s.aliases && typeof s.aliases === 'object' ? s.aliases : {},
           colours: coloursOf(d.colours),
+          notes: notesOf(d.notes),
         });
       })
       .catch(() => {
@@ -133,7 +144,7 @@ export default function StringShelfCard() {
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
       if (Array.isArray(d.strings)) {
-        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {}, colours: coloursOf(d.colours) });
+        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {}, colours: coloursOf(d.colours), notes: notesOf(d.notes) });
       }
       await loadStock().catch(() => setLoadError(true));
       return true;
@@ -169,7 +180,7 @@ export default function StringShelfCard() {
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
       if (Array.isArray(d.strings)) {
-        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {}, colours: coloursOf(d.colours) });
+        setShelf({ strings: d.strings, links: d.links ?? {}, prices: d.prices ?? {}, aliases: d.aliases ?? {}, colours: coloursOf(d.colours), notes: notesOf(d.notes) });
       }
       setSheet((s) => (s && s.label === from ? { ...s, label: to } : s));
       await loadStock().catch(() => setLoadError(true));
@@ -443,6 +454,13 @@ export default function StringShelfCard() {
             if (ids.length > 0) next[sheetLabel] = ids;
             else delete next[sheetLabel];
             void save({ colours: next });
+          }}
+          note={shelf.notes[sheetLabel] ?? ''}
+          onSaveNote={(note) => {
+            const next = { ...shelf.notes };
+            if (note) next[sheetLabel] = note;
+            else delete next[sheetLabel];
+            void save({ notes: next });
           }}
           onRename={(to) => void rename(sheetLabel, to)}
           renameError={renameError}

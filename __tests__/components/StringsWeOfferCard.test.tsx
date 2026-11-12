@@ -63,9 +63,9 @@ describe('the map', () => {
     const pressed = within(map).getAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true');
     expect(pressed.map((b) => b.getAttribute('aria-label'))).toEqual(['Yonex Exbolt 63: power 9 out of 10, durability 5 out of 10']);
     expect(screen.getByText('$32')).toBeDefined();
-    // The card's ratings are meters now, with whose ratings they are.
-    expect(screen.getAllByText('Power').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Durability').length).toBeGreaterThan(0);
+    // The card is the list's row: its ratings are the coloured trait line
+    // (the meters moved to the string's page, under "Ratings and specs").
+    expect(document.querySelector('button[data-selected="true"]')!.textContent).toContain('Power 9 · Control 7 · Durability 5');
     // The subtitle names the view; the icon beside it switches.
     expect(screen.getByText('Map view')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Show as a list' })).toBeDefined();
@@ -78,6 +78,40 @@ describe('the map', () => {
     // The panel follows: the card names the string the dot stands for.
     expect(screen.getAllByText('BG65').length).toBeGreaterThan(0);
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shows the picked string as the list’s own row, tinted, and the whole card opens its page', async () => {
+    resetCatalogCache();
+    const before = CATALOG[3].attributes;
+    CATALOG[3].attributes = { ...before, stringType: 'Repulsion', feel: 'Hard', feelScale: 4, hittingSound: 8, ratingSource: 'Brand published' } as typeof before;
+    try {
+      mockApi(['BG80', 'BG66', 'BG65', 'Exbolt'], { stock: { Exbolt: 'low' }, prices: { Exbolt: 3200 }, colours: { Exbolt: ['white'] } });
+      wrap();
+      await screen.findByRole('group', { name: 'Strings by power and durability' });
+      const card = document.querySelector<HTMLButtonElement>('button[data-selected="true"]')!;
+      expect(card).not.toBeNull();
+      // The same row as the list: name, price, type · feel, stock, what it is for, traits.
+      const text = card.textContent ?? '';
+      for (const part of ['Exbolt', '$32', 'Power · Hard feel', 'Low on stock', 'Exbolt 63 is for you', 'Power 9 · Control 7 · Durability 5']) {
+        expect(text).toContain(part);
+      }
+      expect(within(card).getByRole('img', { name: 'Colours: White' })).toBeDefined();
+      expect(card.querySelectorAll('[data-trait]')).toHaveLength(3);
+      // Picked: a solid accent tint, never a ring; a chevron says it opens.
+      expect(card.style.background).toContain('--accent');
+      expect(card.getAttribute('style') ?? '').not.toMatch(/(^|;\s*)(border|outline|box-shadow)\s*:/);
+      expect(within(card).getByText('chevron_right')).toBeDefined();
+      // The meters, whose ratings and the feel scale are the page's now.
+      expect(screen.queryByText('Power, control and durability as rated by Yonex')).toBeNull();
+      expect(screen.queryByText('Feel')).toBeNull();
+      expect(screen.queryByText('See how it plays')).toBeNull();
+      expect(document.querySelectorAll('.bpm-meter-fill')).toHaveLength(0);
+      fireEvent.click(card);
+      const sheet = await screen.findByRole('dialog');
+      expect(within(sheet).getByText('Yonex Exbolt 63')).toBeDefined();
+    } finally {
+      CATALOG[3].attributes = before;
+    }
   });
 
   it('moves the selection with the arrow keys, in list order', async () => {
@@ -220,13 +254,55 @@ describe('the list', () => {
     }
   });
 
-  it('names a row by power, control and durability, with no stock tag', async () => {
+  it('names a row by power, control and durability, with its stock in words', async () => {
+    // Grant, 2026-11-12: what the string's page led with belongs on the list.
     mockApi(['BG65', 'BG80', 'BG66'], { stock: { BG80: 'low' } });
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
     const row = screen.getByText('BG80').closest('button')!;
     expect(row.textContent).toContain('Power 8 · Control 7 · Durability 6');
-    expect(row.textContent).not.toContain('Low on stock');
+    expect(row.textContent).toContain('Low on stock');
+    // A string with no stock band says nothing about stock, never "out".
+    expect(screen.getByText('BG66').closest('button')!.textContent).not.toMatch(/stock/i);
+  });
+
+  it('leads each row with name and price, then type · feel beside the stock, then what it is for', async () => {
+    resetCatalogCache();
+    const before = CATALOG[0].attributes;
+    CATALOG[0].attributes = { ...before, stringType: 'Repulsion', feel: 'Medium-Hard' } as typeof before;
+    try {
+      mockApi(['BG65', 'BG80', 'BG66'], { stock: { BG80: 'in' }, prices: { BG80: 3200 } });
+      wrap();
+      fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
+      const row = screen.getByText('BG80').closest('button')!;
+      const text = row.textContent ?? '';
+      expect(within(row).getByText('Power · Hard feel')).toBeDefined();
+      expect(within(row).getByText('In stock')).toBeDefined();
+      expect(within(row).getByText('BG80 is for you')).toBeDefined();
+      // Reading order: name, price, type · feel, stock, description, traits.
+      const at = (part: string) => text.indexOf(part);
+      expect(at('BG80')).toBe(0);
+      expect(at('BG80')).toBeLessThan(at('$32'));
+      expect(at('$32')).toBeLessThan(at('Power · Hard feel'));
+      expect(at('Power · Hard feel')).toBeLessThan(at('In stock'));
+      expect(at('In stock')).toBeLessThan(at('BG80 is for you'));
+      expect(at('BG80 is for you')).toBeLessThan(at('Power 8 · Control 7'));
+    } finally {
+      CATALOG[0].attributes = before;
+    }
+  });
+
+  it('hands the stringer’s note for a string to its page', async () => {
+    try { localStorage.setItem('bpm:strings-view', 'list'); } catch { /* jsdom always has it */ }
+    mockApi(['BG80', 'BG65'], { notes: { BG80: 'Hard hitters: 26 lb.' } });
+    wrap();
+    // The note is the page's, not the list's.
+    await screen.findByText('BG80');
+    expect(screen.queryByText('Hard hitters: 26 lb.')).toBeNull();
+    fireEvent.click(screen.getByText('BG80').closest('button')!);
+    const sheet = await screen.findByRole('dialog');
+    expect(within(sheet).getByText('Your stringer recommends')).toBeDefined();
+    expect(within(sheet).getByText('Hard hitters: 26 lb.')).toBeDefined();
   });
 
   it('shows "Ask" for a null price and nothing when none is set', async () => {

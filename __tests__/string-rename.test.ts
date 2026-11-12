@@ -12,17 +12,19 @@ const shelf = (over: Partial<OfferedStringsRead> = {}): OfferedStringsRead => ({
   prices: { BG80: 3200, Aerobite: null },
   aliases: { 'bg-80': 'BG80' },
   colours: { BG80: ['white', 'yellow'] },
+  notes: { BG80: 'Hard hitters, 26 lb.' },
   ...over,
 });
 
 describe('renameOffered', () => {
-  it('moves the link, price and colours, keeps the shelf order, and counts the old name', () => {
+  it('moves the link, price, colours and note, keeps the shelf order, and counts the old name', () => {
     const r = renameOffered(shelf(), 'BG80', 'Yonex BG80 Power');
     if (!r.ok) throw new Error(r.error);
     expect(r.value.strings).toEqual(['Yonex BG80 Power', 'Aerobite']);
     expect(r.value.links).toEqual({ 'Yonex BG80 Power': 'string-yonex-bg80' });
     expect(r.value.prices).toEqual({ 'Yonex BG80 Power': 3200, Aerobite: null });
     expect(r.value.colours).toEqual({ 'Yonex BG80 Power': ['white', 'yellow'] });
+    expect(r.value.notes).toEqual({ 'Yonex BG80 Power': 'Hard hitters, 26 lb.' });
     expect(r.value.aliases).toEqual({ 'bg-80': 'Yonex BG80 Power', BG80: 'Yonex BG80 Power' });
   });
 

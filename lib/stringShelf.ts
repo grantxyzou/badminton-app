@@ -26,6 +26,8 @@ export interface Shelf {
   /** Label → which colours are on the shelf, from colour-tagged purchases;
    *  a missing label has none tagged (docs/plans/string-stock-by-colour.md). */
   colourStock: Record<string, ColourStock>;
+  /** Label → the stringer's note for players; a missing label has none. */
+  notes: Record<string, string>;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -71,7 +73,9 @@ export function parseShelf(d: unknown): Shelf | null {
       colourStock[k] = { inStock: normaliseColourList(v.inStock), mixed: v.mixed === true };
     }
   }
-  return { strings, links, prices, stock, players, colours, colourStock };
+  const notes: Record<string, string> = {};
+  if (isObj(d.notes)) for (const [k, v] of Object.entries(d.notes)) if (typeof v === 'string' && v.trim()) notes[k] = v.trim();
+  return { strings, links, prices, stock, players, colours, colourStock, notes };
 }
 
 /** The shelf price for a label: a figure, "ask" (`null` stored), or nothing set (`undefined`). */
@@ -111,6 +115,17 @@ export function axisValueOf(axis: MapAxis, item: CatalogItem | null): number | n
   return axis === 'power' ? powerOf(item) : axis === 'control' ? controlOf(item) : feelOf(item);
 }
 export const bestForOf = (item: CatalogItem | null) => text(item, 'bestFor');
+
+/**
+ * The catalog's five feels as the three words a string's headline uses
+ * ("Power · Hard feel"): medium-soft reads soft, medium-hard reads hard.
+ * Keys `heroFeel_<word>` in `home.stringing.offer`.
+ */
+export function feelWordOf(item: CatalogItem | null): 'soft' | 'medium' | 'hard' | null {
+  const raw = text(item, 'feel')?.toLowerCase();
+  const feel = raw === 'medium-soft' ? 'soft' : raw === 'medium-hard' ? 'hard' : raw;
+  return feel === 'soft' || feel === 'medium' || feel === 'hard' ? feel : null;
+}
 
 export interface ShelfEntry {
   label: string;

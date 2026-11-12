@@ -52,8 +52,8 @@ describe('parseShelf', () => {
     expect(parseShelf({ strings: ['A'], stock: {} })!.stock).toEqual({});
   });
   it('drops values of the wrong shape', () => {
-    const s = parseShelf({ strings: ['A', 3], links: { A: 'string-a', B: 4 }, prices: { A: '3', B: null }, stock: { A: 'lots', B: 'low' }, players: { A: '8' } })!;
-    expect(s).toEqual({ strings: ['A'], links: { A: 'string-a' }, prices: { B: null }, stock: { B: 'low' }, players: {}, colours: {}, colourStock: {} });
+    const s = parseShelf({ strings: ['A', 3], links: { A: 'string-a', B: 4 }, prices: { A: '3', B: null }, stock: { A: 'lots', B: 'low' }, players: { A: '8' }, notes: { A: '  Hard hitters.  ', B: 7, C: '   ' } })!;
+    expect(s).toEqual({ strings: ['A'], links: { A: 'string-a' }, prices: { B: null }, stock: { B: 'low' }, players: {}, colours: {}, colourStock: {}, notes: { A: 'Hard hitters.' } });
   });
   it('tells "Ask" from "no price set"', () => {
     const s = parseShelf({ strings: ['A', 'B', 'C'], prices: { A: 3200, B: null } })!;

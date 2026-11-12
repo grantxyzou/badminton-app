@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import StringDetailSheet from '../../components/stringing/StringDetailSheet';
 import enMessages from '../../messages/en.json';
 import type { CatalogItem } from '../../lib/types';
 
 /**
- * A string's page (docs/plans/stringing-canvas-redesign.md, Decision 9): the
- * hero says whose ratings these are; "Based on your racket and skill" comes
- * from the server's pairing and is absent rather than guessed.
+ * A string's page (docs/plans/stringing-canvas-redesign.md, Decision 9; Grant,
+ * 2026-11-12: "this section should more focus on the match and recommendation
+ * of the stringer"): a slim strip says what it is; "How it suits you" leads,
+ * from the server's pairing and absent rather than guessed; the stringer's
+ * note follows; the ratings and specs wait behind a disclosure.
  */
 const BG80 = {
   id: 'string-yx-bg80', category: 'string', brand: 'Yonex', model: 'BG80', msrp: 17,
@@ -27,14 +29,14 @@ const FIT = {
   frameTension: [20, 28], stringTension: [20, 25], level: 'Intermediate', stringLevel: 'Intermediate',
 };
 
-function wrap(item: CatalogItem, fit: unknown, onRestring = vi.fn()) {
+function wrap(item: CatalogItem, fit: unknown, onRestring = vi.fn(), note: string | null = null) {
   vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
     fit === 'fail'
       ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } as Response)
       : Promise.resolve({ ok: true, status: 200, json: async () => fit } as Response)));
   render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <StringDetailSheet item={item} label="BG80" open onClose={() => {}} price="$32" band="in" onRestring={onRestring} />
+      <StringDetailSheet item={item} label="BG80" open onClose={() => {}} price="$32" band="in" clubCount={4} note={note} onRestring={onRestring} />
     </NextIntlClientProvider>,
   );
   return onRestring;
@@ -46,32 +48,61 @@ afterEach(() => {
 });
 
 describe('StringDetailSheet', () => {
-  it('leads with what the string is, its price and its four ratings', async () => {
+  it('opens on a slim strip: type and feel, gauge and stock in words, and the price', () => {
     wrap(BG80, { fit: null, reason: 'needs_check_in' });
-    expect(screen.getByText('Hard feel')).toBeDefined();
-    expect(screen.getByText('0.68 mm · standard gauge')).toBeDefined();
-    expect(screen.getByText('$32')).toBeDefined();
-    expect(screen.getByText('Restring price')).toBeDefined();
-    for (const label of ['Power', 'Control', 'Durability', 'Sound']) expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    const strip = screen.getByTestId('string-strip');
+    expect(within(strip).getByText('Power · Hard feel')).toBeDefined();
+    expect(within(strip).getByText('0.68 mm · In stock')).toBeDefined();
+    expect(within(strip).getByText('$32')).toBeDefined();
   });
 
-  it('says what the string is for once, under its name beside the stock pill', () => {
+  it('leaves the description to the list, and drops the big type-coloured hero', () => {
     wrap(BG80, { fit: null, reason: 'needs_check_in' });
-    const blurb = screen.getAllByText('All-round power string; stiff, crisp feedback with good tension hold');
-    expect(blurb).toHaveLength(1);
-    // The name, the pill and the blurb share one column beside the packet.
-    const column = blurb[0].parentElement!;
-    expect(column.textContent).toContain('Yonex BG80');
-    expect(column.textContent).toContain('In stock');
+    expect(screen.queryByText('All-round power string; stiff, crisp feedback with good tension hold')).toBeNull();
+    expect(screen.queryByText('Restring price')).toBeNull();
+  });
+
+  it('keeps the ratings and specs closed until asked, then shows all four meters and whose they are', () => {
+    wrap(BG80, { fit: null, reason: 'needs_check_in' });
+    const toggle = screen.getByRole('button', { name: 'Ratings and specs' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Rated by Yonex, out of 10')).toBeNull();
+    expect(screen.queryByText('Sound')).toBeNull();
+    expect(screen.queryByText('4 in the club play it')).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    for (const label of ['Power', 'Control', 'Durability', 'Sound']) expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    expect(screen.getByText('Rated by Yonex, out of 10')).toBeDefined();
+    expect(screen.getByText('4 in the club play it')).toBeDefined();
   });
 
   it('says the maker rated it when the catalog says so, and the community otherwise', () => {
     wrap(BG80, { fit: null, reason: 'no_frame' });
+    fireEvent.click(screen.getByRole('button', { name: 'Ratings and specs' }));
     expect(screen.getByText('Rated by Yonex, out of 10')).toBeDefined();
     cleanup();
     wrap({ ...BG80, attributes: { ...BG80.attributes, ratingSource: 'Consensus estimate' } } as CatalogItem, { fit: null });
+    fireEvent.click(screen.getByRole('button', { name: 'Ratings and specs' }));
     expect(screen.getByText('Community estimates, out of 10')).toBeDefined();
     expect(screen.queryByText(/Rated by/)).toBeNull();
+  });
+
+  it('leads with how it suits you, then the stringer’s note, then the ratings', async () => {
+    wrap(BG80, { fit: FIT }, vi.fn(), 'My go-to for hard hitters. I’d string it at 26 lb.');
+    await screen.findByText('Yonex Astrox 88D Pro');
+    const order = ['How it suits you', 'Your stringer recommends', 'Ratings and specs'].map((text) => screen.getByText(text));
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    // The strip sits above all three.
+    expect(screen.getByTestId('string-strip').compareDocumentPosition(order[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('My go-to for hard hitters. I’d string it at 26 lb.')).toBeDefined();
+  });
+
+  it('shows no stringer section when the stringer has written no note', async () => {
+    wrap(BG80, { fit: FIT }, vi.fn(), '   ');
+    await screen.findByText('Yonex Astrox 88D Pro');
+    expect(screen.queryByText('Your stringer recommends')).toBeNull();
   });
 
   it('shows how it suits the member’s own racket, from the server', async () => {
@@ -85,7 +116,7 @@ describe('StringDetailSheet', () => {
 
   it('leaves the section out when the engine cannot say, never guessing', async () => {
     wrap(BG80, { fit: null, reason: 'needs_check_in' });
-    await waitFor(() => expect(screen.queryByText('Based on your racket and skill')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('How it suits you')).toBeNull());
   });
 
   it('says it could not check when the read fails', async () => {
