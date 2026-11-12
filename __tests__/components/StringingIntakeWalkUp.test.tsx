@@ -112,6 +112,9 @@ describe('the intake offers a walk-up when the search matches nobody', () => {
     fireEvent.change(screen.getByLabelText(/String, e.g./i), { target: { value: 'BG80' } });
     const save = screen.getByRole('button', { name: /Save job/i });
     expect(save).toHaveProperty('disabled', false);
+    // The page's one main action is the filled .btn-primary (canvas, 2026-11-12).
+    expect(save.className).toContain('btn-primary');
+    expect(save.className).not.toContain('cc-btn');
     fireEvent.click(save);
 
     await waitFor(() => expect(onCreated).toHaveBeenCalled());
@@ -128,6 +131,8 @@ describe('the intake offers a walk-up when the search matches nobody', () => {
     wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
     await typeName('Lee');
     fireEvent.click(await screen.findByText('Add Lee as a walk-up'));
+    // Drawn in the accent, so it reads as the way back.
+    expect((screen.getByText('Change') as HTMLElement).style.color).toBe('var(--accent)');
     fireEvent.click(screen.getByText('Change'));
     expect((screen.getByLabelText('Search by name') as HTMLInputElement).value).toBe('Lee');
     expect(screen.getByText('Add Lee as a walk-up')).toBeDefined();
