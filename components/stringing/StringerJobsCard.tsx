@@ -8,15 +8,8 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
 import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
 import { dueFor, dueStyle, formatReadyBy, todayIso } from '@/lib/stringingDue';
-import JobCard, { JobSpecLine, nextStatusOf } from './JobCard';
-import {
-  PROGRESS_STEPS,
-  STAGE_TRACK,
-  progressFilled,
-  stageLook,
-  toneStageOf,
-  type ToneStage,
-} from '@/lib/stringingStatusTone';
+import JobCard, { JobProgress, JobSpecLine, JobsHeading, PendingChangeLine, nextStatusOf } from './JobCard';
+import { toneStageOf, type ToneStage } from '@/lib/stringingStatusTone';
 import type { StringerJob } from '@/lib/types';
 import StagePill from './StagePill';
 import { isRefused } from '@/lib/apiFetch';
@@ -179,7 +172,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   if (loadError) {
     return (
       <section className="flex flex-col gap-3 motion-fade" aria-label={t('stringerTitle')}>
-        <QueueHeading title={t('stringerTitle')} />
+        <JobsHeading title={t('stringerTitle')} />
         <div className="glass-card">
           <ErrorState
             message={t('stringerError')}
@@ -200,7 +193,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
     if (!showEmpty || !jobs) return null;
     return (
       <section className="flex flex-col gap-3 motion-fade" aria-label={t('stringerTitle')}>
-        <QueueHeading title={t('stringerTitle')} />
+        <JobsHeading title={t('stringerTitle')} />
         <div className="glass-card">
           <EmptyState icon="sports_tennis">{t('stringerEmpty')}</EmptyState>
         </div>
@@ -220,7 +213,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
     <section className="flex flex-col gap-3 motion-fade" aria-label={t('stringerTitle')}>
       {/* With requests nobody has taken listed too, "N assigned to you" would
           sit over jobs assigned to nobody; each list carries its own label. */}
-      <QueueHeading title={t('stringerTitle')} subtitle={unclaimed.length > 0 ? undefined : summary} />
+      <JobsHeading title={t('stringerTitle')} subtitle={unclaimed.length > 0 ? undefined : summary} />
       {saveError && <p className="field-error" role="alert">{t('stringerSaveError')}</p>}
       {takenElsewhere && <p className="field-warn" role="alert">{t('unclaimedTaken')}</p>}
       {unclaimed.length > 0 && (
@@ -233,6 +226,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
               today={today}
               holes={holes.forLabel(job.racketLabel).holes}
               waitingDays={isWaitingTooLong(job) ? waitingDays(job) : null}
+              pendingChange={job.pendingEdit}
               action={
                 <button
                   type="button"
@@ -305,18 +299,6 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
   );
 }
 
-/** The section's name in the label style, with the count under it. */
-function QueueHeading({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', padding: '0 var(--space-1)' }}>
-      <h3 className="section-label-muted" style={{ margin: 0, color: 'var(--text-secondary)' }}>{title}</h3>
-      {subtitle && (
-        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>{subtitle}</p>
-      )}
-    </div>
-  );
-}
-
 /**
  * One racket in a stringer's queue.
  *
@@ -330,7 +312,9 @@ function QueueHeading({ title, subtitle }: { title: string; subtitle?: string })
  * could not tell the statuses apart: each status now has its own hue and
  * glyph (`lib/stringingStatusTone.ts`) and a bar that says how far along the
  * racket is, where the bench's pill had four tones for five statuses. The
- * spec and due lines are `JobCard`'s, word for word.
+ * spec and due lines are `JobCard`'s, word for word, and the bar and the
+ * waiting line are `JobCard.tsx`'s own components, which the bench's card
+ * draws too (2026-11-12).
  */
 function StringerJobCard({ job, stage, today, holes, action }: {
   job: StringerQueueJob;
@@ -342,8 +326,6 @@ function StringerJobCard({ job, stage, today, holes, action }: {
   const t = useTranslations('home.stringing');
   const tAdmin = useTranslations('admin.stringing');
   const locale = useLocale();
-  const look = stageLook(stage);
-  const filled = progressFilled(job.status);
 
   const spec = [
     job.stringLabel,
@@ -380,36 +362,14 @@ function StringerJobCard({ job, stage, today, holes, action }: {
           </span>
           <StagePill stage={stage} label={label} testId="stringer-job-status" />
         </div>
-        {/* Received · Strung · Ready · Picked up, filled to where the racket
-            is. Decoration: the pill above already says the status in words. */}
-        <div
-          aria-hidden="true"
-          data-testid="stringer-job-progress"
-          data-filled={filled}
-          style={{ display: 'flex', gap: 'var(--space-1)', margin: 'var(--space-05) 0' }}
-        >
-          {PROGRESS_STEPS.map((step, i) => (
-            <span
-              key={step}
-              data-on={i < filled ? 'true' : 'false'}
-              style={{
-                flex: 1,
-                height: 'var(--space-1)',
-                borderRadius: 'var(--radius-pill)',
-                background: i < filled ? look.tone : STAGE_TRACK,
-              }}
-            />
-          ))}
-        </div>
+        {/* Received · Strung · Ready · Picked up — the bar the bench's card
+            draws too (JobCard.tsx). */}
+        <JobProgress status={job.status} stage={stage} testId="stringer-job-progress" />
         {/* A walk-up's contact rides on this, the stringer's OWN queue, only:
             they are the one who tells them it is ready. */}
         <JobSpecLine spec={spec} walkUp={job.walkUp} contact={job.walkUpContact} />
         {dueText && <span className="fs-sm" style={dueStyle(due.tone)}>{dueText}</span>}
-        {stage === 'waiting' && (
-          <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-            <WaitingLine job={job} />
-          </span>
-        )}
+        {stage === 'waiting' && <PendingChangeLine name={job.memberName} edit={job.pendingEdit} />}
         {action && (
           <div style={{ display: 'flex', gap: 'var(--space-3)', paddingTop: 'var(--space-2)' }}>
             {action}
@@ -418,23 +378,4 @@ function StringerJobCard({ job, stage, today, holes, action }: {
       </div>
     </div>
   );
-}
-
-/** What the player is being asked, when the projection says; otherwise only
- *  that they are being asked. Never the price — a stringer sees no money. */
-function WaitingLine({ job }: { job: StringerQueueJob }) {
-  const t = useTranslations('home.stringing');
-  const tAdmin = useTranslations('admin.stringing');
-  const edit = job.pendingEdit;
-  const parts: string[] = [];
-  if (edit?.racketTo && edit.racketFrom) parts.push(t('stringerChangePart', { to: edit.racketTo, from: edit.racketFrom }));
-  if (edit?.stringTo && edit.stringFrom) parts.push(t('stringerChangePart', { to: edit.stringTo, from: edit.stringFrom }));
-  if (edit?.tensionTo && edit.tensionFrom) {
-    parts.push(t('stringerChangePart', {
-      to: `${edit.tensionTo} ${tAdmin('lb')}`,
-      from: `${edit.tensionFrom} ${tAdmin('lb')}`,
-    }));
-  }
-  if (parts.length === 0) return <>{t('stringerWaitingGeneric', { name: job.memberName })}</>;
-  return <>{t('stringerWaitingChange', { change: parts.join(', '), name: job.memberName })}</>;
 }

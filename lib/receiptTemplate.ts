@@ -363,3 +363,219 @@ export function renderGroupCanvas(
   return canvas.toDataURL('image/png');
 }
 
+
+/* ------------------------------------------------------------------------ */
+/* The WALK-UP'S STRINGING RECEIPT (docs/plans/stringing-walk-ups.md,        */
+/* 2026-11-12). A walk-up has no app; the stringer texts, AirDrops or saves  */
+/* this image for them from the job page. It names the person and the job,   */
+/* NEVER their contact. Drawn here, beside the session receipt, because this */
+/* file is already exempt from the token guardrail for the same reason: a    */
+/* canvas `fillStyle` takes a colour string, and var() means nothing there.  */
+/* ------------------------------------------------------------------------ */
+
+/** What the image says, in the stringer's language (the sheet passes `t()`
+ *  words in), so the drawing knows nothing about i18n or about jobs. */
+export interface StringingReceiptInput {
+  clubName: string;
+  /** "Stringing receipt". */
+  title: string;
+  jobNo: string;
+  /** "For Sam". */
+  forLine: string;
+  rows: { label: string; value: string }[];
+  totalLabel: string;
+  /** "$34", or the word for an unpriced job ("Ask"). */
+  total: string;
+  /** "Pay at pickup, to your stringer…", or "Paid". */
+  note: string;
+}
+
+/** The same words as one sentence, for the preview's alt text and a test. */
+export function stringingReceiptText(input: StringingReceiptInput): string {
+  return [
+    `${input.clubName} · ${input.title} · ${input.jobNo}`,
+    input.forLine,
+    ...input.rows.map((r) => `${r.label}: ${r.value}`),
+    `${input.totalLabel}: ${input.total}`,
+    input.note,
+  ].join('\n');
+}
+
+/** Paper and ink. A receipt reads as paper whatever the app's theme. */
+const PAPER = {
+  table: '#e7e5e0',
+  paper: '#fbfaf7',
+  shadow: 'rgba(0, 0, 0, 0.12)',
+  ink: '#1c1917',
+  muted: '#78716c',
+  rule: '#d6d3d1',
+  accent: '#15803d',
+};
+
+export const STRINGING_RECEIPT_W = 390;
+const SR_MARGIN = 18;
+const SR_PAD = 24;
+const SR_TOOTH = 8;
+
+/** Break `text` into lines no wider than `width` at the current font. */
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, width: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = '';
+  for (const w of words) {
+    const tryLine = line ? `${line} ${w}` : w;
+    if (line && ctx.measureText(tryLine).width > width) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = tryLine;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/**
+ * Draw the stringing receipt (job page canvas frame, 2026-11-12): a sheet of
+ * paper with a torn bottom edge — club and "Stringing receipt" with the job
+ * number top right, "For {name}", the spec rows, a Total, and how to pay.
+ * 390 wide, as tall as its words. Returns a PNG data URL ('' with no 2D
+ * context, so the caller keeps its placeholder rather than a blank image).
+ */
+export function renderStringingReceiptCanvas(input: StringingReceiptInput, canvas: HTMLCanvasElement): string {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+  const f = readFaces();
+  const W = STRINGING_RECEIPT_W;
+  const paperX = SR_MARGIN;
+  const paperW = W - SR_MARGIN * 2;
+  const inner = paperW - SR_PAD * 2;
+  const left = paperX + SR_PAD;
+  const right = paperX + paperW - SR_PAD;
+
+  // Measure the note first: the image is as tall as its words.
+  ctx.font = `400 13px ${f.sans}`;
+  const noteLines = wrapLines(ctx, input.note, inner);
+  const ROW_H = 28;
+  const height =
+    SR_MARGIN + SR_PAD + 22 + 20 + 22 + 24 + 14 + input.rows.length * ROW_H + 18 + 34 + 16 + noteLines.length * 19 + SR_PAD + SR_TOOTH + SR_MARGIN;
+
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  canvas.width = W * dpr;
+  canvas.height = height * dpr;
+  canvas.style.width = `${W}px`;
+  canvas.style.height = `${height}px`;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.fillStyle = PAPER.table;
+  ctx.fillRect(0, 0, W, height);
+
+  // The paper, with a zig-zag torn edge along the bottom.
+  const paperBottom = height - SR_MARGIN - SR_TOOTH;
+  const outline = () => {
+    ctx.beginPath();
+    ctx.moveTo(paperX, SR_MARGIN);
+    ctx.lineTo(paperX + paperW, SR_MARGIN);
+    ctx.lineTo(paperX + paperW, paperBottom);
+    const teeth = Math.round(paperW / 14);
+    const step = paperW / teeth;
+    for (let i = teeth - 1; i >= 0; i--) {
+      ctx.lineTo(paperX + i * step + step / 2, paperBottom + SR_TOOTH);
+      ctx.lineTo(paperX + i * step, paperBottom);
+    }
+    ctx.closePath();
+  };
+  ctx.save();
+  ctx.shadowColor = PAPER.shadow;
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = PAPER.paper;
+  outline();
+  ctx.fill();
+  ctx.restore();
+
+  let y = SR_MARGIN + SR_PAD;
+
+  // Club and title on the left, the job number on the right.
+  ctx.font = `700 15px ${f.mono}`;
+  const jobW = ctx.measureText(input.jobNo).width;
+  ctx.fillStyle = PAPER.ink;
+  ctx.textAlign = 'right';
+  ctx.fillText(input.jobNo, right, y + 16);
+  ctx.textAlign = 'left';
+  fitFont(ctx, input.clubName, 700, 19, 13, f.display, inner - jobW - 12);
+  ctx.fillText(input.clubName, left, y + 16);
+  y += 22;
+  ctx.fillStyle = PAPER.muted;
+  ctx.font = `500 13px ${f.sans}`;
+  ctx.fillText(input.title, left, y + 14);
+  y += 20;
+
+  const dashed = (atY: number) => {
+    ctx.save();
+    ctx.strokeStyle = PAPER.rule;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(left, atY);
+    ctx.lineTo(right, atY);
+    ctx.stroke();
+    ctx.restore();
+  };
+  y += 10;
+  dashed(y);
+  y += 12;
+
+  // Who it is for.
+  ctx.fillStyle = PAPER.ink;
+  fitFont(ctx, input.forLine, 600, 16, 12, f.sans, inner);
+  ctx.fillText(input.forLine, left, y + 16);
+  y += 24 + 14;
+
+  // The spec rows: label left, value right, the value shrinking to fit.
+  for (const row of input.rows) {
+    const base = y + 15;
+    ctx.font = `400 14px ${f.sans}`;
+    ctx.fillStyle = PAPER.muted;
+    ctx.textAlign = 'left';
+    ctx.fillText(row.label, left, base);
+    const labelW = ctx.measureText(row.label).width;
+    ctx.fillStyle = PAPER.ink;
+    ctx.textAlign = 'right';
+    fitFont(ctx, row.value, 600, 14, 9, f.sans, inner - labelW - 16);
+    ctx.fillText(row.value, right, base);
+    ctx.textAlign = 'left';
+    y += ROW_H;
+  }
+
+  y += 4;
+  dashed(y);
+  y += 14;
+
+  // Total.
+  ctx.fillStyle = PAPER.ink;
+  ctx.font = `700 16px ${f.sans}`;
+  ctx.textAlign = 'left';
+  ctx.fillText(input.totalLabel, left, y + 24);
+  ctx.textAlign = 'right';
+  ctx.font = `700 26px ${f.mono}`;
+  ctx.fillText(input.total, right, y + 26);
+  ctx.textAlign = 'left';
+  y += 34 + 16;
+
+  // How to pay (or "Paid").
+  ctx.font = `400 13px ${f.sans}`;
+  ctx.fillStyle = PAPER.muted;
+  for (const line of noteLines) {
+    ctx.fillText(line, left, y + 13);
+    y += 19;
+  }
+
+  // A thin green edge along the top, the club's colour on paper.
+  ctx.fillStyle = PAPER.accent;
+  ctx.fillRect(paperX, SR_MARGIN, paperW, 3);
+
+  return canvas.toDataURL('image/png');
+}

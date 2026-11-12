@@ -2738,7 +2738,7 @@
       ],
       "attributes": {
         "series": "Aerobite",
-        "stringType": "Hybrid",
+        "stringType": "Control",
         "brandCategory": "Control",
         "gaugeMm": 0.67,
         "gaugeCrossMm": 0.61,
@@ -2780,7 +2780,7 @@
       ],
       "attributes": {
         "series": "Aerobite",
-        "stringType": "Hybrid",
+        "stringType": "Control",
         "brandCategory": "Control",
         "gaugeMm": 0.72,
         "gaugeCrossMm": 0.61,
@@ -2948,7 +2948,7 @@
       ],
       "attributes": {
         "series": "Skyarc",
-        "stringType": "All-round",
+        "stringType": "Durability",
         "brandCategory": "Durability",
         "gaugeMm": 0.69,
         "gaugeClass": "Standard",
@@ -3788,7 +3788,7 @@
       ],
       "attributes": {
         "series": "N",
-        "stringType": "All-round",
+        "stringType": "Repulsion",
         "brandCategory": "High Elasticity",
         "gaugeMm": 0.68,
         "gaugeClass": "Standard",

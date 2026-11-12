@@ -7,6 +7,7 @@ import StringingPage from '../../components/admin/CommandCenter/StringingPage';
 import StringingJobDetail from '../../components/admin/CommandCenter/StringingJobDetail';
 import StringingIntake from '../../components/admin/CommandCenter/StringingIntake';
 import enMessages from '../../messages/en.json';
+import { OnlineProvider } from '../../lib/useOnline';
 import type { StringingJob } from '../../lib/types';
 
 /**
@@ -122,10 +123,12 @@ describe('the shop sign', () => {
   }
 
   it('offers Close when the shop is open, and Open when it is closed', async () => {
+    // Open is the small pill beside the list's heading, and Close shop the
+    // last row on the page (the canvas, 2026-11-12).
     respondShop(true);
-    const { unmount } = wrap(<StringingPage onBack={() => {}} />);
-    expect(await screen.findByText('Open for stringing')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Close shop' })).toBeDefined();
+    const { unmount, container } = wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByRole('button', { name: 'Close shop' })).toBeDefined();
+    expect(container.querySelector('[data-state="open"]')?.textContent).toContain(enMessages.admin.stringing.shop.open);
     unmount();
 
     respondShop(false);
@@ -146,7 +149,9 @@ describe('the shop sign', () => {
     wrap(<StringingPage onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Close shop' }));
     expect((await screen.findByRole('alert')).textContent).toBe(enMessages.admin.stringing.shop.toggleError);
-    expect(screen.getByText('Open for stringing')).toBeDefined();
+    // The sign stays what it was: still open, still offering Close shop.
+    expect(document.querySelector('[data-state="open"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Close shop' })).toBeDefined();
   });
 
   it('holds a skeleton while the sign is read, not a guessed Open shop button', async () => {
@@ -199,7 +204,7 @@ describe('the shop sign', () => {
     expect(sign).not.toBeNull();
     expect(sign.textContent).not.toMatch(/refresh/i);
     fireEvent.click(within(sign).getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('Open for stringing')).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Close shop' })).toBeDefined();
     expect(shopCalls).toBe(2);
     expect(container.querySelector('[data-state="open"]')).not.toBeNull();
   });
@@ -1044,5 +1049,148 @@ describe('status is the first thing on the screen, and one row until asked', () 
     // as the authoritative one.
     wrap(<StringingJobDetail job={{ ...job, status: 'ready' }} onBack={() => {}} onChanged={() => {}} />);
     expect(screen.getAllByText('Ready')).toHaveLength(1);
+  });
+});
+
+/**
+ * The bench in the stringer's card style (the canvas frame "The bench ·
+ * admin", 2026-11-12; Grant: "the card needs to be updated", "Delete" on the
+ * Open for stringing row, "Move to below" on Close shop). No outer card, a
+ * plain heading with the count and the shop's pill, one card per racket with
+ * the stringer's progress bar, and Close shop as the last row.
+ */
+describe('the bench in the stringer\'s card style', () => {
+  function respondOpen(jobs: StringingJob[]) {
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes('/shop')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ open: init?.method === 'PATCH' ? JSON.parse(String(init.body)).open : true }),
+        } as Response);
+      }
+      if (u.includes('/strings')) return Promise.resolve({ ok: true, json: async () => ({ strings: [] }) } as Response);
+      return Promise.resolve({ ok: true, json: async () => ({ jobs: u.includes('archived') ? [] : jobs, view: 'bench' }) } as Response);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  it('has no outer card: a plain heading, the count under it, the OPEN pill beside it', async () => {
+    const late = { ...job, id: 'job-2', jobNo: 'J-0043', readyBy: '2020-01-01' };
+    respondOpen([job, late]);
+    const { container } = wrap(<StringingPage onBack={() => {}} />);
+    const section = await screen.findByRole('region', { name: enMessages.admin.stringing.jobsTitle });
+    expect(section.className).not.toContain('glass-card');
+    expect(section.closest('.glass-card')).toBeNull();
+    expect(within(section).getByRole('heading', { name: enMessages.admin.stringing.jobsTitle })).toBeDefined();
+    expect(await within(section).findByText('2 open · 1 late')).toBeDefined();
+    const pill = await waitFor(() => {
+      const el = container.querySelector('[data-state="open"]') as HTMLElement;
+      expect(el).not.toBeNull();
+      return el;
+    });
+    expect(section.contains(pill)).toBe(true);
+    expect(within(pill).getByText(enMessages.admin.stringing.shop.open)).toBeDefined();
+  });
+
+  it('the "Open for stringing" row is gone', async () => {
+    respondOpen([job]);
+    const { container } = wrap(<StringingPage onBack={() => {}} />);
+    await screen.findByRole('button', { name: 'Close shop' });
+    expect(screen.queryByText('Open for stringing')).toBeNull();
+    expect(screen.queryByText('Players can hand you a racket and request a restring.')).toBeNull();
+    // Its check_circle glyph is gone too (a READY job's own pill keeps one).
+    expect([...container.querySelectorAll('.material-icons')].some((el) => el.textContent === 'check_circle' && !el.closest('[data-testid="job-card"]'))).toBe(false);
+  });
+
+  it('each job is its own card, with the 4-step bar filled to its stage', async () => {
+    const statuses = ['requested', 'received', 'strung', 'ready', 'picked_up'] as const;
+    respondOpen(statuses.map((status, i) => ({ ...job, id: `job-${i}`, jobNo: `J-010${i}`, status })));
+    const { container } = wrap(<StringingPage onBack={() => {}} />);
+    await screen.findByText('J-0104');
+    const cards = [...container.querySelectorAll('[data-testid="job-card"]')] as HTMLElement[];
+    expect(cards).toHaveLength(5);
+    cards.forEach((card, i) => {
+      expect(card.className).toContain('glass-card');
+      // Siblings on the ground, never a card inside a card.
+      expect(card.parentElement?.closest('.glass-card')).toBeNull();
+      const bar = card.querySelector('[data-testid="job-progress"]') as HTMLElement;
+      expect(bar.children).toHaveLength(4);
+      const on = [...bar.children].map((s) => (s as HTMLElement).dataset.on);
+      expect(on.filter((v) => v === 'true')).toHaveLength(i);
+      expect(bar.dataset.filled).toBe(String(i));
+      expect(bar.dataset.stage).toBe(statuses[i]);
+    });
+  });
+
+  it('a job waiting on the player says what was suggested, never the price, and offers no next step', async () => {
+    const waiting: StringingJob = {
+      ...job,
+      status: 'received',
+      priceCents: 3000,
+      pendingEdit: { stringLabel: 'BG66', priceCents: 3400, proposedAt: '2026-11-01T00:00:00.000Z', proposedBy: 'member-grant' },
+    };
+    respondOpen([waiting]);
+    const { container } = wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText('Waiting on Wei')).toBeDefined();
+    const card = container.querySelector('[data-testid="job-card"]') as HTMLElement;
+    expect(card.dataset.stage).toBe('waiting');
+    expect(within(card).getByText('Suggested BG66 instead of BG80 · white. Wei has to accept before you string it.')).toBeDefined();
+    expect(card.textContent).not.toMatch(/\$/);
+    expect(within(card).queryByRole('button', { name: /^Mark / })).toBeNull();
+    // The bar still says where the racket is, in the waiting colour.
+    const bar = card.querySelector('[data-testid="job-progress"]') as HTMLElement;
+    expect(bar.dataset.filled).toBe('1');
+    expect(bar.dataset.stage).toBe('waiting');
+  });
+
+  it('a change of tension says the tensions; a price-only change only says the player has to confirm', async () => {
+    respondOpen([
+      { ...job, id: 'a', jobNo: 'J-0001', pendingEdit: { tensionMains: 27, tensionCrosses: 29, proposedAt: 'x', proposedBy: 'g' } },
+      { ...job, id: 'b', jobNo: 'J-0002', memberName: 'Lin', pendingEdit: { priceCents: 3400, proposedAt: 'x', proposedBy: 'g' } },
+    ]);
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText('Suggested 27/29 lb instead of 26/28 lb. Wei has to accept before you string it.')).toBeDefined();
+    expect(screen.getByText('Waiting for Lin to confirm the change.')).toBeDefined();
+    expect(screen.queryByText(/\$34/)).toBeNull();
+  });
+
+  it('Close shop is the last row, below set-up, and closes the shop with the same request', async () => {
+    const fetchMock = respondOpen([job]);
+    wrap(<StringingPage onBack={() => {}} />);
+    const close = await screen.findByRole('button', { name: 'Close shop' });
+    const setup = screen.getByRole('button', { name: 'Strings, stock, prices & holes' });
+    const archive = screen.getByRole('button', { name: /^Archived/ });
+    const add = screen.getByRole('button', { name: 'Add job' });
+    const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(add, archive) && follows(archive, setup) && follows(setup, close)).toBe(true);
+    expect(close.className).toContain('cc-mini-card');
+    expect(close.textContent).toContain('bedtime');
+    expect(close.textContent).toContain(enMessages.admin.stringing.shop.closeHint);
+    expect(close.textContent).toContain('chevron_right');
+
+    fireEvent.click(close);
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH');
+      expect(patch).toBeDefined();
+      expect(String(patch![0])).toContain('/api/stringing/shop');
+      expect(JSON.parse(String(patch![1].body))).toEqual({ open: false });
+    });
+    // Closed: the closed card with Open shop, and no Close row or OPEN pill.
+    expect(await screen.findByRole('button', { name: 'Open shop' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Close shop' })).toBeNull();
+    expect(document.querySelector('[data-state="open"]')).toBeNull();
+  });
+
+  it('Close shop is held while offline (useOnline), like the button it replaced', async () => {
+    vi.stubGlobal('navigator', { ...global.navigator, onLine: false });
+    const answer = respondOpen([job]);
+    // The provider's reachability probe must not answer, or it reads online.
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+      String(url).includes('/api/session') ? Promise.reject(new Error('offline')) : answer(url, init)));
+    wrap(<OnlineProvider><StringingPage onBack={() => {}} /></OnlineProvider>);
+    const close = await screen.findByRole('button', { name: 'Close shop' });
+    await waitFor(() => expect((close as HTMLButtonElement).disabled).toBe(true));
   });
 });

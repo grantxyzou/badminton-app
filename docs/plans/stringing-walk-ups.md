@@ -18,7 +18,7 @@ The "New job" screen's "Whose racket?" card searched the club's members and noth
 ## Non-goals
 
 - **An account for the walk-up.** "No account needed. Just this job." A walk-up who later joins the club is a new member, and their old job stays a walk-up job.
-- **Telling the walk-up anything.** They have no app, so nothing is pushed, mailed or listed for them. The contact field is for the stringer to call or text them.
+- ~~**Telling the walk-up anything.** They have no app, so nothing is pushed, mailed or listed for them. The contact field is for the stringer to call or text them.~~ **Reversed by Grant on the canvas, 2026-11-12** ("automatically email"; "yes" to a second email when it is ready; "ok" to a phone number getting only the receipt). See "Two automatic emails, and a receipt" under Decisions. Still nothing is PUSHED or listed for them.
 - **Paying a walk-up job by e-transfer through the inbox.** Auto-match reads the roster's balances, and a walk-up is on none. They pay at pickup, and the stringer taps "Mark paid".
 - **Editing the contact after the job is saved, or turning a member's job into a walk-up's (or back).** Neither was asked for.
 - **Remembering walk-ups between jobs.** No "recent walk-ups" chips. Each job stands alone.
@@ -41,6 +41,15 @@ The "New job" screen's "Whose racket?" card searched the club's members and noth
 
 **The player routes cannot reach a walk-up job.** `accept`, `cancel` and the player list are all keyed by the caller's cookie `memberId`, and no cookie carries a `~walkup:` id.
 
+**Two automatic emails, and a receipt (2026-11-12).** Grant reversed the "telling the walk-up anything" non-goal on the canvas. Only a walk-up whose contact is shaped like an email (`walkUpEmailOf` in `lib/stringing.ts`, the same linear scan the sign-in forms use, now in the pure `lib/emailShape.ts`) is mailed; a phone number, or no contact, gets nothing sent.
+- **The spec email** goes once from `POST /api/stringing/jobs`, after the job is created: "Your racket is with {club}'s stringer ({jobNo})", the spec in a box (job, racket, string and colour, tension, price as "$34, pay at pickup" or "Ask", ready by), and a footer saying why they got it.
+- **The ready email** goes from `PATCH /api/stringing/jobs/[id]` when the status FIRST moves forward to `ready` — the same forward-only test as the member's stage notice — and never again once one has gone. The status write is etag-conditional, so two taps cannot both make the move. "Bring $34 or pay your stringer at pickup." only when it is priced and unpaid.
+- **Each send is stamped on the job** (`walkUpEmails.spec` / `.ready`, `{ at, ok }`, additive), AFTER the job's own write and under a read-modify-`replace`. The page reads the stamp ("✓ Sent 3:04 PM" / "Not sent"), and a ready stamp with `ok: true` is what stops a second ready email. A failed ready send may go on a later forward move; a sent one never repeats.
+- **"Send again"** is `PATCH { memberId, resendSpecEmail: true }`: admin only (a stringer's body allows `status` alone), on the bench's rate limit, nothing else in the body, and only for a FAILED or MISSING spec email (409 `already_sent` otherwise, `no_email` for a phone number). The tap claims the send under the job's etag first, so two taps send one email.
+- **Same transport, sender and failure posture as the member's stringing email** (`lib/stringingNotifyEmail.ts`): `gmailTransport` with its timeouts, From the product's name, nothing sent without SMTP configured, never throwing out of the route. Its own module (`lib/stringingWalkUpEmail.ts`), because a shared private sender is how a subject ends up on the wrong template. English, like the member's email. The club's name is `Group.name` ("BPM Core"), the product's when it cannot be read.
+- **Money is in the email**, as in the member's stringing email; only push bodies carry none, and nothing here pushes. The dispatcher's early `walk_up` return stays: no push, no Notifications-page record.
+- **The receipt** is an image for any walk-up, phone or email or none: "Receipt for {name}" on the job page, drawn on a canvas (`renderStringingReceiptCanvas` in `lib/receiptTemplate.ts`, beside the session receipt, so it shares that file's token-guardrail exemption and no new escape hatch is needed) and shown as a PNG from a callback ref, the way `ReceiptSheet` does it. "Share" goes through `shareOrSaveImage` and "Save image" through the new `saveImage` in `lib/shareImage.ts`; both mark the external excursion before the hand-off. It names the person and the job and never the contact.
+
 **Stock counts it.** Stock is counted from every job in the club by label and status, whoever the racket belongs to, so a strung walk-up job draws a set like any other.
 
 ## Shape
@@ -57,4 +66,8 @@ The "New job" screen's "Whose racket?" card searched the club's members and noth
 | Walk-up pill on the bench card and the stringer's queue | `components/stringing/JobCard.tsx` |
 | Job page: pill, contact, "How they pay", the direct-change form | `components/admin/CommandCenter/StringingJobDetail.tsx` |
 | Recent chips skip walk-ups | `components/admin/CommandCenter/StringingPage.tsx` |
-| Tests | `__tests__/stringing-walk-ups.test.ts`, `__tests__/components/StringingIntakeWalkUp.test.tsx` |
+| The two emails: compose, send, stamp | `lib/stringingWalkUpEmail.ts`, called from both jobs routes |
+| `walkUpEmails` stamps (additive) | `lib/types.ts` |
+| "Send to {name}" card, receipt sheet | `components/admin/CommandCenter/StringingWalkUpSendCard.tsx`, `StringingReceiptSheet.tsx` |
+| The receipt drawing; "Save image" | `lib/receiptTemplate.ts`, `lib/shareImage.ts` (`saveImage`) |
+| Tests | `__tests__/stringing-walk-ups.test.ts`, `__tests__/components/StringingIntakeWalkUp.test.tsx`, `__tests__/stringing-walk-up-emails.test.ts`, `__tests__/components/StringingWalkUpSend.test.tsx` |

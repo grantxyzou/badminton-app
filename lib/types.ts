@@ -1183,6 +1183,21 @@ export interface StringingJob {
    *  admins and the assigned stringer only, never a player response or a push.
    *  Absent when none was given. */
   walkUpContact?: string;
+  /**
+   * The two automatic emails a walk-up with an EMAIL contact gets (2026-11-12,
+   * docs/plans/stringing-walk-ups.md): `spec` when the job is saved, `ready`
+   * when it first moves to ready. Each is stamped AFTER its send with the
+   * outcome, so the job page can say "Sent 3:04 PM" and neither a retry nor a
+   * second move to ready repeats an email that went. Additive; absent on every
+   * member's job and on a walk-up with a phone number or no contact.
+   */
+  walkUpEmails?: { spec?: WalkUpEmailStamp; ready?: WalkUpEmailStamp };
+}
+
+/** One automatic email to a walk-up: when it was tried, and whether it went. */
+export interface WalkUpEmailStamp {
+  at: string;
+  ok: boolean;
 }
 
 /**

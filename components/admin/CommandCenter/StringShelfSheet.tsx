@@ -1,22 +1,24 @@
 'use client';
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import ActionRow from '@/components/primitives/ActionRow';
 import ErrorState from '@/components/primitives/ErrorState';
 import { catalogLabel, matches, parsePrice, priceDraftOf } from '@/lib/shelfEdit';
 import { MAX_LABEL_LEN, MAX_NOTE_LEN } from '@/lib/stringingLimits';
-import { isStringColourId, type StringColourId } from '@/lib/stringPalette';
-import { ColourDot, ColourPicker } from '@/components/stringing/StringColours';
+import { isStringColourId, STRING_PALETTE, type StringColourId } from '@/lib/stringPalette';
+import { paletteFill, stringTypeOf } from '@/lib/stringShelf';
+import { stringPackSrc } from '@/lib/stringPackSrc';
+import { fmtMoney } from '@/lib/fmt';
+import { ColourDot, ColourDots } from '@/components/stringing/StringColours';
+import StringPackImage from '@/components/stringing/StringPackImage';
 import MoneyInput from '@/components/primitives/MoneyInput';
 import ListRow from '@/components/primitives/ListRow';
 import type { StringStockLine } from '@/lib/stringStockMath';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
 
-const money = (cents: number) => `$${(cents / 100).toFixed(2).replace(/\.00$/, '')}`;
-const day = (iso: string) =>
-  new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+const money = (cents: number) => fmtMoney(cents / 100);
 
 /**
  * Everything about ONE string, in one place (docs/plans/bench-redesign.md).
@@ -31,9 +33,27 @@ const day = (iso: string) =>
  *              count it as a shelf string. No "Offer it": these are mostly
  *              old typos, and the shelf is what players pick from.
  *
+ * The offered sheet ("A string on the shelf · rethought", Grant 2026-11-12:
+ * "rethink about this page, use mobbin" → "build it"): who it is (packet,
+ * name, the catalog match), what is left and what it earns, then its details
+ * — name, price, note and reel colours — saved together by ONE Save pinned in
+ * the footer. Purchases and Remove act at once, as before: each is its own
+ * action, not an edit to the string.
+ *
  * Mount with a fresh `key` per opening: the drafts are `useState` initialisers.
  */
 export type ShelfSheetMode = 'offered' | 'offShelf' | 'jobLabel';
+
+/** What one Save changes. Only the fields that changed are present. */
+export interface ShelfEdits {
+  name?: string;
+  /** Cents; `null` is "Ask". */
+  price?: number | null;
+  /** Trimmed; empty deletes it. */
+  note?: string;
+  /** Empty falls back to the maker's colours. */
+  colours?: StringColourId[];
+}
 
 interface Props {
   open: boolean;
@@ -61,7 +81,6 @@ interface Props {
   offered?: string[];
   /** jobLabel: how many rackets carry the name. */
   jobCount?: number;
-  onSavePrice?: (cents: number | null) => void;
   onLogPurchase?: () => void;
   onRemovePurchase?: (id: string) => void;
   onLink?: (item: CatalogItem) => void;
@@ -71,81 +90,173 @@ interface Props {
   onOffer?: () => void;
   /** offered: the colours the club has it in. */
   colours?: StringColourId[];
-  onSaveColours?: (ids: StringColourId[]) => void;
   /** offered: the stringer's note players see on the string's page. */
   note?: string;
-  /** An empty note deletes it. */
-  onSaveNote?: (note: string) => void;
-  /** offered: a new name for it. The card answers with `renameError` if the server refused. */
-  onRename?: (to: string) => void;
+  /**
+   * offered: the one Save. The card renames FIRST (when the name changed),
+   * then saves the rest under the new name; it answers `renameError` if the
+   * server refused the name.
+   */
+  onSave?: (edits: ShelfEdits) => void;
   renameError?: 'name_taken' | 'invalid_name' | null;
+}
+
+/** A filled field with its label inside it, and an optional counter. */
+function FilledField({ id, label, counter, children }: { id: string; label: string; counter?: string; children: ReactNode }) {
+  return (
+    <div className="bpm-field-filled">
+      <div className="bpm-field-filled-label">
+        <label htmlFor={id}>{label}</label>
+        {counter && <span aria-hidden="true" style={{ fontFamily: 'var(--font-mono)' }}>{counter}</span>}
+      </div>
+      {children}
+    </div>
+  );
 }
 
 export default function StringShelfSheet(props: Props) {
   const { open, onClose, mode, label, busy, online } = props;
   const t = useTranslations('admin.stringing');
-  // The palette's names live with the member copy; the bench reads the same ones.
+  // The palette's names and the string types live with the member copy; the bench reads the same ones.
   const tOffer = useTranslations('home.stringing.offer');
+  const locale = useLocale();
   const [priceDraft, setPriceDraft] = useState(() => priceDraftOf(props.price));
   const [query, setQuery] = useState('');
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [nameDraft, setNameDraft] = useState(label);
   const [colourDraft, setColourDraft] = useState<StringColourId[]>(() => props.colours ?? []);
   const [noteDraft, setNoteDraft] = useState(() => props.note ?? '');
+  const [step, setStep] = useState<'main' | 'colours'>('main');
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  // The name the last Save sent: a refusal is said only while it is still the name typed.
+  const [sentName, setSentName] = useState<string | null>(null);
+  // Save was the last thing pressed: "Saving…" is not said over a purchase being deleted.
+  const [saving, setSaving] = useState(false);
   const off = busy || !online;
+
+  // The purchase's own day, in the app's language. Parsed as UTC noon and
+  // shown in UTC, so no phone's zone can move it a day.
+  const day = (iso: string) =>
+    new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
   const nameTrim = nameDraft.trim();
   // Another offered string with this name, any case: refused here before the
   // server is asked, and said in the same words the server's 409 gets.
   const nameTaken = (props.offered ?? []).some((s) => s !== label && s.toLowerCase() === nameTrim.toLowerCase());
   const nameChanged = nameTrim !== label;
   const nameOk = !!nameTrim && nameTrim.length <= MAX_LABEL_LEN && !nameTaken;
-  const nameError = nameTaken || props.renameError === 'name_taken'
+  const refused = props.renameError && sentName === nameTrim ? props.renameError : null;
+  const nameError = nameTaken || refused === 'name_taken'
     ? t('shelf.sheet.nameTaken')
-    : props.renameError === 'invalid_name' ? t('shelf.sheet.nameInvalid') : null;
+    : refused === 'invalid_name' || (nameChanged && !nameTrim) ? t('shelf.sheet.nameInvalid') : null;
   const coloursChanged = colourDraft.join() !== (props.colours ?? []).join();
   const noteChanged = noteDraft.trim() !== (props.note ?? '').trim();
   const parsed = parsePrice(priceDraft);
   // Against the STORED value, unset included: an empty field on a string with
   // no price saves "Ask" (null), which is different from no price at all.
   const priceChanged = parsed !== undefined && parsed !== props.price;
+  const changed = nameChanged || priceChanged || noteChanged || coloursChanged;
+  const canSave = !off && changed && nameOk && parsed !== undefined;
   const errorLine = props.error ? <ErrorState message={t('strings.saveError')} /> : null;
 
-  /** One purchase, with its notes and a delete. Shared by both sheet modes. */
+  function save() {
+    if (!canSave) return;
+    const edits: ShelfEdits = {};
+    if (nameChanged) edits.name = nameTrim;
+    if (priceChanged) edits.price = parsed ?? null;
+    if (noteChanged) edits.note = noteDraft.trim();
+    if (coloursChanged) edits.colours = colourDraft;
+    setSentName(nameChanged ? nameTrim : null);
+    setSaving(true);
+    props.onSave?.(edits);
+  }
+  const saveOnEnter = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && canSave) {
+      e.preventDefault();
+      save();
+    }
+  };
+
+  /** One purchase per filled row, its delete behind ⋯. Shared by both sheet modes. */
   const purchaseList = (purchases: StringPurchase[]) =>
     purchases.length > 0 && (
-      <ul style={{ listStyle: 'none', padding: 0 }} className="flex flex-col gap-1">
-        {purchases.map((p) => (
-          <li key={p.id} className="fs-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', color: 'var(--text-secondary)' }}>
-            <span style={{ minWidth: 0 }}>
-              {day(p.date)} · {p.units} {p.unit}{p.units === 1 ? '' : 's'} × {p.metresPerUnit} m · {money(p.totalCostCents)}
-              {p.label !== label ? ` · ${p.label}` : ''}
-              {isStringColourId(p.color) ? ` · ${tOffer(`colourName.${p.color}`)}` : ''}
-              {p.notes ? ` · ${p.notes}` : ''}
-            </span>
-            <button
-              type="button"
-              className="cc-btn cc-btn-ghost"
-              disabled={off}
-              onClick={() => props.onRemovePurchase?.(p.id)}
-              aria-label={t('shelf.sheet.removePurchase', { date: day(p.date) })}
-              style={{ minWidth: 44, minHeight: 44, padding: 0, flex: '0 0 auto' }}
-            >
-              <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>delete_outline</span>
-            </button>
-          </li>
-        ))}
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }} className="flex flex-col gap-2">
+        {purchases.map((p) => {
+          const sub = [
+            day(p.date),
+            isStringColourId(p.color) ? tOffer(`colourName.${p.color}`) : null,
+            p.label !== label ? p.label : null,
+            p.notes || null,
+          ].filter(Boolean).join(' · ');
+          const menuOpen = menuFor === p.id;
+          return (
+            <li key={p.id} className="bpm-inner-row">
+              <ListRow
+                leading={<span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>inventory_2</span>}
+                title={
+                  <span className="fs-md" style={{ color: 'var(--text-primary)' }}>
+                    {t(p.unit === 'set' ? 'shelf.sheet.purchaseSets' : 'shelf.sheet.purchaseReels', {
+                      units: p.units,
+                      metres: p.metresPerUnit,
+                      cost: money(p.totalCostCents),
+                    })}
+                  </span>
+                }
+                subtitle={<span style={{ overflowWrap: 'anywhere' }}>{sub}</span>}
+                trailing={
+                  menuOpen ? (
+                    <span className="motion-fade" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', flex: '0 0 auto' }}>
+                      <button
+                        type="button"
+                        className="cc-btn cc-btn-danger"
+                        disabled={off}
+                        onClick={() => {
+                          setMenuFor(null);
+                          setSaving(false);
+                          props.onRemovePurchase?.(p.id);
+                        }}
+                        aria-label={t('shelf.sheet.removePurchase', { date: day(p.date) })}
+                      >
+                        {t('shelf.sheet.purchaseDelete')}
+                      </button>
+                      <button
+                        type="button"
+                        className="sheet-close-btn"
+                        onClick={() => setMenuFor(null)}
+                        aria-label={t('actions.close')}
+                      >
+                        <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>close</span>
+                      </button>
+                    </span>
+                  ) : (
+                    // The sheet header's bare icon button: a glyph, no outline.
+                    <button
+                      type="button"
+                      className="sheet-close-btn"
+                      disabled={off}
+                      onClick={() => setMenuFor(p.id)}
+                      aria-label={t('shelf.sheet.purchaseMore', { date: day(p.date) })}
+                      aria-expanded={false}
+                      style={{ opacity: off ? 0.5 : 1 }}
+                    >
+                      <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>more_horiz</span>
+                    </button>
+                  )
+                }
+              />
+            </li>
+          );
+        })}
       </ul>
     );
-
-  const heading = (
-    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
-  );
 
   if (mode !== 'offered') {
     const offered = props.offered ?? [];
     return (
       <BottomSheet open={open} onClose={onClose} ariaLabel={label}>
-        <BottomSheetHeader onClose={onClose} closeLabel={t('actions.close')}>{heading}</BottomSheetHeader>
+        <BottomSheetHeader onClose={onClose} closeLabel={t('actions.close')}>
+          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
+        </BottomSheetHeader>
         <BottomSheetBody>
           <div className="flex flex-col gap-4">
             {errorLine}
@@ -191,141 +302,230 @@ export default function StringShelfSheet(props: Props) {
   const linkedId = props.linkedId ?? null;
   const catalogReady = props.catalogState === 'ready';
   const suggestions = linkedId || !catalogReady ? [] : matches(props.catalog ?? [], query.trim() || label);
+  const type = stringTypeOf(props.linked ?? null);
+  const colourNames = colourDraft.map((id) => tOffer(`colourName.${id}`)).join(', ');
+
+  // ── The colour picker: a second step of the same sheet. What is picked is
+  //    held here until Save, like every other edit. ──
+  if (step === 'colours') {
+    const on = new Set(colourDraft);
+    return (
+      <BottomSheet open={open} onClose={onClose} ariaLabel={t('shelf.sheet.colours')}>
+        <BottomSheetHeader>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0, flex: 1 }}>
+            <button
+              type="button"
+              className="sheet-close-btn"
+              onClick={() => setStep('main')}
+              aria-label={t('shelf.sheet.back')}
+              style={{ marginLeft: 'calc(-1 * var(--space-4))' }}
+            >
+              <span className="material-icons icon-lg" aria-hidden="true">chevron_left</span>
+            </button>
+            <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600, minWidth: 0 }}>{t('shelf.sheet.colours')}</span>
+          </span>
+          <span className="fs-sm" aria-live="polite" style={{ color: 'var(--text-muted)', flex: '0 0 auto' }}>
+            {t('shelf.sheet.picked', { count: colourDraft.length })}
+          </span>
+        </BottomSheetHeader>
+        <BottomSheetBody>
+          <div key="colours" className="motion-fade flex flex-col gap-4">
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.pickerHint')}</p>
+            <div role="group" aria-label={t('shelf.sheet.colours')} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--space-2)' }}>
+              {STRING_PALETTE.map((id) => {
+                const picked = on.has(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={picked}
+                    className="cc-choice"
+                    onClick={() => setColourDraft(STRING_PALETTE.filter((c) => (c === id ? !picked : on.has(c))))}
+                    style={{
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 'var(--space-2)',
+                      padding: 'var(--space-4) var(--space-1)',
+                      textAlign: 'center',
+                      color: picked ? 'var(--accent)' : 'var(--text-primary)',
+                      // Selected is a SOLID tint, never a ring (fill-only containers).
+                      ...(picked ? { background: 'var(--tone-green-bg)' } : {}),
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: 'relative',
+                        width: 'var(--space-8)',
+                        height: 'var(--space-8)',
+                        borderRadius: '50%',
+                        background: paletteFill(id),
+                        // A white swatch on a pale sheet needs an edge to be seen at all.
+                        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 30%, transparent)',
+                      }}
+                    >
+                      {picked && (
+                        <span
+                          className="material-icons icon-xs"
+                          style={{
+                            position: 'absolute',
+                            right: 'calc(-1 * var(--space-1))',
+                            bottom: 'calc(-1 * var(--space-1))',
+                            width: 'var(--space-6)',
+                            height: 'var(--space-6)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'var(--accent)',
+                            color: 'var(--on-accent)',
+                          }}
+                        >
+                          check
+                        </span>
+                      )}
+                    </span>
+                    <span className="fs-xs" style={{ fontWeight: picked ? 600 : 400, overflowWrap: 'anywhere' }}>{tOffer(`colourName.${id}`)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </BottomSheetBody>
+        <BottomSheetFooter>
+          <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }} onClick={() => setStep('main')}>
+            {t('shelf.sheet.done')}
+          </button>
+        </BottomSheetFooter>
+      </BottomSheet>
+    );
+  }
+
+  const margin = line && line.costPerSetCents !== null && typeof props.price === 'number'
+    ? props.price - line.costPerSetCents
+    : null;
+  const hasStock = !!line && line.purchases > 0;
+  const remainingPct = hasStock && line.purchasedMetres > 0
+    ? Math.max(0, Math.min(100, (line.remainingMetres / line.purchasedMetres) * 100))
+    : 0;
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={label}>
-      <BottomSheetHeader onClose={onClose} closeLabel={t('actions.close')}>{heading}</BottomSheetHeader>
+      <BottomSheetHeader onClose={onClose} closeLabel={t('actions.close')}>
+        {/* WHO IT IS — the packet, the name, and the catalog match in place of
+            a "Catalog" section of its own. */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', minWidth: 0, flex: 1 }}>
+          {linkedId && stringPackSrc(linkedId) ? (
+            <StringPackImage catalogId={linkedId} size="row" />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="string-pack-row"
+              style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-md)', background: 'var(--inner-card-bg)', color: 'var(--text-muted)' }}
+            >
+              <span className="material-icons icon-md">inventory_2</span>
+            </span>
+          )}
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)', minWidth: 0 }}>
+            <span className="bpm-h2" style={{ overflowWrap: 'anywhere', color: 'var(--text-primary)' }}>{label}</span>
+            {/* "Matched" comes from the STORED link. The catalog row only adds
+                its name: a catalog still loading, or one that failed, must not
+                read as "not matched" and offer a search that overwrites it. */}
+            {linkedId ? (
+              <span data-testid="shelf-catalog-line" className="fs-sm" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--text-secondary)' }}>
+                <span className="material-icons icon-xs" role="img" aria-label={t('shelf.sheet.matched')} style={{ color: 'var(--accent)' }}>check</span>
+                <span style={{ minWidth: 0 }}>
+                  {props.linked
+                    ? [catalogLabel(props.linked), type ? tOffer(`hero_${type}`) : null].filter(Boolean).join(' · ')
+                    : t('shelf.sheet.linkedUnknown')}
+                </span>
+              </span>
+            ) : (
+              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+                {props.catalogState === 'failed' ? t('shelf.sheet.catalogError') : t('shelf.sheet.notLinked')}
+              </span>
+            )}
+          </span>
+        </span>
+      </BottomSheetHeader>
       <BottomSheetBody>
-        <div className="flex flex-col gap-5">
-          {errorLine}
-          {/* NAME — what the shelf, the request form and the bench call it.
-              Renaming keeps its price, link, colours and stock: jobs and
-              purchases under the old name go on counting as this string. */}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="shelf-name" className="section-label-muted">{t('shelf.sheet.name')}</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+        <div key="main" className="motion-fade flex flex-col gap-6">
+          {/* MATCH IT — only while it is not matched: the catalog search, small, under the header. */}
+          {!linkedId && props.catalogState !== 'failed' && (
+            <div className="flex flex-col gap-2">
               <input
-                id="shelf-name"
                 type="text"
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && nameChanged && nameOk && !off) {
-                    e.preventDefault();
-                    props.onRename?.(nameTrim);
-                  }
-                }}
-                maxLength={MAX_LABEL_LEN}
-                style={{ flex: 1, minWidth: 0 }}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('shelf.sheet.linkSearch')}
+                aria-label={t('shelf.sheet.linkSearch')}
+                maxLength={60}
+                disabled={!catalogReady}
               />
-              <button
-                type="button"
-                className="cc-btn cc-btn-secondary"
-                disabled={off || !nameChanged || !nameOk}
-                onClick={() => props.onRename?.(nameTrim)}
-              >
-                {t('shelf.sheet.nameSave')}
-              </button>
+              {suggestions.length > 0 && (
+                <div role="group" aria-label={t('strings.matches')} className="flex flex-col gap-2">
+                  {suggestions.map((i) => (
+                    <ListRow
+                      key={i.id}
+                      disabled={off}
+                      onClick={() => props.onLink?.(i)}
+                      title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{catalogLabel(i)}</span>}
+                      subtitle={typeof i.attributes?.gaugeMm === 'number' ? `${i.attributes.gaugeMm.toFixed(2)}mm` : undefined}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-            {nameError
-              ? <p className="field-error" role="alert">{nameError}</p>
-              : <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.nameHint')}</p>}
-          </div>
+          )}
 
-          {/* PRICE — what a player reads first. */}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="shelf-price" className="section-label-muted">{t('strings.price')}</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <MoneyInput
-                id="shelf-price"
-                value={priceDraft}
-                onChange={setPriceDraft}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && priceChanged && !off) {
-                    e.preventDefault();
-                    props.onSavePrice?.(parsed ?? null);
-                  }
-                }}
-                placeholder={t('strings.priceAsk')}
-                maxLength={7}
-              />
-              <button
-                type="button"
-                className="cc-btn cc-btn-secondary"
-                disabled={off || !priceChanged}
-                onClick={() => props.onSavePrice?.(parsed ?? null)}
-              >
-                {t('strings.priceSave')}
-              </button>
-            </div>
-            {parsed === undefined
-              ? <p className="field-error" role="alert">{t('shelf.sheet.priceInvalid')}</p>
-              : <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('strings.priceHint')}</p>}
-          </div>
-
-          {/* COLOURS — what is on the reel, shown to players on the Stringing
-              tab in place of the maker's list. */}
-          <div className="flex flex-col gap-2">
-            <span className="section-label-muted">{t('shelf.sheet.colours')}</span>
-            <ColourPicker value={colourDraft} onChange={setColourDraft} disabled={off} label={t('shelf.sheet.colours')} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-              <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.coloursHint')}</p>
-              <button
-                type="button"
-                className="cc-btn cc-btn-secondary"
-                disabled={off || !coloursChanged}
-                onClick={() => props.onSaveColours?.(colourDraft)}
-                style={{ flex: '0 0 auto' }}
-              >
-                {t('shelf.sheet.coloursSave')}
-              </button>
-            </div>
-          </div>
-
-          {/* NOTE — "Your stringer recommends" on the string's page (Grant,
-              2026-11-12: "yes the input field"). Emptied and saved, it is gone. */}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="shelf-note" className="section-label-muted">{t('shelf.sheet.note')}</label>
-            <textarea
-              id="shelf-note"
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              maxLength={MAX_NOTE_LEN}
-              rows={3}
-              placeholder={t('shelf.sheet.notePlaceholder')}
-              style={{ resize: 'vertical' }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-              <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.noteHint')}</p>
-              <button
-                type="button"
-                className="cc-btn cc-btn-secondary"
-                disabled={off || !noteChanged}
-                onClick={() => props.onSaveNote?.(noteDraft.trim())}
-                style={{ flex: '0 0 auto' }}
-              >
-                {t('shelf.sheet.noteSave')}
-              </button>
-            </div>
-          </div>
-
-          {/* STOCK — counted from jobs; the only thing logged here is a purchase. */}
-          <div className="flex flex-col gap-2">
-            <span className="section-label-muted">{t('shelf.sheet.stock')}</span>
-            {line && line.purchases > 0 ? (
+          {/* STOCK FIRST — counted from jobs; the only thing logged here is a purchase. */}
+          <section
+            data-testid="shelf-stock"
+            aria-label={t('shelf.sheet.stock')}
+            style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', padding: 'var(--space-5)', borderRadius: 'var(--radius-lg)', background: 'var(--tone-green-bg)' }}
+          >
+            {hasStock ? (
               <>
-                {/* The shelf row's words, the same face: a phrase, not a figure. */}
-                <span className="fs-md" style={{ color: 'var(--text-primary)' }}>
-                  {t('shelf.setsLeft', { count: line.remainingSets })}
-                </span>
-                <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
-                  {t('shelf.sheet.stockDetail', { remaining: line.remainingMetres, purchased: line.purchasedMetres, used: line.usedSets })}
-                  {line.costPerSetCents !== null ? ` · ${t('shelf.sheet.costPerSet', { cost: money(line.costPerSetCents) })}` : ''}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>{line.remainingSets}</span>
+                    <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('shelf.sheet.setsLeftLabel', { count: line.remainingSets })}</span>
+                  </span>
+                  <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                    {t('shelf.sheet.metresOf', { remaining: line.remainingMetres, purchased: line.purchasedMetres })}
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label={t('shelf.sheet.metresOf', { remaining: line.remainingMetres, purchased: line.purchasedMetres })}
+                  aria-valuemin={0}
+                  aria-valuemax={line.purchasedMetres}
+                  aria-valuenow={Math.max(0, line.remainingMetres)}
+                  style={{ position: 'relative', height: 'var(--space-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', background: 'color-mix(in srgb, var(--text-primary) 12%, transparent)' }}
+                >
+                  <span className="bpm-meter-fill" style={{ width: `${remainingPct}%`, background: 'var(--accent)' }} />
+                </div>
+                <div className="fs-sm" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {[
+                      t('shelf.sheet.usedOnly', { used: line.usedSets }),
+                      line.costPerSetCents !== null ? t('shelf.sheet.costsYou', { cost: money(line.costPerSetCents) }) : null,
+                    ].filter(Boolean).join(' · ')}
+                  </span>
+                  {/* What a set earns: said plainly either way, never in an alarm colour. */}
+                  {margin !== null && (
+                    <span style={{ fontWeight: 600, color: margin >= 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                      {margin >= 0
+                        ? t('shelf.sheet.margin', { amount: money(margin) })
+                        : t('shelf.sheet.marginLoss', { amount: money(-margin) })}
+                    </span>
+                  )}
+                </div>
                 {/* Per colour, once a purchase says one (docs/plans/string-stock-by-colour.md):
                     what the request sheet offers a member is read from these. */}
                 {(line.byColour?.length ?? 0) > 0 && (
-                  <ul style={{ listStyle: 'none', padding: 0 }} className="flex flex-col gap-1">
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }} className="flex flex-col gap-1">
                     {line.byColour.map((c) => (
                       <li key={c.color} className="fs-sm" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: c.remainingSets > 0 ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
                         <ColourDot id={c.color} size="sm" />
@@ -341,24 +541,102 @@ export default function StringShelfSheet(props: Props) {
                 )}
               </>
             ) : (
-              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+              <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>
                 {t('shelf.noStock')}
                 {line && line.usedSets > 0 ? ` · ${t('shelf.sheet.usedOnly', { used: line.usedSets })}` : ''}
               </span>
             )}
-            <div>
-              <button type="button" className="cc-btn cc-btn-secondary" disabled={off} onClick={() => props.onLogPurchase?.()}>
-                <span className="material-icons icon-sm" aria-hidden="true">add</span>
-                {t('shelf.sheet.logPurchase')}
+          </section>
+
+          {/* DETAILS — what the shelf, the request form and the bench call it,
+              what a player pays, and the stringer's word on it. Renaming keeps
+              its price, link, colours and stock: jobs and purchases under the
+              old name go on counting as this string. */}
+          <section className="flex flex-col gap-2" aria-labelledby="shelf-details">
+            <span id="shelf-details" className="section-label-muted">{t('shelf.sheet.details')}</span>
+            <FilledField id="shelf-name" label={t('shelf.sheet.name')} counter={`${nameDraft.length}/${MAX_LABEL_LEN}`}>
+              <input
+                id="shelf-name"
+                type="text"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={saveOnEnter}
+                maxLength={MAX_LABEL_LEN}
+              />
+            </FilledField>
+            <FilledField id="shelf-price" label={t('strings.price')}>
+              <MoneyInput
+                id="shelf-price"
+                value={priceDraft}
+                onChange={setPriceDraft}
+                onKeyDown={saveOnEnter}
+                placeholder={t('strings.priceAsk')}
+                maxLength={7}
+              />
+            </FilledField>
+            <FilledField id="shelf-note" label={t('shelf.sheet.note')} counter={`${noteDraft.length}/${MAX_NOTE_LEN}`}>
+              <textarea
+                id="shelf-note"
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                maxLength={MAX_NOTE_LEN}
+                rows={3}
+                placeholder={t('shelf.sheet.notePlaceholder')}
+              />
+            </FilledField>
+            {nameError ? (
+              <p className="field-error" role="alert">{nameError}</p>
+            ) : parsed === undefined ? (
+              <p className="field-error" role="alert">{t('shelf.sheet.priceInvalid')}</p>
+            ) : (
+              <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.renameHint')}</p>
+            )}
+          </section>
+
+          {/* ON THE REEL — what players pick from when they ask for a restring,
+              in place of the maker's list. Picked on a step of its own. */}
+          <section className="flex flex-col gap-2" aria-labelledby="shelf-reel">
+            <span id="shelf-reel" className="section-label-muted">{t('shelf.sheet.onTheReel')}</span>
+            <div className="bpm-inner-row">
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0 }}>
+                {colourDraft.length > 0 ? (
+                  <>
+                    <ColourDots ids={colourDraft} size="md" />
+                    <span className="fs-md" style={{ color: 'var(--text-primary)', minWidth: 0, overflowWrap: 'anywhere' }}>{colourNames}</span>
+                  </>
+                ) : (
+                  <span className="fs-md" style={{ color: 'var(--text-muted)' }}>{t('shelf.sheet.reelNone')}</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setStep('colours')}
+                aria-label={t('shelf.sheet.editColours')}
+                className="fs-md"
+                style={{ flex: '0 0 auto', minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' }}
+              >
+                {t('shelf.sheet.edit')}
               </button>
             </div>
+            <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.sheet.coloursHint')}</p>
+          </section>
+
+          {/* PURCHASES — each its own action, at once: delete behind ⋯, log a new one. */}
+          <section className="flex flex-col gap-2" aria-labelledby="shelf-purchases">
+            <span id="shelf-purchases" className="section-label-muted">{t('shelf.sheet.purchases')}</span>
             {purchaseList(purchases)}
-          </div>
+            <ListRow
+              onClick={() => props.onLogPurchase?.()}
+              disabled={off}
+              leading={<span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>add</span>}
+              title={<span className="fs-md" style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('shelf.sheet.logPurchase')}</span>}
+            />
+          </section>
 
           {/* OLD SPELLINGS counted as this string. */}
           {(props.aliasesHere ?? []).length > 0 && (
-            <div className="flex flex-col gap-2">
-              <span className="section-label-muted">{t('shelf.sheet.alsoCounts')}</span>
+            <section className="flex flex-col gap-2" aria-labelledby="shelf-aliases">
+              <span id="shelf-aliases" className="section-label-muted">{t('shelf.sheet.alsoCounts')}</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                 {(props.aliasesHere ?? []).map((from) => (
                   <span key={from} className="bpm-chip fs-sm" style={{ cursor: 'default' }}>
@@ -375,61 +653,26 @@ export default function StringShelfSheet(props: Props) {
                   </span>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
-          {/* CATALOG — a linked string gets its page on the Stringing tab. */}
-          <div className="flex flex-col gap-2">
-            <span className="section-label-muted">{t('shelf.sheet.catalog')}</span>
-            {/* "Matched" comes from the STORED link. The catalog row only adds
-                its name: a catalog still loading, or one that failed, must not
-                read as "not matched" and offer a search that overwrites it. */}
-            {linkedId ? (
-              <span className="fs-sm" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-secondary)' }}>
-                <span className="material-icons icon-xs" aria-hidden="true" style={{ color: 'var(--accent)' }}>check</span>
-                {props.linked ? t('shelf.sheet.linkedAs', { name: catalogLabel(props.linked) }) : t('shelf.sheet.linkedUnknown')}
-              </span>
-            ) : props.catalogState === 'failed' ? (
-              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('shelf.sheet.catalogError')}</span>
-            ) : (
-              <>
-                <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('shelf.sheet.notLinked')}</span>
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={t('shelf.sheet.linkSearch')}
-                  aria-label={t('shelf.sheet.linkSearch')}
-                  maxLength={60}
-                  disabled={!catalogReady}
-                />
-                {suggestions.length > 0 && (
-                  <div role="group" aria-label={t('strings.matches')} className="flex flex-col gap-2">
-                    {suggestions.map((i) => (
-                      <ListRow
-                        key={i.id}
-                        disabled={off}
-                        onClick={() => props.onLink?.(i)}
-                        title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{catalogLabel(i)}</span>}
-                        subtitle={typeof i.attributes?.gaugeMm === 'number' ? `${i.attributes.gaugeMm.toFixed(2)}mm` : undefined}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* REMOVE — last, and two taps: the price and links go with it. */}
+          {/* REMOVE — last, quiet, and two taps: the price and links go with it. */}
           {!confirmingRemove ? (
-            <ActionRow
-              icon="delete_outline"
-              label={t('shelf.sheet.remove')}
-              hint={t('shelf.sheet.removeHint')}
-              disabled={off}
-              destructive
-              onClick={() => setConfirmingRemove(true)}
-            />
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="link-quiet"
+                disabled={off}
+                onClick={() => {
+                  setSaving(false);
+                  setConfirmingRemove(true);
+                }}
+                style={{ gap: 'var(--space-2)', textDecoration: 'none', color: 'var(--sev-crit-text)', fontWeight: 600 }}
+              >
+                <span className="material-icons icon-sm" aria-hidden="true">delete_outline</span>
+                {t('shelf.sheet.remove')}
+              </button>
+            </div>
           ) : (
             <div className="motion-fade flex flex-col gap-3">
               <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
@@ -447,6 +690,12 @@ export default function StringShelfSheet(props: Props) {
           )}
         </div>
       </BottomSheetBody>
+      <BottomSheetFooter className="flex flex-col gap-3">
+        {errorLine}
+        <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }} disabled={!canSave} onClick={save}>
+          {busy && saving ? t('shelf.sheet.saving') : t('shelf.sheet.save')}
+        </button>
+      </BottomSheetFooter>
     </BottomSheet>
   );
 }

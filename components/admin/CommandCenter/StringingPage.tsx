@@ -13,7 +13,8 @@ import { dueFor, todayIso } from '@/lib/stringingDue';
 import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
 import { fmtMoney } from '@/lib/fmt';
 import { STRINGING_FLOW, isWalkUpJob, type StringingStatus } from '@/lib/stringing';
-import JobCard, { nextStatusOf } from '@/components/stringing/JobCard';
+import JobCard, { JobsHeading, nextStatusOf } from '@/components/stringing/JobCard';
+import { toPlayerPendingEdit } from '@/lib/stringingPendingEdit';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import type { StringingJob } from '@/lib/types';
@@ -375,7 +376,11 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
     // archive, where the whole risk is money quietly going out of sight.
     const owed = isBillable(job) ? (job.priceCents ?? 0) / 100 : null;
-    const next = inArchive ? null : nextStatusOf(job.status, STRINGING_FLOW);
+    /* Waiting on the player (a proposed change they have not answered): no
+       next step, as on the stringer's card — "Mark strung" here would string
+       the racket the player has not agreed to. */
+    const waiting = !!job.pendingEdit;
+    const next = inArchive || waiting ? null : nextStatusOf(job.status, STRINGING_FLOW);
 
     return (
       <SwipeRow
@@ -405,6 +410,13 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           pinned={pinned}
           owed={inArchive ? owed : null}
           waitingDays={!inArchive && isWaitingTooLong(job) ? waitingDays(job) : null}
+          /* The player's own diff (racket, string, tension); the card's line
+             never reads its price. */
+          pendingChange={waiting ? toPlayerPendingEdit(job) : null}
+          /* Its own card on the bench, in the stringer's card style (the
+             canvas, 2026-11-12); still the inner tint inside the archive's
+             list card. */
+          surface={inArchive ? 'inner' : 'card'}
           onOpen={() => openJob(job, inArchive)}
           open={!inArchive && asideJob?.id === job.id}
           openLabel={t('actions.open')}
@@ -685,11 +697,87 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
 
   const shopState = shopReadFailed ? 'unknown' : shopOpen === null ? 'checking' : shopOpen ? 'open' : 'closed';
   /* A closed shop over a bench KNOWN to be empty says both in one card, so the
-     "Nothing on the bench." line under it is not shown as well. Only the ALL
-     list can say the bench is empty: "Mine" being empty says nothing about
-     the other stringers' jobs. */
+     list's heading and its "Nothing on the bench." are not shown as well. Only
+     the ALL list can say the bench is empty: "Mine" being empty says nothing
+     about the other stringers' jobs. */
   const closedAndEmpty =
     shopState === 'closed' && !loadError && !mine && jobs !== null && jobs.length === 0;
+  // "5 open · 1 late" — late by the same rule each card's due line uses, so
+  // the count and the red lines under it always agree.
+  const jobsSummary = (() => {
+    if (!jobs || jobs.length === 0) return undefined;
+    const late = jobs.filter((j) => dueFor(j, today).key === 'overdue').length;
+    return late > 0 ? t('jobsSummaryLate', { open: jobs.length, late }) : t('jobsSummary', { open: jobs.length });
+  })();
+  const chevron = <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>;
+  const toggleError = shopToggleError && <p className="field-error" role="alert">{t('shop.toggleError')}</p>;
+
+  /* The shop's own row, last under the list (the canvas, 2026-11-12; Grant on
+     the old sign: "Move to below"). Open: "Close shop", in the same quiet row
+     as Archived and set-up. Being read: a skeleton the row's size, never a
+     guessed button. Unreadable: says so, with the way to read it again — no
+     toggle, because there is nothing to flip FROM. Closed: nothing here, the
+     closed card at the top carries "Open shop". */
+  const shopRow = (() => {
+    if (shopState === 'open') {
+      return (
+        <ListRow
+          onClick={() => void toggleShop()}
+          disabled={shopBusy || !online || shopOpen === null}
+          ariaLabel={t('shop.closeCta')}
+          leading={<span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>bedtime</span>}
+          title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{t('shop.closeCta')}</span>}
+          subtitle={t('shop.closeHint')}
+          trailing={chevron}
+        />
+      );
+    }
+    if (shopState === 'checking') {
+      return (
+        <div
+          data-state="checking"
+          role="status"
+          aria-label={t('shop.checking')}
+          className="cc-mini-card"
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}
+        >
+          <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>storefront</span>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }} aria-hidden="true">
+            <div className="shimmer-line rounded-lg" style={{ height: 12, width: '45%' }} />
+            <div className="shimmer-line rounded-lg" style={{ height: 12, width: '75%', animationDelay: '120ms' }} />
+          </div>
+        </div>
+      );
+    }
+    if (shopState === 'unknown') {
+      return (
+        <div
+          data-state="unknown"
+          className="cc-mini-card"
+          style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}
+        >
+          <ListRow
+            leading={<span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--sev-crit-text)' }}>error</span>}
+            title={<span className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('shop.unknown')}</span>}
+            subtitle={
+              <>
+                {t('shop.unknownHint')}{' '}
+                <StateLink
+                  onClick={() => {
+                    setShopReadFailed(false);
+                    setShopAttempt((n) => n + 1);
+                  }}
+                >
+                  {t('retry')}
+                </StateLink>
+              </>
+            }
+          />
+        </div>
+      );
+    }
+    return null;
+  })();
 
   return (
     // Returning to the bench from a job, the archive or intake: it fades back
@@ -701,128 +789,51 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           screens 362px wide against the app's 394 — visibly narrower than the
           Command Center they are opened from, and than Birds next to them. */}
       <div className="flex flex-col gap-4 pb-6">
-        {/* The shop sign: a status LINE, not a card (docs/plans/bench-redesign.md).
-            As a green glass card it was the heaviest thing on a page named for
-            the jobs under it. Still first — closing is the most consequential
-            thing on this screen — but quiet. Separate from
+        {/* CLOSED is a card, first (Grant, 2026-11-12, on the design canvas:
+            "Follow design system"): the player's closed-shop card — same
+            header, the muted badge, the standing bedtime state — with "Open
+            shop" as the state's one action under it. Separate from
             NEXT_PUBLIC_FLAG_STRINGING on purpose: that says whether this code
-            exists, this says whether Grant is taking rackets this week.
-            Closing does NOT stop the bench. The icon carries the state as well
-            as the colour, never colour alone.
-            CLOSED is the exception, and a card (Grant, 2026-11-12, on the
-            design canvas: "Follow design system"): the player's closed-shop
-            card — same header, the muted "Closed" badge, the standing bedtime
-            state — with "Open shop" as the state's one action under it. */}
-        {(() => {
-          const state = shopState;
-          if (state === 'closed') {
-            return (
-              <section
-                data-state="closed"
-                className="glass-card p-5 space-y-3"
-                aria-label={tPlayer('title')}
-              >
-                {/* The player card's own header words: the same service, by
-                    the same name, on both sides of the counter. */}
-                <CardHeader
-                  compact
-                  icon="grid_4x4"
-                  title={tPlayer('title')}
-                  badge={<StatusBadge variant="muted">{tPlayer('soon')}</StatusBadge>}
-                />
-                <EmptyState
-                  icon="bedtime"
-                  title={closedAndEmpty ? t('shop.closedTitleEmpty') : t('shop.closedTitle')}
-                  action={
-                    <button
-                      type="button"
-                      onClick={toggleShop}
-                      disabled={shopBusy || !online || shopOpen === null}
-                      className="cc-btn cc-btn-secondary"
-                    >
-                      {t('shop.openCta')}
-                    </button>
-                  }
-                >
-                  {/* Until the list says it is empty, jobs may be on it, and
-                      closing never touches them — keep saying so. */}
-                  {closedAndEmpty ? t('shop.closedBody') : t('shop.closedBodyJobs')}
-                </EmptyState>
-              </section>
-            );
-          }
-          const icon = { unknown: 'error', checking: 'storefront', open: 'check_circle' }[state];
-          // Accent on this page is "Add job"'s. The icon carries the state.
-          const ink = {
-            unknown: 'var(--sev-crit-text)',
-            checking: 'var(--text-muted)',
-            open: 'var(--text-secondary)',
-          }[state];
-          if (state === 'checking') {
-            // A skeleton the row's size while the sign is read: no guessed
-            // "Open shop" button, and no "Checking…" line standing in for it.
-            return (
-              <div
-                data-state="checking"
-                role="status"
-                aria-label={t('shop.checking')}
-                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-1) 0', minHeight: 44 }}
-              >
-                <span className="material-icons icon-md" aria-hidden="true" style={{ color: ink }}>{icon}</span>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }} aria-hidden="true">
-                  <div className="shimmer-line rounded-lg" style={{ height: 12, width: '45%' }} />
-                  <div className="shimmer-line rounded-lg" style={{ height: 12, width: '75%', animationDelay: '120ms' }} />
-                </div>
-              </div>
-            );
-          }
-          return (
-            <div
-              data-state={state}
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-1) 0' }}
-            >
-              <span className="material-icons icon-md" aria-hidden="true" style={{ color: ink }}>{icon}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {state === 'unknown' ? t('shop.unknown') : t('shop.open')}
-                </div>
-                <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
-                  {state === 'unknown' ? (
-                    <>
-                      {t('shop.unknownHint')}{' '}
-                      <StateLink
-                        onClick={() => {
-                          setShopReadFailed(false);
-                          setShopAttempt((n) => n + 1);
-                        }}
-                      >
-                        {t('retry')}
-                      </StateLink>
-                    </>
-                  ) : (
-                    t('shop.openHint')
-                  )}
-                </p>
-              </div>
-              {/* No toggle on a sign that could not be read: there is nothing to
-                  flip FROM, and a greyed Open beside "Try again" is two controls
-                  where one is the answer. */}
-              {state !== 'unknown' && (
+            exists, this says whether the club is taking rackets this week.
+            Closing does NOT stop the bench. An OPEN shop has no row up here
+            any more (the canvas, 2026-11-12; Grant: "Delete"): it is the
+            small pill beside the list's heading, and "Close shop" is the last
+            row on the page. */}
+        {shopState === 'closed' && (
+          <section
+            data-state="closed"
+            className="glass-card p-5 space-y-3"
+            aria-label={tPlayer('title')}
+          >
+            {/* The player card's own header words: the same service, by the
+                same name, on both sides of the counter. */}
+            <CardHeader
+              compact
+              icon="grid_4x4"
+              title={tPlayer('title')}
+              badge={<StatusBadge variant="muted">{tPlayer('soon')}</StatusBadge>}
+            />
+            <EmptyState
+              icon="bedtime"
+              title={closedAndEmpty ? t('shop.closedTitleEmpty') : t('shop.closedTitle')}
+              action={
                 <button
                   type="button"
                   onClick={toggleShop}
                   disabled={shopBusy || !online || shopOpen === null}
                   className="cc-btn cc-btn-secondary"
-                  style={{ flex: '0 0 auto' }}
                 >
-                  {shopOpen ? t('shop.closeCta') : t('shop.openCta')}
+                  {t('shop.openCta')}
                 </button>
-              )}
-            </div>
-          );
-        })()}
-
-        {shopToggleError && <p className="field-error" role="alert">{t('shop.toggleError')}</p>}
+              }
+            >
+              {/* Until the list says it is empty, jobs may be on it, and
+                  closing never touches them — keep saying so. */}
+              {closedAndEmpty ? t('shop.closedBody') : t('shop.closedBodyJobs')}
+            </EmptyState>
+          </section>
+        )}
+        {shopState === 'closed' && toggleError}
 
         {/* Mine / All, only with two or more stringers (see `multiStringer`).
             The same switch as the tab's registers, which marks the current
@@ -837,38 +848,64 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           />
         )}
 
-        {loadError && (
-          <ErrorState
-            message={t('loadError')}
-            action={
-              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
-                {t('retry')}
-              </button>
-            }
-          />
-        )}
-        {!loadError && jobs === null && <AdminPageSkeleton />}
-        {/* Not under a closed sign that already said the bench is empty. */}
-        {!loadError && jobs !== null && jobs.length === 0 && !closedAndEmpty && (
-          <EmptyState icon="sports_tennis">{mine ? t('emptyMine') : t('empty')}</EmptyState>
-        )}
-
-        {/* ONE card holding a card per racket (the canvas, 2026-10-28; Grant:
-            "clean up this card"), with the count and what is late in its
-            header — the line a bench is scanned for. */}
-        {jobs !== null && jobs.length > 0 && (
-          <section className="glass-card p-5 flex flex-col gap-3" aria-label={t('jobsTitle')}>
-            <CardHeader
-              compact
-              icon="sports_tennis"
+        {/* NO OUTER CARD (the canvas, 2026-11-12; Grant: "the card needs to be
+            updated"), the stringer's list's shape (StringerJobsCard): a plain
+            heading with the count — and here the shop's state beside it — over
+            one card per racket on the tab's ground. The error and the empty
+            answer sit under the same heading in a card of their own, so the
+            section reads the same in every state. */}
+        {!closedAndEmpty && (
+          <section className="flex flex-col gap-3" aria-label={t('jobsTitle')}>
+            <JobsHeading
               title={t('jobsTitle')}
-              subtitle={(() => {
-                const late = jobs.filter((j) => dueFor(j, today).key === 'overdue').length;
-                return late > 0 ? t('jobsSummaryLate', { open: jobs.length, late }) : t('jobsSummary', { open: jobs.length });
-              })()}
+              subtitle={loadError ? undefined : jobsSummary}
+              trailing={
+                shopState === 'open' ? (
+                  <span data-state="open">
+                    <StatusBadge variant="muted">
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          display: 'inline-block',
+                          width: 'var(--space-2)',
+                          height: 'var(--space-2)',
+                          marginRight: 'var(--space-2)',
+                          borderRadius: 'var(--radius-pill)',
+                          background: 'var(--pill-paid-text)',
+                          verticalAlign: 'middle',
+                        }}
+                      />
+                      <span aria-hidden="true">{t('shop.open')}</span>
+                      <span className="sr-only">{t('shop.openSr')}</span>
+                    </StatusBadge>
+                  </span>
+                ) : undefined
+              }
             />
             {moveError && <p className="field-error" role="alert">{t('actions.error')}</p>}
-            {jobs.map((job) => renderJob(job, false))}
+            {loadError && (
+              <div className="glass-card">
+                <ErrorState
+                  message={t('loadError')}
+                  action={
+                    <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+                      {t('retry')}
+                    </button>
+                  }
+                />
+              </div>
+            )}
+            {!loadError && jobs === null && <AdminPageSkeleton />}
+            {!loadError && jobs !== null && jobs.length === 0 && (
+              <div className="glass-card">
+                <EmptyState icon="sports_tennis">{mine ? t('emptyMine') : t('empty')}</EmptyState>
+              </div>
+            )}
+            {jobs !== null && jobs.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                {jobs.map((job) => renderJob(job, false))}
+              </div>
+            )}
           </section>
         )}
 
@@ -886,10 +923,11 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           {t('addJob')}
         </button>
 
-        {/* The two ways off the bench, as quiet rows with a chevron — not a
-            full-width outlined button and a section eyebrow. The archive row
-            is ALWAYS rendered, even at zero and even when its count is
-            unknown: the one thing an archive must never become is unreachable. */}
+        {/* The ways off the bench, and the shop's own switch, as quiet rows
+            with a chevron — not a full-width outlined button and a section
+            eyebrow. The archive row is ALWAYS rendered, even at zero and even
+            when its count is unknown: the one thing an archive must never
+            become is unreachable. */}
         <div className="flex flex-col gap-2" style={{ paddingTop: 'var(--space-2)' }}>
           <ListRow
             onClick={() => setView('archive')}
@@ -908,8 +946,10 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             ariaLabel={t('setupRow')}
             leading={<span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>tune</span>}
             title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{t('setupRow')}</span>}
-            trailing={<span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>}
+            trailing={chevron}
           />
+          {shopRow}
+          {shopState !== 'closed' && toggleError}
         </div>
       </div>
       {/* The right page on a foldable: the open job, or its place while the

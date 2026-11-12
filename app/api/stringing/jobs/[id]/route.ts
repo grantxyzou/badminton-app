@@ -21,13 +21,14 @@ import { canStringIn, stringerIn } from '@/lib/roster';
 import { isAdminAuthedWithMember, verifyLiveMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW, PROPOSAL_REASON_MAX, isWalkUpJob } from '@/lib/stringing';
+import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW, PROPOSAL_REASON_MAX, isWalkUpJob, walkUpEmailOf } from '@/lib/stringing';
+import { emailWalkUp } from '@/lib/stringingWalkUpEmail';
 import { notifyStringerOfAssignment } from '@/lib/stringingRequestNotify';
 import { isArchived } from '@/lib/stringingOrder';
 import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirror';
 import { recordStringUse, usesASet } from '@/lib/stringStock';
 import { forgetShelfExtras } from '@/lib/stringShelfRead';
-import type { StringingJob, PendingEdit } from '@/lib/types';
+import type { StringingJob, PendingEdit, WalkUpEmailStamp } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -189,6 +190,29 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
           return NextResponse.json({ error: 'forbidden_field' }, { status: 403 });
         }
       }
+    }
+
+    /* "SEND AGAIN" for a walk-up's spec email (2026-11-12). Admin only — a
+       stringer's body allows `status` alone and was refused above — and only
+       when the spec email is FAILED or MISSING: one that went is never sent
+       twice. The tap claims the send first, under the job's etag, so two taps
+       at once send one email (the second answers 409 `changed_elsewhere`).
+       Nothing else may ride in the same body. */
+    if (body.resendSpecEmail !== undefined) {
+      if (!admin.authed) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      if (body.resendSpecEmail !== true || Object.keys(body).some((k) => k !== 'memberId' && k !== 'resendSpecEmail')) {
+        return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+      }
+      if (!walkUpEmailOf(job)) return NextResponse.json({ error: 'no_email' }, { status: 409 });
+      if (job.walkUpEmails?.spec?.ok === true) return NextResponse.json({ error: 'already_sent' }, { status: 409 });
+      const claimed = await scope.replace<StringingJob>(
+        'stringingJobs',
+        { ...job, walkUpEmails: { ...job.walkUpEmails, spec: { at: new Date().toISOString(), ok: false } } },
+        memberId,
+      );
+      if (!claimed) return NextResponse.json({ error: 'changed_elsewhere' }, { status: 409 });
+      const spec = await emailWalkUp(scope, claimed, 'spec');
+      return NextResponse.json({ job: { ...job, walkUpEmails: { ...job.walkUpEmails, ...(spec ? { spec } : {}) } } });
     }
 
     const now = new Date().toISOString();
@@ -453,6 +477,23 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       await notifyPlayerOfStage(next);
     }
 
+    /* A walk-up with an EMAIL hears that it is READY, once (2026-11-12; Grant:
+       "yes" to a second email). The same forward-only test as the notice
+       above — an undo to `strung` and back is not news twice — and never
+       again once a ready email has gone (`walkUpEmails.ready.ok`). The status
+       write above is etag-conditional, so two taps cannot both make this
+       move. After the job's own write, stamped, never able to fail the tap. */
+    let readyStamp: WalkUpEmailStamp | null = null;
+    if (
+      next.status === 'ready' &&
+      job.status !== 'ready' &&
+      STRINGING_FLOW.indexOf('ready') > STRINGING_FLOW.indexOf(job.status) &&
+      walkUpEmailOf(job) &&
+      job.walkUpEmails?.ready?.ok !== true
+    ) {
+      readyStamp = await emailWalkUp(scope, written, 'ready');
+    }
+
     /* A stringer hears when a job becomes THEIRS. Their card shows only jobs
        assigned to them, so assignment is the moment a request is something
        they can act on (docs/plans/stringing-audit-fixes.md: the request push
@@ -473,7 +514,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       await notifyPlayerOfPendingEdit(next);
     }
 
-    return NextResponse.json({ job: next });
+    return NextResponse.json({
+      job: readyStamp ? { ...next, walkUpEmails: { ...next.walkUpEmails, ready: readyStamp } } : next,
+    });
   } catch (err) {
     console.error(`PATCH /api/stringing/jobs/${id} failed:`, err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });

@@ -126,6 +126,31 @@ export async function shareOrSaveImage(
   return downloadBlob(blob, filename);
 }
 
+/**
+ * SAVE, not share: the "Save image" button beside a "Share" (the walk-up's
+ * stringing receipt, 2026-11-12). Same honesty rules as above — a real file
+ * download only where one works (desktop, Android browser), the long-press
+ * hint on iOS, where `a.download` is dropped silently, and the native share
+ * sheet in the store app, whose "Save Image" row is the platform's own save
+ * (Android's WebView has no download at all).
+ */
+export async function saveImage(
+  canvas: HTMLCanvasElement | null,
+  filename = 'bpm-receipt.png',
+): Promise<ShareImageOutcome> {
+  if (isNative()) return shareOrSaveImage(canvas, filename);
+  if (!canvas) return { kind: 'error', message: 'Couldn’t generate the image — try again.' };
+  let blob: Blob | null;
+  try {
+    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  } catch {
+    blob = null;
+  }
+  if (!blob) return { kind: 'error', message: 'Couldn’t generate the image — try again.' };
+  if (isIOS()) return { kind: 'manual-save' };
+  return downloadBlob(blob, filename);
+}
+
 /** Capacitor's Filesystem takes base64 (no data: prefix) for binary writes. */
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {

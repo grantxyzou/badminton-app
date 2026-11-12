@@ -55,12 +55,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('the bench card', () => {
-  it('holds every racket in ONE card, its header counting what is open and late', async () => {
+describe('the bench list', () => {
+  it('lists every racket under one heading counting what is open and late', async () => {
+    // No outer card since 2026-11-12 (the canvas): the heading is plain and
+    // each racket is its own card — StringingBench.test.tsx pins the shape.
     const late = { ...base, id: 'job-2', jobNo: 'J-0003', racketLabel: 'Astrox 100ZZ', status: 'received', readyBy: '2026-01-01' } as StringingJob;
     respond([base, late]);
     wrap(<StringingPage onBack={() => {}} />);
     const card = await screen.findByRole('region', { name: 'Stringing jobs' });
+    expect(card.className).not.toContain('glass-card');
     expect(within(card).getByText('2 open · 1 late')).toBeDefined();
     expect(within(card).getByText('Arcsaber 11 Pro')).toBeDefined();
     expect(within(card).getAllByText('Exbolt 63 · 27/29 lb · for Kento')).toHaveLength(2);

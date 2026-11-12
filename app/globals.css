@@ -5281,6 +5281,46 @@ button.sheet-row { cursor: pointer; }
   background: var(--inner-card-bg);
 }
 
+/* A filled field with its label INSIDE it (the bench's "A string on the
+   shelf", 2026-11-12): the inner-row material, a small label (and counter)
+   over the value, no stroke. The field inside is flattened to the fill; focus
+   rings the whole box, since the field's own ring would sit inside it.
+   `html:root` outranks `html:root .bottom-sheet input` and the focus rules. */
+.bpm-field-filled {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-05);
+  padding-top: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid transparent;
+  transition: box-shadow var(--duration-fast) var(--ease-glass);
+}
+.bpm-field-filled:focus-within {
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+.bpm-field-filled-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+html:root .bpm-field-filled input,
+html:root .bpm-field-filled textarea,
+html:root .bpm-field-filled input:focus,
+html:root .bpm-field-filled textarea:focus {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  padding: var(--space-1) var(--space-4) var(--space-3);
+}
+
 /* A segment of the widget-style progress bar (the request sheet's Sent
    screen): a short pill per stage, lit once reached. */
 .bpm-seg {
@@ -5323,11 +5363,23 @@ button.sheet-row { cursor: pointer; }
 .bpm-job-card--waiting {
   background: var(--tone-amber-bg);
 }
+/* On the admin bench a job is a glass card of its own (2026-11-12, the
+   stringer's card style), and the card material `html:root .glass-card`
+   (0,2,1) outranks the tint above. The same amber laid OVER the material:
+   still a fill, still no rim. */
+html:root .glass-card.bpm-job-card--waiting {
+  background: linear-gradient(var(--tone-amber-bg), var(--tone-amber-bg)), var(--fcard-bg);
+}
+
 /* The job open on a foldable's right page (Stringing, docs/plans/foldable-layout.md):
    the accent's tint, solid, as a selected tile is. Never drawn on one screen,
    where nothing stays open beside the list. */
 .bpm-job-card--open {
   background: var(--tone-green-bg);
+}
+/* The same on the bench's own glass card, which outranks the bare class. */
+html:root .glass-card.bpm-job-card--open {
+  background: linear-gradient(var(--tone-green-bg), var(--tone-green-bg)), var(--fcard-bg);
 }
 
 /* Warn — the one answer an amber banner asks for ("Review the change"). SOLID,

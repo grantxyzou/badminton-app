@@ -11,6 +11,7 @@ import Collapse from '@/components/primitives/Collapse';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import MoneyInput from '@/components/primitives/MoneyInput';
 import ErrorState from '@/components/primitives/ErrorState';
+import StringingWalkUpSendCard from './StringingWalkUpSendCard';
 import { useOnline } from '@/lib/useOnline';
 import { formatReadyBy } from '@/lib/stringingDue';
 import { STRINGING_FLOW, PROPOSAL_REASON_MAX, formatPriceExact, playerStageFor, isWalkUpJob } from '@/lib/stringing';
@@ -480,6 +481,11 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             ))}
           </div>
         </div>
+
+        {/* A walk-up has no app (2026-11-12): what reaches them, and the
+            receipt to hand over. Its own component; the contact is shown to
+            the stringer only, never drawn on the receipt. */}
+        {walkUp && <StringingWalkUpSendCard job={local} onJobChange={(j) => { setLocal(j); onChanged(); }} />}
 
         {/* ONE CARD: the price, and the way to change it.
             These were two — a green "Your price" card and a plain "Change this
