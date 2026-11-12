@@ -76,7 +76,10 @@ export default function StatsV2Shell({
   return (
     <StatsTakeoverContext.Provider value={setTakeover}>
     <StatsRegisterContext.Provider value={setView}>
-    <div className="space-y-5 w-full">
+    {/* `stats-shell*` classes do nothing on one screen; on an unfolded phone they
+        put the overview on the left page and the switch and register on the
+        right (globals.css, the pane block; Grant, 2026-11-12, candidate 1). */}
+    <div className="space-y-5 w-full stats-shell">
       {/* PageHeader must stay a direct child of the tall scroll root or its
           `position: sticky` un-sticks. Subhead is pinned tight to the title
           with an inline marginTop that beats the space-y-5 gap. */}
@@ -92,14 +95,16 @@ export default function StatsV2Shell({
 
       {/* The switch Stringing shares (RegisterSwitch), so the two can't drift. */}
       {!takeover && (
-        <RegisterSwitch views={VIEWS} value={view} onChange={setView} label={(id) => t(`registers.${id}`)} ariaLabel={t('heading')} />
+        <div className="stats-shell-switch">
+          <RegisterSwitch views={VIEWS} value={view} onChange={setView} label={(id) => t(`registers.${id}`)} ariaLabel={t('heading')} />
+        </div>
       )}
 
       {/* Keyed by view so a register switch remounts its content, and the
           remount crossfades (opacity only — the register moves nowhere, it is
           replaced). HomeShell's tab fade only runs when the TAB mounts, so
           without this a switch was a hard cut. No per-card stagger. */}
-      <div key={view} className="space-y-5 motion-fade">
+      <div key={view} className="space-y-5 motion-fade stats-shell-register">
         {slots[view]}
       </div>
     </div>

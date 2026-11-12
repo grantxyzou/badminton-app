@@ -204,13 +204,17 @@ Recommend: <one>, because <one line>. Ask Grant: <the question>.
 
 ## Add two-pane behaviour to another tab
 
-Home is the only two-pane tab today, and that was a decision, not a gap: the
-other tabs keep their 512 px column inside the wider padding. If a second tab
-earns panes, follow Home's shape exactly — a stack with one `*-week`-style
-primary group on the right, everything else on the left, three rows with the
-last `1fr`, the gap `var(--fold-gap)` — inside the SAME media block, and extend
-the canary. Never a new query with different thresholds: two definitions of
-"a foldable" is how the next bug gets in.
+Home and Stats are the two-pane tabs (Stats since 2026-11-12: the overview
+left, the switch and the register right, `.stats-shell*`), and that was a
+decision per tab, not a gap: Stringing and Profile keep their 512 px column
+inside the wider padding. If another tab earns panes, follow the same shape — a
+grid with the primary group on the right spanning its rows down to a last `1fr`
+row, everything else on the left, the gap `var(--fold-gap)` — inside the SAME
+media block, put the class on the tab's loading frame too, and extend the
+canary. Never a new query with different thresholds: two definitions of "a
+foldable" is how the next bug gets in. Never place ONE card of a group in the
+other column with CSS: the two columns' rows tie together and open gaps; that
+is a component change.
 
 ## Don't
 

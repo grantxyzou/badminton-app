@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stats opens like a book on a foldable (2026-11-12)
+
+- On an unfolded iPhone Duo or Galaxy Z Fold, Stats now uses both halves of the screen: the title and the Level, Games and Kudos tiles on the left page, and the You · Equipment · Play · Learn switch with that register's cards on the right page. Until now Stats kept one column in the middle, so every card sat across the fold.
+- On an ordinary phone nothing changes.
+
 ## The stringing animation reads inside its picture (2026-11-12)
 
 - After sending a stringing request, each step's line ("Opening a fresh set of BG80", "Ready to pick up. We'll let you know.") now sits inside the picture along its bottom edge, and "Play again" is a small pill with a replay icon in the picture's top-right corner, instead of a link under the dots.
