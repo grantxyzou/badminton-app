@@ -91,6 +91,10 @@
         "saveError": "无法保存，请重试。",
         "refused": "你已无法修改球线。请联系管理员。"
       },
+      "unclaimedTitle": "等人接的请求",
+      "assignedTitle": "分配给你的",
+      "unclaimedTake": "我来穿",
+      "unclaimedTaken": "这一单已经被别人接了。",
       "confirm": {
         "review": "查看修改",
         "bannerBody": "你同意之前，账单不会变。",
@@ -2028,6 +2032,7 @@
   "admin": {
     "stringing": {
       "cancelledByPlayer": "球员已取消",
+      "waiting": "已等 {days} 天，还没人接",
       "recent": "最近",
       "jobsSummaryLate": "{open} 单进行中 · {late} 单逾期",
       "jobsSummary": "{open} 单进行中",
@@ -3413,6 +3418,11 @@
     "assignment": {
       "title": "有一支球拍要你穿线",
       "body": "{name} 的 {racket} 交给你了。",
+      "racket": "球拍"
+    },
+    "requestWaiting": {
+      "title": "有一个穿线请求在等",
+      "body": "{name} 的 {racket} 已经等了 {days} 天，还没人接。",
       "racket": "球拍"
     },
     "reminder": {

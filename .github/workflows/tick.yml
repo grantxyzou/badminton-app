@@ -1,0 +1,44 @@
+# The hourly tick (docs/plans/stringing-request-nudge.md).
+#
+# App Service runs nothing on a schedule, so GitHub does: once an hour it calls
+# POST /api/cron/tick with the CRON_KEY secret, and the app runs every timed job
+# in lib/tick.ts for every open club. The answer is counts only.
+#
+# Minute 23, not 0: GitHub's schedule is busiest on the hour and runs late there.
+# A scheduled run can still be late or skipped; every job tolerates a missed hour.
+#
+# Setup: the same long random value as the CRON_KEY App Setting on
+# vnext-badminton-app and the CRON_KEY repository secret. Until the secret
+# exists, the run says so and passes, so a fork or a fresh clone stays green.
+name: tick
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run the hourly tick
+        env:
+          CRON_KEY: ${{ secrets.CRON_KEY }}
+        run: |
+          if [ -z "$CRON_KEY" ]; then
+            echo "The CRON_KEY secret is not set; nothing to run."
+            exit 0
+          fi
+          # -d '' sends Content-Length: 0 (proxy.ts answers 411 to a body it cannot measure).
+          curl -sS --fail-with-body --max-time 120 --retry 2 --retry-delay 20 \
+            -X POST -d '' \
+            -H "x-cron-key: $CRON_KEY" \
+            https://bpm.grantzou.com/bpm/api/cron/tick
+          echo

@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stats opens like a book on a foldable (2026-11-12)
+
+- On an unfolded iPhone Duo or Galaxy Z Fold, Stats now uses both halves of the screen: the title and the Level, Games and Kudos tiles on the left page, and the You · Equipment · Play · Learn switch with that register's cards on the right page. Until now Stats kept one column in the middle, so every card sat across the fold.
+- On an ordinary phone nothing changes.
+
 ## The stringing animation reads inside its picture (2026-11-12)
 
 - After sending a stringing request, each step's line ("Opening a fresh set of BG80", "Ready to pick up. We'll let you know.") now sits inside the picture along its bottom edge, and "Play again" is a small pill with a replay icon in the picture's top-right corner, instead of a link under the dots.
@@ -69,6 +74,13 @@ Grant: "open up reel and string name, colour for stringers" (`docs/plans/stringe
 
 - **A stringer who isn't an admin now has a "Strings on the shelf" card** on their Stringing jobs page, under their queue. Each string shows its reel colours; tapping one opens a sheet to rename it and pick the colours on the reel, with one Save at the bottom. Members asking for a restring are offered exactly those colours.
 - **Nothing else opens up.** Prices, adding or removing strings, catalog links, purchases and stock stay with an admin on the bench. The server refuses any other change from a stringer.
+
+### A stringing request nobody takes now nudges the stringers (2026-11-12)
+
+- **After 48 hours, and again at 3 days**, a stringing request still waiting sends a notification. If nobody has taken it, the club's stringers and organisers get it. If a stringer has it, only that stringer does. "Wei's Astrox 88D Pro has waited 2 days for a stringer." No price, no string spec.
+- **The waiting job is highlighted** with an amber tint and a "Waiting 2 days for a stringer" line, on the bench and on a stringer's card.
+- **Stringers can take a request themselves.** Their card now lists requests nobody has taken, under "Waiting for a stringer", each with a "Take it" button. If two tap at once, the second is told someone took it first.
+- **The app has an hourly tick.** GitHub calls it once an hour, and the stringing nudge is its first job. It needs a `CRON_KEY`, set both in the App Settings and as a GitHub secret (`docs/plans/stringing-request-nudge.md`, "Setting it up").
 
 ### Calmer error cards, and a friendlier Stringing tab (2026-11-11)
 

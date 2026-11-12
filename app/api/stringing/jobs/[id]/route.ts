@@ -23,6 +23,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isStringingStatus, isValidTension, canTransition, STRINGING_FLOW } from '@/lib/stringing';
 import { notifyStringerOfAssignment } from '@/lib/stringingRequestNotify';
+import { isArchived } from '@/lib/stringingOrder';
 import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirror';
 import type { StringingJob, PendingEdit } from '@/lib/types';
 
@@ -91,7 +92,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
   const admin = await isAdminAuthedWithMember(req);
   /**
-   * A STRINGER MAY MOVE THEIR OWN JOB ALONG, and nothing else.
+   * A STRINGER MAY MOVE THEIR OWN JOB ALONG, or take an unclaimed request
+   * for themselves (below), and nothing else.
    *
    * The person doing the work is the one who knows it is strung, and making
    * them message an admin to record that is the same support-burden shape the
@@ -141,15 +143,38 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
      * it quietly dropped — a write that silently does less than it says is
      * worse than one that fails.
      */
+    /* TAKING an unclaimed request is a stringer's too (docs/plans/stringing-
+       request-nudge.md, Grant 2026-11-12): they are nudged about requests
+       nobody has taken, so they may take one — for THEMSELVES, on a job still
+       at `requested` with nobody on it, and with nothing else in the body.
+       Two stringers tapping at once: the second write fails its etag below
+       and answers 409 `changed_elsewhere`. Assigning to someone else stays
+       an admin's. */
+    let stringerClaim: { id: string; name: string } | null = null;
     if (stringer) {
       // Per club (lib/roster.ts): the switch is THIS club's grant.
       const canStringMember = await canStringIn(groupId, stringer.memberId).catch(() => false);
-      if (!canStringMember || job.stringerId !== stringer.memberId) {
+      if (!canStringMember) {
         return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
       }
-      const allowed = new Set(['memberId', 'status']);
-      if (Object.keys(body).some((k) => !allowed.has(k))) {
-        return NextResponse.json({ error: 'forbidden_field' }, { status: 403 });
+      if (body.claim === true) {
+        if (Object.keys(body).some((k) => k !== 'memberId' && k !== 'claim')) {
+          return NextResponse.json({ error: 'forbidden_field' }, { status: 403 });
+        }
+        if (job.stringerId || job.status !== 'requested' || isArchived(job) || job.cancelledAt) {
+          // Taken, moved on or withdrawn since their card loaded.
+          return NextResponse.json({ error: 'already_taken' }, { status: 409 });
+        }
+        stringerClaim = await stringerIn(groupId, stringer.memberId).catch(() => null);
+        if (!stringerClaim) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      } else {
+        if (job.stringerId !== stringer.memberId) {
+          return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+        }
+        const allowed = new Set(['memberId', 'status']);
+        if (Object.keys(body).some((k) => !allowed.has(k))) {
+          return NextResponse.json({ error: 'forbidden_field' }, { status: 403 });
+        }
       }
     }
 
@@ -271,6 +296,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (body.claim === true && admin.authed) {
       next.stringerId = admin.memberId;
       next.stringerName = admin.name;
+    }
+    if (stringerClaim) {
+      // The name this club knows them by, like an admin's assignment.
+      next.stringerId = stringerClaim.id;
+      next.stringerName = stringerClaim.name;
     }
 
     /**

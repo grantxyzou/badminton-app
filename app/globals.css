@@ -5218,6 +5218,12 @@ button.sheet-row { cursor: pointer; }
 .bpm-job-card:has(> button:first-child:active) {
   transform: scale(0.98);
 }
+/* A request nobody has moved in 48 hours (docs/plans/stringing-request-nudge.md):
+   an amber TINT, never a rim — containers are fill-only. The words on the card
+   ("Waiting 2 days") carry the meaning; the tint only makes it findable. */
+.bpm-job-card--waiting {
+  background: var(--tone-amber-bg);
+}
 
 /* Warn — the one answer an amber banner asks for ("Review the change"). SOLID,
    unlike its tinted siblings: it sits ON an amber banner, where a tint of the
@@ -8648,9 +8654,38 @@ html[data-pane-flip='b'] [data-app-shell] {
     /* The sheet fills the right half — still the one sheet token. */
     --sheet-max-w: min(32rem, var(--half-w));
   }
-  /* Home only: the other tabs keep their single column. */
-  main[data-page-shell]:has(> [data-tab-panel='home']:not([hidden])) {
+  /* Home and Stats: the other tabs keep their single column. */
+  main[data-page-shell]:has(> [data-tab-panel='home']:not([hidden])),
+  main[data-page-shell]:has(> [data-tab-panel='skills']:not([hidden])) {
     max-width: var(--panes-max-w);
+  }
+  /* Stats, Home's shape (Grant, 2026-11-12, "go with 1"): the overview on the
+     LEFT page (title, subhead, the Level / Games / Kudos tiles); the register
+     switch and the register on the RIGHT, the page that opens, so the switch
+     sits on the page it changes. The switch takes the subhead's row, which
+     clears the three round buttons over the right pane's top on a portrait
+     screen; the register starts on the tiles' row and the last row is 1fr,
+     so its height never opens a gap on the left. A page a register opens
+     (Your fit, a racket) hides the overview and stays on the right. */
+  .stats-shell {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: var(--fold-gap);
+    row-gap: 0;
+    align-items: start;
+  }
+  .stats-shell > * {
+    grid-column: 1;
+  }
+  .stats-shell > .stats-shell-switch {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0;
+  }
+  .stats-shell > .stats-shell-register {
+    grid-column: 2;
+    grid-row: 3 / -1;
   }
   /* RIGHT pane: the week, alone — the page that opens (Grant, 2026-11-04:
      "I would want it on the right cuz that's the elevation opening up more

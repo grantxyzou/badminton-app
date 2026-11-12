@@ -91,6 +91,10 @@
         "saveError": "Couldn't save. Try again.",
         "refused": "You can't change the strings any more. Ask an admin."
       },
+      "unclaimedTitle": "Waiting for a stringer",
+      "assignedTitle": "Assigned to you",
+      "unclaimedTake": "Take it",
+      "unclaimedTaken": "Someone took this one first.",
         "confirm": {
           "review": "Review the change",
           "bannerBody": "Nothing changes on your bill until you say yes.",
@@ -2040,6 +2044,7 @@
   "admin": {
     "stringing": {
       "cancelledByPlayer": "Cancelled by the player",
+      "waiting": "Waiting {days, plural, one {# day} other {# days}} for a stringer",
       "recent": "Recent",
       "jobsSummaryLate": "{open} open · {late} late",
       "jobsSummary": "{open} open",
@@ -3425,6 +3430,11 @@
     "assignment": {
       "title": "A racket for you to string",
       "body": "{name}'s {racket} is yours.",
+      "racket": "racket"
+    },
+    "requestWaiting": {
+      "title": "A stringing request is waiting",
+      "body": "{name}'s {racket} has waited {days} days for a stringer.",
       "racket": "racket"
     },
     "reminder": {

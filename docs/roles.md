@@ -13,7 +13,7 @@ from 2026-10-09 to 2026-11-10; giving gift cards is an organiser's now, below.)
 | Cancel a spot | Their own | Their own | Anyone's, plus purge / clear all |
 | See the roster, announcements, costs | Yes (members-only: signed in) | Yes | Yes, including removed rows and `recoveryEvents` |
 | Pay | Self-report "I paid" on their own row | Same | Mark anyone paid, cover (absorb / resplit), settle |
-| Stringing | Request a job, accept/decline a price change, see their own job and what they owe | See **only jobs assigned to them**, with no prices; move a job's **status** along; **rename a shelf string and set its reel colours** (2026-11-12) | The whole bench: claim, assign (only to a `canString` member), price, propose, mark paid, archive |
+| Stringing | Request a job, accept/decline a price change, see their own job and what they owe | See jobs assigned to them **and requests nobody has taken**, with no prices; **take** an untaken request for themselves; move their job's **status** along; nudged about a request still waiting after 48 hours; **rename a shelf string and set its reel colours** (2026-11-12) | The whole bench: claim, assign (only to a `canString` member), price, propose, mark paid, archive |
 | Gift cards | Redeem one into their own credit | — | An **organiser** only (2026-11-10; with groups off, every admin): mint from the console or Profile → "Give a gift card" (10 a day there), and read every card's record: who made it, who redeemed it, when, how much is used and left. An admin who is not an organiser gets `organiser_only`. |
 | Sessions, birds, settings, members | — | — | Everything under `/api/admin/*`, `session/*`, `birds*`, `members` writes |
 
@@ -47,13 +47,21 @@ club-x's bench until club-x's admin ticks the box. Any admin grants it; the
 organiser rule is for ranks and gift cards. A BPM row never set reads
 `Member.canString`, so the stringers from before the move stayed on.
 
-- `GET /api/stringing/jobs?view=stringer` returns only jobs whose `stringerId`
-  is the caller, projected through `toStringerJob`. That projection has **no
+- `GET /api/stringing/jobs?view=stringer` returns the jobs whose `stringerId`
+  is the caller, and (since 2026-11-12) `unclaimed`: requests still at
+  `requested` with nobody on them, oldest first. Both go through `toStringerJob`. That projection has **no
   price and no paid date**, so there is no money on the stringer's screen to
   leak. Without the flag, the stringer view returns an empty list, not an error.
 - `PATCH /api/stringing/jobs/[id]` from a stringer accepts **only**
-  `{ memberId, status }`, and only on a job assigned to them. Any other key
-  gets `403 forbidden_field` instead of being quietly dropped.
+  `{ memberId, status }` on a job assigned to them, or `{ memberId, claim: true }`
+  on a request nobody has taken (it becomes theirs; taken, moved on or withdrawn
+  since their card loaded answers `409 already_taken`, and a race is a 409 from
+  the etag). Any other key gets `403 forbidden_field` instead of being quietly
+  dropped. Assigning a job to someone else stays an admin's.
+- A request still at `requested` 48 hours after it was made, and again at 3
+  days, pushes every stringer and organiser of the club (or only its stringer,
+  once someone has it). The hourly tick sends it
+  (`docs/plans/stringing-request-nudge.md`).
 - `PATCH /api/stringing/strings` from a stringer accepts **only**
   `{ rename: { from, to } }` or `{ colours: { <label>: ids } }`, one per
   request, applied to the stored shelf (`docs/plans/stringer-shelf-edits.md`;
