@@ -15,7 +15,9 @@ describe('fields do not zoom the page on iOS', () => {
   it('a coarse pointer gets 16px fields', () => {
     const coarse = css.slice(css.indexOf('@media (pointer: coarse)'));
     expect(coarse, 'no coarse-pointer block').not.toBe('');
-    expect(coarse).toMatch(/input,\s*\n\s*select,\s*\n\s*textarea\s*{\s*font-size:\s*16px/);
+    // Never under 16px (what stops iOS zooming on focus), growing with the
+    // app's size factor past it (docs/plans/ui-scale.md).
+    expect(coarse).toMatch(/input,\s*\n\s*select,\s*\n\s*textarea\s*{\s*font-size:\s*max\(16px, 1rem\)/);
   });
 });
 

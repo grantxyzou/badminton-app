@@ -612,6 +612,17 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
   padding: 0;
 }
 
+/* THE APP'S ONE SIZE FACTOR (docs/plans/ui-scale.md; Grant, 2026-11-12: "no
+   zoom, card should scale"). `--ui-scale` is the phone's text size times the
+   screen's, written before first paint by app/layout.tsx's script; it is 1 on a
+   phone at the default text size, so this is the browser's own 16px there and
+   nothing moves. The design tokens are rem, so a card grows whole — its text,
+   padding, radius and icons together. The 100% keeps a browser's own default
+   text size setting in the product too. */
+html {
+  font-size: calc(100% * var(--ui-scale, 1));
+}
+
 html,
 body {
   height: 100%;
@@ -714,11 +725,11 @@ body {
   /* Corner radii ladder — rectangular surfaces capped at 16px per design
      bundle v3. Use these tokens in inline styles (`borderRadius:
      var(--radius-md)`) instead of typing 10/12/16 by hand. Pill = 100. */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-xs: calc(6rem / 16);
+  --radius-sm: calc(8rem / 16);
+  --radius-md: calc(10rem / 16);
+  --radius-lg: calc(12rem / 16);
+  --radius-xl: calc(16rem / 16);
   --radius-pill: 100px;
 
   /* Type-size scale — canonical inline font sizes. Use the token
@@ -729,25 +740,25 @@ body {
        2xs (10) section labels / micro badges · xs (11) tile labels / meta
        sm (12) card subtitle / secondary · base (13) body / hints / empty
        md (14) emphasis values · lg (16) stat values */
-  --fs-2xs: 10px;
-  --fs-xs: 11px;
-  --fs-sm: 12px;
-  --fs-base: 13px;
-  --fs-md: 14px;
-  --fs-lg: 16px;
+  --fs-2xs: calc(10rem / 16);
+  --fs-xs: calc(11rem / 16);
+  --fs-sm: calc(12rem / 16);
+  --fs-base: calc(13rem / 16);
+  --fs-md: calc(14rem / 16);
+  --fs-lg: calc(16rem / 16);
   /* Stats-tab headline data numbers (Level, Overall, streak count, partner
      counts) — a deliberate larger mono scale with no Home equivalent. Named
      tokens so those hand-typed 20/22px values stop being magic numbers. */
-  --fs-stat: 20px;
-  --fs-stat-lg: 22px;
+  --fs-stat: calc(20rem / 16);
+  --fs-stat-lg: calc(22rem / 16);
   /* The single headline number on a screen (Home spots-left). Bigger than
      --fs-stat, which is a value inside a row of values. */
-  --fs-count: 34px;
+  --fs-count: calc(34rem / 16);
   /* Single-focus numeric input — a number that IS the screen's whole task, not
      a stat among others. Currently just the game logger's score steppers,
      where the value is what the member is actively changing. Deliberately a
      big jump from --fs-stat-lg: anything closer would read as a stat tile. */
-  --fs-stat-xl: 38px;
+  --fs-stat-xl: calc(38rem / 16);
   /* The courtside scoreboard's digits: read from the far side of a court off
      a phone propped on the bench, so sized by the screen, not the type scale.
      The one display size in the app that is not a fixed pixel. */
@@ -756,11 +767,11 @@ body {
      (below), so inline `.material-icons` styles use a token instead of a raw px.
      Same values as the classes; these exist for the inline-style call sites the
      way --fs-* mirrors .fs-*. */
-  --icon-xs: 13px;
-  --icon-sm: 16px;
-  --icon-md: 18px;
-  --icon-lg: 24px;
-  --icon-xl: 40px;
+  --icon-xs: calc(13rem / 16);
+  --icon-sm: calc(16rem / 16);
+  --icon-md: calc(18rem / 16);
+  --icon-lg: calc(24rem / 16);
+  --icon-xl: calc(40rem / 16);
   --lh-tight: 1.25;
   --lh-snug: 1.35;
   --lh-normal: 1.5;
@@ -783,12 +794,12 @@ body {
      gap; --space-1 is the smallest LAYOUT rung. */
   --space-hair: 1px;
   --space-05: 2px;
-  --space-1: 4px;
-  --space-2: 6px;
-  --space-3: 8px;
-  --space-4: 12px;
-  --space-5: 16px;
-  --space-6: 20px;
+  --space-1: calc(4rem / 16);
+  --space-2: calc(6rem / 16);
+  --space-3: calc(8rem / 16);
+  --space-4: calc(12rem / 16);
+  --space-5: calc(16rem / 16);
+  --space-6: calc(20rem / 16);
   /* Section rungs. 1..6 are the INLINE MICRO scale — the space between an
      icon and its label, a row and the row under it. 7..9 are what a section
      needs: the breathing room around an empty state, a sheet's bottom safe
@@ -803,9 +814,9 @@ body {
      content. Sized to the pill: 2x --space-1 padding + its border + the
      --fs-2xs line box. */
   --card-header-row-h: 26px;
-  --space-7: 24px;
-  --space-8: 32px;
-  --space-9: 48px;
+  --space-7: calc(24rem / 16);
+  --space-8: calc(32rem / 16);
+  --space-9: calc(48rem / 16);
 
   /* ══════════════════════════════════════════════════════════════════════
      FIELDS & CARD MATERIALS  (design: "Visual Colours" §06, 2026-08-25)
@@ -831,7 +842,7 @@ body {
      Deliberately NOT part of the --radius-xs..xl ladder above, which
      stays capped at 16. Never write `border-radius: 30px` — always this
      token; __tests__/design-canary.test.ts enforces that. */
-  --radius-3xl: 30px;
+  --radius-3xl: calc(30rem / 16);
 
   /* ── Fields — one hue per tab (chosen 2026-08-26 on /design/backgrounds) ──
      The alternative kept a single hue at five depths and preserved the
@@ -3965,11 +3976,11 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 
 /* ── Icon sizes ── */
 .icon-spin-lg {
-  font-size: 32px;
+  font-size: calc(32rem / 16);
 }
 
 .icon-pin {
-  font-size: 16px;
+  font-size: calc(16rem / 16);
   color: var(--pin-color);
   /* Optical hairline nudge, not a layout gap — the pin glyph sits 1px high
      against its label. Exempt from the spacing ladder. */
@@ -3977,17 +3988,17 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 }
 
 .icon-pin-lg {
-  font-size: 20px;
+  font-size: calc(20rem / 16);
 }
 
-.icon-xs  { font-size: 13px; }
-.icon-sm  { font-size: 16px; }
-.icon-md  { font-size: 18px; }
-.icon-lg  { font-size: 24px; }
-.icon-xl  { font-size: 40px; }
+.icon-xs  { font-size: var(--icon-xs); }
+.icon-sm  { font-size: var(--icon-sm); }
+.icon-md  { font-size: var(--icon-md); }
+.icon-lg  { font-size: var(--icon-lg); }
+.icon-xl  { font-size: var(--icon-xl); }
 
 .icon-status {
-  font-size: 22px;
+  font-size: calc(22rem / 16);
 }
 
 /* ── Status banners ──
@@ -5157,6 +5168,14 @@ button.sheet-row { cursor: pointer; }
   font-style: italic;
 }
 
+/* The one-line "done" message a sheet shows after it succeeds (recovery,
+   enter-code, create-account). In rem so it scales (docs/plans/ui-scale.md). */
+.sheet-success-line {
+  text-align: center;
+  font-size: calc(18rem / 16);
+  color: var(--text-primary);
+}
+
 /* ── Command Center button styles ── */
 /* Pills were reading as badges. These give CTAs button affordance: */
 /* heavier weight, more padding, opaque hover, focus ring. */
@@ -5294,7 +5313,7 @@ button.sheet-row { cursor: pointer; }
    any of the color variants (e.g. `cc-btn cc-btn-primary cc-btn-lg`). */
 .cc-btn-lg {
   padding: var(--space-4) var(--space-5);
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   border-radius: var(--radius-xl);
   font-weight: 700;
   letter-spacing: -0.005em;
@@ -5554,7 +5573,7 @@ html:root .glass-card.bpm-job-card--open {
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
-  font-size: 13.5px;
+  font-size: calc(13.5rem / 16);
   color: var(--text-primary);
   cursor: pointer;
   user-select: none;
@@ -8834,7 +8853,7 @@ html:root .state-link:active { opacity: 0.6; }
 
   input,
   select,
-  textarea { font-size: 16px; }
+  textarea { font-size: max(16px, 1rem); }
   /* Its own figure is the point of the control. */
   .tension-field-box input,
   .tension-field-box input:focus { font-size: var(--fs-stat-lg); }

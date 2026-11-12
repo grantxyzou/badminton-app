@@ -99,7 +99,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
       </BottomSheetHeader>
       <BottomSheetBody>
         {successName ? (
-          <p className="motion-fade" style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
+          <p className="motion-fade sheet-success-line">
             {t('successWelcome', { name: successName })}
           </p>
         ) : (
