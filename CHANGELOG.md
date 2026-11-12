@@ -63,6 +63,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Stringers name the strings and set their reel colours (2026-11-12)
+
+Grant: "open up reel and string name, colour for stringers" (`docs/plans/stringer-shelf-edits.md`).
+
+- **A stringer who isn't an admin now has a "Strings on the shelf" card** on their Stringing jobs page, under their queue. Each string shows its reel colours; tapping one opens a sheet to rename it and pick the colours on the reel, with one Save at the bottom. Members asking for a restring are offered exactly those colours.
+- **Nothing else opens up.** Prices, adding or removing strings, catalog links, purchases and stock stay with an admin on the bench. The server refuses any other change from a stringer.
+
 ### Calmer error cards, and a friendlier Stringing tab (2026-11-11)
 
 - **"Couldn't load… / Try again" is no longer red.** A card that couldn't reach the server now shows a cloud icon over the message in normal text, with "Try again" under it, laid out like the app's other empty states. The server not answering isn't the person's mistake. Red is kept for things they need to fix, like a wrong PIN or a form error.
