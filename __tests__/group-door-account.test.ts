@@ -302,3 +302,84 @@ describe('a new account with an email code, through the link', () => {
     expect((await CODE_VERIFY(makeRequest('POST', `${BASE}/auth/email-code/verify`, { email: 'kento@example.com', code }))).status).toBe(401);
   });
 });
+
+describe('an imported name: "This is Lin from your list" (step 4b)', () => {
+  async function importedLinAsks(holderOver: Record<string, unknown> = {}) {
+    const lin = seedMember('Lin Dan', { createdAt: '2025-01-01T00:00:00.000Z', ...holderOver });
+    seedMembership('club-x', lin.id, { name: 'Lin Dan', regular: true });
+    const res = await newAccountThroughDoor('Lin Dan', { sub: 'g-sub-lin', email: 'lin@example.com' });
+    expect(res.status).toBe(201);
+    const session = cookieOf(res, 'member_session')!;
+    const fresh = rows('members').find((m) => m.name === 'Lin Dan' && m.id !== lin.id) as Row & { id: string };
+    const list = await (await LIST(makeRequest('GET', `${BASE}/admin/access-requests`, undefined, asOrganiser))).json();
+    const join = list.joins.find((j: { signedIn: boolean }) => j.signedIn) as { joinRequestId: string; linkTo: string | null };
+    return { lin, fresh, session, join };
+  }
+
+  it('offers the link, and linking moves the sign-in onto the imported Lin, history and all', async () => {
+    const { lin, fresh, session, join } = await importedLinAsks();
+    expect(join.linkTo).toBe('Lin Dan');
+
+    const res = await DECIDE(makeRequest('POST', `${BASE}/admin/access-requests`, { joinRequestId: join.joinRequestId, decision: 'link' }, asOrganiser));
+    expect(res.status).toBe(200);
+
+    // Google now signs in as the imported Lin, who keeps her membership.
+    expect((await lookupIdentity('google', 'g-sub-lin'))?.memberId).toBe(lin.id);
+    expect((await lookupIdentity('email', 'lin@example.com'))?.memberId).toBe(lin.id);
+    const linNow = rows('members').find((m) => m.id === lin.id) as Row;
+    expect(linNow).toMatchObject({ email: 'lin@example.com', emailVerified: true, linkedProviders: ['google'] });
+    expect(membership('club-x', lin.id)).toMatchObject({ status: 'active', regular: true });
+    // The fresh account is retired, in no club, and its ask is gone.
+    const freshNow = rows('members').find((m) => m.id === fresh.id) as Row;
+    expect(freshNow).toMatchObject({ active: false, mergedInto: lin.id, mergedInGroup: 'club-x' });
+    expect(freshNow.email).toBeUndefined();
+    expect(membership('club-x', fresh.id)).toBeUndefined();
+    expect(joinRequests('club-x')).toHaveLength(0);
+    expect(mails).toContainEqual({ kind: 'joined', to: 'lin@example.com', club: 'Six Feathers' });
+
+    // The phone still holding the fresh account's cookie is signed in as Lin, in the club.
+    const mine = await MY_ASKS(makeRequest('GET', `${BASE}/groups/ask`, undefined, { Cookie: session }));
+    expect(mine.status).toBe(200);
+    expect(await mine.json()).toMatchObject({ asks: [{ groupId: 'club-x', state: 'in' }], relinked: { name: 'Lin Dan' } });
+    const minted = cookieOf(mine, 'member_session')!;
+    expect(readGroupClaim(decodeURIComponent(minted.split('=')[1]))).toBe('club-x');
+  });
+
+  it('never links to someone who has signed in before', async () => {
+    const { join } = await importedLinAsks({ pinHash: 'x' });
+    expect(join.linkTo).toBeNull();
+    const res = await DECIDE(makeRequest('POST', `${BASE}/admin/access-requests`, { joinRequestId: join.joinRequestId, decision: 'link' }, asOrganiser));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'not_linkable' });
+  });
+
+  it('never merges an account that is already in a club', async () => {
+    const lin = seedMember('Lin Dan');
+    seedMembership('club-x', lin.id, { name: 'Lin Dan' });
+    const kento = seedMember('Kento');
+    seedMembership('bpm', kento.id, { name: 'Kento' });
+    await ASK(makeRequest('POST', `${BASE}/groups/ask`, { doorToken: door, name: 'Lin Dan' }, { Cookie: `member_session=${memberCookieValue('Kento', kento.id)}` }));
+    const ask = joinRequests('club-x').find((r) => r.askedBy === kento.id)!;
+    const res = await DECIDE(makeRequest('POST', `${BASE}/admin/access-requests`, { joinRequestId: ask.id, decision: 'link' }, asOrganiser));
+    expect(res.status).toBe(409);
+    expect((await lookupIdentity('google', 'g-sub-lin'))).toBeNull();
+    expect(rows('members').find((m) => m.id === kento.id)).toMatchObject({ active: true });
+  });
+
+  it('a retired account cannot later be added to another club', async () => {
+    const { fresh, join } = await importedLinAsks();
+    seedGroup('club-y', { ownerMemberId: ADMIN_MEMBER_ID, name: 'Club Y' });
+    seedMembership('club-y', ADMIN_MEMBER_ID, { name: getTestAdminName(), role: 'owner' });
+    const yDoor = (await rotateClaimLink('club-y', ADMIN_MEMBER_ID))!.token;
+    // An ask to Y from the fresh account, made before the link.
+    await ASK(makeRequest('POST', `${BASE}/groups/ask`, { doorToken: yDoor, name: 'Lin Dan' }, { Cookie: `member_session=${memberCookieValue('Lin Dan', fresh.id)}` }));
+    await DECIDE(makeRequest('POST', `${BASE}/admin/access-requests`, { joinRequestId: join.joinRequestId, decision: 'link' }, asOrganiser));
+
+    const yAsk = joinRequests('club-y').find((r) => r.askedBy === fresh.id)!;
+    const res = await DECIDE(
+      makeRequest('POST', `${BASE}/admin/access-requests`, { joinRequestId: yAsk.id, decision: 'approve' }, { Cookie: `admin_session=${adminCookieValue({ groupId: 'club-y' })}` }),
+    );
+    expect(res.status).toBe(404);
+    expect(membership('club-y', fresh.id)).toBeUndefined();
+  });
+});

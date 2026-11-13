@@ -1,7 +1,7 @@
 # One way in: the club link, an email code, and the organiser's yes
 
 **Track:** members-only (`docs/plans/members-only.md`), how a new person gets in, and the multi-group critical path's onboarding of a second club (`docs/plans/six-feathers-onboarding.md`)
-**Status:** in-flight (steps 1–3 and 4a built 2026-11-13)
+**Status:** in-flight (steps 1–3, 4a and 4b built 2026-11-13)
 **Review on:** 2026-12-15 — since the account-first club link shipped, did any newcomer need the organiser to send them something (a new link, a code, "try again") to get in, and how many accounts were never approved?
 
 ## Problem
@@ -34,7 +34,7 @@ Earlier words that led here:
 - **No auto-approval.** The door keeps every join behind an organiser (`door-link.md`, Non-goals). There is no "anyone with the link gets in" switch.
 - **Retiring PIN sign-in for people who have one.** PINs move behind "Other ways to log in"; taking them away is its own plan, with its own migration.
 - **Text-message codes.** Email codes only. SMS costs money per message and needs a provider.
-- **Merging a newcomer into an existing roster name.** Unchanged from `door-link.md`: a taken name is shown to the organiser, never attached.
+- **Merging a newcomer into a name someone already signs in with.** Unchanged from `door-link.md`: that name is shown to the organiser as taken, never attached. The one link is an organiser's yes to an imported name nobody has ever signed in as (step 4b).
 - **What a signed-out or waiting person can read.** Members-only stays as it is: the club's name and nothing else.
 
 ## Decisions
@@ -54,7 +54,7 @@ Earlier words that led here:
 - **2026-11-13 — Step 3: the code is in the email's SUBJECT too** ("123456 is your BPM code"), so it can be read off the notification and typed without opening the mail, as most apps that send codes do. It is single use, ten minutes, and worthless without the address. Beat: body only, one more app switch for every sign-in.
 - **2026-11-13 — Step 3: the send is not awaited.** `start` answers every address the same, and waiting for Gmail (about a second) only when the address is real would say which addresses are. The code is stored before the send, so a mail that fails costs a "Send a new code", never a code that was mailed but not kept.
 
-- **2026-11-13 — Step 4: imported names come in the same way as everyone, and the organiser links them.** An imported "Lin" (on the list, never signed in) signs in with Apple, Google or an email code, types "Lin" and asks. The organiser's approval offers "This is Lin from your list", which links her new sign-in to the existing Lin and her history. Grant chose this over keeping a separate "claim your name" path beside the club link. Built as step 4b; until it lands, the old name-only claim stays reachable for imported names.
+- **2026-11-13 — Step 4: imported names come in the same way as everyone, and the organiser links them.** An imported "Lin" (on the list, never signed in) signs in with Apple, Google or an email code, types "Lin" and asks. The organiser's approval offers "This is Lin from your list", which links her new sign-in to the existing Lin and her history. Grant chose this over keeping a separate "claim your name" path beside the club link. Built as step 4b; the old name-only claim stays reachable for imported names until step 4d removes it.
 - **2026-11-13 — Step 4: the person hears "you're in" by email, and by push if they have it on.** A new account rarely has notifications on, so the email is what reaches them. Beat: push only.
 - **2026-11-13 — Step 4: "I play here already" stays, and stops saying which names exist.** Every name gets the same "Sent. If the club knows that name, an organiser will see it." for the hour, so the poll can no longer be used to test names. A real member is let in as today. Beat: removing it, which would leave a PIN-only member with no email and a forgotten PIN no self-serve way back. Built as step 4c.
 - **2026-11-13 — Step 4 is four parts on one branch,** each leaving the app working: 4a the account-first club link (sign in, name, ask, the waiting screen, approve as a regular or a drop-in, the "you're in" email and push); 4b linking an imported name at approval; 4c the "I play here already" leak; 4d removing the signed-out name-only club-link ask once 4b covers the names it existed for. The 14-day cleanup of never-approved accounts stays in step 6.
@@ -62,6 +62,8 @@ Earlier words that led here:
 - **2026-11-13 — Step 4a built.** Two things decided while building it:
   - **A club's link and a one-time invite share one field.** They already shared one address (`/bpm/j/<token>`), so `signupGroupFor` reads a token that is not an invite as the club's link. Every sign-up form that sends an invite token, Google and Apple's name step included, works with the club's link unchanged. Beat: a separate `doorToken` threaded through every form.
   - **An email the account can get a code at counts as a way in.** Found by looking: an account made with an email code was shown "Keep your account: nothing to sign in with". `GET /api/auth/methods` reports `hasEmailCode`, and Home, the upgrade nudge and Profile's methods read it.
+
+- **2026-11-13 — Step 4b built: the organiser's link moves the new sign-in onto the imported member, never the other way.** The imported Lin holds the history (sessions, payments, ratings, kudos, the membership), all keyed by her id; the account made at the door holds only a sign-in. So "Yes, that's Lin" moves every sign-in identity (Apple, Google, the email) onto the imported Lin, gives her the address, and retires the door account (`active: false`, `mergedInto`, its email and pointers stripped). Beat: copying the history the other way, which would rewrite rows across a dozen containers. Guards: the imported name must never have been signed in as (`isUnclaimed`), and the asker must be in no club, so a person with history of their own is never folded into someone else. The phone still holding the door account's cookie is signed in as Lin on its next poll (`GET /api/groups/ask` answers `relinked`), the same trust as signing in again with the moved identity. A retired account cannot be let into another club later. The 14-day cleanup (step 6) deletes it.
 
 ## Shape
 

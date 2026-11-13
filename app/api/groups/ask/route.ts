@@ -25,6 +25,8 @@ import { accountAsks, addAccountJoinRequest, MAX_JOIN_NAME } from '@/lib/joinReq
 import { notifyOrganisersOfJoinRequest } from '@/lib/joinNotify';
 import { isFlagOn } from '@/lib/flags';
 import type { Member } from '@/lib/types';
+import { completeSignIn } from '@/lib/authSession';
+import { readMembership } from '@/lib/groups';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +41,9 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   try {
     const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
+    if (resource && resource.active !== true && resource.mergedInto && resource.mergedInGroup) {
+      return relinked(resource.mergedInto, resource.mergedInGroup);
+    }
     if (!resource || resource.active !== true) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     return NextResponse.json({ asks: await accountAsks(resource) });
   } catch (err) {
@@ -89,4 +94,29 @@ export async function POST(req: NextRequest) {
     console.error('POST /api/groups/ask failed:', err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });
   }
+}
+
+/**
+ * An organiser linked this phone's fresh account to the imported name it
+ * belonged to (docs/plans/one-way-in.md, step 4b). The cookie proves the
+ * holder signed in as that account, whose every identity now points at the
+ * member, so the phone is signed in as the member, in the club that linked
+ * it, and told it is in. The same trust as signing in again with the moved
+ * identity, minus the trip.
+ */
+async function relinked(memberId: string, groupId: string): Promise<NextResponse> {
+  const [{ resource: member }, group, membership] = await Promise.all([
+    getContainer('members').item(memberId, memberId).read<Member>(),
+    readGroup(groupId),
+    readMembership(groupId, memberId),
+  ]);
+  if (!member || member.active !== true || !group || membership?.status !== 'active') {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  const res = NextResponse.json({
+    asks: [{ groupId, club: group.name, name: membership.name, state: 'in' }],
+    relinked: { name: member.name },
+  });
+  await completeSignIn(res, member, groupId, null);
+  return res;
 }

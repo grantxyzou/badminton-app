@@ -15,7 +15,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **Organisers let people in as a Regular or a Drop-in.** A regular gets members-first priority; a drop-in waits behind regulars during that window. Nobody is a regular unless the organiser says so.
 - **Already in one club? Tap another club's link to ask to join it,** under the name you want there.
 - **An account with an email no longer hears "nothing to sign in with"**: the email is a way back in, by code.
-- Someone already on a club's list who has never signed in still claims their name the old way for now, under "Claim your name" on the club's page (`docs/plans/one-way-in.md`, step 4b next).
+- **Already on a club's list but never signed in? Come in the same way.** Ask with the name the club knows you by, and the organiser sees "Lin is on your list and has never signed in. Is this them?" Their yes joins your new sign-in to your spot, history and all, and the app switches you in. ("Claim your name" on the club's page still works for now.)
 
 ## Log in with a code from your email (2026-11-13)
 

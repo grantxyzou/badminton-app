@@ -31,6 +31,11 @@ interface Joining {
   nameTaken: boolean;
   /** Asked from a signed-in account (docs/plans/one-way-in.md, step 4): letting in adds that account. */
   signedIn?: boolean;
+  /**
+   * The name belongs to someone imported onto the list who has never signed
+   * in (step 4b): "Is this them?" links the two, history and all.
+   */
+  linkTo?: string | null;
 }
 
 /**
@@ -102,7 +107,7 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
    * a regular has members-first priority, a drop-in waits behind regulars
    * during the window. The organiser picks; nobody is a regular by default.
    */
-  async function decideJoin(r: Joining, decision: 'approve' | 'decline', regular = false) {
+  async function decideJoin(r: Joining, decision: 'approve' | 'decline' | 'link', regular = false) {
     if (busy || !online) return;
     setBusy(r.joinRequestId);
     try {
@@ -154,6 +159,9 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
             style={{
               display: 'flex',
               alignItems: 'center',
+              // A link row says more, so its buttons go under the words.
+              flexWrap: r.linkTo && organiser ? 'wrap' : undefined,
+              justifyContent: 'flex-end',
               gap: 'var(--space-3)',
               padding: 'var(--space-4)',
               borderRadius: 'var(--radius-lg)',
@@ -161,13 +169,15 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
               border: '1px solid transparent',
             }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: r.linkTo && organiser ? '1 1 100%' : 1, minWidth: 0 }}>
               <span className="fs-md" style={{ display: 'block', fontWeight: 600 }}>
                 {r.name}
               </span>
               <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
                 {!organiser
                   ? 'Asking to join · waiting for an organiser'
+                  : r.linkTo
+                    ? `${r.linkTo} is on your list and has never signed in. Is this them? Yes keeps ${r.linkTo}'s history.`
                   : r.nameTaken
                     ? 'Asking to join, but someone in the club already has that name. Ignore it and ask them to try again with another, like adding an initial.'
                     : r.signedIn
@@ -185,6 +195,17 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                 >
                   Ignore
                 </button>
+                {r.linkTo && (
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-primary"
+                    disabled={busy !== null || !online}
+                    onClick={() => void decideJoin(r, 'link')}
+                    aria-label={`Yes, this is ${r.linkTo} from your list`}
+                  >
+                    {busy === r.joinRequestId ? 'Linking…' : `Yes, that's ${r.linkTo}`}
+                  </button>
+                )}
                 {!r.nameTaken && (
                   <>
                     <button

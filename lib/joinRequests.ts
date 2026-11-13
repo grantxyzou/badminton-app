@@ -26,6 +26,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
 import {
   addMembership,
+  listMembershipsForMember,
   readGroup,
   readMembership,
   rosterNameHolder,
@@ -34,6 +35,8 @@ import {
   updateJoinRequests,
 } from '@/lib/groups';
 import { adminAddToRoster } from '@/lib/roster';
+import { isUnclaimed } from '@/lib/claimLinks';
+import { listIdentitiesForMember, reassignIdentity } from '@/lib/authIdentity';
 import type { Group, Member, StoredJoinRequest } from '@/lib/types';
 
 const TTL_MS = 60 * 60 * 1000;
@@ -196,6 +199,9 @@ async function approveAccountAsk(
   opts: { regular?: boolean },
 ): Promise<ApproveJoinOutcome> {
   const memberId = target.askedBy!;
+  // An account linked away to an imported name (step 4b) is retired: never add it.
+  const { resource: asker } = await getContainer('members').item(memberId, memberId).read<Member>();
+  if (!asker || asker.active !== true) return { outcome: 'not_found' };
   const holder = await rosterNameHolder(groupId, target.name);
   if (holder && holder !== memberId) return { outcome: 'name_taken' };
 
@@ -365,4 +371,90 @@ export async function collectJoinRequest(groupId: string, secret: string, now = 
   if (!burned) return { status: 'none' };
   const { resource } = await getContainer('members').item(memberId, memberId).read<Member>();
   return resource ? { status: 'approved', member: resource } : { status: 'none' };
+}
+
+export type LinkJoinOutcome =
+  | { outcome: 'linked'; memberId: string; name: string }
+  | { outcome: 'not_found' }
+  | { outcome: 'not_linkable' };
+
+/**
+ * Who an account's ask could be LINKED to (docs/plans/one-way-in.md, step
+ * 4b): the club member already holding the asked-for name, when that member
+ * has never signed in (`isUnclaimed`: imported by an organiser, no PIN,
+ * password or provider). Null for anyone who has signed in: an account with
+ * its own way in is never handed to somebody else.
+ */
+export async function linkableHolder(
+  groupId: string,
+  request: Pick<StoredJoinRequest, 'askedBy' | 'name'>,
+): Promise<{ memberId: string; name: string } | null> {
+  if (typeof request.askedBy !== 'string') return null;
+  const holderId = await rosterNameHolder(groupId, request.name);
+  if (!holderId || holderId === request.askedBy) return null;
+  const { resource } = await getContainer('members').item(holderId, holderId).read<Member>();
+  if (!resource || resource.active !== true || !isUnclaimed(resource)) return null;
+  return { memberId: holderId, name: request.name };
+}
+
+/**
+ * "This is Lin from your list" (Grant, 2026-11-13: imported names come in the
+ * same way as everyone, and the organiser links them). The asking account is
+ * a fresh sign-in; the imported member holds the history. Linking moves every
+ * sign-in identity of the fresh account onto the imported member, gives the
+ * member the account's email, and retires the fresh account (`mergedInto`),
+ * whose phone is signed in as the member on its next check
+ * (`GET /api/groups/ask`).
+ *
+ * Refused (`not_linkable`) unless the holder has never signed in and the
+ * asking account is in no club at all: two accounts that both have a life are
+ * never merged here. The ask is taken off the club FIRST, under the etag, so
+ * two organisers cannot link twice; a failure part-way puts it back.
+ */
+export async function linkJoinRequest(
+  groupId: string,
+  requestId: string,
+  now = Date.now(),
+  opts: { regular?: boolean } = {},
+): Promise<LinkJoinOutcome> {
+  const group = await readGroup(groupId);
+  const target = pendingJoinRequests(group, now).find((r) => r.id === requestId);
+  if (!group || group.closedAt || !target || typeof target.askedBy !== 'string') return { outcome: 'not_found' };
+  const askerId = target.askedBy;
+  const holder = await linkableHolder(groupId, target);
+  if (!holder) return { outcome: 'not_linkable' };
+
+  const container = getContainer('members');
+  const { resource: asker } = await container.item(askerId, askerId).read<Member & { _etag?: string }>();
+  if (!asker || asker.active !== true) return { outcome: 'not_linkable' };
+  const memberships = (await listMembershipsForMember(askerId)).filter((m) => m.status === 'active');
+  if (memberships.length > 0) return { outcome: 'not_linkable' };
+
+  const taken = await updateJoinRequests(groupId, (open) =>
+    open.some((r) => r.id === target.id && r.approvedAt === undefined && now <= r.expiresAt)
+      ? open.filter((r) => r.id !== target.id)
+      : null,
+  );
+  if (!taken) return { outcome: 'not_found' };
+
+  try {
+    for (const identity of await listIdentitiesForMember(askerId)) {
+      await reassignIdentity(identity, holder.memberId);
+    }
+    const { resource: member } = await container.item(holder.memberId, holder.memberId).read<Member>();
+    if (!member) throw new Error('linked member vanished');
+    const providers = new Set([...(member.linkedProviders ?? []), ...(asker.linkedProviders ?? [])]);
+    await container.items.upsert({
+      ...member,
+      ...(providers.size > 0 ? { linkedProviders: [...providers] } : {}),
+      ...(!member.email && asker.email ? { email: asker.email, emailVerified: asker.emailVerified === true } : {}),
+    });
+    const { email: _e, emailVerified: _v, joinAsks: _j, linkedProviders: _l, _etag: _t, ...rest } = asker;
+    await container.items.upsert({ ...rest, active: false, mergedInto: holder.memberId, mergedInGroup: groupId });
+  } catch (err) {
+    await updateJoinRequests(groupId, (open) => (open.some((r) => r.id === target.id) ? null : [...open, target]));
+    throw err;
+  }
+  if (opts.regular === true) await setMembershipRegular(groupId, holder.memberId, true);
+  return { outcome: 'linked', memberId: holder.memberId, name: holder.name };
 }

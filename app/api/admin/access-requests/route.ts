@@ -33,7 +33,7 @@ import { rosterMemberIds } from '@/lib/roster';
 import type { Member } from '@/lib/types';
 import { isUnclaimed } from '@/lib/claimLinks';
 import type { StoredAccessRequest } from '@/lib/accessRequest';
-import { approveJoinRequest, declineJoinRequest, pendingJoinRequests } from '@/lib/joinRequests';
+import { approveJoinRequest, declineJoinRequest, linkableHolder, linkJoinRequest, pendingJoinRequests } from '@/lib/joinRequests';
 import { readGroup, rosterNameHolder } from '@/lib/groups';
 import { noticeClubOfJoin, tellJoinerTheyAreIn } from '@/lib/joinNotify';
 
@@ -122,6 +122,9 @@ export async function GET(req: NextRequest) {
         at: r.expiresAt,
         // Asked signed in (step 4): approving adds that account, nothing new is made.
         signedIn: typeof r.askedBy === 'string',
+        // The name is an imported member's who has never signed in (step 4b):
+        // the organiser may say "this is them" and link the two.
+        linkTo: (await linkableHolder(groupId, r))?.name ?? null,
         nameTaken: (await rosterNameHolder(groupId, r.name)) !== null,
       })),
     );
@@ -154,11 +157,21 @@ export async function POST(req: NextRequest) {
   const joinRequestId = body && typeof body.joinRequestId === 'string' ? body.joinRequestId : '';
   if (joinRequestId) {
     const decision = body?.decision;
-    if (decision !== 'approve' && decision !== 'decline') {
+    if (decision !== 'approve' && decision !== 'decline' && decision !== 'link') {
       return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
     }
     if (!admin.organiser) return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
     try {
+      if (decision === 'link') {
+        // "This is Lin from your list" (docs/plans/one-way-in.md, step 4b).
+        const linked = await linkJoinRequest(admin.groupId, joinRequestId, Date.now(), { regular: body?.regular === true });
+        if (linked.outcome === 'linked') {
+          await tellJoinerTheyAreIn(admin.groupId, linked.memberId);
+          return NextResponse.json({ ok: true });
+        }
+        if (linked.outcome === 'not_linkable') return NextResponse.json({ error: 'not_linkable' }, { status: 409 });
+        return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
       if (decision === 'decline') {
         return (await declineJoinRequest(admin.groupId, joinRequestId))
           ? NextResponse.json({ ok: true })

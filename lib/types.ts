@@ -672,6 +672,14 @@ export interface Member {
    */
   joinAsks?: { groupId: string; requestId: string; askedAt: string }[];
   /**
+   * This account was a fresh sign-in an organiser linked to the imported name
+   * it belonged to (docs/plans/one-way-in.md, step 4b): its identities moved
+   * to `mergedInto`, and it is `active: false`. The phone still holding its
+   * cookie is signed in as `mergedInto`, in `mergedInGroup`, on its next check.
+   */
+  mergedInto?: string;
+  mergedInGroup?: string;
+  /**
    * Upgrade-nudge dismissal. Stored on the MEMBER, not localStorage — a
    * per-device dismissal would re-nag the same person on every device they own.
    */
