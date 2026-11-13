@@ -162,10 +162,11 @@ export default function SessionListCard({ refreshKey = 0, onChanged, run = clubR
   const courts = session?.courts && session.courts > 0 ? session.courts : null;
   const perCourt = playersPerCourtFor(session, run);
   const line = courtLine(session, run, players);
+  // What moving one more in means, in courts when the club counts that way.
   const fullHint =
     courts !== null && perCourt !== null
-      ? `All ${courts} ${courts === 1 ? 'court is' : 'courts are'} full at ${perCourt} a court. Add a court in Edit details, or remove someone first.`
-      : 'The session is full. Remove someone, or raise the max players in Edit details, first.';
+      ? `All ${courts} ${courts === 1 ? 'court is' : 'courts are'} full at ${perCourt} a court. This makes ${lists.confirmed.length + 1} playing.`
+      : `The session is full at ${cap ?? lists.confirmed.length}. This makes ${lists.confirmed.length + 1} playing.`;
   const lateCount = lists.cancelled.filter((p) => p.lateCancel).length;
 
   /** After a change: the console bumps its refresh key, which reloads this card too. */
@@ -466,12 +467,14 @@ export default function SessionListCard({ refreshKey = 0, onChanged, run = clubR
               />
             )}
             {target?.waitlisted && (
+              /* Full is not a wall for the organiser (Grant, 2026-11-12): the
+                 row says so in its own words and moves them in over the max. */
               <ActionRow
                 icon="how_to_reg"
-                label="Move into the session"
+                label={full ? 'Move into the session anyway' : 'Move into the session'}
                 hint={full ? fullHint : 'Takes a free spot now.'}
-                disabled={busy || full || !online}
-                onClick={() => { const id = target.id; void act(() => promotePlayer(id)); }}
+                disabled={busy || !online}
+                onClick={() => { const id = target.id; void act(() => promotePlayer(id, null, { overCapacity: full })); }}
               />
             )}
             {/* A plus-one has no account (docs/plans/plus-one.md): the way in is an invite. */}
