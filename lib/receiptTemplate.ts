@@ -18,6 +18,9 @@ export interface ReceiptBreakdown {
   /** How many people the total is shared between (the bill's denominator,
    *  which leaves out a player covered by "split it across everyone else"). */
   splitCount: number;
+  /** The organiser's fee per player inside `costPerPerson` (docs/plans/organiser-fee.md).
+   *  Absent / 0 = none; when present the receipt shows it as its own line. */
+  organiserFee?: number;
 }
 
 export interface ReceiptInput {
@@ -129,7 +132,9 @@ export function renderGroupText(input: ReceiptInput): string {
     ...(recipient.wealthsimple ? [`Or Wealthsimple: ${recipient.wealthsimple}`] : []),
     `Memo: ${memo}`,
     '',
-    `(${courtLabel} · ${playerLabel} · ${fmtMoney(totalCost)} total)`,
+    `(${courtLabel} · ${playerLabel} · ${fmtMoney(totalCost)} total${
+      (input.breakdown?.organiserFee ?? 0) > 0 ? ` · includes a ${fmtMoney(input.breakdown!.organiserFee!)} organiser fee each` : ''
+    })`,
   ];
   if (note?.trim()) {
     lines.push('', note.trim());
@@ -191,6 +196,26 @@ export const RECEIPT_W = 390;
 export const RECEIPT_H = 520;
 const PAD = 24;
 const BAND_H = 198;
+/** One breakdown row, the gap a rule adds above one, and one pay-to item. */
+const ROW_H = 18 + 4;
+const RULE_GAP = 2 + 6;
+const ITEM_H = 14 + 3 + 19;
+/** The footer's band at the bottom: "Thanks for playing" sits 20px above the edge. */
+const FOOTER_H = 44;
+
+/**
+ * How tall the image must be to hold everything: RECEIPT_H (3:4) unless the
+ * content needs more. Only an organiser fee (docs/plans/organiser-fee.md) with
+ * a Wealthsimple handle does today — two more breakdown rows and a third
+ * pay-to item would otherwise run into the footer.
+ */
+export function receiptHeight(input: ReceiptInput): number {
+  const rows = breakdownRows(input);
+  const rowsH = rows.reduce((h, r) => h + ROW_H + (r.ruleAbove ? RULE_GAP : 0), 0);
+  const items = payToItems(input).length;
+  const boxH = 12 * 2 + items * ITEM_H + (items - 1) * 8;
+  return Math.max(RECEIPT_H, BAND_H + 18 + rowsH + 8 + boxH + FOOTER_H);
+}
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
@@ -217,6 +242,16 @@ export function breakdownRows(input: ReceiptInput): { label: string; amount: str
   }
   rows.push({ label: 'Total', amount: fmtMoney(input.totalCost), strong: true, ruleAbove: rows.length > 0 });
   const n = b?.splitCount ?? 0;
+  const fee = b?.organiserFee ?? 0;
+  if (fee > 0) {
+    // The cost share and the organiser's fee on their own lines, so a player
+    // can see which part is the night's cost and which is the organiser's.
+    const share = Math.round((input.costPerPerson - fee) * 100) / 100;
+    rows.push({ label: n > 1 ? `Split ${n} ways` : 'Cost share', amount: `${fmtMoney(share)} each` });
+    rows.push({ label: 'Organiser fee', amount: `${fmtMoney(fee)} each` });
+    rows.push({ label: 'Per person', amount: fmtMoney(input.costPerPerson), strong: true, accent: true, ruleAbove: true });
+    return rows;
+  }
   rows.push(n > 1
     ? { label: `Split ${n} ways`, amount: `${fmtMoney(input.costPerPerson)} each`, strong: true, accent: true }
     : { label: 'Per person', amount: fmtMoney(input.costPerPerson), strong: true, accent: true });
@@ -270,7 +305,7 @@ export function renderGroupCanvas(
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
   const W = RECEIPT_W;
-  const H = RECEIPT_H;
+  const H = receiptHeight(input);
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   canvas.width = W * dpr;
   canvas.height = H * dpr;
@@ -321,7 +356,7 @@ export function renderGroupCanvas(
       y += 2;
       ctx.fillStyle = INK.rule;
       ctx.fillRect(PAD, y, W - PAD * 2, 1);
-      y += 6;
+      y += RULE_GAP - 2;
     }
     const base = y + 14;
     ctx.font = `${row.strong ? 700 : 400} 15px ${f.sans}`;
@@ -332,13 +367,12 @@ export function renderGroupCanvas(
     ctx.fillStyle = row.accent ? INK.each : INK.white;
     ctx.textAlign = 'right';
     ctx.fillText(row.amount, W - PAD, base);
-    y += 18 + 4;
+    y += ROW_H;
   }
   ctx.textAlign = 'left';
 
   // The pay-to box.
   const items = payToItems(input);
-  const ITEM_H = 14 + 3 + 19;
   const boxTop = y + 8;
   const boxH = 12 * 2 + items.length * ITEM_H + (items.length - 1) * 8;
   ctx.fillStyle = INK.well;

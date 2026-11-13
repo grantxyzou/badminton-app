@@ -127,14 +127,17 @@ export function paymentEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' |
   const amountCents = cents(row.owedAmount);
   if (amountCents <= 0) return null;
   const via = row.paidVia ?? 'manual';
-  const key = via === 'etransfer' && row.paymentId ? row.paymentId : ms(row.paidAt);
+  // A card payment is keyed on its Checkout Session id, like an e-transfer on
+  // its payments doc: the webhook can be delivered twice, and a retry must
+  // compute the same id and collide.
+  const key = (via === 'etransfer' || via === 'card') && row.paymentId ? row.paymentId : ms(row.paidAt);
   return {
     id: `payment:${row.id}:${key}`,
     memberId: memberOf(row),
     account: 'member_owed',
     kind: 'payment',
     amountCents: -amountCents,
-    note: via === 'etransfer' ? 'E-transfer' : via === 'credit' ? 'Paid with credit' : 'Marked paid',
+    note: via === 'etransfer' ? 'E-transfer' : via === 'credit' ? 'Paid with credit' : via === 'card' ? 'Card' : 'Marked paid',
     ref: { kind: 'session', id: row.id, pk: row.sessionId },
     meta: { via, ...(row.paymentId ? { paymentId: row.paymentId } : {}) },
     ...(row.paidAt ? { createdAt: row.paidAt } : {}),
@@ -209,7 +212,7 @@ export function stringingChargeEntry(job: Pick<StringingJob, 'id' | 'memberId' |
   };
 }
 
-export function stringingPaymentEntry(job: Pick<StringingJob, 'id' | 'memberId' | 'priceCents' | 'paidAt'>, via: 'manual' | 'etransfer' | 'credit' = 'manual', paymentId?: string): NewEntry | null {
+export function stringingPaymentEntry(job: Pick<StringingJob, 'id' | 'memberId' | 'priceCents' | 'paidAt'>, via: 'manual' | 'etransfer' | 'credit' | 'card' = 'manual', paymentId?: string): NewEntry | null {
   if (typeof job.priceCents !== 'number' || job.priceCents <= 0 || !job.paidAt) return null;
   // Keyed on paidAt for EVERY via. A StringingJob carries no paidVia/paymentId
   // (a Player does), so the backfill cannot know how a job was paid — if the
@@ -222,7 +225,7 @@ export function stringingPaymentEntry(job: Pick<StringingJob, 'id' | 'memberId' 
     account: 'member_owed',
     kind: 'payment',
     amountCents: -Math.round(job.priceCents),
-    note: via === 'etransfer' ? 'E-transfer' : via === 'credit' ? 'Paid with credit' : 'Marked paid',
+    note: via === 'etransfer' ? 'E-transfer' : via === 'credit' ? 'Paid with credit' : via === 'card' ? 'Card' : 'Marked paid',
     ref: { kind: 'stringing', id: job.id, pk: job.memberId },
     meta: { via, ...(paymentId ? { paymentId } : {}) },
     createdAt: job.paidAt,
@@ -405,7 +408,7 @@ const billableShaped = (j: Pick<StringingJob, 'priceCents' | 'status'>) => typeo
  * while the job is billable-shaped; a price change or a status moving
  * backwards voids the old one. `prev` is the job before the write.
  */
-export async function mirrorStringingChanged(scope: GroupScope, prev: StringingJob, next: StringingJob, via: 'manual' | 'etransfer' | 'credit' = 'manual', paymentId?: string): Promise<void> {
+export async function mirrorStringingChanged(scope: GroupScope, prev: StringingJob, next: StringingJob, via: 'manual' | 'etransfer' | 'credit' | 'card' = 'manual', paymentId?: string): Promise<void> {
   if (!on()) return;
   try {
     const was = billableShaped(prev);

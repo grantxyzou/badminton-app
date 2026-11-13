@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       session,
       participants.map((p) => (billedIds.has(p.id) && p.removed === true ? { ...p, removed: false } : p)),
     );
-    const { courtTotal, birdTotal, totalCost, denominator, costPerPerson, coveredTotal } = split;
+    const { courtTotal, birdTotal, totalCost, denominator, costPerPerson, coveredTotal, organiserFee } = split;
 
     if (totalCost <= 0) {
       return NextResponse.json(
@@ -137,6 +137,7 @@ export async function POST(req: NextRequest) {
       playerCount: denominator,
       playerNames: participants.map((p) => p.name),
       ...(coveredTotal > 0 ? { coveredTotal } : {}),
+      ...(organiserFee > 0 ? { organiserFee } : {}),
     };
 
     // Stamp session first. If player updates fail, admin can unsettle & retry.

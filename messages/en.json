@@ -539,6 +539,9 @@
       "etransfer": "E-transfer to {email}",
       "sentIt": "I\u2019ve sent it",
       "sentItDone": "Thanks \u2014 it\u2019ll be marked paid when the e-transfer arrives.",
+      "card": "Pay by card",
+      "cardBusy": "Opening card payment\u2026",
+      "cardError": "Couldn\u2019t open card payment \u2014 try again.",
       "sentItError": "Couldn\u2019t save that \u2014 try again."
     },
     "credit": {
@@ -3105,7 +3108,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "updated": "11 November 2026",
+      "updated": "12 November 2026",
       "sections": [
         {
           "h": "Who we are",
@@ -3159,6 +3162,7 @@
           "h": "Where it lives",
           "p": [
             "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies.",
+            "If your group takes card payments, you pay on a page run by Stripe, into your group's own Stripe account. Your card details go to Stripe and never reach %APP% or your group's organisers; we receive only whether the payment went through, its amount, and Stripe's reference for it. Stripe handles the payment under its own privacy policy.",
             "Some text in the app is written with the help of an AI service (Anthropic, in the United States) — for example, the summary on your Stats tab. It receives only what that text needs, which can include your name and the names of people you regularly play with. When it writes the verdict on your racket, it receives the racket and what the verdict found from your fit answers — including that something is sore, if you said so — and never your name. These two kinds of requests never mix: a request that includes your name never includes your fit answers, and vice versa. Under our agreement with them, what we send is not used to train their models.",
             "The organiser also uses that AI service to prepare a weekly summary of group totals and to read problem reports for patterns. It receives the totals, and problem reports with the name and internet address removed — nothing that says who did what.",
             "Because Azure and Anthropic's US operations are outside Canada, some of your data may be accessible to US authorities under US law while it's there."
@@ -3198,12 +3202,12 @@
     },
     "terms": {
       "title": "Terms of use",
-      "updated": "7 October 2026",
+      "updated": "13 November 2026",
       "sections": [
         {
           "h": "What this is",
           "p": [
-            "%APP% is a tool badminton groups use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free today; if a paid plan is ever introduced it will be announced in the app first, and nothing you've already done becomes payable after the fact. Using it means you're a member of a group on it, were invited by one, or are starting your own."
+            "%APP% is a tool badminton groups use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free while it's in beta, the stringing tools included (those for a limited time). Later it may offer paid options, such as a subscription or one-time purchases; any will be announced in the app first, and nothing you've already done becomes payable after the fact. What your group charges for a session or for stringing is the group's own, not %APP%'s. Using it means you're a member of a group on it, were invited by one, or are starting your own."
           ]
         },
         {
@@ -3221,7 +3225,9 @@
         {
           "h": "Money",
           "p": [
-            "The app records each person's share of a session and whether it has been paid. It does not take payments. Paying is arranged between you and your group's organisers, usually by e-transfer. Nothing in the app is a bill from anyone but your group's organisers, and none of it is financial advice or a financial service."
+            "The app records each person's share of a session and whether it has been paid. Paying is arranged between you and your group's organisers: usually by e-transfer, or by card where your group has turned card payments on.",
+            "A card payment goes to your group's own Stripe account, never to %APP% or its operator. Your group is the seller: a refund or a dispute is between you and your group's organisers. A group may add an organiser fee to every player's share, whatever way they pay; when it does, the receipt shows it.",
+            "Nothing in the app is a bill from anyone but your group's organisers, and none of it is financial advice or a financial service."
           ]
         },
         {
@@ -3258,7 +3264,7 @@
     },
     "support": {
       "title": "Support",
-      "updated": "7 October 2026",
+      "updated": "13 November 2026",
       "sections": [
         {
           "h": "Something not working?",
@@ -3275,7 +3281,9 @@
         {
           "h": "Questions about money",
           "p": [
-            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your group's organiser — the app records payments, it doesn't take them."
+            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your group's organiser.",
+            "Card payments, where your group has turned them on, go straight to your group's own Stripe account — never to %APP% or its operator.",
+            "Refunds: if a session is cancelled, or you paid for one you didn't play, ask your group's organiser. A card payment is refunded to the same card from the group's Stripe account, and your balance shows the session as owed again; an e-transfer is refunded by the organiser directly. %APP% itself holds no money, so it cannot refund anything on a group's behalf."
           ]
         }
       ],

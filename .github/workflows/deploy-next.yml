@@ -126,6 +126,11 @@ jobs:
           # Phase 2 ledger, stage 1: mirror every charge/payment into `ledger`.
           # Read server-side; nothing visible changes. See lib/flags.ts.
           NEXT_PUBLIC_FLAG_LEDGER_MIRROR: 'true'
+          # Card payments through Stripe (docs/plans/card-pay-prototype.md;
+          # ROADMAP non-goal lifted 2026-11-12). OFF until STRIPE_SECRET_KEY and
+          # STRIPE_WEBHOOK_SECRET are in Azure App Settings; then 'true' and deploy.
+          # Fast off switch without a rebuild: delete STRIPE_SECRET_KEY.
+          NEXT_PUBLIC_FLAG_CARD_PAY: 'false'
           # ON as of 2026-08-27: the admin bench (job list, job detail, intake)
           # and /api/stringing/*. Players see the shop only once its own
           # admin-controlled `open` flag is set (PATCH /api/stringing/shop).

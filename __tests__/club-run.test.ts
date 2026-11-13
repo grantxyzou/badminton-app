@@ -18,7 +18,7 @@ import {
 describe('clubRunOf', () => {
   it('reads a club with no settings as BPM runs today', () => {
     for (const settings of [undefined, null, {}, { run: null }, { run: 'members_first' }]) {
-      expect(clubRunOf(settings)).toEqual({ style: 'first_come', playersPerCourt: null, money: 'split', membersFirst: null, guests: 0 });
+      expect(clubRunOf(settings)).toEqual({ style: 'first_come', playersPerCourt: null, money: 'split', membersFirst: null, guests: 0, organiserFee: 0 });
     }
   });
 
@@ -37,6 +37,7 @@ describe('clubRunOf', () => {
       money: 'off',
       membersFirst: null,
       guests: 0,
+      organiserFee: 0,
     });
     expect(clubRunOf({ run: { style: 'members_first', playersPerCourt: null, money: 'off' } }).playersPerCourt).toBeNull();
   });
@@ -50,6 +51,7 @@ describe('clubRunOf', () => {
       money: 'split',
       membersFirst: null,
       guests: 0,
+      organiserFee: 0,
     });
     expect(clubRunOf({ run: { style: 'members_first', playersPerCourt: 99, money: 'maybe' } })).toEqual(
       applyStyle('members_first'),
@@ -59,8 +61,8 @@ describe('clubRunOf', () => {
 
 describe('styles', () => {
   it('a style writes all of its values', () => {
-    expect(applyStyle('members_first')).toEqual({ style: 'members_first', ...CLUB_STYLES.members_first.values });
-    expect(applyStyle('first_come')).toEqual({ style: 'first_come', ...CLUB_STYLES.first_come.values, guests: 0 });
+    expect(applyStyle('members_first')).toEqual({ style: 'members_first', ...CLUB_STYLES.members_first.values, organiserFee: 0 });
+    expect(applyStyle('first_come')).toEqual({ style: 'first_come', ...CLUB_STYLES.first_come.values, guests: 0, organiserFee: 0 });
   });
 
   it('"First come, first served" leaves guests to the club; "Members first" sets two', () => {
@@ -99,6 +101,7 @@ describe('parseClubRun', () => {
       money: 'split',
       membersFirst: null,
       guests: 0,
+      organiserFee: 0,
     });
   });
 

@@ -34,6 +34,8 @@ fix before anything in Phase 2 starts.
 
 ## Decisions
 
+- **2026-11-12 — Phase 3 (cards) started, by Grant's decision** ("lift it"), after a working Stripe sandbox prototype. The ROADMAP non-goal is struck. Shape, rollout and kill criterion: `docs/plans/card-pay-prototype.md`. Who pays the card fee was answered with an organiser fee every player pays, not a card-only surcharge: `docs/plans/organiser-fee.md`. The "Card payments, Stripe, Apple Pay" non-goal below is this phase's history, kept as written.
+
 - **2026-11-05 — A no-script way in is planned** (`docs/plans/payments-forwarding.md`): the organiser forwards Interac's emails to a per-club address the app receives, in place of pasting the Gmail script. It waits on one real forwarded email passing DKIM.
 
 - **2026-10-07 — Phase 2 started before the 2026-11-07 gate, by Grant's decision** ("then why not just do

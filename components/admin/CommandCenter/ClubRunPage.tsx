@@ -6,13 +6,14 @@ import Collapse from '@/components/primitives/Collapse';
 import EmptyState from '@/components/primitives/EmptyState';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
 import Switch from '@/components/primitives/Switch';
+import MoneyInput from '@/components/primitives/MoneyInput';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import SettingsList from '@/components/profile/SettingsList';
 import { isRefused } from '@/lib/apiFetch';
 import { useOnline } from '@/lib/useOnline';
 import { fmtSessionLabel, fmtTime } from '@/lib/fmt';
 import { announceClubRun } from '@/lib/useClubRun';
-import { applyStyle, clubRunOf, CLUB_STYLES, withSetting, type ClubRun } from '@/lib/clubRun';
+import { applyStyle, clubRunOf, CLUB_STYLES, isOrganiserFee, ORGANISER_FEE_MAX, withSetting, type ClubRun } from '@/lib/clubRun';
 import {
   DEFAULT_MEMBERS_FIRST,
   MEMBERS_FIRST_DAYS_MAX,
@@ -34,7 +35,10 @@ const DEFAULT_PER_COURT = 8;
  * "First come, first served", where spots do not follow the courts and the
  * per-court choice is closed.
  */
-export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64, window: 64, guests: 64 } as const;
+export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64, window: 64, guests: 64, fee: 183 } as const;
+
+/** What the fee field shows for a stored fee: blank for none, else dollars and cents. */
+const feeText = (fee: number) => (fee > 0 ? fee.toFixed(2) : '');
 
 /** Guests a member may bring, offered once guests are on. The server accepts 1–2 (lib/clubRun.ts). */
 const GUEST_CHOICES = [1, 2] as const;
@@ -93,6 +97,9 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
   const [session, setSession] = useState<{ datetime?: string; membersFirst?: unknown } | null>(null);
   const [unmarked, setUnmarked] = useState<number | null>(null);
   const [timeDraft, setTimeDraft] = useState<string | null>(null);
+  /* The organiser fee being typed; null while the field shows the stored fee. */
+  const [feeDraft, setFeeDraft] = useState<string | null>(null);
+  const [feeError, setFeeError] = useState('');
 
   useEffect(() => {
     let live = true;
@@ -141,7 +148,7 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          run: { playersPerCourt: next.playersPerCourt, money: next.money, membersFirst: next.membersFirst, guests: next.guests },
+          run: { playersPerCourt: next.playersPerCourt, money: next.money, membersFirst: next.membersFirst, guests: next.guests, organiserFee: next.organiserFee },
         }),
       });
       if (!res.ok) {
@@ -175,6 +182,7 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
           <CardSkeleton height={CLUB_RUN_HEIGHTS.guests} />
           <CardSkeleton height={CLUB_RUN_HEIGHTS.spots} />
           <CardSkeleton height={CLUB_RUN_HEIGHTS.money} />
+          <CardSkeleton height={CLUB_RUN_HEIGHTS.fee} />
         </section>
       </div>
     );
@@ -225,6 +233,18 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
   const thisWeek = session && typeof session.membersFirst === 'object' ? (session.membersFirst as MembersFirst) : null;
   const startsNext = session?.datetime !== undefined && !sameMembersFirst(thisWeek, rule);
   const saveRule = (next: MembersFirst | null) => void persist(withSetting(run, 'membersFirst', next));
+  const feeShown = feeDraft ?? feeText(run.organiserFee);
+  const feeTyped = feeShown.trim() === '' ? 0 : Number(feeShown.trim());
+  const feeChanged = feeDraft !== null && feeTyped !== run.organiserFee;
+  const saveFee = async () => {
+    if (!isOrganiserFee(feeTyped)) {
+      setFeeError(`Enter an amount from $0 to $${ORGANISER_FEE_MAX}, to the cent.`);
+      return;
+    }
+    setFeeError('');
+    await persist(withSetting(run, 'organiserFee', feeTyped));
+    setFeeDraft(null);
+  };
 
   return (
     <div className="flex flex-col gap-5 motion-fade">
@@ -459,6 +479,44 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
             />
           </div>
         </section>
+
+        {moneyOn && (
+          // docs/plans/organiser-fee.md. The same for every player however
+          // they pay, so it is the club's price, not a card surcharge.
+          <section className="glass-card flex flex-col gap-3" aria-label="Organiser fee">
+            <div>
+              <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>
+                Organiser fee
+              </p>
+              <p id="club-run-fee" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                {run.organiserFee > 0
+                  ? `$${run.organiserFee.toFixed(2)} added to every player’s share of a priced session, however they pay. Shown on the receipt.`
+                  : 'None · add an amount to every player’s share for your time and card fees. Shown on the receipt.'}
+              </p>
+            </div>
+            <form
+              className="flex items-center gap-2"
+              aria-describedby="club-run-fee"
+              onSubmit={(e) => { e.preventDefault(); if (feeChanged) void saveFee(); }}
+            >
+              <MoneyInput
+                value={feeShown}
+                onChange={(v) => { setFeeDraft(v); setFeeError(''); }}
+                ariaLabel="Organiser fee per player"
+                placeholder="0.00"
+                maxLength={5}
+                disabled={busy}
+              />
+              <button type="submit" className="cc-btn cc-btn-primary" disabled={busy || !feeChanged}>
+                Save
+              </button>
+            </form>
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              A change starts with the next session; bills already out stay as they are.
+            </p>
+            {feeError && <p className="field-error" role="alert">{feeError}</p>}
+          </section>
+        )}
 
         {/* A way to another page is a settings row, as everywhere in admin —
             not a free-standing button. */}

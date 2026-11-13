@@ -92,6 +92,13 @@ export interface Session {
    */
   membersFirst?: { daysBefore: number; time: string };
   /**
+   * The organiser's fee per player, in dollars, copied from the club's
+   * `ClubRun.organiserFee` when the session was created
+   * (docs/plans/organiser-fee.md). Added to every share by `costSplit`.
+   * Additive; absent = no fee.
+   */
+  organiserFee?: number;
+  /**
    * When the waitlist was let in: by the first visit after the window ended,
    * or early by an organiser. Present = the window is over and the promotion
    * has run. Additive.
@@ -114,6 +121,9 @@ export interface SettledSnapshot {
    *  (Σ costPerPerson over absorb-covered players). 0 / absent when nobody
    *  was covered. Drives the "You've covered $X this session" summary. */
   coveredTotal?: number;
+  /** The organiser's fee per player INCLUDED in `costPerPerson`
+   *  (docs/plans/organiser-fee.md). Absent / 0 = none. */
+  organiserFee?: number;
 }
 
 export interface BirdUsage {
@@ -160,10 +170,17 @@ export interface Player {
   coverMode?: 'absorb' | 'resplit';
   /** ISO — when `paid` last went true. Absent on rows marked before 2026-10. */
   paidAt?: string;
-  /** How it was marked: an admin's tap, or an e-transfer the inbox matched. */
-  paidVia?: 'manual' | 'etransfer' | 'credit';
-  /** The `payments` doc that paid it (`paidVia: 'etransfer'`). */
+  /** How it was marked: an admin's tap, an e-transfer the inbox matched, credit, or a card (Stripe Checkout, docs/plans/card-pay-prototype.md). */
+  paidVia?: 'manual' | 'etransfer' | 'credit' | 'card';
+  /** The `payments` doc that paid it (`paidVia: 'etransfer'`), or the Stripe Checkout Session id (`paidVia: 'card'`). */
   paymentId?: string;
+  /**
+   * The Stripe Checkout Session whose card payment for this row was REFUNDED
+   * in the Stripe Dashboard, which put the row back to unpaid
+   * (docs/plans/card-pay-prototype.md). Lets a redelivered or later partial
+   * refund know what it already undid. Additive; absent = never refunded.
+   */
+  refundedPaymentId?: string;
   /**
    * Waitlisted by the soft hold, not by a full session: the member owed for
    * too many past sessions at sign-up (docs/plans/payments.md). Cleared — and
@@ -251,8 +268,8 @@ export interface LedgerEntry {
   ref?: { kind: 'session' | 'stringing' | 'court' | 'purchase' | 'expense'; id: string; pk: string };
   meta?: {
     /** How a payment arrived. */
-    via?: 'manual' | 'etransfer' | 'credit';
-    /** The `payments` doc, for an e-transfer. */
+    via?: 'manual' | 'etransfer' | 'credit' | 'card';
+    /** The `payments` doc, for an e-transfer; the Checkout Session id, for a card. */
     paymentId?: string;
     coverMode?: 'absorb' | 'resplit';
     /** An expense's bucket. */
@@ -1123,6 +1140,14 @@ export interface StringingJob {
   /** Set when the player accepts the quote. */
   acceptedAt: string | null;
   paidAt: string | null;
+  /**
+   * The Stripe Checkout Session that paid this job by card
+   * (docs/plans/card-pay-prototype.md). Additive; absent = paid another way or
+   * unpaid. The ledger still keys the payment on `paidAt`, as for every via.
+   */
+  cardPaymentId?: string;
+  /** The Checkout Session whose card payment for this job was refunded in Stripe, putting it back to unpaid. */
+  refundedPaymentId?: string;
   /** Session the racket changes hands at, when there is one. */
   sessionId: string | null;
   createdAt: string;

@@ -171,7 +171,12 @@ export async function POST(req: NextRequest) {
       console.error('advance: club read failed, no members-first window:', err);
       return undefined;
     });
-    const membersFirst = clubRunOf(club?.settings).membersFirst;
+    const clubRun = clubRunOf(club?.settings);
+    const membersFirst = clubRun.membersFirst;
+    // The organiser's fee (docs/plans/organiser-fee.md) is copied the same way,
+    // and only for a club that bills in the app. A failed club read means no
+    // fee this week rather than a guessed one.
+    const organiserFee = clubRun.money === 'split' && clubRun.organiserFee > 0 ? clubRun.organiserFee : 0;
 
     const newSession = {
       id: newId,
@@ -191,6 +196,7 @@ export async function POST(req: NextRequest) {
       ...(prevCostPerPerson ? { prevCostPerPerson } : {}),
       ...(prevSnapshot ? { prevSnapshot, anomaliesAtAdvance } : {}),
       ...(membersFirst && membersFirstEnd(datetime, membersFirst) ? { membersFirst } : {}),
+      ...(organiserFee > 0 ? { organiserFee } : {}),
     };
 
     await scope.upsert('sessions', newSession);

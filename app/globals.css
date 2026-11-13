@@ -2629,6 +2629,28 @@ html:root .ink-button {
   outline-offset: 2px;
 }
 
+/* "Pay by card" on the Home balance: the label, then the accepted card
+   networks' acceptance marks (public/brand/cards/, Apache-2.0). Marks are
+   drawn at the icon ladder's md rung so they read as a hint, not as three
+   more buttons; their own colours are the networks' and are not themed. */
+.pay-card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  width: 100%;
+}
+.card-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.card-marks img {
+  height: var(--icon-md);
+  width: auto;
+  display: block;
+}
+
 .btn-ghost:disabled {
   opacity: 0.35;
   cursor: not-allowed;
