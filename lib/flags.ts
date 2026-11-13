@@ -101,7 +101,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   },
   NEXT_PUBLIC_FLAG_VOICE_SCORE: {
     description:
-      'Voice scoring on the courtside board, a proof of concept (docs/plans/voice-score.md): a Preview mic on Keep score that listens for the umpire\'s call ("eleven seven") and scores a rally only when the call is exactly one rally on from the board. Client-only: the browser\'s own recogniser, nothing stored or sent to our server. Hidden where the browser has no recogniser, and always in the store app. OFF in production until legal.privacy says the browser sends the audio to its speech service.',
+      'Voice scoring on the courtside board, a proof of concept (docs/plans/voice-score.md): a Preview mic on Keep score that listens for the umpire\'s call ("eleven seven") and scores a rally only when the call is exactly one rally on from the board. Client-only: the browser\'s own recogniser, nothing stored or sent to our server. Hidden where the browser has no recogniser, and always in the store app. ON in production since 2026-11-13 (Grant), before legal.privacy says the browser sends the audio to its speech service: that sentence is still owed.',
     owner: 'grant',
     plannedRemoval: '2026-12-11',
     note: 'The plan\'s Review-on date. Keep it (retire the flag, delete the off branch) or kill it (delete the mic, lib/useVoiceScore.ts, lib/voiceScore.ts and put Permissions-Policy back to microphone=()).',

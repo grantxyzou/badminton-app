@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Voice scoring is on (2026-11-13)
+
+- **The Preview mic on Keep score is on for everyone** (Stats → Play → Keep score; `docs/plans/voice-score.md`). Call the score, server's first, and the board keeps it. Chrome on Android listens hands-free; Safari on iPhone and iPad hears one call per tap. Not in the App Store or Play app.
+- **What the mic hears goes to the browser's own speech service** (Google in Chrome, Apple in Safari), never to BPM's server; the privacy policy will say so.
+
 ## Voice scoring on Keep score: a proof of concept, off for now (2026-11-13)
 
 - **Call the score and the board keeps it** (Preview, behind `NEXT_PUBLIC_FLAG_VOICE_SCORE`, OFF in production; `docs/plans/voice-score.md`). A mic above the +1 buttons listens for the umpire's call, "eleven seven", and scores the rally only when the call is exactly one rally on from the board, so another court's call is shown as heard and never scored. At a level score ("six five" at 5 all) it asks which side won; "five all" and "service over" settle it themselves.
