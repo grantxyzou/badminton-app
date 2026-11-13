@@ -19,7 +19,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { normalizeEmail, lookupIdentity, touchIdentity, MAX_EMAIL_LENGTH } from '@/lib/authIdentity';
-import { verifyEmailCode, emailCodeLive, noteEmailCodeFailure } from '@/lib/emailCode';
+import {
+  verifyEmailCode,
+  emailCodeLive,
+  noteEmailCodeFailure,
+  readSignupCode,
+  noteSignupCodeFailure,
+  consumeSignupCode,
+} from '@/lib/emailCode';
+import { setPendingSignup } from '@/lib/pendingSignup';
 import { completeSignIn } from '@/lib/authSession';
 import { resolveGroupId } from '@/lib/groupContext';
 import type { Member } from '@/lib/types';
@@ -59,6 +67,25 @@ export async function POST(req: NextRequest) {
         .item(identity.memberId, identity.memberId)
         .read<Member & { _etag?: string }>();
       member = resource ?? null;
+    }
+
+    // No account at this address: a code from a club's link lets a NEW
+    // person make one (docs/plans/one-way-in.md, step 4). One scrypt on this
+    // branch too, so its time says nothing the other's would not.
+    if (!identity) {
+      const signup = await readSignupCode(email);
+      const right = await verifyEmailCode(signup, code);
+      if (!right || !signup) {
+        if (signup && emailCodeLive(signup)) await noteSignupCodeFailure(email);
+        return FAIL();
+      }
+      if (!(await consumeSignupCode(signup))) return FAIL();
+      // The proved address, parked in the same signed cookie Google and Apple
+      // use, so one name step (`POST /api/auth/complete-signup`) makes every
+      // new account. It grants nothing until a name is chosen.
+      const res = NextResponse.json({ signup: true });
+      setPendingSignup(res, { provider: 'email', sub: email, email, emailVerified: true, suggestedName: null });
+      return res;
     }
 
     const stored = member && member.active === true ? member.emailCode : undefined;

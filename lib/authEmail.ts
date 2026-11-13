@@ -98,6 +98,23 @@ export async function sendSignInCodeEmail(to: string, name: string, code: string
   return result;
 }
 
+/**
+ * "You're in" (docs/plans/one-way-in.md, step 4): an organiser let this
+ * person into a club they asked to join. No credential in it, so nothing to
+ * log in development.
+ */
+export async function sendJoinedEmail(to: string, name: string, club: string, url: string | null): Promise<AuthMailResult> {
+  const body = [
+    `Hi ${name},`,
+    '',
+    `You're in ${club}. Open ${APP_NAME} to sign up for the next session${url ? ':' : '.'}`,
+    ...(url ? [url] : []),
+    '',
+    `— ${APP_NAME}`,
+  ].join('\n');
+  return send(to, `You're in ${club}`, body);
+}
+
 export async function sendPasswordResetEmail(
   to: string,
   name: string,

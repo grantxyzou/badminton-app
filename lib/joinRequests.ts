@@ -24,12 +24,30 @@
  */
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
-import { readGroup, rosterNameHolder, updateJoinRequests } from '@/lib/groups';
+import {
+  addMembership,
+  readGroup,
+  readMembership,
+  rosterNameHolder,
+  RosterNameTakenError,
+  setMembershipRegular,
+  updateJoinRequests,
+} from '@/lib/groups';
 import { adminAddToRoster } from '@/lib/roster';
 import type { Group, Member, StoredJoinRequest } from '@/lib/types';
 
 const TTL_MS = 60 * 60 * 1000;
 export const MAX_OPEN_JOIN_REQUESTS = 10;
+
+/**
+ * An ask from a SIGNED-IN account (docs/plans/one-way-in.md, step 4) waits
+ * fourteen days, not an hour: the person can close the app, so the request
+ * waits on the organiser's week, not on a phone kept open. Fourteen is also
+ * when a never-approved account is cleaned up (step 6).
+ */
+export const ACCOUNT_ASK_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+/** Open account asks one club may hold: a full Saturday of people, not a flood. */
+export const MAX_OPEN_ACCOUNT_ASKS = 50;
 /** The same ceiling as an imported name (`POST /api/members`). */
 export const MAX_JOIN_NAME = 50;
 
@@ -40,7 +58,11 @@ function hash(secret: string): string {
 /** Unexpired requests, waiting or approved-but-not-yet-collected. */
 export function liveJoinRequests(group: Pick<Group, 'joinRequests'> | null | undefined, now = Date.now()): StoredJoinRequest[] {
   return (group?.joinRequests ?? []).filter(
-    (r) => r && typeof r.hash === 'string' && typeof r.expiresAt === 'number' && now <= r.expiresAt,
+    (r) =>
+      r &&
+      (typeof r.hash === 'string' || typeof r.askedBy === 'string') &&
+      typeof r.expiresAt === 'number' &&
+      now <= r.expiresAt,
   );
 }
 
@@ -92,6 +114,8 @@ export function findJoinBySecret(
   const a = Buffer.from(hash(candidate), 'hex');
   let found: StoredJoinRequest | null = null;
   for (const r of liveJoinRequests(group, now)) {
+    // An account's ask has no secret: it is never found by one.
+    if (typeof r.hash !== 'string') continue;
     const b = Buffer.from(r.hash, 'hex');
     if (a.length === b.length && timingSafeEqual(a, b) && !found) found = r;
   }
@@ -117,10 +141,16 @@ export type ApproveJoinOutcome =
  * `name_taken`: `adminAddToRoster` would otherwise rejoin that removed person,
  * and a stranger at the door would be handed their old account.
  */
-export async function approveJoinRequest(groupId: string, requestId: string, now = Date.now()): Promise<ApproveJoinOutcome> {
+export async function approveJoinRequest(
+  groupId: string,
+  requestId: string,
+  now = Date.now(),
+  opts: { regular?: boolean } = {},
+): Promise<ApproveJoinOutcome> {
   const group = await readGroup(groupId);
   const target = pendingJoinRequests(group, now).find((r) => r.id === requestId);
   if (!group || group.closedAt || !target) return { outcome: 'not_found' };
+  if (typeof target.askedBy === 'string') return approveAccountAsk(groupId, target, now, opts);
   if (await rosterNameHolder(groupId, target.name)) return { outcome: 'name_taken' };
 
   const marked = await updateJoinRequests(groupId, (open) => {
@@ -145,8 +175,151 @@ export async function approveJoinRequest(groupId: string, requestId: string, now
     throw err;
   }
 
-  await updateJoinRequests(groupId, (open) => open.map((r) => (r.id === requestId ? { ...r, memberId } : r)));
+  if (opts.regular === true) await setMembershipRegular(groupId, memberId, true);
+  await updateJoinRequests(groupId, (open) =>
+    open.map((r) => (r.id === requestId ? { ...r, memberId, ...(opts.regular === true ? { regular: true } : {}) } : r)),
+  );
   return { outcome: 'approved', memberId, name: target.name };
+}
+
+/**
+ * Approve an ask from a signed-in account: add THAT account to the club,
+ * under the name it gave, as a regular or a drop-in. The request is taken off
+ * the club FIRST, under the etag, so two organisers tapping at once add the
+ * person once; the second finds nothing. If the membership cannot be added
+ * (the name was taken meanwhile), the request is put back.
+ */
+async function approveAccountAsk(
+  groupId: string,
+  target: StoredJoinRequest,
+  now: number,
+  opts: { regular?: boolean },
+): Promise<ApproveJoinOutcome> {
+  const memberId = target.askedBy!;
+  const holder = await rosterNameHolder(groupId, target.name);
+  if (holder && holder !== memberId) return { outcome: 'name_taken' };
+
+  const taken = await updateJoinRequests(groupId, (open) =>
+    open.some((r) => r.id === target.id && r.approvedAt === undefined && now <= r.expiresAt)
+      ? open.filter((r) => r.id !== target.id)
+      : null,
+  );
+  if (!taken) return { outcome: 'not_found' };
+
+  try {
+    await addMembership({ groupId, memberId, name: target.name, joinedVia: 'link', joinedAt: new Date(now).toISOString() });
+  } catch (err) {
+    await updateJoinRequests(groupId, (open) => (open.some((r) => r.id === target.id) ? null : [...open, target]));
+    if (err instanceof RosterNameTakenError) return { outcome: 'name_taken' };
+    throw err;
+  }
+  if (opts.regular === true) await setMembershipRegular(groupId, memberId, true);
+  return { outcome: 'approved', memberId, name: target.name };
+}
+
+export type AccountAskOutcome =
+  | { outcome: 'asked'; request: StoredJoinRequest }
+  | { outcome: 'already_in' }
+  | { outcome: 'full' };
+
+/**
+ * A signed-in account asks to join a club through its link. One open ask per
+ * account per club: asking again (a new name, or the same) replaces it and
+ * keeps its place. The account keeps a pointer (`Member.joinAsks`) so the
+ * waiting screen reads its own asks without scanning every club.
+ */
+export async function addAccountJoinRequest(
+  groupId: string,
+  memberId: string,
+  rawName: string,
+  now = Date.now(),
+): Promise<AccountAskOutcome | null> {
+  const name = rawName.trim();
+  if (!name || name.length > MAX_JOIN_NAME) return null;
+  const existing = await readMembership(groupId, memberId);
+  if (existing?.status === 'active') return { outcome: 'already_in' };
+
+  let request: StoredJoinRequest | null = null;
+  let full = false;
+  const written = await updateJoinRequests(groupId, (open) => {
+    const live = open.filter((r) => typeof r.expiresAt === 'number' && now <= r.expiresAt);
+    const mine = live.find((r) => r.askedBy === memberId && r.approvedAt === undefined);
+    if (mine) {
+      request = { ...mine, name, expiresAt: now + ACCOUNT_ASK_TTL_MS };
+      return live.map((r) => (r.id === mine.id ? request! : r));
+    }
+    if (live.filter((r) => typeof r.askedBy === 'string').length >= MAX_OPEN_ACCOUNT_ASKS) {
+      full = true;
+      return null;
+    }
+    request = {
+      id: randomBytes(8).toString('hex'),
+      name,
+      askedBy: memberId,
+      createdAt: new Date(now).toISOString(),
+      expiresAt: now + ACCOUNT_ASK_TTL_MS,
+    };
+    return [...live, request];
+  });
+  if (full) return { outcome: 'full' };
+  if (!written || !request) return null;
+  await rememberAsk(memberId, groupId, (request as StoredJoinRequest).id, now);
+  return { outcome: 'asked', request };
+}
+
+/** Keep the account's pointer to its ask, dropping ones older than an ask lives. */
+async function rememberAsk(memberId: string, groupId: string, requestId: string, now: number): Promise<void> {
+  const container = getContainer('members');
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { resource } = await container.item(memberId, memberId).read<Member & { _etag?: string }>();
+    if (!resource) return;
+    const kept = (resource.joinAsks ?? []).filter(
+      (a) => a.groupId !== groupId && now - Date.parse(a.askedAt) < ACCOUNT_ASK_TTL_MS,
+    );
+    const next = { ...resource, joinAsks: [...kept, { groupId, requestId, askedAt: new Date(now).toISOString() }] };
+    try {
+      if (typeof resource._etag === 'string') {
+        await container.item(memberId, memberId).replace(next, { accessCondition: { type: 'IfMatch', condition: resource._etag } });
+      } else {
+        await container.items.upsert(next);
+      }
+      return;
+    } catch (err) {
+      if ((err as { code?: number })?.code === 412) continue;
+      throw err;
+    }
+  }
+}
+
+export type AskState = 'waiting' | 'in' | 'closed';
+
+export interface AccountAsk {
+  groupId: string;
+  club: string;
+  name: string | null;
+  state: AskState;
+}
+
+/**
+ * Where each of this account's asks stands: `in` (the organiser let them in),
+ * `waiting`, or `closed` (declined, expired, or the club is gone). It is the
+ * person's OWN asks, read through their own pointer, so saying "declined" out
+ * loud tells them nothing about anyone else.
+ */
+export async function accountAsks(member: Pick<Member, 'id' | 'joinAsks'>, now = Date.now()): Promise<AccountAsk[]> {
+  const out: AccountAsk[] = [];
+  for (const ask of member.joinAsks ?? []) {
+    const group = await readGroup(ask.groupId);
+    if (!group || group.closedAt) continue;
+    const membership = await readMembership(ask.groupId, member.id);
+    if (membership?.status === 'active') {
+      out.push({ groupId: group.id, club: group.name, name: membership.name, state: 'in' });
+      continue;
+    }
+    const open = pendingJoinRequests(group, now).find((r) => r.id === ask.requestId && r.askedBy === member.id);
+    out.push({ groupId: group.id, club: group.name, name: open?.name ?? null, state: open ? 'waiting' : 'closed' });
+  }
+  return out;
 }
 
 async function unmark(groupId: string, requestId: string): Promise<void> {

@@ -22,7 +22,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { normalizeEmail, lookupIdentity, isPlausibleEmail, MAX_EMAIL_LENGTH } from '@/lib/authIdentity';
-import { issueEmailCode } from '@/lib/emailCode';
+import { issueEmailCode, storeSignupCode } from '@/lib/emailCode';
+import { resolveClaimLink } from '@/lib/claimLinks';
+import { isFlagOn } from '@/lib/flags';
 import { sendSignInCodeEmail } from '@/lib/authEmail';
 import type { Member } from '@/lib/types';
 
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  let body: { email?: unknown };
+  let body: { email?: unknown; doorToken?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -56,7 +58,23 @@ export async function POST(req: NextRequest) {
 
   try {
     const identity = await lookupIdentity('email', email);
-    if (!identity) return OK();
+    if (!identity) {
+      // No account at this address. Through a club's LINK (docs/plans/
+      // one-way-in.md, step 4) that is a new person: mail a code that will
+      // let them make one. Without a link, nothing: an account needs a key
+      // (rule 13). Same answer either way.
+      const door =
+        isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') && body.doorToken !== undefined
+          ? await resolveClaimLink(body.doorToken)
+          : null;
+      if (!door) return OK();
+      const { code, stored } = await issueEmailCode();
+      await storeSignupCode(email, stored, door);
+      void sendSignInCodeEmail(email, 'there', code).catch((err) => {
+        console.error('[email-code] sign-up code mail failed:', err);
+      });
+      return OK();
+    }
 
     const container = getContainer('members');
     const { resource: member } = await container.item(identity.memberId, identity.memberId).read<Member & { _etag?: string }>();

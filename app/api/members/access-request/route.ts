@@ -25,7 +25,8 @@ import { groupIdWithHint } from '@/lib/groupContext';
 import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
 import { rosterMembers } from '@/lib/roster';
 import { addJoinRequest } from '@/lib/joinRequests';
-import { listOrganisers, readGroup, rosterNameHolder } from '@/lib/groups';
+import { notifyOrganisersOfJoinRequest } from '@/lib/joinNotify';
+import { listOrganisers } from '@/lib/groups';
 import { isFullName } from '@/lib/fullName';
 
 export const dynamic = 'force-dynamic';
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
       if (!isFullName(name)) return NextResponse.json({ ok: true, secret });
       const joined = await addJoinRequest(groupId, name);
       if (joined) {
-        await notifyOrganisersOfJoin(groupId, joined.request.id, joined.request.name);
+        await notifyOrganisersOfJoinRequest(groupId, joined.request.id, joined.request.name);
         return NextResponse.json({ ok: true, secret: joined.secret });
       }
       // Full, or the club is gone: a secret that will never be approved, the
@@ -188,28 +189,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * "Lin is asking to join BPM Core", to the club's organisers only (Grant,
- * 2026-11-05: organisers approve). Best-effort after the request is stored,
- * like every push: the inbox is the record. The name and the club, nothing
- * else (lock-screen rule), and tagged per request so a second tap replaces
- * the banner instead of stacking.
- */
-async function notifyOrganisersOfJoin(groupId: string, requestId: string, name: string): Promise<void> {
-  try {
-    const [organisers, group] = await Promise.all([listOrganisers(groupId), readGroup(groupId)]);
-    const ids = organisers.map((m) => m.memberId);
-    if (ids.length === 0) return;
-    const club = group?.name?.trim() || 'your club';
-    // Taken already (a removed member's name): still asked, so say so up front.
-    const taken = (await rosterNameHolder(groupId, name)) !== null;
-    await sendPushToMembers(ids, {
-      title: 'Someone wants to join',
-      body: taken ? `${name} is asking to join ${club}. That name is taken.` : `${name} is asking to join ${club}.`,
-      url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/?tab=admin`,
-      tag: `join-${requestId}`,
-    });
-  } catch (err) {
-    console.error('join-request push failed:', err);
-  }
-}

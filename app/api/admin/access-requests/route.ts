@@ -35,7 +35,7 @@ import { isUnclaimed } from '@/lib/claimLinks';
 import type { StoredAccessRequest } from '@/lib/accessRequest';
 import { approveJoinRequest, declineJoinRequest, pendingJoinRequests } from '@/lib/joinRequests';
 import { readGroup, rosterNameHolder } from '@/lib/groups';
-import { noticeClubOfJoin } from '@/lib/joinNotify';
+import { noticeClubOfJoin, tellJoinerTheyAreIn } from '@/lib/joinNotify';
 
 /**
  * Whether an ask is THIS club's. A request older than the field carries no
@@ -120,6 +120,8 @@ export async function GET(req: NextRequest) {
         joinRequestId: r.id,
         name: r.name,
         at: r.expiresAt,
+        // Asked signed in (step 4): approving adds that account, nothing new is made.
+        signedIn: typeof r.askedBy === 'string',
         nameTaken: (await rosterNameHolder(groupId, r.name)) !== null,
       })),
     );
@@ -162,10 +164,16 @@ export async function POST(req: NextRequest) {
           ? NextResponse.json({ ok: true })
           : NextResponse.json({ error: 'not_found' }, { status: 404 });
       }
-      const result = await approveJoinRequest(admin.groupId, joinRequestId);
+      // A regular or a drop-in (docs/plans/one-way-in.md, step 4): the
+      // organiser says which, so a stranger never gets members-first priority
+      // by default. Absent reads as a drop-in, the old behaviour.
+      const regular = body?.regular === true;
+      const result = await approveJoinRequest(admin.groupId, joinRequestId, Date.now(), { regular });
       if (result.outcome === 'approved') {
-        // The whole club hears it on the Notifications page (no push).
+        // The whole club hears it on the Notifications page (no push), and
+        // the person who asked hears it by email and push.
         await noticeClubOfJoin(admin.groupId, { id: result.memberId, name: result.name });
+        await tellJoinerTheyAreIn(admin.groupId, result.memberId);
         return NextResponse.json({ ok: true });
       }
       if (result.outcome === 'name_taken') return NextResponse.json({ error: 'name_taken' }, { status: 409 });

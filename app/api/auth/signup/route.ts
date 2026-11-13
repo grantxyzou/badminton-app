@@ -97,7 +97,10 @@ export async function POST(req: NextRequest) {
   // does not resolve REFUSES: falling back here is precisely the bug.
   // See lib/inviteSignup.ts.
   const invited = await signupGroupFor(req, body);
-  if (!invited.ok) {
+  // A club's LINK makes an account with Apple, Google or an email code, never
+  // a password (docs/plans/one-way-in.md: "no password is offered to a new
+  // person"). The same refusal as a bad invite.
+  if (!invited.ok || invited.door) {
     return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
   }
   /**

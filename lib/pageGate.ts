@@ -31,6 +31,7 @@ import { isFlagOn } from '@/lib/flags';
 import { listMembershipsForMember, readGroup } from '@/lib/groups';
 import type { Member } from '@/lib/types';
 import type { GroupListEntry } from '@/lib/useCurrentGroup';
+import { accountAsks, type AccountAsk } from '@/lib/joinRequests';
 
 export type PageOutcome =
   | { kind: 'app'; memberName: string | null }
@@ -41,7 +42,17 @@ export type PageOutcome =
    * order `GET /api/groups/mine` answers — empty for a brand-new organiser,
    * who gets the doors; non-empty for a removed member, who gets the list.
    */
-  | { kind: 'no-club'; memberName: string; groups: GroupListEntry[] };
+  | {
+      kind: 'no-club';
+      memberName: string;
+      groups: GroupListEntry[];
+      /**
+       * Clubs this account asked to join through a link and has not been let
+       * into (docs/plans/one-way-in.md, step 4): `waiting`, or `closed` when
+       * declined or expired. One let in is already in `groups`.
+       */
+      asks: AccountAsk[];
+    };
 
 const SIGNED_OUT: PageOutcome = { kind: 'signed-out' };
 
@@ -76,7 +87,9 @@ export async function decidePage(req: NextRequest): Promise<PageOutcome> {
     );
     const list = groups.filter((g): g is GroupListEntry => g !== null);
     list.sort((a, b) => (a.joinedAt ?? '').localeCompare(b.joinedAt ?? '') || a.id.localeCompare(b.id));
-    return { kind: 'no-club', memberName, groups: list };
+    // The account's own asks; a failed read shows none rather than refusing the page.
+    const asks = (await accountAsks(resource).catch(() => [] as AccountAsk[])).filter((a) => a.state !== 'in');
+    return { kind: 'no-club', memberName, groups: list, asks };
   } catch {
     return SIGNED_OUT;
   }

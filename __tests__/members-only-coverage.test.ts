@@ -133,6 +133,9 @@ const ROUTES: Record<string, Entry> = {
   'kudos/eligible': { kind: 'authed', helper: 'requireGroupMember' },
   notifications: { kind: 'gated' },
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
+  // The caller's OWN asks to join (docs/plans/one-way-in.md, step 4): read by a
+  // signed-in account that may be in no club yet, through its own pointer.
+  'groups/ask': { kind: 'authed', helper: 'verifyLiveMemberAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
   // The home-screen widget's bearer pass (docs/plans/native-widgets.md), re-read against the membership.
   widget: { kind: 'authed', helper: 'requireWidgetMember' },

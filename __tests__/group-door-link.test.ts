@@ -228,9 +228,12 @@ describe('letting them in', () => {
     expect(pushCalls).toHaveLength(1); // the organiser's "asking to join", nothing more
     const { joins } = await list('club-x');
     expect((await decide('club-x', joins[0].joinRequestId, 'approve')).status).toBe(200);
-    expect(pushCalls).toHaveLength(1);
 
     const sandra = membershipOf('club-x', 'Sandra Lee')!.memberId;
+    // No push to the club. The one push approval adds goes to the person let
+    // in, "You're in" (docs/plans/one-way-in.md, step 4).
+    expect(pushCalls).toHaveLength(2);
+    expect(pushCalls[1].ids).toEqual([sandra]);
     const notices = ((getStore()['insights'] ?? []) as Array<{ kind?: string; type?: string; memberId: string; memberName?: string; club?: string }>).filter(
       (n) => n.kind === 'notice' && n.type === 'member_joined',
     );

@@ -25,7 +25,9 @@ import type { Member } from '@/lib/types';
 import { signupGroupFor } from '@/lib/inviteSignup';
 import { notifyAdminsOfJoin } from '@/lib/joinNotify';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
-import { rosterNameHolder, addMembership } from '@/lib/groups';
+import { rosterNameHolder, addMembership, readGroup } from '@/lib/groups';
+import { addAccountJoinRequest } from '@/lib/joinRequests';
+import { notifyOrganisersOfJoinRequest } from '@/lib/joinNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
   }
 
-  let body: { name?: unknown; inviteToken?: unknown; inviteCode?: unknown };
+  let body: { name?: unknown; inviteToken?: unknown; inviteCode?: unknown; doorToken?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -145,7 +147,9 @@ export async function POST(req: NextRequest) {
     // must not reserve `email:<addr>`, or a provider account with an arbitrary
     // unconfirmed address could squat the real owner's future signup.
     const claimEmail = pending.email && pending.emailVerified ? pending.email : null;
-    if (claimEmail) {
+    // An email-proven identity IS the address: reserving it again would 409
+    // against itself.
+    if (claimEmail && pending.provider !== 'email') {
       const reservedEmail = await reserveIdentity('email', claimEmail, memberId);
       if (!reservedEmail.ok) {
         await releaseIdentity(pending.provider, pending.sub);
@@ -161,7 +165,7 @@ export async function POST(req: NextRequest) {
         sessionCount: 0,
         active: true,
         createdAt: new Date().toISOString(),
-        linkedProviders: [pending.provider],
+        ...(pending.provider === 'email' ? {} : { linkedProviders: [pending.provider] }),
         ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
       };
       await getContainer('members').items.create(member);
@@ -173,6 +177,25 @@ export async function POST(req: NextRequest) {
       }
       // Somebody new is in: tell the club's admins (lib/joinNotify.ts).
       if (joinsAClub && invited.invited) await notifyAdminsOfJoin(signupGroupId, { id: member.id, name: member.name });
+
+      // Through a club's LINK (docs/plans/one-way-in.md, step 4): the account
+      // is made in no club, and asks to join this one under the name it gave.
+      // The organiser's yes adds it; until then the page gate shows the
+      // waiting screen. A failed ask leaves a usable account that can ask
+      // again from that screen, so it never fails the sign-up.
+      let asked: { club: string } | null = null;
+      if (invited.door) {
+        try {
+          const outcome = await addAccountJoinRequest(invited.door, member.id, member.name);
+          if (outcome?.outcome === 'asked') {
+            const club = await readGroup(invited.door);
+            asked = { club: club?.name ?? '' };
+            await notifyOrganisersOfJoinRequest(invited.door, outcome.request.id, member.name);
+          }
+        } catch (err) {
+          console.error('complete-signup: the join ask failed after the account was made:', err);
+        }
+      }
 
       /* The PWA case: this response's cookies are being issued to Safari, so
          park the member the app can collect instead. Without this a brand-new
@@ -198,6 +221,7 @@ export async function POST(req: NextRequest) {
           name,
           email: claimEmail,
           provider: pending.provider,
+          ...(asked ? { asked } : {}),
           ...(returnCode ? { returnCode } : {}),
         },
         { status: 201 },
@@ -211,7 +235,7 @@ export async function POST(req: NextRequest) {
       /* Only a browser that STARTED the sign-in holds this cookie: a callback
          that passed its own state cookie, or the hand-off claim (preimage + code)
          — lib/authHandoff.ts, guarantee 4. So signing it in is honest. */
-      await completeSignIn(res, member, cookieGroupId, pending.provider);
+      await completeSignIn(res, member, cookieGroupId, pending.provider === 'email' ? 'email_code' : pending.provider);
       return res;
     } catch (err) {
       await releaseIdentity(pending.provider, pending.sub);

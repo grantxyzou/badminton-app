@@ -420,8 +420,20 @@ export interface StoredJoinRequest {
   id: string;
   /** The name they typed, trimmed. Becomes their roster name on approval. */
   name: string;
-  /** sha256 of the asking phone's secret. */
-  hash: string;
+  /**
+   * sha256 of the asking phone's secret, for an ask made SIGNED OUT (the
+   * door's first form). Absent on an ask made by a signed-in account
+   * (`askedBy`), which needs no secret: the account is the credential.
+   */
+  hash?: string;
+  /**
+   * The account that asked (docs/plans/one-way-in.md, step 4): it signed in
+   * first, with Apple, Google or an email code, then asked. Approval adds
+   * THIS account to the club; nothing is created.
+   */
+  askedBy?: string;
+  /** How the organiser let them in: a regular (members-first priority) or a drop-in. */
+  regular?: boolean;
   createdAt: string;
   /** Epoch ms. An hour after asking, the same life as an access request. */
   expiresAt: number;
@@ -651,6 +663,14 @@ export interface Member {
    * render "Google connected" without a second round-trip.
    */
   linkedProviders?: ('google' | 'apple')[];
+  /**
+   * The clubs this account has asked to join through a club link and not yet
+   * heard back from (docs/plans/one-way-in.md, step 4). A pointer only: the
+   * request itself lives on the club (`Group.joinRequests`), and its state is
+   * read from there. Lets the waiting screen answer "what did I ask for?" with
+   * one point read instead of a scan of every club.
+   */
+  joinAsks?: { groupId: string; requestId: string; askedAt: string }[];
   /**
    * Upgrade-nudge dismissal. Stored on the MEMBER, not localStorage — a
    * per-device dismissal would re-nag the same person on every device they own.

@@ -87,6 +87,7 @@ describe('members only ON, groups ON', () => {
       kind: 'no-club',
       memberName: 'Organiser',
       groups: [],
+      asks: [],
     });
   });
 

@@ -54,6 +54,11 @@ Earlier words that led here:
 - **2026-11-13 — Step 3: the code is in the email's SUBJECT too** ("123456 is your BPM code"), so it can be read off the notification and typed without opening the mail, as most apps that send codes do. It is single use, ten minutes, and worthless without the address. Beat: body only, one more app switch for every sign-in.
 - **2026-11-13 — Step 3: the send is not awaited.** `start` answers every address the same, and waiting for Gmail (about a second) only when the address is real would say which addresses are. The code is stored before the send, so a mail that fails costs a "Send a new code", never a code that was mailed but not kept.
 
+- **2026-11-13 — Step 4: imported names come in the same way as everyone, and the organiser links them.** An imported "Lin" (on the list, never signed in) signs in with Apple, Google or an email code, types "Lin" and asks. The organiser's approval offers "This is Lin from your list", which links her new sign-in to the existing Lin and her history. Grant chose this over keeping a separate "claim your name" path beside the club link. Built as step 4b; until it lands, the old name-only claim stays reachable for imported names.
+- **2026-11-13 — Step 4: the person hears "you're in" by email, and by push if they have it on.** A new account rarely has notifications on, so the email is what reaches them. Beat: push only.
+- **2026-11-13 — Step 4: "I play here already" stays, and stops saying which names exist.** Every name gets the same "Sent. If the club knows that name, an organiser will see it." for the hour, so the poll can no longer be used to test names. A real member is let in as today. Beat: removing it, which would leave a PIN-only member with no email and a forgotten PIN no self-serve way back. Built as step 4c.
+- **2026-11-13 — Step 4 is four parts on one branch,** each leaving the app working: 4a the account-first club link (sign in, name, ask, the waiting screen, approve as a regular or a drop-in, the "you're in" email and push); 4b linking an imported name at approval; 4c the "I play here already" leak; 4d removing the signed-out name-only club-link ask once 4b covers the names it existed for. The 14-day cleanup of never-approved accounts stays in step 6.
+
 ## Shape
 
 Planned; nothing is built yet.

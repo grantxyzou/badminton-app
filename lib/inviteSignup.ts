@@ -56,6 +56,7 @@ import type { NextRequest } from 'next/server';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
 import { claimInvite, type InviteClaim } from '@/lib/invites';
+import { resolveClaimLink } from '@/lib/claimLinks';
 
 /** The two shapes an invite arrives as, mirroring `POST /api/groups/join`. */
 export interface InviteFields {
@@ -66,6 +67,12 @@ export interface InviteFields {
    * Honoured only with the flag on and no invite present. See the header.
    */
   noGroup?: unknown;
+  /**
+   * The club's LINK (the door, docs/plans/one-way-in.md step 4): the account
+   * is made in NO club and asks to join this one. Like an invite, it is the
+   * key that lets an account be made at all; unlike one, it admits nobody.
+   */
+  doorToken?: unknown;
 }
 
 export type SignupGroup =
@@ -76,12 +83,18 @@ export type SignupGroup =
    * any refusal after this point, or a sign-up refused for a taken name would
    * burn the invite.
    */
-  | { ok: true; groupId: string; invited: true; claim: InviteClaim }
+  | { ok: true; groupId: string; invited: true; claim: InviteClaim; door?: undefined }
   /**
    * An ordinary front-door signup. `groupId: null` is the create-a-group
    * case: a real account, deliberately on no roster yet.
    */
-  | { ok: true; groupId: string | null; invited: false }
+  | { ok: true; groupId: string | null; invited: false; door?: undefined }
+  /**
+   * Through a club's link: an account on no roster (`groupId: null`), which
+   * the terminal then files as an ask to join `door`. Only an organiser's
+   * approval puts it on the roster.
+   */
+  | { ok: true; groupId: null; invited: false; door: string }
   | { ok: false };
 
 /** A trimmed string of a plausible length, or null. Same bounds as join's. */
@@ -131,6 +144,15 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
 
   const token = clean(body.inviteToken, 128);
   const code = clean(body.inviteCode, 64);
+
+  // The club's link. An invite AND a link is malformed, not a choice to make
+  // for the caller; a link that does not resolve is the one refusal every
+  // other bad key gets. Groups off there is one club and no door to ask at.
+  if (body.doorToken !== undefined && body.doorToken !== null) {
+    if (attempted || !groupsOn) return { ok: false };
+    const door = await resolveClaimLink(body.doorToken);
+    return door ? { ok: true, groupId: null, invited: false, door } : { ok: false };
+  }
   // Both at once is a malformed request, not a choice to make for the caller —
   // `POST /api/groups/join` refuses the same shape for the same reason.
   if (token && code) return { ok: false };
@@ -148,7 +170,17 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
   // two sign-ups on one link cannot both get in. Every refusal below and in
   // the caller must release it.
   const claim = token ? await claimInvite(token, 'invite') : await claimInvite(code!, 'code');
-  if (!claim) return { ok: false };
+  if (!claim) {
+    // A club's link and a one-time invite share one address (`/bpm/j/<token>`,
+    // docs/plans/door-link.md), so a token that is not an invite may be the
+    // club's link: the door branch above, reached by the field every sign-up
+    // form already sends (docs/plans/one-way-in.md, step 4).
+    if (token && groupsOn) {
+      const door = await resolveClaimLink(token);
+      if (door) return { ok: true, groupId: null, invited: false, door };
+    }
+    return { ok: false };
+  }
   // With groups OFF there is one club, so an invite is either BPM's or it is
   // not a usable invite here. Refusing a foreign group's token keeps a leftover
   // multi-group invite from minting a BPM account.

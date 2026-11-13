@@ -19,9 +19,9 @@
  * expired, used-up or absent code would answer faster, and the difference says
  * whether the address has an account with a code waiting.
  */
-import { randomInt } from 'crypto';
+import { createHash, randomInt } from 'crypto';
 import { hashPin, verifyPin, FAKE_HASH } from './recoveryHash';
-import { getContainer } from './cosmos';
+import { ensureContainer, getContainer } from './cosmos';
 
 /** Ten minutes: long enough to switch to the mail app and back, short enough to be stale soon. */
 export const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
@@ -94,5 +94,98 @@ export async function noteEmailCodeFailure(memberId: string): Promise<void> {
       console.error('[email-code] could not record a wrong code:', err);
       return;
     }
+  }
+}
+
+/*
+ * ── A code for an address with NO account yet (docs/plans/one-way-in.md, step 4) ──
+ *
+ * Through a club's link a new person proves an address before an account
+ * exists, so the code cannot live on a Member doc. It lives in `authhandoff`
+ * (global, keyed by id; the OAuth and app-move stashes are its other kinds),
+ * under the sha256 of the address so the doc names nobody, and it carries the
+ * club whose link asked for it. Same rules as an account's code: scrypt, ten
+ * minutes, five wrong tries, a new one replaces it, used once.
+ */
+export const SIGNUP_CODE_KIND = 'emailSignupCode';
+
+export interface SignupCodeDoc extends StoredEmailCode {
+  id: string;
+  kind: typeof SIGNUP_CODE_KIND;
+  /** The club whose link asked for this code. */
+  groupId: string;
+  createdAt: string;
+  _etag?: string;
+}
+
+function signupDocId(email: string): string {
+  return `emailsignup:${createHash('sha256').update(email).digest('hex')}`;
+}
+
+async function stash() {
+  await ensureContainer('authhandoff', '/id');
+  return getContainer('authhandoff');
+}
+
+export async function storeSignupCode(email: string, stored: StoredEmailCode, groupId: string, now = Date.now()): Promise<void> {
+  const doc: SignupCodeDoc = {
+    id: signupDocId(email),
+    kind: SIGNUP_CODE_KIND,
+    hash: stored.hash,
+    expiresAt: stored.expiresAt,
+    attempts: 0,
+    groupId,
+    createdAt: new Date(now).toISOString(),
+  };
+  await (await stash()).items.upsert(doc);
+}
+
+/** The live-or-not doc for this address, checked to be the right KIND (a shared cabinet). */
+export async function readSignupCode(email: string): Promise<SignupCodeDoc | null> {
+  const id = signupDocId(email);
+  try {
+    const { resource } = await (await stash()).item(id, id).read<SignupCodeDoc>();
+    return resource && resource.kind === SIGNUP_CODE_KIND ? resource : null;
+  } catch (err) {
+    if ((err as { code?: number })?.code === 404) return null;
+    throw err;
+  }
+}
+
+/** One wrong code against this address's sign-up code, under the etag. Best-effort. */
+export async function noteSignupCodeFailure(email: string): Promise<void> {
+  const id = signupDocId(email);
+  const container = await stash();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const doc = await readSignupCode(email);
+      if (!doc || !emailCodeLive(doc)) return;
+      const next = { ...doc, attempts: (doc.attempts ?? 0) + 1 };
+      if (typeof doc._etag === 'string') {
+        await container.item(id, id).replace(next, { accessCondition: { type: 'IfMatch', condition: doc._etag } });
+      } else {
+        await container.items.upsert(next);
+      }
+      return;
+    } catch (err) {
+      if ((err as { code?: number })?.code === 412) continue;
+      console.error('[email-code] could not record a wrong sign-up code:', err);
+      return;
+    }
+  }
+}
+
+/** Use it up: deleted only if unchanged since it was checked. False when someone else used it first. */
+export async function consumeSignupCode(doc: SignupCodeDoc): Promise<boolean> {
+  const container = await stash();
+  try {
+    await container
+      .item(doc.id, doc.id)
+      .delete(typeof doc._etag === 'string' ? { accessCondition: { type: 'IfMatch', condition: doc._etag } } : undefined);
+    return true;
+  } catch (err) {
+    const code = (err as { code?: number })?.code;
+    if (code === 412 || code === 404) return false;
+    throw err;
   }
 }

@@ -181,7 +181,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const linked = new Set([...(member.linkedProviders ?? []), pending.provider]);
+    // An email-proven identity (step 4's email code) is the address itself,
+    // reserved below; only Google and Apple are "linked providers".
+    const linked = new Set([...(member.linkedProviders ?? []), ...(pending.provider === 'email' ? [] : [pending.provider])]);
     const updated: Member = {
       ...member,
       linkedProviders: [...linked],
@@ -211,7 +213,7 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    await completeSignIn(res, updated, groupId, pending.provider);
+    await completeSignIn(res, updated, groupId, pending.provider === 'email' ? 'email_code' : pending.provider);
     return res;
   } catch (err) {
     // A Cosmos throttle must be distinguishable from a wrong PIN, or the
