@@ -1930,6 +1930,7 @@
         "heardPoint": "Heard {score} · +1 {side}",
         "heardIgnored": "Heard {score}: not one rally on, so not scored",
         "heardNone": "Didn't catch a score",
+        "heardWords": "Heard “{words}”: no score in that",
         "askTitle": "Heard {score}. Who won the rally?",
         "askSide": "{side} won",
         "askNeither": "Neither",

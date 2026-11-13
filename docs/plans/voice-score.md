@@ -37,6 +37,8 @@ Either one means voice costs more attention than the +1 buttons it replaces. Kil
 - **On in production, 2026-11-13** (Grant: "Just on now fast"), ahead of that sentence, so it can be tried courtside. Every signed-in member sees the mic on Keep score in a browser that has a recogniser; there is no per-person switch. The `legal.privacy` sentence is still owed.
 - **`Permissions-Policy: microphone=(self)`.** It was `microphone=()`, which refuses the mic to every page. `self` lets our own pages ask; the browser still prompts the person, and `camera=()` and `geolocation=()` stay shut.
 
+- **A glued call is two scores** (2026-11-13, the first try on a phone, Chrome on Android: the board said "Didn't catch a score" to a plain call). Chrome writes "one zero" as "10" and "two one" as "21". When the words as written hold no score, a two-digit run is read as two (`tokens(text, glued)`), so "10 8" still reads ten–eight. A miss now shows the words heard ("Heard “…”: no score in that"), so the next one says what the phone understood.
+
 ## Shape
 
 | Piece | File |
