@@ -171,8 +171,10 @@ export default function AskAccessForm({
         }
         onApproved({ name: body.name, hasPin: body.hasPin === true, ...(doorEmail ? { email: doorEmail } : {}) });
       } else if (body.status === 'none') {
-        // Expired, or Grant declined. One answer, because there is nothing
-        // useful to do differently with the two.
+        // The hour ran out, or the club made a new link. Every other case,
+        // a name the club does not know and a declined ask included, reads
+        // `pending` until then (one-way-in step 4c), so this never says
+        // whether the name exists.
         stop();
         setPhase('expired');
       }

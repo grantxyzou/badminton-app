@@ -28,6 +28,7 @@ import { addJoinRequest } from '@/lib/joinRequests';
 import { notifyOrganisersOfJoinRequest } from '@/lib/joinNotify';
 import { listOrganisers } from '@/lib/groups';
 import { isFullName } from '@/lib/fullName';
+import { sealAskSecret } from '@/lib/askSecret';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,15 +98,15 @@ export async function POST(req: NextRequest) {
        * stored, so the rule cannot be used to learn which names are on the
        * roster. An imported roster name is claimed as it is written.
        */
-      if (!isFullName(name)) return NextResponse.json({ ok: true, secret });
+      if (!isFullName(name)) return NextResponse.json({ ok: true, secret: sealAskSecret(secret) });
       const joined = await addJoinRequest(groupId, name);
       if (joined) {
         await notifyOrganisersOfJoinRequest(groupId, joined.request.id, joined.request.name);
-        return NextResponse.json({ ok: true, secret: joined.secret });
+        return NextResponse.json({ ok: true, secret: sealAskSecret(joined.secret) });
       }
       // Full, or the club is gone: a secret that will never be approved, the
       // same answer as every other miss.
-      return NextResponse.json({ ok: true, secret });
+      return NextResponse.json({ ok: true, secret: sealAskSecret(secret) });
     }
 
     if (memberId && askable && groupId) {
@@ -182,7 +183,7 @@ export async function POST(req: NextRequest) {
      * approved, which is the correct outcome arrived at without telling anyone
      * anything.
      */
-    return NextResponse.json({ ok: true, secret });
+    return NextResponse.json({ ok: true, secret: sealAskSecret(secret) });
   } catch (err) {
     console.error('POST /api/members/access-request failed:', err);
     return NextResponse.json({ error: 'request_failed' }, { status: 503 });

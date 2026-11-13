@@ -105,7 +105,8 @@ describe('asking to join', () => {
   it('stores a new name on the club and wakes the organisers only', async () => {
     const { ok, secret } = await ask('Akane Yamaguchi');
     expect(ok).toBe(true);
-    expect(secret).toMatch(/^[0-9a-f]{64}$/);
+    // Sealed with its hour (one-way-in step 4c), never the bare secret.
+    expect(secret).toMatch(/^[\w-]+\.[\w-]+$/);
     const open = groupDoc('club-x')!.joinRequests!;
     expect(open.map((r) => r.name)).toEqual(['Akane Yamaguchi']);
     // Only the hash is stored, never the secret.
@@ -122,8 +123,10 @@ describe('asking to join', () => {
   it('needs a first and last name from a new person; one name alone stores nothing and is answered the same', async () => {
     const { ok, secret } = await ask('Sandra');
     expect(ok).toBe(true);
-    expect(secret).toMatch(/^[0-9a-f]{64}$/);
+    expect(secret).toMatch(/^[\w-]+\.[\w-]+$/);
     expect(groupDoc('club-x')!.joinRequests).toBeUndefined();
+    // Nothing stored, and the poll cannot tell: the same `pending` as a stored ask.
+    expect(await (await poll('Sandra', secret)).json()).toEqual({ status: 'pending' });
     expect(pushCalls).toHaveLength(0);
   });
 
@@ -163,7 +166,7 @@ describe('letting them in', () => {
     // Single use: the request is gone, and a replay signs nobody in.
     expect(groupDoc('club-x')!.joinRequests).toEqual([]);
     const replay = await poll('Akane Yamaguchi', secret);
-    expect((await replay.json()).status).toBe('none');
+    expect((await replay.json()).status).not.toBe('approved');
     expect(replay.headers.get('set-cookie')).toBeNull();
   });
 
@@ -243,11 +246,11 @@ describe('letting them in', () => {
     expect(notices.some((n) => n.memberId === sandra || n.memberId === outsider.id)).toBe(false);
   });
 
-  it('declining sends the asking phone `none`', async () => {
+  it('declining is silent: the asking phone reads the same as any ask until its hour is up', async () => {
     const { secret } = await ask('Carolina Marin');
     const { joins } = await list('club-x');
     expect((await decide('club-x', joins[0].joinRequestId, 'decline')).status).toBe(200);
-    expect((await (await poll('Carolina Marin', secret)).json()).status).toBe('none');
+    expect((await (await poll('Carolina Marin', secret)).json()).status).toBe('pending');
   });
 
   it('approving twice makes one account', async () => {

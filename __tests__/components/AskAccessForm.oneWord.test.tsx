@@ -99,7 +99,9 @@ describe('AskAccessForm — a one-word name at the door', () => {
 });
 
 describe('AskAccessForm — when no request is open', () => {
-  it('says so in words that are true whether it expired, was ignored or was never stored', async () => {
+  // `none` now comes only when the hour is up or the link was replaced (step
+  // 4c): a made-up name and an ignored ask read `pending` until then.
+  it('`none` says the hour ran out, not that the name is unknown', async () => {
     vi.useFakeTimers();
     stubFetch('none');
     renderDoor();
@@ -111,7 +113,7 @@ describe('AskAccessForm — when no request is open', () => {
       await vi.advanceTimersByTimeAsync(3_100);
     });
     const alert = screen.getByRole('alert');
-    expect(alert.textContent).toMatch(/No request is open under that name/);
-    expect(alert.textContent).not.toMatch(/expired/);
+    expect(alert.textContent).toMatch(/the request ran out/);
+    expect(alert.textContent).not.toMatch(/that name/);
   });
 });

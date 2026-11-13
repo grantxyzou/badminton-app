@@ -19,6 +19,7 @@ import type { Member } from '@/lib/types';
 import { groupIdWithHint } from '@/lib/groupContext';
 import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
 import { collectJoinRequest } from '@/lib/joinRequests';
+import { openAskSecret } from '@/lib/askSecret';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,9 +71,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
+  /**
+   * THE SEAL DECIDES WHAT A MISS SAYS (docs/plans/one-way-in.md, step 4c).
+   * The ask hands out a sealed secret whether or not it stored anything, so a
+   * seal inside its hour reads `pending` even when nothing is stored under it:
+   * a stranger polling after asking under "Lin" learns nothing about Lin. Only
+   * a stored, approved ask is ever `approved`. A dead seal is `none`; a bare
+   * secret from before the seal reads the store as it always did.
+   */
+  const opened = openAskSecret(secret);
+  if (opened.kind === 'dead') return NextResponse.json({ status: 'none' });
+  const raw = opened.raw;
+  const missStatus = opened.kind === 'sealed' ? 'pending' : 'none';
+  const miss = () => NextResponse.json({ status: missStatus });
+
   try {
     /**
-     * ONE ANSWER FOR EVERY NOT-APPROVED CASE, and `none` is that answer.
+     * ONE ANSWER FOR EVERY NOT-APPROVED CASE: `miss()`.
      *
      * The first cut returned `pending` for an unknown name and `none` for a
      * real member with no open request — which is the overwhelmingly common
@@ -97,7 +112,7 @@ export async function POST(req: NextRequest) {
     // because approval puts the new name on the roster, and the member path
     // below would then find a person with no request and answer `none`.
     if (viaLink) {
-      const joined = await collectJoinRequest(groupId, secret);
+      const joined = await collectJoinRequest(groupId, raw);
       if (joined.status === 'approved') {
         const res = NextResponse.json({ status: 'approved', name: joined.member.name, hasPin: false, joined: true });
         setMemberCookie(res, joined.member.id, joined.member.name, groupId);
@@ -107,15 +122,15 @@ export async function POST(req: NextRequest) {
     }
 
     const memberId = await resolveActiveMemberId(groupId, name);
-    if (!memberId) return NextResponse.json({ status: 'none' });
+    if (!memberId) return miss();
 
     const container = getContainer('members');
     const { resource: member } = await container.item(memberId, memberId).read<Member>();
-    if (!member) return NextResponse.json({ status: 'none' });
+    if (!member) return miss();
 
     // The entry THIS secret created. Another device's request for the same
     // name is invisible from here: its approval, or its mere existence.
-    const mine = findBySecret(member, secret);
+    const mine = findBySecret(member, raw);
 
     if (mine && typeof mine.approvedAt === 'number') {
       /**
@@ -161,7 +176,7 @@ export async function POST(req: NextRequest) {
      * in as Lin. Every other case — expired, cleared, a stranger's secret, no
      * request at all — is the one answer `none`.
      */
-    return NextResponse.json({ status: mine ? 'pending' : 'none' });
+    return mine ? NextResponse.json({ status: 'pending' }) : miss();
   } catch (err) {
     console.error('POST /api/members/access-request/claim failed:', err);
     return NextResponse.json({ error: 'claim_failed' }, { status: 503 });
