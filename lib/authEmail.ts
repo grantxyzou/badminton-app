@@ -75,6 +75,29 @@ export async function sendVerificationEmail(
   return result;
 }
 
+/**
+ * The sign-in code (docs/plans/one-way-in.md, step 3). The code is in the
+ * SUBJECT as well as the body, so it can be read off the notification and
+ * typed without opening the mail; it is single-use, lives ten minutes and is
+ * worth nothing without the address it was sent to.
+ */
+export async function sendSignInCodeEmail(to: string, name: string, code: string): Promise<AuthMailResult> {
+  const body = [
+    `Hi ${name},`,
+    '',
+    `Your ${APP_NAME} sign-in code is:`,
+    '',
+    `    ${code}`,
+    '',
+    "Type it into the app to log in. It works for ten minutes, once. If you didn't ask for it, ignore this: nobody can log in without it.",
+    '',
+    `— ${APP_NAME}`,
+  ].join('\n');
+  const result = await send(to, `${code} is your ${APP_NAME} code`, body);
+  if (!result.sent) logUnsentLinkInDev('sign-in code', to, code);
+  return result;
+}
+
 export async function sendPasswordResetEmail(
   to: string,
   name: string,

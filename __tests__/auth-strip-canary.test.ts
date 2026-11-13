@@ -43,6 +43,8 @@ describe('auth strip canary', () => {
         'emailVerification: _ev',
       );
       expect(head, `${file}: must also drop passwordReset`).toContain('passwordReset: _pr');
+      // The email sign-in code (lib/emailCode.ts, docs/plans/one-way-in.md step 3).
+      expect(head, `${file}: must also drop emailCode`).toContain('emailCode: _ec');
     }
   });
 
@@ -55,7 +57,7 @@ describe('auth strip canary', () => {
     // If a secret is ever added to a projection, it reaches the client with
     // nothing standing in the way.
     const src = execSync('grep -rn "SELECT c\\." app lib', { encoding: 'utf8' });
-    for (const secret of ['c.passwordHash', 'c.emailVerification', 'c.passwordReset']) {
+    for (const secret of ['c.passwordHash', 'c.emailVerification', 'c.passwordReset', 'c.emailCode']) {
       const offenders = src.split('\n').filter((line) => line.includes(secret));
       expect(offenders, `${secret} must never appear in a projection`).toEqual([]);
     }

@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Log in with a code from your email (2026-11-13)
+
+- **"Use email instead" on Log in now sends you a 6-digit code.** Type it in and you're in: no password to remember or reset. The code is in the email's subject line, works once, and lasts ten minutes. Your password still works, one tap away under "Use my password instead".
+- It works for any account that already has an email address. Making a new account with a code comes with the next step of the joining rework (`docs/plans/one-way-in.md`).
+
 ## One word for each idea: "Join a club", and "club" everywhere (2026-11-13)
 
 - **Welcome's first button says "Join a club"**, and so does the invite page; Log in's link says "New here? Join a club". "Sign up" now means one thing in the app: putting yourself on a session's list.

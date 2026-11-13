@@ -25,6 +25,7 @@ export function publicMember<T extends Record<string, unknown>>(doc: T | undefin
     passwordHash: _pw,
     emailVerification: _ev,
     passwordReset: _pr,
+    emailCode: _ec,
     email: _em,
     ...safe
   } = (doc ?? {}) as Record<string, unknown>;

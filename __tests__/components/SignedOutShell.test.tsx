@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent, act } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
 import { setIdentity } from '@/lib/identity';
@@ -47,7 +47,12 @@ vi.mock('@/components/SignInForm', () => ({
     </button>
   ),
 }));
-vi.mock('@/components/auth/EmailSignInForm', () => ({ default: () => <p>stub: email sign-in</p> }));
+vi.mock('@/components/auth/EmailSignInForm', () => ({
+  default: (props: Record<string, unknown>) => {
+    captured.EmailSignInForm = props;
+    return <p>stub: email sign-in</p>;
+  },
+}));
 vi.mock('@/components/auth/EmailSignUpForm', () => ({
   default: (props: Record<string, unknown>) => {
     captured.EmailSignUpForm = props;
@@ -161,12 +166,24 @@ describe('Log in', () => {
     expect(captured.AskAccessForm?.initialName).toBe('Viktor');
   });
 
-  it('switches to email and routes "forgot" to the password sheet', () => {
+  it('switches to email, which offers a code first and the password a tap away', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
     fireEvent.click(screen.getByRole('button', { name: 'Use email instead' }));
+    // A code first (docs/plans/one-way-in.md, step 3).
+    expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
+    expect(screen.queryByText('stub: email sign-in')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use my password instead' }));
     expect(screen.getByText('stub: email sign-in')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+  });
+
+  it('routes "forgot" on the password route to the password sheet', () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use email instead' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use my password instead' }));
+    act(() => (captured.EmailSignInForm?.onForgotPassword as () => void)());
     expect(captured.ForgotPasswordSheet?.open).toBe(true);
   });
 });

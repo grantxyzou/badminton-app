@@ -640,6 +640,12 @@ export interface Member {
   /** SHA-256 of a single-use emailed token. 1h TTL. STRIP-CANARY. */
   passwordReset?: { hash: string; expiresAt: number };
   /**
+   * A 6-digit sign-in code sent to the member's email (`lib/emailCode.ts`,
+   * docs/plans/one-way-in.md step 3): scrypt hash, 10-minute life, at most
+   * five wrong tries, cleared when used. STRIP-CANARY.
+   */
+  emailCode?: { hash: string; expiresAt: number; attempts?: number };
+  /**
    * DISPLAY ONLY — never authoritative. The `identities` container is the
    * source of truth; on a mismatch, believe `identities`. Exists so Profile can
    * render "Google connected" without a second round-trip.

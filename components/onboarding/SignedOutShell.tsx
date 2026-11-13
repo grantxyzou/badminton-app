@@ -16,7 +16,7 @@ import SignInForm from '@/components/SignInForm';
 import AskAccessForm, { type AskApproved } from '@/components/auth/AskAccessForm';
 import KeepAccountPage from '@/components/auth/KeepAccountPage';
 import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
-import EmailSignInForm from '@/components/auth/EmailSignInForm';
+import EmailCodeSignInForm from '@/components/auth/EmailCodeSignInForm';
 import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
 import ForgotPasswordSheet from '@/components/auth/ForgotPasswordSheet';
 import ChooseNameSheet from '@/components/auth/ChooseNameSheet';
@@ -650,19 +650,18 @@ function LogInView({
               form (and the card's height) in one frame. */}
           <div key={mode} className="motion-fade">
             {mode === 'email' ? (
-              <EmailSignInForm onSuccess={signedIn} />
+              // A code first, the password a tap away (docs/plans/one-way-in.md, step 3).
+              <EmailCodeSignInForm onSuccess={signedIn} onForgotPassword={() => setForgotOpen(true)} />
             ) : (
               <SignInForm sessionId="" onSuccess={signedIn} probeName={false} />
             )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', whiteSpace: 'nowrap' }}>
-            <button
-              type="button"
-              className="link-quiet"
-              onClick={() => (mode === 'email' ? setForgotOpen(true) : onAsk())}
-            >
-              {mode === 'email' ? t('login.forgotPassword') : t('login.playHereAlready')}
+            {/* "Forgot password?" lives on the form's password route now, the
+                only place a password is asked for. */}
+            <button type="button" className="link-quiet" onClick={onAsk}>
+              {t('login.playHereAlready')}
             </button>
             <button type="button" className="link-quiet" onClick={() => setMode((m) => (m === 'pin' ? 'email' : 'pin'))}>
               {mode === 'pin' ? t('login.useEmail') : t('login.usePin')}
