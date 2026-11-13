@@ -150,7 +150,7 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
   useEffect(() => () => clearInterval_(), [clearInterval_]);
 
   const sideOf = (s: Side) => (s === 'a' ? t('sideA') : t('sideB'));
-  const onCalls = (calls: ParsedCall[]) => {
+  const onCalls = (calls: ParsedCall[], transcript: string) => {
     const m = matchCall(score, server, calls);
     if (m.kind === 'point') {
       point(m.side);
@@ -161,7 +161,8 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
     } else if (m.kind === 'ignored') {
       setHeard(t('voice.heardIgnored', { score: heardText(m.heard) }));
     } else if (m.kind === 'none') {
-      setHeard(t('voice.heardNone'));
+      // The words themselves, so a miss says what the phone understood.
+      setHeard(transcript.trim() ? t('voice.heardWords', { words: transcript.trim() }) : t('voice.heardNone'));
     }
     // 'same' (the board's own score repeated) and 'over' change nothing.
   };

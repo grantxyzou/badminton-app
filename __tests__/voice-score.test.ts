@@ -93,6 +93,19 @@ describe('matchCall: one rally on, and nothing else', () => {
     expect(hear('1110', { a: 10, b: 10 }, 'a')).toMatchObject({ kind: 'ask', heard: [11, 10] });
   });
 
+  it('Chrome on Android glues a short call into one number: "10" is one love, "20" two love', () => {
+    // Seen on a court, 2026-11-13: "one zero" came back as "10" and the board
+    // said "Didn't catch a score".
+    expect(hear('10', { a: 0, b: 0 }, null)).toEqual({ kind: 'ask', heard: [1, 0] });
+    expect(hear('20', { a: 1, b: 0 }, 'a')).toMatchObject({ kind: 'point', side: 'a', heard: [2, 0] });
+    expect(hear('12', { a: 1, b: 1 }, 'a')).toMatchObject({ kind: 'ask', heard: [1, 2] });
+  });
+
+  it('a call that reads as written is never split: "10 8" stays ten–eight', () => {
+    expect(parseCall('10 8').readings[0]).toEqual({ kind: 'pair', first: 10, second: 8 });
+    expect(parseCall('10 8').readings).not.toContainEqual({ kind: 'pair', first: 1, second: 0 });
+  });
+
   it('takes the first alternative that fits, of several the recogniser offered', () => {
     const calls = [parseCall('eleven heaven'), parseCall('eleven seven')];
     expect(matchCall({ a: 10, b: 7 }, 'a', calls)).toMatchObject({ kind: 'point', side: 'a' });

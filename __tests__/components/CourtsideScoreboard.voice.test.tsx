@@ -185,6 +185,20 @@ describe('CourtsideScoreboard voice (Preview)', () => {
     expect(screen.getByRole('button', { name: 'Tap, then call the score' })).toBeTruthy();
   });
 
+  it('a miss shows the words it heard, so the person can see what the phone understood', () => {
+    renderBoard();
+    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    say('great rally');
+    expect(screen.getByText('Heard “great rally”: no score in that')).toBeTruthy();
+  });
+
+  it('"10" from Chrome is heard as one love', () => {
+    renderBoard();
+    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    say('10');
+    expect(screen.getByText('Heard 1–0. Who won the rally?')).toBeTruthy();
+  });
+
   it('a blocked microphone says so', () => {
     renderBoard();
     fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));

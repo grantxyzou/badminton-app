@@ -1918,6 +1918,7 @@
         "heardPoint": "听到 {score} · {side} +1",
         "heardIgnored": "听到 {score}：不是下一分，未计分",
         "heardNone": "没听清比分",
+        "heardWords": "听到“{words}”：里面没有比分",
         "askTitle": "听到 {score}。这一分谁赢？",
         "askSide": "{side}赢",
         "askNeither": "都不是",
