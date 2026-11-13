@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Voice scoring on Keep score: a proof of concept, off for now (2026-11-13)
+
+- **Call the score and the board keeps it** (Preview, behind `NEXT_PUBLIC_FLAG_VOICE_SCORE`, OFF in production; `docs/plans/voice-score.md`). A mic above the +1 buttons listens for the umpire's call, "eleven seven", and scores the rally only when the call is exactly one rally on from the board, so another court's call is shown as heard and never scored. At a level score ("six five" at 5 all) it asks which side won; "five all" and "service over" settle it themselves.
+- **Hands-free in Chrome on Android, one tap per call on iPhone and iPad**, where Safari's always-on listening is unreliable. Not in the App Store or Play apps: their web views have no speech recogniser.
+- **Members see nothing yet.** It stays off until the privacy policy says the browser sends what the mic hears to its own speech service (Google in Chrome, Apple in Safari). The one change that ships now: the app's pages may ask for the microphone (`Permissions-Policy: microphone=(self)`), and the browser still asks the person first.
+
 ## Receipts and the admin console read dates on the club's clock (2026-11-12)
 
 - **A receipt read the session's date in the phone's own time zone**, so a Thursday 7 PM session showed as "Fri, Nov 20" on a phone or browser set to UTC, on the receipt image, both receipt texts and the e-transfer memo. It now reads in Vancouver time like every other session date in the app. The payments inbox matches a memo by the name after the dash, so a memo's date was never part of matching.

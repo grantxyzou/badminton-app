@@ -9076,10 +9076,83 @@ html:root .courtside {
   font-size: var(--fs-sm);
   color: var(--text-muted);
 }
+/* Voice scoring (Preview, docs/plans/voice-score.md): the mic sits above the
+   +1 buttons, on the half in the hand. Fill-only like the point buttons; while
+   it listens the dot pulses, the one sign the phone is hearing the court. */
+.courtside-voice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.courtside-voice-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+.courtside-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease-glass), background var(--duration-fast) var(--ease-glass);
+}
+.courtside-voice-btn:active {
+  transform: scale(0.97);
+  background: var(--press-bg);
+}
+.courtside-voice-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.courtside-voice-btn[data-listening='true'] {
+  color: var(--accent);
+}
+.courtside-voice-dot {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.courtside-voice-btn[data-listening='true'] .courtside-voice-dot {
+  background: var(--accent);
+  animation: courtside-voice-pulse 1.2s ease-in-out infinite;
+}
+@keyframes courtside-voice-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.courtside-voice-line {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  min-height: calc(var(--fs-md) * var(--lh-normal));
+}
+.courtside-voice-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.courtside-voice-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-3);
+}
 @media (prefers-reduced-motion: reduce) {
   .courtside,
   .courtside-point,
-  .courtside-digit {
+  .courtside-digit,
+  .courtside-voice-btn {
     transition: none;
   }
 }

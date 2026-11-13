@@ -23,7 +23,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
   | 'NEXT_PUBLIC_FLAG_STORE_CREDIT'
-  | 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR';
+  | 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR'
+  | 'NEXT_PUBLIC_FLAG_VOICE_SCORE';
 
 interface FlagMeta {
   description: string;
@@ -98,6 +99,13 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-11-21',
     note: 'On in production since 2026-10-03 (Grant). Ship date + 2 weeks is not enough here: the kill criterion reads four weeks of matches (Review on 2026-11-07 in the plan). Retiring it deletes the 404 guards and the hold\'s off branch.',
   },
+  NEXT_PUBLIC_FLAG_VOICE_SCORE: {
+    description:
+      'Voice scoring on the courtside board, a proof of concept (docs/plans/voice-score.md): a Preview mic on Keep score that listens for the umpire\'s call ("eleven seven") and scores a rally only when the call is exactly one rally on from the board. Client-only: the browser\'s own recogniser, nothing stored or sent to our server. Hidden where the browser has no recogniser, and always in the store app. OFF in production until legal.privacy says the browser sends the audio to its speech service.',
+    owner: 'grant',
+    plannedRemoval: '2026-12-11',
+    note: 'The plan\'s Review-on date. Keep it (retire the flag, delete the off branch) or kill it (delete the mic, lib/useVoiceScore.ts, lib/voiceScore.ts and put Permissions-Policy back to microphone=()).',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -118,6 +126,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
     case 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR':
       return process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
+    case 'NEXT_PUBLIC_FLAG_VOICE_SCORE':
+      return process.env.NEXT_PUBLIC_FLAG_VOICE_SCORE;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned
