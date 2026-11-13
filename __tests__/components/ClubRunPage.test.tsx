@@ -54,9 +54,10 @@ describe('ClubRunPage', () => {
     window.addEventListener(CLUB_RUN_EVENT, listen);
     render(<ClubRunPage />);
     fireEvent.click(await screen.findByRole('radio', { name: /Members first/ }));
-    await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2 }]));
+    // A style never switches the club's stringing: BPM's shop stays on.
+    await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'on' }]));
     await waitFor(() => expect(screen.getByRole('radio', { name: /Members first/ }).getAttribute('aria-checked')).toBe('true'));
-    expect(heard.at(-1)).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2 });
+    expect(heard.at(-1)).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'on' });
     window.removeEventListener(CLUB_RUN_EVENT, listen);
   });
 
@@ -64,7 +65,7 @@ describe('ClubRunPage', () => {
     stored = { style: 'members_first', playersPerCourt: 8, money: 'off' };
     render(<ClubRunPage />);
     fireEvent.click(await screen.findByRole('radio', { name: '6 per court' }));
-    await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 6, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2 }]));
+    await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 6, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'off' }]));
     expect(await screen.findByText(/Custom: your rules below/)).toBeDefined();
   });
 
@@ -74,10 +75,10 @@ describe('ClubRunPage', () => {
     const day = (await screen.findByRole('combobox')) as HTMLSelectElement;
     expect(day.value).toBe('5');
     fireEvent.change(day, { target: { value: '4' } });
-    await waitFor(() => expect(patches().at(-1)).toEqual({ playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 4, time: '23:59' }, guests: 2 }));
+    await waitFor(() => expect(patches().at(-1)).toEqual({ playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 4, time: '23:59' }, guests: 2, stringing: 'off' }));
     expect(await screen.findByText(/Custom: your rules below/)).toBeDefined();
     fireEvent.click(screen.getByRole('switch', { name: 'Members first' }));
-    await waitFor(() => expect(patches().at(-1)).toEqual({ playersPerCourt: 8, money: 'off', membersFirst: null, guests: 2 }));
+    await waitFor(() => expect(patches().at(-1)).toEqual({ playersPerCourt: 8, money: 'off', membersFirst: null, guests: 2, stringing: 'off' }));
     expect(screen.getByText(/whoever signs up first gets the spot/)).toBeDefined();
   });
 
@@ -94,5 +95,36 @@ describe('ClubRunPage', () => {
     render(<ClubRunPage />);
     expect(await screen.findByText(/Couldn.t load the settings/)).toBeDefined();
     expect(screen.queryByRole('switch')).toBeNull();
+  });
+
+  describe('the stringing add-on (docs/plans/stringing-add-on.md)', () => {
+    beforeEach(() => { process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true'; });
+    afterEach(() => { delete process.env.NEXT_PUBLIC_FLAG_STRINGING; });
+
+    it('is on for BPM, and switches off as one setting without making the club Custom', async () => {
+      render(<ClubRunPage />);
+      const sw = await screen.findByRole('switch', { name: 'Stringing service' });
+      expect(sw.getAttribute('aria-checked')).toBe('true');
+      fireEvent.click(sw);
+      await waitFor(() => expect(patches().at(-1)).toMatchObject({ stringing: 'off' }));
+      expect(await screen.findByText(/no Stringing tab, bench or requests/)).toBeDefined();
+      expect(screen.queryByText(/Custom: your rules below/)).toBeNull();
+    });
+
+    it('says why it cannot switch off while jobs are open, under the switch, and stays on', async () => {
+      fetchMock.mockImplementation(async (_input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === 'PATCH' ? ok({ error: 'stringing_open_jobs', open: 2 }, 409) : ok({ skipDates: [], lateCancelHours: null, run: stored }));
+      render(<ClubRunPage />);
+      fireEvent.click(await screen.findByRole('switch', { name: 'Stringing service' }));
+      expect(await screen.findByText(/2 stringing jobs are still on the bench or unpaid/)).toBeDefined();
+      await waitFor(() => expect(screen.getByRole('switch', { name: 'Stringing service' }).getAttribute('aria-checked')).toBe('true'));
+    });
+
+    it('is not offered with the deployment flag off, where it would change nothing', async () => {
+      delete process.env.NEXT_PUBLIC_FLAG_STRINGING;
+      render(<ClubRunPage />);
+      await screen.findByRole('switch', { name: 'Collect money in the app' });
+      expect(screen.queryByRole('switch', { name: 'Stringing service' })).toBeNull();
+    });
   });
 });

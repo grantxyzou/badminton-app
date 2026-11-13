@@ -76,6 +76,9 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
   const { run, known: runKnown } = useClubRun();
   const moneyOff = runKnown && run.money === 'off';
   const styleLabel = run.style === 'custom' ? 'Custom' : CLUB_STYLES[run.style].label;
+  // The bench row needs the deployment flag AND the club's own switch
+  // (docs/plans/stringing-add-on.md); it hides only on a KNOWN "off".
+  const benchOn = stringingOn && !(runKnown && run.stringing === 'off');
   // Release notes are the deployment's, written by the operator alone (the
   // route refuses anyone else). Hidden until the answer says so: a row that
   // opens a screen whose every save is refused is worse than no row.
@@ -89,7 +92,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
     return () => { cancelled = true; };
   }, []);
   useEffect(() => {
-    if (!stringingOn) return;
+    if (!benchOn) return;
     let cancelled = false;
     // The Needs-you card reads the bench in the same commit; `sharedFetch`
     // makes that one request while it is in flight (lib/sharedRead.ts).
@@ -104,7 +107,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
     return () => {
       cancelled = true;
     };
-  }, [stringingOn, composedRefresh]);
+  }, [benchOn, composedRefresh]);
   const benchTrailing =
     benchCount && benchCount.waiting + benchCount.late > 0
       ? [
@@ -258,7 +261,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       title: 'Club',
       rows: [
         { icon: 'tune', label: 'How your club runs', meta: runKnown ? styleLabel : undefined, onClick: () => setView('club-run'), selected: openView === 'club-run' },
-        ...(stringingOn
+        ...(benchOn
           ? [{ icon: 'sports_tennis', label: 'Stringing bench', meta: benchTrailing, accent: !!benchTrailing, onClick: () => setView('stringing'), selected: openView === 'stringing' }]
           : []),
         { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements'), selected: openView === 'announcements' },

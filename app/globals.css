@@ -3231,16 +3231,17 @@ button.edit-profile-row { cursor: pointer; }
 
 /* Shared sliding indicator — one pill that glides between tabs on
    switch instead of the active background cross-fading per tab.
-   --ri (0–3, the active tab index) is set inline on .rail-bar from
-   React. 25% / translateX(--ri*100%) is tied to the 4-tab invariant
-   (CLAUDE.md: slot count is always 4). Rail stays fixed — only the
+   --ri (the active tab index) and --rn (how many tabs: 4, or 3 in a
+   club with stringing switched off) are set inline on .rail-bar from
+   React. Width 100%/--rn and translateX(--ri*100%) keep the pill over
+   its equal flex:1 column at either count. Rail stays fixed — only the
    pill moves (spec: no rail translate/scale). Triple signal intact:
    colour + (now travelling) pill + label weight 700. */
 .rail-indicator {
   position: absolute;
   top: 8px;            /* = .rail-tab padding-top → the icon-wrap row */
   left: 0;
-  width: 25%;          /* one of four equal flex:1 columns */
+  width: calc(100% / var(--rn, 4)); /* one of the equal flex:1 columns */
   height: 30px;        /* = .rail-icon-wrap height */
   pointer-events: none;
   z-index: 0;
@@ -3253,7 +3254,7 @@ button.edit-profile-row { cursor: pointer; }
   display: block;
   width: 56px;         /* = .rail-icon-wrap width */
   height: 100%;
-  margin: 0 auto;      /* centre in the 25% column → sits over the icon */
+  margin: 0 auto;      /* centre in its column → sits over the icon */
   border-radius: var(--rail-indicator-radius);
   background: var(--rail-indicator-bg);
 }

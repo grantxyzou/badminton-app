@@ -18,7 +18,7 @@ import {
 describe('clubRunOf', () => {
   it('reads a club with no settings as BPM runs today', () => {
     for (const settings of [undefined, null, {}, { run: null }, { run: 'members_first' }]) {
-      expect(clubRunOf(settings)).toEqual({ style: 'first_come', playersPerCourt: null, money: 'split', membersFirst: null, guests: 0 });
+      expect(clubRunOf(settings)).toEqual({ style: 'first_come', playersPerCourt: null, money: 'split', membersFirst: null, guests: 0, stringing: 'on' });
     }
   });
 
@@ -37,6 +37,7 @@ describe('clubRunOf', () => {
       money: 'off',
       membersFirst: null,
       guests: 0,
+      stringing: 'on',
     });
     expect(clubRunOf({ run: { style: 'members_first', playersPerCourt: null, money: 'off' } }).playersPerCourt).toBeNull();
   });
@@ -50,6 +51,7 @@ describe('clubRunOf', () => {
       money: 'split',
       membersFirst: null,
       guests: 0,
+      stringing: 'on',
     });
     expect(clubRunOf({ run: { style: 'members_first', playersPerCourt: 99, money: 'maybe' } })).toEqual(
       applyStyle('members_first'),
@@ -59,8 +61,8 @@ describe('clubRunOf', () => {
 
 describe('styles', () => {
   it('a style writes all of its values', () => {
-    expect(applyStyle('members_first')).toEqual({ style: 'members_first', ...CLUB_STYLES.members_first.values });
-    expect(applyStyle('first_come')).toEqual({ style: 'first_come', ...CLUB_STYLES.first_come.values, guests: 0 });
+    expect(applyStyle('members_first')).toEqual({ style: 'members_first', ...CLUB_STYLES.members_first.values, stringing: 'off' });
+    expect(applyStyle('first_come')).toEqual({ style: 'first_come', ...CLUB_STYLES.first_come.values, guests: 0, stringing: 'on' });
   });
 
   it('"First come, first served" leaves guests to the club; "Members first" sets two', () => {
@@ -90,7 +92,7 @@ describe('styles', () => {
 
 describe('parseClubRun', () => {
   it('derives the style from the values, never from the request', () => {
-    expect(parseClubRun({ style: 'first_come', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2 })).toEqual(
+    expect(parseClubRun({ style: 'first_come', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'off' })).toEqual(
       applyStyle('members_first'),
     );
     expect(parseClubRun({ playersPerCourt: 4, money: 'split' })).toEqual({
@@ -99,12 +101,13 @@ describe('parseClubRun', () => {
       money: 'split',
       membersFirst: null,
       guests: 0,
+      stringing: 'on',
     });
   });
 
   it('keeps the stored window when a request does not name one, and clears it on an explicit null', () => {
     const window = { daysBefore: 5, time: '23:59' };
-    expect(parseClubRun({ playersPerCourt: 8, money: 'off' }, { membersFirst: window, guests: 2 })).toEqual(applyStyle('members_first'));
+    expect(parseClubRun({ playersPerCourt: 8, money: 'off' }, { membersFirst: window, guests: 2, stringing: 'off' })).toEqual(applyStyle('members_first'));
     expect(parseClubRun({ playersPerCourt: 8, money: 'off', membersFirst: null }, { membersFirst: window })?.membersFirst).toBeNull();
   });
 
@@ -184,5 +187,36 @@ describe('courtLine', () => {
   });
   it('is null when a court cannot be worked out', () => {
     expect(courtLine({ courts: 2, maxPlayers: 13 }, bpm, wait(3))).toBeNull();
+  });
+});
+
+/**
+ * Stringing is an add-on the club switches (docs/plans/stringing-add-on.md,
+ * phase 1): on for BPM, off by default for "Members first", never part of
+ * what makes a style.
+ */
+describe('stringing', () => {
+  it('is on for a club that never chose and runs like BPM, off for a "Members first" club that never chose', () => {
+    expect(clubRunOf(undefined).stringing).toBe('on');
+    expect(clubRunOf({ run: { style: 'first_come' } }).stringing).toBe('on');
+    expect(clubRunOf({ run: { style: 'custom' } }).stringing).toBe('on');
+    expect(clubRunOf({ run: { style: 'members_first' } }).stringing).toBe('off');
+    expect(clubRunOf({ run: { style: 'members_first', stringing: 'on' } }).stringing).toBe('on');
+    expect(clubRunOf({ run: { style: 'first_come', stringing: 'off' } }).stringing).toBe('off');
+    expect(clubRunOf({ run: { style: 'first_come', stringing: 'maybe' } }).stringing).toBe('on');
+  });
+
+  it('switching it never changes the style, and choosing a style keeps it', () => {
+    const six = applyStyle('members_first');
+    expect(withSetting(six, 'stringing', 'on').style).toBe('members_first');
+    expect(withSetting(applyStyle('first_come'), 'stringing', 'off').style).toBe('first_come');
+    expect(applyStyle('members_first', { stringing: 'on' }).stringing).toBe('on');
+    expect(applyStyle('first_come', { stringing: 'off' }).stringing).toBe('off');
+  });
+
+  it('a save that does not name it keeps the stored value; an unknown value is refused', () => {
+    expect(parseClubRun({ playersPerCourt: null, money: 'split' }, { stringing: 'off' })?.stringing).toBe('off');
+    expect(parseClubRun({ playersPerCourt: null, money: 'split', stringing: 'on' }, { stringing: 'off' })?.stringing).toBe('on');
+    expect(parseClubRun({ playersPerCourt: null, money: 'split', stringing: 'maybe' })).toBeNull();
   });
 });

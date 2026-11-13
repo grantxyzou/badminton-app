@@ -23,6 +23,13 @@ The first step of making joining simpler (`docs/plans/one-way-in.md`).
 - **"That request expired" said too little.** The same words covered an ask that ran out, one an organiser ignored and one under a name the club doesn't know. They now say no request is open under that name and what to check.
 - **Another club's club link no longer leads to a Join button that always failed** for someone already signed in. It says to ask that club's organiser for an invite link, until joining through a club link with an existing account is built.
 
+## Stringing is a club's own choice (2026-11-13)
+
+- **An organiser can switch the stringing service off** (Grant: "What if we tray the entire stringing feature as an add-on?"). It is the new **Add-ons** switch at the bottom of "How your club runs". Off, the club has no Stringing tab (the bar shows Home, Stats and Profile), no stringing bench in the admin console, no "Request stringing" from a racket's page or the app icon's menu, and the server takes no new request.
+- **It cannot be switched off while a racket is still on the bench, or a finished job is unpaid.** The page says how many, under the switch. A setting never hides a racket someone handed over or money someone owes.
+- **BPM Core is unchanged**, and so is any club that never chose: stringing stays on. A club that started from "Members first" (Six Feathers) starts with it off, because it has no stringer. Choosing a style never turns it on or off, and switching it never makes the club "Custom".
+- The deployment-wide stringing switch still turns stringing off for every club. This is phase 1 of `docs/plans/stringing-add-on.md`; linking a club to another club's stringer comes later.
+
 ## Receipts and the admin console read dates on the club's clock (2026-11-12)
 
 - **A receipt read the session's date in the phone's own time zone**, so a Thursday 7 PM session showed as "Fri, Nov 20" on a phone or browser set to UTC, on the receipt image, both receipt texts and the e-transfer memo. It now reads in Vancouver time like every other session date in the app. The payments inbox matches a memo by the name after the dash, so a memo's date was never part of matching.
