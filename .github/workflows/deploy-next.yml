@@ -142,6 +142,12 @@ jobs:
           # nothing is migrated that older code cannot read, so the flag is
           # the whole rollback.
           NEXT_PUBLIC_FLAG_MULTI_GROUP: 'true'
+          # Voice scoring on the courtside board, a proof of concept
+          # (docs/plans/voice-score.md). ON since 2026-11-13 (Grant: "Just on
+          # now fast"). The browser sends the audio to its own speech service
+          # (Google in Chrome, Apple in Safari); legal.privacy does not say so
+          # yet. Back out by setting 'false'.
+          NEXT_PUBLIC_FLAG_VOICE_SCORE: 'true'
           # NOT a secret: the browser needs it for
           # pushManager.subscribe({ applicationServerKey }). It must live HERE
           # and not only in Azure App Settings, because NEXT_PUBLIC_* is inlined
