@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/react';
 import PaymentsCard from '@/components/admin/CommandCenter/PaymentsCard';
 
@@ -64,6 +64,64 @@ describe('<PaymentsCard />', () => {
     render(<PaymentsCard />);
     await waitFor(() => expect(screen.getByLabelText('Payments')).toBeTruthy());
     expect(screen.queryByText(/No active players/i)).toBeNull();
+  });
+
+  // Grant, 2026-11-12: an organiser may promote from the waitlist into a full
+  // session. The server refuses first; the card asks, then sends the override.
+  it('asks before promoting into a full session, then sends the override', async () => {
+    const patches: Array<Record<string, unknown>> = [];
+    urlFetch(async (url, init) => {
+      if (url.includes('/api/session') && !url.includes('/sessions')) return new Response(JSON.stringify(ACTIVE_SESSION), { status: 200 });
+      if (url.includes('/api/sessions')) return new Response(JSON.stringify([ACTIVE_SESSION]), { status: 200 });
+      if (url.includes('/api/players') && init?.method === 'PATCH') {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        patches.push(body);
+        return body.overCapacity === true
+          ? new Response(JSON.stringify({ id: 'w1' }), { status: 200 })
+          : new Response(JSON.stringify({ error: 'Session is full' }), { status: 409 });
+      }
+      if (url.includes('/api/players')) {
+        return new Response(JSON.stringify([{ id: 'p1', name: 'Daisy', paid: false }, { id: 'w1', name: 'Kento', paid: false, waitlisted: true }]), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<PaymentsCard />);
+    await screen.findByText('Daisy');
+    fireEvent.click(screen.getByRole('button', { name: /Show/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
+    await waitFor(() => expect(patches).toHaveLength(2));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('The session is full. Move Kento in anyway?'));
+    expect(patches[0]).toEqual({ id: 'w1', waitlisted: false });
+    expect(patches[1]).toEqual({ id: 'w1', waitlisted: false, overCapacity: true });
+    confirm.mockRestore();
+  });
+
+  it('does nothing more when the organiser says no', async () => {
+    const patches: Array<Record<string, unknown>> = [];
+    urlFetch(async (url, init) => {
+      if (url.includes('/api/session') && !url.includes('/sessions')) return new Response(JSON.stringify(ACTIVE_SESSION), { status: 200 });
+      if (url.includes('/api/sessions')) return new Response(JSON.stringify([ACTIVE_SESSION]), { status: 200 });
+      if (url.includes('/api/players') && init?.method === 'PATCH') {
+        patches.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+        return new Response(JSON.stringify({ error: 'Session is full' }), { status: 409 });
+      }
+      if (url.includes('/api/players')) {
+        return new Response(JSON.stringify([{ id: 'p1', name: 'Daisy', paid: false }, { id: 'w1', name: 'Kento', paid: false, waitlisted: true }]), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    render(<PaymentsCard />);
+    await screen.findByText('Daisy');
+    fireEvent.click(screen.getByRole('button', { name: /Show/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
+    await waitFor(() => expect(confirm).toHaveBeenCalled());
+    expect(patches).toHaveLength(1);
+    expect(alert).not.toHaveBeenCalled();
+    confirm.mockRestore();
+    alert.mockRestore();
   });
 
   it('filters out removed and waitlisted players', async () => {

@@ -23,7 +23,7 @@ import StatusBadge from '@/components/primitives/StatusBadge';
 import { sharedFetch } from '@/lib/sharedRead';
 import { sessionDay, sessionMoneyState, SESSION_CALENDAR_LIMIT } from '@/lib/sessionCalendar';
 import SessionDatePicker, { type PickerSession } from './SessionDatePicker';
-import { addPlayerByName, promotePlayer, removePlayer, restorePlayer } from '@/lib/sessionRowActions';
+import { addPlayerByName, promotePlayer, removePlayer, restorePlayer, SESSION_FULL_ERROR } from '@/lib/sessionRowActions';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -381,7 +381,12 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     if (busyId) return;
     setBusyId(player.id);
     try {
-      const result = await promotePlayer(player.id);
+      let result = await promotePlayer(player.id);
+      // Full: the organiser may still move them in, over the maximum, on purpose.
+      if (!result.ok && result.error === SESSION_FULL_ERROR) {
+        if (!confirm(`The session is full. Move ${player.name} in anyway?\n\nThat puts one more player on the list than the session's maximum.`)) return;
+        result = await promotePlayer(player.id, null, { overCapacity: true });
+      }
       if (!result.ok) {
         alert(result.error);
         return;

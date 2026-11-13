@@ -191,14 +191,15 @@ describe('the row sheet', () => {
     await waitFor(() => expect(writes()).toEqual([{ method: 'PATCH', body: { id: 'w1', waitlisted: false } }]));
   });
 
-  it('will not offer to move someone into a full session', async () => {
+  // Grant, 2026-11-12: the organiser may move someone in over the max.
+  it('a full session offers to move them in anyway, over the max, and says what that makes', async () => {
     players = [row('p1', 'Lin', 1), row('p2', 'Viktor', 2), row('p3', 'Carolina', 3), row('w1', 'Akane', 4, { waitlisted: true })];
     renderCard();
     await openList();
     fireEvent.click(await screen.findByRole('button', { name: 'Actions for Akane' }));
-    expect(screen.getByText(/The session is full/)).toBeTruthy();
-    fireEvent.click(screen.getByText('Move into the session'));
-    expect(writes()).toEqual([]);
+    expect(screen.getByText('The session is full at 3. This makes 4 playing.')).toBeTruthy();
+    fireEvent.click(screen.getByText('Move into the session anyway'));
+    await waitFor(() => expect(writes()).toEqual([{ method: 'PATCH', body: { id: 'w1', waitlisted: false, overCapacity: true } }]));
   });
 
   it('removes by name, as the admin DELETE finds the row', async () => {
@@ -262,14 +263,15 @@ describe('the courts are the cap', () => {
     expect(screen.getByText('Waitlist · 1 more fills a court')).toBeTruthy();
   });
 
-  it('a full session says so in courts and offers nobody a spot', async () => {
+  it('a full session says so in courts, and moving one more in is the organiser\'s call', async () => {
     fullSession();
     renderCard({ run });
     await openList();
     fireEvent.click(await screen.findByRole('button', { name: 'Actions for Kento' }));
-    expect(screen.getByText('All 2 courts are full at 2 a court. Add a court in Edit details, or remove someone first.')).toBeTruthy();
-    fireEvent.click(screen.getByText('Move into the session'));
-    expect(writes()).toEqual([]);
+    expect(screen.getByText('All 2 courts are full at 2 a court. This makes 5 playing.')).toBeTruthy();
+    fireEvent.click(screen.getByText('Move into the session anyway'));
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0]).toMatchObject({ method: 'PATCH', body: { waitlisted: false, overCapacity: true } });
   });
 
   it('adding to a full session joins the waitlist', async () => {

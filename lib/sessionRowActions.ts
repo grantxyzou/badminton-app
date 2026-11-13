@@ -58,9 +58,23 @@ export function removePlayer(name: string, sessionId?: string | null): Promise<R
   return send('DELETE', { name, ...onSession(sessionId) }, 'Failed to remove.');
 }
 
-/** Move a waitlisted player into the session. The server answers 409 when it is full. */
-export function promotePlayer(id: string, sessionId?: string | null): Promise<RowActionResult> {
-  return send('PATCH', { id, waitlisted: false, ...onSession(sessionId) }, 'Failed to promote.');
+/**
+ * Move a waitlisted player into the session. The server answers 409 when it
+ * is full — unless `overCapacity`, which an organiser or admin sends after
+ * choosing to put one more on the courts than the session's maximum.
+ */
+export const SESSION_FULL_ERROR = 'Session is full';
+
+export function promotePlayer(
+  id: string,
+  sessionId?: string | null,
+  opts: { overCapacity?: boolean } = {},
+): Promise<RowActionResult> {
+  return send(
+    'PATCH',
+    { id, waitlisted: false, ...(opts.overCapacity ? { overCapacity: true } : {}), ...onSession(sessionId) },
+    'Failed to promote.',
+  );
 }
 
 /**
