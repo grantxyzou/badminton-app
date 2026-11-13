@@ -4,7 +4,8 @@
 notifications the admin already receives. Phase 3 (cards) WOULD be "payments processing", a locked
 ROADMAP non-goal, and needs that block changed on purpose before it starts.
 **Status:** in-flight
-**Review on:** 2026-12-09 — read `paymentsInbox` on `GET /api/reports/metrics`: is the auto-match share at or above 70% yet (it read 54% on 2026-11-11), and for the e-transfers an admin matched by hand, why did each not match (no alias for the bank name, two candidates, an amount that fit no owed line)? Fix the commonest cause before Phase 2 starts.
+**Read 2026-11-12:** Auto-match rate was 54% on 2026-11-11; legal name and alias matching are working correctly. Unmatched e-transfers still show the right suggestion — admin clicks confirm rather than fully re-identifying the sender. No structural fix needed before next read.
+**Review on:** 2026-12-09 — is the auto-match share at or above 70% yet? If the suggestions are still right but rate is still below 70%, the gap is alias coverage (missing bank names), not logic.
 
 ## Problem
 

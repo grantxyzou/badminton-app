@@ -2,6 +2,7 @@
 
 **Track:** North Star pillar 4 (equipment service) — the stringing service is the one paid thing the app sells, and `restring-reach.md` already measures its reach; this closes what a role-by-role audit found between the player, the stringer and the bench.
 **Status:** shipped 2026-10-11 (#598)
+**Read 2026-11-12:** `claimedAt` only started stamping 2026-11-11 — one day of data, nothing to judge yet. Bench reorder: no read taken.
 **Review on:** 2026-12-09 — read `stringingRequests` on `GET /api/reports/metrics`: with four weeks of real claim times (`claimedAt`, stamped from 2026-11-11), how many player requests were answered within 24 hours? Compare with the kill criterion below: if requests are claimed no faster than before the push existed, remove the push rather than tune it.
 
 ## Problem
