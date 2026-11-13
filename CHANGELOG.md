@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Voice scoring on Keep score: a proof of concept, off for now (2026-11-13)
+
+- **Call the score and the board keeps it** (Preview, behind `NEXT_PUBLIC_FLAG_VOICE_SCORE`, OFF in production; `docs/plans/voice-score.md`). A mic above the +1 buttons listens for the umpire's call, "eleven seven", and scores the rally only when the call is exactly one rally on from the board, so another court's call is shown as heard and never scored. At a level score ("six five" at 5 all) it asks which side won; "five all" and "service over" settle it themselves.
+- **Hands-free in Chrome on Android, one tap per call on iPhone and iPad**, where Safari's always-on listening is unreliable. Not in the App Store or Play apps: their web views have no speech recogniser.
+- **Members see nothing yet.** It stays off until the privacy policy says the browser sends what the mic hears to its own speech service (Google in Chrome, Apple in Safari). The one change that ships now: the app's pages may ask for the microphone (`Permissions-Policy: microphone=(self)`), and the browser still asks the person first.
+
 ## Stringing is a club's own choice (2026-11-13)
 
 - **An organiser can switch the stringing service off** (Grant: "What if we tray the entire stringing feature as an add-on?"). It is the new **Add-ons** switch at the bottom of "How your club runs". Off, the club has no Stringing tab (the bar shows Home, Stats and Profile), no stringing bench in the admin console, no "Request stringing" from a racket's page or the app icon's menu, and the server takes no new request.
