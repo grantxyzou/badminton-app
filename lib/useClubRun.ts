@@ -39,3 +39,15 @@ export function useClubRun(): { run: ClubRun; known: boolean } {
     known: saved !== null || (!loading && !error),
   };
 }
+
+/**
+ * Has this club switched its stringing service OFF (docs/plans/stringing-add-on.md)?
+ * True only on a KNOWN "off", so a club that strings never loses its tab
+ * while the club is still being read (unknown is not "off"). The deployment
+ * flag keeps its own handling where it always had it (the Stringing tab's
+ * "not available" state); this is the club's switch alone.
+ */
+export function useStringingHidden(): boolean {
+  const { run, known } = useClubRun();
+  return known && run.stringing === 'off';
+}

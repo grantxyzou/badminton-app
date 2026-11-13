@@ -96,3 +96,19 @@ describe('BottomNav — Labeled Rail', () => {
     expect(homeIcon?.className).toBe(playersIcon?.className);
   });
 });
+
+describe('a club with stringing switched off (docs/plans/stringing-add-on.md)', () => {
+  it('shows three tabs, and the indicator divides by three', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <BottomNav activeTab="skills" onTabChange={vi.fn()} hideStringing />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.queryByRole('button', { name: 'Stringing' })).toBeNull();
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Home', 'Stats', 'Profile']);
+    const nav = screen.getByRole('navigation');
+    expect(nav.style.getPropertyValue('--rn')).toBe('3');
+    expect(nav.style.getPropertyValue('--ri')).toBe('1');
+  });
+});
+

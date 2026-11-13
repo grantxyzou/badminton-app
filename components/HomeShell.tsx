@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { useStringingHidden } from '@/lib/useClubRun';
 import { consumeOnboardingResume, pruneStaleOnboardingResume } from '@/lib/onboardingResume';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
@@ -254,6 +255,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   const [doorsDismissed, setDoorsDismissed] = useState(false);
   const groupsEnabled = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const { group, refresh: refreshGroups } = useCurrentGroup();
+  // A club with stringing switched off has no Stringing tab (docs/plans/stringing-add-on.md).
+  const stringingHidden = useStringingHidden();
   // The club this phone is signed in to, kept for the day it is signed OUT:
   // "Ask to be let in" sends it, so the name is looked up on this club's
   // roster and not BPM's (lib/lastClub.ts). Every switch, join and create
@@ -580,6 +583,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     setNoticesOpen(false);
     setActiveTab(tab);
   }, []);
+  // Anything that lands on Stringing in a club without it (a deep link, a
+  // restored tab, an old push, the switch flipped from another phone) lands
+  // on Home instead.
+  useEffect(() => {
+    if (stringingHidden && activeTab === 'stringing') setActiveTab('home');
+  }, [stringingHidden, activeTab]);
 
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
   // ProfileTab is allowed to render with empty values (anonymous state).
@@ -1141,7 +1150,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
               refresh changes — `refreshNonce` for everything, `tabNonce` for
               the one tab a pull or a notification refreshed. */}
           {(['home', 'stringing', 'skills', 'profile'] as const).map((tab) =>
-            tab === activeTab || kept.includes(tab) ? (
+            (tab === activeTab || kept.includes(tab)) && !(tab === 'stringing' && stringingHidden) ? (
               <div
                 key={`${tab}-${refreshNonce}-${tabNonce[tab] ?? 0}`}
                 {...{ [TAB_PANEL_ATTR]: tab }}
@@ -1203,7 +1212,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             person has no relationship with yet — a roster they are not on, a
             session they cannot join — which is the screen the doors exist to
             replace. "I already have an account" is the route to Profile. */}
-        {!inOnboarding && <BottomNav activeTab={activeTab} onTabChange={changeTab} />}
+        {!inOnboarding && <BottomNav activeTab={activeTab} onTabChange={changeTab} hideStringing={stringingHidden} />}
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
       {/* Mounted at shell level, not inside a tab: the provider callback lands
