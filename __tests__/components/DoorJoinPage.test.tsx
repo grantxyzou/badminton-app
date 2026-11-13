@@ -49,13 +49,12 @@ function stub(routes: Record<string, () => Response>) {
   return calls;
 }
 
-function renderPage(onClaimName = vi.fn()) {
+function renderPage() {
   render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <DoorJoinPage token={TOKEN} authProviders={['google']} onBack={vi.fn()} onClaimName={onClaimName} />
+      <DoorJoinPage token={TOKEN} authProviders={['google']} onBack={vi.fn()} />
     </NextIntlClientProvider>,
   );
-  return { onClaimName };
 }
 
 async function proveEmail(email: string) {
@@ -142,11 +141,11 @@ describe('DoorJoinPage', () => {
     expect(screen.getByText('Asked to join Six Feathers')).toBeDefined();
   });
 
-  it('keeps the name-only claim reachable for imported names (until step 4b)', async () => {
+  it('offers no name-only claim: an imported name signs in like everyone (one-way-in step 4d)', async () => {
     stub({});
-    const { onClaimName } = renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: /Claim your name/ }));
-    expect(onClaimName).toHaveBeenCalled();
+    renderPage();
+    await screen.findByText(/Six Feathers/);
+    expect(screen.queryByRole('button', { name: /Claim your name/ })).toBeNull();
   });
 
   it('a dead link says so', async () => {

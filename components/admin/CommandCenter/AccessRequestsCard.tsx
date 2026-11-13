@@ -16,21 +16,17 @@ interface Waiting {
   count: number;
   /** Set only when `count` is 1 — the one request that can be approved. */
   requestId: string | null;
-  /** Asked through the club's claim link (docs/plans/claim-your-name.md). */
-  viaLink?: boolean;
   /** Nobody has ever signed in under this name: no PIN, password or Google. */
   neverSignedIn?: boolean;
 }
 
-/** Someone asking to JOIN through the club's door link (docs/plans/door-link.md). */
+/** An account asking to JOIN through the club's link (docs/plans/one-way-in.md, step 4). */
 interface Joining {
   joinRequestId: string;
   name: string;
   at: number;
   /** Someone on the roster, a removed member included, already holds the name. */
   nameTaken: boolean;
-  /** Asked from a signed-in account (docs/plans/one-way-in.md, step 4): letting in adds that account. */
-  signedIn?: boolean;
   /**
    * The name belongs to someone imported onto the list who has never signed
    * in (step 4b): "Is this them?" links the two, history and all.
@@ -180,9 +176,7 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                     ? `${r.linkTo} is on your list and has never signed in. Is this them? Yes keeps ${r.linkTo}'s history.`
                   : r.nameTaken
                     ? 'Asking to join, but someone in the club already has that name. Ignore it and ask them to try again with another, like adding an initial.'
-                    : r.signedIn
-                      ? 'Signed in and asking to join. Let in someone you know asked, as a regular or a drop-in.'
-                      : 'Asking to join with the club link. Let in someone you know asked.'}
+                    : 'Signed in and asking to join. Let in someone you know asked, as a regular or a drop-in.'}
               </span>
             </div>
             {organiser && (
@@ -234,8 +228,6 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
         ))}
         {waiting.map((r) => {
           const several = r.count > 1 || !r.requestId;
-          // Through the door link only an organiser lets anyone in.
-          const organisersOnly = !organiser && r.viaLink === true;
           return (
             <div
               key={r.memberId}
@@ -253,23 +245,14 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                 <span className="fs-md" style={{ display: 'block', fontWeight: 600 }}>
                   {r.name}
                 </span>
-                {organisersOnly ? (
-                  <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
-                    With the club link · waiting for an organiser
-                  </span>
-                ) : several ? (
+                {several ? (
                   <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
                     {r.count} devices asked. Clear them, then have {r.name} ask again with you there.
                   </span>
-                ) : (r.viaLink || r.neverSignedIn) && (
-                  /* What the organiser is approving: a name from the club link
-                     that nobody has signed in under. Let in someone you know
-                     asked — the link is in the whole chat. */
+                ) : r.neverSignedIn && (
+                  /* A name nobody has signed in under: let in someone you know asked. */
                   <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
-                    {[r.viaLink ? 'With the club link' : null, r.neverSignedIn ? 'never signed in' : null]
-                      .filter(Boolean)
-                      .join(' · ')
-                      .replace(/^./, (c) => c.toUpperCase())}
+                    Never signed in
                   </span>
                 )}
               </div>
@@ -280,7 +263,7 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   else; that is what makes one tap safe. It is also why two
                   requests get no approve button: they cannot be told apart, so
                   either tap could let in the wrong one. */}
-              {organisersOnly ? null : several ? (
+              {several ? (
                 <button
                   type="button"
                   className="cc-btn cc-btn-secondary"

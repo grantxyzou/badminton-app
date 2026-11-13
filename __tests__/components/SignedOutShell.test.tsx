@@ -153,7 +153,8 @@ describe('Log in', () => {
     fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
     // A page, not a sheet (Grant, 2026-11-08): a real person approves it.
     expect(screen.getByText('Can\'t sign in?')).toBeDefined();
-    expect(captured.AskAccessForm?.claim).toBeNull();
+    // No club link with it: the link signs in first (one-way-in step 4d).
+    expect(captured.AskAccessForm).not.toHaveProperty('claim');
     // Back goes to Log in, where they came from.
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByText('stub: PIN sign-in')).toBeDefined();
@@ -264,7 +265,7 @@ describe('landings', () => {
 
   it('?claim= opens the club’s page (sign in first, then ask), and strips the link from the URL', async () => {
     // docs/plans/one-way-in.md, step 4: the club's link is a page that signs
-    // in first; the name-only ask is behind "Claim your name" until step 4b.
+    // in first, and nothing else (the name-only claim went in step 4d).
     const token = 'c3'.repeat(16);
     at(`?claim=${token}`);
     renderShell();
@@ -273,16 +274,12 @@ describe('landings', () => {
     expect(window.location.search).not.toContain('claim');
   });
 
-  it('the old name-only claim stays reachable from the club’s page (until step 4b)', async () => {
-    // docs/plans/claim-your-name.md: an imported name asks to be let in.
+  it('the club’s page offers no name-only claim (one-way-in step 4d)', async () => {
     const token = 'c3'.repeat(16);
     at(`?claim=${token}`);
     renderShell();
     await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
-    act(() => (captured.DoorJoinPage!.onClaimName as () => void)());
-    await waitFor(() => expect(captured.AskAccessForm?.claim).toEqual({ token, clubName: 'BPM Badminton' }));
-    // A new person's name, not a stale one from this phone.
-    expect(captured.AskAccessForm?.initialName).toBe('');
+    expect(captured.DoorJoinPage).not.toHaveProperty('onClaimName');
   });
 
   it('the club’s door link on the one-link path opens the club’s page, not the sign-up form', async () => {
@@ -299,40 +296,18 @@ describe('landings', () => {
     expect(window.location.search).not.toContain('join');
   });
 
-  it('a person let in through the door gets the "Keep your account" page, and goes in when they leave it', async () => {
-    const token = 'f6'.repeat(16);
-    at(`?claim=${token}`);
+  it('a person let in from "I play here already" with nothing to sign in with gets "Keep your account", and goes in when they leave it', async () => {
     renderShell();
-    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
-    act(() => (captured.DoorJoinPage!.onClaimName as () => void)());
-    await waitFor(() => expect(captured.AskAccessForm?.claim).toBeTruthy());
-    (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean; email?: string }) => void)({
-      name: 'Akane Yamaguchi',
-      hasPin: false,
-      email: 'akane@example.com',
-    });
-    // The account step first, with the email they typed, and not signed in yet:
-    // writing the identity would reload this screen out from under it.
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
+    (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean }) => void)({ name: 'Akane Yamaguchi', hasPin: false });
+    // The account step first, and not signed in yet: writing the identity
+    // would reload this screen out from under it.
     await waitFor(() => expect(captured.KeepAccountPage?.name).toBe('Akane Yamaguchi'));
-    expect(captured.KeepAccountPage?.initialEmail).toBe('akane@example.com');
     expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
     (captured.KeepAccountPage!.onDone as () => void)();
     await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
     expect(JSON.parse(localStorage.getItem('badminton_identity') ?? '{}').name).toBe('Akane Yamaguchi');
-  });
-
-  it('a claim link that no longer resolves says so, and opens nothing', async () => {
-    fetchMock.mockImplementation((input: RequestInfo | URL) =>
-      String(input).includes('/api/groups/preview') ? json({ error: 'invite_not_found' }, 404) : json({}),
-    );
-    at(`?claim=${'d4'.repeat(16)}`);
-    renderShell();
-    // The club's page says so itself (DoorJoinPage.test.tsx); behind it, the
-    // name-only claim still refuses the dead link before asking anything.
-    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe('d4'.repeat(16)));
-    act(() => (captured.DoorJoinPage!.onClaimName as () => void)());
-    expect((await screen.findByRole('alert')).textContent).toMatch(/link has been replaced/);
-    expect(captured.AskAccessForm).toBeUndefined();
   });
 
   it('a new Google identity gets the name sheet, carrying the invite that rode the excursion', () => {

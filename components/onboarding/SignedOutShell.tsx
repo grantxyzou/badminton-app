@@ -8,7 +8,6 @@ import { usePaneMode } from '@/lib/paneMode';
 import { buttonDelayMs } from '@/lib/launchMotion';
 import TopBar from '@/components/primitives/TopBar';
 import TopToast from '@/components/primitives/TopToast';
-import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import NativeBridge from '@/components/NativeBridge';
@@ -43,9 +42,6 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** The one key this screen writes in sessionStorage. See `reloadIntoApp`. */
 const RELOAD_MARK = 'badminton_signed_out_reload_at';
-/** The ask card while the link's club is looked up: the door form, measured at
- *  430 wide on 2026-11-08 (name, email, the junk-mail line and the button). */
-const ASK_CARD_HEIGHT = 284;
 
 // The multi-group doors, split out exactly as HomeShell splits them: a
 // stranger who never taps "Start your own club" never downloads them.
@@ -141,8 +137,6 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
     noGroup: false,
   });
   const [initialInvite, setInitialInvite] = useState<Invite | null>(null);
-  /** A club's claim link from `?claim=` (docs/plans/claim-your-name.md). */
-  const [claimToken, setClaimToken] = useState<string | null>(null);
   /** A club's link, signed out: sign in first, then ask (docs/plans/one-way-in.md, step 4). */
   const [doorToken, setDoorToken] = useState<string | null>(null);
   const consumed = useRef(false);
@@ -403,18 +397,9 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             onAsked={hardReload}
           />
         ) : view === 'ask' ? (
-          /* Asking to be let in, or to join through the club's link. A page,
-             not a sheet (Grant, 2026-11-08): a real person approves it. */
-          <AskAccessPage
-            claimToken={claimToken}
-            onBack={() => {
-              // Through the link the ask was reached from the club's page;
-              // "I play here already" came from Log in.
-              const fromLink = claimToken !== null;
-              setClaimToken(null);
-              setView(fromLink ? (doorToken ? 'door' : 'welcome') : 'login');
-            }}
-          />
+          /* "I play here already": asking to be let in. A page, not a sheet
+             (Grant, 2026-11-08): a real person approves it. */
+          <AskAccessPage onBack={() => setView('login')} />
         ) : view === 'door' && doorToken ? (
           <DoorJoinPage
             token={doorToken}
@@ -422,12 +407,6 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             onBack={() => {
               setDoorToken(null);
               setView('welcome');
-            }}
-            // Until step 4b links imported names at approval, someone already
-            // on the list claims their name the old way.
-            onClaimName={() => {
-              setClaimToken(doorToken);
-              setView('ask');
             }}
           />
         ) : view === 'login' ? (
@@ -735,9 +714,9 @@ function LogInView({
 
 /**
  * The ask as a PAGE (Grant, 2026-11-08: "Since there's a real person approval
- * steps I think they all should be using a page not a sheet"). Two ways here:
- * the club's link (`?claim=` or `/j/`, a new person joining or an imported
- * name claiming theirs) and Log in's "I play here already".
+ * steps I think they all should be using a page not a sheet"), reached from
+ * Log in's "I play here already". The club's link no longer leads here: it
+ * signs in first and asks (`DoorJoinPage`, docs/plans/one-way-in.md, step 4d).
  *
  * Three steps on one page: the form, the wait (the form shows it), and — once
  * an organiser lets them in with nothing to sign in WITH — "Keep your
@@ -746,36 +725,13 @@ function LogInView({
  * already set, so the step's Apple, Google and password all act on the new
  * account. Someone approved who already has a PIN goes straight in.
  */
-function AskAccessPage({ claimToken, onBack }: { claimToken: string | null; onBack: () => void }) {
+function AskAccessPage({ onBack }: { onBack: () => void }) {
   const t = useTranslations('signedOut');
   const tAsk = useTranslations('recovery');
-  const [claim, setClaim] = useState<{ token: string; clubName: string } | null>(null);
-  const [claimDead, setClaimDead] = useState(false);
   const [approved, setApproved] = useState<AskApproved | null>(null);
   // A stale local identity saves a returning player typing their own name.
-  // Read once, at mount; not through the link, where the name is a new one.
-  const [staleName] = useState(() => (typeof window === 'undefined' || claimToken ? '' : getIdentity()?.name ?? ''));
-  const claimResolved = useRef(false);
-
-  // The link names a club; the preview says which, and nothing else
-  // (`GET /api/groups/preview?claim=`).
-  useEffect(() => {
-    if (!claimToken || claimResolved.current) return;
-    claimResolved.current = true;
-    void (async () => {
-      try {
-        const res = await fetch(`${BASE}/api/groups/preview?claim=${encodeURIComponent(claimToken)}`, { cache: 'no-store' });
-        if (!res.ok) {
-          setClaimDead(true);
-          return;
-        }
-        const data = (await res.json()) as { name: string };
-        setClaim({ token: claimToken, clubName: data.name });
-      } catch {
-        setClaimDead(true);
-      }
-    })();
-  }, [claimToken]);
+  // Read once, at mount.
+  const [staleName] = useState(() => (typeof window === 'undefined' ? '' : getIdentity()?.name ?? ''));
 
   const enter = (name: string) => setIdentity({ name, sessionId: '' });
 
@@ -783,37 +739,24 @@ function AskAccessPage({ claimToken, onBack }: { claimToken: string | null; onBa
     return (
       <KeepAccountPage
         name={approved.name}
-        initialEmail={approved.email}
         onDone={() => enter(approved.name)}
       />
     );
   }
 
-  const waitingForClub = claimToken !== null && !claim && !claimDead;
-  const title = claim ? tAsk('claimTitle', { club: claim.clubName }) : claimToken ? tAsk('joinTitle') : tAsk('askTitle');
-
   return (
     <div className="animate-slideInRight space-y-5" data-ask-page>
-      <TopBar title={title} onBack={onBack} backLabel={t('back')} />
-      {claimDead ? (
-        /* A link the organiser has since replaced (or never was one): say so,
-           rather than leaving them on a page that ignores the link. */
-        <p className="field-error" role="alert">{t('login.claimLinkDead')}</p>
-      ) : waitingForClub ? (
-        <CardSkeleton height={ASK_CARD_HEIGHT} />
-      ) : (
-        <div className="glass-card p-5">
-          <AskAccessForm
-            initialName={staleName}
-            claim={claim}
-            onApproved={(result) => {
-              // Nothing to sign in with next time: the account step first.
-              if (!result.hasPin) setApproved(result);
-              else enter(result.name);
-            }}
-          />
-        </div>
-      )}
+      <TopBar title={tAsk('askTitle')} onBack={onBack} backLabel={t('back')} />
+      <div className="glass-card p-5">
+        <AskAccessForm
+          initialName={staleName}
+          onApproved={(result) => {
+            // Nothing to sign in with next time: the account step first.
+            if (!result.hasPin) setApproved(result);
+            else enter(result.name);
+          }}
+        />
+      </div>
     </div>
   );
 }

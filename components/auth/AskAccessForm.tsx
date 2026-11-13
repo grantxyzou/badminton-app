@@ -6,22 +6,18 @@ import { useOnline } from '@/lib/useOnline';
 import { lastClub } from '@/lib/lastClub';
 import { useClientValue } from '@/lib/useClientValue';
 import { isFlagOn } from '@/lib/flags';
-import { isFullName } from '@/lib/fullName';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** Often enough to feel immediate when Grant is standing right there. */
 const POLL_MS = 3_000;
-/** A light shape check; the email is checked properly where it becomes an account. */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Which club the ask is for: the claim link when the person came through one,
- * else the club this phone was last signed in to (lib/lastClub.ts), else
- * nothing, and the server takes BPM. The ask and its poll must send the SAME
- * one, or the poll looks for the request on another club's roster.
+ * Which club the ask is for: the club this phone was last signed in to
+ * (lib/lastClub.ts), else nothing, and the server takes BPM. The ask and its
+ * poll must send the SAME one, or the poll looks for the request on another
+ * club's roster.
  */
-function askedClub(claim: { token: string } | null | undefined): { claimToken: string } | { club: string } | Record<string, never> {
-  if (claim) return { claimToken: claim.token };
+function askedClub(): { club: string } | Record<string, never> {
   const club = lastClub();
   return club ? { club } : {};
 }
@@ -46,11 +42,10 @@ function askedClub(claim: { token: string } | null | undefined): { claimToken: s
  */
 type Phase = 'idle' | 'sending' | 'waiting' | 'approved' | 'expired' | 'error' | 'rate_limited';
 
-export type AskApproved = { name: string; hasPin: boolean; email?: string };
+export type AskApproved = { name: string; hasPin: boolean };
 
 /**
- * The ask itself: name (and, through the door, an email), the wait, and the
- * answer. Layout-agnostic so it can be a PAGE (the signed-out screen, where a
+ * The ask itself: name, the wait, and the answer. Layout-agnostic so it can be a PAGE (the signed-out screen, where a
  * real person is going to approve it — Grant, 2026-11-08: "Since there's a
  * real person approval steps I think they all should be using a page not a
  * sheet") or the body of `AskAccessSheet` (Profile's anonymous card).
@@ -65,36 +60,16 @@ export default function AskAccessForm({
   active = true,
   initialName = '',
   onApproved,
-  claim,
 }: {
   /** False while the surrounding sheet is closed: polling stops and the form resets. */
   active?: boolean;
   initialName?: string;
-  /** The server approved and set the session cookie. `email` is what a door
-   *  ask typed, for the account step that follows. */
+  /** The server approved and set the session cookie. */
   onApproved: (result: AskApproved) => void;
-  /**
-   * The club's claim link, when the person arrived through one
-   * (docs/plans/claim-your-name.md): the ask and the claim name that club
-   * instead of the one this device would otherwise resolve to.
-   */
-  claim?: { token: string; clubName: string } | null;
 }) {
   const t = useTranslations('recovery');
   const online = useOnline();
   const [name, setName] = useState(initialName);
-  // Only the door asks for an email (Grant, 2026-11-07). It never leaves this
-  // phone with the ask: it waits here until approval, then becomes the
-  // contact email and pre-fills the account step.
-  const [email, setEmail] = useState('');
-  // Show the field rules only once the person has tried to send.
-  const [tried, setTried] = useState(false);
-  // The door wants a first AND last name from a NEW person, but an imported
-  // roster name can be one word ("Lin"), and only the server knows which
-  // this is. So a one-word name is a hint the first time, and the same name
-  // sent again goes: the server claims an unclaimed roster name as written
-  // and stores nothing for a one-word NEW name (the same 200 either way).
-  const [oneWordWarned, setOneWordWarned] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const secret = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -127,7 +102,6 @@ export default function AskAccessForm({
     setPrevOpenFor({ active, initialName });
     if (active) {
       setName(initialName);
-      setTried(false);
     } else setPhase('idle');
   }
 
@@ -146,7 +120,7 @@ export default function AskAccessForm({
       const res = await fetch(`${BASE}/api/members/access-request/claim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), secret: secret.current, ...askedClub(claim) }),
+        body: JSON.stringify({ name: name.trim(), secret: secret.current, ...askedClub() }),
       });
       if (!res.ok) return; // transient; keep polling
       const body = await res.json();
@@ -154,24 +128,9 @@ export default function AskAccessForm({
         stop();
         secret.current = null;
         setPhase('approved');
-        const doorEmail = claim && email.trim() ? email.trim() : '';
-        // The door's email becomes the new member's CONTACT email (spec Q3,
-        // Grant 2026-11-11: "Q3 yes"). Sent only now, once the club has let
-        // them in and this phone holds their session — never with the ask,
-        // which an organiser reads before anyone has said yes. Awaited so it
-        // lands before the next step can reload the page; a failure costs
-        // nothing but the convenience (they can add it on Edit profile, and
-        // the account step below is still pre-filled with it).
-        if (doorEmail) {
-          await fetch(`${BASE}/api/members/me`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: body.name, contactEmail: doorEmail }),
-          }).catch(() => undefined);
-        }
-        onApproved({ name: body.name, hasPin: body.hasPin === true, ...(doorEmail ? { email: doorEmail } : {}) });
+        onApproved({ name: body.name, hasPin: body.hasPin === true });
       } else if (body.status === 'none') {
-        // The hour ran out, or the club made a new link. Every other case,
+        // The hour ran out. Every other case,
         // a name the club does not know and a declined ask included, reads
         // `pending` until then (one-way-in step 4c), so this never says
         // whether the name exists.
@@ -181,31 +140,18 @@ export default function AskAccessForm({
     } catch {
       /* keep polling — a dropped request is not an answer */
     }
-  }, [name, email, stop, onApproved, claim]);
+  }, [name, stop, onApproved]);
 
-  const door = !!claim;
-  const nameOk = name.trim().length > 0;
-  const oneWord = door && nameOk && !isFullName(name);
-  const emailOk = !door || EMAIL_SHAPE.test(email.trim());
 
   async function ask() {
     const trimmed = name.trim();
     if (!trimmed || phase === 'sending' || !online) return;
-    if (!nameOk || !emailOk) {
-      setTried(true);
-      return;
-    }
-    if (oneWord && oneWordWarned !== trimmed) {
-      setTried(true);
-      setOneWordWarned(trimmed);
-      return;
-    }
     setPhase('sending');
     try {
       const res = await fetch(`${BASE}/api/members/access-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed, ...askedClub(claim) }),
+        body: JSON.stringify({ name: trimmed, ...askedClub() }),
       });
       if (res.status === 429) { setPhase('rate_limited'); return; }
       if (!res.ok) { setPhase('error'); return; }
@@ -220,12 +166,11 @@ export default function AskAccessForm({
     }
   }
 
-  const club = claim?.clubName ?? null;
   // A phone that never signed in sends no club and the ask goes to BPM's
   // roster. Say so, rather than leave another club's member waiting on an
   // ask nobody in their club will see. Unknown (server render) shows nothing.
   const noClubHint = useClientValue(() => lastClub() === null, false);
-  const sayOtherClub = !club && noClubHint && isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  const sayOtherClub = noClubHint && isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -236,7 +181,7 @@ export default function AskAccessForm({
           {/* The question, until it is answered: the wait says what happens next. */}
           {phase !== 'waiting' && (
             <p className="fs-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>
-              {club ? t('claimIntro') : t('askIntro')}
+              {t('askIntro')}
             </p>
           )}
           {sayOtherClub && (
@@ -248,7 +193,7 @@ export default function AskAccessForm({
             <p className="field-error" role="alert">{t('askRateLimited')}</p>
           )}
           {phase === 'expired' && (
-            <p className="field-error" role="alert">{club ? t('claimExpired') : t('askExpired')}</p>
+            <p className="field-error" role="alert">{t('askExpired')}</p>
           )}
 
           {phase === 'waiting' ? (
@@ -259,59 +204,35 @@ export default function AskAccessForm({
               {/* The wait can last minutes; a turning ring is what says
                   the page is still listening rather than stuck. */}
               <span className="ring-spinner" aria-hidden="true" style={{ flex: 'none' }} />
-              <span>{club ? t('claimWaiting') : t('askWaiting')}</span>
+              <span>{t('askWaiting')}</span>
             </p>
           ) : (
             <>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
                 <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {club ? t('claimNameLabel') : t('askNameLabel')}
+                  {t('askNameLabel')}
                 </span>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  aria-label={club ? t('claimNameLabel') : t('askNameLabel')}
-                  aria-invalid={tried && !nameOk ? true : undefined}
+                  aria-label={t('askNameLabel')}
                   maxLength={50}
                   autoComplete="name"
                 />
-                {tried && !nameOk && <span className="field-error" role="alert">{t('claimNameNeedsLast')}</span>}
-                {tried && oneWord && <span className="field-warn" role="status">{t('claimNameOneWord')}</span>}
               </label>
-              {door && (
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                  <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('claimEmailLabel')}</span>
-                  <input
-                    type="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    aria-label={t('claimEmailLabel')}
-                    aria-invalid={tried && !emailOk ? true : undefined}
-                    maxLength={254}
-                    autoComplete="email"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                  />
-                  {tried && !emailOk && <span className="field-error" role="alert">{t('claimEmailInvalid')}</span>}
-                  <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('claimEmailNote')}</span>
-                </label>
-              )}
               <button
                 type="button"
                 className="btn-primary"
                 style={{ width: '100%' }}
-                disabled={!name.trim() || (door && !email.trim()) || phase === 'sending' || !online}
+                disabled={!name.trim() || phase === 'sending' || !online}
                 onClick={() => void ask()}
               >
                 {phase === 'sending'
                   ? t('askSending')
                   : phase === 'expired' || phase === 'error'
                     ? t('askAgain')
-                    : club
-                      ? t('claimCta')
-                      : t('askCta')}
+                    : t('askCta')}
               </button>
             </>
           )}

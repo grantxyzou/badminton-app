@@ -17,11 +17,6 @@ interface Props {
   token: string;
   authProviders: Provider[];
   onBack: () => void;
-  /**
-   * "Already on the list and never signed in?": the old name-only claim, kept
-   * until step 4b links imported names at approval (docs/plans/one-way-in.md).
-   */
-  onClaimName: () => void;
 }
 
 type Stage = 'start' | 'name' | 'asked';
@@ -42,10 +37,15 @@ type Stage = 'start' | 'name' | 'asked';
  *  - An email code for an address that already has an account: signed in,
  *    then asked with `POST /api/groups/ask` under the account's name.
  *
+ * Someone already on the list who has never signed in comes in the same way,
+ * under the name the club knows; the organiser links the two at approval
+ * (step 4b). The name-only claim that used to sit under this page went in
+ * step 4d.
+ *
  * The identity is written only when they leave the "asked" screen, because
  * writing it reloads this page into the app (or the waiting screen).
  */
-export default function DoorJoinPage({ token, authProviders, onBack, onClaimName }: Props) {
+export default function DoorJoinPage({ token, authProviders, onBack }: Props) {
   const t = useTranslations('signedOut');
   const online = useOnline();
   const [club, setClub] = useState<string | null>(null);
@@ -248,9 +248,6 @@ export default function DoorJoinPage({ token, authProviders, onBack, onClaimName
           {busy && <p role="status" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('door.asking')}</p>}
           {error && <p className="field-error" role="alert">{error}</p>}
         </div>
-        <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onClaimName}>
-          {club ? t('door.claimName', { club }) : t('door.claimNameNoClub')}
-        </button>
       </div>
     </div>
   );

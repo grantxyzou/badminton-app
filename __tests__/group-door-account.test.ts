@@ -168,12 +168,12 @@ describe('the organiser lets them in', () => {
     const res = await newAccountThroughDoor();
     const session = cookieOf(res, 'member_session')!;
     const list = await (await LIST(makeRequest('GET', `${BASE}/admin/access-requests`, undefined, asOrganiser))).json();
-    return { session, join: list.joins[0] as { joinRequestId: string; signedIn: boolean; name: string } };
+    return { session, join: list.joins[0] as { joinRequestId: string; name: string } };
   }
 
   it('as a regular: the same account joins, as a regular, and hears it by email and push', async () => {
     const { session, join } = await askAndList();
-    expect(join).toMatchObject({ name: 'Akane Yamaguchi', signedIn: true });
+    expect(join).toMatchObject({ name: 'Akane Yamaguchi' });
 
     const res = await DECIDE(
       makeRequest('POST', `${BASE}/admin/access-requests`, { joinRequestId: join.joinRequestId, decision: 'approve', regular: true }, asOrganiser),
@@ -213,7 +213,7 @@ describe('the organiser lets them in', () => {
     const res = await newAccountThroughDoor('Akane Yamaguchi', { sub: 'g-sub-2', email: 'other@example.com' });
     expect(res.status).toBe(201);
     const list = await (await LIST(makeRequest('GET', `${BASE}/admin/access-requests`, undefined, asOrganiser))).json();
-    const join = list.joins.find((j: { signedIn: boolean }) => j.signedIn);
+    const join = list.joins[0];
     expect(join.nameTaken).toBe(true);
     const decided = await DECIDE(
       makeRequest('POST', `${BASE}/admin/access-requests`, { joinRequestId: join.joinRequestId, decision: 'approve' }, asOrganiser),
@@ -312,7 +312,7 @@ describe('an imported name: "This is Lin from your list" (step 4b)', () => {
     const session = cookieOf(res, 'member_session')!;
     const fresh = rows('members').find((m) => m.name === 'Lin Dan' && m.id !== lin.id) as Row & { id: string };
     const list = await (await LIST(makeRequest('GET', `${BASE}/admin/access-requests`, undefined, asOrganiser))).json();
-    const join = list.joins.find((j: { signedIn: boolean }) => j.signedIn) as { joinRequestId: string; linkTo: string | null };
+    const join = list.joins[0] as { joinRequestId: string; linkTo: string | null };
     return { lin, fresh, session, join };
   }
 
