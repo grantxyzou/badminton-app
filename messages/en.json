@@ -1920,7 +1920,24 @@
       "newGame": "New game",
       "save": "Save game",
       "saveNeedsSession": "Saving needs this week's session to log into.",
-      "close": "Close"
+      "close": "Close",
+      "voice": {
+        "preview": "Preview",
+        "listen": "Listen for the score",
+        "tap": "Tap, then call the score",
+        "stop": "Stop listening",
+        "listening": "Listening. Call the score, server's first.",
+        "heardPoint": "Heard {score} · +1 {side}",
+        "heardIgnored": "Heard {score}: not one rally on, so not scored",
+        "heardNone": "Didn't catch a score",
+        "heardWords": "Heard “{words}”: no score in that",
+        "askTitle": "Heard {score}. Who won the rally?",
+        "askSide": "{side} won",
+        "askNeither": "Neither",
+        "denied": "The microphone is blocked. Allow it for this site in the browser's settings.",
+        "network": "Voice needs a connection: the browser's speech service is online.",
+        "failed": "Voice stopped. Tap to try again."
+      }
     },
     "partners": {
       "locked": "<link>Sign in</link> to see who you play with most.",

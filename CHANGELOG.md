@@ -14,6 +14,24 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **The same was true of every tab kept in the background**: a page left open on another tab went back too, unseen. A top bar now answers only while it is the page on screen.
 - **Profile no longer notes another tab's scrolling as its own** list position while it waits in the background.
 
+## Voice scoring is on (2026-11-13)
+
+- **The Preview mic on Keep score is on for everyone** (Stats → Play → Keep score; `docs/plans/voice-score.md`). Call the score, server's first, and the board keeps it. Chrome on Android listens hands-free; Safari on iPhone and iPad hears one call per tap. Not in the App Store or Play app.
+- **What the mic hears goes to the browser's own speech service** (Google in Chrome, Apple in Safari), never to BPM's server; the privacy policy will say so.
+
+## Voice scoring on Keep score: a proof of concept, off for now (2026-11-13)
+
+- **Call the score and the board keeps it** (Preview, behind `NEXT_PUBLIC_FLAG_VOICE_SCORE`, OFF in production; `docs/plans/voice-score.md`). A mic above the +1 buttons listens for the umpire's call, "eleven seven", and scores the rally only when the call is exactly one rally on from the board, so another court's call is shown as heard and never scored. At a level score ("six five" at 5 all) it asks which side won; "five all" and "service over" settle it themselves.
+- **Hands-free in Chrome on Android, one tap per call on iPhone and iPad**, where Safari's always-on listening is unreliable. Not in the App Store or Play apps: their web views have no speech recogniser.
+- **Members see nothing yet.** It stays off until the privacy policy says the browser sends what the mic hears to its own speech service (Google in Chrome, Apple in Safari). The one change that ships now: the app's pages may ask for the microphone (`Permissions-Policy: microphone=(self)`), and the browser still asks the person first.
+
+## Stringing is a club's own choice (2026-11-13)
+
+- **An organiser can switch the stringing service off** (Grant: "What if we tray the entire stringing feature as an add-on?"). It is the new **Add-ons** switch at the bottom of "How your club runs". Off, the club has no Stringing tab (the bar shows Home, Stats and Profile), no stringing bench in the admin console, no "Request stringing" from a racket's page or the app icon's menu, and the server takes no new request.
+- **It cannot be switched off while a racket is still on the bench, or a finished job is unpaid.** The page says how many, under the switch. A setting never hides a racket someone handed over or money someone owes.
+- **BPM Core is unchanged**, and so is any club that never chose: stringing stays on. A club that started from "Members first" (Six Feathers) starts with it off, because it has no stringer. Choosing a style never turns it on or off, and switching it never makes the club "Custom".
+- The deployment-wide stringing switch still turns stringing off for every club. This is phase 1 of `docs/plans/stringing-add-on.md`; linking a club to another club's stringer comes later.
+
 ## Receipts and the admin console read dates on the club's clock (2026-11-12)
 
 - **A receipt read the session's date in the phone's own time zone**, so a Thursday 7 PM session showed as "Fri, Nov 20" on a phone or browser set to UTC, on the receipt image, both receipt texts and the e-transfer memo. It now reads in Vancouver time like every other session date in the app. The payments inbox matches a memo by the name after the dash, so a memo's date was never part of matching.

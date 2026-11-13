@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET, PATCH } from '@/app/api/admin/settings/route';
-import { resetMockStore, setupAdminPin, seedTestAdminMember, seedGroup, makeRequest, makeAdminRequest, getStore } from './helpers';
+import { resetMockStore, setupAdminPin, seedTestAdminMember, seedGroup, seedDoc, makeRequest, makeAdminRequest, getStore } from './helpers';
 
 /**
  * How the club runs (lib/clubRun.ts), stored on the GROUP record only, like the
@@ -31,6 +31,7 @@ describe('/api/admin/settings — run', () => {
       money: 'split',
       membersFirst: null,
       guests: 0,
+      stringing: 'on',
     });
   });
 
@@ -41,7 +42,7 @@ describe('/api/admin/settings — run', () => {
       makeAdminRequest('PATCH', URL, { run: { style: 'first_come', playersPerCourt: 8, money: 'off', membersFirst, guests: 2 } }),
     );
     expect(res.status).toBe(200);
-    expect(groupSettings().run).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst, guests: 2 });
+    expect(groupSettings().run).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst, guests: 2, stringing: 'on' });
     // The old switch is written beside it for rollback.
     expect(groupSettings().guestsAllowed).toBe(true);
     expect((await (await GET(makeAdminRequest('GET', URL))).json()).run.style).toBe('members_first');
@@ -68,5 +69,47 @@ describe('/api/admin/settings — run', () => {
     const res = await PATCH(makeAdminRequest('PATCH', URL, { run: { playersPerCourt: 8, money: 'off' } }));
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: 'no_group' });
+  });
+});
+
+/**
+ * Stringing is an add-on (docs/plans/stringing-add-on.md, phase 1). It is
+ * switched off only with nothing left on the bench and nothing owed for it.
+ */
+describe('/api/admin/settings — the stringing switch', () => {
+  const off = { playersPerCourt: null, money: 'split', stringing: 'off' };
+  const job = (id: string, over: Record<string, unknown>) =>
+    seedDoc('stringingJobs', { id, memberId: 'm1', groupId: 'bpm', status: 'requested', priceCents: 3000, paidAt: null, archivedAt: null, cancelledAt: null, ...over });
+
+  beforeEach(async () => {
+    resetMockStore();
+    setupAdminPin();
+    await seedTestAdminMember();
+    seedGroup('bpm');
+  });
+
+  it('switches off with an empty bench, and a later save that does not name it keeps it off', async () => {
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { run: off }))).status).toBe(200);
+    expect((groupSettings().run as { stringing?: string }).stringing).toBe('off');
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { run: { playersPerCourt: 8, money: 'split' } }))).status).toBe(200);
+    expect((groupSettings().run as { stringing?: string }).stringing).toBe('off');
+  });
+
+  it('refuses to switch off while a racket is on the bench or a finished job is unpaid, and saves nothing', async () => {
+    job('j1', { status: 'received' });
+    job('j2', { status: 'picked_up', paidAt: null });
+    const res = await PATCH(makeAdminRequest('PATCH', URL, { run: off }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'stringing_open_jobs', open: 2 });
+    expect('run' in groupSettings()).toBe(false);
+  });
+
+  it('a paid, cancelled or archived-and-paid job does not hold it on', async () => {
+    job('j1', { status: 'picked_up', paidAt: '2026-11-01T00:00:00.000Z' });
+    job('j2', { status: 'requested', cancelledAt: '2026-11-01T00:00:00.000Z' });
+    job('j3', { status: 'ready', archivedAt: '2026-11-02T00:00:00.000Z', paidAt: '2026-11-02T00:00:00.000Z' });
+    // Another club's open job is that club's.
+    job('j4', { status: 'received', groupId: 'other' });
+    expect((await PATCH(makeAdminRequest('PATCH', URL, { run: off }))).status).toBe(200);
   });
 });

@@ -1908,7 +1908,24 @@
       "newGame": "新一局",
       "save": "保存比赛",
       "saveNeedsSession": "保存需要本周的活动才能记录。",
-      "close": "关闭"
+      "close": "关闭",
+      "voice": {
+        "preview": "预览",
+        "listen": "语音计分",
+        "tap": "点一下，然后报比分",
+        "stop": "停止收听",
+        "listening": "正在收听。请报比分，发球方在前。",
+        "heardPoint": "听到 {score} · {side} +1",
+        "heardIgnored": "听到 {score}：不是下一分，未计分",
+        "heardNone": "没听清比分",
+        "heardWords": "听到“{words}”：里面没有比分",
+        "askTitle": "听到 {score}。这一分谁赢？",
+        "askSide": "{side}赢",
+        "askNeither": "都不是",
+        "denied": "麦克风被阻止。请在浏览器设置中允许本网站使用麦克风。",
+        "network": "语音需要联网：浏览器的语音服务在线运行。",
+        "failed": "语音已停止。点一下重试。"
+      }
     },
     "partners": {
       "locked": "<link>登录</link>后查看你最常和谁一起打。",

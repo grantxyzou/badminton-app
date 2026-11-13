@@ -5,8 +5,12 @@ import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useBodyScrollLock } from '@/components/BottomSheet/useBodyScrollLock';
 import { splitForFold, useFold } from '@/lib/fold';
+import StatusBadge from '@/components/primitives/StatusBadge';
+import { isFlagOn } from '@/lib/flags';
 import { primeHaptics, tapSuccess } from '@/lib/haptics';
 import { addPoint, reachedInterval, scoreState, serving, type Score, type Side } from '@/lib/scoreRules';
+import { useVoiceScore, type VoiceProblem } from '@/lib/useVoiceScore';
+import { heardText, matchCall, type Heard, type ParsedCall } from '@/lib/voiceScore';
 
 /**
  * The courtside scoreboard (docs/plans/foldable-layout.md, step 3). Prop the
@@ -28,6 +32,13 @@ import { addPoint, reachedInterval, scoreState, serving, type Score, type Side }
  *
  * A fixed, portaled overlay (like a sheet): the split is measured against
  * the viewport, so it cannot sit inside the tab's scrolling column.
+ *
+ * VOICE (Preview, `NEXT_PUBLIC_FLAG_VOICE_SCORE`, docs/plans/voice-score.md):
+ * a mic above the +1 buttons listens for the umpire's call and scores a rally
+ * only when the call is exactly one rally on (`lib/voiceScore.ts`), so another
+ * court's call is shown as heard and never scored. At a level score the words
+ * cannot say who won, so the board asks. The mic is offered only where the
+ * browser has a recogniser (`lib/useVoiceScore.ts`): never in the store app.
  */
 interface Props {
   open: boolean;
@@ -87,6 +98,11 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
   const fold = useFold();
   const viewport = useViewportSize();
   const gridRef = useRef<HTMLDivElement | null>(null);
+  const voiceFlag = isFlagOn('NEXT_PUBLIC_FLAG_VOICE_SCORE');
+  /** The last thing the mic made of a call, shown under it. */
+  const [heard, setHeard] = useState<string | null>(null);
+  /** A level-score call either side could have won: the board asks. */
+  const [ask, setAsk] = useState<Heard | null>(null);
 
   useBodyScrollLock(open);
   useWakeLock(open);
@@ -105,6 +121,7 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
   }, []);
 
   const point = (side: Side) => {
+    setAsk(null);
     if (state.over) return;
     const next = addPoint(score, side);
     setPoints((prev) => [...prev, side]);
@@ -119,14 +136,48 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
   };
   const undo = () => {
     clearInterval_();
+    setAsk(null);
+    setHeard(null);
     setPoints((prev) => prev.slice(0, -1));
   };
   const newGame = () => {
     clearInterval_();
+    setAsk(null);
+    setHeard(null);
     setPoints([]);
   };
 
   useEffect(() => () => clearInterval_(), [clearInterval_]);
+
+  const sideOf = (s: Side) => (s === 'a' ? t('sideA') : t('sideB'));
+  const onCalls = (calls: ParsedCall[], transcript: string) => {
+    const m = matchCall(score, server, calls);
+    if (m.kind === 'point') {
+      point(m.side);
+      setHeard(t('voice.heardPoint', { score: heardText(m.heard), side: sideOf(m.side) }));
+    } else if (m.kind === 'ask') {
+      setAsk(m.heard);
+      setHeard(null);
+    } else if (m.kind === 'ignored') {
+      setHeard(t('voice.heardIgnored', { score: heardText(m.heard) }));
+    } else if (m.kind === 'none') {
+      // The words themselves, so a miss says what the phone understood.
+      setHeard(transcript.trim() ? t('voice.heardWords', { words: transcript.trim() }) : t('voice.heardNone'));
+    }
+    // 'same' (the board's own score repeated) and 'over' change nothing.
+  };
+  const voice = useVoiceScore({ enabled: open && voiceFlag, onCalls });
+  const { stop: stopVoice } = voice;
+  // A finished game has nothing left to hear.
+  useEffect(() => {
+    if (state.over) stopVoice();
+  }, [state.over, stopVoice]);
+  useEffect(() => {
+    if (!open) {
+      setAsk(null);
+      setHeard(null);
+    }
+  }, [open]);
 
   // The split: the fold's rectangle when known, else the centre. Set on the
   // element rather than as inline style values so the measured pixels never
@@ -158,7 +209,12 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
 
   if (!open || typeof document === 'undefined') return null;
 
-  const sideName = (s: Side) => (s === 'a' ? t('sideA') : t('sideB'));
+  const sideName = sideOf;
+  const problemText = (p: VoiceProblem) =>
+    p === 'denied' ? t('voice.denied') : p === 'network' ? t('voice.network') : t('voice.failed');
+  const voiceLine = voice.problem
+    ? problemText(voice.problem)
+    : (heard ?? (voice.listening ? t('voice.listening') : ''));
   const status = state.over
     ? t('gameOver', { side: sideName(state.winner as Side) })
     : interval
@@ -215,6 +271,43 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
 
       {/* The half in the hand, or on the bench. */}
       <section className="courtside-controls">
+        {voiceFlag && voice.supported && (
+          <div className="courtside-voice">
+            <div className="courtside-voice-row">
+              <button
+                type="button"
+                className="courtside-voice-btn"
+                data-listening={voice.listening}
+                aria-pressed={voice.listening}
+                disabled={state.over}
+                onClick={voice.listening ? voice.stop : voice.start}
+              >
+                <span className="courtside-voice-dot" aria-hidden="true" />
+                {voice.listening ? t('voice.stop') : voice.mode === 'tap' ? t('voice.tap') : t('voice.listen')}
+              </button>
+              <StatusBadge variant="accent">{t('voice.preview')}</StatusBadge>
+            </div>
+            {ask ? (
+              <div className="courtside-voice-ask" role="group" aria-label={t('voice.askTitle', { score: heardText(ask) })}>
+                <p className="courtside-voice-line">{t('voice.askTitle', { score: heardText(ask) })}</p>
+                <div className="courtside-voice-choices">
+                  {(['a', 'b'] as const).map((s) => (
+                    <button key={s} type="button" className="cc-btn cc-btn-primary" onClick={() => point(s)}>
+                      {t('voice.askSide', { side: sideName(s) })}
+                    </button>
+                  ))}
+                  <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAsk(null)}>
+                    {t('voice.askNeither')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p key={voiceLine} className="courtside-voice-line motion-fade" role="status" aria-live="polite">
+                {voiceLine}
+              </p>
+            )}
+          </div>
+        )}
         <div className="courtside-points">
           {(['a', 'b'] as const).map((s) => (
             <button
