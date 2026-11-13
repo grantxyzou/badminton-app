@@ -60,6 +60,7 @@ vi.mock('@/components/auth/EmailSignUpForm', () => ({
   },
 }));
 vi.mock('@/components/auth/AskAccessForm', () => ({ default: capture('AskAccessForm') }));
+vi.mock('@/components/onboarding/DoorJoinPage', () => ({ default: capture('DoorJoinPage') }));
 vi.mock('@/components/auth/KeepAccountPage', () => ({ default: capture('KeepAccountPage') }));
 vi.mock('@/components/auth/ForgotPasswordSheet', () => ({ default: capture('ForgotPasswordSheet') }));
 vi.mock('@/components/auth/ChooseNameSheet', () => ({ default: capture('ChooseNameSheet') }));
@@ -261,20 +262,30 @@ describe('landings', () => {
     expect(alert.textContent).not.toMatch(/code/);
   });
 
-  it('?claim= opens the club’s ask page, and strips the link from the URL', async () => {
+  it('?claim= opens the club’s page (sign in first, then ask), and strips the link from the URL', async () => {
+    // docs/plans/one-way-in.md, step 4: the club's link is a page that signs
+    // in first; the name-only ask is behind "Claim your name" until step 4b.
+    const token = 'c3'.repeat(16);
+    at(`?claim=${token}`);
+    renderShell();
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    expect(captured.AskAccessForm).toBeUndefined();
+    expect(window.location.search).not.toContain('claim');
+  });
+
+  it('the old name-only claim stays reachable from the club’s page (until step 4b)', async () => {
     // docs/plans/claim-your-name.md: an imported name asks to be let in.
     const token = 'c3'.repeat(16);
     at(`?claim=${token}`);
     renderShell();
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    act(() => (captured.DoorJoinPage!.onClaimName as () => void)());
     await waitFor(() => expect(captured.AskAccessForm?.claim).toEqual({ token, clubName: 'BPM Badminton' }));
-    expect(screen.getByText('Join BPM Badminton')).toBeDefined();
     // A new person's name, not a stale one from this phone.
     expect(captured.AskAccessForm?.initialName).toBe('');
-    expect(fetchMock.mock.calls.some(([u]) => String(u).includes(`/api/groups/preview?claim=${token}`))).toBe(true);
-    expect(window.location.search).not.toContain('claim');
   });
 
-  it('the club’s door link on the one-link path opens the ask, not the sign-up form', async () => {
+  it('the club’s door link on the one-link path opens the club’s page, not the sign-up form', async () => {
     // docs/plans/door-link.md: /bpm/j/<token> redirects to ?join=, and the
     // preview says the token is the door rather than an invite.
     const token = 'e5'.repeat(16);
@@ -283,7 +294,7 @@ describe('landings', () => {
     );
     at(`?join=${token}`);
     renderShell();
-    await waitFor(() => expect(captured.AskAccessForm?.claim).toEqual({ token, clubName: 'BPM Badminton' }));
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
     expect(captured.EmailSignUpForm).toBeUndefined();
     expect(window.location.search).not.toContain('join');
   });
@@ -292,6 +303,8 @@ describe('landings', () => {
     const token = 'f6'.repeat(16);
     at(`?claim=${token}`);
     renderShell();
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    act(() => (captured.DoorJoinPage!.onClaimName as () => void)());
     await waitFor(() => expect(captured.AskAccessForm?.claim).toBeTruthy());
     (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean; email?: string }) => void)({
       name: 'Akane Yamaguchi',
@@ -314,6 +327,10 @@ describe('landings', () => {
     );
     at(`?claim=${'d4'.repeat(16)}`);
     renderShell();
+    // The club's page says so itself (DoorJoinPage.test.tsx); behind it, the
+    // name-only claim still refuses the dead link before asking anything.
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe('d4'.repeat(16)));
+    act(() => (captured.DoorJoinPage!.onClaimName as () => void)());
     expect((await screen.findByRole('alert')).textContent).toMatch(/link has been replaced/);
     expect(captured.AskAccessForm).toBeUndefined();
   });

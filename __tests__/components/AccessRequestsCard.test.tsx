@@ -20,24 +20,27 @@ afterEach(() => {
 });
 
 describe('AccessRequestsCard: joins', () => {
-  it('an organiser can let a new person in; the approve names the request', async () => {
+  it.each([
+    ['a regular', /Let Akane in as a regular/, true],
+    ['a drop-in', /Let Akane in as a drop-in/, false],
+  ])('an organiser lets a new person in as %s; the approve names the request and says which', async (_label, button, regular) => {
     const fetchMock = vi.fn((_u: RequestInfo | URL, init?: RequestInit) =>
       init?.method === 'POST' ? json({ ok: true }) : json({ requests: [], joins: [JOIN], organiser: true }),
     );
     vi.stubGlobal('fetch', fetchMock);
     render(<AccessRequestsCard />);
     expect(await screen.findByText('Akane')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Let them in' }));
+    fireEvent.click(screen.getByRole('button', { name: button }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === 'POST')).toBe(true));
     const post = fetchMock.mock.calls.find(([, i]) => (i as RequestInit | undefined)?.method === 'POST')!;
-    expect(JSON.parse(String((post[1] as RequestInit).body))).toEqual({ joinRequestId: 'j1', decision: 'approve' });
+    expect(JSON.parse(String((post[1] as RequestInit).body))).toEqual({ joinRequestId: 'j1', decision: 'approve', regular });
   });
 
   it('a taken name offers Ignore only, and says why', async () => {
     vi.stubGlobal('fetch', vi.fn(() => json({ requests: [], joins: [TAKEN], organiser: true })));
     render(<AccessRequestsCard />);
     expect(await screen.findByText(/already has that name/)).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Let them in' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Let Viktor in/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Ignore' })).toBeDefined();
   });
 

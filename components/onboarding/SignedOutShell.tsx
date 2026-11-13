@@ -20,6 +20,8 @@ import EmailCodeSignInForm from '@/components/auth/EmailCodeSignInForm';
 import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
 import ForgotPasswordSheet from '@/components/auth/ForgotPasswordSheet';
 import ChooseNameSheet from '@/components/auth/ChooseNameSheet';
+import DoorJoinPage from '@/components/onboarding/DoorJoinPage';
+import WaitingAsks, { type Ask } from '@/components/onboarding/WaitingAsks';
 import HandoffCodeSheet from '@/components/auth/HandoffCodeSheet';
 import ResetPasswordSheet from '@/components/auth/ResetPasswordSheet';
 import { clearIdentity, getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -52,7 +54,7 @@ const JoinGroupPage = dynamic(() => import('./JoinGroupPage'), { ssr: false });
 const GroupsPage = dynamic(() => import('@/components/profile/GroupsPage'), { ssr: false });
 
 /** `create` and `join` are reachable only with multi-group on. */
-type View = 'welcome' | 'login' | 'signup' | 'create' | 'join' | 'ask';
+type View = 'welcome' | 'login' | 'signup' | 'create' | 'join' | 'ask' | 'door';
 type Invite = { token?: string; code?: string };
 
 /**
@@ -62,6 +64,8 @@ type Invite = { token?: string; code?: string };
 export interface NoClub {
   memberName: string;
   groups: GroupListEntry[];
+  /** Clubs this account asked to join through a link and is waiting on (docs/plans/one-way-in.md, step 4). */
+  asks?: Ask[];
 }
 
 interface Props {
@@ -139,6 +143,8 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
   const [initialInvite, setInitialInvite] = useState<Invite | null>(null);
   /** A club's claim link from `?claim=` (docs/plans/claim-your-name.md). */
   const [claimToken, setClaimToken] = useState<string | null>(null);
+  /** A club's link, signed out: sign in first, then ask (docs/plans/one-way-in.md, step 4). */
+  const [doorToken, setDoorToken] = useState<string | null>(null);
   const consumed = useRef(false);
   /** The view as the identity listener sees it — it must not re-subscribe per view. */
   const viewRef = useRef<View>('welcome');
@@ -242,9 +248,14 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
     // signed-in member in no club has an account already — nothing to claim.
     const claim = params.get('claim');
     if (claim) {
-      if (!noClubMode) {
-        setClaimToken(claim);
-        setView('ask');
+      // Signed out: sign in first, then ask (docs/plans/one-way-in.md,
+      // step 4). Signed in with no club: the account asks from the join page.
+      if (noClubMode) {
+        setInitialInvite({ token: claim });
+        setView('join');
+      } else {
+        setDoorToken(claim);
+        setView('door');
       }
       strip('claim');
     }
@@ -389,6 +400,7 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
               setView('welcome');
             }}
             onJoined={hardReload}
+            onAsked={hardReload}
           />
         ) : view === 'ask' ? (
           /* Asking to be let in, or to join through the club's link. A page,
@@ -396,11 +408,26 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
           <AskAccessPage
             claimToken={claimToken}
             onBack={() => {
-              // Through the link there is no Log in behind the ask; back is
-              // the start. "I play here already" came from Log in.
+              // Through the link the ask was reached from the club's page;
+              // "I play here already" came from Log in.
               const fromLink = claimToken !== null;
               setClaimToken(null);
-              setView(fromLink ? 'welcome' : 'login');
+              setView(fromLink ? (doorToken ? 'door' : 'welcome') : 'login');
+            }}
+          />
+        ) : view === 'door' && doorToken ? (
+          <DoorJoinPage
+            token={doorToken}
+            authProviders={authProviders}
+            onBack={() => {
+              setDoorToken(null);
+              setView('welcome');
+            }}
+            // Until step 4b links imported names at approval, someone already
+            // on the list claims their name the old way.
+            onClaimName={() => {
+              setClaimToken(doorToken);
+              setView('ask');
             }}
           />
         ) : view === 'login' ? (
@@ -421,12 +448,12 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             onLogIn={() => setView('login')}
             onCreate={groupsOn ? () => setView('create') : undefined}
             onDoor={(token) => {
-              // The club's door link on the one-link path: not an invite, so
-              // the ask opens instead of the sign-up form.
+              // The club's link on the one-link path: not an invite, so the
+              // club's page opens: sign in first, then ask.
               clearOnboardingResume();
               setInitialInvite(null);
-              setClaimToken(token);
-              setView('ask');
+              setDoorToken(token);
+              setView('door');
             }}
           />
         ) : noClub ? (
@@ -553,6 +580,30 @@ function NoClubView({
   onSwitched: () => void;
 }) {
   const t = useTranslations('signedOut');
+  const asks = noClub.asks ?? [];
+
+  if (noClub.groups.length === 0 && asks.length > 0) {
+    // Asked to join through a club's link and waiting (docs/plans/one-way-in.md,
+    // step 4). The doors a brand-new organiser needs would only be noise here:
+    // the one thing this person is doing is waiting for an organiser.
+    return (
+      <div className="animate-fadeIn">
+        {/* The top bar keeps the card clear of the fixed theme and language toggles. */}
+        <TopBar title={t('waiting.pageTitle')} backLabel={t('back')} />
+        <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
+        <WaitingAsks asks={asks} onIn={onSwitched} />
+        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button type="button" className="link-quiet" onClick={onJoin}>
+            {t('waiting.joinAnother')}
+          </button>
+          <button type="button" className="link-quiet" onClick={onSignOut}>
+            {t('waiting.signOut')}
+          </button>
+        </div>
+        </div>
+      </div>
+    );
+  }
 
   if (noClub.groups.length > 0) {
     // A member removed from the club their cookie names, who belongs to
@@ -560,6 +611,7 @@ function NoClubView({
     // to. A tap switches (the server re-mints the cookies) and reloads.
     return (
       <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
+        {asks.length > 0 && <WaitingAsks asks={asks} onIn={onSwitched} />}
         <GroupsPage
           groups={noClub.groups}
           hint={t('noClub.yourClubs')}

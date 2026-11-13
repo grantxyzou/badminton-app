@@ -8,6 +8,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Join a club with its link: sign in, ask, and hear back by email (2026-11-13)
+
+- **A club's link now signs you in first, then asks to join.** Tap the link, use Apple, Google or a 6-digit code from your email, type the name the club will see, and ask. No password, and no page to keep open: you can close the app.
+- **"Almost in" shows while you wait,** and moves you into the club by itself once an organiser lets you in. You also get an email (and a notification if you've turned them on).
+- **Organisers let people in as a Regular or a Drop-in.** A regular gets members-first priority; a drop-in waits behind regulars during that window. Nobody is a regular unless the organiser says so.
+- **Already in one club? Tap another club's link to ask to join it,** under the name you want there.
+- **An account with an email no longer hears "nothing to sign in with"**: the email is a way back in, by code.
+- Someone already on a club's list who has never signed in still claims their name the old way for now, under "Claim your name" on the club's page (`docs/plans/one-way-in.md`, step 4b next).
+
 ## Log in with a code from your email (2026-11-13)
 
 - **"Use email instead" on Log in now sends you a 6-digit code.** Type it in and you're in: no password to remember or reset. The code is in the email's subject line, works once, and lasts ten minutes. Your password still works, one tap away under "Use my password instead".

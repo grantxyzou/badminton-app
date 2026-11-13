@@ -10,6 +10,10 @@ describe('methodsSummary', () => {
     ).toBe('PIN · Google');
   });
 
+  it('names an email a code can go to, with no password (one-way-in step 3)', () => {
+    expect(methodsSummary({ linked: [], hasPin: false, hasPassword: false, hasEmailCode: true } as never, labels)).toBe('Email');
+  });
+
   it('is undefined while unknown', () => {
     expect(methodsSummary(null, labels)).toBeUndefined();
   });

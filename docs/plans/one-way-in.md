@@ -1,7 +1,7 @@
 # One way in: the club link, an email code, and the organiser's yes
 
 **Track:** members-only (`docs/plans/members-only.md`), how a new person gets in, and the multi-group critical path's onboarding of a second club (`docs/plans/six-feathers-onboarding.md`)
-**Status:** in-flight (steps 1–3 built 2026-11-13)
+**Status:** in-flight (steps 1–3 and 4a built 2026-11-13)
 **Review on:** 2026-12-15 — since the account-first club link shipped, did any newcomer need the organiser to send them something (a new link, a code, "try again") to get in, and how many accounts were never approved?
 
 ## Problem
@@ -58,6 +58,10 @@ Earlier words that led here:
 - **2026-11-13 — Step 4: the person hears "you're in" by email, and by push if they have it on.** A new account rarely has notifications on, so the email is what reaches them. Beat: push only.
 - **2026-11-13 — Step 4: "I play here already" stays, and stops saying which names exist.** Every name gets the same "Sent. If the club knows that name, an organiser will see it." for the hour, so the poll can no longer be used to test names. A real member is let in as today. Beat: removing it, which would leave a PIN-only member with no email and a forgotten PIN no self-serve way back. Built as step 4c.
 - **2026-11-13 — Step 4 is four parts on one branch,** each leaving the app working: 4a the account-first club link (sign in, name, ask, the waiting screen, approve as a regular or a drop-in, the "you're in" email and push); 4b linking an imported name at approval; 4c the "I play here already" leak; 4d removing the signed-out name-only club-link ask once 4b covers the names it existed for. The 14-day cleanup of never-approved accounts stays in step 6.
+
+- **2026-11-13 — Step 4a built.** Two things decided while building it:
+  - **A club's link and a one-time invite share one field.** They already shared one address (`/bpm/j/<token>`), so `signupGroupFor` reads a token that is not an invite as the club's link. Every sign-up form that sends an invite token, Google and Apple's name step included, works with the club's link unchanged. Beat: a separate `doorToken` threaded through every form.
+  - **An email the account can get a code at counts as a way in.** Found by looking: an account made with an email code was shown "Keep your account: nothing to sign in with". `GET /api/auth/methods` reports `hasEmailCode`, and Home, the upgrade nudge and Profile's methods read it.
 
 ## Shape
 

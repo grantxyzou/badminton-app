@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '@/messages/en.json';
 import JoinGroupPage from '@/components/onboarding/JoinGroupPage';
@@ -34,17 +34,29 @@ function renderWithLink(token: string) {
 }
 
 describe('JoinGroupPage — links that cannot take you in', () => {
-  it("another club's door link explains what to ask for, and offers no Join button", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
-      String(input).includes('/api/groups/preview') ? json({ name: 'Six Feathers', kind: 'door' }) : json({}),
-    );
+  it("another club's link asks to join, as this account, and says an organiser decides", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/api/groups/preview')) return json({ name: 'Six Feathers', kind: 'door' });
+      if (url.includes('/api/groups/ask')) return json({ ok: true, groupId: 'club-x', club: 'Six Feathers' });
+      return json({});
+    });
     vi.stubGlobal('fetch', fetchMock);
-    renderWithLink('a1'.repeat(16));
+    const onAsked = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <JoinGroupPage onBack={vi.fn()} sessionId="" initialToken={'a1'.repeat(16)} defaultName="Lin" onAsked={onAsked} />
+      </NextIntlClientProvider>,
+    );
 
-    const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toMatch(/ask Six Feathers's organiser for an invite link/);
-    expect(screen.queryByRole('button', { name: /Join Six Feathers/ })).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Six Feathers' }));
+    expect(await screen.findByText('Asked to join Six Feathers')).toBeDefined();
+    const ask = fetchMock.mock.calls.find(([u]) => String(u).includes('/api/groups/ask'))!;
+    expect(JSON.parse(String((ask[1] as RequestInit).body))).toEqual({ doorToken: 'a1'.repeat(16), name: 'Lin' });
+    // Never the invite route: a club's link is not a one-time invite.
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/groups/join'))).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(onAsked).toHaveBeenCalled();
   });
 
   it('a link that no longer resolves says the link no longer works', async () => {

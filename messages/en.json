@@ -2706,6 +2706,34 @@
       "usePin": "Use name and PIN instead",
       "newHere": "New here? Join a club"
     },
+    "waiting": {
+      "pageTitle": "Almost in",
+      "waitingTitle": "Waiting for {club}",
+      "waitingBody": "You asked to join as {name}. An organiser will let you in, and we'll email you when they do.",
+      "waitingBodyNoName": "An organiser will let you in, and we'll email you when they do.",
+      "closedTitle": "{club} didn't let you in this time",
+      "closedBody": "Ask the organiser, or use the club's link to ask again.",
+      "joinAnother": "Join another club",
+      "signOut": "Sign out"
+    },
+    "door": {
+      "title": "Join {club}",
+      "titleNoClub": "Join a club",
+      "body": "Sign in first, then ask to join. An organiser lets you in, and we'll email you when they do.",
+      "nameBody": "What should the club call you? This is the name on the sign-up list.",
+      "nameLabel": "Your name on the list",
+      "nameHint": "Your first and last name help the organiser know it's you. If the club knows you by one name, tap Ask to join again.",
+      "askCta": "Ask to join",
+      "asking": "Asking…",
+      "askedTitle": "Asked to join {club}",
+      "askedBody": "An organiser will let you in. We'll email you when they do, so you can close the app.",
+      "done": "Done",
+      "failed": "Couldn't send that just now. Try again.",
+      "emailTaken": "That email already has an account. Go back and log in with it instead.",
+      "busy": "A lot of people are waiting to join {club}. Ask the organiser in person.",
+      "claimName": "Already on {club}'s list but never signed in? Claim your name",
+      "claimNameNoClub": "Already on the club's list but never signed in? Claim your name"
+    },
     "signup": {
       "title": "Join a club",
       "body": "%APP_SHORT% is a badminton club app, currently in testing and invite-only. Tap the invite link you were sent and it takes you straight in. Got a code instead? Type it below.",
@@ -2781,7 +2809,12 @@
       "joined": "You're in",
       "notFound": "That code doesn't work. Ask whoever invited you for a fresh one.",
       "linkNotFound": "That link no longer works. It may have been used or expired. Ask whoever sent it for a new one.",
-      "doorNotYet": "{club} uses a club link that new people ask through. To join with the account you're signed in with, ask {club}'s organiser for an invite link instead.",
+      "askCta": "Ask to join {name}",
+      "doorHint": "An organiser lets you in. We'll email you when they do.",
+      "askedTitle": "Asked to join {name}",
+      "askedBody": "An organiser will let you in. We'll email you when they do.",
+      "done": "Done",
+      "busy": "A lot of people are waiting to join {name}. Ask the organiser in person.",
       "nameTaken": "Someone in that club already goes by that name. Pick a different one.",
       "failed": "Couldn't join. Try again."
     }

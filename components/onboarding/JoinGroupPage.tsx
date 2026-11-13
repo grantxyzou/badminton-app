@@ -22,6 +22,12 @@ interface Props {
   /** True when the caller is already in another club — changes the copy, not the action. */
   hasOtherGroup?: boolean;
   onJoined?: () => void;
+  /**
+   * After asking to join through a club's link (docs/plans/one-way-in.md,
+   * step 4): the no-club screen reloads into its waiting card. Absent, Done
+   * goes back.
+   */
+  onAsked?: () => void;
   /** Server-resolved, so the account step does not paint form-first. */
   authProviders?: Provider[];
 }
@@ -58,12 +64,15 @@ export default function JoinGroupPage({
   hasOtherGroup,
   onJoined,
   authProviders = [],
+  onAsked,
 }: Props) {
   const t = useTranslations('onboarding.join');
   const tAuth = useTranslations('profile.auth');
   const [entry, setEntry] = useState('');
   const [rosterName, setRosterName] = useState(defaultName ?? '');
-  const [found, setFound] = useState<{ name: string; token?: string; code?: string } | null>(null);
+  const [found, setFound] = useState<{ name: string; token?: string; code?: string; door?: boolean } | null>(null);
+  /** Asked to join through a club's link; an organiser decides. */
+  const [asked, setAsked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /**
@@ -110,17 +119,9 @@ export default function JoinGroupPage({
         return;
       }
       const data = (await res.json()) as { name: string; kind?: 'invite' | 'door' };
-      if (data.kind === 'door') {
-        // A club's door link admits a NEW person through an organiser's
-        // approval, which creates a new account. Joining with the account
-        // already signed in on this phone is not built yet
-        // (docs/plans/one-way-in.md, step 4), and `POST /api/groups/join`
-        // claims only one-time invites, so a Join here would always fail.
-        // Say what does work instead of offering a button that cannot.
-        setError(t('doorNotYet', { club: data.name }));
-        return;
-      }
-      setFound({ name: data.name, ...parsed });
+      // A club's link (docs/plans/one-way-in.md, step 4): this account ASKS,
+      // and an organiser lets it in. A one-time invite joins at once.
+      setFound({ name: data.name, ...parsed, ...(data.kind === 'door' ? { door: true } : {}) });
     } catch {
       setError(t('failed'));
     } finally {
@@ -128,8 +129,38 @@ export default function JoinGroupPage({
     }
   }
 
+  async function askToJoin() {
+    if (!found?.token || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/groups/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doorToken: found.token, name: rosterName.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { alreadyIn?: boolean };
+      if (res.ok && data.alreadyIn) {
+        onJoined?.();
+        onBack();
+        return;
+      }
+      if (res.ok) setAsked(true);
+      else if (res.status === 404) setError(t('linkNotFound'));
+      else if (res.status === 409) setError(t('busy', { name: found.name }));
+      else setError(t('failed'));
+    } catch {
+      setError(t('failed'));
+    }
+    setBusy(false);
+  }
+
   async function join() {
     if (!found || busy) return;
+    if (found.door) {
+      void askToJoin();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -255,9 +286,21 @@ export default function JoinGroupPage({
                 {credMode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}
               </button>
           </div>
+        ) : found && asked ? (
+          <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-5)' }}>
+            <p className="bpm-h3" role="status" style={{ margin: 0 }}>
+              {t('askedTitle', { name: found.name })}
+            </p>
+            <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('askedBody')}</p>
+            <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={() => (onAsked ? onAsked() : onBack())}>
+              {t('done')}
+            </button>
+          </div>
         ) : found ? (
           <>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('foundHint')}</p>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>
+              {found.door ? t('doorHint') : t('foundHint')}
+            </p>
             {mailNote && (
               <p role="status" style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                 {mailNote}
@@ -293,7 +336,7 @@ export default function JoinGroupPage({
               className="cc-btn cc-btn-primary cc-btn-lg"
               style={{ width: '100%' }}
             >
-              {busy ? t('joining') : t('confirm', { name: found.name })}
+              {busy ? t('joining') : found.door ? t('askCta', { name: found.name }) : t('confirm', { name: found.name })}
             </button>
           </>
         ) : (

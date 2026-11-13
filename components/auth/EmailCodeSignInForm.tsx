@@ -11,6 +11,14 @@ interface Props {
   onSuccess: (result: { name: string }) => void;
   /** Shown only on the password route, which is the only place a password can be forgotten. */
   onForgotPassword?: () => void;
+  /**
+   * A club's link (docs/plans/one-way-in.md, step 4): with it, an address
+   * with no account gets a code that can MAKE one, and there is no password
+   * route (no password is offered to a new person).
+   */
+  doorToken?: string;
+  /** The code proved an address with no account yet: the caller collects a name next. */
+  onNewAccount?: (email: string) => void;
 }
 
 /**
@@ -26,7 +34,7 @@ interface Props {
  * Like the other sign-in forms it owns no post-success UI; the caller decides
  * what being signed in means.
  */
-export default function EmailCodeSignInForm({ onSuccess, onForgotPassword }: Props) {
+export default function EmailCodeSignInForm({ onSuccess, onForgotPassword, doorToken, onNewAccount }: Props) {
   const t = useTranslations('profile.auth');
   const online = useOnline();
   const [usePassword, setUsePassword] = useState(false);
@@ -44,7 +52,7 @@ export default function EmailCodeSignInForm({ onSuccess, onForgotPassword }: Pro
       const res = await fetch(`${BASE}/api/auth/email-code/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), ...(doorToken ? { doorToken } : {}) }),
       });
       if (res.status === 429) setError(t('codeRateLimited'));
       else if (!res.ok) setError(t('signInService'));
@@ -80,6 +88,10 @@ export default function EmailCodeSignInForm({ onSuccess, onForgotPassword }: Pro
         setError(t('codeInvalid'));
       } else {
         const body = await res.json().catch(() => null);
+        if (body && body.signup === true && onNewAccount) {
+          onNewAccount(email.trim());
+          return;
+        }
         if (body && typeof body.name === 'string') {
           onSuccess({ name: body.name });
           return;
@@ -201,7 +213,7 @@ export default function EmailCodeSignInForm({ onSuccess, onForgotPassword }: Pro
       >
         {busy ? t('codeSending') : t('codeSendCta')}
       </button>
-      {switchRoute}
+      {!doorToken && switchRoute}
     </form>
   );
 }

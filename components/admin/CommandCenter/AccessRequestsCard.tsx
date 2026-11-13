@@ -29,6 +29,8 @@ interface Joining {
   at: number;
   /** Someone on the roster, a removed member included, already holds the name. */
   nameTaken: boolean;
+  /** Asked from a signed-in account (docs/plans/one-way-in.md, step 4): letting in adds that account. */
+  signedIn?: boolean;
 }
 
 /**
@@ -95,14 +97,19 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
     }
   }
 
-  async function decideJoin(r: Joining, decision: 'approve' | 'decline') {
+  /**
+   * Let in or ignore. Letting in says HOW (docs/plans/one-way-in.md, step 4):
+   * a regular has members-first priority, a drop-in waits behind regulars
+   * during the window. The organiser picks; nobody is a regular by default.
+   */
+  async function decideJoin(r: Joining, decision: 'approve' | 'decline', regular = false) {
     if (busy || !online) return;
     setBusy(r.joinRequestId);
     try {
       const res = await fetch(`${BASE}/api/admin/access-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ joinRequestId: r.joinRequestId, decision }),
+        body: JSON.stringify({ joinRequestId: r.joinRequestId, decision, ...(decision === 'approve' ? { regular } : {}) }),
       });
       // 409: the name was taken since the list loaded. Reloading says so.
       if (!res.ok && res.status !== 409) throw new Error(`decide join ${res.status}`);
@@ -163,7 +170,9 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   ? 'Asking to join · waiting for an organiser'
                   : r.nameTaken
                     ? 'Asking to join, but someone in the club already has that name. Ignore it and ask them to try again with another, like adding an initial.'
-                    : 'Asking to join with the club link. Let in someone you know asked.'}
+                    : r.signedIn
+                      ? 'Signed in and asking to join. Let in someone you know asked, as a regular or a drop-in.'
+                      : 'Asking to join with the club link. Let in someone you know asked.'}
               </span>
             </div>
             {organiser && (
@@ -177,14 +186,26 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   Ignore
                 </button>
                 {!r.nameTaken && (
-                  <button
-                    type="button"
-                    className="cc-btn cc-btn-primary"
-                    disabled={busy !== null || !online}
-                    onClick={() => void decideJoin(r, 'approve')}
-                  >
-                    {busy === r.joinRequestId ? 'Letting in…' : 'Let them in'}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="cc-btn cc-btn-secondary"
+                      disabled={busy !== null || !online}
+                      onClick={() => void decideJoin(r, 'approve', false)}
+                      aria-label={`Let ${r.name} in as a drop-in`}
+                    >
+                      Drop-in
+                    </button>
+                    <button
+                      type="button"
+                      className="cc-btn cc-btn-primary"
+                      disabled={busy !== null || !online}
+                      onClick={() => void decideJoin(r, 'approve', true)}
+                      aria-label={`Let ${r.name} in as a regular`}
+                    >
+                      {busy === r.joinRequestId ? 'Letting in…' : 'Regular'}
+                    </button>
+                  </>
                 )}
               </>
             )}
