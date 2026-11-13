@@ -1,7 +1,7 @@
 # One way in: the club link, an email code, and the organiser's yes
 
 **Track:** members-only (`docs/plans/members-only.md`), how a new person gets in, and the multi-group critical path's onboarding of a second club (`docs/plans/six-feathers-onboarding.md`)
-**Status:** in-flight (step 1 built 2026-11-13)
+**Status:** in-flight (steps 1 and 2 built 2026-11-13)
 **Review on:** 2026-12-15 — since the account-first club link shipped, did any newcomer need the organiser to send them something (a new link, a code, "try again") to get in, and how many accounts were never approved?
 
 ## Problem
@@ -48,6 +48,8 @@ Earlier words that led here:
 - **2026-11-13 — Step 1: another club's door link says what works instead of failing.** A signed-in member opening another club's door link now reads "ask {club}'s organiser for an invite link" in place of a Join button that always failed. Beat: building door joins for existing accounts now, which is step 4's machinery and would be half thrown away.
 - **2026-11-13 — Found while doing step 1, for Grant to decide: the ask's poll says which names exist.** `POST /api/members/access-request` answers the same 200 for every name, as designed, but its poll (`access-request/claim`) answers `pending` for a request it stored and `none` for one it did not, and it stores one only for a name the club knows (or, through the door, a full name). So asking under a name and reading the first poll tells a stranger whether that name is on a club's roster. Step 4 replaces this ask with a signed-in one, which closes it; until then it stands.
 
+- **2026-11-13 — Step 2: "Sign up" keeps the week's list; making an account stops using it.** The proposal renamed Home's button to "I'm in this week". Reading the copy showed "sign up" already meant the week's list in about forty strings (Home, the push, the help guide and its screenshots, the legal pages, the app shortcuts) and an account in five. So the five moved: Welcome and the invite page say "Join a club", Log in says "New here? Join a club". Beat: renaming the forty, which would also have meant new help screenshots. Chinese already kept the two apart (注册 for an account, 报名 for a session). "Group" became "club" in every member screen and the admin screens' own English (群组 → 俱乐部), keeping "group chat"; the legal pages still say "group", for Grant to decide. The rule is in `.claude/rules/i18n.md`.
+
 ## Shape
 
 Planned; nothing is built yet.
@@ -74,7 +76,7 @@ Each step is its own PR, and each one leaves the app working.
    - A used or expired tapped link lands on the code box with "That code doesn't work", and the sign-up error says the invite "has been replaced".
    - An imported one-word roster name cannot be claimed through the door, which requires a first and last name.
    - After Google or Apple on a new account, `auth/claim-name` resolves the name in BPM, not the invited club.
-2. **One word per idea**, copy only: "Join a club" and "Log in" on Welcome, "I'm in this week" on Home, "club" for "group".
+2. **One word per idea**, copy only: "Join a club" and "Log in" on Welcome, "club" for "group". Built 2026-11-13; Home's button kept "Sign up for this week" (see Decisions).
 3. **The email code** as a sign-in method beside Apple and Google, on Log in first.
 4. **The account-first club link**: sign in, name, ask, the waiting screen with a push to the person when approved, and approve as regular or drop-in.
 5. **One "Club link" card**, and one-time invites retired. Unused invites stop working on deploy, as the old club-wide link did on 2026-10-06.

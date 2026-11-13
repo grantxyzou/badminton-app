@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## One word for each idea: "Join a club", and "club" everywhere (2026-11-13)
+
+- **Welcome's first button says "Join a club"**, and so does the invite page; Log in's link says "New here? Join a club". "Sign up" now means one thing in the app: putting yourself on a session's list.
+- **"Group" is "club" on every screen** a member or organiser reads: Create a club, Join a club, Your clubs, the Stats comparisons ("What the club plays") and the admin ledger ("Club outlay"). In Chinese, 群组 became 俱乐部. The legal pages are unchanged.
+
 ## Joining: clearer messages, and imported names can claim their spot (2026-11-13)
 
 The first step of making joining simpler (`docs/plans/one-way-in.md`).

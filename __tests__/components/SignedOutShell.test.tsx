@@ -125,7 +125,7 @@ afterEach(() => {
 describe('Welcome', () => {
   it('offers Sign up and Log in, and nothing about the club', () => {
     renderShell();
-    expect(screen.getByRole('button', { name: 'Sign up' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Join a club' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Log in' })).toBeDefined();
     expect(screen.queryByRole('navigation')).toBeNull();
   });
@@ -174,14 +174,14 @@ describe('Log in', () => {
 describe('Sign up needs an invite', () => {
   it('asks for a code when they did not come by the link', () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
     expect(screen.getByLabelText('Invite code')).toBeDefined();
     expect(screen.queryByText('stub: email sign-up')).toBeNull();
   });
 
   it('a typed CODE resolves the club, then the account step carries the code', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
     fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'ABCD2345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
@@ -193,7 +193,7 @@ describe('Sign up needs an invite', () => {
 
   it('a pasted LINK is read as a token, not a code', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
     const token = 'a1'.repeat(16);
     fireEvent.change(screen.getByLabelText('Invite code'), {
       target: { value: `https://bpm.grantzou.com/bpm?join=${token}` },
@@ -205,7 +205,7 @@ describe('Sign up needs an invite', () => {
 
   it('an invite that does not resolve says so and goes no further', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
     fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'BADCODE1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/That code doesn't work/);
@@ -214,7 +214,7 @@ describe('Sign up needs an invite', () => {
 
   it('the invite survives the trip to Google', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
     fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'ABCD2345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Join BPM Badminton');
@@ -377,16 +377,16 @@ describe('after an admin lets someone in', () => {
 describe('multi-group OFF: nothing of this exists', () => {
   it('Sign up explains, and offers no "Start your own club"', () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
     expect(screen.getByText(/No invite\? Ask someone/)).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Start your own group/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Start your own club/ })).toBeNull();
   });
 
   it('ignores a noClub prop — a no-club member cannot exist with groups off', () => {
     renderShell(ORGANISER);
-    expect(screen.getByRole('button', { name: 'Sign up' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Join a club' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Log in' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Create a group' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create a club' })).toBeNull();
   });
 });
 
@@ -398,8 +398,8 @@ describe('multi-group ON — a stranger', () => {
   it('Welcome is still two buttons; the create door is a link on Sign up, opening the ACCOUNT step', async () => {
     renderShell();
     expect(screen.getAllByRole('button')).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.click(screen.getByRole('button', { name: /Start your own group/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    fireEvent.click(screen.getByRole('button', { name: /Start your own club/ }));
     await waitFor(() => expect(captured.CreateGroupPage).toBeDefined());
     expect(captured.CreateGroupPage?.startAtAuth).toBe(true);
     expect(captured.CreateGroupPage?.defaultName).toBeUndefined();
@@ -407,8 +407,8 @@ describe('multi-group ON — a stranger', () => {
 
   it('after the account step the page hands over: the resume is MARKED and the shell reloads', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.click(screen.getByRole('button', { name: /Start your own group/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    fireEvent.click(screen.getByRole('button', { name: /Start your own club/ }));
     await waitFor(() => expect(captured.CreateGroupPage).toBeDefined());
     (captured.CreateGroupPage?.onSignedIn as () => void)();
     expect(JSON.parse(localStorage.getItem(RESUME_KEY) ?? '{}')).toMatchObject({ intent: 'create' });
@@ -417,8 +417,8 @@ describe('multi-group ON — a stranger', () => {
 
   it('an identity written while the create page is open does NOT reload on its own — the page owns that moment', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.click(screen.getByRole('button', { name: /Start your own group/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    fireEvent.click(screen.getByRole('button', { name: /Start your own club/ }));
     await waitFor(() => expect(captured.CreateGroupPage).toBeDefined());
     setIdentity({ name: 'Organiser', sessionId: '' });
     await new Promise((r) => setTimeout(r, 20));
@@ -451,10 +451,10 @@ describe('multi-group ON — signed in, in no club', () => {
 
   it('a brand-new organiser gets three doors and no Sign up / Log in, on the welcome stage', async () => {
     renderShell(ORGANISER);
-    expect(screen.getByRole('button', { name: 'Create a group' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Create a club' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'I have an invite' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Sign up' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Join a club' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Log in' })).toBeNull();
     expect(document.querySelector('[data-signed-out-welcome]')).not.toBeNull();
     await new Promise((r) => setTimeout(r, 20));
@@ -463,7 +463,7 @@ describe('multi-group ON — signed in, in no club', () => {
 
   it('Create a club opens the page on its FORM, named after the member', async () => {
     renderShell(ORGANISER);
-    fireEvent.click(screen.getByRole('button', { name: 'Create a group' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create a club' }));
     await waitFor(() => expect(captured.CreateGroupPage).toBeDefined());
     expect(captured.CreateGroupPage?.startAtAuth).toBe(false);
     expect(captured.CreateGroupPage?.defaultName).toBe('Organiser');
@@ -506,7 +506,7 @@ describe('multi-group ON — signed in, in no club', () => {
     await waitFor(() => expect(captured.GroupsPage).toBeDefined());
     expect((captured.GroupsPage?.groups as NoClub['groups']).map((g) => g.id)).toEqual(['club-a', 'club-b']);
     expect(captured.GroupsPage?.onBack).toBeUndefined();
-    expect(screen.queryByRole('button', { name: 'Create a group' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create a club' })).toBeNull();
     (captured.GroupsPage?.onSwitched as () => void)();
     expect(hardReload).toHaveBeenCalledTimes(1);
     (captured.GroupsPage?.onCreateAnother as () => void)();

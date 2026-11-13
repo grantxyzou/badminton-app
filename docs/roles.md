@@ -111,7 +111,7 @@ v2 (`docs/plans/roles-v2.md`, 2026-11-03):
   grants Stringer.
 - **Nobody removes an organiser**: not another organiser, not an admin
   (`owner_immutable` on demote, deactivate and remove). They step down
-  themselves — `POST /api/groups/step-down`, Profile → Your groups — and when
+  themselves — `POST /api/groups/step-down`, Profile → Your clubs — and when
   the LAST organiser steps down or deletes their account the club passes to
   the longest-serving admin, else the longest-serving player
   (`reassignOwnership`); a club with nobody left closes. The only person in a

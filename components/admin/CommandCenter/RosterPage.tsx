@@ -849,7 +849,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
             {editingId && (
               <>
                 {/* The rank. An organiser's is nobody's to change — they step
-                    down themselves from Profile → Your groups — and only an
+                    down themselves from Profile → Your clubs — and only an
                     organiser hands one out; an admin sees the rank as text. */}
                 <Field label="Role">
                   {formRole === 'owner' ? (
