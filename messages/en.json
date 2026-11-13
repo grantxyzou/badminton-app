@@ -3168,7 +3168,7 @@
     },
     "support": {
       "title": "Support",
-      "updated": "7 October 2026",
+      "updated": "13 November 2026",
       "sections": [
         {
           "h": "Something not working?",
@@ -3185,7 +3185,9 @@
         {
           "h": "Questions about money",
           "p": [
-            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your group's organiser — the app records payments, it doesn't take them."
+            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your group's organiser.",
+            "Card payments, where your group has turned them on, go straight to your group's own Stripe account — never to %APP% or its operator.",
+            "Refunds: if a session is cancelled, or you paid for one you didn't play, ask your group's organiser. A card payment is refunded to the same card from the group's Stripe account, and your balance shows the session as owed again; an e-transfer is refunded by the organiser directly. %APP% itself holds no money, so it cannot refund anything on a group's behalf."
           ]
         }
       ],
