@@ -1139,6 +1139,14 @@ export interface StringingJob {
   /** Set when the player accepts the quote. */
   acceptedAt: string | null;
   paidAt: string | null;
+  /**
+   * The Stripe Checkout Session that paid this job by card
+   * (docs/plans/card-pay-prototype.md). Additive; absent = paid another way or
+   * unpaid. The ledger still keys the payment on `paidAt`, as for every via.
+   */
+  cardPaymentId?: string;
+  /** The Checkout Session whose card payment for this job was refunded in Stripe, putting it back to unpaid. */
+  refundedPaymentId?: string;
   /** Session the racket changes hands at, when there is one. */
   sessionId: string | null;
   createdAt: string;

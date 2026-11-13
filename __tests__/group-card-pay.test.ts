@@ -291,6 +291,56 @@ describe('the webhook', () => {
   });
 });
 
+describe('stringing jobs are paid by card in the same Checkout', () => {
+  const JOB = 'job-1';
+  const job = () => (getStore()['stringingJobs'] as Array<Record<string, unknown>>).find((j) => j.id === JOB)!;
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true';
+    connectClubAccount();
+    seedDoc('stringingJobs', {
+      id: JOB, groupId: 'bpm', memberId: lin.id, memberName: 'Lin', jobNo: 'J-0001', racketLabel: 'Test racket',
+      status: 'ready', priceCents: 3000, paidAt: null, createdAt: '2026-10-20T00:00:00Z', updatedAt: '2026-10-25T00:00:00Z', history: [],
+    });
+  });
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_FLAG_STRINGING;
+  });
+
+  it('adds a finished, priced job as its own line, after the older session shares', async () => {
+    await checkoutMetadata();
+    const [params] = fake.checkout.sessions.create.mock.calls.at(-1) as unknown as [
+      { line_items: Array<{ price_data: { unit_amount: number; product_data: { name: string } } }>; metadata: Record<string, string> },
+    ];
+    expect(params.line_items.map((l) => [l.price_data.product_data.name, l.price_data.unit_amount])).toEqual([
+      ['Badminton · 2026-09-24', 1200],
+      ['Badminton · 2026-10-01', 1500],
+      ['Stringing · 2026-10-25', 3000],
+    ]);
+    expect(linesFromMetadata(params.metadata).at(-1)).toEqual({ kind: 'stringing', ref: JOB, pk: lin.id, amountCents: 3000 });
+  });
+
+  it('the webhook marks the job paid by this Checkout, mirrors it, and a redelivery changes nothing', async () => {
+    const metadata = await checkoutMetadata();
+    expect((await (await deliver(paidSession(metadata, 5700))).json()).result).toEqual({ applied: 3, alreadyOurs: 0, refundedCents: 0 });
+    expect(job()).toMatchObject({ cardPaymentId: 'cs_test_1' });
+    expect(typeof job().paidAt).toBe('string');
+    expect(ledger().some((e) => e.id.startsWith(`payment:${JOB}:`))).toBe(true);
+    expect((await (await deliver(paidSession(metadata, 5700))).json()).result).toEqual({ applied: 0, alreadyOurs: 3, refundedCents: 0 });
+  });
+
+  it('a refund of exactly the job’s price in Stripe puts the job back to owed and leaves the sessions paid', async () => {
+    const metadata = await checkoutMetadata();
+    listedSession = paidSession(metadata, 5700);
+    await deliver(paidSession(metadata, 5700));
+    refundList = [{ amount: 3000, status: 'succeeded', metadata: {} }];
+    const res = await deliver({ id: 'ch_1', object: 'charge', payment_intent: 'pi_test_1' }, ACCT, SECRET, 'charge.refunded');
+    expect((await res.json()).result).toEqual({ unpaid: 1, already: false });
+    expect(job()).toMatchObject({ paidAt: null, refundedPaymentId: 'cs_test_1' });
+    expect(job().cardPaymentId).toBeUndefined();
+    expect(row(row1.id).paid).toBe(true);
+  });
+});
+
 describe('a refund made in the Stripe Dashboard', () => {
   const charge = { id: 'ch_1', object: 'charge', payment_intent: 'pi_test_1' };
   const refundEvent = (account = ACCT) => deliver(charge, account, SECRET, 'charge.refunded');

@@ -3106,12 +3106,12 @@
     },
     "terms": {
       "title": "Terms of use",
-      "updated": "12 November 2026",
+      "updated": "13 November 2026",
       "sections": [
         {
           "h": "What this is",
           "p": [
-            "%APP% is a tool badminton groups use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free today; if a paid plan is ever introduced it will be announced in the app first, and nothing you've already done becomes payable after the fact. Using it means you're a member of a group on it, were invited by one, or are starting your own."
+            "%APP% is a tool badminton groups use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free while it's in beta, the stringing tools included (those for a limited time). Later it may offer paid options, such as a subscription or one-time purchases; any will be announced in the app first, and nothing you've already done becomes payable after the fact. What your group charges for a session or for stringing is the group's own, not %APP%'s. Using it means you're a member of a group on it, were invited by one, or are starting your own."
           ]
         },
         {

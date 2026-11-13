@@ -12,7 +12,8 @@
  *     losses), and its id lives in the club's `clubSettings` doc. BPM is the
  *     software, never the merchant: a member's $12 lands in the club's
  *     account, never in another club's and never in the platform's.
- *   - A member pays their SETTLED session lines through a Stripe-hosted
+ *   - A member pays their SETTLED session lines, and their finished, priced
+ *     stringing jobs, through a Stripe-hosted
  *     Checkout page created ON the club's account (`stripeAccount`). Only
  *     frozen money, for the same reason e-transfer auto-match and "pay with
  *     credit" read `settledLines`: an estimate can still move under a payment.
@@ -33,10 +34,11 @@ import { isFlagOn } from './flags';
 import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { computeOwed, settledLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
-import { mirrorPaid, mirrorUnpaid } from './ledgerMirror';
+import { mirrorPaid, mirrorStringingChanged, mirrorUnpaid } from './ledgerMirror';
+import { isBillable } from './stringingBilling';
 import { releaseHoldIfSettled } from './paymentsInbox';
 import { requireOutboundOrigin } from './appOrigin';
-import type { Player } from './types';
+import type { Player, StringingJob } from './types';
 import { APP_NAME } from './brand';
 
 export const CARD_PAY_SETTINGS_ID = 'card-pay';
@@ -196,15 +198,21 @@ export async function clubTakesCards(groupId: string): Promise<boolean> {
 
 // ── Checkout ────────────────────────────────────────────────────────────────
 
-/** One payable line, as carried through Stripe metadata: `<row id>:<sessionId>:<cents>`. */
+/**
+ * One payable line, as carried through Stripe metadata:
+ * `<kind>:<id>:<partition key>:<cents>` — a session share is
+ * `session:<players row>:<sessionId>:<cents>`, a finished stringing job
+ * `stringing:<job id>:<memberId>:<cents>`.
+ */
 export interface CardLine {
+  kind: 'session' | 'stringing';
   ref: string;
   pk: string;
   amountCents: number;
 }
 
-export function encodeLine(l: Pick<OwedLine, 'ref' | 'pk' | 'amountCents'>): string {
-  return `${l.ref}:${l.pk}:${l.amountCents}`;
+export function encodeLine(l: Pick<OwedLine, 'kind' | 'ref' | 'pk' | 'amountCents'>): string {
+  return `${l.kind}:${l.ref}:${l.pk}:${l.amountCents}`;
 }
 
 /** The lines a Checkout Session carries, from its metadata. Anything malformed is dropped. */
@@ -214,14 +222,18 @@ export function linesFromMetadata(metadata: Record<string, string> | null | unde
   for (let i = 0; i < MAX_CARD_LINES; i++) {
     const raw = metadata[`bpm_line_${i}`];
     if (!raw) break;
-    // The session id may itself contain ':' (`<group>:session-…`), so the
-    // row id is the first field and the cents the last.
-    const first = raw.indexOf(':');
-    const last = raw.lastIndexOf(':');
+    const k = raw.indexOf(':');
+    const kind = raw.slice(0, k);
+    if (kind !== 'session' && kind !== 'stringing') continue;
+    // The partition key may itself contain ':' (`<group>:session-…`), so the
+    // id is the field after the kind, the cents the last, the key between.
+    const rest = raw.slice(k + 1);
+    const first = rest.indexOf(':');
+    const last = rest.lastIndexOf(':');
     if (first <= 0 || last <= first) continue;
-    const amountCents = Number(raw.slice(last + 1));
+    const amountCents = Number(rest.slice(last + 1));
     if (!Number.isInteger(amountCents) || amountCents <= 0) continue;
-    out.push({ ref: raw.slice(0, first), pk: raw.slice(first + 1, last), amountCents });
+    out.push({ kind, ref: rest.slice(0, first), pk: rest.slice(first + 1, last), amountCents });
   }
   return out;
 }
@@ -238,10 +250,10 @@ export async function startCardCheckout(groupId: string, memberId: string, now =
 
   const scope = groupScope(groupId);
   const identity = await resolveIdentity({ memberId }, groupId);
-  // Sessions only in this prototype: a stringing job's payment is keyed on
-  // paidAt, not on a payment id, and would need its own path.
+  // Settled session shares and finished, priced stringing jobs (a job is
+  // frozen money by construction), oldest first, as e-transfer and credit pay.
   const lines = settledLines(await computeOwed(scope, identity), identity.memberId)
-    .filter((l) => l.kind === 'session' && l.amountCents > 0)
+    .filter((l) => l.amountCents > 0)
     .slice(0, MAX_CARD_LINES);
   if (lines.length === 0) throw new CardPayError('nothing_to_pay');
 
@@ -266,7 +278,7 @@ export async function startCardCheckout(groupId: string, memberId: string, now =
         price_data: {
           currency: CURRENCY,
           unit_amount: l.amountCents,
-          product_data: { name: `Badminton · ${l.at.slice(0, 10)}` },
+          product_data: { name: `${l.kind === 'stringing' ? 'Stringing' : 'Badminton'} · ${l.at.slice(0, 10)}` },
         },
       })),
       client_reference_id: memberId,
@@ -291,6 +303,7 @@ type LineOutcome = 'paid' | 'ours' | 'not_applied';
  * owes exactly what was charged for it.
  */
 async function markCardPaid(scope: GroupScope, line: CardLine, memberId: string, checkoutId: string, paidAt: string): Promise<LineOutcome> {
+  if (line.kind === 'stringing') return markJobCardPaid(scope, line, memberId, checkoutId, paidAt);
   for (let attempt = 0; attempt < 2; attempt++) {
     const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
     if (!row) return 'not_applied';
@@ -305,6 +318,31 @@ async function markCardPaid(scope: GroupScope, line: CardLine, memberId: string,
       return 'paid';
     }
     // `undefined`: gone OR changed under us (etag). Read again and decide.
+  }
+  return 'not_applied';
+}
+
+/**
+ * The same for a finished stringing job: still this member's, still billable
+ * (done, priced, unpaid) at exactly the price charged. The ledger keys the
+ * payment on `paidAt` as it does for every way a job is paid; `cardPaymentId`
+ * is what tells a redelivery that this Checkout already paid it.
+ */
+async function markJobCardPaid(scope: GroupScope, line: CardLine, memberId: string, checkoutId: string, paidAt: string): Promise<LineOutcome> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
+    if (!job || job.memberId !== memberId) return 'not_applied';
+    if (job.paidAt !== null) return job.cardPaymentId === checkoutId ? 'ours' : 'not_applied';
+    if (!isBillable(job) || job.priceCents !== line.amountCents) return 'not_applied';
+    const written = await scope.replace<StringingJob>(
+      'stringingJobs',
+      { ...job, paidAt, cardPaymentId: checkoutId, updatedAt: new Date().toISOString() },
+      line.pk,
+    );
+    if (written) {
+      await mirrorStringingChanged(scope, job, written, 'card', checkoutId);
+      return 'paid';
+    }
   }
   return 'not_applied';
 }
@@ -413,18 +451,31 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
   if (byPeople <= 0) return { ignored: 'app_refund' };
 
   const scope = groupScope(groupId);
-  const rows: { line: CardLine; row: Player & Record<string, unknown> }[] = [];
+  // Each line's doc: a session row, or a stringing job.
+  type Held =
+    | { line: CardLine; kind: 'session'; doc: Player & Record<string, unknown> }
+    | { line: CardLine; kind: 'stringing'; doc: StringingJob };
+  const held: Held[] = [];
   for (const line of linesFromMetadata(session.metadata)) {
-    const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
-    if (row) rows.push({ line, row });
+    if (line.kind === 'stringing') {
+      const doc = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
+      if (doc) held.push({ line, kind: 'stringing', doc });
+    } else {
+      const doc = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
+      if (doc) held.push({ line, kind: 'session', doc });
+    }
   }
-  const undone = rows.filter((r) => r.row.refundedPaymentId === session.id).reduce((sum, r) => sum + r.line.amountCents, 0);
-  const stillPaid = rows.filter((r) => r.row.paid === true && r.row.paidVia === 'card' && r.row.paymentId === session.id);
+  const paidByThis = (h: Held) =>
+    h.kind === 'session'
+      ? h.doc.paid === true && h.doc.paidVia === 'card' && h.doc.paymentId === session.id
+      : h.doc.paidAt !== null && h.doc.cardPaymentId === session.id;
+  const undone = held.filter((h) => h.doc.refundedPaymentId === session.id).reduce((sum, h) => sum + h.line.amountCents, 0);
+  const stillPaid = held.filter(paidByThis);
   const fresh = byPeople - undone;
   if (fresh <= 0) return { unpaid: 0, already: true };
 
-  const stillPaidCents = stillPaid.reduce((sum, r) => sum + r.line.amountCents, 0);
-  const oneLine = stillPaid.filter((r) => r.line.amountCents === fresh);
+  const stillPaidCents = stillPaid.reduce((sum, h) => sum + h.line.amountCents, 0);
+  const oneLine = stillPaid.filter((h) => h.line.amountCents === fresh);
   const target = fresh === stillPaidCents ? stillPaid : oneLine.length === 1 ? oneLine : null;
   if (!target) {
     console.error('[card-pay] a refund made in Stripe matches no paid line — left for a person', { groupId, charge: charge.id, fresh, stillPaidCents });
@@ -432,14 +483,24 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
   }
 
   let unpaid = 0;
-  for (const { line, row } of target) {
-    const written = await scope.replace(
-      'players',
-      { ...row, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, refundedPaymentId: session.id },
-      line.pk,
-    );
-    if (!written) continue; // changed under us; the next delivery re-reads
-    await mirrorUnpaid(scope, row as unknown as Player);
+  for (const h of target) {
+    if (h.kind === 'session') {
+      const written = await scope.replace(
+        'players',
+        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, refundedPaymentId: session.id },
+        h.line.pk,
+      );
+      if (!written) continue; // changed under us; the next delivery re-reads
+      await mirrorUnpaid(scope, h.doc as unknown as Player);
+    } else {
+      const written = await scope.replace<StringingJob>(
+        'stringingJobs',
+        { ...h.doc, paidAt: null, cardPaymentId: undefined, refundedPaymentId: session.id, updatedAt: new Date().toISOString() },
+        h.line.pk,
+      );
+      if (!written) continue;
+      await mirrorStringingChanged(scope, h.doc, written, 'card', session.id);
+    }
     unpaid += 1;
   }
   return { unpaid, already: false };

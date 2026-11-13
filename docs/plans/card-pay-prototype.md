@@ -14,12 +14,13 @@ If, once a club turns it on, fewer than 20% of that club's settled lines over fo
 
 ## Non-goals
 
-- Invoicing, Billing (season passes, an organiser SaaS fee), Stripe Tax collection and Terminal. The Stripe planner covered all five; this slice is card pay for owed SETTLED session shares only. Tax: threshold monitoring in the Stripe Dashboard, no code.
-- Stringing jobs. A job's payment is keyed on `paidAt`, not a payment id, and needs its own path.
+- Invoicing, Billing (season passes, an organiser SaaS fee), Stripe Tax collection and Terminal. The Stripe planner covered all five; this slice is card pay for what a member owes: SETTLED session shares and, since 2026-11-13, finished priced stringing jobs (Decisions). Tax: threshold monitoring in the Stripe Dashboard, no code.
 - Card top-ups into store credit (`payments.md`'s cost table leans that way for fees; it is the next decision, not this one).
 - The native shell. Checkout opens by navigating the WebView; whether Apple Pay shows there, and whether it should open in the system browser sheet like OAuth, is unverified.
 
 ## Decisions
+
+- **2026-11-13 — Stringing jobs are paid by card too** (Grant: "I also use stripe to charge stringing services", then "Both" — describe it for Stripe's review AND build it). A finished, priced, unpaid job is a line in the same Checkout as the session shares (`stringing:<job>:<memberId>:<cents>` in the metadata), into the same club account: "Stringers string. Organisers handle the money." The webhook marks it paid only while it is still this member's, billable, at exactly the price charged. The ledger keeps keying a job's payment on `paidAt` (`stringingPaymentEntry`, every via), so the new additive `StringingJob.cardPaymentId` is what tells a redelivery the job is already paid by this Checkout, and `refundedPaymentId` does for a refund what it does on a session row.
 
 - **2026-11-12 — Lifted** (Grant: "lift it"), after the live sandbox run and the screens were seen. The ROADMAP non-goal is struck, the fee question is answered by the organiser fee (`docs/plans/organiser-fee.md`; a card-only fee would be a surcharge, capped at 2.4% in Canada), and going live is: live Connect platform setup + Accounts v2, a live restricted key and a Connect webhook in Azure App Settings, the flag on, then the organiser pays one of their own shares by card on the web and in the iPhone app before telling members. Two things were added for live: the Privacy and Terms pages name Stripe, and a refund made in the Stripe Dashboard reaches the app (`charge.refunded`, below).
 - **2026-11-12 — A refund made in Stripe un-pays the row, only when the amount says which.** The webhook takes `charge.refunded` from the club's account, finds the Checkout Session behind the charge, and leaves out refunds the app made itself (`metadata.bpm_reason`). Then: refunded to the full amount still applied → every row it paid goes back to unpaid; refunded to exactly one paid row's amount, and only one → that row; anything else → logged for a person and nothing changes. The same "never guess with money" rule as e-transfer matching.
