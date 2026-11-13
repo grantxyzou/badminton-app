@@ -1,7 +1,7 @@
 # Stringing as an add-on service
 
 **Track:** multi-group critical path — "a SECOND club created and run through one session end to end" (CLAUDE.md, Groups), and the rule that how a club runs is a SETTING (`lib/clubRun.ts`, `six-feathers-onboarding.md`).
-**Status:** intent — first parked by Grant on 2026-11-04 ("plan it but back log"); widened on 2026-11-13 from an on/off switch to a shop a club can share. Nothing built.
+**Status:** in-flight — first parked by Grant on 2026-11-04 ("plan it but back log"); widened on 2026-11-13 from an on/off switch to a shop a club can share. Phase 1 (the switch) built 2026-11-13 (Grant: "Start phase 1 follow design system"); phases 2–3 not started.
 **Review on:** 2026-11-25 — Grant's answers to the five Open questions below, and does Six Feathers want Grant's shop (phase 2) or no stringing at all (phase 1 only)?
 
 ## Problem
@@ -51,6 +51,14 @@ Example: Six Feathers links to Grant's shop. Taufik (a Six Feathers member) open
 6. **What the shop learns about a linked club's member:** their name, their racket and string from their gear, and their own jobs. Not the club's roster, sessions or anyone else's data.
 7. **Ending a link never hides money owed.** New requests stop at once; open jobs finish on the bench and stay on the player's Home until paid and archived.
 
+## Phase 1, as built (2026-11-13)
+
+- **The setting is `run.stringing: 'on' | 'off'`** in `lib/clubRun.ts`, read through `clubRunOf` like every other club rule. A club that never chose takes its style's value: on for `first_come` and `custom` (BPM Core, and every club before this), off for `members_first` (Six Feathers). *Alternative it beat:* making it one of the style's values. Then switching stringing on in Six Feathers would have made it "Custom", which says the club runs its week differently when it does not. So a style never writes it (`applyStyle` keeps the club's), and `styleOf` ignores it.
+- **It cannot be switched off with an open job.** `PATCH /api/admin/settings` answers 409 `stringing_open_jobs` with the count while any job is on the bench (not cancelled, collected or archived) or finished and unpaid (`isOpenStringingJob`, `lib/stringingService.ts`). *Alternative it beat:* hiding the tab while keeping open jobs readable somewhere. That needed a second way into the bench and the balance for a club that "has no stringing". Refusing keeps one rule: off means there is nothing to show. It also means the pushes, the nudge, the balance lines and the reconcile needed no change, because a club with it off has no job for them to act on.
+- **The server refuses a NEW job only**: `POST /api/stringing/requests` (a member) and `POST /api/stringing/jobs` (the bench) answer 404 `not_found`, exactly as the deployment flag off does (`stringingServiceOnFor`). Reads and moves on existing jobs are never refused, so a request racing the switch can still be finished: switch it back on and it is on the bench.
+- **The screens hide only on a KNOWN off** (`useStringingHidden` in `lib/useClubRun.ts`): the tab bar drops to three (`BottomNav hideStringing`, the indicator divides by `--rn`), the shell sends a Stringing deep link or restored tab to Home, the console drops the bench row and its count (`CommandCenter`, `useAdminNeedsYou`), Stats' racket page drops "Request stringing", and the app icon's long-press menu drops its stringing shortcut.
+- **The switch is the "Add-ons" section of "How your club runs"**, below Rules, the same Switch card as money. It is not offered with the deployment flag off, where it would change nothing.
+
 ## Phases
 
 | Phase | What | Who it unblocks |
@@ -77,13 +85,15 @@ Each phase is shippable on its own, and 2 needs nothing from 3.
 - **Pushes cross clubs.** A request from Six Feathers pushes the shop's stringers, never Six Feathers' organiser. The two-club isolation tests gain "a linked request reaches only the shop".
 - **Stock and the shelf map** read one shop, whichever club asks. They already take a group id, so this is the shop's id.
 
-## Shape (proposed, not built)
+## Shape
 
 | Piece | Where |
 |---|---|
-| Phase 1: `stringing` on `GroupSettings.run`, defaulted by club style, absent = BPM as today | `lib/clubRun.ts`, `parseClubRun`, `memberVisibleSettings`, `useClubRun()` |
-| Phase 1: the switch on "How your club runs", beside money | `components/admin/CommandCenter/ClubRunPage.tsx` |
-| Phase 1: off hides the tab, bench row, balance lines, pushes, shortcut | `components/HomeShell.tsx`, `CommandCenter.tsx`, `lib/useAdminNeedsYou.ts`, `lib/owedBalance.ts`, `lib/stringingNotifyDispatch.ts`, `lib/stringingRequestNotify.ts`, `lib/appShortcuts.ts` |
+| Phase 1 (built): `stringing` on `GroupSettings.run`, a gap filled by club style, absent = BPM as today | `lib/clubRun.ts` |
+| Phase 1 (built): the server's reading, the open-job rule, the refusal | `lib/stringingService.ts`, `app/api/admin/settings/route.ts`, `app/api/stringing/requests/route.ts`, `app/api/stringing/jobs/route.ts` |
+| Phase 1 (built): the switch under "Add-ons" | `components/admin/CommandCenter/ClubRunPage.tsx` |
+| Phase 1 (built): off hides the tab, bench row and count, request link and shortcut | `lib/useClubRun.ts` (`useStringingHidden`), `components/HomeShell.tsx`, `components/BottomNav.tsx`, `components/SkillsTab.tsx`, `components/admin/CommandCenter/CommandCenter.tsx`, `lib/useAdminNeedsYou.ts`, `lib/appShortcuts.ts` |
+| Phase 1 (built): tests | `__tests__/stringing-add-on.test.ts`, `__tests__/club-run.test.ts`, `__tests__/admin-settings-club-run.test.ts`, `__tests__/components/ClubRunPage.test.tsx`, `__tests__/components/BottomNav.test.tsx` |
 | Phase 2: link doc, `shopOf(clubId)`, invite and accept | new `lib/shopLink.ts`, `app/api/stringing/link/` |
 | Phase 2: the one door for a customer | `requireShopCustomer` in `lib/auth.ts` |
 | Phase 2: `clubId` on a job (additive) | `lib/types.ts` `StringingJob`, `app/api/stringing/jobs/route.ts` |

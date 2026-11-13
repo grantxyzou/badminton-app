@@ -77,6 +77,8 @@ export function useAdminNeedsYou(enabled: boolean, refreshKey = 0): AdminNeedsYo
   // nothing is ever billed, so every player would count (lib/clubRun.ts).
   const { run, known: runKnown } = useClubRun();
   const moneyOff = runKnown && run.money === 'off';
+  // A club with stringing switched off has no bench to count (docs/plans/stringing-add-on.md).
+  const benchOff = runKnown && run.stringing === 'off';
 
   // Inlined into the effect rather than hoisted into a `useCallback` the effect
   // then calls. Nothing outside this hook ever invoked it, and the indirection
@@ -147,7 +149,7 @@ export function useAdminNeedsYou(enabled: boolean, refreshKey = 0): AdminNeedsYo
 
         const dormant = Array.isArray(members) ? members.filter((m) => isDormant(m)).length : 0;
 
-        const bench = benchRows ? benchSignals(benchRows) : null;
+        const bench = benchRows && !benchOff ? benchSignals(benchRows) : null;
         setStringing(bench);
         setBreakdown({ unpaid, birds: reorder, dormant });
 
@@ -170,7 +172,7 @@ export function useAdminNeedsYou(enabled: boolean, refreshKey = 0): AdminNeedsYo
     return () => {
       cancelled = true;
     };
-  }, [enabled, refreshKey, moneyOff]);
+  }, [enabled, refreshKey, moneyOff, benchOff]);
 
   return { needsYou, stringing, breakdown, loadError };
 }

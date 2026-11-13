@@ -9,6 +9,7 @@ import { cleanString, GROUP_NAME_MIN, GROUP_NAME_MAX } from '@/lib/groupRoutes';
 import { isValidLateCancelHours, lateCancelHoursOf } from '@/lib/cancelPolicy';
 import { guestsAllowedOf } from '@/lib/plusOne';
 import { clubRunOf, parseClubRun, withSetting } from '@/lib/clubRun';
+import { openStringingJobCount } from '@/lib/stringingService';
 import { recipientOf } from '@/lib/payTo';
 import { isWealthsimpleHandle } from '@/lib/wealthsimple';
 import type { ETransferRecipient } from '@/lib/types';
@@ -138,6 +139,16 @@ export async function PATCH(req: NextRequest) {
     if (touchesGroup && !group) {
       return NextResponse.json({ error: 'no_group' }, { status: 409 });
     }
+    // Stringing is switched off only with nothing left on the bench and nothing
+    // owed for it (docs/plans/stringing-add-on.md): a setting never hides a
+    // racket someone handed over, or money someone owes. Checked BEFORE any
+    // write in the body, so a refused save stores nothing.
+    if (run && body.run && (body.run as { stringing?: unknown }).stringing === 'off' && clubRunOf(group?.settings).stringing === 'on') {
+      const open = await openStringingJobCount(groupId);
+      if (open > 0) {
+        return NextResponse.json({ error: 'stringing_open_jobs', open }, { status: 409 });
+      }
+    }
     const container = getContainer('members');
     const { resource: existing } = await container.item(auth.memberId, auth.memberId).read();
     if (!existing) {
@@ -176,7 +187,7 @@ export async function PATCH(req: NextRequest) {
       // Parsed again against the stored window and guest number, which a
       // request without them keeps (lib/clubRun.ts `parseClubRun`).
       const current = clubRunOf(group?.settings);
-      const stored = parseClubRun(body.run, { membersFirst: current.membersFirst, guests: current.guests }) ?? run;
+      const stored = parseClubRun(body.run, { membersFirst: current.membersFirst, guests: current.guests, stringing: current.stringing }) ?? run;
       await updateGroupSettings(groupId, { run: stored });
       // The old switch is written beside it, so a rollback still sees guests
       // on or off the way the club left them.

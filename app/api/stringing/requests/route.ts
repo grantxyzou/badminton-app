@@ -23,6 +23,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { requireGroupMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
+import { stringingServiceOnFor } from '@/lib/stringingService';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isValidTension, formatJobNo } from '@/lib/stringing';
 import { readShopOpen } from '@/lib/stringingShop';
@@ -78,6 +79,11 @@ export async function POST(req: NextRequest) {
   // whether to show the button from the same value, but a client cannot be
   // trusted to have looked.
   const groupId = resolveGroupId(req);
+  // The club's own switch (docs/plans/stringing-add-on.md): a club that runs
+  // no stringing answers exactly as the deployment flag off does.
+  if (!(await stringingServiceOnFor(groupId))) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
   const open = await readShopOpen(groupId);
   if (open !== true) {
     // `null` (unknown) refuses too. A request accepted while we could not tell
