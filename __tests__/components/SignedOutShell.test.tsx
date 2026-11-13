@@ -208,7 +208,7 @@ describe('Sign up needs an invite', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
     fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'BADCODE1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByRole('alert')).toBeDefined();
+    expect((await screen.findByRole('alert')).textContent).toMatch(/That code doesn't work/);
     expect(screen.queryByText('stub: email sign-up')).toBeNull();
   });
 
@@ -231,6 +231,17 @@ describe('landings', () => {
     expect(await screen.findByText('Join BPM Badminton')).toBeDefined();
     expect(captured.EmailSignUpForm?.inviteToken).toBe(token);
     expect(window.location.search).not.toContain('join');
+  });
+
+  it('a ?join= link that no longer resolves says the LINK no longer works, not that a code is wrong', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes('/api/groups/preview') ? json({ error: 'invite_not_found' }, 404) : json({}),
+    );
+    at(`?join=${'e5'.repeat(16)}`);
+    renderShell();
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toMatch(/That link no longer works/);
+    expect(alert.textContent).not.toMatch(/code/);
   });
 
   it('?claim= opens the club’s ask page, and strips the link from the URL', async () => {

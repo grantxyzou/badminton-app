@@ -814,7 +814,10 @@ function SignUpView({
       // answers a valid invite with the club's name and nothing else.
       const res = await fetch(`${BASE}/api/groups/preview?${query}`, { cache: 'no-store' });
       if (!res.ok) {
-        setError(res.status === 404 ? t('signup.notFound') : t('signup.failed'));
+        // A tapped or pasted LINK that no longer resolves (used, expired,
+        // revoked, or a replaced club link) is not a mistyped code: say so.
+        // The preview's one 404 still cannot tell those cases apart.
+        setError(res.status === 404 ? t(invite.token ? 'signup.linkNotFound' : 'signup.notFound') : t('signup.failed'));
         return;
       }
       const data = (await res.json()) as { name: string; kind?: 'invite' | 'door' };

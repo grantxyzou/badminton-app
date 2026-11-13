@@ -105,10 +105,21 @@ export default function JoinGroupPage({
         : `code=${encodeURIComponent(parsed.code!)}`;
       const res = await fetch(`${BASE}/api/groups/preview?${query}`, { cache: 'no-store' });
       if (!res.ok) {
-        setError(t('notFound'));
+        // A link that no longer resolves is not a mistyped code.
+        setError(res.status === 404 ? t(parsed.token ? 'linkNotFound' : 'notFound') : t('failed'));
         return;
       }
-      const data = (await res.json()) as { name: string };
+      const data = (await res.json()) as { name: string; kind?: 'invite' | 'door' };
+      if (data.kind === 'door') {
+        // A club's door link admits a NEW person through an organiser's
+        // approval, which creates a new account. Joining with the account
+        // already signed in on this phone is not built yet
+        // (docs/plans/one-way-in.md, step 4), and `POST /api/groups/join`
+        // claims only one-time invites, so a Join here would always fail.
+        // Say what does work instead of offering a button that cannot.
+        setError(t('doorNotYet', { club: data.name }));
+        return;
+      }
       setFound({ name: data.name, ...parsed });
     } catch {
       setError(t('failed'));
@@ -145,7 +156,7 @@ export default function JoinGroupPage({
           return;
         }
         if (data.error === 'roster_name_taken') setError(t('nameTaken'));
-        else if (data.error === 'invite_not_found') setError(t('notFound'));
+        else if (data.error === 'invite_not_found') setError(t(found.token ? 'linkNotFound' : 'notFound'));
         else setError(t('failed'));
         setBusy(false);
         return;
@@ -273,7 +284,7 @@ export default function JoinGroupPage({
               />
             </label>
 
-            {error && <p className="field-error">{error}</p>}
+            {error && <p className="field-error" role="alert">{error}</p>}
 
             <button
               type="button"
@@ -314,7 +325,7 @@ export default function JoinGroupPage({
               />
             </label>
 
-            {error && <p className="field-error">{error}</p>}
+            {error && <p className="field-error" role="alert">{error}</p>}
 
             <button
               type="submit"

@@ -1,7 +1,7 @@
 # One way in: the club link, an email code, and the organiser's yes
 
 **Track:** members-only (`docs/plans/members-only.md`), how a new person gets in, and the multi-group critical path's onboarding of a second club (`docs/plans/six-feathers-onboarding.md`)
-**Status:** intent
+**Status:** in-flight (step 1 built 2026-11-13)
 **Review on:** 2026-12-15 — since the account-first club link shipped, did any newcomer need the organiser to send them something (a new link, a code, "try again") to get in, and how many accounts were never approved?
 
 ## Problem
@@ -44,6 +44,10 @@ Earlier words that led here:
 - **2026-11-13 — The account is created BEFORE the organiser approves.** Grant, same message. The person signs in first, then asks. They can close the app while they wait, the request no longer dies with a page, and "Keep your account" disappears for them. This reverses `door-link.md`'s "approval creates the account". Beat: today's order, where the organiser's tap creates the account and the asking phone must poll for it. Cost: a stranger who is never approved leaves an account in no club. It sees only the no-club screen (`lib/pageGate.ts`), and is deleted after 14 days unapproved (Grant: yes to the 14-day cleanup).
 - **2026-11-13 — The organiser chooses regular or drop-in when approving.** The approve button offers "Let in as a regular" and "Let in as a drop-in" (`Membership.regular`). Today a new member lands on the waitlist during the members-first window until someone marks them on the Roster. Beat: every approval making a regular, which gives a stranger members-first priority by default.
 
+- **2026-11-13 — Step 1: a one-word name at the door is a hint, not a wall.** The form refused any one-word name, but the server claims an unclaimed roster name exactly as written, so an imported "Lin" could never claim her spot through the club's link. Now the first tap shows "Add your last name too. If the club already knows you by one name, tap Ask to join again." and the second sends it; the server's rules did not change. Beat: dropping the client rule, which would have sent every new person's one-word name into a silent "no request is open".
+- **2026-11-13 — Step 1: another club's door link says what works instead of failing.** A signed-in member opening another club's door link now reads "ask {club}'s organiser for an invite link" in place of a Join button that always failed. Beat: building door joins for existing accounts now, which is step 4's machinery and would be half thrown away.
+- **2026-11-13 — Found while doing step 1, for Grant to decide: the ask's poll says which names exist.** `POST /api/members/access-request` answers the same 200 for every name, as designed, but its poll (`access-request/claim`) answers `pending` for a request it stored and `none` for one it did not, and it stores one only for a name the club knows (or, through the door, a full name). So asking under a name and reading the first poll tells a stranger whether that name is on a club's roster. Step 4 replaces this ask with a signed-in one, which closes it; until then it stands.
+
 ## Shape
 
 Planned; nothing is built yet.
@@ -64,8 +68,8 @@ Planned; nothing is built yet.
 
 Each step is its own PR, and each one leaves the app working.
 
-1. **Fix what is broken today**, whatever else ships:
-   - A member who taps another club's door link sees "Join {club}?" then "That code doesn't work": `JoinGroupPage` takes the door preview, but `POST /api/groups/join` only claims one-time invites.
+1. **Fix what is broken today**, whatever else ships. Built 2026-11-13, except the first item, which moved to step 4:
+   - A member who taps another club's door link sees "Join {club}?" then "That code doesn't work": `JoinGroupPage` takes the door preview, but `POST /api/groups/join` only claims one-time invites. *Step 1 replaced the dead button with what to ask for; the real fix is step 4.*
    - "I play here already" with an unknown name reads "That request expired" after one poll. Keep the silence (no name oracle), change the words.
    - A used or expired tapped link lands on the code box with "That code doesn't work", and the sign-up error says the invite "has been replaced".
    - An imported one-word roster name cannot be claimed through the door, which requires a first and last name.

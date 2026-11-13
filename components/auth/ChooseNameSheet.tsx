@@ -186,6 +186,9 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
         body: JSON.stringify({
           name: name.trim(),
           ...(useCode ? { code: secret.trim() } : { pin: secret.trim() }),
+          // The club the name was taken in, so the server looks there and
+          // not on BPM's roster (a signed-out browser has no club cookie).
+          ...(sentInvite ? { inviteToken } : sentCode ? { inviteCode } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));

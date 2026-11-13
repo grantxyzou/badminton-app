@@ -89,6 +89,12 @@ export default function AskAccessForm({
   const [email, setEmail] = useState('');
   // Show the field rules only once the person has tried to send.
   const [tried, setTried] = useState(false);
+  // The door wants a first AND last name from a NEW person, but an imported
+  // roster name can be one word ("Lin"), and only the server knows which
+  // this is. So a one-word name is a hint the first time, and the same name
+  // sent again goes: the server claims an unclaimed roster name as written
+  // and stores nothing for a one-word NEW name (the same 200 either way).
+  const [oneWordWarned, setOneWordWarned] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const secret = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -176,7 +182,8 @@ export default function AskAccessForm({
   }, [name, email, stop, onApproved, claim]);
 
   const door = !!claim;
-  const nameOk = door ? isFullName(name) : name.trim().length > 0;
+  const nameOk = name.trim().length > 0;
+  const oneWord = door && nameOk && !isFullName(name);
   const emailOk = !door || EMAIL_SHAPE.test(email.trim());
 
   async function ask() {
@@ -184,6 +191,11 @@ export default function AskAccessForm({
     if (!trimmed || phase === 'sending' || !online) return;
     if (!nameOk || !emailOk) {
       setTried(true);
+      return;
+    }
+    if (oneWord && oneWordWarned !== trimmed) {
+      setTried(true);
+      setOneWordWarned(trimmed);
       return;
     }
     setPhase('sending');
@@ -263,6 +275,7 @@ export default function AskAccessForm({
                   autoComplete="name"
                 />
                 {tried && !nameOk && <span className="field-error" role="alert">{t('claimNameNeedsLast')}</span>}
+                {tried && oneWord && <span className="field-warn" role="status">{t('claimNameOneWord')}</span>}
               </label>
               {door && (
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>

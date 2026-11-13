@@ -94,7 +94,9 @@ describe('AskAccessSheet through a claim link', () => {
     fireEvent.change(screen.getByLabelText('First and last name'), { target: { value: 'Sandra' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'not-an-email' } });
     fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
-    expect(screen.getByText('Add your last name too.')).toBeDefined();
+    // A one-word name is a hint, not a wall (docs/plans/one-way-in.md): an
+    // imported roster name can be one word, and only the server knows.
+    expect(screen.getByText(/^Add your last name too\./)).toBeDefined();
     expect(screen.getByText("That email doesn't look right.")).toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });

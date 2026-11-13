@@ -67,7 +67,6 @@ const UNSWEPT: readonly string[] = [
   'app/api/admin/reports/key/route.ts',
   'app/api/assessments/route.ts',
   'app/api/auth/apple/start/route.ts',
-  'app/api/auth/claim-name/route.ts',
   'app/api/auth/google/start/route.ts',
   'app/api/auth/handoff/claim/route.ts',
   'app/api/auth/migrate/claim/route.ts',

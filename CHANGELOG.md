@@ -8,6 +8,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Joining: clearer messages, and imported names can claim their spot (2026-11-13)
+
+The first step of making joining simpler (`docs/plans/one-way-in.md`).
+
+- **A one-word name at the club's link is a hint now, not a wall.** Someone the club already knows by one name ("Lin") could not claim their spot through the club's link, because the form demanded a last name. The first tap asks for one; the second sends the name as typed.
+- **"Is that you?" after Google or Apple looks in the right club.** A new account following another club's invite, whose name that club already had, was asked for a PIN that was then checked against BPM Core's roster. It now checks the club the invite is for, and signs them in there.
+- **A link that no longer works says so.** A used or expired link said "That code doesn't work" about a code nobody typed, and a failed sign-up said the invite "has been replaced". Both now say the link no longer works.
+- **"That request expired" said too little.** The same words covered an ask that ran out, one an organiser ignored and one under a name the club doesn't know. They now say no request is open under that name and what to check.
+- **Another club's club link no longer leads to a Join button that always failed** for someone already signed in. It says to ask that club's organiser for an invite link, until joining through a club link with an existing account is built.
+
 ## Receipts and the admin console read dates on the club's clock (2026-11-12)
 
 - **A receipt read the session's date in the phone's own time zone**, so a Thursday 7 PM session showed as "Fri, Nov 20" on a phone or browser set to UTC, on the receipt image, both receipt texts and the e-transfer memo. It now reads in Vancouver time like every other session date in the app. The payments inbox matches a memo by the name after the dash, so a memo's date was never part of matching.
