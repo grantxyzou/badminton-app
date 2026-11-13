@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A swipe back in Admin goes back one page (2026-11-13)
+
+- **Swiping back from an Admin page left Admin altogether.** The console stays loaded, hidden, under every Admin page so Back is instant, and its own top bar ("Back to profile") still answered the swipe. So one swipe from Late cancellations ran two Backs at once, the page's and the console's, and the app swapped from Admin to Profile under your finger (Grant, App Store app). It now goes back one page: Late cancellations → How your club runs → the console. Escape on a keyboard is the same.
+- **The same was true of every tab kept in the background**: a page left open on another tab went back too, unseen. A top bar now answers only while it is the page on screen.
+- **Profile no longer notes another tab's scrolling as its own** list position while it waits in the background.
+
 ## Receipts and the admin console read dates on the club's clock (2026-11-12)
 
 - **A receipt read the session's date in the phone's own time zone**, so a Thursday 7 PM session showed as "Fri, Nov 20" on a phone or browser set to UTC, on the receipt image, both receipt texts and the e-transfer memo. It now reads in Vancouver time like every other session date in the app. The payments inbox matches a memo by the name after the dash, so a memo's date was never part of matching.
