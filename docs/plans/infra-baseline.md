@@ -6,7 +6,8 @@ against rules this repo already holds itself to ("never let a failure look like
 a fact", "a recorded value nobody compares is not a check"). The precedent is
 `docs/plans/ai-governance-and-docs-accuracy.md`.
 **Status:** in-flight
-**Review on:** 2026-12-11 — has `bpm-5xx` fired, and was each firing something a player noticed? More than twice a month on nothing means raise the threshold (Kill criterion). (Answered 2026-11-11: four of the five portal pages are read into `docs/azure.md` §9, all but the key-rotation date; the one alert rule that existed was off and watched the deleted app, and is now rule 1 below.)
+**Read 2026-11-12:** Four of five portal pages read into `docs/azure.md` §9 (key-rotation date still missing); `bpm-5xx` rule is live (created 2026-11-11) and has not fired as far as known; alert rules 2 and 3 not yet created.
+**Review on:** 2026-12-12 — has `bpm-5xx` fired, and was each firing something a player noticed? More than twice a month on nothing means raise the threshold (Kill criterion). Are alert rules 2 (health check) and 3 (429 throttling) live?
 
 ## Problem
 

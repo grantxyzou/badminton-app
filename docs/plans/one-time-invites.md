@@ -2,7 +2,8 @@
 
 **Track:** members-only (docs/plans/members-only.md) — how a new person gets in
 **Status:** in-flight (built 2026-10-06; ships with its PR)
-**Review on:** 2026-12-06 — did an admin get stuck creating or sending a link, did anyone report a link that "didn't work" (used, expired, or the old club-wide one), and did more new accounts arrive by invite than by access request?
+**Read 2026-11-12:** No reports of a stuck admin or a broken link. No known failures.
+**Review on:** 2026-12-12 — same question: stuck admin, broken link, and are new accounts arriving by invite?
 
 ## Problem
 
