@@ -150,7 +150,7 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
   useEffect(() => () => clearInterval_(), [clearInterval_]);
 
   const sideOf = (s: Side) => (s === 'a' ? t('sideA') : t('sideB'));
-  const onCalls = (calls: ParsedCall[]) => {
+  const onCalls = (calls: ParsedCall[], transcript: string) => {
     const m = matchCall(score, server, calls);
     if (m.kind === 'point') {
       point(m.side);
@@ -161,7 +161,8 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
     } else if (m.kind === 'ignored') {
       setHeard(t('voice.heardIgnored', { score: heardText(m.heard) }));
     } else if (m.kind === 'none') {
-      setHeard(t('voice.heardNone'));
+      // The words themselves, so a miss says what the phone understood.
+      setHeard(transcript.trim() ? t('voice.heardWords', { words: transcript.trim() }) : t('voice.heardNone'));
     }
     // 'same' (the board's own score repeated) and 'over' change nothing.
   };
@@ -211,6 +212,21 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
   const sideName = sideOf;
   const problemText = (p: VoiceProblem) =>
     p === 'denied' ? t('voice.denied') : p === 'network' ? t('voice.network') : t('voice.failed');
+  // What to say next, worked out from the board: the rally winner's points
+  // come first, and a level score is "N all". Shown under the status line the
+  // whole time the mic is offered, so nobody has to know the umpire's words.
+  const callText = (first: number, second: number) =>
+    first === second ? t('voice.allCall', { n: first }) : `${first} ${second}`;
+  const voiceHint = state.over
+    ? ''
+    : voice.listening
+      ? t('voice.next', {
+          sideA: sideName('a'),
+          sideB: sideName('b'),
+          a: callText(score.a + 1, score.b),
+          b: callText(score.b + 1, score.a),
+        })
+      : t('voice.howTo');
   const voiceLine = voice.problem
     ? problemText(voice.problem)
     : (heard ?? (voice.listening ? t('voice.listening') : ''));
@@ -303,6 +319,11 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
             ) : (
               <p key={voiceLine} className="courtside-voice-line motion-fade" role="status" aria-live="polite">
                 {voiceLine}
+              </p>
+            )}
+            {voiceHint && !ask && (
+              <p className="courtside-voice-hint" data-testid="voice-hint">
+                {voiceHint}
               </p>
             )}
           </div>

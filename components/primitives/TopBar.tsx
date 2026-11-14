@@ -30,6 +30,21 @@ export interface TopBarProps {
   backLabel?: string;
 }
 
+/**
+ * Whether this bar is the page on screen. Pages are KEPT, not rebuilt: every
+ * visited tab stays mounted under `hidden` (HomeShell), and the Admin console
+ * stays mounted, hidden, under each Admin page (AdminDashboard). Each of those
+ * bars still had its swipe and Escape listeners on `document`, so one swipe
+ * back from an Admin page ran its Back AND the hidden console's ("Back to
+ * profile") in the same frame: Late cancellations went straight to Profile
+ * instead of one page back, and the whole app swapped screens under the
+ * finger (Grant, 2026-11-13, on the App Store app). A `hidden` ancestor is
+ * the one test that holds for both, and it reads the same in jsdom.
+ */
+export function isBarOnScreen(el: HTMLElement | null): boolean {
+  return !!el && el.isConnected && el.closest('[hidden]') === null;
+}
+
 export default function TopBar({ title, crumb, onBack: onBackProp, right, backLabel = 'Back' }: TopBarProps) {
   const ref = useRef<HTMLDivElement>(null);
   // On a foldable's right page the list that opened this page is beside it:
@@ -47,7 +62,7 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
       // An open sheet answers Escape first (BottomSheet listens on document,
       // which hears it before window) and marks it handled: Escape closes the
       // sheet, never the sheet AND the page under it.
-      if (e.key === 'Escape' && !e.defaultPrevented) onBack();
+      if (e.key === 'Escape' && !e.defaultPrevented && isBarOnScreen(ref.current)) onBack();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -108,7 +123,7 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
     };
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (!t || t.clientX > 24) { tracking = false; return; }
+      if (!t || t.clientX > 24 || !isBarOnScreen(ref.current)) { tracking = false; return; }
       tracking = true;
       startX = t.clientX;
       startY = t.clientY;
@@ -144,7 +159,7 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
         setVar(1);
         requestAnimationFrame(() => {
           settle();
-          onBack();
+          if (isBarOnScreen(ref.current)) onBack();
         });
       } else {
         beginRelease();

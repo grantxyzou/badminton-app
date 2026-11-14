@@ -41,6 +41,12 @@ The first step of making joining simpler (`docs/plans/one-way-in.md`).
 - **"That request expired" said too little.** The same words covered an ask that ran out, one an organiser ignored and one under a name the club doesn't know. They now say no request is open under that name and what to check.
 - **Another club's club link no longer leads to a Join button that always failed** for someone already signed in. It says to ask that club's organiser for an invite link, until joining through a club link with an existing account is built.
 
+## A swipe back in Admin goes back one page (2026-11-13)
+
+- **Swiping back from an Admin page left Admin altogether.** The console stays loaded, hidden, under every Admin page so Back is instant, and its own top bar ("Back to profile") still answered the swipe. So one swipe from Late cancellations ran two Backs at once, the page's and the console's, and the app swapped from Admin to Profile under your finger (Grant, App Store app). It now goes back one page: Late cancellations → How your club runs → the console. Escape on a keyboard is the same.
+- **The same was true of every tab kept in the background**: a page left open on another tab went back too, unseen. A top bar now answers only while it is the page on screen.
+- **Profile no longer notes another tab's scrolling as its own** list position while it waits in the background.
+
 ## Voice scoring is on (2026-11-13)
 
 - **The Preview mic on Keep score is on for everyone** (Stats → Play → Keep score; `docs/plans/voice-score.md`). Call the score, server's first, and the board keeps it. Chrome on Android listens hands-free; Safari on iPhone and iPad hears one call per tap. Not in the App Store or Play app.

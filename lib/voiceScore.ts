@@ -48,7 +48,7 @@ export type CallMatch =
   | { kind: 'over' };
 
 const UNITS: Record<string, number> = {
-  love: 0, zero: 0, nil: 0, oh: 0,
+  love: 0, zero: 0, nil: 0, oh: 0, o: 0,
   one: 1, won: 1,
   two: 2, too: 2,
   three: 3,
@@ -90,7 +90,13 @@ function splitsOf(run: string): Array<[number, number]> {
   return out;
 }
 
-function tokens(text: string): { list: Token[]; serviceOver: boolean } {
+/**
+ * `glued`: read a two-digit run as two scores as well. Chrome on Android
+ * writes "one zero" as "10" and "two one" as "21" (seen on a court,
+ * 2026-11-13: the board said "Didn't catch a score" to a plain call). Only
+ * tried when the plain reading found no score, so "10 8" stays ten–eight.
+ */
+function tokens(text: string, glued = false): { list: Token[]; serviceOver: boolean } {
   const lower = text.toLowerCase();
   const serviceOver = /\b(service|serve|serves)\s+(over|change)\b/.test(lower);
   // A digit run like "11-7" or "11:7" splits into its numbers; a hyphen joins
@@ -98,7 +104,8 @@ function tokens(text: string): { list: Token[]; serviceOver: boolean } {
   const words = lower.replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
   const list: Token[] = [];
   for (const w of words) {
-    if (/^\d{1,2}$/.test(w)) list.push({ n: Number(w), tens: Number(w) === 20 || Number(w) === 30 });
+    if (glued && /^\d{2}$/.test(w)) list.push({ splits: [[Number(w[0]), Number(w[1])]] });
+    else if (/^\d{1,2}$/.test(w)) list.push({ n: Number(w), tens: Number(w) === 20 || Number(w) === 30 });
     else if (/^\d{3,4}$/.test(w)) {
       const splits = splitsOf(w);
       if (splits.length > 0) list.push({ splits });
@@ -164,8 +171,7 @@ function readingOf(seq: Array<number | 'all'>): Reading | null {
   return { kind: 'pair', first, second };
 }
 
-export function parseCall(text: string): ParsedCall {
-  const { list, serviceOver } = tokens(text);
+function readingsOf(list: Token[]): Reading[] {
   const readings: Reading[] = [];
   const seen = new Set<string>();
   for (const seq of sequences(list)) {
@@ -176,7 +182,14 @@ export function parseCall(text: string): ParsedCall {
     seen.add(key);
     readings.push(r);
   }
-  return { readings, serviceOver };
+  return readings;
+}
+
+export function parseCall(text: string): ParsedCall {
+  const { list, serviceOver } = tokens(text);
+  const readings = readingsOf(list);
+  // Nothing as written: try the digits as glued ("10" for "one zero").
+  return { readings: readings.length > 0 ? readings : readingsOf(tokens(text, true).list), serviceOver };
 }
 
 function spoken(r: Reading): Heard {
