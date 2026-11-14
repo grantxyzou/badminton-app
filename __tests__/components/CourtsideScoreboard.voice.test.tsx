@@ -104,7 +104,9 @@ describe('CourtsideScoreboard voice (Preview)', () => {
     expect(rec.started).toBe(true);
     expect(rec.continuous).toBe(true);
     expect(rec.lang).toBe('en-US');
-    expect(screen.getByText("Listening. Call the score, server's first.")).toBeTruthy();
+    expect(screen.getByText('Listening…')).toBeTruthy();
+    // At love all either side's first point is "1 0".
+    expect(screen.getByTestId('voice-hint').textContent).toBe('If A side wins, say “1 0”. If B side wins, say “1 0”.');
 
     // The first rally at love all: the words cannot say who won, so it asks.
     say('one love');
@@ -197,6 +199,16 @@ describe('CourtsideScoreboard voice (Preview)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
     say('10');
     expect(screen.getByText('Heard 1–0. Who won the rally?')).toBeTruthy();
+  });
+
+  it('says how to call the score before the mic is on, and the exact next calls while it listens', () => {
+    renderBoard();
+    expect(screen.getByTestId('voice-hint').textContent).toMatch(/winner's points first: “one zero”/);
+    for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: '+1 A side' }));
+    for (let i = 0; i < 2; i++) fireEvent.click(screen.getByRole('button', { name: '+1 B side' }));
+    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    // 3–2: A winning makes it 4 2; B winning makes it 3 all.
+    expect(screen.getByTestId('voice-hint').textContent).toBe('If A side wins, say “4 2”. If B side wins, say “3 all”.');
   });
 
   it('a blocked microphone says so', () => {

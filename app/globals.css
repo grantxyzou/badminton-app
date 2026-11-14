@@ -9139,6 +9139,14 @@ html:root .courtside {
   color: var(--text-secondary);
   min-height: calc(var(--fs-md) * var(--lh-normal));
 }
+/* What to say next: quieter than the status line above it, always under it. */
+.courtside-voice-hint {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  color: var(--text-muted);
+}
 .courtside-voice-ask {
   display: flex;
   flex-direction: column;
