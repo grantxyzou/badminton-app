@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
-import InviteCard from './InviteCard';
+import ClubLinkCard from './ClubLinkCard';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -514,8 +514,8 @@ export default function SessionListCard({ refreshKey = 0, onChanged, run = clubR
           </button>
         </BottomSheetHeader>
         <BottomSheetBody>
-          {/* The club's own invite card: one link, one person, seven days. */}
-          {inviteFor !== null && <InviteCard bare />}
+          {/* The club's link: they sign in, ask, and an organiser lets them in. */}
+          {inviteFor !== null && <ClubLinkCard bare />}
         </BottomSheetBody>
       </BottomSheet>
     </section>

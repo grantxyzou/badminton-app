@@ -1,192 +1,75 @@
 /**
- * WHICH CLUB DOES A BRAND-NEW ACCOUNT BELONG TO?
+ * WHICH CLUB DOES A BRAND-NEW ACCOUNT BELONG TO? None, at first.
  *
- * Both signup terminals — `POST /api/auth/signup` (email + password) and
- * `POST /api/auth/complete-signup` (the Google/Apple new-account finish) —
- * create a `Member` and, with groups on, join it to a group. Both resolved
- * that group with `resolveGroupId(req)`, which answers BPM for a request
- * carrying no claim. That is right for someone signing up at the front door
- * and WRONG for the case this file exists for: a stranger who followed an
- * invite link to another club has no cookie, so they were being written onto
- * BPM's roster on their way to somewhere else. The club they were invited to
- * was then added on top by `POST /api/groups/join`, leaving one person on two
- * rosters, one of which nobody asked for.
+ * Both sign-up terminals, `POST /api/auth/signup` (email and password) and
+ * `POST /api/auth/complete-signup` (the Apple, Google and email-code finish),
+ * ask this before making a `Member`. Since docs/plans/one-way-in.md, step 5,
+ * there are exactly two answers, and neither puts the account on a roster:
  *
- * So the invite travels WITH the signup. One helper and two callers rather
- * than a rule in each, because this repo has been bitten by the other
- * arrangement: `app/api/session/advance/route.ts` kept its own copy of the
- * settings-drift comparisons and a rule added to the shared function never
- * reached the code that runs.
+ * - THROUGH A CLUB'S LINK (`door`). The account is made in no club and asks
+ *   to join this one; only an organiser's yes adds it (`lib/joinRequests.ts`).
+ *   The link arrives as `doorToken`, or as `inviteToken`, the field every
+ *   sign-up form sent while one-time invites existed and a club's link shared
+ *   their address (`/bpm/j/<token>`).
+ * - CREATING A CLUB (`noGroup: true`). A real account, deliberately on no
+ *   roster until `POST /api/groups` makes it the new club's organiser.
  *
- * THE CARRIER IS THE REQUEST BODY, on both paths, on purpose. The obvious
- * alternative for OAuth is to park the group server-side the way
- * `HandoffDoc.groupId` does — but that stash is only written when an installed
- * PWA sends `?hr=`, so a plain browser has nowhere to park and the two
- * providers would need different mechanisms. A body field is the same field in
- * both terminals and is testable without an OAuth round trip.
+ * Anything else refuses with the one `invite_not_found`: no link, a link that
+ * does not resolve, a typed invite CODE (one-time invites were retired in step
+ * 5; their codes resolve nothing), or two keys at once. Members only
+ * (docs/plans/members-only.md): without a key, no account, or "a signed-out
+ * visitor sees nothing" would protect nothing.
  *
- * THE THIRD CASE: NO CLUB AT ALL. Someone signing up INSIDE the create-a-group
- * flow is about to make their own club and has no business on anyone else's
- * roster — but with no invite in the body they resolved to BPM and were written
- * onto it, which is the same defect as above arriving through a different door,
- * and the one that would have put every new organiser on BPM's roster by name.
- * `noGroup: true` answers `groupId: null` and the terminals skip the membership
- * write. It is consulted ONLY where there is no invite at all, so an invite
- * always wins and a present-but-invalid one still refuses. Forging it buys
- * nothing: the worst outcome is an account with LESS standing than the default.
+ * THE CARRIER IS THE REQUEST BODY on both paths, on purpose: the OAuth stash is
+ * written only for an installed PWA, so a plain browser would have nowhere to
+ * park a link, and a body field is the same field in both terminals.
  *
- * WHAT `groupId: null` DOES AND DOES NOT BUY. It removes a roster ROW — the
- * membership write — and nothing else. It is not containment: `GET
- * /api/members`, `/api/session` and `/api/players` resolve their group with
- * `resolveGroupId(req)` and gate on no membership at all, so a BPM-claiming
- * cookie with no membership still reads BPM's roster, session and player list.
- * That is not a hole this opened: `resolveGroupId` answers BPM for a request
- * with NO cookie either, so such an account sees exactly what a logged-out tab
- * sees. The honest claim is "no membership, and no more access than a
- * logged-out visitor" — do not upgrade it to "sees nothing".
- *
- * A TOKEN THAT DOES NOT RESOLVE (or is used, or expired) IS A REFUSAL, NOT A FALLBACK. Falling back to
- * `resolveGroupId(req)` on a bad token would re-create the exact defect above,
- * quietly, for the person least able to notice. And the refusal says only
- * `invite_not_found`, matching `resolveInvite`'s one-null-for-everything rule:
- * unknown, retired and closed must stay indistinguishable, or signup becomes an
- * oracle for which clubs exist.
+ * Unknown, retired and closed links stay indistinguishable: the refusal never
+ * says which, or sign-up becomes an oracle for which clubs exist.
  */
 import type { NextRequest } from 'next/server';
-import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
-import { claimInvite, type InviteClaim } from '@/lib/invites';
 import { resolveClaimLink } from '@/lib/claimLinks';
 
-/** The two shapes an invite arrives as, mirroring `POST /api/groups/join`. */
+/** What a sign-up body may carry about where the account is going. */
 export interface InviteFields {
+  /** The club's link, as the forms have always sent it. */
   inviteToken?: unknown;
+  /** A one-time invite's typed code. Retired: present means refused. */
   inviteCode?: unknown;
-  /**
-   * "I am about to create my own club — do not join me to anything."
-   * Honoured only with the flag on and no invite present. See the header.
-   */
+  /** "I am about to create my own club." Honoured only with groups on and no link. */
   noGroup?: unknown;
-  /**
-   * The club's LINK (the door, docs/plans/one-way-in.md step 4): the account
-   * is made in NO club and asks to join this one. Like an invite, it is the
-   * key that lets an account be made at all; unlike one, it admits nobody.
-   */
+  /** The club's link, by its own name (docs/plans/one-way-in.md, step 4). */
   doorToken?: unknown;
 }
 
 export type SignupGroup =
-  /**
-   * An invited signup holds a CLAIM on a one-time invite
-   * (docs/plans/one-time-invites.md): the invite is already consumed, and the
-   * terminal must `finalize` it once the account exists or `release` it on
-   * any refusal after this point, or a sign-up refused for a taken name would
-   * burn the invite.
-   */
-  | { ok: true; groupId: string; invited: true; claim: InviteClaim; door?: undefined }
-  /**
-   * An ordinary front-door signup. `groupId: null` is the create-a-group
-   * case: a real account, deliberately on no roster yet.
-   */
-  | { ok: true; groupId: string | null; invited: false; door?: undefined }
-  /**
-   * Through a club's link: an account on no roster (`groupId: null`), which
-   * the terminal then files as an ask to join `door`. Only an organiser's
-   * approval puts it on the roster.
-   */
-  | { ok: true; groupId: null; invited: false; door: string }
+  /** Through a club's link: an account on no roster that asks to join `door`. */
+  | { ok: true; door: string }
+  /** Creating a club: an account on no roster yet. */
+  | { ok: true; door: null }
   | { ok: false };
 
-/** A trimmed string of a plausible length, or null. Same bounds as join's. */
-function clean(raw: unknown, max: number): string | null {
-  if (typeof raw !== 'string') return null;
-  const trimmed = raw.trim();
-  return trimmed.length >= 1 && trimmed.length <= max ? trimmed : null;
-}
+const present = (v: unknown) => v !== undefined && v !== null;
 
 /**
- * The group a signup should join, given whatever invite the body carried.
- *
- * MEMBERS ONLY (docs/plans/members-only.md; unconditional since 2026-10-17,
- * when `NEXT_PUBLIC_FLAG_MEMBERS_ONLY` retired): a new account must
- * carry a valid invite, on both terminals, whichever way multi-group is set. Without this, "a signed-out
- * visitor sees nothing" protects nothing — anyone could make an account with an
- * email address and be a signed-in member of the only club there is. The one
- * exception is multi-group's `noGroup` (creating your own club): that account
- * joins no roster and the read gate refuses it for BPM, so it buys nothing.
+ * Where a new account is going. `_req` is kept for the callers' shape and for
+ * a future club-scoped rule; nothing here reads the request's own club, which
+ * is exactly the fallback this file exists to refuse.
  */
-export async function signupGroupFor(req: NextRequest, body: InviteFields): Promise<SignupGroup> {
-  const requestGroup = resolveGroupId(req);
+export async function signupGroupFor(_req: NextRequest, body: InviteFields): Promise<SignupGroup> {
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
-
-  // PRESENT-BUT-INVALID IS NOT ABSENT. `clean` answers `null` for both, and
-  // collapsing them here would reinstate the fallback this file exists to
-  // remove: a non-string or over-long `inviteToken` would read as "no invite
-  // was sent" and join the request's own group. That is the unknown-is-not-
-  // known-false rule, and it is the only branch where getting it wrong is
-  // SILENT — the caller asked to join a club and lands somewhere else at 201.
-  //
-  // `undefined` and `null` are the two honest spellings of absent: a client
-  // writing `{ inviteToken: token ?? null }` means "no invite", and refusing
-  // that would break an ordinary front-door signup. Anything else is a client
-  // that meant to send one and sent something unusable.
-  //
-  // THE EMPTY STRING IS DELIBERATELY NOT ABSENT, and the caller is the one that
-  // has to know it (pinned by "refuses an EMPTY-STRING token"). It is the
-  // tempting third spelling — `searchParams.get('join') ?? ''` and an untouched
-  // controlled input both produce it — and forgiving it here would mean this
-  // function could no longer tell a blank invite field from no invite field,
-  // which is the distinction the whole file turns on. A signup form must send
-  // `undefined`, never `''`.
-  const attempted =
-    (body.inviteToken !== undefined && body.inviteToken !== null) ||
-    (body.inviteCode !== undefined && body.inviteCode !== null);
-
-  const token = clean(body.inviteToken, 128);
-  const code = clean(body.inviteCode, 64);
-
-  // The club's link. An invite AND a link is malformed, not a choice to make
-  // for the caller; a link that does not resolve is the one refusal every
-  // other bad key gets. Groups off there is one club and no door to ask at.
-  if (body.doorToken !== undefined && body.doorToken !== null) {
-    if (attempted || !groupsOn) return { ok: false };
-    const door = await resolveClaimLink(body.doorToken);
-    return door ? { ok: true, groupId: null, invited: false, door } : { ok: false };
+  // PRESENT-BUT-INVALID IS NOT ABSENT: a field a client meant to send and sent
+  // unusable (an empty string included) refuses, never falls through to
+  // "no link" and makes an account somewhere it did not ask for.
+  if (present(body.inviteCode)) return { ok: false };
+  const links = [body.doorToken, body.inviteToken].filter(present);
+  if (links.length > 1) return { ok: false };
+  if (links.length === 1) {
+    if (!groupsOn) return { ok: false };
+    const door = await resolveClaimLink(links[0]);
+    return door ? { ok: true, door } : { ok: false };
   }
-  // Both at once is a malformed request, not a choice to make for the caller —
-  // `POST /api/groups/join` refuses the same shape for the same reason.
-  if (token && code) return { ok: false };
-  if (!token && !code) {
-    if (attempted) return { ok: false };
-    // Only here, where there is no invite to honour. An invite always wins,
-    // and a present-but-invalid one has already refused above.
-    if (groupsOn && body.noGroup === true) return { ok: true, groupId: null, invited: false };
-    // Members only: no invite, no account. The same one refusal a bad token
-    // gets, so the answer never says which of the two it was.
-    return { ok: false };
-  }
-
-  // CLAIMED, not merely resolved: the invite is consumed here, atomically, so
-  // two sign-ups on one link cannot both get in. Every refusal below and in
-  // the caller must release it.
-  const claim = token ? await claimInvite(token, 'invite') : await claimInvite(code!, 'code');
-  if (!claim) {
-    // A club's link and a one-time invite share one address (`/bpm/j/<token>`,
-    // docs/plans/door-link.md), so a token that is not an invite may be the
-    // club's link: the door branch above, reached by the field every sign-up
-    // form already sends (docs/plans/one-way-in.md, step 4).
-    if (token && groupsOn) {
-      const door = await resolveClaimLink(token);
-      if (door) return { ok: true, groupId: null, invited: false, door };
-    }
-    return { ok: false };
-  }
-  // With groups OFF there is one club, so an invite is either BPM's or it is
-  // not a usable invite here. Refusing a foreign group's token keeps a leftover
-  // multi-group invite from minting a BPM account.
-  if (!groupsOn && claim.groupId !== requestGroup) {
-    await claim.release();
-    return { ok: false };
-  }
-  return { ok: true, groupId: claim.groupId, invited: true, claim };
+  if (groupsOn && body.noGroup === true) return { ok: true, door: null };
+  return { ok: false };
 }

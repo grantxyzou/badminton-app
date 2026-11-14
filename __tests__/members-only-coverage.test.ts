@@ -119,7 +119,6 @@ const ROUTES: Record<string, Entry> = {
   'sessions/recent': admin(),
   skills: admin(),
   'stringing/stringers': admin(),
-  'groups/invite': admin('isAdminAuthedWithMember'),
   'groups/claim-link': admin('isAdminAuthedWithMember'),
   assessments: owner,
   kudos: owner,

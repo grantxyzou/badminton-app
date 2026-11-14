@@ -15,6 +15,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **Organisers let people in as a Regular or a Drop-in.** A regular gets members-first priority; a drop-in waits behind regulars during that window. Nobody is a regular unless the organiser says so.
 - **Already in one club? Tap another club's link to ask to join it,** under the name you want there.
 - **An account with an email no longer hears "nothing to sign in with"**: the email is a way back in, by code.
+- **Organisers get one "Club link" card in place of "Invite someone".** The link, its QR right on the card, Share, Save poster and New link. Post it anywhere: nobody gets in until an organiser says yes. Creating a club shows its link straight away.
+- **One-time invites and their 8-character codes are gone.** "Join a club" asks for the club's link, and an old code says to ask for the link instead. Any unused invite stopped working with this update.
 - **One way in through a club's link.** "Claim your name" is gone from the club's page: someone already on the list signs in like everyone else, and the organiser joins them to their spot.
 - **"I play here already" no longer gives away who is on a club's list.** Every name now gets the same "Sent. If the club knows that name, an organiser will see it." Before, asking under a name and waiting a few seconds showed whether that name was on the list.
 - **Already on a club's list but never signed in? Come in the same way.** Ask with the name the club knows you by, and the organiser sees "Lin is on your list and has never signed in. Is this them?" Their yes joins your new sign-in to your spot, history and all, and the app switches you in. ("Claim your name" on the club's page still works for now.)

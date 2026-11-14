@@ -41,7 +41,7 @@ import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
-import { resolveInvite } from '@/lib/invites';
+import { resolveClaimLink } from '@/lib/claimLinks';
 import { isFlagOn } from '@/lib/flags';
 
 export const dynamic = 'force-dynamic';
@@ -76,12 +76,12 @@ export async function POST(req: NextRequest) {
   if ((pin && code) || (!pin && !code)) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
-  // The invite this person arrived with, if any: the only thing that names
-  // THEIR club. A signed-out browser carries no club cookie, so
+  // The club's link this person arrived with, if any: the only thing that
+  // names THEIR club. A signed-out browser carries no club cookie, so
   // `resolveGroupId` answers BPM, and the name was looked up on BPM's roster
-  // even when the invite (and the `name_taken` that sent them here) was
-  // another club's. Resolved, never claimed: the sign-up that follows
-  // claims it.
+  // even when the link (and the `name_taken` that sent them here) was another
+  // club's. A typed invite CODE named a one-time invite, retired in
+  // docs/plans/one-way-in.md step 5: it resolves nothing, so it fails.
   const inviteToken = typeof body.inviteToken === 'string' && body.inviteToken.trim() ? body.inviteToken.trim().slice(0, 128) : null;
   const inviteCode = !inviteToken && typeof body.inviteCode === 'string' && body.inviteCode.trim() ? body.inviteCode.trim().slice(0, 64) : null;
   if (pin && !/^[0-9]{4}$/.test(pin)) return FAIL();
@@ -113,12 +113,12 @@ export async function POST(req: NextRequest) {
     // lookup; then a point read for the full document, since this route needs
     // pinHash and recoveryCode. `__tests__/member-resolve-canary.test.ts`
     // enforces the single owner.
-    // With groups off there is one club, and an invite cannot move the lookup.
+    // With groups off there is one club, and a link cannot move the lookup.
     let groupId = resolveGroupId(req);
     if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') && (inviteToken || inviteCode)) {
-      const invited = inviteToken ? await resolveInvite(inviteToken, 'invite') : await resolveInvite(inviteCode!, 'code');
-      // An invite that no longer resolves is the same 401 at the same cost,
-      // never a quiet fall back to BPM's roster.
+      const invited = inviteToken ? await resolveClaimLink(inviteToken) : null;
+      // A link that no longer resolves (or a retired code) is the same 401 at
+      // the same cost, never a quiet fall back to BPM's roster.
       if (!invited) {
         await verifyPin(pin ?? code ?? '', FAKE_HASH);
         return FAIL();

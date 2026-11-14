@@ -32,7 +32,6 @@ import { POST as ASK } from '@/app/api/groups/ask/route';
 import { GET as LIST, POST as DECIDE } from '@/app/api/admin/access-requests/route';
 import { GET as PREVIEW } from '@/app/api/groups/preview/route';
 import { rotateClaimLink } from '@/lib/claimLinks';
-import { mintInvite } from '@/lib/invites';
 
 /**
  * The club's door link (docs/plans/door-link.md), as it stands after step 4d
@@ -98,12 +97,11 @@ const decide = (groupId: string, joinRequestId: string, decision: 'approve' | 'd
   DECIDE(makeRequest('POST', 'http://x/api/admin/access-requests', { joinRequestId, decision }, asAdminOf(groupId)));
 
 describe('the one link', () => {
-  it('previews a door token on the invite path as the door, and an invite as an invite', async () => {
+  it('previews the club link on the one-link path as the door, and nothing else resolves', async () => {
     const door = await PREVIEW(makeRequest('GET', `http://x/api/groups/preview?token=${xToken}`));
     expect(await door.json()).toEqual({ name: 'Six Feathers', kind: 'door' });
-    const invite = (await mintInvite('club-x', ADMIN_MEMBER_ID))!;
-    const inv = await PREVIEW(makeRequest('GET', `http://x/api/groups/preview?token=${invite.token}`));
-    expect(await inv.json()).toEqual({ name: 'Six Feathers', kind: 'invite' });
+    // An old invite's typed code is one more miss (one-way-in step 5).
+    expect((await PREVIEW(makeRequest('GET', 'http://x/api/groups/preview?code=ABCD2345'))).status).toBe(404);
     const miss = await PREVIEW(makeRequest('GET', `http://x/api/groups/preview?token=${'f'.repeat(32)}`));
     expect(miss.status).toBe(404);
   });

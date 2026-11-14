@@ -9,7 +9,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import RosterImportSheet from './RosterImportSheet';
-import ClaimLinkSheet from './ClaimLinkSheet';
+import ClubLinkSheet from './ClubLinkSheet';
 import SettingsList from '@/components/profile/SettingsList';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { fmtShortDate } from '@/lib/fmt';
@@ -534,8 +534,8 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
         <SettingsList
           rows={[
             { icon: 'group_add', label: 'Import a list', meta: 'Paste or CSV', onClick: () => setImportOpen(true) },
-            // How the people on that list get in (docs/plans/claim-your-name.md).
-            { icon: 'link', label: 'Club link', meta: 'For claiming a name', onClick: () => setClaimLinkOpen(true) },
+            // How anyone gets in, the people on that list included (docs/plans/one-way-in.md).
+            { icon: 'link', label: 'Club link', meta: 'How people join', onClick: () => setClaimLinkOpen(true) },
           ]}
         />
       </div>
@@ -1015,7 +1015,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
           setClaimLinkOpen(true);
         }}
       />
-      <ClaimLinkSheet open={claimLinkOpen} onClose={() => setClaimLinkOpen(false)} clubName={currentGroup?.name} />
+      <ClubLinkSheet open={claimLinkOpen} onClose={() => setClaimLinkOpen(false)} clubName={currentGroup?.name} />
 
       <ResetAccessSheet
         open={resetSheet.open}

@@ -14,12 +14,13 @@ import {
   memberCookieValue,
   ADMIN_MEMBER_ID,
 } from './helpers';
-import { mintInvite } from '../lib/invites';
+import { rotateClaimLink } from '../lib/claimLinks';
 import { setPendingSignup, PENDING_COOKIE } from '../lib/pendingSignup';
 
 /**
- * MEMBERS ONLY, PART 2 (docs/plans/members-only.md): an account needs an
- * invite, and a session sign-up needs an account.
+ * MEMBERS ONLY, PART 2 (docs/plans/members-only.md): an account needs a key
+ * (the club's link, or "I am creating a club"; one-time invites until
+ * docs/plans/one-way-in.md, step 5), and a session sign-up needs an account.
  *
  * Grant, 2026-09-13: "People shouldn't be allowed to sign up when they don't
  * have an account." And the reason part 1 alone was not enough: with the
@@ -33,7 +34,6 @@ import { setPendingSignup, PENDING_COOKIE } from '../lib/pendingSignup';
 
 const { POST: signupRoute } = await import('../app/api/auth/signup/route');
 const { POST: completeSignupRoute } = await import('../app/api/auth/complete-signup/route');
-const { GET: inviteRoute } = await import('../app/api/groups/invite/route');
 const { GET: previewRoute } = await import('../app/api/groups/preview/route');
 const { POST: playersPOST } = await import('../app/api/players/route');
 
@@ -97,74 +97,27 @@ afterEach(() => {
   }
 });
 
-describe('a new account needs an invite', () => {
-  it('email sign-up with no invite is refused, and creates nobody', async () => {
-    const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody()));
-    expect(res.status).toBe(404);
-    expect((await res.json()).error).toBe('invite_not_found');
+describe('a new account needs a club link, or a club of its own (one-way-in step 5)', () => {
+  it('with groups off there is no way to make one: no key opens a door that is not there', async () => {
+    for (const over of [{}, { noGroup: true }, { inviteCode: 'ABCD2345' }]) {
+      const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody(over)));
+      expect(res.status).toBe(404);
+      expect((await res.json()).error).toBe('invite_not_found');
+    }
+    expect((await completeSignupRoute(completeReq({ name: 'Carolina' }))).status).toBe(404);
     expect(membersNamed('Carolina')).toEqual([]);
   });
 
-  it('email sign-up with BPM\'s invite LINK creates the account', async () => {
-    const invite = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ inviteToken: invite!.token })));
-    expect(res.status).toBe(201);
-    expect(membersNamed('Carolina')).toHaveLength(1);
-  });
-
-  it('email sign-up with BPM\'s typed CODE creates the account', async () => {
-    const invite = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ inviteCode: invite!.code })));
-    expect(res.status).toBe(201);
-  });
-
-  it('a revoked invite is refused, and so is a used one', async () => {
-    const { revokeInvite } = await import('../lib/invites');
-    const old = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    await revokeInvite('bpm', old!.id);
-    const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ inviteToken: old!.token })));
-    expect(res.status).toBe(404);
-    expect(membersNamed('Carolina')).toEqual([]);
-
-    const once = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    expect((await signupRoute(makeRequest('POST', SIGNUP, signupBody({ inviteToken: once!.token })))).status).toBe(201);
-    const second = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ name: 'Second', email: 'second@example.com', inviteToken: once!.token })));
-    expect(second.status).toBe(404);
-    expect(membersNamed('Second')).toEqual([]);
-  });
-
-  it('with groups off, ANOTHER club\'s invite does not mint a BPM account', async () => {
-    const foreign = await mintInvite('riverside', ADMIN_MEMBER_ID);
-    const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ inviteToken: foreign!.token })));
-    expect(res.status).toBe(404);
-    expect(membersNamed('Carolina')).toEqual([]);
-  });
-
-  it('noGroup does not stand in for an invite while groups are off', async () => {
-    const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ noGroup: true })));
-    expect(res.status).toBe(404);
-  });
-
-  it('the Google/Apple new-account step refuses without an invite', async () => {
-    const res = await completeSignupRoute(completeReq({ name: 'Carolina' }));
-    expect(res.status).toBe(404);
-    expect(membersNamed('Carolina')).toEqual([]);
-  });
-
-  it('the Google/Apple new-account step accepts BPM\'s invite', async () => {
-    const invite = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    const res = await completeSignupRoute(completeReq({ name: 'Carolina', inviteToken: invite!.token }));
-    expect(res.status).toBe(201);
-  });
-
-  describe('with multi-group on as well', () => {
+  describe('with multi-group on', () => {
     beforeEach(() => {
       process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
     });
 
-    it('still refuses an uninvited front-door sign-up', async () => {
-      const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody()));
-      expect(res.status).toBe(404);
+    it('refuses a sign-up with nowhere to go, and a retired invite code', async () => {
+      expect((await signupRoute(makeRequest('POST', SIGNUP, signupBody()))).status).toBe(404);
+      expect((await signupRoute(makeRequest('POST', SIGNUP, signupBody({ noGroup: true, inviteCode: 'ABCD2345' })))).status).toBe(404);
+      expect((await completeSignupRoute(completeReq({ name: 'Carolina' }))).status).toBe(404);
+      expect(membersNamed('Carolina')).toEqual([]);
     });
 
     it('allows creating your OWN club (noGroup), which joins no roster', async () => {
@@ -174,30 +127,21 @@ describe('a new account needs an invite', () => {
       expect(rows).toEqual([]);
     });
 
-    it('an invite to another club joins that club', async () => {
-      const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
-      const res = await signupRoute(makeRequest('POST', SIGNUP, signupBody({ inviteToken: invite!.token })));
+    it('a club link makes a Google/Apple account that asks, and is on no roster until let in', async () => {
+      const link = (await rotateClaimLink('riverside', ADMIN_MEMBER_ID))!.token;
+      const res = await completeSignupRoute(completeReq({ name: 'Carolina', inviteToken: link }));
       expect(res.status).toBe(201);
+      expect((await res.json()).asked).toEqual({ club: 'Riverside Badminton' });
+      const rows = ((getStore()['memberships'] ?? []) as Array<{ name: string }>).filter((m) => m.name === 'Carolina');
+      expect(rows).toEqual([]);
     });
-  });
-});
 
-describe('the invite surfaces exist with only one club', () => {
-  it('the admin can make and list BPM\'s invites', async () => {
-    const { POST: createInvite } = await import('../app/api/groups/invite/route');
-    const made = await createInvite(makeAdminRequest('POST', `${GROUPS}/invite`));
-    expect(made.status).toBe(201);
-    expect((await made.json()).token).toMatch(/^[0-9a-f]{32}$/);
-    const res = await inviteRoute(makeAdminRequest('GET', `${GROUPS}/invite`));
-    expect(res.status).toBe(200);
-    expect((await res.json()).invites).toHaveLength(1);
-  });
-
-  it('a signed-out visitor can preview a valid invite — the club name and nothing else', async () => {
-    const invite = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    const res = await previewRoute(makeRequest('GET', `${GROUPS}/preview?token=${invite!.token}`));
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ name: 'BPM Badminton', kind: 'invite' });
+    it('a signed-out visitor can preview the club link: the club name and nothing else', async () => {
+      const link = (await rotateClaimLink('bpm', ADMIN_MEMBER_ID))!.token;
+      const res = await previewRoute(makeRequest('GET', `${GROUPS}/preview?token=${link}`));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ name: 'BPM Badminton', kind: 'door' });
+    });
   });
 });
 

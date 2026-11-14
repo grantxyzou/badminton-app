@@ -16,7 +16,6 @@ import AskAccessForm, { type AskApproved } from '@/components/auth/AskAccessForm
 import KeepAccountPage from '@/components/auth/KeepAccountPage';
 import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
 import EmailCodeSignInForm from '@/components/auth/EmailCodeSignInForm';
-import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
 import ForgotPasswordSheet from '@/components/auth/ForgotPasswordSheet';
 import ChooseNameSheet from '@/components/auth/ChooseNameSheet';
 import DoorJoinPage from '@/components/onboarding/DoorJoinPage';
@@ -209,7 +208,7 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
       // step still needs it to land on the create form.
       const creating = resume?.intent === 'create';
       if (creating) markOnboardingResume('create');
-      setChooseName({ open: true, invite: { token: resume?.token, code: resume?.code }, noGroup: creating });
+      setChooseName({ open: true, invite: { token: resume?.token }, noGroup: creating });
       strip('authFlow');
     }
     if (params.get('signedIn') === '1') {
@@ -236,36 +235,28 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
       setResetRequest({ token: reset, email: params.get('email') ?? '' });
       strip('reset', 'email');
     }
-    // A club's claim link: someone the organiser put on the roster, asking to
-    // be let in under their own name, or a new person asking to join. A live
-    // credential, so stripped like `join`; it opens the club's ask PAGE. A
-    // signed-in member in no club has an account already — nothing to claim.
-    const claim = params.get('claim');
-    if (claim) {
-      // Signed out: sign in first, then ask (docs/plans/one-way-in.md,
-      // step 4). Signed in with no club: the account asks from the join page.
+    // THE CLUB'S LINK, either way it arrives: `/bpm/j/<token>` redirects to
+    // `?join=`, and a link shared before it carries `?claim=`. Every link is a
+    // club's since one-time invites were retired (docs/plans/one-way-in.md,
+    // step 5). A live credential, so stripped. Signed out, it opens the club's
+    // page (sign in first, then ask); a signed-in member in no club already
+    // has an account, so it asks from the join page.
+    const link = params.get('claim') ?? params.get('join');
+    if (link) {
       if (noClubMode) {
-        setInitialInvite({ token: claim });
+        setInitialInvite({ token: link });
         setView('join');
       } else {
-        setDoorToken(claim);
+        setDoorToken(link);
         setView('door');
       }
-      strip('claim');
-    }
-    const join = params.get('join');
-    if (join) {
-      setInitialInvite({ token: join });
-      // A stranger makes an account with the invite; a no-club member already
-      // has one, so the link goes straight to the join page.
-      setView(noClubMode ? 'join' : 'signup');
-      strip('join');
+      strip('claim', 'join');
     } else if (noClubMode && resume) {
       // Back from the account step (or the name step) of a door, on the far
       // side of the reload — straight to where they were going.
       if (resume.intent === 'create') setView('create');
-      else if (resume.token || resume.code) {
-        setInitialInvite({ token: resume.token, code: resume.code });
+      else if (resume.token) {
+        setInitialInvite({ token: resume.token });
         setView('join');
       }
     }
@@ -418,8 +409,6 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
           />
         ) : view === 'signup' ? (
           <SignUpView
-            authProviders={authProviders}
-            initialInvite={initialInvite}
             onBack={() => {
               clearOnboardingResume();
               setView('welcome');
@@ -427,8 +416,7 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             onLogIn={() => setView('login')}
             onCreate={groupsOn ? () => setView('create') : undefined}
             onDoor={(token) => {
-              // The club's link on the one-link path: not an invite, so the
-              // club's page opens: sign in first, then ask.
+              // The club's page: sign in first, then ask.
               clearOnboardingResume();
               setInitialInvite(null);
               setDoorToken(token);
@@ -458,7 +446,6 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
         onClose={() => setChooseName({ open: false, invite: {}, noGroup: false })}
         sessionId=""
         inviteToken={chooseName.invite.token}
-        inviteCode={chooseName.invite.code}
         noGroup={chooseName.noGroup}
         onReturnCode={(code) => {
           setReturnCode(code);
@@ -764,105 +751,51 @@ function AskAccessPage({ onBack }: { onBack: () => void }) {
 // ── Sign up ────────────────────────────────────────────────────────────────
 
 function SignUpView({
-  authProviders,
-  initialInvite,
   onBack,
   onLogIn,
   onCreate,
   onDoor,
 }: {
-  authProviders: Provider[];
-  initialInvite: Invite | null;
   onBack: () => void;
   onLogIn: () => void;
-  /** Multi-group on: "No invite? Start your own club". Absent, the line only explains. */
+  /** Multi-group on: "Start your own club". Absent, the line only explains. */
   onCreate?: () => void;
-  /** The token turned out to be the club's door link (docs/plans/door-link.md). */
-  onDoor?: (token: string) => void;
+  /** A live club link: open the club's page (sign in first, then ask). */
+  onDoor: (token: string) => void;
 }) {
   const t = useTranslations('signedOut');
   const [entry, setEntry] = useState('');
-  const [found, setFound] = useState<(Invite & { name: string }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const resolvedInitial = useRef(false);
 
-  // A `?join=` landing resolves the club straight away, so the page opens
-  // already naming it instead of asking for what was in the link.
-  useEffect(() => {
-    if (!initialInvite || resolvedInitial.current) return;
-    resolvedInitial.current = true;
-    void resolve(initialInvite);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialInvite]);
-
-  async function resolve(invite: Invite) {
-    if (!invite.token && !invite.code) return;
+  /**
+   * "Join a club" without the link in hand (docs/plans/one-way-in.md, step 5):
+   * the club's link is the only way in, so this page asks for it. A pasted
+   * link opens the club's page; anything else, an old invite's 8-character
+   * code included, is told what to ask for.
+   */
+  async function check() {
+    const { token } = parseInviteInput(entry, window.location.origin);
+    if (!token) {
+      setError(t('signup.needLink'));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const query = invite.token
-        ? `token=${encodeURIComponent(invite.token)}`
-        : `code=${encodeURIComponent(invite.code!)}`;
-      // The ONE club-related read a signed-out visitor may make: the preview
-      // answers a valid invite with the club's name and nothing else.
-      const res = await fetch(`${BASE}/api/groups/preview?${query}`, { cache: 'no-store' });
+      // The ONE club-related read a signed-out visitor may make: the club's
+      // name for a live link, and nothing else.
+      const res = await fetch(`${BASE}/api/groups/preview?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
       if (!res.ok) {
-        // A tapped or pasted LINK that no longer resolves (used, expired,
-        // revoked, or a replaced club link) is not a mistyped code: say so.
-        // The preview's one 404 still cannot tell those cases apart.
-        setError(res.status === 404 ? t(invite.token ? 'signup.linkNotFound' : 'signup.notFound') : t('signup.failed'));
+        setError(res.status === 404 ? t('signup.linkNotFound') : t('signup.failed'));
         return;
       }
-      const data = (await res.json()) as { name: string; kind?: 'invite' | 'door' };
-      if (data.kind === 'door' && invite.token && onDoor) {
-        onDoor(invite.token);
-        return;
-      }
-      setFound({ name: data.name, ...invite });
+      onDoor(token);
     } catch {
       setError(t('signup.failed'));
     } finally {
       setBusy(false);
     }
-  }
-
-  if (found) {
-    return (
-      <div className="animate-fadeIn">
-        <TopBar title={t('signup.accountTitle', { name: found.name })} onBack={() => setFound(null)} backLabel={t('back')} />
-        <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
-          <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('signup.accountBody')}</p>
-
-          <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
-            {authProviders.length > 0 && (
-              <>
-                {/* The invite must survive the trip to Google: the callback
-                    builds its return URL from scratch, so localStorage is the
-                    only thing that comes back. Recorded at the tap. */}
-                <ProviderButtons
-                  mode="signin"
-                  available={authProviders}
-                  onLeave={() => markOnboardingResume('join', found.token, found.code)}
-                />
-                <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                  {t('signup.or')}
-                </p>
-              </>
-            )}
-            <EmailSignUpForm
-              inviteToken={found.token}
-              inviteCode={found.code}
-              onSuccess={({ name }) => setIdentity({ name, sessionId: '' })}
-            />
-          </div>
-
-          <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onLogIn}>
-            {t('signup.haveAccount')}
-          </button>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -871,25 +804,25 @@ function SignUpView({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          // A link or a code out of one box — `lib/parseInviteInput.ts`, shared with `JoinGroupPage`.
-          void resolve(parseInviteInput(entry, window.location.origin));
+          void check();
         }}
         style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}
       >
         <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('signup.body')}</p>
 
         <label style={{ display: 'grid', gap: 'var(--space-2)' }}>
-          <span className="section-label">{t('signup.codeLabel')}</span>
+          <span className="section-label">{t('signup.linkLabel')}</span>
           <input
             type="text"
+            inputMode="url"
             value={entry}
             onChange={(e) => {
               setEntry(e.target.value);
               setError(null);
             }}
-            placeholder={t('signup.codePlaceholder')}
-            aria-label={t('signup.codeLabel')}
-            autoCapitalize="characters"
+            placeholder={t('signup.linkPlaceholder')}
+            aria-label={t('signup.linkLabel')}
+            autoCapitalize="none"
             autoComplete="off"
             spellCheck={false}
           />

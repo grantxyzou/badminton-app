@@ -190,77 +190,55 @@ describe('Log in', () => {
   });
 });
 
-describe('Sign up needs an invite', () => {
-  it('asks for a code when they did not come by the link', () => {
+describe('Join a club needs the club link (one-way-in step 5)', () => {
+  it('asks for the link when they did not come by it, and offers no account form', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
-    expect(screen.getByLabelText('Invite code')).toBeDefined();
+    expect(screen.getByLabelText("Your club's link")).toBeDefined();
     expect(screen.queryByText('stub: email sign-up')).toBeNull();
   });
 
-  it('a typed CODE resolves the club, then the account step carries the code', async () => {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
-    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'ABCD2345' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-
-    expect(await screen.findByText('Join BPM Badminton')).toBeDefined();
-    expect(String(fetchMock.mock.calls[0][0])).toContain('code=ABCD2345');
-    expect(captured.EmailSignUpForm?.inviteCode).toBe('ABCD2345');
-    expect(captured.EmailSignUpForm?.inviteToken).toBeUndefined();
-  });
-
-  it('a pasted LINK is read as a token, not a code', async () => {
+  it('a pasted link opens the club\'s page (sign in first, then ask)', async () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
     const token = 'a1'.repeat(16);
-    fireEvent.change(screen.getByLabelText('Invite code'), {
-      target: { value: `https://bpm.grantzou.com/bpm?join=${token}` },
+    fireEvent.change(screen.getByLabelText("Your club's link"), {
+      target: { value: `https://bpm.grantzou.com/bpm/j/${token}` },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Join BPM Badminton');
-    expect(captured.EmailSignUpForm?.inviteToken).toBe(token);
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    expect(String(fetchMock.mock.calls[0][0])).toContain(`token=${token}`);
   });
 
-  it('an invite that does not resolve says so and goes no further', async () => {
+  it('an old invite code asks for the link, and checks nothing', async () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
-    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'BADCODE1' } });
+    fireEvent.change(screen.getByLabelText("Your club's link"), { target: { value: 'ABCD2345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect((await screen.findByRole('alert')).textContent).toMatch(/That code doesn't work/);
-    expect(screen.queryByText('stub: email sign-up')).toBeNull();
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Paste the whole link/);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(captured.DoorJoinPage).toBeUndefined();
   });
 
-  it('the invite survives the trip to Google', async () => {
+  it('a link that does not resolve says so and goes no further', async () => {
+    fetchMock.mockImplementation(() => json({ error: 'invite_not_found' }, 404));
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
-    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'ABCD2345' } });
+    fireEvent.change(screen.getByLabelText("Your club's link"), { target: { value: 'f'.repeat(32) } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Join BPM Badminton');
-    fireEvent.click(screen.getByText('Continue with Google'));
-    expect(JSON.parse(localStorage.getItem(RESUME_KEY) ?? '{}')).toMatchObject({ intent: 'join', code: 'ABCD2345' });
+    expect((await screen.findByRole('alert')).textContent).toMatch(/That link no longer works/);
+    expect(captured.DoorJoinPage).toBeUndefined();
   });
 });
 
 describe('landings', () => {
-  it('?join= opens Sign up already naming the club, and strips the credential from the URL', async () => {
+  it('?join= (where /bpm/j/<token> lands) opens the club\'s page, and strips the credential from the URL', async () => {
     const token = 'b2'.repeat(16);
     at(`?join=${token}`);
     renderShell();
-    expect(await screen.findByText('Join BPM Badminton')).toBeDefined();
-    expect(captured.EmailSignUpForm?.inviteToken).toBe(token);
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    expect(captured.EmailSignUpForm).toBeUndefined();
     expect(window.location.search).not.toContain('join');
-  });
-
-  it('a ?join= link that no longer resolves says the LINK no longer works, not that a code is wrong', async () => {
-    fetchMock.mockImplementation((input: RequestInfo | URL) =>
-      String(input).includes('/api/groups/preview') ? json({ error: 'invite_not_found' }, 404) : json({}),
-    );
-    at(`?join=${'e5'.repeat(16)}`);
-    renderShell();
-    const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toMatch(/That link no longer works/);
-    expect(alert.textContent).not.toMatch(/code/);
   });
 
   it('?claim= opens the club’s page (sign in first, then ask), and strips the link from the URL', async () => {
@@ -310,12 +288,13 @@ describe('landings', () => {
     expect(JSON.parse(localStorage.getItem('badminton_identity') ?? '{}').name).toBe('Akane Yamaguchi');
   });
 
-  it('a new Google identity gets the name sheet, carrying the invite that rode the excursion', () => {
-    localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', code: 'ABCD2345', at: Date.now() }));
+  it('a new Google identity gets the name sheet, carrying the club link that rode the excursion', () => {
+    localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', token: 'c4'.repeat(16), at: Date.now() }));
     at('?authFlow=name');
     renderShell();
     expect(captured.ChooseNameSheet?.open).toBe(true);
-    expect(captured.ChooseNameSheet?.inviteCode).toBe('ABCD2345');
+    expect(captured.ChooseNameSheet?.inviteToken).toBe('c4'.repeat(16));
+    expect(captured.ChooseNameSheet).not.toHaveProperty('inviteCode');
   });
 
   it('leaves ?tab and ?intent in the URL for the app to act on after signing in', () => {
@@ -387,7 +366,7 @@ describe('multi-group OFF: nothing of this exists', () => {
   it('Sign up explains, and offers no "Start your own club"', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
-    expect(screen.getByText(/No invite\? Ask someone/)).toBeDefined();
+    expect(screen.getByText(/No link\? Ask someone/)).toBeDefined();
     expect(screen.queryByRole('button', { name: /Start your own club/ })).toBeNull();
   });
 
@@ -445,11 +424,11 @@ describe('multi-group ON — a stranger', () => {
   });
 
   it('a join resume still gets the name sheet WITHOUT noGroup', () => {
-    localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', code: 'ABCD2345', at: Date.now() }));
+    localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', token: 'c4'.repeat(16), at: Date.now() }));
     at('?authFlow=name');
     renderShell();
     expect(captured.ChooseNameSheet?.noGroup).toBe(false);
-    expect(captured.ChooseNameSheet?.inviteCode).toBe('ABCD2345');
+    expect(captured.ChooseNameSheet?.inviteToken).toBe('c4'.repeat(16));
   });
 });
 
@@ -461,7 +440,7 @@ describe('multi-group ON — signed in, in no club', () => {
   it('a brand-new organiser gets three doors and no Sign up / Log in, on the welcome stage', async () => {
     renderShell(ORGANISER);
     expect(screen.getByRole('button', { name: 'Create a club' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'I have an invite' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'I have a club link' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Join a club' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Log in' })).toBeNull();

@@ -9,9 +9,9 @@ import {
   getStore,
   makeRequest,
   makeAdminRequest,
+  seedMembership,
   ADMIN_MEMBER_ID,
 } from './helpers';
-import { mintInvite } from '../lib/invites';
 import { POST as signup } from '../app/api/auth/signup/route';
 import { POST as joinSession } from '../app/api/players/route';
 
@@ -38,12 +38,16 @@ beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   await seedTestAdminMember();
-  // Members only: a new account needs an invite, so BPM must exist to mint one.
+  // A new account is made in no club and an organiser lets it in
+  // (docs/plans/one-way-in.md); groups on, as in production.
+  process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
   seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID, name: 'BPM Badminton' });
+  seedMembership('bpm', ADMIN_MEMBER_ID, { role: 'owner' });
   seedPointer('session-2026-09-03');
   seedSession('session-2026-09-03', { signupOpen: true, maxPlayers: 12 });
 });
 afterEach(() => {
+  delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
 });
 
 /** Every member but the seeded test admin. */
@@ -53,16 +57,19 @@ function members() {
   );
 }
 
+/** Carolina makes an account, and the organiser lets her into BPM. */
 async function signupCarolina() {
-  const invite = await mintInvite('bpm', ADMIN_MEMBER_ID);
-  return signup(
+  const res = await signup(
     makeRequest('POST', SIGNUP, {
       name: 'Carolina',
       email: 'carolina@example.com',
       password: 'a good long password',
-      inviteToken: invite!.token,
+      noGroup: true,
     }),
   );
+  const made = members().find((m) => m.name === 'Carolina');
+  if (made) seedMembership('bpm', made.id, { name: 'Carolina' });
+  return res;
 }
 
 /** The `member_session` cookie a sign-up response set, as a Cookie header. */

@@ -53,8 +53,6 @@ describe('JoinGroupPage — links that cannot take you in', () => {
     expect(await screen.findByText('Asked to join Six Feathers')).toBeDefined();
     const ask = fetchMock.mock.calls.find(([u]) => String(u).includes('/api/groups/ask'))!;
     expect(JSON.parse(String((ask[1] as RequestInit).body))).toEqual({ doorToken: 'a1'.repeat(16), name: 'Lin' });
-    // Never the invite route: a club's link is not a one-time invite.
-    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/groups/join'))).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(onAsked).toHaveBeenCalled();
   });
@@ -70,12 +68,17 @@ describe('JoinGroupPage — links that cannot take you in', () => {
     expect(alert.textContent).not.toMatch(/code/);
   });
 
-  it('an invite link still opens the join step', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) =>
-      String(input).includes('/api/groups/preview') ? json({ name: 'Six Feathers', kind: 'invite' }) : json({}),
-    ));
-    renderWithLink('c3'.repeat(16));
-    expect(await screen.findByRole('button', { name: /Join Six Feathers/ })).toBeDefined();
-    expect(screen.queryByRole('alert')).toBeNull();
+  it('a typed code asks for the link: one-time invites were retired (one-way-in step 5)', async () => {
+    const fetchMock = vi.fn(async () => json({}));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <JoinGroupPage onBack={vi.fn()} sessionId="" defaultName="Lin" />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.change(screen.getByLabelText("The club's link"), { target: { value: 'ABCD2345' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Paste the whole link/);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -12,19 +12,19 @@ import { POST } from '@/app/api/auth/claim-name/route';
 import { setPendingSignup, PENDING_COOKIE } from '../lib/pendingSignup';
 import { lookupIdentity } from '../lib/authIdentity';
 import { hashPin } from '../lib/recoveryHash';
-import { mintInvite, resolveInvite } from '../lib/invites';
+import { rotateClaimLink } from '../lib/claimLinks';
 import { readGroupClaim } from '../lib/auth';
 
 /**
- * "IS THAT YOU?" LOOKS IN THE CLUB THE INVITE IS FOR.
+ * "IS THAT YOU?" LOOKS IN THE CLUB THE LINK IS FOR.
  *
- * A new Google or Apple account following another club's invite hits
- * `name_taken` in THAT club, and the sheet then asks for the existing
- * member's PIN or code. `POST /api/auth/claim-name` looked the name up with
+ * `POST /api/auth/claim-name` links a new Google or Apple sign-in to an
+ * existing member who proves their PIN or code. It looked the name up with
  * `resolveGroupId(req)`, which answers BPM for a signed-out browser, so Lin of
  * Riverside could never prove she was Lin, and a BPM Lin with the same name
- * was the one checked. The invite the person arrived with is the only thing
- * that names their club; it is resolved here, never claimed.
+ * was the one checked. The link the person arrived with is the only thing that
+ * names their club. It was a one-time invite until docs/plans/one-way-in.md,
+ * step 5; it is the club's link now, and an old invite's typed code fails.
  */
 const FLAG = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 const URL_ = 'http://localhost:3000/bpm/api/auth/claim-name';
@@ -80,9 +80,9 @@ afterEach(() => {
   delete process.env[FLAG];
 });
 
-describe('claim-name with an invite', () => {
+describe('claim-name with the club link', () => {
   it("finds the name on the invited club's roster and signs in to that club", async () => {
-    const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
+    const invite = await rotateClaimLink('riverside', ADMIN_MEMBER_ID);
     const res = await POST(req({ name: 'Lin', pin: '2468', inviteToken: invite!.token }));
 
     expect(res.status).toBe(200);
@@ -90,18 +90,16 @@ describe('claim-name with an invite', () => {
     expect(sessionClaim(res)).toBe('riverside');
   });
 
-  it('takes the typed invite code too', async () => {
-    const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
-    const res = await POST(req({ name: 'Lin', pin: '2468', inviteCode: invite!.code }));
-
-    expect(res.status).toBe(200);
-    expect(sessionClaim(res)).toBe('riverside');
+  it('refuses a typed invite code: one-time invites were retired', async () => {
+    const res = await POST(req({ name: 'Lin', pin: '2468', inviteCode: 'ABCD2345' }));
+    expect(res.status).toBe(401);
+    expect(await lookupIdentity('google', 'google-sub-lin')).toBeNull();
   });
 
   it('checks the invited club\'s Lin, not a BPM member with the same name', async () => {
     const bpmLin = seedMember('Lin', { pinHash: await hashPin('1357') });
     seedMembership('bpm', bpmLin.id, { name: 'Lin' });
-    const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
+    const invite = await rotateClaimLink('riverside', ADMIN_MEMBER_ID);
 
     // BPM Lin's PIN proves nothing about Riverside's Lin.
     const wrongClub = await POST(req({ name: 'Lin', pin: '1357', inviteToken: invite!.token }));
@@ -111,12 +109,6 @@ describe('claim-name with an invite', () => {
     const right = await POST(req({ name: 'Lin', pin: '2468', inviteToken: invite!.token }));
     expect(right.status).toBe(200);
     expect((await lookupIdentity('google', 'google-sub-lin'))?.memberId).toBe(riversideLin.id);
-  });
-
-  it('leaves the invite unused: the sign-up that follows claims it', async () => {
-    const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
-    await POST(req({ name: 'Lin', pin: '2468', inviteToken: invite!.token }));
-    expect(await resolveInvite(invite!.token, 'invite')).toBe('riverside');
   });
 
   it('refuses an invite that no longer resolves, without falling back to BPM', async () => {
@@ -139,7 +131,7 @@ describe('claim-name with groups off', () => {
   it('ignores the invite: there is one club', async () => {
     delete process.env[FLAG];
     const bpmLin = seedMember('Lin2', { pinHash: await hashPin('1357') });
-    const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
+    const invite = await rotateClaimLink('riverside', ADMIN_MEMBER_ID);
 
     const res = await POST(req({ name: 'Lin2', pin: '1357', inviteToken: invite!.token }));
     expect(res.status).toBe(200);
