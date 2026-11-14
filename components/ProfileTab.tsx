@@ -193,12 +193,16 @@ export default function ProfileTab({
   // opened its page half-way down. The BODY is the scroller (lib/pageScroll.ts).
   // Where the list was is noted while it is on screen, because by the time
   // the view has changed a shorter page has already clamped it.
+  // Only while Profile is the tab on screen: it is kept mounted behind the
+  // others (HomeShell), and a document listener there heard Admin's scroll and
+  // noted it as the list's own (2026-11-13).
+  const listOnScreen = useTabActive();
   const listScroll = useRef(0);
   const shownView = useRef(view);
   useEffect(() => {
-    if (view !== 'root') return;
+    if (view !== 'root' || !listOnScreen) return;
     return onPageScroll(() => { listScroll.current = pageScrollTop(); });
-  }, [view]);
+  }, [view, listOnScreen]);
   useLayoutEffect(() => {
     if (shownView.current === view) return;
     shownView.current = view;
