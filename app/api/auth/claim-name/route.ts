@@ -165,7 +165,8 @@ export async function POST(req: NextRequest) {
     let claimedEmail: string | null = null;
     if (pending.email && pending.emailVerified) {
       const email = normalizeEmail(pending.email);
-      const emailReserved = await reserveIdentity('email', email, member.id);
+      // An email-code sign-in IS this address, reserved just above.
+      const emailReserved = pending.provider === 'email' ? { ok: true } : await reserveIdentity('email', email, member.id);
       if (emailReserved.ok) {
         claimedEmail = email;
         // Release the address this member previously held, if it changed.

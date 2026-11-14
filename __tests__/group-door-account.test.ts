@@ -52,6 +52,8 @@ import {
   ADMIN_MEMBER_ID,
 } from './helpers';
 import { POST as COMPLETE } from '@/app/api/auth/complete-signup/route';
+import { POST as CLAIM_NAME } from '@/app/api/auth/claim-name/route';
+import { hashPin } from '@/lib/recoveryHash';
 import { POST as SIGNUP } from '@/app/api/auth/signup/route';
 import { POST as CODE_START } from '@/app/api/auth/email-code/start/route';
 import { POST as CODE_VERIFY } from '@/app/api/auth/email-code/verify/route';
@@ -346,7 +348,16 @@ describe('an imported name: "This is Lin from your list" (step 4b)', () => {
   });
 
   it('never links to someone who has signed in before', async () => {
-    const { join } = await importedLinAsks({ pinHash: 'x' });
+    // A new account through the link stops at "Is that you?" for such a name
+    // (step 6), so the ask here comes from a member of another club.
+    const lin = seedMember('Lin Dan', { pinHash: 'x' });
+    seedMembership('club-x', lin.id, { name: 'Lin Dan' });
+    const other = seedMember('Lin D');
+    seedMembership('bpm', other.id, { name: 'Lin D' });
+    await ASK(makeRequest('POST', `${BASE}/groups/ask`, { doorToken: door, name: 'Lin Dan' }, { Cookie: `member_session=${memberCookieValue('Lin D', other.id)}` }));
+    const list = await (await LIST(makeRequest('GET', `${BASE}/admin/access-requests`, undefined, asOrganiser))).json();
+    const join = list.joins[0] as { joinRequestId: string; linkTo: string | null; nameTaken: boolean };
+    expect(join.nameTaken).toBe(true);
     expect(join.linkTo).toBeNull();
     const res = await DECIDE(makeRequest('POST', `${BASE}/admin/access-requests`, { joinRequestId: join.joinRequestId, decision: 'link' }, asOrganiser));
     expect(res.status).toBe(409);
@@ -381,5 +392,62 @@ describe('an imported name: "This is Lin from your list" (step 4b)', () => {
     );
     expect(res.status).toBe(404);
     expect(membership('club-y', fresh.id)).toBeUndefined();
+  });
+});
+
+describe('"Is that you?" at the ask (step 6)', () => {
+  async function linWithPin() {
+    const lin = seedMember('Lin Dan', { pinHash: await hashPin('2468') });
+    seedMembership('club-x', lin.id, { name: 'Lin Dan' });
+    return lin;
+  }
+
+  it('a name someone signs in under makes no account and no ask: the name step asks for their PIN', async () => {
+    const lin = await linWithPin();
+    const res = await newAccountThroughDoor('Lin Dan', { sub: 'g-sub-new', email: 'new@example.com' });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'name_taken' });
+    expect(rows('members').filter((m) => m.name === 'Lin Dan').map((m) => m.id)).toEqual([lin.id]);
+    expect(await lookupIdentity('google', 'g-sub-new')).toBeNull();
+    expect(joinRequests('club-x')).toHaveLength(0);
+    expect(pushCalls).toHaveLength(0);
+  });
+
+  it('her PIN connects the new Google sign-in to her, in the club the link names', async () => {
+    const lin = await linWithPin();
+    const cookie = pendingCookie({ sub: 'g-sub-new', email: 'new@example.com' });
+    const res = await CLAIM_NAME(makeRequest('POST', `${BASE}/auth/claim-name`, { name: 'Lin Dan', pin: '2468', inviteToken: door }, { Cookie: cookie }));
+    expect(res.status).toBe(200);
+    expect((await lookupIdentity('google', 'g-sub-new'))?.memberId).toBe(lin.id);
+    const session = cookieOf(res, 'member_session')!;
+    expect(readGroupClaim(decodeURIComponent(session.split('=')[1]))).toBe('club-x');
+  });
+
+  it('an email-code sign-in is connected by address, and the address lands on her', async () => {
+    const lin = await linWithPin();
+    const cookie = pendingCookie({ provider: 'email', sub: 'lin@example.com', email: 'lin@example.com' });
+    const res = await CLAIM_NAME(makeRequest('POST', `${BASE}/auth/claim-name`, { name: 'Lin Dan', pin: '2468', inviteToken: door }, { Cookie: cookie }));
+    expect(res.status).toBe(200);
+    expect((await lookupIdentity('email', 'lin@example.com'))?.memberId).toBe(lin.id);
+    expect(rows('members').find((m) => m.id === lin.id)).toMatchObject({ email: 'lin@example.com', emailVerified: true });
+    expect((rows('members').find((m) => m.id === lin.id) as { linkedProviders?: string[] }).linkedProviders ?? []).not.toContain('email');
+  });
+
+  it('a wrong PIN connects nothing', async () => {
+    await linWithPin();
+    const res = await CLAIM_NAME(
+      makeRequest('POST', `${BASE}/auth/claim-name`, { name: 'Lin Dan', pin: '1111', inviteToken: door }, { Cookie: pendingCookie({ sub: 'g-sub-new' }) }),
+    );
+    expect(res.status).toBe(401);
+    expect(await lookupIdentity('google', 'g-sub-new')).toBeNull();
+  });
+
+  it('a removed member\'s name, or one nobody has signed in under, still goes on to an ask', async () => {
+    const gone = seedMember('Kento Momota', { pinHash: 'x' });
+    seedMembership('club-x', gone.id, { name: 'Kento Momota', status: 'removed' });
+    expect((await newAccountThroughDoor('Kento Momota', { sub: 'g-sub-k', email: 'k@example.com' })).status).toBe(201);
+    const imported = seedMember('Viktor Axelsen');
+    seedMembership('club-x', imported.id, { name: 'Viktor Axelsen' });
+    expect((await newAccountThroughDoor('Viktor Axelsen', { sub: 'g-sub-v', email: 'v@example.com' })).status).toBe(201);
   });
 });

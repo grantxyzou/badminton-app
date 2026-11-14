@@ -145,10 +145,14 @@ describe('Welcome', () => {
 });
 
 describe('Log in', () => {
-  it('offers Google, name-and-PIN, and "I play here already"', () => {
+  it('offers Google and an email code first, name-and-PIN behind "Other ways", and "I play here already"', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
     expect(screen.getByText('Continue with Google')).toBeDefined();
+    // The email code first (docs/plans/one-way-in.md, step 6); the PIN a tap away.
+    expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
+    expect(screen.queryByText('stub: PIN sign-in')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
     expect(screen.getByText('stub: PIN sign-in')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
     // A page, not a sheet (Grant, 2026-11-08): a real person approves it.
@@ -157,7 +161,7 @@ describe('Log in', () => {
     expect(captured.AskAccessForm).not.toHaveProperty('claim');
     // Back goes to Log in, where they came from.
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getByText('stub: PIN sign-in')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
   });
 
   it('prefills "I play here already" with a stale local name', () => {
@@ -168,9 +172,10 @@ describe('Log in', () => {
     expect(captured.AskAccessForm?.initialName).toBe('Viktor');
   });
 
-  it('switches to email, which offers a code first and the password a tap away', () => {
+  it('the email form offers a code first and the password a tap away, and comes back from the PIN', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
     fireEvent.click(screen.getByRole('button', { name: 'Use email instead' }));
     // A code first (docs/plans/one-way-in.md, step 3).
     expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
@@ -183,7 +188,6 @@ describe('Log in', () => {
   it('routes "forgot" on the password route to the password sheet', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use email instead' }));
     fireEvent.click(screen.getByRole('button', { name: 'Use my password instead' }));
     act(() => (captured.EmailSignInForm?.onForgotPassword as () => void)());
     expect(captured.ForgotPasswordSheet?.open).toBe(true);
@@ -316,6 +320,7 @@ describe('signing in hands control to the server', () => {
   it('reloads once an identity is written — any way in', async () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
     fireEvent.click(screen.getByText('stub: PIN sign-in'));
     // jsdom cannot navigate; the reload guard's mark is the observable proof
     // that a reload was attempted.

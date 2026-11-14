@@ -123,6 +123,8 @@ export async function POST(req: NextRequest) {
       emailVerified: false,
       passwordHash: await hashPassword(password),
       emailVerification: verification.record,
+      // In no club until an organiser lets it in or it makes one (step 6's cleanup).
+      noClubSince: new Date().toISOString(),
     };
     await membersContainer.items.create(member);
 

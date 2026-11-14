@@ -15,6 +15,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **Organisers let people in as a Regular or a Drop-in.** A regular gets members-first priority; a drop-in waits behind regulars during that window. Nobody is a regular unless the organiser says so.
 - **Already in one club? Tap another club's link to ask to join it,** under the name you want there.
 - **An account with an email no longer hears "nothing to sign in with"**: the email is a way back in, by code.
+- **Log in starts with an email code.** Apple and Google are still at the top; name and PIN are under "Other ways to log in". Your PIN still works.
+- **Already on the list and signed in before? Your PIN connects a new sign-in.** Through the club's link, if your name is taken by you, you're asked "Is that you?": your PIN (or a code from an organiser) joins the new sign-in to your account and you're straight in, with no second account and no waiting.
+- **Accounts that never get into a club are removed after 14 days**, unless they're still waiting on an ask.
 - **Organisers get one "Club link" card in place of "Invite someone".** The link, its QR right on the card, Share, Save poster and New link. Post it anywhere: nobody gets in until an organiser says yes. Creating a club shows its link straight away.
 - **One-time invites and their 8-character codes are gone.** "Join a club" asks for the club's link, and an old code says to ask for the link instead. Any unused invite stopped working with this update.
 - **One way in through a club's link.** "Claim your name" is gone from the club's page: someone already on the list signs in like everyone else, and the organiser joins them to their spot.

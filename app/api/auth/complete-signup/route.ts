@@ -22,7 +22,8 @@ import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 import { signupGroupFor } from '@/lib/inviteSignup';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
-import { readGroup } from '@/lib/groups';
+import { readGroup, rosterNameHolder } from '@/lib/groups';
+import { isUnclaimed } from '@/lib/claimLinks';
 import { addAccountJoinRequest } from '@/lib/joinRequests';
 import { notifyOrganisersOfJoinRequest } from '@/lib/joinNotify';
 
@@ -96,6 +97,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
   }
 
+  /*
+   * "IS THAT YOU?" AT THE ASK (docs/plans/one-way-in.md, step 6). Through a
+   * club's link, a name someone on that club's list already SIGNS IN under is
+   * almost always that person on a new phone or a new sign-in. Making a second
+   * account for them would only reach the organiser as "that name is taken".
+   * So nothing is made: `name_taken`, and the name step asks for their PIN or
+   * an organiser's code (`POST /api/auth/claim-name`, which links this sign-in
+   * to them). A name held by someone who has NEVER signed in goes on to an ask
+   * as before; the organiser links the two at approval (step 4b).
+   *
+   * It says one thing, to someone holding the club's link who has just signed
+   * in: that the club has a member by that name who can sign in. The roster
+   * shows the same name to every member, and the answer costs a sign-in.
+   */
+  if (where.door) {
+    const holderId = await rosterNameHolder(where.door, name);
+    if (holderId) {
+      const { resource: holder } = await getContainer('members').item(holderId, holderId).read<Member>();
+      if (holder && holder.active === true && !isUnclaimed(holder)) {
+        return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+      }
+    }
+  }
+
   const memberId = `member-${randomBytes(8).toString('hex')}`;
 
   // Reserve the provider identity first, then the email, then write the member
@@ -132,6 +157,8 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       ...(pending.provider === 'email' ? {} : { linkedProviders: [pending.provider] }),
       ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
+      // In no club until an organiser lets it in or it makes one (step 6's cleanup).
+      noClubSince: new Date().toISOString(),
     };
     await getContainer('members').items.create(member);
 

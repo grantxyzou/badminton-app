@@ -2694,7 +2694,7 @@
       "playHereAlready": "I play here already",
       "forgotPassword": "Forgot password?",
       "useEmail": "Use email instead",
-      "usePin": "Use name and PIN instead",
+      "otherWays": "Other ways to log in",
       "newHere": "New here? Join a club"
     },
     "waiting": {

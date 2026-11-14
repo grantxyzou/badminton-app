@@ -107,6 +107,56 @@ describe('DoorJoinPage', () => {
     expect(identities).toEqual([{ name: 'Kento Momota', sessionId: '' }]);
   });
 
+  it('a name someone signs in under asks "Is that you?", and the PIN signs straight in (step 6)', async () => {
+    const calls = stub({
+      '/email-code/start': () => json({ ok: true }),
+      '/email-code/verify': () => json({ signup: true }),
+      '/auth/complete-signup': () => json({ error: 'name_taken' }, 409),
+      '/auth/claim-name': () => json({ ok: true, name: 'Lin Dan' }),
+    });
+    renderPage();
+    await screen.findByText('Join Six Feathers');
+    await proveEmail('lin@example.com');
+    fireEvent.change(screen.getByLabelText('Your name on the list'), { target: { value: 'Lin Dan' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    });
+    expect(screen.getByText('Is that you?')).toBeDefined();
+    expect(screen.getByText(/Someone already plays as Lin Dan/)).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Your 4-digit PIN'), { target: { value: '2468' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: "Yes, that's me" }));
+    });
+    expect(calls.find((c) => c.url.includes('/auth/claim-name'))!.body).toEqual({ name: 'Lin Dan', inviteToken: TOKEN, pin: '2468' });
+    // Already in the club: no ask, straight in.
+    expect(identities).toEqual([{ name: 'Lin Dan', sessionId: '' }]);
+  });
+
+  it('"Is that you?" takes an organiser\'s code instead, and a wrong one says so', async () => {
+    const calls = stub({
+      '/email-code/start': () => json({ ok: true }),
+      '/email-code/verify': () => json({ signup: true }),
+      '/auth/complete-signup': () => json({ error: 'name_taken' }, 409),
+      '/auth/claim-name': () => json({ error: 'Invalid credentials' }, 401),
+    });
+    renderPage();
+    await screen.findByText('Join Six Feathers');
+    await proveEmail('lin@example.com');
+    fireEvent.change(screen.getByLabelText('Your name on the list'), { target: { value: 'Lin Dan' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'No PIN? Ask your admin for a code' }));
+    fireEvent.change(screen.getByLabelText('6-digit code from your admin'), { target: { value: '123456' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: "Yes, that's me" }));
+    });
+    expect(calls.find((c) => c.url.includes('/auth/claim-name'))!.body).toMatchObject({ code: '123456' });
+    expect((await screen.findByRole('alert')).textContent).toMatch(/didn't match/);
+    expect(identities).toHaveLength(0);
+  });
+
   it('a one-word name is a hint first, then goes', async () => {
     const calls = stub({
       '/email-code/start': () => json({ ok: true }),

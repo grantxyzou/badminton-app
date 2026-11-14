@@ -643,7 +643,10 @@ function LogInView({
   onAsk: () => void;
 }) {
   const t = useTranslations('signedOut');
-  const [mode, setMode] = useState<'pin' | 'email'>('pin');
+  // The email code first; name and PIN behind "Other ways to log in"
+  // (docs/plans/one-way-in.md, step 6). PINs keep working for everyone who
+  // has one; nobody new is offered one.
+  const [mode, setMode] = useState<'pin' | 'email'>('email');
   const [forgotOpen, setForgotOpen] = useState(false);
 
   const signedIn = (result: { name: string; token?: string }) =>
@@ -664,7 +667,7 @@ function LogInView({
             </>
           )}
 
-          {/* Keyed wrapper: PIN ↔ email crossfades rather than swapping the
+          {/* Keyed wrapper: email ↔ PIN crossfades rather than swapping the
               form (and the card's height) in one frame. */}
           <div key={mode} className="motion-fade">
             {mode === 'email' ? (
@@ -682,7 +685,7 @@ function LogInView({
               {t('login.playHereAlready')}
             </button>
             <button type="button" className="link-quiet" onClick={() => setMode((m) => (m === 'pin' ? 'email' : 'pin'))}>
-              {mode === 'pin' ? t('login.useEmail') : t('login.usePin')}
+              {mode === 'pin' ? t('login.useEmail') : t('login.otherWays')}
             </button>
           </div>
         </div>

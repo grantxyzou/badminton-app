@@ -680,6 +680,14 @@ export interface Member {
   mergedInto?: string;
   mergedInGroup?: string;
   /**
+   * Made in no club (docs/plans/one-way-in.md, step 6): through a club's link,
+   * where it asks, or inside Create a club. The hourly tick deletes an account
+   * still in no club, with nothing waiting, 14 days after this
+   * (`lib/strayAccounts.ts`); one that got into a club has the mark taken off.
+   * Absent on every account made before step 6, which the sweep never touches.
+   */
+  noClubSince?: string;
+  /**
    * Upgrade-nudge dismissal. Stored on the MEMBER, not localStorage — a
    * per-device dismissal would re-nag the same person on every device they own.
    */

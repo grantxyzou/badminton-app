@@ -2682,7 +2682,7 @@
       "playHereAlready": "我已经在这里打球",
       "forgotPassword": "忘记密码？",
       "useEmail": "改用邮箱",
-      "usePin": "改用名字和 PIN",
+      "otherWays": "其他登录方式",
       "newHere": "第一次来？加入俱乐部"
     },
     "waiting": {
