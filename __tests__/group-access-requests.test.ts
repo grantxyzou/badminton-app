@@ -168,7 +168,9 @@ describe('a signed-out ask carries the club this phone remembers', () => {
       memberId: alphaLin, requestId, decision: 'approve',
     }, { Cookie: adminIn(A) }));
     expect(ok.status).toBe(200);
-    expect(await (await poll('Lin', secret)).json()).toEqual({ status: 'none' });
+    const forgot = await poll('Lin', secret);
+    expect(await forgot.json()).toEqual({ status: 'pending' });
+    expect(forgot.headers.get('set-cookie')).toBeNull();
 
     const claimed = await poll('Lin', secret, A);
     expect(await claimed.json()).toMatchObject({ status: 'approved', name: 'Lin' });

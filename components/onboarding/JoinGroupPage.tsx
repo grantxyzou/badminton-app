@@ -1,92 +1,60 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import TopBar from '@/components/primitives/TopBar';
-import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
-import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
-import EmailSignInForm from '@/components/auth/EmailSignInForm';
-import { setIdentity } from '@/lib/identity';
-import { clearOnboardingResume, markOnboardingResume } from '@/lib/onboardingResume';
 import { parseInviteInput } from '@/lib/parseInviteInput';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
   onBack: () => void;
-  sessionId: string;
-  /** Prefilled from `?join=` when a link brought them here. */
+  /** Kept for callers; joining no longer writes the local identity here. */
+  sessionId?: string;
+  /** Prefilled from `?join=` / `?claim=` when a link brought them here. */
   initialToken?: string | null;
   /** The name this device already goes by. */
   defaultName?: string;
   /** True when the caller is already in another club — changes the copy, not the action. */
   hasOtherGroup?: boolean;
+  /** The account turned out to be in the club already. */
   onJoined?: () => void;
-  /** Server-resolved, so the account step does not paint form-first. */
-  authProviders?: Provider[];
+  /**
+   * After asking (docs/plans/one-way-in.md, step 4): the no-club screen
+   * reloads into its waiting card. Absent, Done goes back.
+   */
+  onAsked?: () => void;
+  /** Kept for callers; a member here is signed in, so there is no account step. */
+  authProviders?: unknown;
 }
 
 /**
- * The "Join with a link or code" door, as a PAGE. See `CreateGroupPage` for why
- * these stopped being bottom sheets.
+ * "Join another club" for a signed-in member, as a PAGE (see `CreateGroupPage`
+ * for why these stopped being bottom sheets).
  *
- * TWO STEPS WITH REAL NAVIGATION BETWEEN THEM, which is most of the reason a
- * sheet was the wrong container. Back from the confirm step returns to the
- * entry field rather than throwing the whole flow away — a sheet's only
- * gesture is dismiss, so a mistyped code used to cost you the screen.
+ * The club's LINK is the only way into a club (docs/plans/one-way-in.md, step
+ * 5): paste it, or arrive with it, and the page names the club
+ * (`GET /api/groups/preview`, which returns the name and nothing else). The
+ * member gives the name this club will see and ASKS (`POST /api/groups/ask`);
+ * an organiser lets them in and they hear it by email and push. Until step 5
+ * a one-time invite or its typed code joined at once from here, and a
+ * signed-out person was offered an account step; both are gone.
  *
- * IT CONFIRMS BEFORE IT JOINS, even when a link brought the person straight
- * here. Joining puts your name on somebody else's roster, and the club sees it;
- * that is not a thing to do to someone because they tapped a URL in a group
- * chat. The link resolves to a NAME first (`GET /api/groups/preview`, the one
- * unauthenticated route, which returns the club's name and nothing else), and
- * the join waits for a deliberate second tap.
- *
- * ALREADY IN ANOTHER CLUB? It joins and switches, and says so. Both memberships
- * stay; "Your groups" on Profile is the way back. Refusing would be worse —
- * people belong to two clubs, and that is the entire premise here.
- *
- * ONE INPUT FOR BOTH FORMS. A pasted link and a typed code go in the same box
- * and are told apart here, because nobody holding an invite thinks of
- * themselves as holding one of two kinds of invite.
+ * Back from the club step returns to the field rather than leaving: a
+ * mistyped link should not cost the screen.
  */
-export default function JoinGroupPage({
-  onBack,
-  sessionId,
-  initialToken,
-  defaultName,
-  hasOtherGroup,
-  onJoined,
-  authProviders = [],
-}: Props) {
+export default function JoinGroupPage({ onBack, initialToken, defaultName, hasOtherGroup, onJoined, onAsked }: Props) {
   const t = useTranslations('onboarding.join');
-  const tAuth = useTranslations('profile.auth');
   const [entry, setEntry] = useState('');
   const [rosterName, setRosterName] = useState(defaultName ?? '');
-  const [found, setFound] = useState<{ name: string; token?: string; code?: string } | null>(null);
+  const [found, setFound] = useState<{ name: string; token: string } | null>(null);
+  /** Asked to join through a club's link; an organiser decides. */
+  const [asked, setAsked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /**
-   * THE ACCOUNT STEP, reached only by being refused.
-   *
-   * Joining needs an account and the PIN path is invite-list gated, so a
-   * stranger following a club's link cannot get one that way. The page used to
-   * say "sign up on Profile" and offer no way to Profile — accurate, and a dead
-   * end, which is the same shape as a button that does nothing.
-   *
-   * Unlike `CreateGroupPage` this step is NOT entered up front. A join link is
-   * mostly tapped by people who already have accounts, and asking all of them
-   * to prove it first would tax the many for the few. The 401 is the only
-   * authority on which case this is, so it decides.
-   */
-  const [step, setStep] = useState<'form' | 'auth'>('form');
-  const [credMode, setCredMode] = useState<'signup' | 'signin'>('signup');
-  const [mailNote, setMailNote] = useState<string | null>(null);
-  /** Set when the person already tapped Join, so signing in resumes it. */
-  const wantedToJoin = useRef(false);
 
-  // A `?join=` landing resolves the club immediately, so the page opens already
-  // saying whose it is rather than asking for what is in the URL bar.
+  // A link landing resolves the club at once, so the page opens already saying
+  // whose it is rather than asking for what is in the URL bar.
   useEffect(() => {
     if (!initialToken) return;
     void resolve(initialToken);
@@ -94,22 +62,22 @@ export default function JoinGroupPage({
   }, [initialToken]);
 
   async function resolve(raw: string) {
-    // A link or a code, out of one box — `lib/parseInviteInput.ts` tells them apart.
-    const parsed = parseInviteInput(raw, window.location.origin);
-    if (!parsed.token && !parsed.code) return;
+    const { token } = parseInviteInput(raw, window.location.origin);
+    if (!token) {
+      // A typed code named a one-time invite, retired in step 5.
+      setError(t('needLink'));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const query = parsed.token
-        ? `token=${encodeURIComponent(parsed.token)}`
-        : `code=${encodeURIComponent(parsed.code!)}`;
-      const res = await fetch(`${BASE}/api/groups/preview?${query}`, { cache: 'no-store' });
+      const res = await fetch(`${BASE}/api/groups/preview?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
       if (!res.ok) {
-        setError(t('notFound'));
+        setError(res.status === 404 ? t('linkNotFound') : t('failed'));
         return;
       }
       const data = (await res.json()) as { name: string };
-      setFound({ name: data.name, ...parsed });
+      setFound({ name: data.name, token });
     } catch {
       setError(t('failed'));
     } finally {
@@ -117,75 +85,35 @@ export default function JoinGroupPage({
     }
   }
 
-  async function join() {
+  async function askToJoin() {
     if (!found || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${BASE}/api/groups/join`, {
+      const res = await fetch(`${BASE}/api/groups/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...(found.token ? { token: found.token } : { code: found.code }),
-          ...(rosterName.trim() ? { name: rosterName.trim() } : {}),
-        }),
+        body: JSON.stringify({ doorToken: found.token, name: rosterName.trim() }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        // Joining needs an ACCOUNT, and the PIN path is invite-list gated so a
-        // stranger cannot get one that way. The token rides through the signup
-        // terminals, so they do not have to come back and re-open the link.
-        if (res.status === 401) {
-          // Not a failure to report — a step to take. The tap they already made
-          // is remembered and replayed once they have an account.
-          wantedToJoin.current = true;
-          setStep('auth');
-          setError(null);
-          setBusy(false);
-          return;
-        }
-        if (data.error === 'roster_name_taken') setError(t('nameTaken'));
-        else if (data.error === 'invite_not_found') setError(t('notFound'));
-        else setError(t('failed'));
-        setBusy(false);
+      const data = (await res.json().catch(() => ({}))) as { alreadyIn?: boolean };
+      if (res.ok && data.alreadyIn) {
+        onJoined?.();
+        onBack();
         return;
       }
-      setIdentity({ name: data.rosterName ?? rosterName.trim(), sessionId });
-      onJoined?.();
-      onBack();
+      if (res.ok) setAsked(true);
+      else if (res.status === 404) setError(t('linkNotFound'));
+      else if (res.status === 409) setError(t('busy', { name: found.name }));
+      else setError(t('failed'));
     } catch {
       setError(t('failed'));
-      setBusy(false);
     }
+    setBusy(false);
   }
 
-
-  /**
-   * Signed in here. Replays the Join they already tapped rather than making
-   * them tap it twice — the account step was an interruption, not a new intent.
-   */
-  function signedInHere(name: string, verificationSent = true) {
-    setIdentity({ name, sessionId });
-    clearOnboardingResume();
-    if (!verificationSent) setMailNote(tAuth('verifyMailUnsent'));
-    setStep('form');
-    setRosterName((n) => n || name);
-    if (wantedToJoin.current) {
-      wantedToJoin.current = false;
-      void join();
-    }
-  }
-
-  /** Back steps WITHIN the flow before it leaves it — see the header note. */
+  /** Back steps WITHIN the flow before it leaves it. */
   function stepBack() {
-    if (step === 'auth') {
-      // Back out of the account step to the club it was for, not out of the
-      // flow — they still hold an invite and may have an account after all.
-      setStep('form');
-      clearOnboardingResume();
-      return;
-    }
-    if (found) {
+    if (found && !asked) {
       setFound(null);
       setError(null);
       return;
@@ -197,61 +125,25 @@ export default function JoinGroupPage({
     <div className="animate-fadeIn">
       <TopBar
         title={found ? t('foundTitle', { name: found.name }) : t('title')}
-        // The title keeps naming the CLUB across the account step: the goal has
-        // not changed, only the obstacle.
         crumb={t('crumb')}
         onBack={stepBack}
         backLabel={t('backLabel')}
       />
 
       <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
-        {step === 'auth' ? (
-          <div key="auth" className="motion-fade" style={{ display: 'grid', gap: 'var(--space-5)' }}>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>
-              {t('auth.body', { name: found?.name ?? '' })}
+        {found && asked ? (
+          <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-5)' }}>
+            <p className="bpm-h3" role="status" style={{ margin: 0 }}>
+              {t('askedTitle', { name: found.name })}
             </p>
-
-              {/* The token rides through signup, so the account lands in THIS
-                  club rather than on BPM's roster with the real club added on
-                  top. `onLeave` records the flow for the trip to Google. */}
-              <ProviderButtons
-                mode="signin"
-                available={authProviders}
-                onLeave={() => markOnboardingResume('join', found?.token)}
-              />
-
-              {authProviders.length > 0 && (
-                <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                  {t('auth.or')}
-                </p>
-              )}
-
-              {credMode === 'signup' ? (
-                <EmailSignUpForm
-                  inviteToken={found?.token}
-                  onSuccess={({ name: n, verificationSent }) => signedInHere(n, verificationSent)}
-                />
-              ) : (
-                <EmailSignInForm onSuccess={({ name: n }) => signedInHere(n)} />
-              )}
-
-              <button
-                type="button"
-                onClick={() => setCredMode((m) => (m === 'signup' ? 'signin' : 'signup'))}
-                className="link-quiet"
-                style={{ justifySelf: 'center' }}
-              >
-                {credMode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}
-              </button>
+            <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('askedBody')}</p>
+            <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={() => (onAsked ? onAsked() : onBack())}>
+              {t('done')}
+            </button>
           </div>
         ) : found ? (
           <>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('foundHint')}</p>
-            {mailNote && (
-              <p role="status" style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                {mailNote}
-              </p>
-            )}
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('doorHint')}</p>
             {hasOtherGroup && (
               <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>
                 {t('switchNote', { name: found.name })}
@@ -273,16 +165,16 @@ export default function JoinGroupPage({
               />
             </label>
 
-            {error && <p className="field-error">{error}</p>}
+            {error && <p className="field-error" role="alert">{error}</p>}
 
             <button
               type="button"
-              onClick={join}
+              onClick={() => void askToJoin()}
               disabled={busy || !rosterName.trim()}
               className="cc-btn cc-btn-primary cc-btn-lg"
               style={{ width: '100%' }}
             >
-              {busy ? t('joining') : t('confirm', { name: found.name })}
+              {busy ? t('joining') : t('askCta', { name: found.name })}
             </button>
           </>
         ) : (
@@ -299,6 +191,7 @@ export default function JoinGroupPage({
               <span className="section-label">{t('codeLabel')}</span>
               <input
                 type="text"
+                inputMode="url"
                 value={entry}
                 onChange={(e) => {
                   setEntry(e.target.value);
@@ -307,14 +200,14 @@ export default function JoinGroupPage({
                 placeholder={t('codePlaceholder')}
                 maxLength={200}
                 autoFocus
-                autoCapitalize="characters"
+                autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
                 aria-label={t('codeLabel')}
               />
             </label>
 
-            {error && <p className="field-error">{error}</p>}
+            {error && <p className="field-error" role="alert">{error}</p>}
 
             <button
               type="submit"

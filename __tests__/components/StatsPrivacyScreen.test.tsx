@@ -163,6 +163,6 @@ describe('StatsPrivacyScreen', () => {
   it('closes with the note that opting out changes only what YOU see', () => {
     renderScreen();
     expect(screen.getByText(/nothing about your skills was ever shown to them/)).toBeTruthy();
-    expect(screen.getByText(/The group spread stays visible either way/)).toBeTruthy();
+    expect(screen.getByText(/The club spread stays visible either way/)).toBeTruthy();
   });
 });

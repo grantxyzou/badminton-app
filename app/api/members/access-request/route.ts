@@ -14,19 +14,14 @@
  * lib/accessRequest.ts.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { issueAccessRequest, MAX_OPEN_REQUESTS } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { sendPushToMembers } from '@/lib/push';
-import type { Member } from '@/lib/types';
 import { groupIdWithHint } from '@/lib/groupContext';
-import { resolveClaimLink, isUnclaimed } from '@/lib/claimLinks';
 import { rosterMembers } from '@/lib/roster';
-import { addJoinRequest } from '@/lib/joinRequests';
-import { listOrganisers, readGroup, rosterNameHolder } from '@/lib/groups';
-import { isFullName } from '@/lib/fullName';
+import { sealAskSecret } from '@/lib/askSecret';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,69 +40,29 @@ export async function POST(req: NextRequest) {
   if (!name || name.length > 80) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
-  // The club's claim link (docs/plans/claim-your-name.md), when the ask came
-  // through one. Present-but-unusable is NOT absent: an ask that brought a
-  // link it could not use is answered like any other miss below, and never
-  // falls back to the request's own club.
-  const viaLink = body?.claimToken !== undefined && body?.claimToken !== null;
-  // Without a link, the club comes from the cookie's claim, else the phone's
-  // remembered club (`club`, lib/lastClub.ts), else BPM. The asker is signed
-  // out, so the claim is usually absent; before the hint, every other club's
-  // member was looked up on BPM's roster, where a same-named BPM member took
-  // their request. With a hint the name is read in that club ONLY.
+  /*
+   * THE CLUB'S LINK NO LONGER TAKES A NAME (docs/plans/one-way-in.md, step
+   * 4d). Through the link a person signs in first and then asks
+   * (`DoorJoinPage`, `POST /api/groups/ask`), and an imported name is linked
+   * by the organiser at approval (step 4b). A page still open from before
+   * sends `claimToken`: it gets the same sealed answer as every other ask and
+   * nothing is stored, so it waits out its hour and is told it ran out.
+   */
+  if (body?.claimToken !== undefined && body?.claimToken !== null) {
+    return NextResponse.json({ ok: true, secret: sealAskSecret(issueAccessRequest().secret) });
+  }
+  // The club comes from the cookie's claim, else the phone's remembered club
+  // (`club`, lib/lastClub.ts), else BPM. The asker is signed out, so the claim
+  // is usually absent; before the hint, every other club's member was looked
+  // up on BPM's roster, where a same-named BPM member took their request.
+  // With a hint the name is read in that club ONLY.
 
   try {
-    const groupId = viaLink ? await resolveClaimLink(body.claimToken) : groupIdWithHint(req, body?.club);
-    const memberId = groupId ? await resolveActiveMemberId(groupId, name) : null;
-    const { secret, stored } = issueAccessRequest({ groupId: groupId ?? undefined, via: viaLink ? 'link' : undefined });
+    const groupId = groupIdWithHint(req, body?.club);
+    const memberId = await resolveActiveMemberId(groupId, name);
+    const { secret, stored } = issueAccessRequest({ groupId });
 
-    /*
-     * Through the link, only a name nobody has signed into yet can be asked
-     * for (Q2). Anyone holding the club chat holds the link, so letting it
-     * reach an established account would put every member's account one
-     * mistaken tap from a stranger. Someone with a PIN or a password who lost
-     * it recovers through the organiser's recovery code instead. The answer is
-     * the same 200 either way, so the link cannot be used to learn who has a
-     * credential.
-     */
-    let askable = memberId !== null;
-    if (memberId && viaLink) {
-      const { resource } = await getContainer('members').item(memberId, memberId).read<Member>();
-      askable = !!resource && isUnclaimed(resource);
-    }
-
-    /*
-     * THE DOOR (docs/plans/door-link.md): through the link, a name that is not
-     * an unclaimed roster name is a person asking to JOIN. That is a name
-     * nobody on the roster holds, or one a signed-in member already holds (a
-     * new person who happens to share it). It becomes a request on the club,
-     * the organisers are told, and nothing happens until one approves; a
-     * taken name is shown to them as taken, and refused at approval, so the
-     * existing member's account is never touched. The answer is the same 200
-     * with a secret either way, so the link still says nothing about who is
-     * on the roster.
-     */
-    if (viaLink && groupId && !askable) {
-      /*
-       * A NEW person gives a first AND last name (Grant, 2026-11-07), so an
-       * organiser approving from a lock screen knows which Sandra. The sheet
-       * will not send one without it (lib/fullName.ts is shared with it); a
-       * caller that does gets the same 200 as every other miss and nothing is
-       * stored, so the rule cannot be used to learn which names are on the
-       * roster. An imported roster name is claimed as it is written.
-       */
-      if (!isFullName(name)) return NextResponse.json({ ok: true, secret });
-      const joined = await addJoinRequest(groupId, name);
-      if (joined) {
-        await notifyOrganisersOfJoin(groupId, joined.request.id, joined.request.name);
-        return NextResponse.json({ ok: true, secret: joined.secret });
-      }
-      // Full, or the club is gone: a secret that will never be approved, the
-      // same answer as every other miss.
-      return NextResponse.json({ ok: true, secret });
-    }
-
-    if (memberId && askable && groupId) {
+    if (memberId) {
       /**
        * EVERY ASK IS ITS OWN ENTRY. Nobody displaces anybody.
        *
@@ -148,15 +103,9 @@ export async function POST(req: NextRequest) {
          * than stacking another.
          */
         try {
-          // Through the door link only an ORGANISER can let anyone in
-          // (Grant, 2026-11-05), so only organisers are woken for it. An ask
-          // from Log in, by someone who forgot their PIN, still goes to every
-          // admin of the club.
-          const adminIds = viaLink
-            ? (await listOrganisers(groupId)).map((m) => m.memberId)
-            : (await rosterMembers(groupId))
-                .filter(({ member: m }) => m.role === 'admin')
-                .map(({ member: m }) => m.id);
+          const adminIds = (await rosterMembers(groupId))
+            .filter(({ member: m }) => m.role === 'admin')
+            .map(({ member: m }) => m.id);
           if (adminIds.length > 0) {
             await sendPushToMembers(adminIds, {
               title: 'Someone can’t sign in',
@@ -181,35 +130,10 @@ export async function POST(req: NextRequest) {
      * approved, which is the correct outcome arrived at without telling anyone
      * anything.
      */
-    return NextResponse.json({ ok: true, secret });
+    return NextResponse.json({ ok: true, secret: sealAskSecret(secret) });
   } catch (err) {
     console.error('POST /api/members/access-request failed:', err);
     return NextResponse.json({ error: 'request_failed' }, { status: 503 });
   }
 }
 
-/**
- * "Lin is asking to join BPM Core", to the club's organisers only (Grant,
- * 2026-11-05: organisers approve). Best-effort after the request is stored,
- * like every push: the inbox is the record. The name and the club, nothing
- * else (lock-screen rule), and tagged per request so a second tap replaces
- * the banner instead of stacking.
- */
-async function notifyOrganisersOfJoin(groupId: string, requestId: string, name: string): Promise<void> {
-  try {
-    const [organisers, group] = await Promise.all([listOrganisers(groupId), readGroup(groupId)]);
-    const ids = organisers.map((m) => m.memberId);
-    if (ids.length === 0) return;
-    const club = group?.name?.trim() || 'your club';
-    // Taken already (a removed member's name): still asked, so say so up front.
-    const taken = (await rosterNameHolder(groupId, name)) !== null;
-    await sendPushToMembers(ids, {
-      title: 'Someone wants to join',
-      body: taken ? `${name} is asking to join ${club}. That name is taken.` : `${name} is asking to join ${club}.`,
-      url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/?tab=admin`,
-      tag: `join-${requestId}`,
-    });
-  } catch (err) {
-    console.error('join-request push failed:', err);
-  }
-}

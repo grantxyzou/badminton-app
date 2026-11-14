@@ -8,6 +8,42 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Join a club with its link: sign in, ask, and hear back by email (2026-11-13)
+
+- **A club's link now signs you in first, then asks to join.** Tap the link, use Apple, Google or a 6-digit code from your email, type the name the club will see, and ask. No password, and no page to keep open: you can close the app.
+- **"Almost in" shows while you wait,** and moves you into the club by itself once an organiser lets you in. You also get an email (and a notification if you've turned them on).
+- **Organisers let people in as a Regular or a Drop-in.** A regular gets members-first priority; a drop-in waits behind regulars during that window. Nobody is a regular unless the organiser says so.
+- **Already in one club? Tap another club's link to ask to join it,** under the name you want there.
+- **An account with an email no longer hears "nothing to sign in with"**: the email is a way back in, by code.
+- **Log in starts with an email code.** Apple and Google are still at the top; name and PIN are under "Other ways to log in". Your PIN still works.
+- **Already on the list and signed in before? Your PIN connects a new sign-in.** Through the club's link, if your name is taken by you, you're asked "Is that you?": your PIN (or a code from an organiser) joins the new sign-in to your account and you're straight in, with no second account and no waiting.
+- **Accounts that never get into a club are removed after 14 days**, unless they're still waiting on an ask.
+- **Organisers get one "Club link" card in place of "Invite someone".** The link, its QR right on the card, Share, Save poster and New link. Post it anywhere: nobody gets in until an organiser says yes. Creating a club shows its link straight away.
+- **One-time invites and their 8-character codes are gone.** "Join a club" asks for the club's link, and an old code says to ask for the link instead. Any unused invite stopped working with this update.
+- **One way in through a club's link.** "Claim your name" is gone from the club's page: someone already on the list signs in like everyone else, and the organiser joins them to their spot.
+- **"I play here already" no longer gives away who is on a club's list.** Every name now gets the same "Sent. If the club knows that name, an organiser will see it." Before, asking under a name and waiting a few seconds showed whether that name was on the list.
+- **Already on a club's list but never signed in? Come in the same way.** Ask with the name the club knows you by, and the organiser sees "Lin is on your list and has never signed in. Is this them?" Their yes joins your new sign-in to your spot, history and all, and the app switches you in. ("Claim your name" on the club's page still works for now.)
+
+## Log in with a code from your email (2026-11-13)
+
+- **"Use email instead" on Log in now sends you a 6-digit code.** Type it in and you're in: no password to remember or reset. The code is in the email's subject line, works once, and lasts ten minutes. Your password still works, one tap away under "Use my password instead".
+- It works for any account that already has an email address. Making a new account with a code comes with the next step of the joining rework (`docs/plans/one-way-in.md`).
+
+## One word for each idea: "Join a club", and "club" everywhere (2026-11-13)
+
+- **Welcome's first button says "Join a club"**, and so does the invite page; Log in's link says "New here? Join a club". "Sign up" now means one thing in the app: putting yourself on a session's list.
+- **"Group" is "club" on every screen** a member or organiser reads: Create a club, Join a club, Your clubs, the Stats comparisons ("What the club plays") and the admin ledger ("Club outlay"). In Chinese, 群组 became 俱乐部. The legal pages are unchanged.
+
+## Joining: clearer messages, and imported names can claim their spot (2026-11-13)
+
+The first step of making joining simpler (`docs/plans/one-way-in.md`).
+
+- **A one-word name at the club's link is a hint now, not a wall.** Someone the club already knows by one name ("Lin") could not claim their spot through the club's link, because the form demanded a last name. The first tap asks for one; the second sends the name as typed.
+- **"Is that you?" after Google or Apple looks in the right club.** A new account following another club's invite, whose name that club already had, was asked for a PIN that was then checked against BPM Core's roster. It now checks the club the invite is for, and signs them in there.
+- **A link that no longer works says so.** A used or expired link said "That code doesn't work" about a code nobody typed, and a failed sign-up said the invite "has been replaced". Both now say the link no longer works.
+- **"That request expired" said too little.** The same words covered an ask that ran out, one an organiser ignored and one under a name the club doesn't know. They now say no request is open under that name and what to check.
+- **Another club's club link no longer leads to a Join button that always failed** for someone already signed in. It says to ask that club's organiser for an invite link, until joining through a club link with an existing account is built.
+
 ## A swipe back in Admin goes back one page (2026-11-13)
 
 - **Swiping back from an Admin page left Admin altogether.** The console stays loaded, hidden, under every Admin page so Back is instant, and its own top bar ("Back to profile") still answered the swipe. So one swipe from Late cancellations ran two Backs at once, the page's and the console's, and the app swapped from Admin to Profile under your finger (Grant, App Store app). It now goes back one page: Late cancellations → How your club runs → the console. Escape on a keyboard is the same.

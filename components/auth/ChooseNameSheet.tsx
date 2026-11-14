@@ -12,20 +12,13 @@ interface Props {
   onClose: () => void;
   sessionId: string;
 /**
- * The invite this device arrived on, if any.
- *
- * A stranger who taps a club's link has no account yet, and the PIN path is
- * invite-list gated — so email or a provider is how they become one. Both
- * signup terminals join the new account to a club, and without this they join
- * the club `resolveGroupId` resolves (BPM), after which `/api/groups/join`
- * adds the intended one on top and leaves one person on two rosters. Passing
- * the token means the account lands in the club that invited it. Ignored with
- * the flag off; an unresolvable token is refused rather than silently
- * downgraded. See PR #376.
+ * The club's link this device arrived on, if any (docs/plans/one-way-in.md,
+ * steps 4–5). The account is made in no club and asks to join the club the
+ * link names; without it a new account has nowhere to go, and is refused
+ * unless it is creating a club (`noGroup`). An unresolvable link is refused
+ * rather than silently downgraded.
  */
   inviteToken?: string | null;
-  /** The same invite as a typed code; sent only when no token is. */
-  inviteCode?: string | null;
   /**
    * "I am creating my own club — join me to nothing." Sent only when no invite
    * is, the rule `signupGroupFor` applies (an invite always wins). Without it a
@@ -64,7 +57,7 @@ interface Props {
  * signed, HttpOnly cookie the browser cannot read, and both endpoints take it
  * from there — so all that is posted from here is a name and a credential.
  */
-export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken, inviteCode, noGroup, onReturnCode }: Props) {
+export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken, noGroup, onReturnCode }: Props) {
   const t = useTranslations('profile.auth');
   // `close` lives in the recovery namespace; every sheet reuses it.
   const tClose = useTranslations('recovery');
@@ -117,7 +110,6 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
    * to one constant is what stops the two sides drifting apart.
    */
   const sentInvite = typeof inviteToken === 'string' && inviteToken.trim().length > 0;
-  const sentCode = !sentInvite && typeof inviteCode === 'string' && inviteCode.trim().length > 0;
 
   function finish(returnedName: string) {
     // The server already set member_session; mirror the name into localStorage
@@ -139,8 +131,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
         body: JSON.stringify({
           name: name.trim(),
           ...(sentInvite ? { inviteToken } : {}),
-          ...(sentCode ? { inviteCode } : {}),
-          ...(noGroup && !sentInvite && !sentCode ? { noGroup: true } : {}),
+          ...(noGroup && !sentInvite ? { noGroup: true } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -186,6 +177,9 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
         body: JSON.stringify({
           name: name.trim(),
           ...(useCode ? { code: secret.trim() } : { pin: secret.trim() }),
+          // The club the name was taken in, so the server looks there and
+          // not on BPM's roster (a signed-out browser has no club cookie).
+          ...(sentInvite ? { inviteToken } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));

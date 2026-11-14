@@ -47,15 +47,15 @@ describe('GroupsPage', () => {
 
   it('Join and Create are equal settings rows, not a button and a ghost button', () => {
     const props = renderPage([bpm]);
-    const join = screen.getByRole('button', { name: /Join another group/ });
-    const create = screen.getByRole('button', { name: /Create another group/ });
+    const join = screen.getByRole('button', { name: /Join another club/ });
+    const create = screen.getByRole('button', { name: /Create another club/ });
     expect(join.className).not.toMatch(/cc-btn/);
     expect(create.className).not.toMatch(/cc-btn/);
     fireEvent.click(join);
     fireEvent.click(create);
     expect(props.onJoinAnother).toHaveBeenCalledOnce();
     expect(props.onCreateAnother).toHaveBeenCalledOnce();
-    expect(screen.getByText("You're only in one group right now.")).toBeTruthy();
+    expect(screen.getByText("You're only in one club right now.")).toBeTruthy();
   });
 
   it('tapping another club switches to it', async () => {
@@ -68,8 +68,8 @@ describe('GroupsPage', () => {
 
   it('a failed load says so instead of listing nothing', () => {
     renderPage([], { loadError: true });
-    expect(screen.getByText("Couldn't load your groups.")).toBeTruthy();
-    expect(screen.queryByText("You're only in one group right now.")).toBeNull();
+    expect(screen.getByText("Couldn't load your clubs.")).toBeTruthy();
+    expect(screen.queryByText("You're only in one club right now.")).toBeNull();
   });
 
   it('SettingsList has one home, shared by Profile and this page', () => {

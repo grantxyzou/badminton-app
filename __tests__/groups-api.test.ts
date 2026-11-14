@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   resetMockStore,
   getStore,
-  seedDoc,
   setupAdminPin,
   seedTestAdminMember,
   seedGroup,
@@ -13,6 +12,7 @@ import {
   memberCookieValue,
   ADMIN_MEMBER_ID,
 } from './helpers';
+import { rotateClaimLink } from '../lib/claimLinks';
 
 /**
  * The Phase 3 group lifecycle API: create, preview, join, switch, mine,
@@ -34,11 +34,9 @@ const BASE = 'http://localhost:3000/api/groups';
 
 const { POST: createGroupRoute } = await import('../app/api/groups/route');
 const { GET: previewRoute } = await import('../app/api/groups/preview/route');
-const { POST: joinRoute } = await import('../app/api/groups/join/route');
 const { POST: switchRoute } = await import('../app/api/groups/switch/route');
 const { GET: mineRoute } = await import('../app/api/groups/mine/route');
 const { GET: currentRoute } = await import('../app/api/groups/current/route');
-const { GET: inviteRoute, POST: regenerateRoute, DELETE: revokeRoute } = await import('../app/api/groups/invite/route');
 const { PATCH: patchMemberRoute, DELETE: deleteMemberRoute } = await import(
   '../app/api/groups/members/[memberId]/route'
 );
@@ -59,17 +57,17 @@ afterEach(() => {
   delete process.env[FLAG];
 });
 
-/** Create a club through the route, returning its id and first invite. */
+/** Create a club through the route, returning its id and its club link. */
 async function createClub(name: string, owner: { id: string; name: string }) {
   const res = await createGroupRoute(
     makeRequest('POST', BASE, { name }, asMember(owner.name, owner.id)),
   );
   const body = await res.json();
-  return { status: res.status, id: body.group?.id as string, invite: body.invite as { token: string; code: string } };
+  return { status: res.status, id: body.group?.id as string, link: body.link as { token: string } };
 }
 
 describe('POST /api/groups — create a club', () => {
-  it('creates the group, mints an invite, and signs the owner into it', async () => {
+  it('creates the group, makes its club link, and signs the owner into it', async () => {
     const owner = seedMember('Ada');
     const res = await createGroupRoute(
       makeRequest('POST', BASE, { name: 'Tuesday Smash' }, asMember('Ada', owner.id)),
@@ -78,8 +76,10 @@ describe('POST /api/groups — create a club', () => {
     const body = await res.json();
     expect(body.group.name).toBe('Tuesday Smash');
     expect(body.role).toBe('owner');
-    expect(body.invite.token).toMatch(/^[0-9a-f]{32}$/);
-    expect(body.invite.code).toHaveLength(8);
+    // The club's link, ready to share (docs/plans/one-way-in.md, step 5); no
+    // one-time invite and no code.
+    expect(body.link.token).toMatch(/^[0-9a-f]{32}$/);
+    expect(body.invite).toBeUndefined();
 
     // Both cookies are re-minted FOR the new group — that is the switch.
     const cookies = res.headers.get('set-cookie') ?? '';
@@ -109,129 +109,40 @@ describe('POST /api/groups — create a club', () => {
 });
 
 describe('GET /api/groups/preview — the unauthenticated door', () => {
-  it('names the club behind a token, and nothing else about it', async () => {
+  it('names the club behind its link, and nothing else about it', async () => {
     const owner = seedMember('Ada');
-    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
+    const { link } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
     seedMember('Someone');
 
-    const res = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${invite.token}`));
+    const res = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${link.token}`));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ name: 'Tuesday Smash', kind: 'invite' });
-    // Explicit, because this route is reachable by anyone holding a link. The
-    // name, and which kind of link the holder has (docs/plans/door-link.md).
+    expect(body).toEqual({ name: 'Tuesday Smash', kind: 'door' });
+    // Explicit, because this route is reachable by anyone holding a link.
     expect(Object.keys(body).sort()).toEqual(['kind', 'name']);
+    // The same link sent as `?claim=` reads the same.
+    expect(await (await previewRoute(makeRequest('GET', `${BASE}/preview?claim=${link.token}`))).json()).toEqual(body);
   });
 
-  it('accepts a code typed with the wrong case and spacing', async () => {
+  it('answers an unknown link, a replaced one and an old invite code alike', async () => {
+    // A replaced link and a nonsense one must be indistinguishable, or the
+    // preview is an oracle for which links ever existed.
     const owner = seedMember('Ada');
-    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    const messy = `${invite.code.slice(0, 4).toLowerCase()} ${invite.code.slice(4)}`;
+    const { id, link } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
+    await rotateClaimLink(id, owner.id);
 
-    const res = await previewRoute(makeRequest('GET', `${BASE}/preview?code=${encodeURIComponent(messy)}`));
-    expect(res.status).toBe(200);
-    expect((await res.json()).name).toBe('Tuesday Smash');
-  });
-
-  it('answers an unknown token exactly as it answers a USED one', async () => {
-    // One-time invites (docs/plans/one-time-invites.md): a used link and a
-    // nonsense link must be indistinguishable, or the preview is an oracle
-    // for which invites have been redeemed.
-    const owner = seedMember('Ada');
-    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    const joiner = seedMember('Grace');
-    expect((await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)))).status).toBe(200);
-
-    const used = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${invite.token}`));
-    const usedCode = await previewRoute(makeRequest('GET', `${BASE}/preview?code=${invite.code}`));
+    const replaced = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${link.token}`));
+    const code = await previewRoute(makeRequest('GET', `${BASE}/preview?code=ABCD2345`));
     const nonsense = await previewRoute(makeRequest('GET', `${BASE}/preview?token=deadbeef`));
-    expect(used.status).toBe(404);
-    expect(usedCode.status).toBe(404);
+    expect(replaced.status).toBe(404);
+    expect(code.status).toBe(404);
     expect(nonsense.status).toBe(404);
-    expect(await used.json()).toEqual(await nonsense.json());
+    expect(await replaced.json()).toEqual(await nonsense.json());
   });
 
-  it("leaves another club's invite alone when this club revokes one", async () => {
-    const owner = seedMember('Ada');
-    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    // The admin cookie names BPM; revoking there must not reach Ada's club.
-    const mine = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
-    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: mine.id }))).status).toBe(200);
-
-    const theirs = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${invite.token}`));
-    expect(theirs.status).toBe(200);
-    expect((await theirs.json()).name).toBe('Tuesday Smash');
-  });
-
-  it('refuses both parameters at once', async () => {
-    const res = await previewRoute(makeRequest('GET', `${BASE}/preview?token=a&code=b`));
+  it('refuses two parameters at once', async () => {
+    const res = await previewRoute(makeRequest('GET', `${BASE}/preview?token=a&claim=b`));
     expect(res.status).toBe(404);
-  });
-});
-
-describe('POST /api/groups/join', () => {
-  it('adds the caller to the roster and switches them into the club', async () => {
-    const owner = seedMember('Ada');
-    const { id, invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    const joiner = seedMember('Grace');
-
-    const res = await joinRoute(
-      makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)),
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toMatchObject({ id, name: 'Tuesday Smash', role: 'member', joined: true });
-    expect(res.headers.get('set-cookie') ?? '').toContain('member_session=');
-  });
-
-  it('a one-time link is used by the first join; a member already in gets "welcome back" from a FRESH link without burning it', async () => {
-    const owner = seedMember('Ada');
-    const { id, invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    const joiner = seedMember('Grace');
-
-    await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)));
-    // The same link again: it was consumed by the join above.
-    const again = await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)));
-    expect(again.status).toBe(404);
-
-    // A different, live link meant for somebody else: welcome back, and the
-    // link is still live for the person it was made for.
-    const { mintInvite, resolveInvite } = await import('../lib/invites');
-    const spare = (await mintInvite(id, owner.id))!;
-    const back = await joinRoute(makeRequest('POST', `${BASE}/join`, { token: spare.token }, asMember('Grace', joiner.id)));
-    expect(back.status).toBe(200);
-    expect((await back.json()).joined).toBe(false);
-    expect(await resolveInvite(spare.token, 'invite')).toBe(id);
-  });
-
-  it('answers 409 and names the fix when the roster name is taken', async () => {
-    const owner = seedMember('Ada');
-    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    const clash = seedMember('Ada');
-
-    const res = await joinRoute(
-      makeRequest('POST', `${BASE}/join`, { token: invite.token, name: 'ada' }, asMember('Ada', clash.id)),
-    );
-    expect(res.status).toBe(409);
-    const body = await res.json();
-    expect(body.error).toBe('roster_name_taken');
-    expect(body.message).toMatch(/different/i);
-  });
-
-  it('refuses an anonymous caller — an invite admits a known person', async () => {
-    const owner = seedMember('Ada');
-    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    const res = await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }));
-    expect(res.status).toBe(401);
-  });
-
-  it('answers the same 404 as preview for a token that means nothing', async () => {
-    const joiner = seedMember('Grace');
-    const res = await joinRoute(
-      makeRequest('POST', `${BASE}/join`, { token: 'not-a-token' }, asMember('Grace', joiner.id)),
-    );
-    expect(res.status).toBe(404);
-    expect((await res.json()).error).toBe('invite_not_found');
   });
 });
 
@@ -395,75 +306,6 @@ describe('POST /api/groups/switch', () => {
   });
 });
 
-describe('GET|POST|DELETE /api/groups/invite — one-time invites', () => {
-  it('a club with none lists none; nothing is minted by a READ', async () => {
-    const res = await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`));
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ invites: [] });
-  });
-
-  it('POST makes a new one each time, and GET lists them newest first with the secrets', async () => {
-    const a = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
-    const b = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
-    expect(a.token).toMatch(/^[0-9a-f]{32}$/);
-    expect(a.code).toMatch(/^[2-9A-HJ-NP-TV-Z]{8}$/);
-    expect(a.token).not.toBe(b.token);
-    expect(Date.parse(a.expiresAt) - Date.parse(a.createdAt)).toBe(7 * 24 * 60 * 60 * 1000);
-    const list = (await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json()).invites;
-    expect(list.map((i: { token: string }) => i.token)).toEqual([b.token, a.token]);
-    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${a.token}`))).status).toBe(200);
-  });
-
-  it('DELETE revokes one by id; the link and code die, the others stay', async () => {
-    const a = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
-    const b = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
-    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: a.id }))).status).toBe(200);
-    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${a.token}`))).status).toBe(404);
-    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?code=${a.code}`))).status).toBe(404);
-    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${b.token}`))).status).toBe(200);
-    // Gone from the list, and a second revoke is a 404, not an error.
-    const list = (await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json()).invites;
-    expect(list.map((i: { id: string }) => i.id)).toEqual([b.id]);
-    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: a.id }))).status).toBe(404);
-  });
-
-  it('a revoked token stays dead even if its doc survives the delete', async () => {
-    const a = await (await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`))).json();
-    const groups = getStore()['groups'] as Record<string, unknown>[];
-    const oldDoc = groups.find((d) => d.id === a.id);
-    expect(oldDoc).toBeTruthy();
-    await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: a.id }));
-    // Put the doc back, standing in for a delete that 429'd. Retirement must
-    // not depend on that write — the club's list is the authority.
-    seedDoc('groups', { ...(oldDoc as Record<string, unknown>) });
-    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${a.token}`))).status).toBe(404);
-  });
-
-  it('a USED invite leaves the list', async () => {
-    const owner = seedMember('Ada');
-    const { id, invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    const joiner = seedMember('Grace');
-    const { listInvites } = await import('../lib/invites');
-    expect((await listInvites(id)).map((i) => i.token)).toEqual([invite.token]);
-    await joinRoute(makeRequest('POST', `${BASE}/join`, { token: invite.token }, asMember('Grace', joiner.id)));
-    expect(await listInvites(id)).toEqual([]);
-  });
-
-  it('DELETE validates its body', async () => {
-    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, { id: 'nope' }))).status).toBe(400);
-    expect((await revokeRoute(makeAdminRequest('DELETE', `${BASE}/invite`, {}))).status).toBe(400);
-  });
-
-  it('refuses a non-admin on every verb', async () => {
-    const person = seedMember('Grace');
-    seedMembership('bpm', person.id, { name: 'Grace' });
-    const headers = asMember('Grace', person.id);
-    expect((await inviteRoute(makeRequest('GET', `${BASE}/invite`, undefined, headers))).status).toBe(401);
-    expect((await regenerateRoute(makeRequest('POST', `${BASE}/invite`, undefined, headers))).status).toBe(401);
-    expect((await revokeRoute(makeRequest('DELETE', `${BASE}/invite`, { id: 'invite:' + 'a'.repeat(64) }, headers))).status).toBe(401);
-  });
-});
-
 describe('PATCH|DELETE /api/groups/members/[memberId]', () => {
   const params = (memberId: string) => ({ params: Promise.resolve({ memberId }) });
 
@@ -517,8 +359,8 @@ describe('PATCH|DELETE /api/groups/members/[memberId]', () => {
 
     // The freed name is claimable by someone else, which is the point of freeing it.
     const owner = seedMember('Ada');
-    const { invite } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
-    expect(invite.token).toBeTruthy();
+    const { link } = await createClub('Tuesday Smash', { id: owner.id, name: 'Ada' });
+    expect(link.token).toBeTruthy();
   });
 
   it('checks auth before it parses the body (rule 3)', async () => {
@@ -572,15 +414,12 @@ describe('flag off — the whole surface is absent', () => {
     delete process.env[FLAG];
   });
 
-  // The invite surfaces (`invite`, `preview`) are not behind this flag: since
-  // members-only became permanent (2026-10-17) a new account always needs an
-  // invite, so they exist with one club too.
+  // `preview` is not behind this flag: it names the club behind a link.
   it('404s every route', async () => {
     const person = seedMember('Grace');
     const headers = asMember('Grace', person.id);
     const responses = await Promise.all([
       createGroupRoute(makeRequest('POST', BASE, { name: 'Tuesday Smash' }, headers)),
-      joinRoute(makeRequest('POST', `${BASE}/join`, { token: 'whatever' }, headers)),
       switchRoute(makeRequest('POST', `${BASE}/switch`, { groupId: 'other' }, headers)),
       mineRoute(makeRequest('GET', `${BASE}/mine`, undefined, headers)),
       currentRoute(makeRequest('GET', `${BASE}/current`, undefined, headers)),

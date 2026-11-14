@@ -58,12 +58,17 @@ export async function GET(req: NextRequest) {
       .map((i) => i.provider);
 
     const hasPassword = typeof member.passwordHash === 'string' && member.passwordHash.length > 0;
+    // An address reserved for this account can be sent a sign-in code (docs/
+    // plans/one-way-in.md, step 3), so it is a way back in on its own, with or
+    // without a password.
+    const hasEmailCode = identities.some((i) => i.provider === 'email');
     const hasPin = typeof member.pinHash === 'string' && member.pinHash.length > 0;
 
     return NextResponse.json({
       available,
       linked,
       hasPassword,
+      hasEmailCode,
       hasPin,
       // Own record, so the narrow email canary permits returning it.
       email: member.email ?? null,
@@ -71,6 +76,7 @@ export async function GET(req: NextRequest) {
       nudge: shouldNudgeUpgrade({
         hasPin,
         hasPassword,
+        hasEmailCode,
         linkedCount: linked.length,
         dismissedAt: member.authNudge?.dismissedAt ?? null,
       }),

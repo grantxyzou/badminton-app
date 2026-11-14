@@ -226,6 +226,7 @@ const TAB_LABELS: Record<string, string> = { home: 'Home', stringing: 'Stringing
 const VIA_LABELS: Record<string, string> = {
   pin: 'PIN', password: 'password', google: 'Google', apple: 'Apple',
   recovery: 'recovery code', reset: 'password reset', handoff: 'app hand-off', migrate: 'move to the app',
+  email_code: 'email code',
 };
 
 /**

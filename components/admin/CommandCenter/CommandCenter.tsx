@@ -238,7 +238,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
     {
       title: 'People',
       rows: [
-        { icon: 'person_add', label: 'Invite someone', onClick: () => setView('invite'), selected: openView === 'invite' },
+        { icon: 'link', label: 'Club link', onClick: () => setView('invite'), selected: openView === 'invite' },
         // Who has no PIN, password or Google yet; the count is the work.
         { icon: 'key', label: 'Sign-in readiness', meta: lockedTrailing, accent: !!lockedTrailing, onClick: () => setView('sign-in-readiness'), selected: openView === 'sign-in-readiness' },
       ],

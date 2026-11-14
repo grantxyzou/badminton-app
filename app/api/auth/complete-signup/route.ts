@@ -15,17 +15,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { completeSignIn } from '@/lib/authSession';
-import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { reserveIdentity, releaseIdentity } from '@/lib/authIdentity';
 import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 import { signupGroupFor } from '@/lib/inviteSignup';
-import { notifyAdminsOfJoin } from '@/lib/joinNotify';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
-import { rosterNameHolder, addMembership } from '@/lib/groups';
+import { readGroup, rosterNameHolder } from '@/lib/groups';
+import { isUnclaimed } from '@/lib/claimLinks';
+import { addAccountJoinRequest } from '@/lib/joinRequests';
+import { notifyOrganisersOfJoinRequest } from '@/lib/joinNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
   }
 
-  let body: { name?: unknown; inviteToken?: unknown; inviteCode?: unknown };
+  let body: { name?: unknown; inviteToken?: unknown; inviteCode?: unknown; doorToken?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -83,152 +83,148 @@ export async function POST(req: NextRequest) {
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : '';
   if (!name) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
 
-  // A taken name is a REFUSAL with an instruction, not a silent link. Names are
-  // enumerable via GET /api/members, so linking on a name match would be
-  // account takeover by anyone who can read that list.
-  // With groups on the WRITE-side check is the reservation itself — a name a
-  // removed member still holds is not free — and the account that follows is
-  // joined to this group, or nothing could ever resolve it.
-  // An invited signup joins the club the invite names, not the one the request
-  // resolves to — a stranger arriving from a link has no cookie, so this would
-  // otherwise answer BPM and put them on its roster on the way elsewhere. The
-  // token travels in the BODY on both signup terminals; see lib/inviteSignup.ts
-  // for why not the OAuth stash. A token that does not resolve REFUSES.
-  const invited = await signupGroupFor(req, body);
-  if (!invited.ok) {
+  // WHERE: on no roster, whichever way they came (lib/inviteSignup.ts). Through
+  // a club's LINK the account asks to join it below, and only an organiser's
+  // yes adds it; inside "Create a club" (`noGroup`) it waits for
+  // `POST /api/groups`. One-time invites were retired in
+  // docs/plans/one-way-in.md, step 5. Anything else refuses.
+  //
+  // On no roster means no name-taken check (a roster name is unique per CLUB;
+  // a taken name is shown to the organiser at approval) and a cookie claiming
+  // BPM, which `completeSignIn` would fall back to anyway.
+  const where = await signupGroupFor(req, body);
+  if (!where.ok) {
     return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
   }
-  /**
-   * THE INVITE IS ALREADY CONSUMED (docs/plans/one-time-invites.md). Whatever
-   * `finish` answers, the claim is settled afterwards: an account was created
-   * → the invite is finalized against it; anything else — a taken name, a
-   * database error — → it is released so the person can try again.
+
+  /*
+   * "IS THAT YOU?" AT THE ASK (docs/plans/one-way-in.md, step 6). Through a
+   * club's link, a name someone on that club's list already SIGNS IN under is
+   * almost always that person on a new phone or a new sign-in. Making a second
+   * account for them would only reach the organiser as "that name is taken".
+   * So nothing is made: `name_taken`, and the name step asks for their PIN or
+   * an organiser's code (`POST /api/auth/claim-name`, which links this sign-in
+   * to them). A name held by someone who has NEVER signed in goes on to an ask
+   * as before; the organiser links the two at approval (step 4b).
+   *
+   * It says one thing, to someone holding the club's link who has just signed
+   * in: that the club has a member by that name who can sign in. The roster
+   * shows the same name to every member, and the answer costs a sign-in.
    */
-  const claim = invited.invited ? invited.claim : null;
-  let createdId: string | null = null;
-  const finish = async (): Promise<NextResponse> => {
-    const signupGroupId = invited.groupId;
-    // `null` is the create-a-group case: a real account deliberately on no
-    // roster yet (lib/inviteSignup.ts). Three consequences here.
-    //
-    // 1. NO NAME-TAKEN CHECK. A roster name is unique per CLUB, and this account
-    //    is in none — the reservation happens when `createGroup` mints the owner's
-    //    membership, which is the only place that can know the club.
-    // 2. NO MEMBERSHIP WRITE.
-    // 3. The COOKIE still claims BPM, because `completeSignIn` would fall back to
-    //    it anyway: `groupForMember` tolerates a member with no membership and
-    //    never checks BPM itself. Non-admin, and enough for `POST /api/groups`.
-    const joinsAClub = signupGroupId !== null;
-    const cookieGroupId = signupGroupId ?? BPM_GROUP_ID;
-    const taken = !joinsAClub
-      ? false
-      : isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
-      ? (await rosterNameHolder(signupGroupId, name)) !== null
-      : (await resolveActiveMemberId(signupGroupId, name)) !== null;
-    if (taken) {
-      return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+  if (where.door) {
+    const holderId = await rosterNameHolder(where.door, name);
+    if (holderId) {
+      const { resource: holder } = await getContainer('members').item(holderId, holderId).read<Member>();
+      if (holder && holder.active === true && !isUnclaimed(holder)) {
+        return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+      }
     }
+  }
 
-    const memberId = `member-${randomBytes(8).toString('hex')}`;
+  const memberId = `member-${randomBytes(8).toString('hex')}`;
 
-    // Reserve the provider identity first, then the email, then write the member
-    // — releasing everything reserved so far if a later step fails. Same ordering
-    // argument as /api/auth/signup: a reservation with no member blocks one key
-    // and belongs to nobody, whereas a member with an unreserved key can have it
-    // stolen by the next signup.
-    const reservedProvider = await reserveIdentity(pending.provider, pending.sub, memberId);
-    if (!reservedProvider.ok) {
-      return NextResponse.json({ error: 'already_linked' }, { status: 409 });
+  // Reserve the provider identity first, then the email, then write the member
+  // — releasing everything reserved so far if a later step fails. Same ordering
+  // argument as /api/auth/signup: a reservation with no member blocks one key
+  // and belongs to nobody, whereas a member with an unreserved key can have it
+  // stolen by the next signup.
+  const reservedProvider = await reserveIdentity(pending.provider, pending.sub, memberId);
+  if (!reservedProvider.ok) {
+    return NextResponse.json({ error: 'already_linked' }, { status: 409 });
+  }
+
+  // Only claim the address when the provider verified it. An unverified address
+  // must not reserve `email:<addr>`, or a provider account with an arbitrary
+  // unconfirmed address could squat the real owner's future signup.
+  const claimEmail = pending.email && pending.emailVerified ? pending.email : null;
+  // An email-proven identity IS the address: reserving it again would 409
+  // against itself.
+  if (claimEmail && pending.provider !== 'email') {
+    const reservedEmail = await reserveIdentity('email', claimEmail, memberId);
+    if (!reservedEmail.ok) {
+      await releaseIdentity(pending.provider, pending.sub);
+      return NextResponse.json({ error: 'email_taken' }, { status: 409 });
     }
+  }
 
-    // Only claim the address when the provider verified it. An unverified address
-    // must not reserve `email:<addr>`, or a provider account with an arbitrary
-    // unconfirmed address could squat the real owner's future signup.
-    const claimEmail = pending.email && pending.emailVerified ? pending.email : null;
-    if (claimEmail) {
-      const reservedEmail = await reserveIdentity('email', claimEmail, memberId);
-      if (!reservedEmail.ok) {
-        await releaseIdentity(pending.provider, pending.sub);
-        return NextResponse.json({ error: 'email_taken' }, { status: 409 });
+  try {
+    const member: Member = {
+      id: memberId,
+      name,
+      role: 'member',
+      sessionCount: 0,
+      active: true,
+      createdAt: new Date().toISOString(),
+      ...(pending.provider === 'email' ? {} : { linkedProviders: [pending.provider] }),
+      ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
+      // In no club until an organiser lets it in or it makes one (step 6's cleanup).
+      noClubSince: new Date().toISOString(),
+    };
+    await getContainer('members').items.create(member);
+
+    // Through a club's LINK (docs/plans/one-way-in.md, step 4): the account
+    // is made in no club, and asks to join this one under the name it gave.
+    // The organiser's yes adds it; until then the page gate shows the
+    // waiting screen. A failed ask leaves a usable account that can ask
+    // again from that screen, so it never fails the sign-up.
+    let asked: { club: string } | null = null;
+    if (where.door) {
+      try {
+        const outcome = await addAccountJoinRequest(where.door, member.id, member.name);
+        if (outcome?.outcome === 'asked') {
+          const club = await readGroup(where.door);
+          asked = { club: club?.name ?? '' };
+          await notifyOrganisersOfJoinRequest(where.door, outcome.request.id, member.name);
+        }
+      } catch (err) {
+        console.error('complete-signup: the join ask failed after the account was made:', err);
       }
     }
 
-    try {
-      const member: Member = {
+    /* The PWA case: this response's cookies are being issued to Safari, so
+       park the member the app can collect instead. Without this a brand-new
+       Google account signs in everywhere EXCEPT the app that started it —
+       the same jar split as the sign-in path, one step later.
+
+       The callback put a ref in the pending cookie only when the stash was
+       genuinely needed (lib/oauthCallback.ts), so this cannot park an ordinary
+       browser's new account for a link's author. A NATIVE stash hands back a
+       return code, which the name sheet forwards home via bpm://auth/return. */
+    let returnCode: string | null = null;
+    if (pending.handoff) {
+      try {
+        returnCode = (await completeHandoff(pending.handoff, memberId))?.returnCode ?? null;
+      } catch (err) {
+        console.error('handoff complete (signup) failed:', err);
+      }
+    }
+
+    const res = NextResponse.json(
+      {
         id: memberId,
         name,
-        role: 'member',
-        sessionCount: 0,
-        active: true,
-        createdAt: new Date().toISOString(),
-        linkedProviders: [pending.provider],
-        ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
-      };
-      await getContainer('members').items.create(member);
-      createdId = member.id;
-      if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
-        if (joinsAClub) {
-          await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
-        }
-      }
-      // Somebody new is in: tell the club's admins (lib/joinNotify.ts).
-      if (joinsAClub && invited.invited) await notifyAdminsOfJoin(signupGroupId, { id: member.id, name: member.name });
-
-      /* The PWA case: this response's cookies are being issued to Safari, so
-         park the member the app can collect instead. Without this a brand-new
-         Google account signs in everywhere EXCEPT the app that started it —
-         the same jar split as the sign-in path, one step later.
-
-         The callback put a ref in the pending cookie only when the stash was
-         genuinely needed (lib/oauthCallback.ts), so this cannot park an ordinary
-         browser's new account for a link's author. A NATIVE stash hands back a
-         return code, which the name sheet forwards home via bpm://auth/return. */
-      let returnCode: string | null = null;
-      if (pending.handoff) {
-        try {
-          returnCode = (await completeHandoff(pending.handoff, memberId))?.returnCode ?? null;
-        } catch (err) {
-          console.error('handoff complete (signup) failed:', err);
-        }
-      }
-
-      const res = NextResponse.json(
-        {
-          id: memberId,
-          name,
-          email: claimEmail,
-          provider: pending.provider,
-          ...(returnCode ? { returnCode } : {}),
-        },
-        { status: 201 },
-      );
-      // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its
-      // clearAdminCookie branch APPENDS raw Set-Cookie headers, and a later
-      // `.set()` re-serializes the whole cookie map and silently drops them --
-      // leaving a stale admin_session alive for a non-admin. Verified, and
-      // pinned by __tests__/auth-cookie-order.test.ts.
-      clearPendingSignup(res);
-      /* Only a browser that STARTED the sign-in holds this cookie: a callback
-         that passed its own state cookie, or the hand-off claim (preimage + code)
-         — lib/authHandoff.ts, guarantee 4. So signing it in is honest. */
-      await completeSignIn(res, member, cookieGroupId, pending.provider);
-      return res;
-    } catch (err) {
-      await releaseIdentity(pending.provider, pending.sub);
-      if (claimEmail) await releaseIdentity('email', claimEmail);
-      console.error('POST /api/auth/complete-signup failed after reservation:', err);
-      return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
-    }
-  };
-  // `finally`, not after: a throw out of `finish` (a lookup before its own
-  // try, a database error) must still settle the claim, or the invite is
-  // lost with nobody told. The review bot caught this on #542.
-  try {
-    return await finish();
-  } finally {
-    if (claim) {
-      if (createdId) await claim.finalize(createdId);
-      else await claim.release();
-    }
+        email: claimEmail,
+        provider: pending.provider,
+        ...(asked ? { asked } : {}),
+        ...(returnCode ? { returnCode } : {}),
+      },
+      { status: 201 },
+    );
+    // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its
+    // clearAdminCookie branch APPENDS raw Set-Cookie headers, and a later
+    // `.set()` re-serializes the whole cookie map and silently drops them --
+    // leaving a stale admin_session alive for a non-admin. Verified, and
+    // pinned by __tests__/auth-cookie-order.test.ts.
+    clearPendingSignup(res);
+    /* Only a browser that STARTED the sign-in holds this cookie: a callback
+       that passed its own state cookie, or the hand-off claim (preimage + code)
+       — lib/authHandoff.ts, guarantee 4. So signing it in is honest. */
+    await completeSignIn(res, member, BPM_GROUP_ID, pending.provider === 'email' ? 'email_code' : pending.provider);
+    return res;
+  } catch (err) {
+    await releaseIdentity(pending.provider, pending.sub);
+    if (claimEmail) await releaseIdentity('email', claimEmail);
+    console.error('POST /api/auth/complete-signup failed after reservation:', err);
+    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 }

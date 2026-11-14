@@ -83,7 +83,7 @@ export const USAGE_TABS = ['home', 'stringing', 'skills', 'profile'] as const;
 /** Where the app was opened: a browser tab, the installed web app, or a store app. */
 export const USAGE_PLATFORMS = ['web', 'installed', 'ios', 'android'] as const;
 /** How a member signed in. `completeSignIn` takes one, so no path can forget it. */
-export const SIGN_IN_VIAS = ['pin', 'password', 'google', 'apple', 'recovery', 'reset', 'handoff', 'migrate'] as const;
+export const SIGN_IN_VIAS = ['pin', 'password', 'google', 'apple', 'recovery', 'reset', 'handoff', 'migrate', 'email_code'] as const;
 export type SignInVia = (typeof SIGN_IN_VIAS)[number];
 
 /**
