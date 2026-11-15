@@ -1,7 +1,7 @@
 # The page scrolls, not the body
 
 **Track:** the native shell (`docs/plans/native-shell.md`): a defect on the App Store app, reported by its owner.
-**Status:** in-flight
+**Status:** shipped 2026-11-14 (#925; the swipe follow-ups #926 and #927 on 2026-11-15, confirmed on the App Store app by Grant)
 **Review on:** 2026-11-29 — since this shipped, has the blank band above the Admin console's first card come back on the App Store app, and has any sheet opened or closed with the page jumping?
 
 ## Problem
