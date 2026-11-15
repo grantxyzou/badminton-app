@@ -2,7 +2,7 @@
 
 **Track:** admin cost-automation (North Star pillar 3) — a late cancel costs the club a court share it already paid for; this gives the admin a record to act on, without moving money.
 **Status:** in-flight
-**Review on:** 2026-11-15 — has any club turned the policy on, and has any admin used the "Late" tag to charge a fee? If neither, the warning is friction nobody is using.
+**Review on:** 2026-12-13 — after Six Feathers' first two Saturdays: did their organiser turn the window on (their rule is "no later than Wednesday at noon"), and was any "Late" tag acted on, in either club? If still neither, the kill criterion stands and the warning comes out.
 
 ## Problem
 
@@ -46,3 +46,11 @@ Four weeks after deploy (2026-11-15): if no club has the policy on, or the clubs
 | The admin page | `components/admin/CommandCenter/LateCancelEditor.tsx`, `components/admin/{types,AdminDashboard}.ts(x)`, `CommandCenter.tsx` |
 | The "Late" tag | `components/admin/CommandCenter/PaymentsCard.tsx` |
 | Tests | `__tests__/cancel-policy.test.ts`, `__tests__/players-late-cancel.test.ts`, `__tests__/admin-settings-late-cancel.test.ts`, `__tests__/components/{HomeTab.lateCancel,LateCancelEditor,PaymentsCard.lateCancel}.test.tsx` |
+
+## Review outcome (2026-11-15)
+
+Grant: **neither**. No club has turned the policy on, and no admin has charged a fee from a "Late" tag.
+
+Read literally, that is the kill criterion. **Carried forward instead, once, because the club the rule exists for has not started.** Six Feathers' own rule is *"remove your name as soon as possible, and no later than Wednesday at noon or you have to pay for your spot"*. `docs/plans/six-feathers-onboarding.md` maps it to this window (`lateCancelHours`, `lib/cancelPolicy.ts`), and its demo seed runs a 72-hour window. BPM Core has never had a late-cancel rule, so its silence says nothing about whether the feature is useful. Taking it out weeks before the one club that asked for it plays its first Saturday would be backwards.
+
+The review moves to 2026-12-13, after Six Feathers' first two Saturdays. If neither club has used it by then, it comes out.

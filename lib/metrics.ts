@@ -2,7 +2,7 @@ import { getContainer, ensureContainer } from './cosmos';
 import { groupScope } from './groupScope';
 import { rosterMembers } from './roster';
 import { USAGE_KINDS, ERROR_KINDS, TIMING_KINDS } from './events';
-import { computeClubMetrics, USAGE_RECORDED_FROM, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
+import { computeClubMetrics, USAGE_RECORDED_FROM, SKILL_SINCE, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
 import { isUnclaimed } from './claimLinks';
 
 /**
@@ -191,6 +191,17 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     orderBy: 'c.receivedAt DESC',
     limit: INBOX_ROWS,
   });
+  // Stats opens since Slice-0's clock, for `skill` (the skill plans' `reach`).
+  // One kind, so the read stays small; re-checked in the math, since the mock
+  // store applies no WHERE.
+  const statsOpenRows = await scope.query<{ memberId?: unknown; name?: unknown; kind?: unknown; at?: unknown; source?: unknown }>('events', {
+    select: 'c.memberId, c.name, c.kind, c.at, c.source',
+    where: 'c.kind = @kind AND c.at >= @since',
+    params: [
+      { name: '@kind', value: 'stats_open' },
+      { name: '@since', value: SKILL_SINCE },
+    ],
+  });
   // PERSON scoped, like push below: one doc per person's bag. Narrowed to the
   // roster inside the math (`countGearSavers`), the same count slice0 makes.
   const { resources: gearRows } = await getContainer('playerGear')
@@ -229,6 +240,7 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
         : [],
     ),
     gear: gearRows,
+    statsOpens: statsOpenRows,
     etransfers: paymentRows.flatMap((r) =>
       typeof r.status === 'string' && typeof r.receivedAt === 'string'
         ? [{ status: r.status, receivedAt: r.receivedAt, ...(typeof r.matchedBy === 'string' ? { matchedBy: r.matchedBy } : {}) }]
