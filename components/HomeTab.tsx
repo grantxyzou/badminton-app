@@ -1098,7 +1098,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 style={{ paddingInline: 0, fontWeight: 600 }}
                 onClick={() => {
                   setKeepOpen(true);
-                  // The BODY scrolls (lib/pageScroll.ts); window.scrollTo moved nothing.
+                  // lib/pageScroll.ts: right whichever element scrolls.
                   scrollPageTo(0);
                 }}
               >

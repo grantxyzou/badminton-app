@@ -547,11 +547,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * at whatever height the last one was left. Not while a sheet holds the
    * page (`useBodyScrollLock` pins `<body>`, and the page then reads 0).
    *
-   * The BODY is the scroller (`lib/pageScroll.ts`): `window.scrollY` reads 0
-   * however far down the page is, `window.scrollTo` moves nothing, and a body
-   * scroll never reaches a `window` listener. This read and wrote the window
-   * until 2026-11-10, so every tab shared one position and the memory was
-   * never written.
+   * Through `lib/pageScroll.ts`, which is right whichever element scrolls.
+   * This read and wrote the window until 2026-11-10, while the BODY scrolled
+   * (`window.scrollY` read 0, a body scroll never reached a `window`
+   * listener), so every tab shared one position and the memory was never
+   * written.
    */
   const scrollByTab = useRef<Partial<Record<Tab, number>>>({});
   const activeTabRef = useRef(activeTab);
