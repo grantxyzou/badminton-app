@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { clubRunOf, type ClubRun } from '@/lib/clubRun';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 
@@ -26,17 +26,23 @@ export function announceClubRun(run: ClubRun) {
  */
 export function useClubRun(): { run: ClubRun; known: boolean } {
   const { group, loading, error } = useCurrentGroup();
-  const [saved, setSaved] = useState<ClubRun | null>(null);
+  // A save belongs to the club it was made in. Kept beside that club's id, it
+  // is never read once the screen shows another club (a switch keeps the
+  // shell mounted, so a bare value outlived the club it described).
+  const [saved, setSaved] = useState<{ groupId: string | null; run: ClubRun } | null>(null);
+  const groupIdRef = useRef<string | null>(null);
+  useEffect(() => { groupIdRef.current = group?.id ?? null; }, [group?.id]);
 
   useEffect(() => {
-    const onChange = (e: Event) => setSaved((e as CustomEvent<ClubRun>).detail);
+    const onChange = (e: Event) => setSaved({ groupId: groupIdRef.current, run: (e as CustomEvent<ClubRun>).detail });
     window.addEventListener(CLUB_RUN_EVENT, onChange);
     return () => window.removeEventListener(CLUB_RUN_EVENT, onChange);
   }, []);
 
+  const mine = saved !== null && saved.groupId === (group?.id ?? null) ? saved.run : null;
   return {
-    run: saved ?? clubRunOf(group?.settings),
-    known: saved !== null || (!loading && !error),
+    run: mine ?? clubRunOf(group?.settings),
+    known: mine !== null || (!loading && !error),
   };
 }
 

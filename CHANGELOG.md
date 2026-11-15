@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Swipe back that works, and the Stringing tab after a club switch (2026-11-15)
+
+- **Swiping back is easier and smoother.** It now counts from a thumb a little in from the edge, at any speed once you've dragged far enough, and with a natural arc. While you drag across, the page holds still instead of scrolling under your finger.
+- **Switching clubs updates the whole app.** After moving from a club with stringing off to one with it on, the Stringing tab could stay hidden until the app restarted. Every screen now re-reads the club you switched to, and a setting saved in one club is never applied to another.
+
 ## The page scrolls the ordinary way (2026-11-15)
 
 - **Admin no longer opens under a screen of blank space.** On the App Store app, the console could open with an empty band above "At a glance" that only went away when you scrolled. The app's pages now scroll the way an ordinary web page does, rather than inside a screen-sized box, which is the path the phone's browser handles best. Nothing about where you are on a page, a sheet holding the page still, or each tab remembering its place changes.
