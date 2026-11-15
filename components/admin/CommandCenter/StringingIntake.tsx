@@ -129,6 +129,10 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
       .slice(0, 4);
   }, [racketLabel, racketIds, rackets.items, theirs]);
   const [stringLabel, setStringLabel] = useState('');
+  /* The player brought the string (docs/plans/string-stock-audit-fixes.md):
+     the job then takes no set off the shelf. Tapping the "Own string" price
+     chip ticks it; tapping a shelf string's price chip unticks it. */
+  const [ownString, setOwnString] = useState(false);
   const theirStrings = useMemo(() => matchingSuggestions(theirs?.strings ?? [], stringLabel), [theirs, stringLabel]);
   const [mains, setMains] = useState(26);
   const [crosses, setCrosses] = useState(28);
@@ -293,6 +297,7 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
             : { memberId: picked!.id, memberName: picked!.name }),
           racketLabel: racketLabel.trim(),
           stringLabel: stringLabel.trim(),
+          ...(ownString ? { ownString: true } : {}),
           tensionMains: mains,
           tensionCrosses: crosses,
           priceCents: priceCents ?? null,
@@ -476,6 +481,10 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
               maxLength={80}
               list="intake-offered-strings"
             />
+            <label className="cc-checkbox" style={{ color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={ownString} onChange={(e) => setOwnString(e.target.checked)} />
+              {t('ownStringToggle')}
+            </label>
             {picked && theirStrings.length > 0 && (
               <div className="flex flex-col gap-2" role="group" aria-label={t('theirStrings', { name: picked.name })}>
                 <span className="section-label-muted">{t('theirStrings', { name: picked.name })}</span>
@@ -563,14 +572,14 @@ export default function StringingIntake({ onBack, onCreated, crumb, recent = [] 
               <span className="section-label-muted">{t('rateCard')}</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                 {shelfLabel && shelfPrices && (
-                  <button type="button" className="bpm-chip" onClick={() => { setPriceTouched(true); setPriceDollars(dollars(shelfPrices[shelfLabel] ?? null)); }}>
+                  <button type="button" className="bpm-chip" onClick={() => { setPriceTouched(true); setOwnString(false); setPriceDollars(dollars(shelfPrices[shelfLabel] ?? null)); }}>
                     <span className="fs-sm">
                       {shelfLabel} · {formatServicePrice(shelfPrices[shelfLabel] ?? null) ?? t('rateCardAsk')}
                     </span>
                   </button>
                 )}
                 {ownCents !== null && (
-                  <button type="button" className="bpm-chip" onClick={() => { setPriceTouched(true); setPriceDollars(dollars(ownCents)); }}>
+                  <button type="button" className="bpm-chip" onClick={() => { setPriceTouched(true); setOwnString(true); setPriceDollars(dollars(ownCents)); }}>
                     <span className="fs-sm">
                       {t('ownString')} · {formatServicePrice(ownCents)}
                     </span>

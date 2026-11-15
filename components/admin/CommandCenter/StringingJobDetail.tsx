@@ -280,6 +280,17 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
     [t('spec.racket'), local.racketLabel],
     ...(holesCell !== null ? [[t('spec.holes'), holesCell] as [string, ReactNode]] : []),
     [t('spec.string'), local.stringColor ? `${local.stringLabel} · ${local.stringColor}` : local.stringLabel],
+    /* Whose string went in: the shelf's count reads it
+       (docs/plans/string-stock-audit-fixes.md). One tap corrects an older
+       job, which carries no marker and counts as the club's. */
+    [t('spec.stringFrom'), (
+      <span key="stringFrom" style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 'var(--space-3)' }}>
+        <span>{local.ownString ? t('spec.fromOwn') : t('spec.fromShelf')}</span>
+        <button type="button" className="setup-link" disabled={busy || !online} onClick={() => patch({ ownString: !local.ownString })}>
+          {local.ownString ? t('spec.markShelf') : t('spec.markOwn')}
+        </button>
+      </span>
+    )],
     [t('spec.tension'), `${local.tensionMains} / ${local.tensionCrosses} lb`],
     [t('spec.method'), local.method],
   ];

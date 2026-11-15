@@ -348,6 +348,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       next.tensionCrosses = crosses;
     }
 
+    /* The player's OWN string, or the club's (docs/plans/string-stock-audit-
+       fixes.md). Admin only: a stringer's body allows `status` alone and was
+       refused above. A correction, not a price — it moves the shelf's count,
+       never anyone's bill, so nobody is asked. Stored as `true` or absent. */
+    if (body.ownString !== undefined) {
+      if (typeof body.ownString !== 'boolean') {
+        return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+      }
+      if (body.ownString) next.ownString = true;
+      else delete next.ownString;
+    }
+
     if (body.paid !== undefined) {
       // Boolean in, timestamp out: "when" is worth keeping and "whether" is
       // recoverable from it, never the other way round.
@@ -477,6 +489,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     // The ledger mirror: a charge while billable, a payment when paid, voids
     // on the way back. `job` is the row before the write.
     await mirrorStringingChanged(scope, job, written);
+    // Marking a job the player's own string hands its set back to the shelf:
+    // players should not read "Out" for another minute.
+    if ((job.ownString === true) !== (next.ownString === true)) forgetShelfExtras(scope.groupId);
 
     /* THE NOTIFICATION SEAM'S ONLY CALLER.
        `lib/stringingNotify.ts` and its adapter shipped with nothing on either

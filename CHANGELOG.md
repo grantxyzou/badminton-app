@@ -8,6 +8,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## String stock you can trust (2026-11-15)
+
+- **A player's own string no longer comes off the club's shelf.** "I have my own" on a request, or "Their own string" when you add a job on the bench, marks the job, and the stock skips it. On any job's page, "String from" says whose string went in, and one tap corrects an older job.
+- **Using more string than you logged is said, not hidden.** A string strung past every metre bought now reads "None left · 3 more used than logged" instead of only "None left", which almost always means a reel was never logged.
+- **The colours never add up to more than the total.** When a colour's reel runs out, the extra sets come out of the untagged ("Mixed") reels, which may well have been that colour, rather than showing stock that isn't there.
+- **One odd purchase no longer sets the price of every set.** The cost per set comes from the latest reel you paid for, so a single retail set or a gifted reel doesn't swing the shelf's cost and margin.
+- **A ticked box in admin is visible in light mode again** (it stayed pale).
+
 ## Swipe back that works, and the Stringing tab after a club switch (2026-11-15)
 
 - **Swiping back is easier and smoother.** It now counts from a thumb a little in from the edge, at any speed once you've dragged far enough, and with a natural arc. While you drag across, the page holds still instead of scrolling under your finger.

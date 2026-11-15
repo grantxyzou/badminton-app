@@ -336,6 +336,8 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
           racketLabel: racketLabel.trim(),
           stringLabel,
           ...(stringColor ? { stringColor } : {}),
+          // Their own string takes no set off the club's shelf.
+          ...(ownString && !mustBeCustom ? { ownString: true } : {}),
           tensionMains: mains,
           tensionCrosses: finalCrosses,
         }),

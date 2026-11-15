@@ -144,6 +144,8 @@ export function toStringerJob(job: StringingJob, opts: { contact?: boolean } = {
     racketLabel: job.racketLabel,
     stringLabel: job.stringLabel,
     ...(job.stringColor ? { stringColor: job.stringColor } : {}),
+    // So the stringer takes the player's string, not one from the reel.
+    ...(job.ownString === true ? { ownString: true } : {}),
     tensionMains: job.tensionMains,
     tensionCrosses: job.tensionCrosses,
     method: job.method,
@@ -466,6 +468,10 @@ export async function POST(req: NextRequest) {
       status,
       racketLabel,
       stringLabel,
+      // The player's own string (docs/plans/string-stock-audit-fixes.md):
+      // `true` or absent, never `false`, so an older job and a new club-string
+      // job read the same.
+      ...(body.ownString === true ? { ownString: true } : {}),
       tensionMains: body.tensionMains,
       tensionCrosses: body.tensionCrosses,
       method: trimmed(body.method, 120) ?? 'Zach · 2 strings, 4 knots',
