@@ -97,11 +97,35 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
     const root = document.documentElement;
     // Outlives the `--duration-normal` (250ms) release transitions in globals.css.
     const RELEASE_MS = 260;
+    /* FORGIVING, LIKE THE PHONE'S OWN BACK SWIPE (Grant, 2026-11-15: "the
+       swipe is janky, not always work"). It used to need a start inside 24px,
+       a release inside 600ms and under 40px of drift, so a thumb in a case, a
+       deliberate slow drag or a natural arc was dropped; and the page kept
+       scrolling under the finger while it moved. Now: a start inside
+       EDGE_PX; a release past COMMIT_PX at any speed, or past FLICK_PX when
+       quick; the drag more sideways than up or down; and once the drag is
+       plainly sideways the page holds still (a touchmove listener that can
+       cancel the scroll, added only for a gesture that began at the edge, so
+       no other touch waits on it). */
+    const EDGE_PX = 32;
+    const FLICK_PX = 60;
+    const FLICK_MS = 600;
+    const COMMIT_PX = 110;
+    const LOCK_PX = 10;
     let startX = 0;
     let startY = 0;
     let startT = 0;
     let tracking = false;
+    let locked = false;
     let releaseTimer: number | null = null;
+    // Non-passive, so it can hold the page still. Attached per gesture.
+    const holdPage = (e: TouchEvent) => {
+      if (locked && e.cancelable) e.preventDefault();
+    };
+    const detachHold = () => {
+      locked = false;
+      document.removeEventListener('touchmove', holdPage);
+    };
     const setVar = (n: number) => root.style.setProperty('--swipe-back', String(n));
     const clearRelease = () => {
       if (releaseTimer !== null) {
@@ -114,17 +138,21 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
       root.removeAttribute('data-swiping');
       setVar(0);
       tracking = false;
+      detachHold();
     };
     const beginRelease = () => {
       tracking = false;
+      detachHold();
       root.setAttribute('data-swiping', 'release');
       setVar(0);
       releaseTimer = window.setTimeout(settle, RELEASE_MS);
     };
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (!t || t.clientX > 24 || !isBarOnScreen(ref.current)) { tracking = false; return; }
+      if (!t || t.clientX > EDGE_PX || !isBarOnScreen(ref.current)) { tracking = false; return; }
       tracking = true;
+      locked = false;
+      document.addEventListener('touchmove', holdPage, { passive: false });
       startX = t.clientX;
       startY = t.clientY;
       startT = Date.now();
@@ -138,11 +166,13 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
       if (!t) return;
       const dx = t.clientX - startX;
       const dy = Math.abs(t.clientY - startY);
-      // If the gesture goes vertical, hand off to scroll.
-      if (dy > 40 && dy > Math.abs(dx)) {
+      // If the gesture goes vertical first, hand off to scroll.
+      if (!locked && dy > LOCK_PX && dy > Math.abs(dx)) {
         beginRelease();
         return;
       }
+      // Plainly sideways: from here the page holds still under the finger.
+      if (!locked && dx > LOCK_PX && dx > dy) locked = true;
       const progress = Math.max(0, Math.min(1, dx / 120));
       setVar(progress);
     };
@@ -152,7 +182,8 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
       const dx = t ? t.clientX - startX : 0;
       const dy = t ? Math.abs(t.clientY - startY) : 0;
       const dt = Date.now() - startT;
-      const committed = dx > 60 && dy < 40 && dt < 600;
+      const sideways = dx > dy;
+      const committed = sideways && (dx > COMMIT_PX || (dx > FLICK_PX && dt < FLICK_MS));
       if (committed) {
         // Visual full-commit hold for one frame; the new screen will
         // mount with the attribute absent on next layout pass.
