@@ -10,6 +10,8 @@ export interface Methods {
   available: Provider[] | null;
   linked: Provider[] | null;
   hasPassword?: boolean;
+  /** An email address a sign-in code can go to (docs/plans/one-way-in.md, step 3). */
+  hasEmailCode?: boolean;
   hasPin?: boolean;
   email?: string | null;
   nudge?: boolean;
@@ -78,7 +80,7 @@ export function methodsSummary(
   if (!methods) return undefined;
   const parts: string[] = [];
   if (methods.hasPin) parts.push(labels.pin);
-  if (methods.hasPassword) parts.push(labels.email);
+  if (methods.hasPassword || methods.hasEmailCode) parts.push(labels.email);
   // Brand names, deliberately not translated.
   // One entry per PROVIDER: a member with two Google accounts linked read
   // "PIN · Google · Google". The sheet still lists each account.

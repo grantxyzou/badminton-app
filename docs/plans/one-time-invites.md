@@ -30,6 +30,8 @@ should come back as an option.
 
 ## Decisions
 
+- **2026-11-13 — To be retired** by [`one-way-in.md`](one-way-in.md) (Grant: "One time invite should just be the guest feature", then: drop the link entirely). The club's door link becomes the only way to become a member; guests stay as plus-ones. Until that step ships, everything below still describes the live code.
+
 - **2026-11-06 — first review: nothing reported yet** (Grant: "Not yet"). No admin stuck, no broken link. The kill criterion's count (invites against access requests) was not read; moved a month on with that question added.
 
 - **Replace, not add.** Grant chose per-person one-time links over keeping the

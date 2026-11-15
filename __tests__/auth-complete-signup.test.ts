@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 import { resetMockStore, seedGroup, seedMember, getStore } from './helpers';
-import { mintInvite } from '../lib/invites';
 import { POST } from '../app/api/auth/complete-signup/route';
 import { setPendingSignup, PENDING_COOKIE, type PendingSignup } from '../lib/pendingSignup';
 import { lookupIdentity, reserveIdentity } from '../lib/authIdentity';
@@ -12,8 +11,13 @@ let ipSeq = 0;
 
 beforeEach(() => {
   resetMockStore();
-  // Members only: a new account needs an invite, so BPM must exist to mint one.
   seedGroup('bpm', { name: 'BPM Badminton' });
+  // A new account goes to a club's link or makes a club of its own
+  // (lib/inviteSignup.ts); these cases make one of its own, which needs groups on.
+  process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
+});
+afterEach(() => {
+  delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
 });
 
 /** Mint a real signed pending cookie by round-tripping through the setter. */
@@ -32,13 +36,12 @@ function pendingCookie(over: Partial<PendingSignup> = {}): string {
 }
 
 /**
- * A request whose body carries a fresh one-time BPM invite — members only: a
- * new account needs one. The no-invite refusal is pinned in
- * `members-only-accounts.test.ts` and `invited-signup.test.ts`.
+ * A request that may make an account: here, one creating its own club. The
+ * club-link case is `group-door-account.test.ts`, and the refusal with
+ * neither is `members-only-accounts.test.ts`.
  */
 async function req(body: Record<string, unknown>, cookie?: string): Promise<NextRequest> {
-  const invite = await mintInvite('bpm', 'owner');
-  body = { inviteToken: invite!.token, ...body };
+  body = { noGroup: true, ...body };
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Client-IP': `10.9.${Math.floor(ipSeq / 250)}.${ipSeq++ % 250}`,
@@ -67,11 +70,9 @@ describe('POST /api/auth/complete-signup', () => {
     expect(res.headers.getSetCookie().join('\n')).toMatch(/member_session=[^;]+;/);
   });
 
-  it('refuses a name that already belongs to someone, and reserves nothing', async () => {
-    seedMember('Lin');
-    const res = await POST(await req({ name: 'lin' }, pendingCookie({ sub: 'google-sub-2' })));
-    expect(res.status).toBe(409);
-    expect((await res.json()).error).toBe('name_taken');
+  it('refuses a body with nowhere to go, and reserves nothing', async () => {
+    const res = await POST(await req({ name: 'Lin', noGroup: undefined, inviteCode: 'ABCD2345' }, pendingCookie({ sub: 'google-sub-2' })));
+    expect(res.status).toBe(404);
     expect(await lookupIdentity('google', 'google-sub-2')).toBeNull();
   });
 

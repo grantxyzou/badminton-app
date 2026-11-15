@@ -113,6 +113,24 @@ describe('GET /api/auth/methods', () => {
     expect(b.nudge).toBe(false);
   });
 
+  it('counts an email a code can go to as a way in, password or not (one-way-in step 3)', async () => {
+    // An account made through a club's link with an email code has an address
+    // and nothing else: it must not be told it has nothing to sign in with.
+    const coded = seedMember('Viktor', { email: 'viktor@example.com', emailVerified: true });
+    await reserveIdentity('email', 'viktor@example.com', coded.id);
+    const pinAndEmail = seedMember('Carolina', { pinHash: 'x', email: 'carolina@example.com' });
+    await reserveIdentity('email', 'carolina@example.com', pinAndEmail.id);
+    const nothing = seedMember('Kento', {});
+
+    const v = await (await GET(req(METHODS, asMember('Viktor', coded.id)))).json();
+    const c = await (await GET(req(METHODS, asMember('Carolina', pinAndEmail.id)))).json();
+    const k = await (await GET(req(METHODS, asMember('Kento', nothing.id)))).json();
+    expect(v).toMatchObject({ hasEmailCode: true, hasPassword: false });
+    // A PIN member who can already get a code has something modern: no nudge.
+    expect(c).toMatchObject({ hasEmailCode: true, nudge: false });
+    expect(k.hasEmailCode).toBe(false);
+  });
+
   it('never leaks a password hash', async () => {
     const m = seedMember('Sindhu', { pinHash: 'x', passwordHash: 'scrypt$1$2$3$aa$bb' });
     const text = JSON.stringify(await (await GET(req(METHODS, asMember('Sindhu', m.id)))).json());

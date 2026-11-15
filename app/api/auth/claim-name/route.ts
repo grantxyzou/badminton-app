@@ -41,6 +41,8 @@ import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
+import { resolveClaimLink } from '@/lib/claimLinks';
+import { isFlagOn } from '@/lib/flags';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  let body: { name?: unknown; pin?: unknown; code?: unknown };
+  let body: { name?: unknown; pin?: unknown; code?: unknown; inviteToken?: unknown; inviteCode?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -74,6 +76,14 @@ export async function POST(req: NextRequest) {
   if ((pin && code) || (!pin && !code)) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
+  // The club's link this person arrived with, if any: the only thing that
+  // names THEIR club. A signed-out browser carries no club cookie, so
+  // `resolveGroupId` answers BPM, and the name was looked up on BPM's roster
+  // even when the link (and the `name_taken` that sent them here) was another
+  // club's. A typed invite CODE named a one-time invite, retired in
+  // docs/plans/one-way-in.md step 5: it resolves nothing, so it fails.
+  const inviteToken = typeof body.inviteToken === 'string' && body.inviteToken.trim() ? body.inviteToken.trim().slice(0, 128) : null;
+  const inviteCode = !inviteToken && typeof body.inviteCode === 'string' && body.inviteCode.trim() ? body.inviteCode.trim().slice(0, 64) : null;
   if (pin && !/^[0-9]{4}$/.test(pin)) return FAIL();
   if (code && !/^[0-9]{6}$/.test(code)) return FAIL();
 
@@ -103,7 +113,19 @@ export async function POST(req: NextRequest) {
     // lookup; then a point read for the full document, since this route needs
     // pinHash and recoveryCode. `__tests__/member-resolve-canary.test.ts`
     // enforces the single owner.
-    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+    // With groups off there is one club, and a link cannot move the lookup.
+    let groupId = resolveGroupId(req);
+    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') && (inviteToken || inviteCode)) {
+      const invited = inviteToken ? await resolveClaimLink(inviteToken) : null;
+      // A link that no longer resolves (or a retired code) is the same 401 at
+      // the same cost, never a quiet fall back to BPM's roster.
+      if (!invited) {
+        await verifyPin(pin ?? code ?? '', FAKE_HASH);
+        return FAIL();
+      }
+      groupId = invited;
+    }
+    const memberId = await resolveActiveMemberId(groupId, name);
     const member = memberId
       ? ((await container.item(memberId, memberId).read<Member>()).resource ?? null)
       : null;
@@ -143,7 +165,8 @@ export async function POST(req: NextRequest) {
     let claimedEmail: string | null = null;
     if (pending.email && pending.emailVerified) {
       const email = normalizeEmail(pending.email);
-      const emailReserved = await reserveIdentity('email', email, member.id);
+      // An email-code sign-in IS this address, reserved just above.
+      const emailReserved = pending.provider === 'email' ? { ok: true } : await reserveIdentity('email', email, member.id);
       if (emailReserved.ok) {
         claimedEmail = email;
         // Release the address this member previously held, if it changed.
@@ -159,7 +182,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const linked = new Set([...(member.linkedProviders ?? []), pending.provider]);
+    // An email-proven identity (step 4's email code) is the address itself,
+    // reserved below; only Google and Apple are "linked providers".
+    const linked = new Set([...(member.linkedProviders ?? []), ...(pending.provider === 'email' ? [] : [pending.provider])]);
     const updated: Member = {
       ...member,
       linkedProviders: [...linked],
@@ -189,7 +214,7 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    await completeSignIn(res, updated, resolveGroupId(req), pending.provider);
+    await completeSignIn(res, updated, groupId, pending.provider === 'email' ? 'email_code' : pending.provider);
     return res;
   } catch (err) {
     // A Cosmos throttle must be distinguishable from a wrong PIN, or the

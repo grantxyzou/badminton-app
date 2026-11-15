@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetMockStore, seedGroup, seedMember, getStore, makeRequest } from './helpers';
-import { mintInvite } from '../lib/invites';
+import { rotateClaimLink } from '../lib/claimLinks';
 import { POST } from '../app/api/auth/signup/route';
 import { lookupIdentity } from '../lib/authIdentity';
 import { verifyPassword } from '../lib/passwordHash';
@@ -9,12 +9,15 @@ const URL_ = 'http://localhost:3000/bpm/api/auth/signup';
 
 beforeEach(() => {
   resetMockStore();
-  // Members only: every new account needs an invite, so BPM must exist to mint one.
   seedGroup('bpm', { name: 'BPM Badminton' });
+  // A new account goes to a club's link or makes a club of its own
+  // (lib/inviteSignup.ts); these cases make one of its own, which needs groups on.
+  process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
 });
 
 function body(over: Record<string, unknown> = {}) {
@@ -26,10 +29,12 @@ function body(over: Record<string, unknown> = {}) {
   };
 }
 
-/** A sign-up body carrying a fresh one-time BPM invite (members only). */
+/**
+ * A sign-up body that may make an account: a password account is made only to
+ * create a club (docs/plans/one-way-in.md, step 5).
+ */
 async function invited(over: Record<string, unknown> = {}) {
-  const invite = await mintInvite('bpm', 'owner');
-  return body({ inviteToken: invite!.token, ...over });
+  return body({ noGroup: true, ...over });
 }
 
 describe('POST /api/auth/signup', () => {
@@ -68,15 +73,16 @@ describe('POST /api/auth/signup', () => {
     expect((await res.json()).error).toBe('email_taken');
   });
 
-  it('refuses to attach to an existing name (names are enumerable, not proof)', async () => {
+  it('never makes a password account through a club link, or with nowhere to go (one-way-in step 5)', async () => {
+    const link = (await rotateClaimLink('bpm', 'owner'))!.token;
+    for (const over of [{ inviteToken: link }, { doorToken: link }, { inviteCode: 'ABCD2345' }, {}]) {
+      const res = await POST(makeRequest('POST', URL_, body({ email: `x${Object.keys(over).join('')}@example.com`, ...over })));
+      expect(res.status).toBe(404);
+    }
+    expect(await lookupIdentity('email', 'xinviteToken@example.com')).toBeNull();
+    // An account on no roster is no claim on a name: only a club reserves one.
     seedMember('Lin', { pinHash: 'x' });
-    const res = await POST(
-      makeRequest('POST', URL_, await invited({ name: 'lin', email: 'imposter@example.com' })),
-    );
-    expect(res.status).toBe(409);
-    expect((await res.json()).error).toBe('name_taken');
-    // and the email must NOT stay reserved after the refusal
-    expect(await lookupIdentity('email', 'imposter@example.com')).toBeNull();
+    expect((await POST(makeRequest('POST', URL_, await invited({ name: 'lin', email: 'lin2@example.com' })))).status).toBe(201);
   });
 
   it('rejects a weak password and a malformed email', async () => {

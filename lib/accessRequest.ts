@@ -68,7 +68,9 @@ export interface StoredAccessRequest {
    * signed-out ask has always resolved to.
    */
   groupId?: string;
-  /** Asked through the club's claim link — the admin card says so. */
+  /** Asked through the club's claim link. Written until step 4d of
+   *  docs/plans/one-way-in.md, when the link stopped taking a name; kept on
+   *  the type for rows a rollback might still read. */
   via?: 'link';
 }
 
@@ -81,7 +83,7 @@ function hash(secret: string): string {
  * plus the record to persist on the member doc.
  */
 export function issueAccessRequest(
-  context: { groupId?: string; via?: 'link' } = {},
+  context: { groupId?: string } = {},
 ): { secret: string; stored: StoredAccessRequest } {
   const secret = randomBytes(32).toString('hex');
   return {
@@ -91,7 +93,6 @@ export function issueAccessRequest(
       hash: hash(secret),
       expiresAt: Date.now() + TTL_MS,
       ...(context.groupId ? { groupId: context.groupId } : {}),
-      ...(context.via ? { via: context.via } : {}),
     },
   };
 }
