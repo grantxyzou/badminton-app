@@ -4,7 +4,7 @@
 the measurement below is what makes that readout legible. This is not Track 1 (#102);
 Track 1 is what it unblocks.
 **Status:** shipped 2026-09-10 (measurement + door + chart); read 2026-10-15, see below
-**Review on:** 2026-11-15 — has the Home decision been reopened (see the 2026-10-15 reading), and has `reach` moved?
+**Review on:** 2026-11-15 — has the Home decision been reopened (see the 2026-10-15 reading), and has `reach` moved? Read `skill` on `GET /api/reports/metrics`, the same count as slice0's.
 
 **Read 2026-10-15** (Grant, `GET /api/admin/slice0`, cohort since 2026-08-16): roster 36, Stats openers 17, check-in openers 8, checked in within the window 10, ever 12, repeat 6 → `reach` **0.472**, `entry` 0.471, `finish` 1.25, `repeat` 0.167. `entry` and `finish` pass their bars; `reach` fails its 0.5 bar by one person, so the `reach` row is the one that fires: **the fix is off-tab — reopen the "Home is out of scope" decision.** `repeat` is the lowest number but its row only applies once the other three pass. Two caveats on the measurement: `finish` above 1.0 means two check-ins reached the sheet without a recorded `checkin_open` (a mount site not firing `source`), and the route's top-level `verdict: kill` is the recCard/games criterion from Slice-0, not this one — do not act on it.
 
