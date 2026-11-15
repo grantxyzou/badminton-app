@@ -16,7 +16,7 @@ import { clubRunOf, type ClubRun } from './clubRun';
 import { isFlagOn } from './flags';
 import { readGroup } from './groups';
 import { groupScope } from './groupScope';
-import { isBillable } from './stringingBilling';
+import { isFinishedUnpaid } from './stringingBilling';
 import { walkUpJobClosed } from './stringing';
 
 /** The pure reading, for a screen that already holds the club's run. */
@@ -51,7 +51,10 @@ type JobLike = {
 export function isOpenStringingJob(job: JobLike): boolean {
   if (job.cancelledAt) return false;
   if (!walkUpJobClosed(job)) return true;
-  return isBillable({ priceCents: job.priceCents ?? null, paidAt: job.paidAt ?? null, status: job.status ?? '' });
+  // Finished and unpaid counts whether or not it was invoiced yet: a job the
+  // stringer has not billed is money the club has not asked for, not money
+  // nobody owes (docs/plans/stringing-invoice.md).
+  return isFinishedUnpaid({ priceCents: job.priceCents ?? null, paidAt: job.paidAt ?? null, status: job.status ?? '' });
 }
 
 /** How many of the club's jobs keep the service from being switched off. */

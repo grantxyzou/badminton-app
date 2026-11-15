@@ -1260,6 +1260,35 @@ export interface StringingJob {
    * member's job and on a walk-up with a phone number or no contact.
    */
   walkUpEmails?: { spec?: WalkUpEmailStamp; ready?: WalkUpEmailStamp };
+  /**
+   * WHEN THE JOB BECOMES MONEY OWED (`docs/plans/stringing-invoice.md`).
+   * `'invoice'`: only once the stringer or an organiser sends the invoice.
+   * Stamped at creation while `NEXT_PUBLIC_FLAG_STRINGING_INVOICE` is on.
+   * Absent (every older job, and every job made while the flag is off): at
+   * Ready, as it always was. Read only through `invoiceGateOpen`. Additive.
+   */
+  billOn?: 'invoice';
+  /** The invoice, once sent. Additive; absent until the first send. */
+  invoice?: StringingInvoice;
+}
+
+export interface StringingInvoice {
+  /** `INV-0006` for job `J-0006`: one per job. */
+  no: string;
+  /** The price it was sent at, in cents. A later re-price shows "changed since invoiced". */
+  amountCents: number;
+  /** The first send. Billing (for a `billOn: 'invoice'` job) starts here. */
+  sentAt: string;
+  /** The latest send: a resend moves this, never `sentAt`. */
+  lastSentAt: string;
+  /** Who sent it (member id), for the day-7 reminder. Null for an unknown sender. */
+  sentBy: string | null;
+  /** How many times it was sent, the first included. */
+  sends: number;
+  /** Day-3 reminder to the player, stamped BEFORE the push. */
+  playerRemindedAt?: string;
+  /** Day-7 reminder to the sender, stamped BEFORE the push. */
+  senderRemindedAt?: string;
 }
 
 /** One automatic email to a walk-up: when it was tried, and whether it went. */
@@ -1336,6 +1365,12 @@ export interface StringerJob {
   /** Their phone or email — on the assigned stringer's own queue only, never
    *  on the "Waiting for a stringer" list every stringer sees. */
   walkUpContact?: string;
+  /**
+   * The invoice, on the stringer's OWN queue only (docs/plans/stringing-invoice.md):
+   * the one place a stringer who is not an admin sees a price, for their own
+   * finished job, so they can check it before they send. Additive.
+   */
+  invoice?: import('./stringingInvoiceView').InvoiceView;
 }
 
 /** A pending change as a stringer may see it: the player's diff minus price. */
@@ -1373,6 +1408,8 @@ export interface PlayerStringingJob {
   pendingEdit: PlayerPendingEdit | null;
   createdAt: string;
   updatedAt: string;
+  /** Sent invoice: its number and when it first went (docs/plans/stringing-invoice.md). Additive. */
+  invoice?: { no: string; sentAt: string };
 }
 
 /** How one string suits a member's own racket — `GET /api/stringing/fit`

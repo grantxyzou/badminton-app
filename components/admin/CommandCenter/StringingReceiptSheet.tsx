@@ -13,6 +13,8 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { formatReadyBy } from '@/lib/stringingDue';
 import { fmtMoney } from '@/lib/fmt';
 import { APP_NAME } from '@/lib/brand';
+import { invoiceNoOf } from '@/lib/stringingInvoiceView';
+import { isWalkUpJob } from '@/lib/stringing';
 import type { StringingJob } from '@/lib/types';
 
 type T = ReturnType<typeof useTranslations>;
@@ -24,7 +26,14 @@ type T = ReturnType<typeof useTranslations>;
  * It names the person and the job and NEVER the contact: the image leaves the
  * app, and the stringer is the one choosing where it goes.
  */
-export function buildStringingReceipt(job: StringingJob, clubName: string, t: T, locale: string): StringingReceiptInput {
+export function buildStringingReceipt(
+  job: StringingJob,
+  clubName: string,
+  t: T,
+  locale: string,
+  /** The INVOICE version (docs/plans/stringing-invoice.md): its number and how to pay. */
+  asInvoice = false,
+): StringingReceiptInput {
   const dropped = job.history.find((h) => h.status === 'received')?.at ?? job.createdAt;
   const droppedOn = (() => {
     try {
@@ -52,13 +61,19 @@ export function buildStringingReceipt(job: StringingJob, clubName: string, t: T,
   ];
   return {
     clubName,
-    title: t('walkUp.receipt.heading'),
+    title: asInvoice ? t('walkUp.receipt.invoiceHeading', { no: job.invoice?.no ?? invoiceNoOf(job.jobNo) }) : t('walkUp.receipt.heading'),
     jobNo: job.jobNo,
     forLine: t('walkUp.receipt.for', { name: job.memberName }),
     rows,
     totalLabel: t('walkUp.receipt.total'),
     total: typeof job.priceCents === 'number' ? fmtMoney(job.priceCents / 100) : t('walkUp.receipt.ask'),
-    note: job.paidAt ? t('walkUp.receipt.paid') : t('walkUp.receipt.payAtPickup'),
+    note: job.paidAt
+      ? t('walkUp.receipt.paid')
+      : asInvoice
+        ? isWalkUpJob(job)
+          ? t('walkUp.receipt.invoicePayStringer')
+          : t('walkUp.receipt.invoicePayInApp', { app: APP_NAME })
+        : t('walkUp.receipt.payAtPickup'),
   };
 }
 
@@ -66,6 +81,8 @@ interface Props {
   open: boolean;
   onClose: () => void;
   job: StringingJob;
+  /** Draw it as the job's invoice rather than a drop-off receipt. */
+  asInvoice?: boolean;
 }
 
 /**
@@ -77,13 +94,13 @@ interface Props {
  * `lib/shareImage.ts`, which marks the external excursion before any hand-off
  * (app-shell.md) and never completes silently.
  */
-export default function StringingReceiptSheet({ open, onClose, job }: Props) {
+export default function StringingReceiptSheet({ open, onClose, job, asInvoice = false }: Props) {
   const t = useTranslations('admin.stringing');
   const ta = useTranslations('a11y');
   const locale = useLocale();
   const { group } = useCurrentGroup();
   const clubName = group?.name?.trim() || APP_NAME;
-  const input = useMemo(() => buildStringingReceipt(job, clubName, t, locale), [job, clubName, t, locale]);
+  const input = useMemo(() => buildStringingReceipt(job, clubName, t, locale, asInvoice), [job, clubName, t, locale, asInvoice]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState('');
@@ -127,7 +144,7 @@ export default function StringingReceiptSheet({ open, onClose, job }: Props) {
     }
   }
 
-  const title = t('walkUp.receipt.title', { name: job.memberName });
+  const title = asInvoice ? t('walkUp.receipt.invoiceTitle', { name: job.memberName }) : t('walkUp.receipt.title', { name: job.memberName });
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={title}>

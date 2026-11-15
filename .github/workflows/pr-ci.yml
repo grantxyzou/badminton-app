@@ -100,6 +100,7 @@ jobs:
           NEXT_PUBLIC_FLAG_STORE_CREDIT: 'true'
           NEXT_PUBLIC_FLAG_LEDGER_MIRROR: 'true'
           NEXT_PUBLIC_FLAG_CARD_PAY: 'false'
+          NEXT_PUBLIC_FLAG_STRINGING_INVOICE: 'false'
           NEXT_PUBLIC_FLAG_STRINGING: 'true'
           # Same as deploy-next.yml: on in production (docs/plans/voice-score.md).
           NEXT_PUBLIC_FLAG_VOICE_SCORE: 'true'

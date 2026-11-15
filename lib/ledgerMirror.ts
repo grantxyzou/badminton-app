@@ -36,6 +36,7 @@ import { randomBytes } from 'crypto';
 import { isFlagOn } from './flags';
 import { ensureLedger } from './storeCredit';
 import type { GroupScope } from './groupScope';
+import { invoiceGateOpen } from './stringingBilling';
 import type { BirdPurchase, LedgerEntry, Player, Session, SettledSnapshot, StringingJob, StringPurchase } from './types';
 
 export const CLUB_LEDGER_ID = '~club';
@@ -401,7 +402,10 @@ export async function mirrorRowDeleted(scope: GroupScope, row: Pick<Player, 'id'
 }
 
 const BILLABLE = new Set(['ready', 'picked_up']);
-const billableShaped = (j: Pick<StringingJob, 'priceCents' | 'status'>) => typeof j.priceCents === 'number' && j.priceCents > 0 && BILLABLE.has(j.status);
+// The invoice gate too (docs/plans/stringing-invoice.md): a `billOn: 'invoice'`
+// job is charged when its invoice is sent, not when it reaches Ready.
+const billableShaped = (j: Pick<StringingJob, 'priceCents' | 'status' | 'billOn' | 'invoice'>) =>
+  typeof j.priceCents === 'number' && j.priceCents > 0 && BILLABLE.has(j.status) && invoiceGateOpen(j);
 
 /**
  * After a stringing job changed (price, status, paid). A charge exists only

@@ -19,6 +19,41 @@
       "noneAction": "Choose how to sign in"
     },
     "stringing": {
+      "invoice": {
+        "title": "Invoice {no}",
+        "amountDue": "Amount due",
+        "notSent": "Not sent yet.",
+        "notSentOwesNothing": "Not sent yet. {name} owes nothing until you send it.",
+        "sentAt": "Sent {time}",
+        "sentAgainAt": "Last sent {time} · sent {count} times",
+        "paid": "Paid",
+        "send": "Send invoice",
+        "sendAgain": "Send again",
+        "sharePicture": "Share as a picture",
+        "priceChanged": "The price changed since this invoice ({from} → {to}). Send it again so {name} has the right figure.",
+        "reachedPush": "Sent. {name} got a notification.",
+        "reachedEmail": "Sent. {name} got an email with the amount.",
+        "notReached": "Saved, but {name} has no notifications or email on file. Share the picture with them.",
+        "confirmTitle": "Send {name} the invoice",
+        "close": "Close",
+        "rowInvoice": "Invoice",
+        "rowRacket": "Racket",
+        "rowFor": "For",
+        "howMember": "{name} gets a notification, and an email with the amount if they have one. They can pay by card or e-transfer in the app.",
+        "howWalkUp": "{name} gets an email if they left one. Otherwise, share the picture with them after you send it.",
+        "startsOwing": "From now on this shows on {name}'s balance.",
+        "sendTo": "Send to {name}",
+        "sendAgainTo": "Send again to {name}",
+        "sending": "Sending…",
+        "error": {
+          "failed": "Couldn't send it. Check your connection and try again.",
+          "sending": "It was sent a moment ago.",
+          "job_paid": "This restring is already paid.",
+          "not_finished": "Mark the racket ready first.",
+          "not_priced": "This job has no price yet. Ask the organiser to set one.",
+          "cancelled": "This request was withdrawn."
+        }
+      },
       "cancelError": "Couldn't cancel that. Try again.",
       "cancelGo": "Cancel request",
       "cancelKeep": "Keep it",
@@ -200,7 +235,8 @@
         },
         "ready": {
           "title": "Your racket is ready",
-          "body": "Grab it at the next session."
+          "invoiced": "Invoice {no} is on your balance. Pay by card or e-transfer from Home.",
+        "body": "Grab it at the next session."
         },
         "sendCta": "Send the request",
         "requestSending": "Sending…",
@@ -2430,7 +2466,8 @@
           "title": "Archived",
           "empty": "Nothing archived yet.",
           "loadError": "Couldn't load the archive.",
-          "stillOwed": "Still owes {amount}"
+          "notInvoiced": "Not invoiced · {amount}",
+        "stillOwed": "Still owes {amount}"
         },
         "mine": "Mine",
         "all": "All",
@@ -2508,7 +2545,11 @@
           "receipt": {
             "title": "Receipt for {name}",
             "close": "Close",
-            "heading": "Stringing receipt",
+            "invoiceTitle": "Invoice for {name}",
+        "invoiceHeading": "Invoice {no}",
+        "invoicePayInApp": "Pay by card or e-transfer in {app}, or to your stringer.",
+        "invoicePayStringer": "Pay your stringer by e-transfer or at pickup. Quote the invoice number.",
+        "heading": "Stringing receipt",
             "for": "For {name}",
             "racket": "Racket",
             "string": "String",
@@ -3677,6 +3718,21 @@
     "assignment": {
       "title": "A racket for you to string",
       "body": "{name}'s {racket} is yours.",
+      "racket": "racket"
+    },
+    "invoice": {
+      "title": "Your restring bill is ready",
+      "body": "{racket}: open the app to pay by card or e-transfer.",
+      "racket": "Your racket"
+    },
+    "invoiceReminder": {
+      "title": "Your restring bill is still open",
+      "body": "{racket}, invoiced {days} days ago. Open the app to pay.",
+      "racket": "Your racket"
+    },
+    "invoiceUnpaid": {
+      "title": "A restring is still unpaid",
+      "body": "{jobNo} for {name} ({racket}) was invoiced {days} days ago.",
       "racket": "racket"
     },
     "requestWaiting": {

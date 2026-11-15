@@ -131,6 +131,7 @@ jobs:
           # STRIPE_WEBHOOK_SECRET are in Azure App Settings; then 'true' and deploy.
           # Fast off switch without a rebuild: delete STRIPE_SECRET_KEY.
           NEXT_PUBLIC_FLAG_CARD_PAY: 'false'
+          NEXT_PUBLIC_FLAG_STRINGING_INVOICE: 'false'
           # ON as of 2026-08-27: the admin bench (job list, job detail, intake)
           # and /api/stringing/*. Players see the shop only once its own
           # admin-controlled `open` flag is set (PATCH /api/stringing/shop).
