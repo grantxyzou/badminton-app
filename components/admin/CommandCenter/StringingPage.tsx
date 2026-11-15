@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePageBack } from '@/lib/pageStack';
 import { popView, pushView, topView } from '@/lib/viewTrail';
+import { useTrailScroll } from '@/lib/trailScroll';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
@@ -88,7 +89,15 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   type BenchView = 'bench' | 'detail' | 'new' | 'archive' | 'setup';
   const [views, setViews] = useState<BenchView[]>([]);
   const view: BenchView = topView(views, 'bench');
-  const setView = useCallback((next: BenchView) => setViews((v) => pushView(v, next, 'bench')), []);
+  // Each level keeps its own place: a job opens at its top, and Back returns
+  // to where the list was left (lib/trailScroll.ts). One screen only; on two
+  // pages the list keeps its side. Declared above `aside`, so read it here.
+  const onTwoPages = useStringingAside() !== null;
+  const rememberScroll = useTrailScroll(views.length, !onTwoPages);
+  const setView = useCallback((next: BenchView) => {
+    if (next !== topView(views, 'bench')) rememberScroll();
+    setViews((v) => pushView(v, next, 'bench'));
+  }, [views, rememberScroll]);
   const back = useCallback(() => setViews(popView), []);
   // Each job's grommet holes, matched from its racket label (docs/plans/grommet-holes.md, Phase 4).
   const holes = useHoleLookup();

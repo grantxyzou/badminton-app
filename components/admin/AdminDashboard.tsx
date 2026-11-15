@@ -33,6 +33,7 @@ import { isFlagOn } from '@/lib/flags';
 import { TabActiveContext, useTabActive, useTabReturn } from '@/lib/tabActivity';
 import { usePageBack } from '@/lib/pageStack';
 import { popView, pushView, topView } from '@/lib/viewTrail';
+import { useTrailScroll } from '@/lib/trailScroll';
 
 /*
  * The admin subtree's router. Every view is a Command Center page; the
@@ -123,12 +124,16 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const pane = usePaneMode();
   const pageMotion = pane ? undefined : 'animate-slideInRight';
   const detailRef = useRef<HTMLDivElement>(null);
+  // Each level keeps its own place: a page opens at its top, and Back returns
+  // to where that level was left (lib/trailScroll.ts). One screen only.
+  const rememberScroll = useTrailScroll(trail.length, !pane);
   const push = useCallback((next: AdminView) => {
+    if (next !== topView(trail, 'dashboard')) rememberScroll();
     setPopped(false);
     // The console is the bottom of the trail, never a page on it; the page
     // already on top is not stacked twice.
     setTrail((t) => pushView(t, next, 'dashboard'));
-  }, []);
+  }, [trail, rememberScroll]);
 
   const goBack = useCallback(() => {
     setRefreshKey(k => k + 1);
